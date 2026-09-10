@@ -119,15 +119,17 @@ Khi nhóm của bạn thêm tính năng mới, hãy mở `translations.js` và t
 
 ---
 
-## 5. Bảng Phân Chia Công Việc Cho Thành Viên Nhóm (Task Breakdown)
+## 5. Bảng Phân Chia Công Việc Thành Viên Nhóm 1 (Task Breakdown)
+* **Thành viên nhóm:** 1. Châu Tuấn Kiệt (PM) | 2. Nguyễn Văn Hiếu | 3. Duy Quân
+* **Quy trình Git Flow chi tiết:** Xem file `tai lieu tham khao/QUY_TRINH_GIT_FLOW.md` trước khi push code.
 
 | Mã Task | Tên Nhiệm Vụ | Nội Dung Cụ Thể | Người Phụ Trách | Trạng Thái / Hạn Chót |
 | :---: | :--- | :--- | :---: | :---: |
 | **TASK-01** | **Core Architecture & Setup** | Dựng bộ khung `i18n/`, `styles/global.css`, `layouts/MainLayout.jsx`, nút cờ `LanguageSwitcher` trên Top Header | **Châu Tuấn Kiệt (PM)** |  **HOÀN THÀNH** |
-| **TASK-02** | **Rà Soát & Bổ Sung Từ Điển Song Ngữ** | Rà soát toàn bộ các text còn sót trên Dashboard, Modal gửi lời chúc, danh sách bảng biểu để dịch đầy đủ sang `vi` & `en` trong `translations.js` | **Thành viên 2** | Hạn: 2 ngày |
-| **TASK-03** | **Áp Dụng Token CSS Toàn Hệ Thống** | Rà soát các file `.css`, thay thế các mã màu cố định (`#1e293b`, `#2563eb`) và `font-size` pixel thành `var(--font-...)` và `var(--color-...)` | **Thành viên 3** | Hạn: 2 ngày |
-| **TASK-04** | **Tích Hợp `t(...)` Vào Phân Hệ Sinh Nhật** | Thay thế các text hiển thị tĩnh trong `BirthdayPage.jsx` và các components con bằng hàm `t('birthday....')` | **Thành viên 4** | Hạn: 3 ngày |
-| **TASK-05** | **Tích Hợp `t(...)` Vào Dashboard & Menu** | Kiểm tra hiển thị đa ngôn ngữ trên Dashboard, Sidebar khi người dùng bấm chuyển đổi giữa 🇻🇳 VI và 🇬🇧 EN | **Thành viên 5** | Hạn: 3 ngày |
+| **TASK-02** | **Rà Soát & Bổ Sung Từ Điển Song Ngữ** | Rà soát toàn bộ các text còn sót trên Dashboard, Modal gửi lời chúc, danh sách bảng biểu để dịch đầy đủ sang `vi` & `en` trong `translations.js` | **Nguyễn Văn Hiếu** | Hạn: 2 ngày |
+| **TASK-03** | **Áp Dụng Token CSS Toàn Hệ Thống** | Rà soát các file `.css`, thay thế các mã màu cố định (`#1e293b`, `#2563eb`) và `font-size` pixel thành `var(--font-...)` và `var(--color-...)` | **Duy Quân** | Hạn: 2 ngày |
+| **TASK-04** | **Tích Hợp `t(...)` Vào Phân Hệ Sinh Nhật** | Thay thế các text hiển thị tĩnh trong `BirthdayPage.jsx` và các components con bằng hàm `t('birthday....')` | **Nguyễn Văn Hiếu** | Hạn: 3 ngày |
+| **TASK-05** | **Tích Hợp `t(...)` Vào Dashboard & Menu** | Kiểm tra hiển thị đa ngôn ngữ trên Dashboard, Sidebar khi người dùng bấm chuyển đổi giữa 🇻🇳 VI và 🇬🇧 EN | **Duy Quân** | Hạn: 3 ngày |
 
 ---
 

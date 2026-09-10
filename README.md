@@ -37,10 +37,11 @@ DoAnCuoiKy/
 │   ├── package.json                 # Khai báo React, Vite, canvas-confetti
 │   └── pnpm-lock.yaml               # File khóa gói package pnpm
 │
-├── tai lieu tham khao/              # [Thư mục 3] Toàn bộ đề cương & tài liệu yêu cầu đồ án
+├── tai lieu tham khao/              # [Thư mục 3] Toàn bộ đề cương, tài liệu yêu cầu & quy trình Git
 │   ├── ITC - Django - QLVB&TL.md    # Bản đặc tả chi tiết phân công 8 nhóm của Thầy Duy
 │   ├── ITC - Django - QLVB&TL.xlsx  # Bảng tính phân bổ khối lượng đồ án
-│   └── chi tiết công việc.txt       # Ghi chú phân công chi tiết
+│   ├── QUY_TRINH_GIT_FLOW.md        # Cẩm nang quy trình Git Flow (Fork, Branch, PR, Merge cho 8 nhóm)
+│   └── chi tiết công việc.txt       # Ghi chú phân công chi tiết & danh sách thành viên nhóm
 │
 ├── CHAY_FULL_STACK.bat              # [File 1-Click] Khởi chạy toàn bộ hệ thống Full Stack (Django + React)
 └── README.md                        # Tài liệu hướng dẫn hệ thống
