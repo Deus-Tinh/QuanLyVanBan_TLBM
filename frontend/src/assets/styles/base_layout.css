@@ -2305,17 +2305,34 @@ button.nav-link {
 }
 
 /* ==================== COLLAPSED SIDEBAR ==================== */
+.app-sidebar.collapsed,
 body.sidebar-collapsed .app-sidebar {
-  width: var(--sidebar-collapsed-width);
+  width: var(--sidebar-collapsed-width, 84px) !important;
 }
+
+.app-sidebar.collapsed .sidebar-header,
 body.sidebar-collapsed .sidebar-header {
-  padding: 0;
-  justify-content: center;
+  padding: 0 !important;
+  justify-content: center !important;
 }
+
+.app-sidebar.collapsed .sidebar-brand,
 body.sidebar-collapsed .sidebar-brand {
-  justify-content: center;
-  width: 100%;
+  justify-content: center !important;
+  width: 100% !important;
 }
+
+.app-sidebar.collapsed .brand-info,
+.app-sidebar.collapsed .brand-text,
+.app-sidebar.collapsed .sidebar-toggle-btn,
+.app-sidebar.collapsed .nav-section-title,
+.app-sidebar.collapsed .nav-title-text,
+.app-sidebar.collapsed .nav-label-text,
+.app-sidebar.collapsed .nav-arrow,
+.app-sidebar.collapsed .nav-badge,
+.app-sidebar.collapsed .sub-nav-list,
+.app-sidebar.collapsed .sidebar-footer,
+.app-sidebar.collapsed .status-text,
 body.sidebar-collapsed .brand-info,
 body.sidebar-collapsed .sidebar-toggle-btn,
 body.sidebar-collapsed .nav-section-title,
@@ -2325,12 +2342,136 @@ body.sidebar-collapsed .sub-nav-list,
 body.sidebar-collapsed .sidebar-footer {
   display: none !important;
 }
-body.sidebar-collapsed .nav-link {
-  justify-content: center;
-  padding: 12px;
+
+/* Triệt tiêu hoàn toàn thanh cuộn xám và 2 nút mũi tên khi thu gọn trên mọi trình duyệt */
+.app-sidebar.collapsed .sidebar-content,
+body.sidebar-collapsed .sidebar-content {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  padding: 10px 4px 64px 4px !important;
+  scroll-behavior: smooth;
 }
+
+.app-sidebar.collapsed .sidebar-content::-webkit-scrollbar,
+.app-sidebar.collapsed .sidebar-content::-webkit-scrollbar-track,
+.app-sidebar.collapsed .sidebar-content::-webkit-scrollbar-thumb,
+.app-sidebar.collapsed .sidebar-content::-webkit-scrollbar-button,
+body.sidebar-collapsed .sidebar-content::-webkit-scrollbar,
+body.sidebar-collapsed .sidebar-content::-webkit-scrollbar-track,
+body.sidebar-collapsed .sidebar-content::-webkit-scrollbar-thumb,
+body.sidebar-collapsed .sidebar-content::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.app-sidebar.collapsed .nav-group-wrapper,
+body.sidebar-collapsed .nav-group-wrapper {
+  margin-bottom: 6px !important;
+}
+
+.app-sidebar.collapsed .nav-list,
+body.sidebar-collapsed .nav-list {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.app-sidebar.collapsed .nav-item,
+body.sidebar-collapsed .nav-item {
+  display: flex !important;
+  justify-content: center !important;
+  margin-bottom: 3px !important;
+}
+
+/* Icon thu gọn: Nút tròn 3D hoàn mỹ, căn giữa, không bị chém viền */
+.app-sidebar.collapsed .nav-link,
+body.sidebar-collapsed .nav-link {
+  width: 46px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 !important;
+  margin: 0 auto 3px auto !important;
+  border-radius: 50% !important;
+  justify-content: center !important;
+  align-items: center !important;
+  display: flex !important;
+}
+
+.app-sidebar.collapsed .nav-link .nav-link-content,
+body.sidebar-collapsed .nav-link .nav-link-content {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 0 !important;
+  margin: 0 !important;
+}
+
+/* Khử triệt để lỗi 2 vòng tròn lồng nhau trên icon Active */
+.app-sidebar.collapsed .nav-link i.menu-icon,
 body.sidebar-collapsed .nav-link i.menu-icon {
-  margin: 0;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  font-size: 1.1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Trạng thái không active: Nền chìm inset well 3D mượt */
+.app-sidebar.collapsed .nav-link:not(.active),
+body.sidebar-collapsed .nav-link:not(.active) {
+  background: var(--inset-well-bg) !important;
+  border: 1px solid var(--liquid-glass-border) !important;
+  box-shadow: var(--inset-well-shadow) !important;
+}
+
+.app-sidebar.collapsed .nav-link:not(.active) i.menu-icon,
+body.sidebar-collapsed .nav-link:not(.active) i.menu-icon {
+  color: var(--text-muted) !important;
+}
+
+.app-sidebar.collapsed .nav-link:not(.active):hover,
+body.sidebar-collapsed .nav-link:not(.active):hover {
+  background: rgba(15, 23, 42, 0.08) !important;
+  transform: scale(1.08) !important;
+}
+
+.app-sidebar.collapsed .nav-link:not(.active):hover i.menu-icon,
+body.sidebar-collapsed .nav-link:not(.active):hover i.menu-icon {
+  color: var(--text-main) !important;
+}
+
+/* Trạng thái Active: 1 khối nút xanh hoàng gia duy nhất */
+.app-sidebar.collapsed .nav-link.active,
+body.sidebar-collapsed .nav-link.active {
+  background: var(--blue-pill-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: var(--blue-pill-shadow) !important;
+  border-radius: 50% !important;
+  transform: none !important;
+}
+
+.app-sidebar.collapsed .nav-link.active i.menu-icon,
+body.sidebar-collapsed .nav-link.active i.menu-icon {
+  color: #ffffff !important;
+}
+
+.app-sidebar.collapsed .nav-link::after,
+body.sidebar-collapsed .nav-link::after {
+  border-radius: 46px 46px 0 0 !important;
+}
+
+.app-sidebar.collapsed .sidebar-bottom-status,
+body.sidebar-collapsed .sidebar-bottom-status {
+  padding: 12px 0 !important;
+  flex-shrink: 0 !important;
 }
 
 /* ===================================================================

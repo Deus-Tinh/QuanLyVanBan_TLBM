@@ -4,7 +4,7 @@
    Trưởng nhóm / PM: Châu Tuấn Kiệt
    ========================================================================== */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppSidebar from '../components/Layout/AppSidebar';
 import AppHeader from '../components/Layout/AppHeader';
 import AppFooter from '../components/Layout/AppFooter';
@@ -19,6 +19,14 @@ export default function MainLayout({
   const { theme, changeTheme } = useTheme();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (isSidebarCollapsed) {
+      document.body.classList.add('sidebar-collapsed');
+    } else {
+      document.body.classList.remove('sidebar-collapsed');
+    }
+  }, [isSidebarCollapsed]);
 
   return (
     <div className="app-layout">

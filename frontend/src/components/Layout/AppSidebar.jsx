@@ -65,13 +65,23 @@ export default function AppSidebar({
       </div>
 
       {/* Navigation Links */}
-      <div className="sidebar-content">
+      <div 
+        className="sidebar-content"
+        style={{
+          scrollbarWidth: isCollapsed ? 'none' : 'thin',
+          msOverflowStyle: isCollapsed ? 'none' : 'auto',
+        }}
+      >
         {NAV_GROUPS.map((group, gIdx) => (
-          <div key={gIdx} className="nav-group-wrapper" style={{ marginBottom: '10px' }}>
+          <div 
+            key={gIdx} 
+            className="nav-group-wrapper" 
+            style={{ marginBottom: isCollapsed ? '6px' : '10px' }}
+          >
             {!isCollapsed && (
               <div className="nav-section-title">{group.title}</div>
             )}
-            <ul className="nav-list" style={{ listStyle: 'none', padding: 0, margin: '4px 0' }}>
+            <ul className="nav-list" style={{ listStyle: 'none', padding: 0, margin: isCollapsed ? '0' : '4px 0' }}>
               {group.items.map((item) => {
                 const isActive = (item.id === 'sinh-nhat' && activePage === 'birthday') ||
                                  (item.id === 'dashboard' && activePage === 'dashboard');
@@ -80,7 +90,15 @@ export default function AppSidebar({
                   : (item.id === 'dashboard' ? t('nav.dashboard') : item.label);
 
                 return (
-                  <li key={item.id} className="nav-item" style={{ marginBottom: '4px' }}>
+                  <li 
+                    key={item.id} 
+                    className="nav-item" 
+                    style={{ 
+                      marginBottom: isCollapsed ? '3px' : '4px',
+                      display: isCollapsed ? 'flex' : 'block',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <button
                       type="button"
                       className={`nav-link ${isActive ? 'active' : ''}`}
@@ -91,9 +109,11 @@ export default function AppSidebar({
                       }}
                       title={isCollapsed ? labelText : undefined}
                       style={{
-                        width: '100%',
+                        width: isCollapsed ? '46px' : '100%',
+                        height: isCollapsed ? '46px' : 'auto',
+                        minHeight: isCollapsed ? '46px' : 'auto',
                         cursor: 'pointer',
-                        textAlign: 'left',
+                        textAlign: isCollapsed ? 'center' : 'left',
                         fontFamily: 'inherit',
                         border: 'none',
                       }}
@@ -120,9 +140,10 @@ export default function AppSidebar({
 
       {/* Sidebar Footer System Status */}
       <div className="sidebar-bottom-status" style={{
-        padding: '12px 16px',
+        padding: isCollapsed ? '12px 0' : '12px 16px',
         borderTop: '1px solid var(--liquid-glass-border-bottom)',
         background: 'var(--inset-well-bg)',
+        flexShrink: 0,
       }}>
         {!isCollapsed ? (
           <div className="system-pill-info" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
