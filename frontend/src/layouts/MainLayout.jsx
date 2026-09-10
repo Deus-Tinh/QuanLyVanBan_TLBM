@@ -67,7 +67,7 @@ export default function MainLayout({
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          minHeight: '460px',
+          minHeight: 'auto',
         }}>
           {/* Canvas trình diễn chuẩn bộ khung Layout */}
           <div style={{
@@ -76,14 +76,14 @@ export default function MainLayout({
             alignItems: 'center',
             justifyContent: 'center',
             width: '100%',
-            padding: '24px 0',
+            padding: '8px 0',
           }}>
             <div style={{
               maxWidth: '860px',
               width: '100%',
-              padding: '48px 40px',
+              padding: '22px 28px',
               textAlign: 'center',
-              borderRadius: '28px',
+              borderRadius: '24px',
               background: 'var(--deck-bg)',
               border: '1.5px solid var(--deck-border)',
               boxShadow: 'var(--deck-shadow)',
@@ -93,27 +93,27 @@ export default function MainLayout({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '68px',
-                height: '68px',
-                borderRadius: '22px',
+                width: '46px',
+                height: '46px',
+                borderRadius: '16px',
                 background: 'var(--inset-well-bg)',
                 boxShadow: 'var(--inset-well-shadow)',
-                fontSize: '2rem',
+                fontSize: '1.4rem',
                 color: '#2563eb',
-                marginBottom: '18px',
+                marginBottom: '8px',
               }}>
                 <i className="fa-solid fa-layer-group" />
               </div>
 
-              <div style={{ marginBottom: '12px' }}>
+              <div style={{ marginBottom: '8px' }}>
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   background: 'var(--blue-pill-bg, #1e40af)',
                   color: '#ffffff',
-                  fontSize: '0.76rem',
+                  fontSize: '0.72rem',
                   fontWeight: 700,
-                  padding: '5px 16px',
+                  padding: '3px 12px',
                   borderRadius: '20px',
                   letterSpacing: '0.5px',
                   textTransform: 'uppercase',
@@ -125,72 +125,72 @@ export default function MainLayout({
 
               <h2 style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: '1.75rem',
+                fontSize: '1.35rem',
                 fontWeight: 800,
                 color: 'var(--text-main)',
-                margin: '0 0 10px 0',
+                margin: '0 0 6px 0',
               }}>
                 Khung Giao Diện Điều Hành Chuẩn (Base Layout)
               </h2>
 
               <p style={{
-                fontSize: '0.92rem',
+                fontSize: '0.85rem',
                 color: 'var(--text-muted)',
                 maxWidth: '620px',
-                margin: '0 auto 28px auto',
-                lineHeight: 1.6,
+                margin: '0 auto 16px auto',
+                lineHeight: 1.5,
               }}>
                 Tập trung hoàn thiện toàn diện kiến trúc <strong>Header điều hướng</strong>, <strong>Sidebar phân hệ</strong> và <strong>Footer cố định</strong> cho toàn bộ 8 nhóm.
               </p>
 
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: '16px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '12px',
                 textAlign: 'left',
               }}>
                 <div style={{
-                  padding: '16px 18px',
-                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  borderRadius: '14px',
                   background: 'var(--inset-well-bg)',
                   border: '1px solid var(--liquid-glass-border)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <i className="fa-solid fa-compass" style={{ color: '#2563eb', fontSize: '1.1rem' }} />
-                    <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>Header Điều Hành</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <i className="fa-solid fa-compass" style={{ color: '#2563eb', fontSize: '0.95rem' }} />
+                    <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>Header Điều Hành</strong>
                   </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                    Tích hợp Live Clock, 3 luồng thông báo (Đến, Đi, Mật), bộ chọn 4 Theme và chọn Ngôn ngữ (VI/EN).
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Tích hợp Live Clock, 3 luồng thông báo, bộ chọn Theme và chọn Ngôn ngữ (VI/EN).
                   </p>
                 </div>
 
                 <div style={{
-                  padding: '16px 18px',
-                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  borderRadius: '14px',
                   background: 'var(--inset-well-bg)',
                   border: '1px solid var(--liquid-glass-border)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <i className="fa-solid fa-bars-staggered" style={{ color: '#059669', fontSize: '1.1rem' }} />
-                    <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>Sidebar Đa Phân Hệ</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <i className="fa-solid fa-bars-staggered" style={{ color: '#059669', fontSize: '0.95rem' }} />
+                    <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>Sidebar Đa Phân Hệ</strong>
                   </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                    Menu phân cấp thu gọn/mở rộng, 3D Liquid Blue Pill active và trạng thái máy chủ Production 2026.
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Menu phân cấp thu gọn/mở rộng, 3D Liquid Blue Pill active và trạng thái máy chủ.
                   </p>
                 </div>
 
                 <div style={{
-                  padding: '16px 18px',
-                  borderRadius: '16px',
+                  padding: '12px 14px',
+                  borderRadius: '14px',
                   background: 'var(--inset-well-bg)',
                   border: '1px solid var(--liquid-glass-border)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <i className="fa-solid fa-window-minimize" style={{ color: '#d97706', fontSize: '1.1rem' }} />
-                    <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>Footer Cố Định</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <i className="fa-solid fa-window-minimize" style={{ color: '#d97706', fontSize: '0.95rem' }} />
+                    <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>Footer Cố Định</strong>
                   </div>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                    Dải thông tin chân trang đồng bộ, hiển thị bản quyền ITC, số tổng đài hỗ trợ và phiên bản hệ thống.
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Dải chân trang đồng bộ, hiển thị bản quyền ITC, hotline hỗ trợ và phiên bản hệ thống.
                   </p>
                 </div>
               </div>

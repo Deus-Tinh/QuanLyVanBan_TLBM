@@ -7,30 +7,38 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }) {
 
   const currentThemeObj = THEMES.find((t) => t.id === currentTheme) || THEMES[0];
 
+  const themeShortNames = {
+    skeuomorphism: 'Skeuo 3D',
+    dark: 'Dark Mesh',
+    light: 'Executive Light',
+  };
+
   return (
     <div className="theme-selector-container" ref={ref} style={{ position: 'relative' }}>
       <button
         type="button"
         className="tactile-btn theme-toggle-btn"
         onClick={toggle}
-        title="Chọn phong cách giao diện"
+        title={`Phong cách giao diện: ${currentThemeObj.name}`}
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '8px 14px',
+          gap: '6px',
+          padding: '6px 10px',
           borderRadius: '12px',
           background: 'var(--inset-well-bg)',
           border: '1px solid var(--liquid-glass-border)',
           color: 'var(--text-main)',
-          fontSize: '0.85rem',
+          fontSize: '0.82rem',
           fontWeight: 600,
           cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
         }}
       >
         <i className={`fa-solid ${currentThemeObj.icon}`} style={{ color: '#f59e0b' }} />
-        <span className="theme-name-label">{currentThemeObj.name}</span>
-        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.7rem', opacity: 0.7 }} />
+        <span className="theme-name-label">{themeShortNames[currentThemeObj.id] || currentThemeObj.name}</span>
+        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', opacity: 0.7 }} />
       </button>
 
       {isOpen && (

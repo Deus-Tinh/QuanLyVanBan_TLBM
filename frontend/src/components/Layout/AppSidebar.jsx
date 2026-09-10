@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { NAV_GROUPS } from '../../utils/constants';
 import { useTranslation } from '../../i18n/LanguageContext';
 
@@ -11,6 +11,14 @@ export default function AppSidebar({
   onNavigate,
 }) {
   const { t } = useTranslation();
+  const activeItemRef = useRef(null);
+
+  // Tự động cuộn icon Active vào trọn vẹn tầm mắt khi mở hoặc thu gọn
+  useEffect(() => {
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [isCollapsed, activePage]);
 
   return (
     <aside
@@ -70,13 +78,14 @@ export default function AppSidebar({
         style={{
           scrollbarWidth: isCollapsed ? 'none' : 'thin',
           msOverflowStyle: isCollapsed ? 'none' : 'auto',
+          padding: isCollapsed ? '8px 4px 48px 4px' : undefined,
         }}
       >
         {NAV_GROUPS.map((group, gIdx) => (
           <div 
             key={gIdx} 
             className="nav-group-wrapper" 
-            style={{ marginBottom: isCollapsed ? '6px' : '10px' }}
+            style={{ marginBottom: isCollapsed ? '3px' : '10px' }}
           >
             {!isCollapsed && (
               <div className="nav-section-title">{group.title}</div>
@@ -92,9 +101,10 @@ export default function AppSidebar({
                 return (
                   <li 
                     key={item.id} 
+                    ref={isActive ? activeItemRef : null}
                     className="nav-item" 
                     style={{ 
-                      marginBottom: isCollapsed ? '3px' : '4px',
+                      marginBottom: isCollapsed ? '2px' : '4px',
                       display: isCollapsed ? 'flex' : 'block',
                       justifyContent: 'center',
                     }}
@@ -109,9 +119,9 @@ export default function AppSidebar({
                       }}
                       title={isCollapsed ? labelText : undefined}
                       style={{
-                        width: isCollapsed ? '46px' : '100%',
-                        height: isCollapsed ? '46px' : 'auto',
-                        minHeight: isCollapsed ? '46px' : 'auto',
+                        width: isCollapsed ? '40px' : '100%',
+                        height: isCollapsed ? '40px' : 'auto',
+                        minHeight: isCollapsed ? '40px' : 'auto',
                         cursor: 'pointer',
                         textAlign: isCollapsed ? 'center' : 'left',
                         fontFamily: 'inherit',

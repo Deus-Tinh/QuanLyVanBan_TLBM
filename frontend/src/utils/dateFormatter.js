@@ -21,7 +21,7 @@ export function formatDateTimeFull(dateInput = new Date()) {
   const month = padZero(d.getMonth() + 1);
   const year = d.getFullYear();
 
-  return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+  return `${hours}:${minutes}:${seconds} • ${day}/${month}/${year}`;
 }
 
 /**

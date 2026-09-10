@@ -33,7 +33,7 @@ export default function AppHeader({
   return (
     <header className="app-header">
       {/* Left Side: Mobile toggle & Breadcrumb Title */}
-      <div className="header-left-side">
+      <div className="header-left-side" style={{ minWidth: '220px', flex: '1 1 auto' }}>
         <button
           type="button"
           className="btn-mobile-sidebar mobile-only"
@@ -43,11 +43,11 @@ export default function AppHeader({
           <i className="fa-solid fa-bars" />
         </button>
 
-        <div className="page-context-title">
+        <div className="page-context-title" style={{ minWidth: '190px' }}>
           <h1 className="page-main-heading">
-            <span className="heading-full">{pageTitle}</span>
+            <span className="heading-full" style={{ whiteSpace: 'nowrap' }}>{pageTitle}</span>
           </h1>
-          <div className="header-breadcrumb">
+          <div className="header-breadcrumb" style={{ whiteSpace: 'nowrap' }}>
             <i className="fa-solid fa-house" />
             <span>{t('header.breadcrumbHome')}</span>
             <i className="fa-solid fa-chevron-right separator" style={{ fontSize: '0.65rem', opacity: 0.5 }} />
@@ -61,18 +61,18 @@ export default function AppHeader({
       </div>
 
       {/* Right Side: Clock, Streams, Language, Theme, User */}
-      <div className="header-right-side">
+      <div className="header-right-side" style={{ gap: '6px' }}>
         {/* Realtime Clock */}
         <div className="header-live-clock desktop-only" title={t('header.liveClockTitle')} style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '8px 14px',
-          borderRadius: '14px',
+          gap: '6px',
+          padding: '6px 12px',
+          borderRadius: '12px',
           background: 'var(--inset-well-bg)',
           boxShadow: 'var(--inset-well-shadow)',
           border: '1px solid var(--liquid-glass-border)',
-          fontSize: '0.82rem',
+          fontSize: '0.8rem',
           fontWeight: 700,
           color: 'var(--text-main)',
           whiteSpace: 'nowrap',

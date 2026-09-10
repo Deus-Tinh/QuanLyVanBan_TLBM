@@ -39,10 +39,10 @@ export default function UserDropdown() {
           TK
         </div>
         <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap' }} className="user-info-text desktop-only">
-          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>Châu Tuấn Kiệt</span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>PM · Nhóm 1 (Hệ Thống)</span>
+          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>Châu Tuấn Kiệt</span>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>PM · Nhóm 1</span>
         </div>
-        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }} />
+        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }} />
       </button>
 
       {isOpen && (
