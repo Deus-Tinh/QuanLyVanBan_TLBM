@@ -43,27 +43,22 @@ DoAnCuoiKy/
 │   ├── chi tiết công việc.txt       # Ghi chú phân công chi tiết
 │   └── mockups/                     # Bản vẽ giao diện HTML mẫu ban đầu
 │
-└── README.md                        # [File duy nhất ở root] Tài liệu hướng dẫn hệ thống
+├── CHAY_FULL_STACK.bat              # [File 1-Click] Khởi chạy toàn bộ hệ thống Full Stack (Django + React)
+└── README.md                        # Tài liệu hướng dẫn hệ thống
 ```
 
 ---
 
 ## 🚀 Hướng Dẫn Vận Hành (Chỉ 1 Click Bật Web)
 
-### 🌟 Cách 1: Sử dụng File `.bat` 1-Click (Khuyên dùng - Cực nhanh)
-Ngay tại thư mục gốc `DoAnCuoiKy/`, bạn chỉ cần click đúp chuột:
+### 🌟 Cách 1: Sử dụng File `CHAY_FULL_STACK.bat` 1-Click (Khuyên dùng - Cực nhanh)
+Ngay tại thư mục gốc `DoAnCuoiKy/`, bạn chỉ cần click đúp chuột vào file:
 
-1. **`CHAY_WEB.bat`** (Chạy Web Django chính):
-   - Tự động kiểm tra Python.
-   - Khởi động Django Web Server (Port 8000).
-   - **Tự động mở trình duyệt web** tại: [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
-   
-2. **`CHAY_FULL_STACK.bat`** (Chạy cả Backend + Frontend):
-   - Khởi động đồng thời Django Backend (8000) và Vite React Frontend (5173).
-   - Tự động mở cả 2 giao diện trên trình duyệt web.
-
-3. **`MO_SO_DO_KIEN_TRUC.bat`**:
-   - 1 click mở ngay Sơ đồ Kiến trúc Hệ thống tương tác cao cấp (`doan-cuoiky-architecture.html`).
+**`CHAY_FULL_STACK.bat`** (Khởi động toàn bộ Full Stack):
+- Khởi động đồng thời Django Backend (Port 8000) và Vite React Frontend (Port 5173).
+- **Tự động mở trình duyệt web** cả 2 giao diện:
+  - **Backend Django / Dashboard (Nhóm 1):** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+  - **Frontend React (SPA):** [http://localhost:5173/](http://localhost:5173/)
 
 ---
 
