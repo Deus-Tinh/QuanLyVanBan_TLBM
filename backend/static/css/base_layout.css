@@ -84,6 +84,20 @@
   --notif-mat-color: #be123c;
   --notif-mat-bg: var(--liquid-glass-bg);
   --notif-mat-border: var(--liquid-glass-border);
+
+  /* Thẻ thống kê (Stats Deck Tokens) - Light */
+  --bday-amber: #d97706;
+  --bday-amber-soft: #fffbeb;
+  --bday-amber-border: rgba(217, 119, 6, 0.25);
+  --bday-coral: #e06d53;
+  --bday-coral-soft: #fff1ee;
+  --bday-coral-border: rgba(224, 109, 83, 0.25);
+  --bday-blue: #1e40af;
+  --bday-blue-soft: #eff6ff;
+  --bday-blue-border: #bfdbfe;
+  --bday-green: #059669;
+  --bday-green-soft: #ecfdf5;
+  --bday-green-border: rgba(5, 150, 105, 0.25);
 }
 
 /* ==================== 3D LIQUID GLASS DARK THEME (PREMIUM CHARCOAL GEOMETRIC / XÁM ĐEN HÌNH HỌC) ==================== */
@@ -147,6 +161,20 @@
   --notif-mat-color: #fb7185;
   --notif-mat-bg: var(--liquid-glass-bg);
   --notif-mat-border: var(--liquid-glass-border);
+
+  /* Thẻ thống kê (Stats Deck Tokens) - Dark */
+  --bday-amber: #f59e0b;
+  --bday-amber-soft: rgba(245, 158, 11, 0.16);
+  --bday-amber-border: rgba(245, 158, 11, 0.35);
+  --bday-coral: #fb7185;
+  --bday-coral-soft: rgba(251, 113, 133, 0.16);
+  --bday-coral-border: rgba(251, 113, 133, 0.35);
+  --bday-blue: #3b82f6;
+  --bday-blue-soft: rgba(59, 130, 246, 0.18);
+  --bday-blue-border: rgba(59, 130, 246, 0.35);
+  --bday-green: #10b981;
+  --bday-green-soft: rgba(16, 185, 129, 0.16);
+  --bday-green-border: rgba(16, 185, 129, 0.35);
 }
 
 /* ==================== 3D SKEUOMORPHISM / NEUMORPHISM THEME (ĐIÊU KHẮC 3D NỔI & PHÍM CƠ HỌC) ==================== */
@@ -209,8 +237,21 @@
   --notif-di-border: var(--liquid-glass-border);
 
   --notif-mat-color: #be123c;
-  --notif-mat-bg: var(--liquid-glass-bg);
   --notif-mat-border: var(--liquid-glass-border);
+
+  /* Thẻ thống kê (Stats Deck Tokens) - Skeuomorphism */
+  --bday-amber: #d97706;
+  --bday-amber-soft: #fef3c7;
+  --bday-amber-border: rgba(217, 119, 6, 0.3);
+  --bday-coral: #e11d48;
+  --bday-coral-soft: #ffe4e6;
+  --bday-coral-border: rgba(225, 29, 72, 0.3);
+  --bday-blue: #2563eb;
+  --bday-blue-soft: #dbeafe;
+  --bday-blue-border: rgba(37, 99, 235, 0.3);
+  --bday-green: #059669;
+  --bday-green-soft: #d1fae5;
+  --bday-green-border: rgba(5, 150, 105, 0.3);
 }
 
 /* ==================== GLOBAL RESETS ==================== */
@@ -2327,6 +2368,141 @@ body.sidebar-collapsed .nav-link i.menu-icon {
 body.mobile-sidebar-open .mobile-overlay {
   display: block;
   opacity: 1;
+}
+
+/* ===================================================================
+   SHARED STATS DECK & METRIC PILLS (ÁP DỤNG TOÀN BỘ CÁC PHÂN HỆ)
+   =================================================================== */
+.stats-deck {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.stat-pill {
+  background: var(--liquid-glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--liquid-glass-border);
+  border-radius: 20px;
+  padding: 18px 20px;
+  box-shadow: var(--liquid-glass-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  will-change: transform;
+  min-width: 0;
+}
+
+.stat-pill:hover {
+  box-shadow: var(--liquid-glass-hover-shadow);
+  transform: translateY(-2px);
+}
+
+.stat-info {
+  min-width: 0;
+}
+
+.stat-info h4 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-info .stat-value {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+.stat-info .stat-desc {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.icon-amber {
+  background: var(--bday-amber-soft);
+  color: var(--bday-amber);
+  border: 1px solid var(--bday-amber-border);
+}
+
+.icon-blue {
+  background: var(--bday-blue-soft);
+  color: var(--bday-blue);
+  border: 1px solid var(--bday-blue-border);
+}
+
+.icon-coral {
+  background: var(--bday-coral-soft);
+  color: var(--bday-coral);
+  border: 1px solid var(--bday-coral-border);
+}
+
+.icon-green {
+  background: var(--bday-green-soft);
+  color: var(--bday-green);
+  border: 1px solid var(--bday-green-border);
+}
+
+/* Nút tác vụ đồng bộ */
+.btn-action-send {
+  background: var(--blue-pill-bg);
+  color: var(--blue-pill-text, #ffffff) !important;
+  font-weight: 600;
+  border: none;
+  box-shadow: var(--blue-pill-shadow);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-action-send:hover {
+  box-shadow: var(--blue-pill-hover-shadow);
+  transform: translateY(-2px);
+}
+
+.btn-action-view {
+  background: var(--inset-well-bg);
+  color: var(--text-main);
+  border: 1px solid var(--liquid-glass-border);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-action-view:hover {
+  background: var(--blue-pill-bg);
+  color: #ffffff;
+  border-color: transparent;
 }
 
 /* ===================================================================
