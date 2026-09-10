@@ -72,12 +72,14 @@ export default function AppHeader({
           background: 'var(--inset-well-bg)',
           boxShadow: 'var(--inset-well-shadow)',
           border: '1px solid var(--liquid-glass-border)',
-          fontSize: '0.85rem',
+          fontSize: '0.82rem',
           fontWeight: 700,
           color: 'var(--text-main)',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
         }}>
           <i className="fa-regular fa-clock" style={{ color: 'var(--color-primary, #2563eb)' }} />
-          <span className="clock-digits">{currentTime}</span>
+          <span className="clock-digits" style={{ whiteSpace: 'nowrap' }}>{currentTime}</span>
         </div>
 
         {/* 3 Notification Streams */}

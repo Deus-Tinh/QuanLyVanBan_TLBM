@@ -804,8 +804,9 @@ button.nav-link {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-width: max-content;
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
   position: relative;
   z-index: 2;
 }
@@ -838,20 +839,21 @@ button.nav-link {
 .page-context-title {
   display: flex;
   flex-direction: column;
-  min-width: max-content;
-  flex-shrink: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .page-main-heading {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: -0.02em;
   line-height: 1.25;
   white-space: nowrap;
-  overflow: visible;
-  text-overflow: clip;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .heading-full {
@@ -889,9 +891,8 @@ button.nav-link {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
+  flex: 0 0 auto;
   justify-content: flex-end;
-  min-width: 0;
   position: relative;
   z-index: 2;
 }
