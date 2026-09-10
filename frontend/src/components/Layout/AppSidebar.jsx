@@ -14,10 +14,16 @@ export default function AppSidebar({
   const contentRef = useRef(null);
   const activeItemRef = useRef(null);
 
-  // Tự động cuộn icon đang chọn (Active) vào giữa khung nhìn 6 icon khi thu gọn/mở rộng hoặc đổi trang
+  // Khi thu gọn: cuộn icon Active vào giữa tầm mắt. Khi mở rộng: luôn bắt đầu trọn vẹn từ icon đầu tiên (Bàn làm việc)
   useEffect(() => {
-    if (activeItemRef.current) {
-      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (isCollapsed) {
+      if (activeItemRef.current) {
+        activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    } else {
+      if (contentRef.current) {
+        contentRef.current.scrollTop = 0;
+      }
     }
   }, [isCollapsed, activePage]);
 

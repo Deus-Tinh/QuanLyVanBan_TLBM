@@ -13,25 +13,27 @@ export default function UserDropdown() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '7px',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          padding: '4px 8px',
+          padding: '3px 6px',
           borderRadius: '12px',
+          flexShrink: 0,
         }}
       >
         <div
           style={{
-            width: '38px',
-            height: '38px',
+            width: '36px',
+            height: '36px',
+            minWidth: '36px',
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #1e40af, #3b82f6)',
             color: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '1rem',
+            fontSize: '0.92rem',
             fontWeight: 700,
             boxShadow: '0 4px 10px rgba(30, 64, 175, 0.3)',
           }}
@@ -39,10 +41,10 @@ export default function UserDropdown() {
           TK
         </div>
         <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap' }} className="user-info-text desktop-only">
-          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>Châu Tuấn Kiệt</span>
-          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>PM · Nhóm 1</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.2 }}>Châu Tuấn Kiệt</span>
+          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>PM · Nhóm 1</span>
         </div>
-        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }} />
+        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }} />
       </button>
 
       {isOpen && (
