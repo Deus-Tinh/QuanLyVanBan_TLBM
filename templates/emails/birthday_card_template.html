@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Chúc Mừng Sinh Nhật - Ban Lãnh Đạo Đơn Vị</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f1f5f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #334155;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 30px auto;
+      background-color: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e2e8f0;
+    }
+    .card-banner {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #3b82f6 100%);
+      padding: 40px 30px;
+      text-align: center;
+      color: #ffffff;
+    }
+    .badge-ribbon {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      padding: 5px 16px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #fef08a;
+      margin-bottom: 12px;
+    }
+    .headline {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 0 0 14px 0;
+      letter-spacing: 0.5px;
+    }
+    .recipient-tag {
+      display: inline-block;
+      background: #ffffff;
+      color: #1e40af;
+      padding: 8px 22px;
+      border-radius: 9999px;
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      margin-bottom: 8px;
+    }
+    .dept-text {
+      font-size: 13px;
+      color: #bfdbfe;
+      margin-top: 4px;
+    }
+    .card-content {
+      padding: 35px 30px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .wish-quote {
+      font-size: 15px;
+      font-style: italic;
+      color: #1e293b;
+      background-color: #f8fafc;
+      border-left: 4px solid #3b82f6;
+      padding: 16px 20px;
+      border-radius: 0 10px 10px 0;
+      margin: 0 auto 24px auto;
+      text-align: left;
+    }
+    .signature-box {
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 20px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .signature-title {
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    .email-footer {
+      background-color: #f8fafc;
+      padding: 18px 20px;
+      text-align: center;
+      font-size: 11px;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="card-banner">
+      <div class="badge-ribbon">HAPPY BIRTHDAY</div>
+      <h1 class="headline">CHÚC MỪNG SINH NHẬT!</h1>
+      <div class="recipient-tag">{{ staff.name }}</div>
+      <div class="dept-text">{{ staff.department.name }}</div>
+    </div>
+    <div class="card-content">
+      <div class="wish-quote">
+        "{{ custom_message|default:'Kính chúc Đồng chí bước sang tuổi mới luôn tràn đầy nhiệt huyết, nhiều sức khỏe, hạnh phúc viên mãn và đạt được nhiều thành công mới cùng sự phát triển chung của đơn vị!' }}"
+      </div>
+      <div class="signature-box">
+        <div class="signature-title">BAN TỔNG GIÁM ĐỐC & CÔNG ĐOÀN CƠ SỞ</div>
+        <div>Hệ thống Quản lý Văn bản và Tài liệu (QLVB&TL)</div>
+      </div>
+    </div>
+    <div class="email-footer">
+      Email này được phát hành tự động từ Hệ thống Quản lý Văn bản và Tài liệu. Quý cán bộ nhân viên không cần phản hồi trực tiếp thư này.
+    </div>
+  </div>
+</body>
+</html>

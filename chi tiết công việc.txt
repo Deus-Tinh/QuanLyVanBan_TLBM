@@ -1,0 +1,102 @@
+================================================================================
+DỰ ÁN: QUẢN LÝ VĂN BẢN VÀ TÀI LIỆU (ITC - DJANGO)
+KẾ HOẠCH CÔNG VIỆC CHI TIẾT - NHÓM 1
+================================================================================
+Thành viên:
+1. Châu Tuấn Kiệt (Trưởng nhóm / PM)
+2. Nguyễn Văn Hiếu
+Tiến độ báo cáo: 2 tuần / lần
+--------------------------------------------------------------------------------
+
+I. QUY CHUẨN KỸ THUẬT & NGHIỆP VỤ BẮT BUỘC TOÀN DỰ ÁN
+1. Định dạng thời gian:
+   - Tất cả các trường ngày tháng hiển thị trên hệ thống (bao gồm các bảng ở
+     Trang chủ) BẮT BUỘC phải lấy đầy đủ: Giờ : Phút : Giây (HH:mm:ss DD/MM/YYYY).
+2. Quy định phân loại văn bản:
+   - Văn bản đến: Văn bản từ cơ quan/tổ chức bên ngoài gửi đến.
+   - Văn bản đi: Văn bản nội bộ ban hành và lưu hành.
+   - Văn bản mật: Chỉ gửi cho đích danh đơn vị, phòng ban hoặc đích danh cán bộ
+     nhân viên (CBNV) được phân quyền xem.
+3. Chuẩn thiết kế layout:
+   - Kế thừa hệ thống Template của Django ({% extends 'base.html' %}).
+   - Cho phép tùy biến giao diện đẹp, hiện đại, tối ưu trải nghiệm (tham khảo
+     layout mẫu: https://prnt.sc/1pXqbfiWdebq).
+
+--------------------------------------------------------------------------------
+II. MODULE 1: LAYOUT (ĐỘ KHÓ: 0.60)
+--------------------------------------------------------------------------------
+1. Khung giao diện chuẩn dùng chung (Base Layout)
+   - Thiết kế và cấu trúc file base.html làm bộ khung chuẩn cho toàn bộ 7 nhóm còn lại.
+   - Header (Đầu trang):
+     + Logo và tên hệ thống Quản lý văn bản & tài liệu.
+     + Khu vực thông báo riêng biệt cho 3 luồng: Văn bản đến, Văn bản đi, Văn bản mật.
+     + Khu vực hiển thị thông tin người dùng đang đăng nhập.
+     + Menu tác vụ người dùng và nút Đăng xuất.
+   - Sidebar (Menu điều hướng bên trái):
+     + Dựng đầy đủ menu dẫn tới các phân hệ: Trang chủ, Văn bản (đến, đi, mật),
+       Hồ sơ, Tài liệu & biểu mẫu, Trình ký, Công việc, Tiện ích (Phòng họp,
+       Sinh nhật), Quản trị hệ thống, Chatbot AI.
+     + Thiết lập trạng thái active tương ứng với từng trang đang truy cập.
+   - Footer (Chân trang):
+     + Thông tin bản quyền, phiên bản hệ thống và hỗ trợ kỹ thuật.
+   - Bố cục vùng nội dung ({% block content %}):
+     + Phân vùng chuẩn, đảm bảo tính Responsive trên các thiết bị.
+
+2. Quản lý xác thực (Authentication)
+   - Trang Đăng nhập (Login):
+     + Thiết kế giao diện trang đăng nhập riêng biệt.
+     + Xử lý logic đăng nhập đáp ứng đúng 2 trường hợp người dùng theo yêu cầu.
+     + Hiển thị thông báo lỗi chi tiết khi xác thực không thành công.
+   - Đăng xuất (Logout):
+     + Hủy session/phiên làm việc an toàn và chuyển hướng về trang đăng nhập.
+
+3. Hệ thống thông báo (Notification Badges)
+   - Truy vấn và hiển thị số lượng thông báo văn bản mới/chưa xử lý trên Header:
+     + Số lượng văn bản đến mới.
+     + Số lượng văn bản đi mới.
+     + Số lượng văn bản mật mới (lọc đúng theo quyền người dùng).
+
+--------------------------------------------------------------------------------
+III. MODULE 2: TRANG CHỦ / DASHBOARD (ĐỘ KHÓ: 0.80)
+--------------------------------------------------------------------------------
+1. Thanh công cụ tìm kiếm nhanh
+   - Đặt tại vị trí trực quan trên đầu Trang chủ.
+   - Tiếp nhận từ khóa và thực hiện tìm kiếm nhanh đồng thời trên cả 2 nguồn:
+     Văn bản đến và Văn bản đi.
+
+2. Thống kê số lượng văn bản theo năm
+   - Xây dựng widget biểu đồ (Chart.js / ApexCharts) thể hiện số lượng văn bản.
+   - Truy vấn cơ sở dữ liệu đếm tổng số lượng văn bản đến và văn bản đi gom nhóm
+     theo từng năm.
+   - Hiển thị trực quan, có chú thích (legend) rõ ràng.
+
+3. Thông báo sinh nhật & Phòng họp
+   - Thông báo sinh nhật:
+     + Truy vấn danh sách cán bộ nhân viên có ngày sinh nhật vào ngày T (hôm nay).
+     + Truy vấn danh sách cán bộ nhân viên có ngày sinh nhật vào ngày T + 1 (ngày mai).
+     + Hiển thị danh sách hoặc popup/widget chúc mừng sinh nhật trên Dashboard.
+   - Khối phòng họp:
+     + Widget hiển thị thông tin danh sách phòng họp hoặc lịch họp đăng ký trong ngày.
+
+4. Bốn bảng danh sách tóm tắt (Top 5 bản ghi mới nhất + nút "Xem thêm")
+   - Bảng 1: Danh sách văn bản đến (lấy đúng 5 văn bản mới nhất)
+     + Hiển thị đủ 4 trường thông tin:
+       * Số văn bản
+       * Ký hiệu văn bản
+       * Trích yếu nội dung
+       * Ngày văn bản (bắt buộc kèm giờ : phút : giây)
+     + Nút/liên kết "Xem thêm": Chuyển hướng chính xác sang trang Văn bản đến của Nhóm 2.
+   - Bảng 2: Danh sách văn bản đi (lấy đúng 5 văn bản mới nhất)
+     + Hiển thị đủ 4 trường thông tin:
+       * Số văn bản
+       * Ký hiệu văn bản
+       * Trích yếu nội dung
+       * Ngày văn bản (bắt buộc kèm giờ : phút : giây)
+     + Nút/liên kết "Xem thêm": Chuyển hướng chính xác sang trang Văn bản đi của Nhóm 2.
+   - Bảng 3: Danh sách công việc (lấy đúng 5 công việc mới nhất)
+     + Hiển thị tóm tắt 5 công việc được giao/cần xử lý.
+     + Nút/liên kết "Xem thêm": Chuyển hướng chính xác sang trang Công việc của Nhóm 6.
+   - Bảng 4: Danh sách biểu mẫu, tài liệu chung (lấy đúng 5 tài liệu mới nhất)
+     + Hiển thị tóm tắt 5 tài liệu, biểu mẫu chung mới ban hành/cập nhật.
+     + Nút/liên kết "Xem thêm": Chuyển hướng chính xác sang trang Tài liệu chung của Nhóm 4.
+================================================================================

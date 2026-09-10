@@ -1,0 +1,51 @@
+<!-- Modal Tùy chỉnh và Gửi Email Thiệp chúc mừng -->
+<div class="modal-overlay" id="wishModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">
+        <i class="fa-solid fa-paper-plane" style="color: var(--primary);"></i>
+        Tùy chỉnh & Gửi Email Thiệp Chúc Mừng
+      </div>
+      <button class="modal-close" onclick="closeWishModal()">&times;</button>
+    </div>
+    <form id="wishForm" method="POST" action="{% url 'birthdays:send_wish' %}">
+      {% csrf_token %}
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Người nhận thiệp</label>
+          <input type="text" class="form-control" id="modalRecipient" name="recipient_name" readonly>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Phòng ban / Đơn vị</label>
+          <input type="text" class="form-control" id="modalDept" name="department_name" readonly>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Chủ đề thiết kế thiệp</label>
+          <select class="form-control" id="modalThemeSelect" name="card_theme">
+            <option value="slate-blue">Executive Slate Blue (Chuyên nghiệp - Chuẩn văn phòng)</option>
+            <option value="warm-amber">Warm Amber Gold (Ấm áp, Đoàn kết)</option>
+            <option value="emerald-green">Emerald Hope (Thanh lịch, Vững bền)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Lời chúc sinh nhật</label>
+          <textarea class="form-control" id="modalWishMessage" name="custom_message" rows="3">Kính chúc Anh/Chị bước sang tuổi mới luôn dồi dào sức khỏe, hạnh phúc viên mãn và gặt hái thêm nhiều thành tựu rực rỡ!</textarea>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-muted);">
+          <input type="checkbox" id="modalCcManager" name="cc_manager" checked>
+          <label for="modalCcManager">Đồng gửi (CC) đến Lãnh đạo Phòng ban & Ban chấp hành Công đoàn</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-modal-cancel" onclick="closeWishModal()">Đóng</button>
+        <button type="submit" class="btn-modal-submit">
+          <i class="fa-solid fa-paper-plane"></i> Gửi thiệp ngay
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

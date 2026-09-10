@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Quản lý Sinh nhật CBNV - Quản lý Văn bản & Tài liệu{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/birthday_system.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="app-container">
+  
+  <!-- Stats Deck -->
+  <section class="stats-deck">
+    <div class="stat-pill">
+      <div class="stat-info">
+        <h4>Sinh nhật hôm nay (T)</h4>
+        <div class="stat-value">{{ today_count|default:"0" }} <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">CBNV</span></div>
+        <div class="stat-desc">Đã tự động gửi thiệp chúc mừng</div>
+      </div>
+      <div class="stat-icon icon-amber">
+        <i class="fa-solid fa-cake-candles"></i>
+      </div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-info">
+        <h4>Sinh nhật ngày mai (T+1)</h4>
+        <div class="stat-value">{{ tomorrow_count|default:"0" }} <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">CBNV</span></div>
+        <div class="stat-desc">Sẵn sàng gửi lúc 08:00 sáng mai</div>
+      </div>
+      <div class="stat-icon icon-blue">
+        <i class="fa-solid fa-calendar-day"></i>
+      </div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-info">
+        <h4>Sinh nhật tháng {{ current_month }}</h4>
+        <div class="stat-value">{{ month_count|default:"0" }} <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">CBNV</span></div>
+        <div class="stat-desc">Trên tổng số cán bộ nhân viên</div>
+      </div>
+      <div class="stat-icon icon-coral">
+        <i class="fa-solid fa-gift"></i>
+      </div>
+    </div>
+
+    <div class="stat-pill">
+      <div class="stat-info">
+        <h4>Tỷ lệ gửi thiệp tự động</h4>
+        <div class="stat-value">100%</div>
+        <div class="stat-desc">Lịch chạy hệ thống: 08:00 hằng ngày</div>
+      </div>
+      <div class="stat-icon icon-green">
+        <i class="fa-solid fa-paper-plane"></i>
+      </div>
+    </div>
+  </section>
+
+  <!-- Split View 2 Cột -->
+  <div class="split-layout">
+    
+    <!-- Cột Trái: Lịch Tương tác & Danh sách CBNV -->
+    <div class="col-left">
+      <div class="soft-glass-panel">
+        {% include 'birthdays/partials/calendar_widget.html' %}
+      </div>
+    </div>
+
+    <!-- Cột Phải: Sinh nhật Hôm nay/Ngày mai & Mẫu thiệp Email -->
+    <div class="col-right">
+      
+      <!-- Hôm nay T -->
+      <div class="today-banner">
+        <div class="today-badge-chip">
+          <i class="fa-solid fa-fire"></i> Sinh nhật hôm nay (T)
+        </div>
+        
+        {% for staff in today_staffs %}
+        <div class="today-person-card">
+          <div class="today-person-info">
+            <div class="staff-avatar amber">{{ staff.name|slice:":2" }}</div>
+            <div>
+              <h4>{{ staff.name }}</h4>
+              <p>{{ staff.role }} · {{ staff.department.name }}</p>
+            </div>
+          </div>
+          <button class="btn-send-wish" onclick="openWishModal('{{ staff.name }}', '{{ staff.department.name }}')">
+            <i class="fa-solid fa-envelope-open-text"></i> Gửi thiệp
+          </button>
+        </div>
+        {% empty %}
+        <p style="font-size: 0.85rem; color: var(--text-muted); padding: 10px 0;">Hôm nay không có sinh nhật cán bộ nhân viên.</p>
+        {% endfor %}
+      </div>
+
+      <!-- Ngày mai T+1 -->
+      <div class="tomorrow-box">
+        <div class="tomorrow-header">
+          <span><i class="fa-regular fa-bell" style="color: var(--primary);"></i> Sinh nhật ngày mai (T+1)</span>
+          <span class="tomorrow-tag">{{ tomorrow_date|date:"d/m/Y" }}</span>
+        </div>
+        {% for staff in tomorrow_staffs %}
+        <div class="tomorrow-item">
+          <div>
+            <strong>{{ staff.name }}</strong>
+            <div style="font-size: 0.7rem; color: var(--text-muted);">{{ staff.role }} · {{ staff.department.name }}</div>
+          </div>
+          <span class="status-badge pending"><i class="fa-regular fa-clock"></i> 08:00 sáng mai</span>
+        </div>
+        {% empty %}
+        <p style="font-size: 0.8rem; color: var(--text-muted);">Ngày mai không có sinh nhật cán bộ nhân viên.</p>
+        {% endfor %}
+      </div>
+
+      <!-- Xem trước mẫu thiệp Email -->
+      <div class="email-preview-card">
+        <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: var(--text-main);">
+          <i class="fa-solid fa-envelope-open" style="color: var(--primary); margin-right: 6px;"></i>
+          Mẫu Thiệp Chúc Mừng Email
+        </h3>
+
+        <div class="email-card-graphic" id="cardGraphicPreview">
+          <div class="card-confetti"></div>
+          <div class="card-ribbon">HAPPY BIRTHDAY</div>
+          <div class="card-headline">CHÚC MỪNG SINH NHẬT!</div>
+          <div class="card-recipient" id="previewRecipient">{{ today_staffs.0.name|default:"Đồng chí Cán bộ Nhân viên" }}</div>
+          <div class="card-message" id="previewMessage">
+            "Kính chúc Đồng chí bước sang tuổi mới luôn dồi dào sức khỏe, ngập tràn niềm vui và gặt hái thêm nhiều thành công mới!"
+          </div>
+          <div class="card-signature">
+            BAN TỔNG GIÁM ĐỐC & CÔNG ĐOÀN ĐƠN VỊ TRÂN TRỌNG
+          </div>
+        </div>
+
+        <div class="preview-actions">
+          <button class="btn-customize-card" onclick="openWishModal('{{ today_staffs.0.name }}', '{{ today_staffs.0.department.name }}')">
+            <i class="fa-solid fa-pen-to-square"></i> Tùy chỉnh & Gửi thiệp
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Include Modal -->
+{% include 'birthdays/partials/email_card_modal.html' %}
+
+{% endblock %}
