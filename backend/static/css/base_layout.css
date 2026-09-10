@@ -1652,6 +1652,28 @@ body {
   margin-bottom: 20px;
 }
 
+.flash-msg {
+  border-left: 4px solid #2563eb;
+}
+.flash-msg.flash-error {
+  border-left-color: #e11d48;
+}
+.flash-msg.flash-error i {
+  color: #e11d48;
+}
+.flash-msg.flash-success {
+  border-left-color: #059669;
+}
+.flash-msg.flash-success i {
+  color: #059669;
+}
+.flash-msg.flash-warning {
+  border-left-color: #d97706;
+}
+.flash-msg.flash-warning i {
+  color: #d97706;
+}
+
 /* Top highlight streak on decks */
 .demo-card::before,
 .soft-glass-panel::before {

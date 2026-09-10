@@ -1,11 +1,11 @@
-{% load static %}
 <!DOCTYPE html>
+{% load static %}
 <html lang="vi" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>{% block title %}Hệ thống Quản lý Văn bản & Tài liệu (QLVB&TL){% endblock %}</title>
+  <title>{% block title %}QLVB &amp; TL - Hệ thống Điều hành{% endblock %}</title>
 
   <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -279,7 +279,8 @@
       <header class="app-header">
         <!-- Left Side: Mobile Menu Button & Title / Breadcrumb -->
         <div class="header-left-side">
-          <button class="btn-mobile-sidebar" id="mobileSidebarBtn" title="Mở danh mục">
+          <button type="button" class="btn-mobile-sidebar" id="mobileSidebarBtn" title="Mở danh mục" aria-label="Mở danh mục">
+            <span style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Mở danh mục</span>
             <i class="fa-solid fa-bars"></i>
           </button>
           
@@ -475,14 +476,14 @@
 
           <!-- Khu vực Người dùng Đang Đăng nhập & Menu Tác vụ -->
           <div class="stream-dropdown">
-            <button type="button" class="user-profile-trigger" data-dropdown-target="dropdownUserProfile">
-              <div class="user-avatar">
+            <button type="button" class="user-profile-trigger" data-dropdown-target="dropdownUserProfile" aria-label="Hồ sơ người dùng">
+              <span class="user-avatar">
                 {{ request.user.first_name|default:"K"|slice:":1" }}
-              </div>
-              <div class="user-meta-info">
+              </span>
+              <span class="user-meta-info">
                 <span class="user-fullname">{{ request.user.get_full_name|default:"Châu Tuấn Kiệt" }}</span>
                 <span class="user-dept-role">Project Manager · Ban CNTT</span>
-              </div>
+              </span>
               <i class="fa-solid fa-chevron-down" style="font-size: 0.7rem; color: var(--text-subtle);"></i>
             </button>
 
@@ -549,8 +550,8 @@
         {% if messages %}
         <div class="system-messages-wrapper" style="margin-bottom: 20px;">
           {% for message in messages %}
-          <div class="soft-glass-panel" style="padding: 12px 18px; margin-bottom: 8px; border-left: 4px solid {% if message.tags == 'error' %}#e11d48{% elif message.tags == 'success' %}#059669{% else %}#2563eb{% endif %}; font-size: 0.85rem;">
-            <i class="fa-solid fa-circle-info" style="margin-right: 8px; color: {% if message.tags == 'error' %}#e11d48{% elif message.tags == 'success' %}#059669{% else %}#2563eb{% endif %};"></i>
+          <div class="soft-glass-panel flash-msg flash-{{ message.tags|default:'info' }}" style="padding: 12px 18px; margin-bottom: 8px; font-size: 0.85rem;">
+            <i class="fa-solid fa-circle-info" style="margin-right: 8px;"></i>
             {{ message }}
           </div>
           {% endfor %}
@@ -564,14 +565,18 @@
       <!-- ==================== FOOTER ==================== -->
       <footer class="app-footer">
         <div class="footer-left">
-          <span>&copy; 2026 ITC - Đồ án Lập trình Django. Dự án Quản lý Văn bản và Tài liệu (QLVB&TL).</span>
+          <span>&copy; 2026 <strong>ITC</strong> - Lập trình Django (MĐ501911) · <strong>QLVB &amp; TL</strong></span>
+          <span style="color: var(--text-subtle);">|</span>
+          <span>GVHD: <strong>NCS.ThS. Trần Phương Duy</strong></span>
+          <span style="color: var(--text-subtle);">|</span>
+          <span>Nhóm 1: <strong>Châu Tuấn Kiệt (PM)</strong></span>
           <span class="footer-badge">
-            <i class="fa-solid fa-code-branch" style="font-size: 0.7rem;"></i> v1.0.0-Enterprise
+            <i class="fa-solid fa-code-branch" style="font-size: 0.7rem;"></i> v1.0.0-Layout
           </span>
         </div>
         <div class="footer-right">
-          <span><i class="fa-solid fa-headset" style="margin-right: 4px;"></i> Hỗ trợ: <a href="mailto:hotro@itc.edu.vn" class="footer-link">hotro@itc.edu.vn</a></span>
-          <span>Hotline: <strong>(028) 38.xxx.xxx</strong></span>
+          <span><i class="fa-solid fa-envelope" style="margin-right: 4px;"></i> <a href="mailto:hotro@itc.edu.vn" class="footer-link">hotro@itc.edu.vn</a></span>
+          <span><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> Hotline: <strong>(028) 38.354.409</strong></span>
         </div>
       </footer>
 
