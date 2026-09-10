@@ -2,7 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 
-// Stylesheets
+// Stylesheets - Global Tokens & Layout Foundations
+import './styles/global.css';
 import './assets/styles/base_layout.css';
 import './assets/styles/birthday_system.css';
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { NAV_GROUPS } from '../../utils/constants';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 export default function AppSidebar({
   isCollapsed,
@@ -9,6 +10,7 @@ export default function AppSidebar({
   activePage,
   onNavigate,
 }) {
+  const { t } = useTranslation();
   return (
     <aside
       className={`app-sidebar ${isCollapsed ? 'collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}
@@ -71,14 +73,16 @@ export default function AppSidebar({
                         if (item.id === 'dashboard') onNavigate('dashboard');
                         if (isMobileOpen) onCloseMobile();
                       }}
-                      title={isCollapsed ? item.label : undefined}
+                      title={isCollapsed ? (item.id === 'sinh-nhat' ? t('nav.birthdays') : (item.id === 'dashboard' ? t('nav.dashboard') : item.label)) : undefined}
                     >
                       <span className="nav-icon-box">
                         <i className={`fa-solid ${item.icon}`} />
                       </span>
                       {!isCollapsed && (
                         <>
-                          <span className="nav-label-text">{item.label}</span>
+                          <span className="nav-label-text">
+                            {item.id === 'sinh-nhat' ? t('nav.birthdays') : (item.id === 'dashboard' ? t('nav.dashboard') : item.label)}
+                          </span>
                           {item.badge && (
                             <span className={`nav-badge badge-${item.badgeType || 'primary'}`}>
                               {item.badge}

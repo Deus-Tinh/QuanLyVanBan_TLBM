@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import NotificationStreams from '../Header/NotificationStreams';
 import ThemeSelector from '../Header/ThemeSelector';
+import LanguageSwitcher from '../Header/LanguageSwitcher';
 import UserDropdown from '../Header/UserDropdown';
 import { formatDateTimeFull } from '../../utils/dateFormatter';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleMobileSidebar,
 }) {
+  const { t } = useTranslation();
   const [currentTime, setCurrentTime] = useState(() => formatDateTimeFull(new Date()));
 
   useEffect(() => {
@@ -34,28 +37,31 @@ export default function AppHeader({
         <div className="header-titles">
           <div className="header-breadcrumb">
             <i className="fa-solid fa-house" />
-            <span>Trang chủ</span>
+            <span>{t('header.breadcrumbHome')}</span>
             <i className="fa-solid fa-chevron-right separator" />
-            <span>Tiện ích &amp; Phúc lợi</span>
+            <span>{t('header.breadcrumbUtilities')}</span>
             <i className="fa-solid fa-chevron-right separator" />
-            <span className="current">Phân hệ 7.2 Quản lý Sinh nhật</span>
+            <span className="current">{t('header.breadcrumbBirthday')}</span>
           </div>
           <h1 className="header-page-title">
-            QUẢN LÝ SINH NHẬT CÁN BỘ NHÂN VIÊN (CBNV)
+            {t('header.pageTitleBirthday')}
           </h1>
         </div>
       </div>
 
-      {/* Right Area: Realtime Clock, 3 Notification Streams, Theme Selector, User */}
+      {/* Right Area: Realtime Clock, 3 Notification Streams, Language Switcher, Theme Selector, User */}
       <div className="header-right">
         {/* Realtime Clock */}
-        <div className="header-live-clock desktop-only" title="Thời gian hệ thống chuẩn">
-          <i className="fa-regular fa-clock" style={{ color: '#2563eb' }} />
+        <div className="header-live-clock desktop-only" title={t('header.liveClockTitle')}>
+          <i className="fa-regular fa-clock" style={{ color: 'var(--color-primary, #2563eb)' }} />
           <span className="clock-digits">{currentTime}</span>
         </div>
 
         {/* 3 Notification Streams */}
         <NotificationStreams />
+
+        {/* Language Switcher (VI / EN) */}
+        <LanguageSwitcher />
 
         {/* 3 Selectable Themes */}
         <ThemeSelector currentTheme={currentTheme} onSelectTheme={onSelectTheme} />
