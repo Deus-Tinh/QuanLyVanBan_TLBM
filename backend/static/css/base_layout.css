@@ -100,12 +100,11 @@
   --bday-green-border: rgba(5, 150, 105, 0.25);
 }
 
-/* ==================== 3D LIQUID GLASS DARK THEME (PREMIUM CHARCOAL GEOMETRIC / XÁM ĐEN HÌNH HỌC) ==================== */
+/* ==================== 3D LIQUID GLASS DARK THEME (PREMIUM TRANSLUCENT FROSTED GLASS) ==================== */
 [data-theme="dark"] {
-  /* Canvas Nền Xám Đen Hình Học Sang Trọng - Đã làm nhạt, dịu mắt chuẩn công sở */
-  --bg-page: #1c212c;
-  --bg-page-gradient: radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.1) 0%, transparent 70%),
-                      linear-gradient(rgba(28, 33, 44, 0.82), rgba(28, 33, 44, 0.86)),
+  /* Canvas Nền Xám Đen Hình Học Sang Trọng - Rõ Nét Vân Nền */
+  --bg-page: #0d1117;
+  --bg-page-gradient: radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.18) 0%, transparent 65%),
                       url('../images/nen_XamDen.png');
   
   --text-main: #f8fafc;
@@ -113,31 +112,31 @@
   --text-muted: #94a3b8;
   --text-subtle: #64748b;
 
-  /* Liquid Glass Dark (Kính Mờ Xám Đen Dịu Mắt, Nhạt Hơn) */
-  --liquid-glass-bg: linear-gradient(135deg, rgba(42, 50, 66, 0.78) 0%, rgba(30, 36, 48, 0.84) 100%);
-  --liquid-glass-border: rgba(255, 255, 255, 0.16);
-  --liquid-glass-border-bottom: rgba(0, 0, 0, 0.3);
+  /* Liquid Glass Dark (Kính Mờ Trong Suốt Thấu Nền 45% - Chuẩn macOS Frosted Glass) */
+  --liquid-glass-bg: linear-gradient(135deg, rgba(28, 38, 58, 0.48) 0%, rgba(16, 22, 34, 0.42) 100%);
+  --liquid-glass-border: rgba(255, 255, 255, 0.18);
+  --liquid-glass-border-bottom: rgba(255, 255, 255, 0.1);
   --liquid-glass-shadow: 
-    0 16px 36px -5px rgba(0, 0, 0, 0.45),
-    0 4px 14px rgba(0, 0, 0, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.2),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+    0 16px 36px -5px rgba(0, 0, 0, 0.4),
+    0 4px 14px rgba(0, 0, 0, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.2);
   --liquid-glass-hover-shadow: 
-    0 20px 45px -5px rgba(0, 0, 0, 0.55),
-    0 6px 18px rgba(0, 0, 0, 0.35),
-    inset 0 1px 2px rgba(255, 255, 255, 0.25);
+    0 20px 45px -5px rgba(0, 0, 0, 0.5),
+    0 6px 18px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.35);
 
-  /* Deck Dark (Khối Bo Cong Xám Than Chì Nhạt Thanh Thoát) */
-  --deck-bg: rgba(34, 41, 54, 0.75);
-  --deck-border: rgba(255, 255, 255, 0.14);
+  /* Deck Dark (Khối Bo Cong Kính Mờ Trong Suốt Nhìn Thấy Rõ Vân Lưới Ở Dưới) */
+  --deck-bg: rgba(18, 25, 38, 0.42);
+  --deck-border: rgba(255, 255, 255, 0.16);
   --deck-shadow: 
-    0 20px 45px -10px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.18),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+    0 20px 45px -10px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.2);
 
-  /* Inset Well Dark (Ô lún Nhạt & Sáng Dịu, Không Bị Đen Kịt) */
-  --inset-well-bg: rgba(24, 30, 42, 0.7);
-  --inset-well-shadow: inset 1px 2px 4px rgba(0, 0, 0, 0.35), inset -1px -1px 2px rgba(255, 255, 255, 0.08);
+  /* Inset Well Dark (Ô Lún Kính Trong Suốt Tinh Tế, Không Đen Kịt) */
+  --inset-well-bg: rgba(255, 255, 255, 0.05);
+  --inset-well-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3), inset -1px -1px 2px rgba(255, 255, 255, 0.08);
 
   /* Blue Pill Dark (Điểm nhấn Xanh Hoàng Gia Uy Quyền) */
   --blue-pill-bg: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
@@ -277,10 +276,10 @@ body {
 }
 
 [data-theme="dark"] body {
-  background-color: #1a1f2b !important;
+  background-color: #0c1017 !important;
   background-image: 
-    radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.12) 0%, transparent 65%),
-    linear-gradient(rgba(26, 31, 43, 0.82), rgba(26, 31, 43, 0.86)),
+    radial-gradient(ellipse at 50% 0%, rgba(37, 99, 235, 0.2) 0%, transparent 60%),
+    linear-gradient(rgba(12, 16, 23, 0.4), rgba(12, 16, 23, 0.5)),
     url('../images/nen_XamDen.png') !important;
   background-size: auto, auto, cover !important;
   background-position: center top, center center, center center !important;
