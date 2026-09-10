@@ -2,6 +2,15 @@
 
 {% block title %}Quản lý Văn bản Đi - Nhóm 2{% endblock %}
 
+{% block page_title %}Quản lý Văn bản Đi{% endblock %}
+
+{% block breadcrumb %}
+<i class="fa-solid fa-chevron-right" style="font-size: 0.65rem;"></i>
+<span>Quản lý Văn bản</span>
+<i class="fa-solid fa-chevron-right" style="font-size: 0.65rem;"></i>
+<span style="color: var(--text-main); font-weight: 600;">Văn bản đi</span>
+{% endblock %}
+
 {% block content %}
 <div class="app-container" style="padding: 24px;">
   <div class="document-page-header">
@@ -24,25 +33,25 @@
     <table class="staff-data-table">
       <thead>
         <tr>
-          <th>Số, ký hiệu đi</th>
-          <th>Ngày ban hành</th>
+          <th style="width: 140px;">Số, ký hiệu đi</th>
+          <th style="width: 110px; text-align: center;">Ngày ban hành</th>
           <th>Trích yếu nội dung</th>
-          <th>Nơi nhận</th>
-          <th>Người ký</th>
-          <th>Trạng thái</th>
-          <th style="text-align: center;">Thao tác</th>
+          <th style="width: 140px;">Nơi nhận</th>
+          <th style="width: 120px;">Người ký</th>
+          <th style="width: 120px; text-align: center;">Trạng thái</th>
+          <th style="width: 100px; text-align: center;">Thao tác</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><strong>72/BC-TLBM</strong></td>
-          <td>10/09/2026</td>
+          <td style="text-align: center;">10/09/2026</td>
           <td>Báo cáo định kỳ tình hình triển khai hạ tầng số và bảo mật thông tin</td>
           <td>Tập đoàn Bảo Long</td>
           <td>Tổng Giám đốc</td>
-          <td><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Đã ký số</span></td>
+          <td style="text-align: center;"><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Đã ký số</span></td>
           <td style="text-align: center;">
-            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Xem file</button>
+            <button type="button" class="btn-action-view" style="padding: 5px 12px; font-size: 0.78rem;">Xem file</button>
           </td>
         </tr>
       </tbody>

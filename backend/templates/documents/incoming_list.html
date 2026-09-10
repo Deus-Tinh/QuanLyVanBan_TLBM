@@ -2,6 +2,15 @@
 
 {% block title %}Quản lý Văn bản Đến - Nhóm 2{% endblock %}
 
+{% block page_title %}Quản lý Văn bản Đến{% endblock %}
+
+{% block breadcrumb %}
+<i class="fa-solid fa-chevron-right" style="font-size: 0.65rem;"></i>
+<span>Quản lý Văn bản</span>
+<i class="fa-solid fa-chevron-right" style="font-size: 0.65rem;"></i>
+<span style="color: var(--text-main); font-weight: 600;">Văn bản đến</span>
+{% endblock %}
+
 {% block content %}
 <div class="app-container" style="padding: 24px;">
   <div class="document-page-header">
@@ -28,47 +37,47 @@
     <table class="staff-data-table">
       <thead>
         <tr>
-          <th>Số đến</th>
-          <th>Số, ký hiệu văn bản</th>
-          <th>Ngày văn bản</th>
+          <th style="width: 80px; text-align: center;">Số đến</th>
+          <th style="width: 140px;">Số, ký hiệu</th>
+          <th style="width: 110px; text-align: center;">Ngày văn bản</th>
           <th>Trích yếu nội dung</th>
-          <th>Nơi ban hành</th>
-          <th>Hiệu lực</th>
-          <th style="text-align: center;">Thao tác</th>
+          <th style="width: 140px;">Nơi ban hành</th>
+          <th style="width: 130px; text-align: center;">Hiệu lực</th>
+          <th style="width: 100px; text-align: center;">Thao tác</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong style="color: #2563eb;">#0104</strong></td>
+          <td style="text-align: center;"><strong style="color: #2563eb;">#0104</strong></td>
           <td><strong>104/CV-BTC</strong></td>
-          <td>10/09/2026</td>
+          <td style="text-align: center;">10/09/2026</td>
           <td>Hướng dẫn kiểm toán báo cáo tài chính bán niên và quản trị rủi ro</td>
           <td>Bộ Tài chính</td>
-          <td><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
+          <td style="text-align: center;"><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
           <td style="text-align: center;">
-            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Chi tiết</button>
+            <button type="button" class="btn-action-view" style="padding: 5px 12px; font-size: 0.78rem;">Chi tiết</button>
           </td>
         </tr>
         <tr>
-          <td><strong style="color: #2563eb;">#0103</strong></td>
+          <td style="text-align: center;"><strong style="color: #2563eb;">#0103</strong></td>
           <td><strong>88/NQ-HĐQT</strong></td>
-          <td>09/09/2026</td>
+          <td style="text-align: center;">09/09/2026</td>
           <td>Nghị quyết thông qua kế hoạch chuyển đổi số và phát triển phần mềm nội bộ</td>
           <td>Văn phòng HĐQT</td>
-          <td><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
+          <td style="text-align: center;"><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
           <td style="text-align: center;">
-            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Chi tiết</button>
+            <button type="button" class="btn-action-view" style="padding: 5px 12px; font-size: 0.78rem;">Chi tiết</button>
           </td>
         </tr>
         <tr>
-          <td><strong style="color: #2563eb;">#0102</strong></td>
+          <td style="text-align: center;"><strong style="color: #2563eb;">#0102</strong></td>
           <td><strong>45/TB-BCA</strong></td>
-          <td>08/09/2026</td>
+          <td style="text-align: center;">08/09/2026</td>
           <td>Cảnh báo nguy cơ an ninh mạng và lộ lọt dữ liệu nội bộ</td>
           <td>Cục An ninh Mạng</td>
-          <td><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
+          <td style="text-align: center;"><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
           <td style="text-align: center;">
-            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Chi tiết</button>
+            <button type="button" class="btn-action-view" style="padding: 5px 12px; font-size: 0.78rem;">Chi tiết</button>
           </td>
         </tr>
       </tbody>
