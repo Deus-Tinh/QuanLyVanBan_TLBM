@@ -12,13 +12,14 @@ export default function AppSidebar({
 }) {
   const { t } = useTranslation();
   const contentRef = useRef(null);
+  const activeItemRef = useRef(null);
 
-  // Đảm bảo khi mở/thu gọn luôn hiển thị từ icon đầu tiên (Bàn làm việc), không bị trôi cuộn
+  // Tự động cuộn icon đang chọn (Active) vào giữa khung nhìn 6 icon khi thu gọn/mở rộng hoặc đổi trang
   useEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
-  }, [isCollapsed]);
+  }, [isCollapsed, activePage]);
 
   return (
     <aside
@@ -79,14 +80,14 @@ export default function AppSidebar({
         style={{
           scrollbarWidth: isCollapsed ? 'none' : 'thin',
           msOverflowStyle: isCollapsed ? 'none' : 'auto',
-          padding: isCollapsed ? '6px 4px 16px 4px' : undefined,
+          padding: isCollapsed ? '4px 4px' : undefined,
         }}
       >
         {NAV_GROUPS.map((group, gIdx) => (
           <div 
             key={gIdx} 
             className="nav-group-wrapper" 
-            style={{ marginBottom: isCollapsed ? '2px' : '10px' }}
+            style={{ marginBottom: isCollapsed ? '0px' : '10px' }}
           >
             {!isCollapsed && (
               <div className="nav-section-title">{group.title}</div>
@@ -102,9 +103,10 @@ export default function AppSidebar({
                 return (
                   <li 
                     key={item.id} 
+                    ref={isActive ? activeItemRef : null}
                     className="nav-item" 
                     style={{ 
-                      marginBottom: isCollapsed ? '1px' : '4px',
+                      marginBottom: isCollapsed ? '5px' : '4px',
                       display: isCollapsed ? 'flex' : 'block',
                       justifyContent: 'center',
                     }}
@@ -119,9 +121,9 @@ export default function AppSidebar({
                       }}
                       title={isCollapsed ? labelText : undefined}
                       style={{
-                        width: isCollapsed ? '34px' : '100%',
-                        height: isCollapsed ? '34px' : 'auto',
-                        minHeight: isCollapsed ? '34px' : 'auto',
+                        width: isCollapsed ? '40px' : '100%',
+                        height: isCollapsed ? '40px' : 'auto',
+                        minHeight: isCollapsed ? '40px' : 'auto',
                         cursor: 'pointer',
                         textAlign: isCollapsed ? 'center' : 'left',
                         fontFamily: 'inherit',

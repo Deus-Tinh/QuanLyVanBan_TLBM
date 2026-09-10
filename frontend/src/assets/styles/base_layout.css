@@ -2348,14 +2348,16 @@ body.sidebar-collapsed .sidebar-footer {
   display: none !important;
 }
 
-/* Triệt tiêu hoàn toàn thanh cuộn xám và 2 nút mũi tên khi thu gọn trên mọi trình duyệt */
+/* Khung nhìn vừa đúng 6 icon to rõ (40px) mỗi lần, cuộn chuột mượt mà */
 .app-sidebar.collapsed .sidebar-content,
 body.sidebar-collapsed .sidebar-content {
+  height: 275px !important;
+  max-height: 275px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
-  padding: 10px 4px 64px 4px !important;
+  padding: 4px 4px !important;
   scroll-behavior: smooth;
 }
 
@@ -2375,7 +2377,7 @@ body.sidebar-collapsed .sidebar-content::-webkit-scrollbar-button {
 
 .app-sidebar.collapsed .nav-group-wrapper,
 body.sidebar-collapsed .nav-group-wrapper {
-  margin-bottom: 2px !important;
+  margin-bottom: 0 !important;
 }
 
 .app-sidebar.collapsed .nav-list,
@@ -2388,17 +2390,17 @@ body.sidebar-collapsed .nav-list {
 body.sidebar-collapsed .nav-item {
   display: flex !important;
   justify-content: center !important;
-  margin-bottom: 1px !important;
+  margin-bottom: 5px !important;
 }
 
-/* Icon thu gọn: Nút tròn 3D hoàn mỹ, căn giữa, không bị chém viền */
+/* Icon thu gọn: Nút tròn 3D hoàn mỹ, 40px to rõ, căn giữa, không bị chém viền */
 .app-sidebar.collapsed .nav-link,
 body.sidebar-collapsed .nav-link {
-  width: 34px !important;
-  height: 34px !important;
-  min-height: 34px !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
   padding: 0 !important;
-  margin: 0 auto 1px auto !important;
+  margin: 0 auto 5px auto !important;
   border-radius: 50% !important;
   justify-content: center !important;
   align-items: center !important;
@@ -2420,7 +2422,7 @@ body.sidebar-collapsed .nav-link i.menu-icon {
   margin: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  font-size: 0.88rem !important;
+  font-size: 1rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2460,8 +2462,8 @@ body.sidebar-collapsed .nav-link.active {
   border: 1px solid rgba(255, 255, 255, 0.6) !important;
   box-shadow: var(--blue-pill-shadow) !important;
   border-radius: 50% !important;
-  width: 34px !important;
-  height: 34px !important;
+  width: 40px !important;
+  height: 40px !important;
   transform: none !important;
 }
 
@@ -2472,7 +2474,7 @@ body.sidebar-collapsed .nav-link.active i.menu-icon {
 
 .app-sidebar.collapsed .nav-link::after,
 body.sidebar-collapsed .nav-link::after {
-  border-radius: 34px 34px 0 0 !important;
+  border-radius: 40px 40px 0 0 !important;
 }
 
 .app-sidebar.collapsed .sidebar-bottom-status,
