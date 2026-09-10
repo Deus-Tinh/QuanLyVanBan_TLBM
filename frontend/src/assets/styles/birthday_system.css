@@ -1117,7 +1117,36 @@ textarea.form-control {
 
 @media (max-width: 540px) {
   .stats-deck {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .stat-pill {
+    padding: 10px 12px;
+    border-radius: 16px;
+    gap: 8px;
+  }
+  .stat-info h4 {
+    font-size: 0.65rem;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stat-info .stat-value {
+    font-size: 1.25rem;
+    gap: 4px;
+    line-height: 1.1;
+  }
+  .stat-info .stat-desc {
+    display: none;
+  }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 0.95rem;
   }
   .cal-header-day {
     font-size: 0.7rem;
