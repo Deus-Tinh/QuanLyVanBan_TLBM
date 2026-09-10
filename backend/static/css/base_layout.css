@@ -704,6 +704,13 @@ body {
   min-width: 0;
 }
 
+.page-content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 /* ===================================================================
    FLOATING 3D LIQUID NAVBAR / HEADER (Island Style như blogsite)
    =================================================================== */
@@ -793,6 +800,14 @@ body {
   white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
+}
+
+.heading-full {
+  display: inline;
+}
+
+.heading-short {
+  display: none;
 }
 
 .header-breadcrumb {
@@ -1817,6 +1832,127 @@ body {
 }
 
 /* ===================================================================
+   HOME CANVAS HERO SECTION (Khung Sườn Giao Diện Chuẩn)
+   =================================================================== */
+.home-canvas-container {
+  padding: 24px;
+  max-width: 100%;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.home-hero-panel {
+  max-width: 860px;
+  width: 100%;
+  padding: 48px 40px;
+  text-align: center;
+  border-radius: 28px;
+  background: var(--deck-bg);
+  border: 1.5px solid var(--deck-border);
+  box-shadow: var(--deck-shadow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.home-hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: var(--inset-well-bg);
+  box-shadow: var(--inset-well-shadow);
+  font-size: 2.2rem;
+  color: #2563eb;
+  margin-bottom: 20px;
+}
+
+.home-hero-badge-wrap {
+  margin-bottom: 12px;
+}
+
+.home-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue-pill-bg, #1e40af);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.home-hero-title {
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0 0 10px 0;
+  line-height: 1.25;
+}
+
+.home-hero-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  max-width: 620px;
+  margin: 0 auto 28px auto;
+  line-height: 1.6;
+}
+
+.home-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  text-align: left;
+  margin-top: 10px;
+}
+
+.home-status-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--inset-well-bg);
+  border: 1px solid var(--liquid-glass-border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-status-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+.home-status-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.home-status-card-header i {
+  font-size: 1.1rem;
+}
+
+.home-status-card-header strong {
+  font-size: 0.88rem;
+  color: var(--text-main);
+}
+
+.home-status-card p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ===================================================================
    FOOTER (Floating 3D Liquid Strip)
    =================================================================== */
 .app-footer {
@@ -2791,44 +2927,66 @@ body.mobile-sidebar-open .mobile-overlay {
   }
 
   .app-header {
-    padding: 8px 14px;
+    padding: 8px 10px;
     border-radius: 18px;
     top: 8px;
-    gap: 10px;
+    gap: 6px;
   }
 
   .header-left-side {
-    gap: 10px;
+    min-width: 0;
+    flex: 0 1 auto;
+    gap: 8px;
   }
 
-  .page-main-heading {
-    font-size: 1.02rem;
+  .page-context-title {
+    min-width: 0;
+  }
+
+  .heading-full {
+    display: none !important;
+  }
+
+  .heading-short {
+    display: inline !important;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text-main);
+    white-space: nowrap;
   }
 
   .header-breadcrumb {
-    font-size: 0.72rem;
+    display: none !important;
   }
 
   /* Thu gọn Header Right Side */
   .header-right-side {
-    gap: 6px;
+    gap: 4px;
+    flex-shrink: 0;
+    justify-content: flex-end;
   }
 
   .notification-streams-deck {
-    gap: 6px;
+    gap: 4px;
   }
 
   .stream-trigger-btn {
-    padding: 6px 10px;
-    font-size: 0.8rem;
-    gap: 5px;
-    border-radius: 20px;
+    padding: 5px 8px;
+    font-size: 0.78rem;
+    gap: 4px;
+    border-radius: 18px;
   }
 
   .stream-trigger-btn .stream-badge {
-    padding: 1px 5px;
-    font-size: 0.68rem;
-    min-width: 16px;
+    padding: 1px 4px;
+    font-size: 0.65rem;
+    min-width: 14px;
+  }
+
+  .btn-theme-toggle {
+    width: 34px;
+    height: 34px;
   }
 
   /* Ẩn hoàn toàn thông tin chữ của Người dùng, chỉ giữ Avatar tròn */
@@ -2845,9 +3003,57 @@ body.mobile-sidebar-open .mobile-overlay {
     box-shadow: none;
   }
 
-  .btn-theme-toggle {
-    width: 38px;
-    height: 38px;
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8rem;
+  }
+
+  /* Canvas Hero Section Responsive trên Mobile */
+  .home-canvas-container {
+    padding: 12px 6px;
+    padding-bottom: 90px; /* Chừa khoảng trống an toàn tuyệt đối để không bị nút AI che khuất */
+  }
+
+  .home-hero-panel {
+    padding: 24px 16px;
+    border-radius: 20px;
+  }
+
+  .home-hero-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    font-size: 1.5rem;
+    margin-bottom: 14px;
+  }
+
+  .home-hero-badge {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+
+  .home-hero-title {
+    font-size: 1.35rem;
+    line-height: 1.35;
+    margin-bottom: 8px;
+  }
+
+  .home-hero-desc {
+    font-size: 0.84rem;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  .home-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .home-status-card {
+    padding: 14px 14px;
   }
 
   /* BIẾN ĐỔI DROPDOWN THÀNH MOBILE MODAL SHEET (CHỐNG TRÀN TOÀN DIỆN) */
@@ -2912,11 +3118,11 @@ body.mobile-sidebar-open .mobile-overlay {
 
   /* AI Assistant Chatbox Popup trên Mobile */
   .ai-floating-btn {
-    width: 50px;
-    height: 50px;
-    bottom: 14px;
+    width: 44px;
+    height: 44px;
+    bottom: 16px;
     right: 14px;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
   }
 
   .ai-chatbox-popup {

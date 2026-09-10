@@ -285,7 +285,10 @@
           </button>
           
           <div class="page-context-title">
-            <h1 class="page-main-heading">{% block page_title %}Hệ thống Quản lý Văn bản & Tài liệu{% endblock %}</h1>
+            <h1 class="page-main-heading">
+              <span class="heading-full">{% block page_title %}Hệ thống Quản lý Văn bản & Tài liệu{% endblock %}</span>
+              <span class="heading-short">QLVB &amp; TLBM</span>
+            </h1>
             <div class="header-breadcrumb">
               <a href="{% url 'dashboard:home' %}"><i class="fa-solid fa-house"></i> Trang chủ</a>
               {% block breadcrumb %}
