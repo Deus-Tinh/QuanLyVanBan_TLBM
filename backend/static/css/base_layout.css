@@ -745,8 +745,8 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-width: 0;
-  flex: 1;
+  min-width: max-content;
+  flex: 0 0 auto;
   position: relative;
   z-index: 2;
 }
@@ -779,7 +779,8 @@ body {
 .page-context-title {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  min-width: max-content;
+  flex-shrink: 0;
 }
 
 .page-main-heading {
@@ -790,8 +791,8 @@ body {
   letter-spacing: -0.02em;
   line-height: 1.25;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .header-breadcrumb {
@@ -820,8 +821,10 @@ body {
 .header-right-side {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
   position: relative;
   z-index: 2;
 }
@@ -830,7 +833,8 @@ body {
 .notification-streams-deck {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* Dropdown Wrapper cho từng nút thông báo và profile */
@@ -844,8 +848,8 @@ body {
 .stream-trigger-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 30px;
   background: var(--liquid-glass-bg);
   border: 1px solid var(--liquid-glass-border);
@@ -1318,9 +1322,9 @@ body {
 .user-profile-trigger {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 14px 5px 6px;
-  min-width: 230px;
+  gap: 8px;
+  padding: 4px 12px 4px 5px;
+  min-width: auto;
   border-radius: 40px;
   background: var(--liquid-glass-bg);
   border: 1px solid var(--liquid-glass-border);
@@ -1328,6 +1332,7 @@ body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
   will-change: transform;
 }
@@ -1406,13 +1411,13 @@ body {
   color: var(--text-muted);
 }
 
-/* User Dropdown Specific Styles (Kích thước chiều ngang khớp 100% với thanh tài khoản) */
+/* User Dropdown Specific Styles (Kích thước độc lập 260px cho menu thoáng đẹp) */
 .user-dropdown-pane {
-  width: 100%;
-  min-width: 100%;
-  left: 0;
+  width: 260px;
+  min-width: 260px;
+  left: auto;
   right: 0;
-  transform-origin: top center;
+  transform-origin: top right;
 }
 
 /* Thẻ định danh người dùng trên cùng của Dropdown */
@@ -2707,6 +2712,16 @@ body.mobile-sidebar-open .mobile-overlay {
   background: var(--blue-pill-bg);
   color: #ffffff;
   border-color: transparent;
+}
+
+/* ===================================================================
+   RESPONSIVE BREAKPOINT: COMPACT LAPTOPS & DESKTOPS (MAX-WIDTH: 1400PX)
+   =================================================================== */
+@media (max-width: 1400px) {
+  /* Thu gọn chức vụ phụ của người dùng để ưu tiên 100% không gian cho tiêu đề chính */
+  .user-dept-role {
+    display: none;
+  }
 }
 
 /* ===================================================================
