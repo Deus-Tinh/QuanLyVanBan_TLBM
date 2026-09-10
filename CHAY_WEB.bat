@@ -1,45 +1,44 @@
 @echo off
-chcp 65001 > nul
-title HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ TÀI LIỆU (TLBM) - ITC DJANGO
-cls
+title KHOI DONG HE THONG QUAN LY VAN BAN VA TAI LIEU (TLBM)
 
-echo =====================================================================
-echo       HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ TÀI LIỆU (TLBM) - ITC
-echo   Môn học: Lập trình Django (MĐ501911) - Giảng viên: Trần Phương Duy
-echo   Trưởng nhóm & Project Manager: Châu Tuấn Kiệt (Nhóm 1)
-echo =====================================================================
+echo ================================================================
+echo   HE THONG QUAN LY VAN BAN VA TAI LIEU (TLBM) - ITC DJANGO
+echo   GVHD: NCS.ThS. Tran Phuong Duy
+echo   PM / Truong Nhom: Chau Tuan Kiet (Nhom 1)
+echo ================================================================
 echo.
-echo [*] Đang chuẩn bị môi trường...
 
-:: Di chuyển đến thư mục backend
+:: Di chuyen den thu muc backend
 cd /d "%~dp0backend"
 
-:: Kiểm tra python
-where python >nul 2>&1
+:: Kiem tra Python
+python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [LỖI] Không tìm thấy Python trên máy tính! Vui lòng cài đặt Python và tick chọn 'Add Python to PATH'.
+    echo [LOI] Khong tim thay Python! Vui long kiem tra lai Python trong PATH.
     pause
     exit /b 1
 )
 
-echo [1/3] Đang khởi động Django Development Server tại cổng 8000...
+echo [1/2] Dang khoi dong Django Web Server (Port 8000)...
 start "Django Server - QuanLyVanBan_TLBM" cmd /k "python manage.py runserver"
 
-echo [2/3] Đang chờ máy chủ sẵn sàng trong 3 giây...
-timeout /t 3 /nobreak > nul
+echo [2/2] Dang mo trinh duyet web...
+:: Cho 2 giay de Django server san sang
+ping 127.0.0.1 -n 3 >nul
 
-echo [3/3] Đang tự động mở Website trên trình duyệt mặc định...
+:: Tu dong mo trinh duyet web
 start http://127.0.0.1:8000/
 
 echo.
-echo =====================================================================
-echo   ĐÃ KHỞI ĐỘNG THÀNH CÔNG VÀ MỞ WEBSITE TRÊN TRÌNH DUYỆT!
+echo ================================================================
+echo   DA KHOI DONG THANH CONG!
+echo   * Trang chu:      http://127.0.0.1:8000/
+echo   * Sinh nhat (7.2): http://127.0.0.1:8000/birthdays/
+echo   * Admin:          http://127.0.0.1:8000/admin/
 echo.
-echo   * Trang chủ hệ thống:      http://127.0.0.1:8000/
-echo   * Phân hệ 7.2 (Sinh nhật): http://127.0.0.1:8000/birthdays/
-echo   * Quản trị Admin:          http://127.0.0.1:8000/admin/
-echo.
-echo   [Lưu ý] Để tắt Server, bạn chỉ cần đóng cửa sổ 'Django Server'
-echo =====================================================================
-echo.
-pause
+echo   Cua so nay se tu dong dong sau vai giay.
+echo   Server Django van tiep tuc chay o cua so rieng.
+echo ================================================================
+
+ping 127.0.0.1 -n 3 >nul
+exit

@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 > nul
-echo Đang mở Sơ đồ Kiến trúc Hệ thống trên trình duyệt...
+echo Dang mo So do Kien truc He thong tren trinh duyet...
 start "" "%~dp0doan-cuoiky-architecture.html"
 exit
