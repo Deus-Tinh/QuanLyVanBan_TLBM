@@ -100,4 +100,50 @@ III. MODULE 2: TRANG CHỦ / DASHBOARD (ĐỘ KHÓ: 0.80)
    - Bảng 4: Danh sách biểu mẫu, tài liệu chung (lấy đúng 5 tài liệu mới nhất)
      + Hiển thị tóm tắt 5 tài liệu, biểu mẫu chung mới ban hành/cập nhật.
      + Nút/liên kết "Xem thêm": Chuyển hướng chính xác sang trang Tài liệu chung của Nhóm 4.
+
+--------------------------------------------------------------------------------
+IV. BẢNG PHÂN CÔNG NHIỆM VỤ CHI TIẾT CHO THÀNH VIÊN NHÓM 1
+--------------------------------------------------------------------------------
+
+1. CHÂU TUẤN KIỆT (Trưởng nhóm / Project Manager / Kiến trúc sư chính)
+   - Trách nhiệm quản trị:
+     + Quản lý kiến trúc hệ thống, cấu trúc thư mục chuẩn (Clean Architecture).
+     + Review code, kiểm thử tích hợp và duyệt Merge Pull Request vào branch 1_layout_home.
+     + Đồng bộ báo cáo tiến độ với Giảng viên (NCS.ThS. Trần Phương Duy).
+   - Công việc kỹ thuật phụ trách:
+     + Dựng khung Base Layout (base.html và MainLayout.jsx) chuẩn cho 8 nhóm.
+     + Header: Logo, 3 luồng thông báo (Đến, Đi, Mật), Clock thời gian thực, Profile user.
+     + Sidebar: Cấu trúc menu 8 phân hệ, trạng thái active linh hoạt, thu gọn/mở rộng.
+     + Footer: Bản quyền, thông tin phiên bản 2026.
+     + Hệ thống Design Tokens (global.css) và Đa ngôn ngữ song ngữ Việt - Anh (i18n).
+     + Tích hợp nút chuyển Theme và nút chọn Ngôn ngữ (VI/EN) trên Header.
+
+2. NGUYỄN VĂN HIẾU (Thành viên 2 - Phụ trách Xác thực & Bảng Dữ liệu Dashboard)
+   - Công việc kỹ thuật phụ trách:
+     + Phân hệ Xác thực (Authentication):
+       * Thiết kế giao diện trang Đăng nhập (Login) hiện đại, chuyên nghiệp.
+       * Xử lý logic đăng nhập cho 2 nhóm người dùng (Admin & Cán bộ chuyên môn).
+       * Hiển thị thông báo lỗi chi tiết khi sai tài khoản/mật khẩu.
+       * Chức năng Đăng xuất (Logout) an toàn, hủy session và quay về Login.
+     + Bốn bảng danh sách tóm tắt trên Dashboard (Top 5 bản ghi mới nhất):
+       * Bảng 1: Top 5 Văn bản đến (Số VB, Ký hiệu, Trích yếu, Ngày có HH:mm:ss DD/MM/YYYY) + Link Nhóm 2.
+       * Bảng 2: Top 5 Văn bản đi (Số VB, Ký hiệu, Trích yếu, Ngày có HH:mm:ss DD/MM/YYYY) + Link Nhóm 2.
+       * Bảng 3: Top 5 Công việc cần xử lý + Link Nhóm 6.
+       * Bảng 4: Top 5 Biểu mẫu, tài liệu chung mới ban hành + Link Nhóm 4.
+     + Rà soát và bổ sung từ khóa dịch Tiếng Anh/Việt vào src/i18n/translations.js cho các bảng trên.
+
+3. DUY QUÂN (Thành viên 3 - Phụ trách Widget Tiện ích, Tìm kiếm & Biểu đồ Thống kê)
+   - Công việc kỹ thuật phụ trách:
+     + Thanh công cụ tìm kiếm nhanh trên đầu Trang chủ:
+       * Tiếp nhận từ khóa và truy vấn đồng thời trên cả Văn bản đến và Văn bản đi.
+       * Trả về kết quả trực quan, dễ thao tác.
+     + Widget Biểu đồ thống kê số lượng văn bản theo từng năm:
+       * Tích hợp thư viện biểu đồ (Chart.js / ApexCharts).
+       * Truy vấn dữ liệu đếm văn bản đến và đi theo từng năm từ cơ sở dữ liệu.
+       * Thiết kế biểu đồ đẹp, có chú thích (legend) rõ ràng, hỗ trợ đổi theme sáng/tối.
+     + Khối tiện ích Dashboard:
+       * Widget Thông báo Sinh nhật: Lọc danh sách CBNV sinh nhật hôm nay (T) và ngày mai (T+1).
+       * Widget Phòng họp: Hiển thị danh sách phòng họp và lịch họp đăng ký trong ngày.
+     + Áp dụng các biến Design Token (var(--font-...), var(--color-...)) vào các widget để chuẩn hóa giao diện.
+
 ================================================================================
