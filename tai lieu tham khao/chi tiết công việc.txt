@@ -146,4 +146,81 @@ IV. BẢNG PHÂN CÔNG NHIỆM VỤ CHI TIẾT CHO THÀNH VIÊN NHÓM 1
        * Widget Phòng họp: Hiển thị danh sách phòng họp và lịch họp đăng ký trong ngày.
      + Áp dụng các biến Design Token (var(--font-...), var(--color-...)) vào các widget để chuẩn hóa giao diện.
 
+--------------------------------------------------------------------------------
+V. LỊCH TRÌNH THỰC HIỆN CHI TIẾT THEO TỪNG NGÀY (SPRINT 14 NGÀY - 2 TUẦN)
+--------------------------------------------------------------------------------
+
+[TUẦN 1: KHỞI TẠO KIẾN TRÚC, BASE LAYOUT & DỰNG DỮ LIỆU CỐT LÕI]
+
+* Ngày 1 (Thứ 2): Khởi động Sprint & Setup Môi trường
+  - Kiệt (PM): Họp kick-off nhóm; Hướng dẫn đọc QUY_TRINH_GIT_FLOW.md; Tạo branch feat riêng cho 2 bạn.
+  - Hiếu: Cài đặt môi trường Python Django + Node/React; Clone repo và kiểm tra chạy thử file CHAY_FULL_STACK.bat.
+  - Quân: Cài đặt môi trường; Đọc hiểu cấu trúc DB và yêu cầu định dạng ngày giờ HH:mm:ss DD/MM/YYYY.
+
+* Ngày 2 (Thứ 3): Dựng Base Layout & Khung Template
+  - Kiệt (PM): Hoàn thiện base.html và MainLayout.jsx, kết nối cấu trúc static CSS/JS chung.
+  - Hiếu: Phân tích flow xác thực người dùng; Thiết kế wireframe / khung HTML trang Đăng nhập (Login).
+  - Quân: Nghiên cứu thư viện biểu đồ (Chart.js / ApexCharts); Tạo khung component SearchBar trên Dashboard.
+
+* Ngày 3 (Thứ 4): Header & Giao diện Login
+  - Kiệt (PM): Dựng Header hoàn chỉnh: Logo, Live Clock thời gian thực, 3 luồng badge thông báo (Đến, Đi, Mật).
+  - Hiếu: Hoàn thiện giao diện Login đẹp mắt, thêm trường tài khoản, mật khẩu, nút ghi nhớ đăng nhập.
+  - Quân: Xây dựng logic thanh Tìm kiếm nhanh: bắt sự kiện gõ phím, debounce và form input tìm kiếm.
+
+* Ngày 4 (Thứ 5): Sidebar & Logic Xác thực
+  - Kiệt (PM): Dựng Sidebar menu đầy đủ 8 phân hệ, cấu hình active-link và nút thu gọn/mở rộng.
+  - Hiếu: Viết Backend View xử lý Login cho 2 nhóm người dùng (Admin & Cán bộ chuyên môn), xuất thông báo lỗi nếu sai.
+  - Quân: Xây dựng API / hàm truy vấn tìm kiếm văn bản đồng thời trên cả Văn bản đến và Văn bản đi.
+
+* Ngày 5 (Thứ 6): Responsive Layout & Bảng 1 (Văn bản đến)
+  - Kiệt (PM): Tối ưu Responsive cho Base Layout (Mobile Drawer, tablet, desktop); Kiểm tra MobileOverlay.
+  - Hiếu: Dựng Bảng 1 trên Dashboard: Top 5 Văn bản đến mới nhất (đủ 4 cột, ngày kèm HH:mm:ss DD/MM/YYYY) + nút "Xem thêm" sang Nhóm 2.
+  - Quân: Xây dựng Widget Lịch phòng họp: hiển thị danh sách phòng họp và ca họp đăng ký trong ngày.
+
+* Ngày 6 (Thứ 7): Bảng 2 (Văn bản đi) & Widget Phòng họp
+  - Kiệt (PM): Tích hợp Design Tokens (global.css) vào Base Layout, kiểm thử độ ổn định khi co giãn màn hình.
+  - Hiếu: Dựng Bảng 2 trên Dashboard: Top 5 Văn bản đi mới nhất (đủ 4 cột, chuẩn ngày giờ) + nút "Xem thêm" sang Nhóm 2.
+  - Quân: Hoàn thiện giao diện Widget Phòng họp, thêm tag trạng thái phòng (Đang họp, Trống, Đã đặt).
+
+* Ngày 7 (Chủ Nhật): Review Nội Bộ Tuần 1 & Đồng Bộ Git
+  - Cả nhóm: Họp online 30 phút rà soát kết quả Tuần 1; Chạy thử toàn bộ các tính năng đã làm.
+  - Kiệt (PM): Review Pull Request của Hiếu và Quân, merge vào branch 1_layout_home, xử lý conflict nếu có.
+
+--------------------------------------------------------------------------------
+[TUẦN 2: THỐNG KÊ BIỂU ĐỒ, BẢNG TỔNG HỢP, ĐA NGÔN NGỮ & ĐÓNG GÓI]
+
+* Ngày 8 (Thứ 2): Bảng 3 (Công việc) & Bảng 4 (Biểu mẫu tài liệu)
+  - Kiệt (PM): Dựng khung hệ thống Đa ngôn ngữ (i18n), tạo nút chuyển đổi ngôn ngữ (VI/EN) trên Header.
+  - Hiếu: Dựng Bảng 3 (Top 5 Công việc cần xử lý) + Bảng 4 (Top 5 Biểu mẫu tài liệu mới nhất) kèm nút "Xem thêm" sang Nhóm 6 và Nhóm 4.
+  - Quân: Viết câu lệnh ORM đếm tổng số lượng văn bản đến và đi theo từng năm (GROUP BY năm ban hành).
+
+* Ngày 9 (Thứ 3): Biểu Đồ Thống Kê Văn Bản Theo Năm
+  - Kiệt (PM): Tạo từ điển i18n mẫu và hướng dẫn 2 bạn cách bọc hàm t(...) vào text giao diện.
+  - Hiếu: Xử lý chức năng Đăng xuất (Logout) an toàn: xóa session Django, điều hướng về màn hình Login.
+  - Quân: Nhúng biểu đồ Chart.js / ApexCharts vào Dashboard: render biểu đồ cột/đường thể hiện số lượng văn bản theo năm, có chú thích legend.
+
+* Ngày 10 (Thứ 4): Widget Sinh Nhật CBNV (Hôm nay & Ngày mai)
+  - Kiệt (PM): Kiểm tra khả năng tương thích của Biểu đồ và Bảng với 4 Theme (Glass, Cyberpunk, Skeuo, Flat).
+  - Hiếu: Rà soát toàn bộ các text trên Form Login và 4 Bảng dữ liệu, bổ sung bản dịch tiếng Anh vào translations.js.
+  - Quân: Dựng Widget Sinh nhật trên Dashboard: truy vấn danh sách CBNV sinh nhật ngày T (hôm nay) và ngày T+1 (ngày mai), hiển thị badge chúc mừng.
+
+* Ngày 11 (Thứ 5): Chuẩn Hóa Token CSS & Đa Ngôn Ngữ
+  - Kiệt (PM): Kiểm tra cơ chế lưu localStorage cho Theme và Ngôn ngữ, đảm bảo F5 không bị mất cấu hình.
+  - Hiếu: Bọc hàm t(...) cho các tiêu đề cột bảng, nút bấm "Xem thêm", nhãn form login.
+  - Quân: Áp dụng các biến var(--color-...), var(--font-...) vào Widget Biểu đồ và Widget Sinh nhật/Phòng họp.
+
+* Ngày 12 (Thứ 6): Kiểm Thử Liên Kết Chéo & Phân Quyền
+  - Kiệt (PM): Test luồng chuyển hướng 4 nút "Xem thêm" sang Nhóm 2, Nhóm 4, Nhóm 6; Kiểm tra quyền Văn bản mật.
+  - Hiếu: Test đăng nhập với tài khoản Admin và tài khoản Cán bộ; Kiểm tra hiển thị thông báo lỗi khi nhập sai mật khẩu.
+  - Quân: Test tìm kiếm nhanh với các từ khóa tiếng Việt có dấu, không dấu, số hiệu văn bản; Test tương thích biểu đồ trên mobile.
+
+* Ngày 13 (Thứ 7): Tổng Kiểm Thử Hệ Thống (Cross-browser & Bug Fixing)
+  - Cả nhóm: Chạy thử trên Chrome, Edge, Safari/Firefox; Test responsive màn hình Desktop, Laptop và Điện thoại.
+  - Sửa dứt điểm tất cả các lỗi nhỏ về giao diện, căn lề, tràn chữ (overflow) và lỗi console log.
+
+* Ngày 14 (Chủ Nhật): Đóng Gói Sản Phẩm & Chuẩn Bị Báo Cáo Thầy Duy
+  - Hiếu & Quân: Mở Pull Request lần cuối cùng vào branch 1_layout_home.
+  - Kiệt (PM): Review, merge PR, chạy npm run build và python manage.py check; Tạo commit đóng gói Milestone 1.
+  - Kiệt (PM): Soạn slide tóm tắt tiến độ, video demo 2 phút để báo cáo Giảng viên Trần Phương Duy.
+
 ================================================================================
