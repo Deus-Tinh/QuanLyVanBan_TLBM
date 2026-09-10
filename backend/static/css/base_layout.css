@@ -284,7 +284,7 @@
 }
 
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 
@@ -299,7 +299,7 @@ body {
   -webkit-font-smoothing: antialiased;
   padding: 16px 20px 24px 20px;
   transition: background-color 0.25s ease, color 0.25s ease;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 
@@ -338,7 +338,6 @@ body {
   max-width: 100%;
   gap: 20px;
   position: relative;
-  overflow-x: hidden;
 }
 
 /* ===================================================================
@@ -771,11 +770,12 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 24px;
-  position: sticky;
+  position: sticky !important;
   top: 16px;
   z-index: 1000;
   overflow: visible; /* Cho phép menu xổ xuống (dropdown) hiển thị đầy đủ, không bị cắt */
   gap: 16px;
+  transition: box-shadow 0.25s ease, background-color 0.25s ease;
 }
 
 /* Glass Refraction Top Highlight on Header */
@@ -3140,7 +3140,9 @@ body.mobile-sidebar-open .mobile-overlay {
   .app-header {
     padding: 8px 10px;
     border-radius: 18px;
+    position: sticky !important;
     top: 8px;
+    z-index: 1000;
     gap: 6px;
   }
 
@@ -3360,7 +3362,9 @@ body.mobile-sidebar-open .mobile-overlay {
   .app-header {
     padding: 6px 10px;
     border-radius: 16px;
+    position: sticky !important;
     top: 6px;
+    z-index: 1000;
   }
 
   /* Ẩn Breadcrumb trên điện thoại nhỏ để ưu tiên chỗ cho Tiêu đề trang */
