@@ -37,11 +37,10 @@ DoAnCuoiKy/
 │   ├── package.json                 # Khai báo React, Vite, canvas-confetti
 │   └── pnpm-lock.yaml               # File khóa gói package pnpm
 │
-├── tai lieu tham khao/              # [Thư mục 3] Toàn bộ đề cương, tài liệu yêu cầu & bản vẽ mẫu
+├── tai lieu tham khao/              # [Thư mục 3] Toàn bộ đề cương & tài liệu yêu cầu đồ án
 │   ├── ITC - Django - QLVB&TL.md    # Bản đặc tả chi tiết phân công 8 nhóm của Thầy Duy
 │   ├── ITC - Django - QLVB&TL.xlsx  # Bảng tính phân bổ khối lượng đồ án
-│   ├── chi tiết công việc.txt       # Ghi chú phân công chi tiết
-│   └── mockups/                     # Bản vẽ giao diện HTML mẫu ban đầu
+│   └── chi tiết công việc.txt       # Ghi chú phân công chi tiết
 │
 ├── CHAY_FULL_STACK.bat              # [File 1-Click] Khởi chạy toàn bộ hệ thống Full Stack (Django + React)
 └── README.md                        # Tài liệu hướng dẫn hệ thống
