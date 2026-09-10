@@ -303,5 +303,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
     });
   }
+
+  // 9. Tự động cuộn menu đang kích hoạt (Active) vào giữa tầm nhìn Sidebar
+  const activeSidebarLink = document.querySelector('.app-sidebar .sub-nav-link.active, .app-sidebar .nav-link.active');
+  if (activeSidebarLink) {
+    const parentNavItem = activeSidebarLink.closest('.nav-item.has-sub');
+    if (parentNavItem) {
+      parentNavItem.classList.add('open');
+    }
+    setTimeout(() => {
+      activeSidebarLink.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 150);
+  }
 });
 

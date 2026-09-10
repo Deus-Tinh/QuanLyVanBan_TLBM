@@ -22,10 +22,10 @@
 
   <div class="calendar-toolbar">
     <div class="calendar-nav">
-      <button class="cal-btn" id="prevMonthBtn"><i class="fa-solid fa-chevron-left"></i></button>
+      <button type="button" class="cal-btn" id="prevMonthBtn" title="Tháng trước" aria-label="Tháng trước"><i class="fa-solid fa-chevron-left"></i></button>
       <span class="cal-current-label" id="currentMonthLabel">Tháng {{ current_month }} - {{ current_year }}</span>
-      <button class="cal-btn" id="nextMonthBtn"><i class="fa-solid fa-chevron-right"></i></button>
-      <button class="btn-today" id="btnGoToday"><i class="fa-regular fa-clock"></i> Hôm nay</button>
+      <button type="button" class="cal-btn" id="nextMonthBtn" title="Tháng sau" aria-label="Tháng sau"><i class="fa-solid fa-chevron-right"></i></button>
+      <button type="button" class="btn-today" id="btnGoToday"><i class="fa-regular fa-clock"></i> Hôm nay</button>
     </div>
   </div>
 
@@ -41,26 +41,31 @@
   </div>
 
   <div class="selected-day-details">
-    <div class="sub-section-title">
+    <div class="sub-section-title" style="display: flex; justify-content: space-between; align-items: center;">
       <span>
         <i class="fa-solid fa-user-group" style="color: var(--primary); margin-right: 6px;"></i>
         Danh sách CBNV sinh nhật ngày <strong id="selectedDateLabel">Hôm nay</strong>
       </span>
+      <span id="staffCountLabel" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;"></span>
     </div>
 
     <div style="overflow-x: auto;">
       <table class="cbnv-table">
         <thead>
           <tr>
-            <th>Cán bộ nhân viên</th>
-            <th>Ngày sinh (Ẩn năm)</th>
-            <th>Đơn vị / Phòng ban</th>
-            <th>Trạng thái Email</th>
-            <th style="text-align: right;">Thao tác</th>
+            <th scope="col">Cán bộ nhân viên</th>
+            <th scope="col">Ngày sinh (Ẩn năm)</th>
+            <th scope="col">Đơn vị / Phòng ban</th>
+            <th scope="col">Trạng thái Email</th>
+            <th scope="col" style="text-align: right;">Thao tác</th>
           </tr>
         </thead>
         <tbody id="cbnvTableBody">
-          <!-- Populated by Django or fetch API -->
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">
+              <i class="fa-solid fa-spinner fa-spin" style="margin-right: 8px;"></i> Đang tải dữ liệu sinh nhật CBNV...
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>

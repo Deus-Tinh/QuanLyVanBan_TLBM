@@ -23,8 +23,17 @@ def birthday_calendar(request):
         {"id": 8, "name": "Phan Tạ Hữu Đức", "role": "Trưởng nhóm 6 (Giao việc)", "dept": "BAN_TGD", "dept_name": "Văn phòng Ban Tổng Giám đốc", "bday_month": 9, "bday_day": 28, "email": "duc.pth@itc.edu.vn", "sent": False, "sent_time": None, "avatar": "👨‍💼"}
     ]
 
-    today_count = sum(1 for s in cbnv_sample if s['bday_day'] == 10 and s['bday_month'] == 9)
-    tomorrow_count = sum(1 for s in cbnv_sample if s['bday_day'] == 11 and s['bday_month'] == 9)
+    today_staffs = []
+    tomorrow_staffs = []
+    for s in cbnv_sample:
+        s['department'] = {'name': s['dept_name']}
+        if s['bday_day'] == 10 and s['bday_month'] == 9:
+            today_staffs.append(s)
+        elif s['bday_day'] == 11 and s['bday_month'] == 9:
+            tomorrow_staffs.append(s)
+
+    today_count = len(today_staffs)
+    tomorrow_count = len(tomorrow_staffs)
     month_count = len(cbnv_sample)
 
     context = {
@@ -36,6 +45,9 @@ def birthday_calendar(request):
         'current_month': '09',
         'current_year': 2026,
         'cbnv_list': cbnv_sample,
+        'today_staffs': today_staffs,
+        'tomorrow_staffs': tomorrow_staffs,
+        'tomorrow_date': datetime(2026, 9, 11),
     }
     return render(request, 'birthdays/birthday_dashboard.html', context)
 
