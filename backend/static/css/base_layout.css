@@ -2197,20 +2197,31 @@ body {
   transform: scale(0.95);
 }
 
-/* ==================== COLLAPSED SIDEBAR ==================== */
+/* ==================== COLLAPSED SIDEBAR (ĐÃ CHUẨN HOÁ TRÁNH LỖI GIAO DIỆN) ==================== */
 body.sidebar-collapsed .app-sidebar {
   width: var(--sidebar-collapsed-width);
+  align-items: center;
 }
+
 body.sidebar-collapsed .sidebar-header {
   padding: 0;
   justify-content: center;
+  width: 100%;
 }
+
 body.sidebar-collapsed .sidebar-brand {
   justify-content: center;
   width: 100%;
+  padding: 0;
 }
+
+body.sidebar-collapsed .brand-icon-wrapper {
+  margin: 0 auto;
+}
+
 body.sidebar-collapsed .brand-info,
 body.sidebar-collapsed .sidebar-toggle-btn,
+body.sidebar-collapsed .btn-close-sidebar-mobile,
 body.sidebar-collapsed .nav-section-title,
 body.sidebar-collapsed .nav-title-text,
 body.sidebar-collapsed .nav-arrow,
@@ -2218,12 +2229,113 @@ body.sidebar-collapsed .sub-nav-list,
 body.sidebar-collapsed .sidebar-footer {
   display: none !important;
 }
-body.sidebar-collapsed .nav-link {
-  justify-content: center;
-  padding: 12px;
+
+/* LỖI 1 ĐÃ KHẮC PHỤC: Ẩn hoàn toàn thanh cuộn thô trên Sidebar thu gọn, chống lệch tâm */
+body.sidebar-collapsed .sidebar-content {
+  padding: 16px 0 32px 0 !important;
+  width: 100%;
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE / Edge */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-body.sidebar-collapsed .nav-link i.menu-icon {
+
+body.sidebar-collapsed .sidebar-content::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+body.sidebar-collapsed .nav-list {
+  padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+body.sidebar-collapsed .nav-item {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+/* Nút icon đồng nhất 44x44px, bo cong 14px chuẩn Apple/Liquid */
+body.sidebar-collapsed .nav-link {
+  width: 44px;
+  height: 44px;
+  padding: 0 !important;
+  margin: 0 auto;
+  border-radius: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box;
+  transform: none !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+body.sidebar-collapsed .nav-link:hover {
+  transform: scale(1.08) !important;
+}
+
+body.sidebar-collapsed .nav-link-content {
+  gap: 0 !important;
+  justify-content: center;
+  align-items: center;
+}
+
+/* LỖI 2 ĐÃ KHẮC PHỤC: Khử triệt để lỗi 2 vòng tròn lồng nhau kỳ quặc trên icon Active */
+body.sidebar-collapsed .nav-link i.menu-icon {
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  font-size: 1.15rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Trạng thái không active: Nền chìm inset well 3D mượt */
+body.sidebar-collapsed .nav-link:not(.active) {
+  background: var(--inset-well-bg) !important;
+  border: 1px solid var(--liquid-glass-border) !important;
+  box-shadow: var(--inset-well-shadow) !important;
+}
+
+body.sidebar-collapsed .nav-link:not(.active) i.menu-icon {
+  color: var(--text-muted) !important;
+}
+
+body.sidebar-collapsed .nav-link:not(.active):hover i.menu-icon {
+  color: var(--text-main) !important;
+}
+
+/* Trạng thái Active: 1 khối nút xanh hoàng gia duy nhất, không lồng 2 vòng */
+body.sidebar-collapsed .nav-link.active {
+  background: var(--blue-pill-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: var(--blue-pill-shadow) !important;
+}
+
+body.sidebar-collapsed .nav-link.active i.menu-icon {
+  color: #ffffff !important;
+}
+
+/* Hiệu ứng nổi Skeuomorphism khi ở chế độ collapsed */
+[data-theme="skeuomorphism"] body.sidebar-collapsed .nav-link:not(.active) {
+  background: linear-gradient(145deg, #f0f5fb 0%, #d8e2ed 100%) !important;
+  box-shadow: 3px 3px 7px rgba(166, 180, 200, 0.7), -3px -3px 7px #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-theme="skeuomorphism"] body.sidebar-collapsed .nav-link.active {
+  background: linear-gradient(145deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 4px 4px 10px rgba(37, 99, 235, 0.5), -3px -3px 7px rgba(255, 255, 255, 0.8) !important;
 }
 
 /* ===================================================================
