@@ -18,7 +18,7 @@ export default function NotificationStreams() {
   };
 
   return (
-    <div className="notification-streams-wrapper" ref={ref} style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+    <div className="notification-streams-wrapper" ref={ref} style={{ display: 'flex', alignItems: 'center', gap: '4px', position: 'relative' }}>
       {/* Nút 1: Văn bản Đến */}
       <button
         type="button"
@@ -28,19 +28,19 @@ export default function NotificationStreams() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '8px 12px',
-          borderRadius: '12px',
+          gap: '4px',
+          padding: '5px 8px',
+          borderRadius: '10px',
           background: 'var(--inset-well-bg)',
           border: '1px solid var(--liquid-glass-border)',
           color: 'var(--text-main)',
-          fontSize: '0.85rem',
+          fontSize: '0.8rem',
           fontWeight: 600,
           cursor: 'pointer',
         }}
       >
         <i className="fa-solid fa-inbox" style={{ color: '#2563eb' }} />
-        <span className="stream-badge blue-badge" style={{ background: '#2563eb', color: '#fff', borderRadius: '20px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+        <span className="stream-badge blue-badge" style={{ background: '#2563eb', color: '#fff', borderRadius: '20px', padding: '1px 6px', fontSize: '0.68rem', fontWeight: 700 }}>
           12
         </span>
       </button>
@@ -54,19 +54,19 @@ export default function NotificationStreams() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '8px 12px',
-          borderRadius: '12px',
+          gap: '4px',
+          padding: '5px 8px',
+          borderRadius: '10px',
           background: 'var(--inset-well-bg)',
           border: '1px solid var(--liquid-glass-border)',
           color: 'var(--text-main)',
-          fontSize: '0.85rem',
+          fontSize: '0.8rem',
           fontWeight: 600,
           cursor: 'pointer',
         }}
       >
         <i className="fa-solid fa-paper-plane" style={{ color: '#0d9488' }} />
-        <span className="stream-badge teal-badge" style={{ background: '#0d9488', color: '#fff', borderRadius: '20px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+        <span className="stream-badge teal-badge" style={{ background: '#0d9488', color: '#fff', borderRadius: '20px', padding: '1px 6px', fontSize: '0.68rem', fontWeight: 700 }}>
           5
         </span>
       </button>
@@ -80,19 +80,19 @@ export default function NotificationStreams() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '8px 12px',
-          borderRadius: '12px',
+          gap: '4px',
+          padding: '5px 8px',
+          borderRadius: '10px',
           background: 'var(--inset-well-bg)',
           border: '1px solid var(--liquid-glass-border)',
           color: 'var(--text-main)',
-          fontSize: '0.85rem',
+          fontSize: '0.8rem',
           fontWeight: 600,
           cursor: 'pointer',
         }}
       >
         <i className="fa-solid fa-shield-halved" style={{ color: '#e11d48' }} />
-        <span className="stream-badge red-badge pulse-badge" style={{ background: '#e11d48', color: '#fff', borderRadius: '20px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+        <span className="stream-badge red-badge pulse-badge" style={{ background: '#e11d48', color: '#fff', borderRadius: '20px', padding: '1px 6px', fontSize: '0.68rem', fontWeight: 700 }}>
           2
         </span>
       </button>

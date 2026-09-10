@@ -778,12 +778,12 @@ button.nav-link {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 24px;
+  padding: 8px 16px;
   position: sticky !important;
   top: 16px;
   z-index: 1000;
   overflow: visible; /* Cho phép menu xổ xuống (dropdown) hiển thị đầy đủ, không bị cắt */
-  gap: 16px;
+  gap: 10px;
   transition: box-shadow 0.25s ease, background-color 0.25s ease;
 }
 
@@ -803,8 +803,8 @@ button.nav-link {
 .header-left-side {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-width: 0;
+  gap: 10px;
+  min-width: 240px;
   flex: 1 1 auto;
   overflow: hidden;
   position: relative;
@@ -846,10 +846,10 @@ button.nav-link {
 
 .page-main-heading {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 800;
   color: var(--text-main);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
@@ -865,11 +865,11 @@ button.nav-link {
 }
 
 .header-breadcrumb {
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -890,7 +890,7 @@ button.nav-link {
 .header-right-side {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   flex: 0 0 auto;
   justify-content: flex-end;
   position: relative;

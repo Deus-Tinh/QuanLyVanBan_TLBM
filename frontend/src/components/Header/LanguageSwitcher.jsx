@@ -24,20 +24,20 @@ export default function LanguageSwitcher() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          padding: '8px 14px',
-          borderRadius: '12px',
+          gap: '5px',
+          padding: '5px 9px',
+          borderRadius: '10px',
           background: 'var(--inset-well-bg)',
           border: '1px solid var(--liquid-glass-border)',
           color: 'var(--text-main)',
-          fontSize: '0.85rem',
+          fontSize: '0.8rem',
           fontWeight: 600,
           cursor: 'pointer',
         }}
       >
-        <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{currentLangObj.flag}</span>
+        <span style={{ fontSize: '1rem', lineHeight: 1 }}>{currentLangObj.flag}</span>
         <span className="lang-name-label desktop-only">{currentLangObj.code.toUpperCase()}</span>
-        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.7rem', opacity: 0.7 }} />
+        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', opacity: 0.7 }} />
       </button>
 
       {isOpen && (
