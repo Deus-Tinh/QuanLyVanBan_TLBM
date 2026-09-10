@@ -1,0 +1,4 @@
+# Môn học: ITC - Lập trình Django (MĐ501911)
+# Giảng viên: NCS.ThS. Trần Phương Duy
+# Đồ án: Quản lý Văn bản và Tài liệu (TLBM)
+Django>=5.0,<6.2

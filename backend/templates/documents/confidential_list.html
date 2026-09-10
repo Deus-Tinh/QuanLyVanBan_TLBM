@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Văn bản Mật & Hỏa Tốc - Nhóm 2{% endblock %}
+
+{% block content %}
+<div class="app-container" style="padding: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div>
+      <h2 style="font-size: 1.3rem; font-weight: 700; color: #dc2626; margin-bottom: 4px;">
+        <i class="fa-solid fa-shield-halved" style="color: #dc2626; margin-right: 8px;"></i> Quản lý Văn bản Mật &amp; Khẩn (Mục 2.3)
+      </h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+        Văn bản mật chỉ gửi cho đơn vị, phòng ban hoặc đích danh CBNV được phân quyền xem.
+      </p>
+    </div>
+  </div>
+
+  <div class="staff-table-wrapper">
+    <table class="staff-data-table">
+      <thead>
+        <tr>
+          <th>Số ký hiệu</th>
+          <th>Cấp độ bảo mật</th>
+          <th>Trích yếu nội dung</th>
+          <th>Người ký duyệt</th>
+          <th>Thời gian tiếp nhận</th>
+          <th style="text-align: center;">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background: rgba(220, 38, 38, 0.05);">
+          <td><strong style="color: #dc2626;">MẬT-04/HĐQT</strong></td>
+          <td><span style="background: #dc2626; color: #fff; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Tối mật</span></td>
+          <td>Phương án tái cơ cấu vốn đầu tư chiến lược 2026 - 2030</td>
+          <td>Chủ tịch HĐQT</td>
+          <td>08:30:00 10/09/2026</td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Mở khóa xem</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý Văn bản Đến - Nhóm 2{% endblock %}
+
+{% block content %}
+<div class="app-container" style="padding: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div>
+      <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;">
+        <i class="fa-solid fa-inbox" style="color: #2563eb; margin-right: 8px;"></i> Quản lý Văn bản Đến (Mục 2.1)
+      </h2>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+        Tiếp nhận, đăng ký vào sổ, phân luồng và quản lý trạng thái hiệu lực văn bản đến từ cơ quan ngoài.
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button type="button" class="btn-action-view" style="padding: 8px 16px; border-radius: 10px; font-size: 0.85rem;">
+        <i class="fa-solid fa-file-excel" style="color: #16a34a; margin-right: 6px;"></i> Xuất Excel
+      </button>
+      <button type="button" class="btn-action-send" style="padding: 8px 16px; border-radius: 10px; font-size: 0.85rem;">
+        <i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Thêm văn bản mới
+      </button>
+    </div>
+  </div>
+
+  <!-- Bảng dữ liệu văn bản đến -->
+  <div class="staff-table-wrapper">
+    <table class="staff-data-table">
+      <thead>
+        <tr>
+          <th>Số đến</th>
+          <th>Số, ký hiệu văn bản</th>
+          <th>Ngày văn bản</th>
+          <th>Trích yếu nội dung</th>
+          <th>Nơi ban hành</th>
+          <th>Hiệu lực</th>
+          <th style="text-align: center;">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color: #2563eb;">#0104</strong></td>
+          <td><strong>104/CV-BTC</strong></td>
+          <td>10/09/2026</td>
+          <td>Hướng dẫn kiểm toán báo cáo tài chính bán niên và quản trị rủi ro</td>
+          <td>Bộ Tài chính</td>
+          <td><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Chi tiết</button>
+          </td>
+        </tr>
+        <tr>
+          <td><strong style="color: #2563eb;">#0103</strong></td>
+          <td><strong>88/NQ-HĐQT</strong></td>
+          <td>09/09/2026</td>
+          <td>Nghị quyết thông qua kế hoạch chuyển đổi số và phát triển phần mềm nội bộ</td>
+          <td>Văn phòng HĐQT</td>
+          <td><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Chi tiết</button>
+          </td>
+        </tr>
+        <tr>
+          <td><strong style="color: #2563eb;">#0102</strong></td>
+          <td><strong>45/TB-BCA</strong></td>
+          <td>08/09/2026</td>
+          <td>Cảnh báo nguy cơ an ninh mạng và lộ lọt dữ liệu nội bộ</td>
+          <td>Cục An ninh Mạng</td>
+          <td><span class="status-badge sent-badge"><i class="fa-solid fa-circle-check"></i> Còn hiệu lực</span></td>
+          <td style="text-align: center;">
+            <button type="button" class="btn-action-view" style="padding: 4px 10px; font-size: 0.78rem;">Chi tiết</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
