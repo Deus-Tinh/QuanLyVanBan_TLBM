@@ -10,6 +10,7 @@ export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleMobileSidebar,
+  activePage = 'birthday',
 }) {
   const { t } = useTranslation();
   const [currentTime, setCurrentTime] = useState(() => formatDateTimeFull(new Date()));
@@ -21,38 +22,60 @@ export default function AppHeader({
     return () => clearInterval(timer);
   }, []);
 
+  const pageTitle = activePage === 'dashboard'
+    ? t('header.pageTitleDashboard')
+    : t('header.pageTitleBirthday');
+
+  const breadcrumbCurrent = activePage === 'dashboard'
+    ? t('header.breadcrumbDashboard')
+    : t('header.breadcrumbBirthday');
+
   return (
     <header className="app-header">
-      {/* Left Area: Mobile toggle & Breadcrumb Title */}
-      <div className="header-left">
+      {/* Left Side: Mobile toggle & Breadcrumb Title */}
+      <div className="header-left-side">
         <button
           type="button"
-          className="mobile-hamburger-btn mobile-only"
+          className="btn-mobile-sidebar mobile-only"
           onClick={onToggleMobileSidebar}
           title="Mở thanh điều hướng"
         >
           <i className="fa-solid fa-bars" />
         </button>
 
-        <div className="header-titles">
+        <div className="page-context-title">
+          <h1 className="page-main-heading">
+            <span className="heading-full">{pageTitle}</span>
+          </h1>
           <div className="header-breadcrumb">
             <i className="fa-solid fa-house" />
             <span>{t('header.breadcrumbHome')}</span>
-            <i className="fa-solid fa-chevron-right separator" />
+            <i className="fa-solid fa-chevron-right separator" style={{ fontSize: '0.65rem', opacity: 0.5 }} />
             <span>{t('header.breadcrumbUtilities')}</span>
-            <i className="fa-solid fa-chevron-right separator" />
-            <span className="current">{t('header.breadcrumbBirthday')}</span>
+            <i className="fa-solid fa-chevron-right separator" style={{ fontSize: '0.65rem', opacity: 0.5 }} />
+            <span className="current" style={{ color: 'var(--color-primary, #2563eb)', fontWeight: 700 }}>
+              {breadcrumbCurrent}
+            </span>
           </div>
-          <h1 className="header-page-title">
-            {t('header.pageTitleBirthday')}
-          </h1>
         </div>
       </div>
 
-      {/* Right Area: Realtime Clock, 3 Notification Streams, Language Switcher, Theme Selector, User */}
-      <div className="header-right">
+      {/* Right Side: Clock, Streams, Language, Theme, User */}
+      <div className="header-right-side">
         {/* Realtime Clock */}
-        <div className="header-live-clock desktop-only" title={t('header.liveClockTitle')}>
+        <div className="header-live-clock desktop-only" title={t('header.liveClockTitle')} style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 14px',
+          borderRadius: '14px',
+          background: 'var(--inset-well-bg)',
+          boxShadow: 'var(--inset-well-shadow)',
+          border: '1px solid var(--liquid-glass-border)',
+          fontSize: '0.85rem',
+          fontWeight: 700,
+          color: 'var(--text-main)',
+        }}>
           <i className="fa-regular fa-clock" style={{ color: 'var(--color-primary, #2563eb)' }} />
           <span className="clock-digits">{currentTime}</span>
         </div>
@@ -63,7 +86,7 @@ export default function AppHeader({
         {/* Language Switcher (VI / EN) */}
         <LanguageSwitcher />
 
-        {/* 3 Selectable Themes */}
+        {/* 4 Selectable Themes */}
         <ThemeSelector currentTheme={currentTheme} onSelectTheme={onSelectTheme} />
 
         {/* User Profile */}

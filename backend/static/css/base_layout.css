@@ -552,6 +552,15 @@ body {
   will-change: transform;
 }
 
+button.nav-link {
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  outline: none;
+}
+
 /* Top Glass Refraction Highlight on Nav link */
 .nav-link::after {
   content: '';

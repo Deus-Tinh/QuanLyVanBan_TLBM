@@ -22,7 +22,7 @@ export default function MainLayout({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="app-layout-container">
+    <div className="app-layout">
       {/* Mobile Backdrop Overlay */}
       <MobileOverlay
         isOpen={isMobileSidebarOpen}
@@ -40,16 +40,17 @@ export default function MainLayout({
       />
 
       {/* Main App Content Viewport */}
-      <div className={`app-main-viewport ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <div className={`main-wrapper ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         {/* Top Header */}
         <AppHeader
           currentTheme={theme}
           onSelectTheme={changeTheme}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          activePage={activePage}
         />
 
         {/* Dynamic Page Content */}
-        <main className="app-page-content">
+        <main className="page-content-area" style={{ marginTop: '16px' }}>
           {children}
         </main>
 
