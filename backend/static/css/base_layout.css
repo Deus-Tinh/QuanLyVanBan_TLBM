@@ -255,11 +255,37 @@
   --bday-green-border: rgba(5, 150, 105, 0.3);
 }
 
-/* ==================== GLOBAL RESETS ==================== */
+/* ==================== GLOBAL RESETS & SCROLLBAR ==================== */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* Tinh chỉnh thanh cuộn siêu mượt, trong suốt, triệt tiêu hoàn toàn nút mũi tên xám Windows */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+}
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -273,6 +299,8 @@ body {
   -webkit-font-smoothing: antialiased;
   padding: 16px 20px 24px 20px;
   transition: background-color 0.25s ease, color 0.25s ease;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 [data-theme="dark"] body {
@@ -307,8 +335,10 @@ body {
   display: flex;
   min-height: calc(100vh - 40px);
   width: 100%;
+  max-width: 100%;
   gap: 20px;
   position: relative;
+  overflow-x: hidden;
 }
 
 /* ===================================================================
@@ -462,34 +492,46 @@ body {
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
-  padding: 18px 12px;
+  padding: 10px 8px;
   scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
 }
 
 .sidebar-content::-webkit-scrollbar {
   width: 4px;
 }
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
 .sidebar-content::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 4px;
+}
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.65);
+}
+.sidebar-content::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .nav-section-title {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.1px;
   color: var(--text-subtle);
-  padding: 12px 14px 6px 14px;
+  padding: 8px 10px 3px 10px;
 }
 
 .nav-list {
   list-style: none;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .nav-item {
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 }
 
 /* 3D Liquid Pill Nav Links */
@@ -497,11 +539,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 7px 11px;
   border-radius: 40px; /* Chuẩn Liquid Pill */
   color: var(--text-body);
   text-decoration: none;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 600;
   position: relative;
   overflow: hidden;
@@ -628,9 +670,9 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 30px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
   text-decoration: none;
   font-weight: 600;
@@ -1736,6 +1778,156 @@ body {
 }
 
 /* ===================================================================
+   DATA TABLES (Bảng Dữ Liệu Văn Bản & Phân Quyền Thích Ứng)
+   Tương thích đa màn hình, không bị ép dọc chữ, hỗ trợ cuộn cảm ứng
+   =================================================================== */
+.staff-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 20px;
+  background: var(--deck-bg);
+  border: 1.5px solid var(--deck-border);
+  box-shadow: var(--deck-shadow);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  margin-top: 16px;
+  position: relative;
+}
+
+.staff-data-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.staff-data-table th {
+  padding: 13px 16px;
+  background: var(--inset-well-bg);
+  box-shadow: var(--inset-well-shadow);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  border-bottom: 1.5px solid var(--liquid-glass-border-bottom);
+}
+
+.staff-data-table th:first-child {
+  border-top-left-radius: 18px;
+}
+
+.staff-data-table th:last-child {
+  border-top-right-radius: 18px;
+}
+
+.staff-data-table td {
+  padding: 13px 16px;
+  color: var(--text-body);
+  border-bottom: 1px solid var(--liquid-glass-border-bottom);
+  vertical-align: middle;
+  line-height: 1.5;
+}
+
+.staff-data-table tr:hover td {
+  background: var(--liquid-glass-bg);
+}
+
+.staff-data-table tr:last-child td {
+  border-bottom: none;
+}
+
+[data-theme="dark"] .staff-data-table th {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .staff-data-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .staff-data-table tr:hover td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-badge.sent-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .status-badge.sent-badge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.btn-action-view {
+  background: var(--inset-well-bg);
+  box-shadow: var(--inset-well-shadow);
+  border: 1px solid var(--liquid-glass-border);
+  color: var(--text-main);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.btn-action-view:hover {
+  background: var(--blue-pill-bg);
+  color: #ffffff !important;
+  box-shadow: var(--blue-pill-shadow);
+  border-color: transparent;
+}
+
+.btn-action-send {
+  background: var(--blue-pill-bg);
+  color: #ffffff;
+  box-shadow: var(--blue-pill-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.btn-action-send:hover {
+  box-shadow: var(--blue-pill-hover-shadow);
+  transform: translateY(-1px);
+}
+
+.document-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.document-page-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ===================================================================
    3D LIQUID LIGHT SWEEP EFFECT (Luồng Sáng Quét Qua Nút Khi Rê Chuột)
    Vệt sáng phản quang khúc xạ lướt mượt qua bề mặt nút bấm
    Tối ưu hóa GPU 60fps - 120fps (sử dụng transform & opacity)
@@ -2835,6 +3027,16 @@ body.mobile-sidebar-open .mobile-overlay {
   /* Thu gọn chức vụ phụ của người dùng để ưu tiên 100% không gian cho tiêu đề chính */
   .user-dept-role {
     display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  /* Ẩn chữ tên luồng sớm hơn để không bao giờ làm tràn thanh cuộn ngang Header */
+  .notification-streams-deck .stream-trigger-btn span.stream-name {
+    display: none;
+  }
+  .stream-trigger-btn {
+    padding: 6px 10px;
   }
 }
 
