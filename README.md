@@ -48,26 +48,44 @@ DoAnCuoiKy/
 
 ---
 
-## 🚀 Hướng Dẫn Vận Hành
+## 🚀 Hướng Dẫn Vận Hành (Chỉ 1 Click Bật Web)
 
-### 1. Chạy Backend Django (Thư mục `backend/`)
-- **Cách 1 (Tiện lợi nhất):** Mở thư mục `backend/` và bấm đúp chuột vào file `run_server.bat`.
-- **Cách 2 (Dòng lệnh):**
-  ```bash
-  cd backend
-  python manage.py runserver
-  ```
-  - **Trang chủ Dashboard (Nhóm 1):** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-  - **Phân hệ 7.2 Sinh nhật CBNV:** [http://127.0.0.1:8000/birthdays/](http://127.0.0.1:8000/birthdays/)
-  - **Trang Quản trị Admin:** [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
+### 🌟 Cách 1: Sử dụng File `.bat` 1-Click (Khuyên dùng - Cực nhanh)
+Ngay tại thư mục gốc `DoAnCuoiKy/`, bạn chỉ cần click đúp chuột:
 
-### 2. Chạy Frontend React (Thư mục `frontend/`)
+1. **`CHAY_WEB.bat`** (Chạy Web Django chính):
+   - Tự động kiểm tra Python.
+   - Khởi động Django Web Server (Port 8000).
+   - **Tự động mở trình duyệt web** tại: [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
+   
+2. **`CHAY_FULL_STACK.bat`** (Chạy cả Backend + Frontend):
+   - Khởi động đồng thời Django Backend (8000) và Vite React Frontend (5173).
+   - Tự động mở cả 2 giao diện trên trình duyệt web.
+
+3. **`MO_SO_DO_KIEN_TRUC.bat`**:
+   - 1 click mở ngay Sơ đồ Kiến trúc Hệ thống tương tác cao cấp (`doan-cuoiky-architecture.html`).
+
+---
+
+### 💻 Cách 2: Khởi động qua Dòng Lệnh Thủ Công
+
+#### 1. Chạy Backend Django (`backend/`)
+```bash
+cd backend
+python manage.py runserver
+```
+- **Trang chủ Dashboard (Nhóm 1):** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+- **Phân hệ 7.2 Sinh nhật CBNV:** [http://127.0.0.1:8000/birthdays/](http://127.0.0.1:8000/birthdays/)
+- **Trang Quản trị Admin:** [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
+
+#### 2. Chạy Frontend React (`frontend/`)
 ```bash
 cd frontend
 pnpm run dev
 # Hoặc: npx pnpm run dev
 ```
 Truy cập giao diện React: [http://localhost:5173/](http://localhost:5173/)
+
 
 ---
 
