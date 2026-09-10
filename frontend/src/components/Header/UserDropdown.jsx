@@ -38,7 +38,7 @@ export default function UserDropdown() {
         >
           TK
         </div>
-        <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column' }} className="user-info-text">
+        <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', whiteSpace: 'nowrap' }} className="user-info-text desktop-only">
           <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>Châu Tuấn Kiệt</span>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>PM · Nhóm 1 (Hệ Thống)</span>
         </div>
