@@ -2197,14 +2197,16 @@ body {
   transform: scale(0.95);
 }
 
-/* ==================== COLLAPSED SIDEBAR (ĐÃ CHUẨN HOÁ TRÁNH LỖI GIAO DIỆN) ==================== */
+/* ==================== COLLAPSED SIDEBAR (ĐÃ CHUẨN HOÁ: 100% ICON KHÔNG BAO GIỜ BỊ KHUẤT) ==================== */
 body.sidebar-collapsed .app-sidebar {
   width: var(--sidebar-collapsed-width);
   align-items: center;
 }
 
 body.sidebar-collapsed .sidebar-header {
-  padding: 0;
+  height: 56px !important;
+  min-height: 56px !important;
+  padding: 0 !important;
   justify-content: center;
   width: 100%;
 }
@@ -2217,6 +2219,10 @@ body.sidebar-collapsed .sidebar-brand {
 
 body.sidebar-collapsed .brand-icon-wrapper {
   margin: 0 auto;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border-radius: 12px !important;
 }
 
 body.sidebar-collapsed .brand-info,
@@ -2230,14 +2236,18 @@ body.sidebar-collapsed .sidebar-footer {
   display: none !important;
 }
 
-/* LỖI 1 ĐÃ KHẮC PHỤC: Ẩn hoàn toàn thanh cuộn thô trên Sidebar thu gọn, chống lệch tâm */
+/* YÊU CẦU QUAN TRỌNG: TUYỆT ĐỐI KHÔNG ĐƯỢC ĐỂ BẤT KỲ ICON NÀO BỊ KHUẤT */
 body.sidebar-collapsed .sidebar-content {
-  padding: 16px 0 32px 0 !important;
+  padding: 8px 0 !important;
   width: 100%;
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE / Edge */
-  overflow-y: auto;
-  overflow-x: hidden;
+  height: calc(100% - 56px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-evenly !important; /* Tự động phân bổ đều 100% icon trên chiều cao màn hình */
+  align-items: center !important;
+  overflow: hidden !important; /* Khử hoàn toàn thanh cuộn */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 body.sidebar-collapsed .sidebar-content::-webkit-scrollbar {
@@ -2246,52 +2256,56 @@ body.sidebar-collapsed .sidebar-content::-webkit-scrollbar {
   height: 0 !important;
 }
 
+/* display: contents giúp toàn bộ 9 nav-item biến thành con trực tiếp của flex container */
 body.sidebar-collapsed .nav-list {
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: contents !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 body.sidebar-collapsed .nav-item {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  margin-bottom: 8px;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: 0 1 auto !important;
 }
 
-/* Nút icon đồng nhất 44x44px, bo cong 14px chuẩn Apple/Liquid */
+/* Nút icon đồng nhất, co giãn thông minh không bao giờ bị cắt cụt */
 body.sidebar-collapsed .nav-link {
-  width: 44px;
-  height: 44px;
+  width: 40px !important;
+  height: 40px !important;
+  min-height: 28px !important;
+  max-height: 42px !important;
   padding: 0 !important;
-  margin: 0 auto;
-  border-radius: 14px !important;
+  margin: 0 auto !important;
+  border-radius: 12px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-sizing: border-box;
+  box-sizing: border-box !important;
   transform: none !important;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 body.sidebar-collapsed .nav-link:hover {
-  transform: scale(1.08) !important;
+  transform: scale(1.1) !important;
 }
 
 body.sidebar-collapsed .nav-link-content {
   gap: 0 !important;
-  justify-content: center;
-  align-items: center;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
-/* LỖI 2 ĐÃ KHẮC PHỤC: Khử triệt để lỗi 2 vòng tròn lồng nhau kỳ quặc trên icon Active */
+/* Khử triệt để lỗi 2 vòng tròn lồng nhau trên icon Active */
 body.sidebar-collapsed .nav-link i.menu-icon {
   margin: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  font-size: 1.15rem !important;
+  font-size: 1.1rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2315,7 +2329,7 @@ body.sidebar-collapsed .nav-link:not(.active):hover i.menu-icon {
   color: var(--text-main) !important;
 }
 
-/* Trạng thái Active: 1 khối nút xanh hoàng gia duy nhất, không lồng 2 vòng */
+/* Trạng thái Active: 1 khối nút xanh hoàng gia duy nhất */
 body.sidebar-collapsed .nav-link.active {
   background: var(--blue-pill-bg) !important;
   border: 1px solid rgba(255, 255, 255, 0.6) !important;
@@ -2324,6 +2338,57 @@ body.sidebar-collapsed .nav-link.active {
 
 body.sidebar-collapsed .nav-link.active i.menu-icon {
   color: #ffffff !important;
+}
+
+/* RESPONSIVE CHIỀU CAO MÀN HÌNH (Đảm bảo màn hình nhỏ/laptop mini vẫn hiển thị đủ 100% icon) */
+@media (max-height: 720px) {
+  body.sidebar-collapsed .sidebar-header {
+    height: 46px !important;
+    min-height: 46px !important;
+  }
+  body.sidebar-collapsed .brand-icon-wrapper {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    font-size: 1.05rem !important;
+  }
+  body.sidebar-collapsed .sidebar-content {
+    height: calc(100% - 46px) !important;
+    padding: 4px 0 !important;
+  }
+  body.sidebar-collapsed .nav-link {
+    width: 35px !important;
+    height: 35px !important;
+    border-radius: 10px !important;
+  }
+  body.sidebar-collapsed .nav-link i.menu-icon {
+    font-size: 0.95rem !important;
+  }
+}
+
+@media (max-height: 560px) {
+  body.sidebar-collapsed .sidebar-header {
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+  body.sidebar-collapsed .brand-icon-wrapper {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    font-size: 0.9rem !important;
+  }
+  body.sidebar-collapsed .sidebar-content {
+    height: calc(100% - 38px) !important;
+    padding: 2px 0 !important;
+  }
+  body.sidebar-collapsed .nav-link {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 8px !important;
+  }
+  body.sidebar-collapsed .nav-link i.menu-icon {
+    font-size: 0.85rem !important;
+  }
 }
 
 /* Hiệu ứng nổi Skeuomorphism khi ở chế độ collapsed */

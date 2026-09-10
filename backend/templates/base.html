@@ -56,7 +56,7 @@
         <div class="nav-section-title">Tổng quan</div>
         <ul class="nav-list">
           <li class="nav-item">
-            <a href="{% url 'dashboard:home' %}" class="nav-link {% if active_menu == 'dashboard' %}active{% endif %}">
+            <a href="{% url 'dashboard:home' %}" class="nav-link {% if active_menu == 'dashboard' %}active{% endif %}" title="1. Trang chủ (Dashboard)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-chart-pie menu-icon"></i>
                 <span class="nav-title-text">Trang chủ (Dashboard)</span>
@@ -69,7 +69,7 @@
         <div class="nav-section-title">Quản lý Văn bản</div>
         <ul class="nav-list">
           <li class="nav-item has-sub {% if active_group == 'documents' %}open{% endif %}">
-            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'documents' %}active{% endif %}">
+            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'documents' %}active{% endif %}" title="2. Quản lý Văn bản (Nhóm 2)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-file-lines menu-icon"></i>
                 <span class="nav-title-text">Hệ thống Văn bản</span>
@@ -103,7 +103,7 @@
         <div class="nav-section-title">Lưu trữ & Hồ sơ</div>
         <ul class="nav-list">
           <li class="nav-item has-sub {% if active_group == 'archives' %}open{% endif %}">
-            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'archives' %}active{% endif %}">
+            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'archives' %}active{% endif %}" title="3. Quản lý Hồ sơ (Nhóm 3)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-box-archive menu-icon"></i>
                 <span class="nav-title-text">Quản lý Hồ sơ</span>
@@ -134,7 +134,7 @@
 
           <!-- 4. TÀI LIỆU & BIỂU MẪU (NHÓM 4) -->
           <li class="nav-item has-sub {% if active_group == 'templates_docs' %}open{% endif %}">
-            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'templates_docs' %}active{% endif %}">
+            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'templates_docs' %}active{% endif %}" title="4. Tài liệu &amp; Biểu mẫu (Nhóm 4)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-folder-open menu-icon"></i>
                 <span class="nav-title-text">Tài liệu & Biểu mẫu</span>
@@ -163,7 +163,7 @@
         <ul class="nav-list">
           <!-- Trình ký số (Nhóm 5) -->
           <li class="nav-item">
-            <a href="{% url 'signatures:workflow_list' %}" class="nav-link {% if active_menu == 'signatures' %}active{% endif %}">
+            <a href="{% url 'signatures:workflow_list' %}" class="nav-link {% if active_menu == 'signatures' %}active{% endif %}" title="5. Quản lý Trình ký số (Nhóm 5)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-signature menu-icon"></i>
                 <span class="nav-title-text">Quản lý Trình ký số</span>
@@ -173,7 +173,7 @@
 
           <!-- Giao việc & Xử lý (Nhóm 6) -->
           <li class="nav-item">
-            <a href="{% url 'tasks:task_list' %}" class="nav-link {% if active_menu == 'tasks' %}active{% endif %}">
+            <a href="{% url 'tasks:task_list' %}" class="nav-link {% if active_menu == 'tasks' %}active{% endif %}" title="6. Quản lý Giao việc (Nhóm 6)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-list-check menu-icon"></i>
                 <span class="nav-title-text">Quản lý Giao việc</span>
@@ -187,7 +187,7 @@
         <ul class="nav-list">
           <!-- Tiện ích: Phòng họp & Sinh nhật (Nhóm 7) -->
           <li class="nav-item has-sub {% if active_group == 'utilities' %}open{% endif %}">
-            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'utilities' %}active{% endif %}">
+            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'utilities' %}active{% endif %}" title="7. Tiện ích Phòng họp &amp; Sinh nhật (Nhóm 7)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-calendar-days menu-icon"></i>
                 <span class="nav-title-text">Tiện ích Nội bộ</span>
@@ -212,7 +212,7 @@
 
           <!-- Quản trị hệ thống (Nhóm 7) -->
           <li class="nav-item has-sub {% if active_group == 'admin_system' %}open{% endif %}">
-            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'admin_system' %}active{% endif %}">
+            <a href="#" class="nav-link has-sub-trigger {% if active_group == 'admin_system' %}active{% endif %}" title="7. Quản trị Hệ thống (Nhóm 7)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-sliders menu-icon"></i>
                 <span class="nav-title-text">Quản trị Hệ thống</span>
@@ -249,7 +249,7 @@
 
           <!-- Chatbot AI (Nhóm 8) -->
           <li class="nav-item">
-            <a href="{% url 'ai_assistant:chat' %}" class="nav-link {% if active_menu == 'chatbot' %}active{% endif %}">
+            <a href="{% url 'ai_assistant:chat' %}" class="nav-link {% if active_menu == 'chatbot' %}active{% endif %}" title="8. Trợ lý AI Tra cứu (Nhóm 8)">
               <div class="nav-link-content">
                 <i class="fa-solid fa-robot menu-icon" style="color: #6366f1;"></i>
                 <span class="nav-title-text" style="font-weight: 600;">Trợ lý AI Tra cứu</span>
@@ -415,7 +415,8 @@
 
           <!-- Bộ Chọn Phong Cách Giao Diện (Style & Theme Selector) -->
           <div class="stream-dropdown">
-            <button type="button" class="btn-theme-toggle" id="globalThemeToggleBtn" data-dropdown-target="dropdownThemeSelector" title="Tùy chọn phong cách giao diện">
+            <button type="button" class="btn-theme-toggle" id="globalThemeToggleBtn" data-dropdown-target="dropdownThemeSelector" title="Tùy chọn phong cách giao diện" aria-label="Tùy chọn phong cách giao diện">
+              <span style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Tùy chọn phong cách giao diện</span>
               <i class="fa-solid fa-shapes"></i>
             </button>
 
