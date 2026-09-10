@@ -80,7 +80,7 @@ export default function AppSidebar({
         style={{
           scrollbarWidth: isCollapsed ? 'none' : 'thin',
           msOverflowStyle: isCollapsed ? 'none' : 'auto',
-          padding: isCollapsed ? '4px 4px' : undefined,
+          padding: isCollapsed ? 0 : undefined,
         }}
       >
         {NAV_GROUPS.map((group, gIdx) => (
@@ -106,9 +106,11 @@ export default function AppSidebar({
                     ref={isActive ? activeItemRef : null}
                     className="nav-item" 
                     style={{ 
-                      marginBottom: isCollapsed ? '5px' : '4px',
+                      marginBottom: isCollapsed ? 0 : '4px',
                       display: isCollapsed ? 'flex' : 'block',
                       justifyContent: 'center',
+                      alignItems: isCollapsed ? 'center' : undefined,
+                      height: isCollapsed ? 'calc((100vh - 126px) / 6)' : 'auto',
                     }}
                   >
                     <button
@@ -156,6 +158,7 @@ export default function AppSidebar({
         borderTop: '1px solid var(--liquid-glass-border-bottom)',
         background: 'var(--inset-well-bg)',
         flexShrink: 0,
+        marginTop: 'auto',
       }}>
         {!isCollapsed ? (
           <div className="system-pill-info" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

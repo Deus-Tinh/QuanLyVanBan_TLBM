@@ -2608,17 +2608,21 @@ body.sidebar-collapsed .sidebar-footer {
   display: none !important;
 }
 
-/* Khung nhìn vừa đúng 6 icon to rõ (40px) mỗi lần, cuộn chuột mượt mà */
+/* Khung nhìn vừa đúng 6 icon to rõ (40px) mỗi lần, dàn đều 100% theo chiều cao Sidebar */
 .app-sidebar.collapsed .sidebar-content,
 body.sidebar-collapsed .sidebar-content {
-  height: 275px !important;
-  max-height: 275px !important;
+  flex: 1 1 auto !important;
+  height: calc(100vh - 126px) !important;
+  max-height: calc(100vh - 126px) !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
-  padding: 4px 4px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
   scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
 }
 
 .app-sidebar.collapsed .sidebar-content::-webkit-scrollbar,
@@ -2636,21 +2640,24 @@ body.sidebar-collapsed .sidebar-content::-webkit-scrollbar-button {
 }
 
 .app-sidebar.collapsed .nav-group-wrapper,
-body.sidebar-collapsed .nav-group-wrapper {
-  margin-bottom: 0 !important;
-}
-
 .app-sidebar.collapsed .nav-list,
+body.sidebar-collapsed .nav-group-wrapper,
 body.sidebar-collapsed .nav-list {
-  margin: 0 !important;
-  padding: 0 !important;
+  display: contents !important;
 }
 
 .app-sidebar.collapsed .nav-item,
 body.sidebar-collapsed .nav-item {
   display: flex !important;
   justify-content: center !important;
-  margin-bottom: 5px !important;
+  align-items: center !important;
+  height: calc((100vh - 126px) / 6) !important;
+  min-height: calc((100vh - 126px) / 6) !important;
+  max-height: calc((100vh - 126px) / 6) !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  scroll-snap-align: start;
 }
 
 /* Icon thu gọn: Nút tròn 3D hoàn mỹ, 40px to rõ, căn giữa, không bị chém viền */
@@ -2660,7 +2667,7 @@ body.sidebar-collapsed .nav-link {
   height: 40px !important;
   min-height: 40px !important;
   padding: 0 !important;
-  margin: 0 auto 5px auto !important;
+  margin: 0 auto !important;
   border-radius: 50% !important;
   justify-content: center !important;
   align-items: center !important;
@@ -2741,6 +2748,7 @@ body.sidebar-collapsed .nav-link::after {
 body.sidebar-collapsed .sidebar-bottom-status {
   padding: 12px 0 !important;
   flex-shrink: 0 !important;
+  margin-top: auto !important;
 }
 
 /* Hiệu ứng nổi Skeuomorphism khi ở chế độ collapsed */
