@@ -15,23 +15,112 @@ export const CURRENT_USER: UserProfile = {
 };
 
 export const THEME_OPTIONS: ThemeOption[] = [
+  // 1. Nhóm Kinh Điển (Classic & Modern)
   {
     id: 'dark',
     name: 'Sleek Dark',
     icon: 'fa-moon',
-    description: 'Nền tối chống mỏi mắt, tương phản cao',
+    category: 'classic',
+    categoryLabel: 'Kinh Điển',
+    description: 'Nền tối chống mỏi mắt, công nghệ hiện đại',
+    previewGradient: 'linear-gradient(135deg, #0b0f17 0%, #1e293b 100%)',
+    borderPreview: 'rgba(255, 255, 255, 0.1)',
   },
   {
     id: 'light',
     name: 'Clean Light',
     icon: 'fa-sun',
-    description: 'Giao diện văn phòng sáng sủa, thanh lịch',
+    category: 'classic',
+    categoryLabel: 'Kinh Điển',
+    description: 'Văn phòng trang nhã, sáng sủa, thanh lịch',
+    previewGradient: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+    borderPreview: '#cbd5e1',
   },
+  {
+    id: 'minimalism',
+    name: 'Minimalism',
+    icon: 'fa-circle-half-stroke',
+    category: 'classic',
+    categoryLabel: 'Kinh Điển',
+    description: 'Tối giản Thụy Sĩ, phẳng tuyệt đối, tập trung',
+    previewGradient: 'linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%)',
+    borderPreview: '#18181b',
+  },
+
+  // 2. Nhóm Kính & Khúc Xạ (Glass & Refraction)
   {
     id: 'glass',
     name: 'Glassmorphism',
     icon: 'fa-wand-magic-sparkles',
-    description: 'Kính mờ bóng bẩy, phong cách hiện đại',
+    category: 'glass',
+    categoryLabel: 'Kính & Khúc Xạ',
+    description: 'Kính mờ bóng bẩy, viền sáng, chiều sâu',
+    previewGradient: 'linear-gradient(135deg, #1e1b4b 0%, #0369a1 100%)',
+    borderPreview: 'rgba(255, 255, 255, 0.4)',
+  },
+  {
+    id: 'liquid-glass',
+    name: 'Liquid Glass',
+    icon: 'fa-droplet',
+    category: 'glass',
+    categoryLabel: 'Kính & Khúc Xạ',
+    description: 'Thủy tinh lỏng khúc xạ, phản chiếu bóng bẩy',
+    previewGradient: 'linear-gradient(135deg, #831843 0%, #09090b 100%)',
+    borderPreview: '#f43f5e',
+  },
+
+  // 3. Nhóm 3D & Xúc Giác Nổi Khối (Tactile & 3D Morphism)
+  {
+    id: 'neomorphism',
+    name: 'Neomorphism',
+    icon: 'fa-cubes',
+    category: 'tactile',
+    categoryLabel: '3D & Xúc Giác',
+    description: 'Bóng kép dập nổi xúc giác, mềm mại nguyên khối',
+    previewGradient: 'linear-gradient(135deg, #e0e5ec 0%, #d1d9e6 100%)',
+    borderPreview: '#ffffff',
+  },
+  {
+    id: 'claymorphism',
+    name: 'Claymorphism',
+    icon: 'fa-shapes',
+    category: 'tactile',
+    categoryLabel: '3D & Xúc Giác',
+    description: 'Đất sét 3D bo phồng, bóng trong nổi khối mượt mà',
+    previewGradient: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)',
+    borderPreview: '#3b82f6',
+  },
+  {
+    id: 'skeuomorphism',
+    name: 'Skeuomorphism',
+    icon: 'fa-sliders',
+    category: 'tactile',
+    categoryLabel: '3D & Xúc Giác',
+    description: 'Gờ kim loại cơ học, bóng dập viền vát chân thực',
+    previewGradient: 'linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%)',
+    borderPreview: '#94a3b8',
+  },
+
+  // 4. Nhóm Nghệ Thuật & Đột Phá (Expressive & Bold)
+  {
+    id: 'brutalism',
+    name: 'Brutalism',
+    icon: 'fa-cube',
+    category: 'expressive',
+    categoryLabel: 'Đồ Họa Ấn Tượng',
+    description: 'Viền đen dày 2px, bóng khối cứng, màu sắc rực rỡ',
+    previewGradient: 'linear-gradient(135deg, #fef08a 0%, #f97316 100%)',
+    borderPreview: '#000000',
+  },
+  {
+    id: 'maximalism',
+    name: 'Maximalism',
+    icon: 'fa-bolt',
+    category: 'expressive',
+    categoryLabel: 'Đồ Họa Ấn Tượng',
+    description: 'Đậm chất nghệ thuật, tem nhãn neon xếp lớp',
+    previewGradient: 'linear-gradient(135deg, #09090b 0%, #a3e635 100%)',
+    borderPreview: '#a3e635',
   },
 ];
 
