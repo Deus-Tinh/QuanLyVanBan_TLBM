@@ -35,8 +35,8 @@ export default function LanguageSwitcher() {
           cursor: 'pointer',
         }}
       >
-        <span style={{ fontSize: '1rem', lineHeight: 1 }}>{currentLangObj.flag}</span>
-        <span className="lang-name-label desktop-only">{currentLangObj.code.toUpperCase()}</span>
+        <i className="fa-solid fa-globe" style={{ fontSize: '0.88rem', color: 'var(--color-primary, #2563eb)' }} />
+        <span className="lang-name-label desktop-only" style={{ fontWeight: 700 }}>{currentLangObj.code.toUpperCase()}</span>
         <i className="fa-solid fa-chevron-down desktop-only" style={{ fontSize: '0.65rem', opacity: 0.7 }} />
       </button>
 
@@ -85,7 +85,7 @@ export default function LanguageSwitcher() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '10px 12px',
+                    padding: '8px 12px',
                     borderRadius: '10px',
                     border: 'none',
                     background: isSelected ? 'var(--liquid-glass-bg)' : 'transparent',
@@ -99,7 +99,22 @@ export default function LanguageSwitcher() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '1.2rem' }}>{l.flag}</span>
+                    <span style={{
+                      width: '26px',
+                      height: '26px',
+                      borderRadius: '50%',
+                      background: isSelected ? 'var(--blue-pill-bg)' : 'var(--inset-well-bg)',
+                      color: isSelected ? '#ffffff' : 'var(--color-primary, #2563eb)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      boxShadow: 'var(--inset-well-shadow)',
+                      flexShrink: 0,
+                    }}>
+                      {l.code.toUpperCase()}
+                    </span>
                     <span>{l.label}</span>
                   </div>
                   {isSelected && (

@@ -54,7 +54,7 @@ export const translations = {
     header: {
       breadcrumbHome: 'Trang chủ',
       breadcrumbOverview: 'Tổng quan',
-      breadcrumbUtilities: 'Tiện ích & Phúc lợi',
+      breadcrumbUtilities: 'Tiện ích',
       breadcrumbBirthday: 'Sinh nhật CBNV',
       breadcrumbDashboard: 'Bàn làm việc',
       pageTitleBirthday: 'QUẢN LÝ SINH NHẬT CBNV',
@@ -170,7 +170,7 @@ export const translations = {
     header: {
       breadcrumbHome: 'Home',
       breadcrumbOverview: 'Overview',
-      breadcrumbUtilities: 'Utilities & Welfare',
+      breadcrumbUtilities: 'Utilities',
       breadcrumbBirthday: 'Staff Birthdays',
       breadcrumbDashboard: 'Workspace',
       pageTitleBirthday: 'STAFF BIRTHDAYS',

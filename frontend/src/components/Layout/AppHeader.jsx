@@ -73,7 +73,7 @@ export default function AppHeader({
       {/* Right Side: Clock, Streams, Language, Theme, User */}
       <div className="header-right-side">
         {/* Realtime Clock */}
-        <div className="header-live-clock desktop-only" title={t('header.liveClockTitle')} style={{
+        <div className="header-live-clock desktop-only" title={`${timePart} • ${datePart} - ${t('header.liveClockTitle')}`} style={{
           display: 'flex',
           alignItems: 'center',
           gap: '5px',

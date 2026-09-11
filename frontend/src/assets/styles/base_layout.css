@@ -857,16 +857,20 @@ button.nav-link {
 .header-right-side {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   flex: 0 0 auto;
   justify-content: flex-end;
   position: relative;
   z-index: 2;
 }
 
-@media (max-width: 1260px) {
+.clock-date-part {
+  display: none !important;
+}
+
+@media (min-width: 1600px) {
   .clock-date-part {
-    display: none !important;
+    display: inline !important;
   }
 }
 
