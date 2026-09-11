@@ -29,6 +29,10 @@ export default function AppHeader({
     ? t('header.pageTitleDashboard')
     : t('header.pageTitleBirthday');
 
+  const breadcrumbParent = activePage === 'dashboard'
+    ? t('header.breadcrumbOverview')
+    : t('header.breadcrumbUtilities');
+
   const breadcrumbCurrent = activePage === 'dashboard'
     ? t('header.breadcrumbDashboard')
     : t('header.breadcrumbBirthday');
@@ -57,7 +61,7 @@ export default function AppHeader({
             <i className="fa-solid fa-house" />
             <span>{t('header.breadcrumbHome')}</span>
             <i className="fa-solid fa-chevron-right separator" style={{ fontSize: '0.62rem', opacity: 0.5 }} />
-            <span>{t('header.breadcrumbUtilities')}</span>
+            <span>{breadcrumbParent}</span>
             <i className="fa-solid fa-chevron-right separator" style={{ fontSize: '0.62rem', opacity: 0.5 }} />
             <span className="current" style={{ color: 'var(--color-primary, #2563eb)', fontWeight: 700 }}>
               {breadcrumbCurrent}

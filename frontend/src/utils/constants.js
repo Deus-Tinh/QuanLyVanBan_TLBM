@@ -60,7 +60,7 @@ export const NAV_GROUPS = [
   {
     title: 'Tiện ích & Phúc lợi CBNV',
     items: [
-      { id: 'sinh-nhat', label: 'Sinh nhật CBNV (Mục 7.2)', icon: 'fa-cake-candles', active: true, badge: 'Mới', badgeType: 'warning' },
+      { id: 'sinh-nhat', label: 'Sinh nhật CBNV', icon: 'fa-cake-candles', active: true, badge: 'Mới', badgeType: 'warning' },
       { id: 'lich-tuan', label: 'Lịch công tác tuần', icon: 'fa-calendar-week' },
       { id: 'dat-xe-hop', label: 'Đăng ký phòng họp & xe', icon: 'fa-handshake' },
     ],

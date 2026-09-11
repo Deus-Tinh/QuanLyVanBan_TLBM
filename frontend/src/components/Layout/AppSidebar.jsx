@@ -86,19 +86,19 @@ export default function AppSidebar({
         style={{
           scrollbarWidth: isCollapsed ? 'none' : 'thin',
           msOverflowStyle: isCollapsed ? 'none' : 'auto',
-          padding: isCollapsed ? 0 : undefined,
+          padding: isCollapsed ? 0 : '4px 6px',
         }}
       >
         {NAV_GROUPS.map((group, gIdx) => (
           <div 
             key={gIdx} 
             className="nav-group-wrapper" 
-            style={{ marginBottom: isCollapsed ? '0px' : '10px' }}
+            style={{ marginBottom: isCollapsed ? '0px' : '2px' }}
           >
             {!isCollapsed && (
               <div className="nav-section-title">{group.title}</div>
             )}
-            <ul className="nav-list" style={{ listStyle: 'none', padding: 0, margin: isCollapsed ? '0' : '4px 0' }}>
+            <ul className="nav-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {group.items.map((item) => {
                 const isActive = (item.id === 'sinh-nhat' && activePage === 'birthday') ||
                                  (item.id === 'dashboard' && activePage === 'dashboard');
@@ -112,7 +112,7 @@ export default function AppSidebar({
                     ref={isActive ? activeItemRef : null}
                     className="nav-item" 
                     style={{ 
-                      marginBottom: isCollapsed ? 0 : '4px',
+                      marginBottom: isCollapsed ? 0 : '2px',
                       display: isCollapsed ? 'flex' : 'block',
                       justifyContent: 'center',
                       alignItems: isCollapsed ? 'center' : undefined,
@@ -160,7 +160,7 @@ export default function AppSidebar({
 
       {/* Sidebar Footer System Status */}
       <div className="sidebar-bottom-status" style={{
-        padding: isCollapsed ? '12px 0' : '12px 16px',
+        padding: isCollapsed ? '10px 0' : '8px 14px',
         borderTop: '1px solid var(--liquid-glass-border-bottom)',
         background: 'var(--inset-well-bg)',
         flexShrink: 0,

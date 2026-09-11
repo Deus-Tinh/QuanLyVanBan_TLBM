@@ -36,7 +36,7 @@ export const translations = {
       workspace: 'BÀN LÀM VIỆC CHÍNH',
       dashboard: 'Bàn làm việc (Tổng quan)',
       utilities: 'TIỆN ÍCH & NÂNG CAO',
-      birthdays: '7.2 Sinh nhật CBNV',
+      birthdays: 'Sinh nhật CBNV',
       documents: 'QUẢN LÝ VĂN BẢN',
       incomingDocs: 'Văn bản đến',
       outgoingDocs: 'Văn bản đi',
@@ -53,6 +53,7 @@ export const translations = {
     // 3. Tiêu đề và Thanh điều khiển đỉnh (Header)
     header: {
       breadcrumbHome: 'Trang chủ',
+      breadcrumbOverview: 'Tổng quan',
       breadcrumbUtilities: 'Tiện ích & Phúc lợi',
       breadcrumbBirthday: 'Sinh nhật CBNV',
       breadcrumbDashboard: 'Bàn làm việc',
@@ -151,7 +152,7 @@ export const translations = {
       workspace: 'MAIN WORKSPACE',
       dashboard: 'Dashboard (Overview)',
       utilities: 'UTILITIES & WELFARE',
-      birthdays: '7.2 Staff Birthdays',
+      birthdays: 'Staff Birthdays',
       documents: 'DOCUMENT MANAGEMENT',
       incomingDocs: 'Incoming Documents',
       outgoingDocs: 'Outgoing Documents',
@@ -168,6 +169,7 @@ export const translations = {
     // 3. Header
     header: {
       breadcrumbHome: 'Home',
+      breadcrumbOverview: 'Overview',
       breadcrumbUtilities: 'Utilities & Welfare',
       breadcrumbBirthday: 'Staff Birthdays',
       breadcrumbDashboard: 'Workspace',
