@@ -1,29 +1,28 @@
-# === Python / Django ===
-__pycache__/
-*.py[cod]
-*.pyo
-*.egg-info/
-*.egg
-.venv/
-venv/
-env/
-db.sqlite3
-*.sqlite3
-
-# === Node / Frontend ===
+# Node & Frontend
 node_modules/
 dist/
-.vite/
+dist-ssr/
 *.local
+.npm
+.eslintcache
+frontend/node_modules/
+frontend/dist/
 
-# === IDE & OS ===
+# Python & Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+backend/db.sqlite3
+backend/**/__pycache__/
+*.pyc
+
+# Environment & Secrets
+.env
+*.env.local
+
+# Editors & OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-*.swp
-*.swo
-
-# === Architecture Diagram Visual Checks (Temp) ===
-*.visual-check.*
-
