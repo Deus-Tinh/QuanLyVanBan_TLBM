@@ -7,12 +7,36 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Quản lý Bộ Chọn Phong Cách Giao Diện (Theme & Style Selector: Skeuomorphism, Dark, Light)
+  // 1. Quản lý Bộ Chọn Phong Cách Giao Diện (Theme & Style Selector: Skeuomorphism, Dark, Light, Liquid Glass)
   const themeToggleBtn = document.getElementById('globalThemeToggleBtn');
   const themeOptionCards = document.querySelectorAll('.theme-option-card');
   const savedTheme = localStorage.getItem('itc_doc_theme') || 'skeuomorphism';
 
+  const THEME_CONFIG = {
+    skeuomorphism: {
+      icon: '<i class="fa-solid fa-cube" style="color: #f59e0b;"></i>',
+      label: 'Skeuo 3D',
+      title: 'Đang chọn: Điêu khắc 3D (Skeuomorphism)'
+    },
+    dark: {
+      icon: '<i class="fa-solid fa-moon" style="color: #60a5fa;"></i>',
+      label: 'Dark Mesh',
+      title: 'Đang chọn: Xám Đen Hình Học (Dark Mesh)'
+    },
+    light: {
+      icon: '<i class="fa-solid fa-sun" style="color: #f59e0b;"></i>',
+      label: 'Exec Light',
+      title: 'Đang chọn: Kính Mờ Công Sở (Executive Light)'
+    },
+    'liquid-glass': {
+      icon: '<i class="fa-solid fa-droplet" style="color: #2563eb;"></i>',
+      label: 'Liquid Glass',
+      title: 'Đang chọn: Kính Lỏng Khúc Xạ (Liquid Glass)'
+    }
+  };
+
   function applyTheme(theme) {
+    if (!THEME_CONFIG[theme]) theme = 'skeuomorphism';
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('itc_doc_theme', theme);
     
@@ -25,19 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Cập nhật biểu tượng trên nút bấm Header tương ứng với phong cách
-    if (themeToggleBtn) {
-      if (theme === 'skeuomorphism') {
-        themeToggleBtn.innerHTML = `<i class="fa-solid fa-shapes" style="color: #6366f1;"></i>`;
-        themeToggleBtn.setAttribute('title', 'Đang chọn: Điêu khắc 3D (Skeuomorphism)');
-      } else if (theme === 'dark') {
-        themeToggleBtn.innerHTML = `<i class="fa-solid fa-moon" style="color: #60a5fa;"></i>`;
-        themeToggleBtn.setAttribute('title', 'Đang chọn: Xám Đen Hình Học (Dark Mesh)');
-      } else {
-        themeToggleBtn.innerHTML = `<i class="fa-solid fa-sun" style="color: #f59e0b;"></i>`;
-        themeToggleBtn.setAttribute('title', 'Đang chọn: Kính Mờ Công Sở (Executive Light)');
-      }
-    }
+    // Cập nhật biểu tượng và tên trên nút bấm Header
+    const cfg = THEME_CONFIG[theme];
+    const iconEl = document.getElementById('themeToggleIcon');
+    const labelEl = document.getElementById('themeToggleLabel');
+    if (iconEl) iconEl.innerHTML = cfg.icon;
+    if (labelEl) labelEl.textContent = cfg.label;
+    if (themeToggleBtn) themeToggleBtn.setAttribute('title', cfg.title);
   }
 
   // Lắng nghe sự kiện click trên từng tùy chọn phong cách
@@ -47,12 +65,75 @@ document.addEventListener('DOMContentLoaded', () => {
       const selected = card.getAttribute('data-theme-value');
       if (selected) {
         applyTheme(selected);
+        const parentMenu = card.closest('.dropdown-menu-pane');
+        if (parentMenu) parentMenu.classList.remove('show');
+        if (themeToggleBtn) themeToggleBtn.classList.remove('active');
       }
     });
   });
 
   // Áp dụng phong cách ban đầu
   applyTheme(savedTheme);
+
+  // 1b. Realtime Live Clock (Đồng hồ chuẩn thời gian thực)
+  const liveClockDigits = document.getElementById('liveClockDigits');
+  const headerLiveClock = document.getElementById('headerLiveClock');
+
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const y = now.getFullYear();
+
+    if (liveClockDigits) {
+      liveClockDigits.textContent = `${h}:${m}:${s}`;
+    }
+    if (headerLiveClock) {
+      headerLiveClock.setAttribute('title', `${h}:${m}:${s} • ${d}/${mo}/${y} - Thời gian hệ thống chuẩn`);
+    }
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // 1c. Quản lý Bộ Chọn Ngôn Ngữ (Language Switcher: VI / EN)
+  const currentLangLabel = document.getElementById('currentLangLabel');
+  const langOptionBtns = document.querySelectorAll('.lang-option-btn');
+  const checkVi = document.querySelector('.check-lang-vi');
+  const checkEn = document.querySelector('.check-lang-en');
+  const savedLang = localStorage.getItem('itc_doc_lang') || 'vi';
+
+  function applyLanguage(lang) {
+    localStorage.setItem('itc_doc_lang', lang);
+    document.documentElement.setAttribute('lang', lang);
+    if (currentLangLabel) {
+      currentLangLabel.textContent = lang.toUpperCase();
+    }
+    langOptionBtns.forEach(btn => {
+      const isThisLang = btn.getAttribute('data-lang') === lang;
+      btn.classList.toggle('active', isThisLang);
+    });
+    if (checkVi) checkVi.style.display = lang === 'vi' ? 'inline-block' : 'none';
+    if (checkEn) checkEn.style.display = lang === 'en' ? 'inline-block' : 'none';
+  }
+
+  langOptionBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const lang = btn.getAttribute('data-lang');
+      if (lang) {
+        applyLanguage(lang);
+        const parentMenu = btn.closest('.dropdown-menu-pane');
+        if (parentMenu) parentMenu.classList.remove('show');
+        const trigger = document.getElementById('globalLangToggleBtn');
+        if (trigger) trigger.classList.remove('active');
+      }
+    });
+  });
+
+  applyLanguage(savedLang);
 
   // 2. Thu gọn / Mở rộng Sidebar qua Icon Thư mục (Laptop/iPad/Desktop)
   const sidebarFolderToggleBtn = document.getElementById('sidebarFolderToggleBtn');

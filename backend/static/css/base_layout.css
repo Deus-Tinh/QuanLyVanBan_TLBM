@@ -914,6 +914,20 @@ button.nav-link {
 }
 
 .header-live-clock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--inset-well-bg);
+  box-shadow: var(--inset-well-shadow);
+  border: 1px solid var(--liquid-glass-border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -928,6 +942,36 @@ button.nav-link {
 
 .clock-date-part {
   display: none !important;
+}
+
+/* Nút chuyển đổi ngôn ngữ (Language Switcher: VI / EN) */
+.language-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--inset-well-bg);
+  box-shadow: var(--inset-well-shadow);
+  border: 1px solid var(--liquid-glass-border);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+.language-toggle-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(37, 99, 235, 0.4) !important;
+  box-shadow: var(--liquid-glass-hover-shadow) !important;
+}
+
+.language-toggle-btn:active {
+  transform: scale(0.96);
 }
 
 @media (min-width: 1600px) {
@@ -1395,33 +1439,35 @@ button.nav-link {
   transition: color 0.15s ease;
 }
 
-/* Nút Chuyển Đổi Dark/Light Mode (3D Pill Shape) */
+/* Nút Chọn Phong Cách Giao Diện (Tactile Theme Button: Icon + Tên + Mũi tên) */
 .btn-theme-toggle {
   background: var(--inset-well-bg);
   box-shadow: var(--inset-well-shadow);
   border: 1px solid var(--liquid-glass-border);
   color: var(--text-main);
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   position: relative;
-  overflow: hidden;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.35s ease, color 0.25s ease, box-shadow 0.35s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease, border-color 0.2s ease, box-shadow 0.25s ease;
   will-change: transform;
 }
 .btn-theme-toggle:hover {
-  transform: scale(1.06) rotate(15deg);
+  transform: translateY(-1px);
   border-color: rgba(37, 99, 235, 0.4) !important;
   box-shadow: var(--liquid-glass-hover-shadow) !important;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .btn-theme-toggle:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
 /* User Profile Trigger (3D Liquid Pill) */

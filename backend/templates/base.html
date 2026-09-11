@@ -302,6 +302,12 @@
         <!-- Right Side: 3 Notification Streams + Theme Toggle + User Profile -->
         <div class="header-right-side">
 
+          <!-- Realtime Live Clock (Chuẩn giờ hệ thống, không co giãn nhúc nhích) -->
+          <div class="header-live-clock desktop-only" id="headerLiveClock" title="Thời gian hệ thống chuẩn">
+            <i class="fa-regular fa-clock" style="color: #2563eb;"></i>
+            <span class="clock-digits" id="liveClockDigits">--:--:--</span>
+          </div>
+
           <!-- KHU VỰC THÔNG BÁO RIÊNG BIỆT CHO 3 LUỒNG (YÊU CẦU BẮT BUỘC) -->
           <div class="notification-streams-deck">
 
@@ -416,11 +422,43 @@
 
           </div>
 
+          <!-- Bộ Chọn Ngôn Ngữ (Language Switcher: VI / EN) -->
+          <div class="stream-dropdown">
+            <button type="button" class="language-toggle-btn" id="globalLangToggleBtn" data-dropdown-target="dropdownLangSelector" title="Chọn ngôn ngữ hệ thống">
+              <i class="fa-solid fa-globe" style="font-size: 0.88rem; color: #2563eb;"></i>
+              <span class="lang-name-label desktop-only" id="currentLangLabel" style="font-weight: 700;">VI</span>
+              <i class="fa-solid fa-chevron-down desktop-only" style="font-size: 0.65rem; opacity: 0.7;"></i>
+            </button>
+
+            <div class="dropdown-menu-pane" id="dropdownLangSelector" style="width: 190px; padding: 8px;">
+              <div class="dropdown-pane-header" style="padding: 6px 10px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">
+                Ngôn ngữ / Language
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px; padding: 4px;">
+                <button type="button" class="lang-option-btn active" data-lang="vi" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; border: none; background: transparent; color: var(--text-main); font-size: 0.82rem; font-weight: 600; cursor: pointer; width: 100%; text-align: left;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="width: 24px; height: 24px; border-radius: 50%; background: var(--blue-pill-bg); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 800;">VI</span>
+                    <span>Tiếng Việt</span>
+                  </div>
+                  <i class="fa-solid fa-check check-lang-vi" style="color: #2563eb;"></i>
+                </button>
+                <button type="button" class="lang-option-btn" data-lang="en" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; border: none; background: transparent; color: var(--text-main); font-size: 0.82rem; font-weight: 600; cursor: pointer; width: 100%; text-align: left;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="width: 24px; height: 24px; border-radius: 50%; background: var(--inset-well-bg); color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 800;">EN</span>
+                    <span>English</span>
+                  </div>
+                  <i class="fa-solid fa-check check-lang-en" style="color: #2563eb; display: none;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Bộ Chọn Phong Cách Giao Diện (Style & Theme Selector) -->
           <div class="stream-dropdown">
             <button type="button" class="btn-theme-toggle" id="globalThemeToggleBtn" data-dropdown-target="dropdownThemeSelector" title="Tùy chọn phong cách giao diện" aria-label="Tùy chọn phong cách giao diện">
-              <span style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Tùy chọn phong cách giao diện</span>
-              <i class="fa-solid fa-shapes"></i>
+              <span id="themeToggleIcon"><i class="fa-solid fa-cube" style="color: #f59e0b;"></i></span>
+              <span class="desktop-only" id="themeToggleLabel" style="font-weight: 700; font-size: 0.78rem;">Skeuo 3D</span>
+              <i class="fa-solid fa-chevron-down desktop-only" style="font-size: 0.65rem; opacity: 0.7;"></i>
             </button>
 
             <!-- Dropdown Menu Bộ Chọn Phong Cách -->
@@ -430,17 +468,17 @@
                 <span style="font-size: 0.72rem; color: var(--text-muted);">Tự chọn phong cách</span>
               </div>
               <div class="theme-options-grid">
-                <!-- Option 1: Skeuomorphism (Ảnh mẫu Skeuomorphism.png) -->
+                <!-- Option 1: Skeuomorphism -->
                 <button type="button" class="theme-option-card" data-theme-value="skeuomorphism">
                   <span class="theme-preview-chip skeuomorph-preview">
-                    <span class="preview-inner-knob"><i class="fa-solid fa-music"></i></span>
+                    <span class="preview-inner-knob"><i class="fa-solid fa-cube"></i></span>
                   </span>
                   <span class="theme-option-info">
                     <span class="theme-option-title">
                       <span>Điêu khắc 3D</span>
                       <span class="theme-badge-sub">Skeuomorphism</span>
                     </span>
-                    <span class="theme-option-desc">Bề mặt đúc nổi 3D, bóng kép sáng/tối, phím cơ học</span>
+                    <span class="theme-option-desc">Bề mặt đúc nổi 3D, bóng kép sáng/tối</span>
                   </span>
                   <i class="fa-solid fa-circle-check theme-check-icon"></i>
                 </button>
@@ -470,7 +508,22 @@
                       <span>Kính Mờ Công Sở</span>
                       <span class="theme-badge-sub">Executive Light</span>
                     </span>
-                    <span class="theme-option-desc">Nền ngọc trai dịu mắt, khúc xạ ánh sáng 3D</span>
+                    <span class="theme-option-desc">Nền ngọc trai dịu mắt, chống mỏi mắt</span>
+                  </span>
+                  <i class="fa-solid fa-circle-check theme-check-icon"></i>
+                </button>
+
+                <!-- Option 4: Liquid Glass -->
+                <button type="button" class="theme-option-card" data-theme-value="liquid-glass">
+                  <span class="theme-preview-chip" style="background: linear-gradient(135deg, rgba(255,255,255,0.8), rgba(219,234,254,0.6)); border: 1px solid rgba(255,255,255,0.9); box-shadow: 0 4px 10px rgba(37,99,235,0.15);">
+                    <i class="fa-solid fa-droplet" style="color: #2563eb; font-size: 0.8rem;"></i>
+                  </span>
+                  <span class="theme-option-info">
+                    <span class="theme-option-title">
+                      <span>Kính Lỏng Khúc Xạ</span>
+                      <span class="theme-badge-sub">Liquid Glass</span>
+                    </span>
+                    <span class="theme-option-desc">Đảo nổi đa tầng, khúc xạ ánh sáng mờ</span>
                   </span>
                   <i class="fa-solid fa-circle-check theme-check-icon"></i>
                 </button>
