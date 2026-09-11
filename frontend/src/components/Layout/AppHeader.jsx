@@ -87,9 +87,18 @@ export default function AppHeader({
           color: 'var(--text-main)',
           whiteSpace: 'nowrap',
           flexShrink: 0,
+          fontVariantNumeric: 'tabular-nums',
+          fontFeatureSettings: '"tnum"',
         }}>
           <i className="fa-regular fa-clock" style={{ color: 'var(--color-primary, #2563eb)' }} />
-          <span className="clock-digits" style={{ whiteSpace: 'nowrap' }}>
+          <span className="clock-digits" style={{
+            whiteSpace: 'nowrap',
+            display: 'inline-block',
+            width: '64px',
+            textAlign: 'center',
+            fontVariantNumeric: 'tabular-nums',
+            fontFeatureSettings: '"tnum"',
+          }}>
             <span>{timePart}</span>
             <span className="clock-date-part" style={{ opacity: 0.75, fontWeight: 500 }}> • {datePart}</span>
           </span>

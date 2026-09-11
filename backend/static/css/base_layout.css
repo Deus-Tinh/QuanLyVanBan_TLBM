@@ -913,11 +913,27 @@ button.nav-link {
   z-index: 2;
 }
 
+.header-live-clock {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.clock-digits {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  display: inline-block;
+  width: 64px;
+  text-align: center;
+}
+
 .clock-date-part {
   display: none !important;
 }
 
 @media (min-width: 1600px) {
+  .clock-digits {
+    width: auto;
+  }
   .clock-date-part {
     display: inline !important;
   }
