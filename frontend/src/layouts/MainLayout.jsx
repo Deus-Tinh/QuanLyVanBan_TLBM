@@ -28,6 +28,14 @@ export default function MainLayout({
     }
   }, [isSidebarCollapsed]);
 
+  useEffect(() => {
+    if (isMobileSidebarOpen) {
+      document.body.classList.add('mobile-sidebar-open');
+    } else {
+      document.body.classList.remove('mobile-sidebar-open');
+    }
+  }, [isMobileSidebarOpen]);
+
   return (
     <div className="app-layout">
       {/* Mobile Backdrop Overlay */}

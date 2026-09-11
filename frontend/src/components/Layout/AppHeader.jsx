@@ -36,7 +36,7 @@ export default function AppHeader({
   return (
     <header className="app-header">
       {/* Left Side: Mobile toggle & Breadcrumb Title */}
-      <div className="header-left-side" style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+      <div className="header-left-side">
         <button
           type="button"
           className="btn-mobile-sidebar mobile-only"
@@ -46,11 +46,14 @@ export default function AppHeader({
           <i className="fa-solid fa-bars" />
         </button>
 
-        <div className="page-context-title" style={{ minWidth: 0, overflow: 'hidden' }}>
-          <h1 className="page-main-heading" style={{ fontSize: '0.95rem', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {/* Tiêu đề ngắn gọn thương hiệu trên Mobile */}
+        <span className="heading-short mobile-only">QLVB &amp; TL</span>
+
+        <div className="page-context-title desktop-only">
+          <h1 className="page-main-heading">
             <span className="heading-full">{pageTitle}</span>
           </h1>
-          <div className="header-breadcrumb" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.7rem' }}>
+          <div className="header-breadcrumb">
             <i className="fa-solid fa-house" />
             <span>{t('header.breadcrumbHome')}</span>
             <i className="fa-solid fa-chevron-right separator" style={{ fontSize: '0.62rem', opacity: 0.5 }} />
@@ -64,7 +67,7 @@ export default function AppHeader({
       </div>
 
       {/* Right Side: Clock, Streams, Language, Theme, User */}
-      <div className="header-right-side" style={{ gap: '5px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+      <div className="header-right-side">
         {/* Realtime Clock */}
         <div className="header-live-clock desktop-only" title={t('header.liveClockTitle')} style={{
           display: 'flex',

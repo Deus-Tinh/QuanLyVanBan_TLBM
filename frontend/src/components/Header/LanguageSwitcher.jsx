@@ -37,7 +37,7 @@ export default function LanguageSwitcher() {
       >
         <span style={{ fontSize: '1rem', lineHeight: 1 }}>{currentLangObj.flag}</span>
         <span className="lang-name-label desktop-only">{currentLangObj.code.toUpperCase()}</span>
-        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', opacity: 0.7 }} />
+        <i className="fa-solid fa-chevron-down desktop-only" style={{ fontSize: '0.65rem', opacity: 0.7 }} />
       </button>
 
       {isOpen && (

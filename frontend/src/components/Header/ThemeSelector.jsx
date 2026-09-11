@@ -37,8 +37,8 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }) {
         }}
       >
         <i className={`fa-solid ${currentThemeObj.icon}`} style={{ color: '#f59e0b' }} />
-        <span className="theme-name-label">{themeShortNames[currentThemeObj.id] || currentThemeObj.name}</span>
-        <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.65rem', opacity: 0.7 }} />
+        <span className="theme-name-label desktop-only">{themeShortNames[currentThemeObj.id] || currentThemeObj.name}</span>
+        <i className="fa-solid fa-chevron-down desktop-only" style={{ fontSize: '0.65rem', opacity: 0.7 }} />
       </button>
 
       {isOpen && (
