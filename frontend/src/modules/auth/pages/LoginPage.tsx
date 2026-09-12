@@ -712,32 +712,132 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           border-color: #d1d5db;
         }
 
-        /* RESPONSIVE */
+        /* RESPONSIVE DESIGN TOÀN DIỆN */
+        
+        /* 1. Màn hình Tablet & Laptop nhỏ (769px - 1024px) */
+        @media (max-width: 1024px) {
+          .interactive-card-container {
+            max-width: 860px;
+            min-height: 520px;
+          }
+          .character-stage-panel {
+            padding: 30px 24px 0 24px;
+          }
+          .character-cluster {
+            transform: scale(0.88);
+            transform-origin: bottom left;
+            left: 18px;
+          }
+          .login-form-panel {
+            padding: 36px 30px;
+          }
+        }
+
+        /* 2. Màn hình Tablet dọc & Mobile lớn (481px - 768px) */
         @media (max-width: 768px) {
+          .interactive-login-page {
+            padding: 16px 12px;
+            align-items: flex-start;
+          }
           .interactive-card-container {
             flex-direction: column;
             border-radius: 28px;
+            max-width: 520px;
+            margin: 44px auto 20px auto;
           }
           .character-stage-panel {
-            min-height: 220px;
-            padding: 24px 20px 0 20px;
+            min-height: 200px;
+            padding: 20px 20px 0 20px;
           }
           .character-cluster {
             left: 50%;
-            transform: translateX(-50%) scale(0.85);
+            transform: translateX(-50%) scale(0.78);
             transform-origin: bottom center;
           }
           .login-form-panel {
-            padding: 30px 22px;
+            padding: 28px 24px;
+          }
+          .back-btn-dashboard {
+            top: 10px !important;
+            left: 12px !important;
+            padding: 6px 14px !important;
+            font-size: 0.76rem !important;
           }
         }
+
+        /* 3. Màn hình Điện thoại di động chuẩn (<= 480px) */
+        @media (max-width: 480px) {
+          .interactive-login-page {
+            padding: 10px 8px;
+          }
+          .interactive-card-container {
+            border-radius: 24px;
+            margin-top: 48px;
+          }
+          .character-stage-panel {
+            min-height: 175px;
+            padding: 16px 14px 0 14px;
+          }
+          .character-hint {
+            display: none !important;
+          }
+          .character-cluster {
+            left: 50%;
+            transform: translateX(-50%) scale(0.68);
+            transform-origin: bottom center;
+          }
+          .login-form-panel {
+            padding: 22px 16px;
+          }
+          .form-star-icon {
+            font-size: 1.3rem;
+            margin-bottom: 4px;
+          }
+          .login-form-panel h2 {
+            font-size: 1.4rem !important;
+          }
+          .login-form-panel p {
+            font-size: 0.78rem !important;
+            margin-bottom: 16px !important;
+          }
+          .quick-role-wrapper {
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          .quick-role-pill {
+            width: 100% !important;
+            padding: 8px 12px !important;
+            font-size: 0.75rem !important;
+          }
+        }
+
+        /* 4. Màn hình Điện thoại siêu nhỏ (<= 360px) */
+        @media (max-width: 360px) {
+          .character-cluster {
+            transform: translateX(-50%) scale(0.58);
+          }
+          .character-stage-panel {
+            min-height: 155px;
+          }
+          .clean-input {
+            padding: 9px 10px;
+            font-size: 0.82rem;
+          }
+          .black-pill-btn {
+            padding: 11px;
+            font-size: 0.84rem;
+          }
+        }
+
       `}</style>
 
       {/* Nút quay lại Dashboard */}
       {onNavigate && (
         <button
           type="button"
+          className="back-btn-dashboard"
           onClick={() => onNavigate('dashboard')}
+
           style={{
             position: 'absolute',
             top: '20px',
@@ -827,10 +927,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             <span>NHÓM 1 · NGUYỄN VĂN HIẾU</span>
           </div>
 
-          <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '6px', zIndex: 5 }}>
+          <div className="character-hint" style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '6px', zIndex: 5 }}>
             <i className="fa-regular fa-hand-pointer" style={{ marginRight: '4px' }} />
             <span>Thử click vào các bạn nhân vật để chơi cùng!</span>
           </div>
+
 
           {/* CỤM 4 NHÂN VẬT HOẠT HỌA */}
           <div className="character-cluster">
@@ -1080,7 +1181,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          {/* 2 nút chọn nhanh quyền Quản trị & Cán bộ */}
+          <div className="quick-role-wrapper" style={{ display: 'flex', gap: '10px' }}>
             <button
               type="button"
               className={`quick-role-pill ${selectedRole === 'admin' ? 'active' : 'inactive'}`}
