@@ -21,12 +21,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
           backdropFilter: 'var(--backdrop-blur)',
           boxShadow: 'var(--shadow-sm)',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '1.4rem' }}>👋</span>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>
               Xin chào, Châu Tuấn Kiệt
@@ -49,7 +51,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             style={{
@@ -108,7 +110,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         </div>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={() => setSearchFilter('all')}
@@ -156,7 +158,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </button>
           </div>
 
-          <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
+          <div style={{ flex: 1, minWidth: 'min(100%, 240px)', position: 'relative' }}>
             <input
               type="text"
               value={searchTerm}
@@ -208,7 +210,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
       {/* 3. KPI METRICS DECK & THỐNG KÊ SỐ VĂN BẢN ĐI/ĐẾN THEO NĂM */}
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)' }}>
             📊 Thống Kê Số Lượng Văn Bản Đi &amp; Đến Theo Năm (2024 - 2026)
           </div>
@@ -230,7 +232,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
             gap: '18px',
           }}
         >
@@ -401,7 +403,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
 
       {/* 4. KHỐI WIDGET: THÔNG BÁO SINH NHẬT THEO NGÀY T, T + 1 & PHÒNG HỌP */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
         {/* Widget Sinh Nhật T, T+1 */}
         <div
           style={{
@@ -412,7 +414,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-cake-candles" style={{ color: '#ec4899', fontSize: '1.1rem' }} />
               <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
@@ -504,7 +506,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-calendar-check" style={{ color: '#10b981', fontSize: '1.1rem' }} />
               <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)' }}>
@@ -579,7 +581,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
 
       {/* 5. DANH SÁCH 5 VĂN BẢN ĐẾN & 5 VĂN BẢN ĐI (Có nút Xem thêm) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '20px' }}>
         {/* Top 5 Văn Bản Đến */}
         <div
           style={{
@@ -590,7 +592,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <i className="fa-solid fa-inbox" style={{ color: '#3b82f6' }} />
@@ -612,8 +614,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
                   <th style={{ padding: '8px 6px' }}>Số, ký hiệu</th>
@@ -671,7 +673,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <i className="fa-solid fa-paper-plane" style={{ color: '#10b981' }} />
@@ -693,8 +695,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
                   <th style={{ padding: '8px 6px' }}>Số, ký hiệu</th>
@@ -744,7 +746,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
 
       {/* 6. DANH SÁCH 5 CÔNG VIỆC & 5 TÀI LIỆU, BIỂU MẪU CHUNG (Có nút Xem thêm) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '20px' }}>
         {/* Top 5 Công Việc */}
         <div
           style={{
@@ -755,7 +757,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <i className="fa-solid fa-list-check" style={{ color: '#8b5cf6' }} />
@@ -777,8 +779,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
                   <th style={{ padding: '8px 6px' }}>Tiêu đề công việc</th>
@@ -836,7 +838,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <i className="fa-solid fa-file-lines" style={{ color: '#06b6d4' }} />
@@ -858,8 +860,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
                   <th style={{ padding: '8px 6px' }}>Ký hiệu</th>
@@ -956,7 +958,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
             gap: '16px',
             marginTop: '12px',
           }}
