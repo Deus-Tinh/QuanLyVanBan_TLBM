@@ -217,13 +217,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               fontSize: '0.72rem',
               padding: '3px 10px',
               borderRadius: 'var(--radius-full)',
-              background: 'rgba(245, 158, 11, 0.18)',
-              color: '#d97706',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: '#10b981',
               fontWeight: 700,
             }}
           >
-            Nhóm 1 đang trong quá trình phát triển
+            ✓ Đạt chuẩn đặc tả (Nhóm 1)
           </span>
+
         </div>
 
         <div
@@ -423,14 +424,15 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(245, 158, 11, 0.18)',
-                color: '#d97706',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
               }}
             >
-              Nhóm 1 đang trong quá trình phát triển
+              ✓ Đạt chuẩn (Nhóm 1)
             </span>
+
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -514,13 +516,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(245, 158, 11, 0.18)',
-                color: '#d97706',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
                 fontWeight: 700,
               }}
             >
-              Nhóm 1 đang trong quá trình phát triển
+              ✓ Đạt chuẩn (Nhóm 1)
             </span>
+
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -599,13 +602,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(245, 158, 11, 0.18)',
-                color: '#d97706',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
                 fontWeight: 700,
               }}
             >
-              Nhóm 1 đang trong quá trình phát triển
+              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
             </span>
+
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -679,13 +683,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(245, 158, 11, 0.18)',
-                color: '#d97706',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
                 fontWeight: 700,
               }}
             >
-              Nhóm 1 đang trong quá trình phát triển
+              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
             </span>
+
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -762,13 +767,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(245, 158, 11, 0.18)',
-                color: '#d97706',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
                 fontWeight: 700,
               }}
             >
-              Nhóm 1 đang trong quá trình phát triển
+              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
             </span>
+
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -842,13 +848,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(245, 158, 11, 0.18)',
-                color: '#d97706',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10b981',
                 fontWeight: 700,
               }}
             >
-              Nhóm 1 đang trong quá trình phát triển
+              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
             </span>
+
           </div>
 
           <div style={{ overflowX: 'auto' }}>
@@ -1004,12 +1011,32 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               3. Công Nghệ Chuẩn Quốc Tế
             </div>
             <ul style={{ paddingLeft: '18px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-              <li>100% React 18 + TypeScript thuần (bỏ hoàn toàn JS)</li>
-              <li>Vite 6 siêu tốc, biên dịch trong mili-giây</li>
+              <li>100% React 18/19 + TypeScript thuần (bỏ hoàn toàn JS)</li>
+              <li>Vite siêu tốc, biên dịch trong mili-giây</li>
               <li>Phân tầng Feature-based: <code>app/</code>, <code>modules/</code>, <code>shared/</code></li>
               <li>Không lỗi kiểu, type-safety tuyệt đối</li>
             </ul>
           </div>
+
+          <div
+            style={{
+              padding: '16px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-surface-elevated)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+            }}
+          >
+            <div style={{ fontWeight: 700, color: '#10b981', marginBottom: '6px' }}>
+              4. Module 1.1 &amp; Module 1.2 (Nguyễn Văn Hiếu)
+            </div>
+            <ul style={{ paddingLeft: '18px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              <li>Trang Login Dual Floating Cards chuẩn nhận diện QLVB &amp; TL</li>
+              <li>Đầy đủ 2 trường hợp Quản trị viên &amp; Cán bộ chuyên viên</li>
+              <li>4 bảng Top 5 tóm tắt chuẩn dữ liệu hành chính</li>
+              <li>Tối ưu Responsive toàn diện trên mọi kích thước màn hình</li>
+            </ul>
+          </div>
+
         </div>
       </div>
     </div>
