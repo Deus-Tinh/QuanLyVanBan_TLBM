@@ -92,7 +92,7 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }: ThemeSele
                 Phong Cách Giao Diện (10 Chủ Đề)
               </div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                Tùy biến toàn bộ hệ thống theo phong cách bạn thích
+                Rê chuột vào để đổi giao diện tức thì • Nhấp chuột để đóng
               </div>
             </div>
             <span
@@ -177,6 +177,11 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }: ThemeSele
                             position: 'relative',
                             boxShadow: isSelected ? '0 0 14px var(--color-primary-glow)' : 'none',
                             gridColumn: isLastOdd ? 'span 2' : 'span 1',
+                          }}
+                          onMouseEnter={() => {
+                            if (currentTheme !== theme.id) {
+                              onSelectTheme(theme.id);
+                            }
                           }}
                           onClick={() => {
                             onSelectTheme(theme.id);
