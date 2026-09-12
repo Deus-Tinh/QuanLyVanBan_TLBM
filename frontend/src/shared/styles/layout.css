@@ -722,7 +722,7 @@
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
-  background: var(--bg-surface-elevated);
+  background: #0f172a; /* Nền đặc 100% chống xuyên thấu cho mọi theme */
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
@@ -731,22 +731,36 @@
 }
 
 [data-theme='dark'] .dropdown-menu-wrapper {
-  background: #0f172a;
+  background: #0f172a !important;
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 [data-theme='light'] .dropdown-menu-wrapper {
-  background: #ffffff;
+  background: #ffffff !important;
   border-color: rgba(0, 0, 0, 0.1);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
+/* Glassmorphism: Nền xanh đen đặc 100%, có viền sáng neon, chống tuyệt đối việc chữ phía sau bị xuyên thấu */
+[data-theme='glass'] .dropdown-menu-wrapper {
+  background: #0c142b !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Liquid Glass: Nền đen ruby đặc 100%, không bị xuyên thấu */
+[data-theme='liquid-glass'] .dropdown-menu-wrapper {
+  background: #140308 !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(244, 63, 94, 0.25) !important;
+}
+
 [data-theme='brutalism'] .dropdown-menu-wrapper {
-  background: #ffffff;
-  border: 2px solid #000000;
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
   border-radius: 8px;
-  box-shadow: 6px 6px 0px #000000;
+  box-shadow: 6px 6px 0px #000000 !important;
 }
 
 [data-theme='brutalism'] .app-card,
@@ -760,9 +774,9 @@
 }
 
 [data-theme='neomorphism'] .dropdown-menu-wrapper {
-  background: #e0e5ec;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 8px 8px 16px #bec5d0, -8px -8px 16px #ffffff;
+  background: #e0e5ec !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 8px 8px 16px #bec5d0, -8px -8px 16px #ffffff !important;
 }
 
 [data-theme='neomorphism'] .app-card,
@@ -772,10 +786,10 @@
 }
 
 [data-theme='claymorphism'] .dropdown-menu-wrapper {
-  background: #ffffff;
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.9) !important;
   border-radius: 20px;
-  box-shadow: 12px 12px 24px rgba(165, 180, 210, 0.45), inset -4px -4px 8px rgba(0, 0, 0, 0.04), inset 4px 4px 8px rgba(255, 255, 255, 0.9);
+  box-shadow: 12px 12px 24px rgba(165, 180, 210, 0.45) !important;
 }
 
 [data-theme='claymorphism'] .app-card,
@@ -785,17 +799,10 @@
   box-shadow: 8px 8px 20px rgba(165, 180, 210, 0.4), inset -3px -3px 8px rgba(0, 0, 0, 0.03), inset 3px 3px 8px rgba(255, 255, 255, 0.9) !important;
 }
 
-[data-theme='liquid-glass'] .dropdown-menu-wrapper {
-  background: rgba(20, 20, 24, 0.9);
-  backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(244, 63, 94, 0.25);
-}
-
 [data-theme='skeuomorphism'] .dropdown-menu-wrapper {
-  background: linear-gradient(180deg, #ffffff 0%, #f1f3f5 100%);
-  border: 1px solid #cbd5e1;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
 [data-theme='skeuomorphism'] .app-card,
@@ -805,9 +812,9 @@
 }
 
 [data-theme='maximalism'] .dropdown-menu-wrapper {
-  background: #141417;
-  border: 2px solid #a3e635;
-  box-shadow: 6px 6px 0px #a3e635;
+  background: #141417 !important;
+  border: 2px solid #a3e635 !important;
+  box-shadow: 6px 6px 0px #a3e635 !important;
   border-radius: 8px;
 }
 
@@ -818,10 +825,10 @@
 }
 
 [data-theme='minimalism'] .dropdown-menu-wrapper {
-  background: #ffffff;
-  border: 1px solid #18181b;
+  background: #ffffff !important;
+  border: 1px solid #18181b !important;
   border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }
 
 [data-theme='minimalism'] .app-card,

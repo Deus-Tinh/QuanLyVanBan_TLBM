@@ -145,12 +145,14 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }: ThemeSele
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
                       gap: '8px',
                     }}
                   >
-                    {themesInCat.map((theme) => {
+                    {themesInCat.map((theme, idx) => {
                       const isSelected = currentTheme === theme.id;
+                      const isLastOdd =
+                        themesInCat.length % 2 !== 0 && idx === themesInCat.length - 1;
                       return (
                         <button
                           key={theme.id}
@@ -162,8 +164,8 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }: ThemeSele
                             padding: '10px 12px',
                             borderRadius: 'var(--radius-md)',
                             background: isSelected
-                              ? 'var(--bg-surface-elevated)'
-                              : 'var(--bg-surface)',
+                              ? 'rgba(59, 130, 246, 0.16)'
+                              : 'rgba(255, 255, 255, 0.05)',
                             border: isSelected
                               ? '2px solid var(--color-primary)'
                               : '1px solid var(--border-subtle)',
@@ -173,7 +175,8 @@ export default function ThemeSelector({ currentTheme, onSelectTheme }: ThemeSele
                             cursor: 'pointer',
                             transition: 'all var(--transition-fast)',
                             position: 'relative',
-                            boxShadow: isSelected ? '0 0 12px var(--color-primary-glow)' : 'none',
+                            boxShadow: isSelected ? '0 0 14px var(--color-primary-glow)' : 'none',
+                            gridColumn: isLastOdd ? 'span 2' : 'span 1',
                           }}
                           onClick={() => {
                             onSelectTheme(theme.id);
