@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivePageId } from '../shared/types/navigation';
 import DashboardPage from '../modules/dashboard/pages/DashboardPage';
+import LoginPage from '../modules/auth/pages/LoginPage';
 
 interface RouterProps {
   activePage: ActivePageId;
@@ -293,152 +294,14 @@ export default function AppRouter({ activePage, onNavigate }: RouterProps) {
         </div>
       </div>
 
-      {/* 2. Khung Demo Tương Tác Cụ Thể Cho Từng Phân Hệ Của Nhóm 1 */}
+      {/* 2. Khung Tương Tác Cụ Thể Cho Từng Phân Hệ Của Nhóm 1 */}
       {activePage === 'login' && (
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '28px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              🔐 Mô Hình Trang Đăng Nhập (Theo yêu cầu: 2 trường hợp CBNV &amp; Quản trị viên)
-            </h3>
-            <span
-              style={{
-                fontSize: '0.75rem',
-                padding: '3px 8px',
-                borderRadius: 'var(--radius-full)',
-                background: 'rgba(245, 158, 11, 0.2)',
-                color: '#d97706',
-                fontWeight: 700,
-              }}
-            >
-              Nhóm 1 đang trong quá trình phát triển
-            </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            {/* Trường hợp 1: CBNV */}
-            <div
-              style={{
-                padding: '20px',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface-elevated)',
-              }}
-            >
-              <div style={{ fontWeight: 700, color: 'var(--color-primary)', marginBottom: '8px' }}>
-                Trường hợp 1: Cán Bộ Nhân Viên (CBNV)
-              </div>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                Đăng nhập bằng Mã nhân viên / Email trường cấp + Mật khẩu cá nhân để tiếp nhận, xử lý văn bản được giao.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <input
-                  type="text"
-                  placeholder="Mã số CBNV hoặc Email..."
-                  disabled
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-muted)',
-                  }}
-                />
-                <input
-                  type="password"
-                  placeholder="Mật khẩu..."
-                  disabled
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-muted)',
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled
-                  style={{
-                    padding: '9px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    fontWeight: 600,
-                    opacity: 0.7,
-                  }}
-                >
-                  Đăng Nhập Cán Bộ (Nhóm 1 đang phát triển)
-                </button>
-              </div>
-            </div>
-
-            {/* Trường hợp 2: Quản trị viên */}
-            <div
-              style={{
-                padding: '20px',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                background: 'var(--bg-surface-elevated)',
-              }}
-            >
-              <div style={{ fontWeight: 700, color: '#ef4444', marginBottom: '8px' }}>
-                Trường hợp 2: Quản Trị Hệ Thống (Administrator)
-              </div>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                Cổng quản trị tối cao với xác thực 2 lớp, quản lý người dùng, phân quyền RBAC và giám sát hệ thống.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <input
-                  type="text"
-                  placeholder="Tài khoản quản trị viên (Admin ID)..."
-                  disabled
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-muted)',
-                  }}
-                />
-                <input
-                  type="password"
-                  placeholder="Mật khẩu bảo mật cấp cao..."
-                  disabled
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface)',
-                    color: 'var(--text-muted)',
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled
-                  style={{
-                    padding: '9px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: '#ef4444',
-                    color: '#fff',
-                    fontWeight: 600,
-                    opacity: 0.7,
-                  }}
-                >
-                  Đăng Nhập Quản Trị (Nhóm 1 đang phát triển)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <LoginPage
+          onNavigate={onNavigate}
+          onLoginSuccess={() => onNavigate('dashboard')}
+        />
       )}
+
 
       {activePage === 'profile' && (
         <div

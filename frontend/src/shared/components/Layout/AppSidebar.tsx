@@ -111,7 +111,7 @@ export default function AppSidebar({
     >
       {/* 1. Brand Logo Header */}
       <div className="sidebar-header">
-        {isCollapsed ? (
+        {isCollapsed && !isMobileOpen ? (
           <button
             type="button"
             className="sidebar-toggle-btn-collapsed"
@@ -136,6 +136,7 @@ export default function AppSidebar({
               </div>
             </div>
 
+            {/* Nút thu gọn trên Desktop */}
             <button
               type="button"
               className="sidebar-toggle-btn"
@@ -144,6 +145,17 @@ export default function AppSidebar({
               aria-label="Thu gọn menu"
             >
               <i className="fa-solid fa-angles-left" />
+            </button>
+
+            {/* Nút đóng drawer trên Mobile */}
+            <button
+              type="button"
+              className="sidebar-close-mobile-btn"
+              onClick={onCloseMobile}
+              title="Đóng menu điều hướng"
+              aria-label="Đóng menu điều hướng"
+            >
+              <i className="fa-solid fa-xmark" />
             </button>
           </>
         )}
@@ -183,13 +195,13 @@ export default function AppSidebar({
                   onNavigate(item.id);
                   onCloseMobile();
                 }}
-                title={isCollapsed ? `${item.label} (${item.teamTag})` : undefined}
+                title={isCollapsed && !isMobileOpen ? `${item.label} (${item.teamTag})` : undefined}
               >
                 <span className="nav-item-icon">
                   <i className={`fa-solid ${item.icon}`} />
                 </span>
 
-                {!isCollapsed && (
+                {(!isCollapsed || isMobileOpen) && (
                   <>
                     <div className="nav-item-text-wrap">
                       <span className="nav-item-label">{item.label}</span>
@@ -231,7 +243,7 @@ export default function AppSidebar({
       </div>
 
       {/* 3. Sidebar Footer */}
-      {!isCollapsed && (
+      {(!isCollapsed || isMobileOpen) && (
         <div className="sidebar-footer">
           <div className="sidebar-status-dot" />
           <span>Hệ thống trực tuyến v2.0 (Nhóm 1)</span>

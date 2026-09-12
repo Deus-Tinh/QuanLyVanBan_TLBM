@@ -27,8 +27,28 @@ export default function MainLayout({
     localStorage.setItem('tlbm_theme', theme);
   }, [theme]);
 
+  // Tự động đóng mobile drawer nếu chuyển sang màn hình desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 992) {
+        setIsMobileOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="app-shell">
+      {/* Lớp phủ mờ backdrop trên thiết bị di động (bấm ra ngoài để đóng sidebar) */}
+      {isMobileOpen && (
+        <div
+          className="mobile-sidebar-backdrop"
+          onClick={() => setIsMobileOpen(false)}
+          aria-label="Đóng menu điều hướng"
+        />
+      )}
+
       {/* 1. Thanh điều hướng Navbar bên trái */}
       <AppSidebar
         isCollapsed={isCollapsed}

@@ -1059,46 +1059,246 @@
   flex-shrink: 0;
 }
 
-/* Responsive Media Queries */
+/* ==========================================================================
+   5. RESPONSIVE MEDIA QUERIES & MOBILE DRAWER
+   ========================================================================== */
+
+/* Mobile Backdrop Overlay */
+.mobile-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  cursor: pointer;
+  animation: fadeInBackdrop 0.2s ease;
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sidebar-close-mobile-btn {
+  display: none;
+}
+
+/* Tablet & Mobile Screens (<= 992px) */
 @media (max-width: 992px) {
-  .app-sidebar {
-    position: fixed;
-    transform: translateX(-100%);
+  /* Sidebar as floating off-canvas drawer */
+  .app-sidebar,
+  .app-sidebar.collapsed {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 1000 !important;
+    transform: translateX(-100%) !important;
+    box-shadow: none;
+    transition: transform var(--transition-slow);
+    display: flex !important;
   }
-  .app-sidebar.mobile-open {
-    transform: translateX(0);
+
+  .app-sidebar.mobile-open,
+  .app-sidebar.collapsed.mobile-open {
+    transform: translateX(0) !important;
+    box-shadow: 6px 0 30px rgba(0, 0, 0, 0.65) !important;
   }
+
+  /* When open on mobile, always show full brand and texts */
+  .app-sidebar.collapsed.mobile-open .brand-text,
+  .app-sidebar.collapsed.mobile-open .nav-item-text-wrap,
+  .app-sidebar.collapsed.mobile-open .sidebar-footer {
+    display: flex !important;
+  }
+
+  /* Desktop toggle buttons hidden on mobile; mobile close button shown */
+  .sidebar-toggle-btn,
+  .sidebar-toggle-btn-collapsed {
+    display: none !important;
+  }
+
+  .sidebar-close-mobile-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .sidebar-close-mobile-btn:hover {
+    background: var(--bg-surface-hover);
+    color: var(--color-danger);
+  }
+
+  /* Main container always takes 100% width */
+  .main-container {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1;
+  }
+
+  /* Header adjustments */
+  .app-header {
+    padding: 0 16px;
+    height: 64px;
+  }
+
   .mobile-menu-btn {
-    display: flex;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: all var(--transition-fast);
   }
+
+  .mobile-menu-btn:hover {
+    background: var(--bg-surface-hover);
+    color: var(--color-primary);
+  }
+
+  .header-left {
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
   .global-search-bar {
-    width: clamp(220px, 32vw, 320px);
+    width: clamp(180px, 26vw, 280px);
     padding: 6px 12px;
     gap: 8px;
   }
+
   .global-search-bar:focus-within {
-    width: clamp(250px, 40vw, 360px);
+    width: clamp(220px, 34vw, 320px);
   }
+
   .global-search-bar input,
   .global-search-bar input::placeholder {
     font-size: clamp(0.65rem, 1.1vw, 0.78rem);
   }
+
+  .header-right {
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
   .clock-date {
     display: none;
   }
+
+  .page-viewport {
+    padding: 20px 18px 0;
+  }
 }
 
-@media (max-width: 640px) {
-  .global-search-bar {
-    width: clamp(160px, 45vw, 220px);
-    padding: 5px 8px;
-    gap: 6px;
+/* Tablets & Mobile Phones (<= 768px) */
+@media (max-width: 768px) {
+  .page-viewport {
+    padding: 16px 14px 0;
   }
-  .global-search-bar:focus-within {
-    width: clamp(190px, 60vw, 260px);
+
+  /* Collapse user name/role label to avatar only to save vital header space */
+  .user-pill-btn {
+    padding: 2px !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: none !important;
   }
-  .global-search-bar input,
-  .global-search-bar input::placeholder {
-    font-size: clamp(0.58rem, 2.4vw, 0.7rem);
+
+  .user-meta-info,
+  .user-pill-btn i.fa-chevron-down {
+    display: none !important;
+  }
+
+  .user-avatar-circle {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 0.92rem !important;
   }
 }
+
+/* Small Mobile Phones (<= 580px) */
+@media (max-width: 580px) {
+  .app-header {
+    padding: 0 10px;
+    height: 58px;
+    gap: 8px;
+  }
+
+  .mobile-menu-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+
+  .header-left {
+    gap: 8px;
+  }
+
+  /* Compact responsive search bar */
+  .global-search-bar {
+    flex: 1;
+    min-width: 0;
+    width: auto !important;
+    max-width: 100% !important;
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .global-search-bar:focus-within {
+    width: 100% !important;
+  }
+
+  .global-search-bar input,
+  .global-search-bar input::placeholder {
+    font-size: 0.76rem;
+  }
+
+  .header-right {
+    gap: 6px;
+  }
+
+  /* Hide admin clock on mobile <= 580px because the phone status bar already shows clock, freeing space */
+  .live-clock-card {
+    display: none !important;
+  }
+
+  .header-action-btn,
+  .theme-trigger-btn {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 0.88rem !important;
+  }
+
+  .page-viewport {
+    padding: 14px 10px 0;
+  }
+
+  .app-footer {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+    padding: 12px 10px;
+    font-size: 0.75rem;
+  }
+}
+
