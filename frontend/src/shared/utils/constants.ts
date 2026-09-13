@@ -1,4 +1,4 @@
-import { NavGroup } from '../types/navigation';
+import { NavGroup, MainModule } from '../types/navigation';
 import { ThemeOption } from '../types/theme';
 import { UserProfile } from '../types/user';
 import { StreamData } from '../types/notification';
@@ -259,6 +259,167 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: 'fa-robot',
         badge: 'GPT-4o',
         badgeColor: 'emerald',
+      },
+    ],
+  },
+];
+
+// ==========================================
+// 6 PHÂN HỆ LỚN CHO SIDEBAR DỌC (TẦNG 1)
+// Cùng danh mục các trang con cho thanh Tab ngang (Tầng 2)
+// ==========================================
+export const MAIN_MODULES: MainModule[] = [
+  {
+    id: 'dashboard',
+    label: 'Bàn Làm Việc',
+    shortLabel: 'Trang Chủ',
+    icon: 'fa-gauge-high',
+    teamTag: 'Nhóm 1',
+    defaultPage: 'dashboard',
+    subItems: [
+      {
+        id: 'dashboard',
+        label: 'Trang Chủ Dashboard',
+        icon: 'fa-chart-pie',
+        badge: 'Live',
+        badgeColor: 'blue',
+        description: 'Bàn làm việc tổng quan, thống kê số liệu năm',
+      },
+    ],
+  },
+  {
+    id: 'documents',
+    label: 'Quản Lý Văn Bản',
+    shortLabel: 'Văn Bản',
+    icon: 'fa-folder-open',
+    teamTag: 'Nhóm 2',
+    defaultPage: 'documents_incoming',
+    subItems: [
+      {
+        id: 'documents_incoming',
+        label: 'Văn Bản Đến',
+        icon: 'fa-inbox',
+        badge: 12,
+        badgeColor: 'blue',
+        description: 'Công văn, văn bản ngoài gửi đến đơn vị',
+      },
+      {
+        id: 'documents_outgoing',
+        label: 'Văn Bản Đi',
+        icon: 'fa-paper-plane',
+        badge: 5,
+        badgeColor: 'emerald',
+        description: 'Văn bản phát hành nội bộ công ty',
+      },
+      {
+        id: 'documents_confidential',
+        label: 'Văn Bản Mật',
+        icon: 'fa-shield-halved',
+        badge: 2,
+        badgeColor: 'rose',
+        description: 'Văn bản bảo mật gửi đích danh phòng ban',
+      },
+    ],
+  },
+  {
+    id: 'records_resources',
+    label: 'Hồ Sơ & Tài Liệu',
+    shortLabel: 'Hồ Sơ & TL',
+    icon: 'fa-box-archive',
+    teamTag: 'Nhóm 3 & 4',
+    defaultPage: 'records',
+    subItems: [
+      {
+        id: 'records',
+        label: 'Danh Mục Hồ Sơ',
+        icon: 'fa-folder-tree',
+        description: 'Quản lý hồ sơ Cấp 1 và phân loại văn bản Cấp 2',
+      },
+      {
+        id: 'resources',
+        label: 'Kho Tài Liệu & Biểu Mẫu',
+        icon: 'fa-file-lines',
+        description: 'Biểu mẫu quy định dùng chung toàn hệ thống',
+      },
+    ],
+  },
+  {
+    id: 'workflow',
+    label: 'Công Việc & Ký Số',
+    shortLabel: 'Giao Việc & Ký',
+    icon: 'fa-list-check',
+    teamTag: 'Nhóm 5 & 6',
+    defaultPage: 'tasks',
+    subItems: [
+      {
+        id: 'tasks',
+        label: 'Quản Lý Công Việc',
+        icon: 'fa-tasks',
+        badge: 8,
+        badgeColor: 'purple',
+        description: 'Theo dõi tiến độ, hạn xử lý và phân công',
+      },
+      {
+        id: 'approvals',
+        label: 'Quy Trình Trình Ký',
+        icon: 'fa-file-signature',
+        badge: '3 chờ ký',
+        badgeColor: 'amber',
+        description: 'Sơ đồ ký số điện tử và phê duyệt văn bản',
+      },
+    ],
+  },
+  {
+    id: 'system',
+    label: 'Tiện Ích & Hệ Thống',
+    shortLabel: 'Hệ Thống',
+    icon: 'fa-building-columns',
+    teamTag: 'Nhóm 7',
+    defaultPage: 'birthdays',
+    subItems: [
+      {
+        id: 'birthdays',
+        label: 'Sinh Nhật CBNV',
+        icon: 'fa-cake-candles',
+        badge: 'Hôm nay',
+        badgeColor: 'rose',
+        description: 'Lịch sinh nhật cán bộ nhân viên ngày T & T+1',
+      },
+      {
+        id: 'meetings',
+        label: 'Đặt Phòng Họp',
+        icon: 'fa-calendar-days',
+        description: 'Lịch hội nghị, họp trực tuyến các phòng ban',
+      },
+      {
+        id: 'organizations',
+        label: 'Đơn Vị & Phòng Ban',
+        icon: 'fa-sitemap',
+        description: 'Cơ cấu khối, ban và chi nhánh Bảo Long',
+      },
+      {
+        id: 'employees',
+        label: 'Hồ Sơ Cán Bộ NV',
+        icon: 'fa-users',
+        description: 'Danh sách và thông tin nhân sự toàn công ty',
+      },
+    ],
+  },
+  {
+    id: 'ai',
+    label: 'Trợ Lý AI Tra Cứu',
+    shortLabel: 'Trợ Lý AI',
+    icon: 'fa-robot',
+    teamTag: 'Nhóm 8',
+    defaultPage: 'ai_assistant',
+    subItems: [
+      {
+        id: 'ai_assistant',
+        label: 'AI Chatbox Tra Cứu',
+        icon: 'fa-comments',
+        badge: 'GPT-4o',
+        badgeColor: 'emerald',
+        description: 'Trợ lý AI thông minh hỏi đáp quy trình và văn bản',
       },
     ],
   },

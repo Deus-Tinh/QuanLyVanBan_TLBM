@@ -17,60 +17,85 @@
    ========================================================================== */
 
 .app-sidebar {
-  width: 280px;
+  width: 76px;
   height: 100vh;
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--sidebar-border-right);
-  backdrop-filter: var(--backdrop-blur);
+  background: transparent !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
   display: flex;
   flex-direction: column;
-  transition: width var(--transition-slow), transform var(--transition-slow);
+  justify-content: space-between;
+  padding: 12px 0;
   z-index: 100;
   flex-shrink: 0;
   position: relative;
 }
 
 .app-sidebar.collapsed {
-  width: 80px;
+  width: 76px;
+  background: transparent !important;
+  border-right: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 0;
 }
 
 .app-sidebar.collapsed .sidebar-header {
+  height: 64px;
+  background: transparent !important;
+  border-bottom: none !important;
   padding: 0;
+  display: flex;
+  align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .sidebar-toggle-btn-collapsed {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
+  border-radius: 14px;
   cursor: pointer;
-  background: transparent;
-  border: none;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sidebar-toggle-btn-collapsed .brand-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   position: relative;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .sidebar-toggle-btn-collapsed .brand-icon-main {
+  font-size: 1.15rem;
   transition: opacity var(--transition-fast);
 }
 
 .sidebar-toggle-btn-collapsed .brand-icon-hover {
   position: absolute;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
 
-.sidebar-toggle-btn-collapsed:hover .brand-icon-box {
-  transform: scale(1.06);
-  box-shadow: 0 0 16px var(--color-primary-glow);
+.sidebar-toggle-btn-collapsed:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 14px var(--color-primary-glow);
 }
 
 .sidebar-toggle-btn-collapsed:hover .brand-icon-main {
@@ -219,35 +244,6 @@
   user-select: none;
 }
 
-.sidebar-nav-edge-btn {
-  width: 100%;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  cursor: pointer;
-  opacity: 0.75;
-  transition: all var(--transition-fast);
-  border-radius: var(--radius-xs);
-  flex-shrink: 0;
-  z-index: 2;
-}
-
-.sidebar-nav-edge-btn:hover:not(.disabled) {
-  color: var(--color-primary);
-  background: var(--bg-surface-elevated);
-  opacity: 1;
-}
-
-.sidebar-nav-edge-btn.disabled {
-  opacity: 0.15;
-  pointer-events: none;
-}
-
 /* Viewport cuộn mượt tự nhiên, không bao giờ bị khựng */
 .sidebar-nav-scroll-viewport {
   flex: 1;
@@ -332,40 +328,43 @@
   transition: top 0.1s ease-out;
 }
 
-/* Khi Sidebar thu gọn: 6 Icon dàn đều tuyệt đẹp và lướt mượt */
+/* ==========================================================================
+   KHI SIDEBAR THU GỌN: THIẾT KẾ CÁC ICON RIÊNG BIỆT & PHÂN BỔ BỐ CỤC ĐỀU
+   ========================================================================== */
 .app-sidebar.collapsed .sidebar-nav-container-distributed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
   padding: 8px 0;
   align-items: center;
+  background: transparent !important;
+  overflow: visible;
 }
 
-/* Ẩn vệt kẻ cuộn ở mép phải khi thu gọn để loại bỏ vạch kẻ xanh lem viền */
+/* Ẩn vệt kẻ cuộn ở mép phải khi thu gọn */
 .app-sidebar.collapsed .sidebar-nav-track-mini {
   display: none;
 }
 
-.app-sidebar.collapsed .sidebar-nav-edge-btn {
-  width: 36px;
-  height: 18px;
-  margin: 2px auto;
-  border-radius: var(--radius-xs);
-  opacity: 0.6;
-}
-
-.app-sidebar.collapsed .sidebar-nav-edge-btn:hover:not(.disabled) {
-  opacity: 1;
-  background: var(--bg-surface-hover);
-}
-
 .app-sidebar.collapsed .sidebar-nav-scroll-viewport {
   width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly; /* Phân bổ đều 6 icon ra toàn bộ chiều cao */
   align-items: center;
-  padding: 4px 0;
+  padding: 0;
+  gap: clamp(8px, 2vh, 24px); /* Khoảng cách linh hoạt co giãn theo chiều cao màn hình */
+  background: transparent !important;
+  overflow: visible;
 }
 
-/* Nút bọc ngoài giữ chiều cao để dàn đều khoảng cách, nhưng xóa bỏ nền kéo dài */
+/* Nút bọc ngoài: căn giữa, giữ không gian cho từng ô riêng */
 .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn {
-  width: 100%;
+  width: auto;
   padding: 0;
+  display: flex;
   justify-content: center;
   align-items: center;
   background: transparent !important;
@@ -375,34 +374,269 @@
   cursor: pointer;
 }
 
-/* Khối icon vuông vắn cân đối 44x44px ở chính giữa mỗi ô, không còn bị biến dạng viên thuốc */
+/* KHỐI ICON RIÊNG BIỆT: Mỗi icon là một khối box/card độc lập sang trọng */
 .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-md);
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-  background: transparent;
-  transition: all var(--transition-fast);
+  border-radius: 14px;
+  font-size: 1.25rem;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.85); /* Nền tối mờ cao cấp, độc lập không phụ thuộc cột đen */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   margin: 0 auto;
 }
 
-/* Hiệu ứng khi rê chuột vào icon */
+/* Hiệu ứng khi rê chuột vào từng icon riêng biệt: Nổi lên, viền sáng, đổ bóng glow */
 .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn:hover:not(.active) .nav-item-icon {
-  background: var(--bg-surface-hover);
-  color: var(--text-main);
-  transform: scale(1.08);
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #ffffff;
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 14px rgba(59, 130, 246, 0.25);
 }
 
-/* Hiệu ứng khi icon được chọn (Active) - Vuông vắn, bo góc hiện đại, tỏa sáng nhẹ */
-.app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.active .nav-item-icon {
-  background: linear-gradient(135deg, #3b82f6, #06b6d4);
-  color: #ffffff;
+/* 1. Icon GỐC ĐANG KÍCH HOẠT CHÍNH THỨC: Luôn giữ nguyên màu gradient rực rỡ, dù rê chuột sang icon khác */
+.app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.active .nav-item-icon,
+.app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.committed-active .nav-item-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.55), 0 0 16px rgba(6, 182, 212, 0.35) !important;
+  transform: translateY(-1px) scale(1.06);
+}
+
+/* 2. CÁC ICON ĐƯỢC RÊ CHUỘT VÀO (XEM THỬ TẠM THỜI): Màu nhạt hơn rõ rệt, nhẹ nhàng */
+.app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.hover-preview-lighter .nav-item-icon {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(6, 182, 212, 0.18)) !important;
+  border: 1px solid rgba(96, 165, 250, 0.5) !important;
+  color: #93c5fd !important; /* Màu xanh lam nhạt tươi sáng */
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25), inset 0 0 10px rgba(59, 130, 246, 0.1) !important;
+  transform: translateY(-2px) scale(1.05);
+  backdrop-filter: blur(12px);
+  animation: lighterHoverPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes lighterHoverPulse {
+  0%, 100% {
+    box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+    border-color: rgba(96, 165, 250, 0.5);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    border-color: rgba(96, 165, 250, 0.75);
+  }
+}
+
+/* Khu vực phía dưới cùng khi thu gọn (Sidebar Bottom Action) */
+.sidebar-collapsed-bottom {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent !important;
+}
+
+.sidebar-bottom-status-dot {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.live-status-ping {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: liveDotPulse 2s infinite ease-in-out;
+}
+
+@keyframes liveDotPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
+  }
+}
+
+/* Hiệu ứng thanh TopSubNav khi đang ở chế độ CHUYỂN TRANG ẢO (Xem trước) */
+.top-sub-nav.is-preview-virtual {
+  animation: subNavPreviewFade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.top-sub-nav.is-preview-virtual .module-team-tag {
+  color: #38bdf8;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sub-nav-tab-btn.preview-tab-item {
+  border-style: dashed;
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.sub-nav-tab-btn.preview-tab-item:hover {
+  border-style: solid;
+  border-color: var(--color-primary);
+  background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+  color: #ffffff !important;
   box-shadow: 0 4px 14px var(--color-primary-glow);
-  transform: scale(1.05);
+  transform: translateY(-1px);
+}
+
+@keyframes subNavPreviewFade {
+  from {
+    opacity: 0.7;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Huy hiệu số thông báo nhỏ gọn gắn góc icon khi thu gọn */
+.nav-item-mini-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444, #f43f5e);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  border: 2px solid var(--bg-sidebar);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.6);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Tinh chỉnh riêng theo từng phong cách giao diện (Theme) */
+[data-theme='light'] .sidebar-toggle-btn-collapsed,
+[data-theme='light'] .sidebar-bottom-toggle-btn,
+[data-theme='light'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  color: #64748b;
+}
+
+[data-theme='light'] .sidebar-toggle-btn-collapsed:hover,
+[data-theme='light'] .sidebar-bottom-toggle-btn:hover,
+[data-theme='light'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn:hover:not(.active) .nav-item-icon {
+  background: #f8fafc;
+  border-color: #3b82f6;
+  color: #1e293b;
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.18);
+}
+
+[data-theme='light'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.active .nav-item-icon {
+  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+[data-theme='glass'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+}
+
+[data-theme='brutalism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
+  background: #ffffff;
+  border: 2px solid #000000;
+  border-radius: 6px;
+  box-shadow: 3px 3px 0px #000000;
+  color: #000000;
+}
+
+[data-theme='brutalism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn:hover:not(.active) .nav-item-icon {
+  background: #f4f4f5;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0px #000000;
+}
+
+[data-theme='brutalism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.active .nav-item-icon {
+  background: #3b82f6;
+  border: 2px solid #000000;
+  box-shadow: 4px 4px 0px #000000;
+  color: #ffffff;
+  transform: translate(-1px, -1px);
+}
+
+[data-theme='neomorphism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
+  background: #e0e5ec;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  box-shadow: 4px 4px 8px #bec5d0, -4px -4px 8px #ffffff;
+  color: #475569;
+}
+
+[data-theme='neomorphism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn:hover:not(.active) .nav-item-icon {
+  box-shadow: 6px 6px 12px #bec5d0, -6px -6px 12px #ffffff;
+  color: #2563eb;
+  transform: translateY(-1px);
+}
+
+[data-theme='neomorphism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.active .nav-item-icon {
+  background: #e0e5ec;
+  box-shadow: inset 3px 3px 6px #bec5d0, inset -3px -3px 6px #ffffff;
+  color: #2563eb;
+  border-color: transparent;
+}
+
+[data-theme='claymorphism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 6px 6px 14px rgba(165, 180, 210, 0.35), inset -2px -2px 5px rgba(0, 0, 0, 0.03), inset 2px 2px 5px rgba(255, 255, 255, 0.9);
+  color: #475569;
+}
+
+[data-theme='skeuomorphism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
+  background: linear-gradient(to bottom, #f1f5f9, #e2e8f0);
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: #334155;
+}
+
+[data-theme='maximalism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-icon {
+  background: #141417;
+  border: 2px solid #27272a;
+  border-radius: 8px;
+  box-shadow: 3px 3px 0px #a3e635;
+  color: #a3e635;
+}
+
+[data-theme='maximalism'] .app-sidebar.collapsed .sidebar-nav-scroll-viewport .nav-item-btn.active .nav-item-icon {
+  background: #a3e635;
+  border-color: #a3e635;
+  color: #000000;
+  box-shadow: 4px 4px 0px #ffffff;
 }
 
 /* Sidebar Navigation Items (Full List) */
@@ -576,10 +810,10 @@
 }
 
 .app-header {
-  height: 70px;
-  background: var(--bg-header);
-  border-bottom: 1px solid var(--header-border-bottom);
-  backdrop-filter: var(--backdrop-blur);
+  height: 68px;
+  background: transparent !important;
+  border-bottom: none !important;
+  backdrop-filter: none !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1027,6 +1261,213 @@
 }
 
 /* ==========================================================================
+   3. TOP SUB-NAVBAR (THANH ĐIỀU HƯỚNG 2 TẦNG - TABS NGANG PHÂN HỆ PHỤ)
+   ========================================================================== */
+
+.top-sub-nav {
+  height: 48px;
+  background: transparent !important;
+  border-bottom: none !important;
+  backdrop-filter: none !important;
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  flex-shrink: 0;
+  z-index: 85;
+  transition: all var(--transition-normal);
+}
+
+.top-sub-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+  overflow: hidden;
+}
+
+/* 1. Module Badge (Trái) */
+.top-sub-nav-module-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.module-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-glow);
+  border: 1px solid var(--border-subtle);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+}
+
+.module-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.module-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+
+.module-team-tag {
+  font-size: 0.68rem;
+  color: var(--color-primary);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.module-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-subtle);
+  margin-left: 6px;
+}
+
+/* 2. Horizontal Tabs (Giữa) */
+.top-sub-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 4px 2px;
+}
+
+.top-sub-nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sub-nav-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  user-select: none;
+  text-decoration: none;
+}
+
+.sub-nav-tab-btn:hover:not(.active) {
+  color: var(--text-main);
+  border-color: var(--color-primary);
+  background: var(--bg-surface-hover);
+  transform: translateY(-1px);
+}
+
+.sub-nav-tab-btn.active {
+  background: var(--color-primary);
+  color: #ffffff !important;
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 10px var(--color-primary-glow);
+  transform: translateY(-1px);
+}
+
+.sub-nav-tab-btn.active .tab-icon {
+  color: #ffffff;
+}
+
+.sub-nav-tab-btn .tab-icon {
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  transition: color var(--transition-fast);
+}
+
+.sub-nav-tab-btn .tab-label {
+  line-height: 1;
+}
+
+.sub-nav-tab-btn .tab-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  line-height: 1;
+}
+
+.sub-nav-tab-btn.active .tab-badge {
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+}
+
+.tab-badge.badge-blue {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.tab-badge.badge-emerald {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.tab-badge.badge-rose {
+  background: rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
+}
+
+.tab-badge.badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.tab-badge.badge-purple {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+}
+
+/* 3. Breadcrumbs (Phải) */
+.top-sub-nav-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.top-sub-nav-breadcrumb .crumb-sep {
+  font-size: 0.65rem;
+  opacity: 0.6;
+}
+
+.top-sub-nav-breadcrumb .crumb-active {
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+@media (max-width: 992px) {
+  .top-sub-nav {
+    padding: 0 16px;
+    height: 48px;
+  }
+  .top-sub-nav-breadcrumb {
+    display: none;
+  }
+}
+
+/* ==========================================================================
    4. CONTENT VIEWPORT & FOOTER (KHUNG NỘI DUNG CUỘN ĐỘC LẬP)
    ========================================================================== */
 
@@ -1049,8 +1490,7 @@
   margin-top: 32px;
   padding: 16px 24px;
   border-top: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: space-between;

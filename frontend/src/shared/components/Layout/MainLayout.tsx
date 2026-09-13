@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppSidebar from './AppSidebar';
 import AppHeader from '../Header/AppHeader';
+import TopSubNav from '../Navigation/TopSubNav';
 import AppFooter from './AppFooter';
 import { ActivePageId } from '../../types/navigation';
 import { ThemeMode } from '../../types/theme';
@@ -8,15 +9,20 @@ import { ThemeMode } from '../../types/theme';
 interface MainLayoutProps {
   children: React.ReactNode;
   activePage: ActivePageId;
+  committedPage: ActivePageId;
+  hoveredPage: ActivePageId | null;
+  onHoverPage: (page: ActivePageId | null) => void;
   onNavigate: (pageId: ActivePageId) => void;
 }
 
 export default function MainLayout({
   children,
   activePage,
+  committedPage,
+  hoveredPage,
+  onHoverPage,
   onNavigate,
 }: MainLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>(() => {
     return (localStorage.getItem('tlbm_theme') as ThemeMode) || 'dark';
@@ -40,7 +46,7 @@ export default function MainLayout({
 
   return (
     <div className="app-shell">
-      {/* Lớp phủ mờ backdrop trên thiết bị di động (bấm ra ngoài để đóng sidebar) */}
+      {/* Lớp phủ mờ backdrop trên thiết bị di động */}
       {isMobileOpen && (
         <div
           className="mobile-sidebar-backdrop"
@@ -49,13 +55,14 @@ export default function MainLayout({
         />
       )}
 
-      {/* 1. Thanh điều hướng Navbar bên trái */}
+      {/* 1. Thanh điều hướng Navbar bên trái: Rê chuột chuyển hẳn sang trang tương ứng, rời chuột lập tức quay về */}
       <AppSidebar
-        isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
         activePage={activePage}
+        committedPage={committedPage}
+        hoveredPage={hoveredPage}
+        onHoverPage={onHoverPage}
         onNavigate={onNavigate}
       />
 
@@ -68,11 +75,16 @@ export default function MainLayout({
           onNavigate={onNavigate}
         />
 
-        {/* Viewport nội dung trang động (cuộn độc lập, Header & Sidebar cố định) */}
-        <main className="page-viewport">
-          <div className="page-content-wrapper">
-            {children}
-          </div>
+        {/* Thanh điều hướng phân hệ phụ nằm ngang */}
+        <TopSubNav
+          activePage={activePage}
+          isHoveredPreview={Boolean(hoveredPage)}
+          onNavigate={onNavigate}
+        />
+
+        {/* Viewport nội dung trang động: Hiển thị trọn vẹn trang tương ứng khi rê chuột */}
+        <main className={`page-viewport ${hoveredPage ? 'is-page-previewing' : ''}`}>
+          <div className="page-content-wrapper">{children}</div>
           <AppFooter />
         </main>
       </div>
