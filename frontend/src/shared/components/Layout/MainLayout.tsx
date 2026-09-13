@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AppSidebar from './AppSidebar';
 import AppHeader from '../Header/AppHeader';
 import TopSubNav from '../Navigation/TopSubNav';
+import MobileAssistiveTouch from '../Navigation/MobileAssistiveTouch';
 import AppFooter from './AppFooter';
 import { ActivePageId } from '../../types/navigation';
 import { ThemeMode } from '../../types/theme';
@@ -9,13 +10,21 @@ import { ThemeMode } from '../../types/theme';
 interface MainLayoutProps {
   children: React.ReactNode;
   activePage: ActivePageId;
+  committedPage: ActivePageId;
+  previewPage: ActivePageId | null;
   onNavigate: (pageId: ActivePageId) => void;
+  onHoverPreview: (pageId: ActivePageId) => void;
+  onHoverLeave: () => void;
 }
 
 export default function MainLayout({
   children,
   activePage,
+  committedPage,
+  previewPage,
   onNavigate,
+  onHoverPreview,
+  onHoverLeave,
 }: MainLayoutProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -54,7 +63,11 @@ export default function MainLayout({
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
         activePage={activePage}
+        committedPage={committedPage}
+        previewPage={previewPage}
         onNavigate={onNavigate}
+        onHoverPreview={onHoverPreview}
+        onHoverLeave={onHoverLeave}
       />
 
       {/* 2. Khung nội dung chính & Thanh Header đỉnh */}
@@ -67,7 +80,11 @@ export default function MainLayout({
         />
 
         {/* Thanh điều hướng phân hệ phụ nằm ngang */}
-        <TopSubNav activePage={activePage} onNavigate={onNavigate} />
+        <TopSubNav
+          activePage={activePage}
+          isHoveredPreview={previewPage !== null}
+          onNavigate={onNavigate}
+        />
 
         {/* Viewport nội dung trang động: ổn định, êm ái, chuyên nghiệp */}
         <main className="page-viewport">
@@ -75,6 +92,14 @@ export default function MainLayout({
           <AppFooter />
         </main>
       </div>
+
+      {/* 3. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động */}
+      <MobileAssistiveTouch
+        activePage={activePage}
+        onNavigate={onNavigate}
+        currentTheme={theme}
+        onSelectTheme={setTheme}
+      />
     </div>
   );
 }

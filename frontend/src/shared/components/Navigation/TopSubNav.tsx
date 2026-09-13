@@ -4,11 +4,13 @@ import { MAIN_MODULES } from '../../utils/constants';
 
 interface TopSubNavProps {
   activePage: ActivePageId;
+  isHoveredPreview?: boolean;
   onNavigate: (page: ActivePageId) => void;
 }
 
 export default function TopSubNav({
   activePage,
+  isHoveredPreview,
   onNavigate,
 }: TopSubNavProps) {
   // Phân hệ cha tương ứng với trang đang hiển thị

@@ -6,56 +6,44 @@ interface AppSidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   activePage: ActivePageId;
+  committedPage: ActivePageId;
+  previewPage: ActivePageId | null;
   onNavigate: (pageId: ActivePageId) => void;
+  onHoverPreview: (pageId: ActivePageId) => void;
+  onHoverLeave: () => void;
 }
 
 export default function AppSidebar({
   isMobileOpen,
   onCloseMobile,
-  activePage,
+  committedPage,
+  previewPage,
   onNavigate,
+  onHoverPreview,
+  onHoverLeave,
 }: AppSidebarProps) {
-  // Xác định phân hệ cha đang chứa trang hiện tại
-  const activeModule =
-    MAIN_MODULES.find((mod) => mod.subItems.some((item) => item.id === activePage)) ||
-    MAIN_MODULES[0];
-
   return (
-    <aside className={`app-sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
-      {/* 1. Điểm neo thương hiệu đỉnh (Logo TLBM nhỏ gọn, thanh lịch) */}
-      <div className="sidebar-header">
-        <div className="sidebar-brand-wrapper">
-          <div
-            className="sidebar-brand-box"
-            title="Hệ Thống Quản Lý Văn Bản & Tài Liệu Mật (TLBM)"
-          >
-            <i className="fa-solid fa-file-shield" />
-          </div>
-          <div className="sidebar-brand-mobile-text">
-            <span className="brand-title">TLBM</span>
-            <span className="brand-subtitle">Quản Lý & Mật Mã</span>
-          </div>
-        </div>
+    <aside
+      className={`app-sidebar ${isMobileOpen ? 'mobile-open' : ''}`}
+      onMouseLeave={onHoverLeave}
+    >
+      {/* Dãy 6 Icon Phân Hệ Chuẩn Dock Nổi (Xóa nền, Rê chuột tới đâu chuyển trang tới đó) */}
 
-        {/* Nút đóng drawer trên Mobile */}
-        {isMobileOpen && (
-          <button
-            type="button"
-            className="sidebar-close-mobile-btn"
-            onClick={onCloseMobile}
-            title="Đóng menu"
-            aria-label="Đóng menu"
-          >
-            <i className="fa-solid fa-xmark" />
-          </button>
-        )}
-      </div>
-
-      {/* 2. Dãy 6 Icon Phân Hệ Chuẩn Dock Nổi (Có Menu Bay Flyout xem trước) */}
+      {/* 2. Dãy 6 Icon Phân Hệ Chuẩn Dock Nổi (Xóa nền, Rê chuột tới đâu chuyển trang tới đó) */}
       <div className="sidebar-nav-container-distributed">
         <div className="sidebar-nav-scroll-viewport">
           {MAIN_MODULES.map((mod) => {
-            const isModuleActive = activeModule.id === mod.id;
+            const isCommittedActive = mod.subItems.some((item) => item.id === committedPage);
+            const isPreviewHovered =
+              previewPage !== null && mod.subItems.some((item) => item.id === previewPage);
+
+            let btnClasses = 'nav-item-btn';
+            if (isCommittedActive) {
+              btnClasses += ' committed-active active';
+            }
+            if (isPreviewHovered && !isCommittedActive) {
+              btnClasses += ' hover-preview-lighter';
+            }
 
             // Tính tổng số lượng badge thông báo
             const numericBadges = mod.subItems
@@ -66,12 +54,13 @@ export default function AppSidebar({
               <div key={mod.id} className="nav-item-wrapper">
                 <button
                   type="button"
-                  className={`nav-item-btn ${isModuleActive ? 'active' : ''}`}
+                  className={btnClasses}
+                  onMouseEnter={() => onHoverPreview(mod.defaultPage)}
                   onClick={() => {
                     onNavigate(mod.defaultPage);
                     onCloseMobile();
                   }}
-                  title={mod.label}
+                  title={`${mod.label} (Rê chuột để xem trước, Bấm để ở lại trang)`}
                 >
                   <span className="nav-item-icon">
                     <i className={`fa-solid ${mod.icon}`} />
@@ -84,38 +73,6 @@ export default function AppSidebar({
                     <span className="mobile-label-team">{mod.teamTag}</span>
                   </span>
                 </button>
-
-                {/* Menu Bay Flyout Card (Hiện mượt khi rê chuột: xem trước & bấm chọn nhanh mục con) */}
-                <div className="nav-flyout-card">
-                  <div className="flyout-header">
-                    <span className="flyout-title">{mod.label}</span>
-                    <span className="flyout-tag">{mod.teamTag}</span>
-                  </div>
-                  <div className="flyout-items">
-                    {mod.subItems.map((sub) => {
-                      const isSubActive = activePage === sub.id;
-                      return (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          className={`flyout-sub-item ${isSubActive ? 'active' : ''}`}
-                          onClick={() => {
-                            onNavigate(sub.id);
-                            onCloseMobile();
-                          }}
-                        >
-                          <i className={`fa-solid ${sub.icon}`} />
-                          <span className="flyout-sub-label">{sub.label}</span>
-                          {sub.badge !== undefined && (
-                            <span className={`flyout-badge badge-${sub.badgeColor || 'blue'}`}>
-                              {sub.badge}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             );
           })}
