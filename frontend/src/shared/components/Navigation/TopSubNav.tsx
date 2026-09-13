@@ -4,13 +4,11 @@ import { MAIN_MODULES } from '../../utils/constants';
 
 interface TopSubNavProps {
   activePage: ActivePageId;
-  isHoveredPreview?: boolean;
   onNavigate: (page: ActivePageId) => void;
 }
 
 export default function TopSubNav({
   activePage,
-  isHoveredPreview,
   onNavigate,
 }: TopSubNavProps) {
   // Phân hệ cha tương ứng với trang đang hiển thị
@@ -23,7 +21,7 @@ export default function TopSubNav({
 
   return (
     <nav
-      className={`top-sub-nav ${isHoveredPreview ? 'is-preview-virtual' : ''}`}
+      className="top-sub-nav"
       aria-label="Điều hướng phân hệ con"
     >
       <div className="top-sub-nav-inner">
@@ -34,9 +32,7 @@ export default function TopSubNav({
           </div>
           <div className="module-info">
             <span className="module-name">{activeModule.label}</span>
-            <span className="module-team-tag">
-              {isHoveredPreview ? 'Đang xem thử (Bấm để ở lại)' : activeModule.teamTag}
-            </span>
+            <span className="module-team-tag">{activeModule.teamTag}</span>
           </div>
           <div className="module-divider" />
         </div>
@@ -72,9 +68,7 @@ export default function TopSubNav({
           <i className="fa-solid fa-angle-right crumb-sep" />
           <span className="crumb-mod">{activeModule.shortLabel}</span>
           <i className="fa-solid fa-angle-right crumb-sep" />
-          <span className="crumb-active">
-            {isHoveredPreview ? `[Xem thử] ${currentSubItem?.label || ''}` : currentSubItem?.label || 'Chi tiết'}
-          </span>
+          <span className="crumb-active">{currentSubItem?.label || 'Chi tiết'}</span>
         </div>
       </div>
     </nav>

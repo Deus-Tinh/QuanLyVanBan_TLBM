@@ -6,9 +6,6 @@ interface AppSidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   activePage: ActivePageId;
-  committedPage: ActivePageId;
-  hoveredPage: ActivePageId | null;
-  onHoverPage: (page: ActivePageId | null) => void;
   onNavigate: (pageId: ActivePageId) => void;
 }
 
@@ -16,28 +13,31 @@ export default function AppSidebar({
   isMobileOpen,
   onCloseMobile,
   activePage,
-  committedPage,
-  hoveredPage,
-  onHoverPage,
   onNavigate,
 }: AppSidebarProps) {
+  // Xác định phân hệ cha đang chứa trang hiện tại
+  const activeModule =
+    MAIN_MODULES.find((mod) => mod.subItems.some((item) => item.id === activePage)) ||
+    MAIN_MODULES[0];
+
   return (
-    <aside
-      className={`app-sidebar collapsed ${isMobileOpen ? 'mobile-open' : ''}`}
-      onMouseLeave={() => onHoverPage(null)}
-    >
-      {/* 1. Brand Logo Header (Icon Logo vuông vắn, độc lập) */}
+    <aside className={`app-sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
+      {/* 1. Điểm neo thương hiệu đỉnh (Logo TLBM nhỏ gọn, thanh lịch) */}
       <div className="sidebar-header">
-        <div
-          className="sidebar-toggle-btn-collapsed"
-          title="Hệ Thống Quản Lý Văn Bản & Tài Liệu Mật (TLBM)"
-        >
-          <div className="brand-icon-box">
-            <i className="fa-solid fa-file-shield brand-icon-main" />
+        <div className="sidebar-brand-wrapper">
+          <div
+            className="sidebar-brand-box"
+            title="Hệ Thống Quản Lý Văn Bản & Tài Liệu Mật (TLBM)"
+          >
+            <i className="fa-solid fa-file-shield" />
+          </div>
+          <div className="sidebar-brand-mobile-text">
+            <span className="brand-title">TLBM</span>
+            <span className="brand-subtitle">Quản Lý & Mật Mã</span>
           </div>
         </div>
 
-        {/* Nút đóng drawer trên Mobile nếu mở */}
+        {/* Nút đóng drawer trên Mobile */}
         {isMobileOpen && (
           <button
             type="button"
@@ -51,58 +51,78 @@ export default function AppSidebar({
         )}
       </div>
 
-      {/* 2. Vùng 6 Phân Hệ Lớn (Dạng Icon Riêng Biệt, Tự Phân Bổ Bố Cục Đều Dọc Màn Hình) */}
+      {/* 2. Dãy 6 Icon Phân Hệ Chuẩn Dock Nổi (Có Menu Bay Flyout xem trước) */}
       <div className="sidebar-nav-container-distributed">
         <div className="sidebar-nav-scroll-viewport">
           {MAIN_MODULES.map((mod) => {
-            // Phân hệ gốc đang được kích hoạt chính thức (committed)
-            const isCommitted =
-              mod.subItems.some((s) => s.id === committedPage) || mod.defaultPage === committedPage;
+            const isModuleActive = activeModule.id === mod.id;
 
-            // Phân hệ đang được rê chuột vào xem trước
-            const isHovered = Boolean(
-              hoveredPage &&
-                (mod.subItems.some((s) => s.id === hoveredPage) || mod.defaultPage === hoveredPage)
-            );
-
-            // Tính tổng số lượng badge thông báo của các mục con
+            // Tính tổng số lượng badge thông báo
             const numericBadges = mod.subItems
               .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
               .reduce((a, b) => a + b, 0);
 
             return (
-              <button
-                key={mod.id}
-                data-module-id={mod.id}
-                type="button"
-                className={`nav-item-btn ${isCommitted ? 'active committed-active' : ''} ${
-                  isHovered && !isCommitted ? 'hover-preview-lighter' : ''
-                }`}
-                onClick={() => {
-                  onNavigate(mod.defaultPage);
-                  onCloseMobile();
-                }}
-                onMouseEnter={() => onHoverPage(mod.defaultPage)}
-                onMouseLeave={() => onHoverPage(null)}
-                title={`${mod.label} (${mod.teamTag} • ${mod.subItems.length} mục)\n${
-                  isCommitted
-                    ? '• Trang đang chọn chính thức (Giữ màu gốc)'
-                    : '- Rê chuột: Chuyển hẳn trang xem thử (màu nhạt hơn)\n- Rời chuột: Lập tức quay về trang gốc\n- Nhấp chuột: Ở lại trang này'
-                }`}
-              >
-                <span className="nav-item-icon">
-                  <i className={`fa-solid ${mod.icon}`} />
-                  {numericBadges > 0 && (
-                    <span className="nav-item-mini-badge">{numericBadges}</span>
-                  )}
-                </span>
-              </button>
+              <div key={mod.id} className="nav-item-wrapper">
+                <button
+                  type="button"
+                  className={`nav-item-btn ${isModuleActive ? 'active' : ''}`}
+                  onClick={() => {
+                    onNavigate(mod.defaultPage);
+                    onCloseMobile();
+                  }}
+                  title={mod.label}
+                >
+                  <span className="nav-item-icon">
+                    <i className={`fa-solid ${mod.icon}`} />
+                    {numericBadges > 0 && (
+                      <span className="nav-item-mini-badge">{numericBadges}</span>
+                    )}
+                  </span>
+                  <span className="nav-item-mobile-label">
+                    <span className="mobile-label-title">{mod.label}</span>
+                    <span className="mobile-label-team">{mod.teamTag}</span>
+                  </span>
+                </button>
+
+                {/* Menu Bay Flyout Card (Hiện mượt khi rê chuột: xem trước & bấm chọn nhanh mục con) */}
+                <div className="nav-flyout-card">
+                  <div className="flyout-header">
+                    <span className="flyout-title">{mod.label}</span>
+                    <span className="flyout-tag">{mod.teamTag}</span>
+                  </div>
+                  <div className="flyout-items">
+                    {mod.subItems.map((sub) => {
+                      const isSubActive = activePage === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          className={`flyout-sub-item ${isSubActive ? 'active' : ''}`}
+                          onClick={() => {
+                            onNavigate(sub.id);
+                            onCloseMobile();
+                          }}
+                        >
+                          <i className={`fa-solid ${sub.icon}`} />
+                          <span className="flyout-sub-label">{sub.label}</span>
+                          {sub.badge !== undefined && (
+                            <span className={`flyout-badge badge-${sub.badgeColor || 'blue'}`}>
+                              {sub.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
       </div>
 
-      {/* 3. Phía dưới cùng: Điểm trạng thái hoạt động online mini */}
+      {/* 3. Phía dưới cùng: Trạng thái trực tuyến mini */}
       <div className="sidebar-collapsed-bottom">
         <div
           className="sidebar-bottom-status-dot"

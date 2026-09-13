@@ -9,18 +9,12 @@ import { ThemeMode } from '../../types/theme';
 interface MainLayoutProps {
   children: React.ReactNode;
   activePage: ActivePageId;
-  committedPage: ActivePageId;
-  hoveredPage: ActivePageId | null;
-  onHoverPage: (page: ActivePageId | null) => void;
   onNavigate: (pageId: ActivePageId) => void;
 }
 
 export default function MainLayout({
   children,
   activePage,
-  committedPage,
-  hoveredPage,
-  onHoverPage,
   onNavigate,
 }: MainLayoutProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -55,14 +49,11 @@ export default function MainLayout({
         />
       )}
 
-      {/* 1. Thanh điều hướng Navbar bên trái: Rê chuột chuyển hẳn sang trang tương ứng, rời chuột lập tức quay về */}
+      {/* 1. Thanh điều hướng Navbar bên trái: Dock Icon chuẩn SaaS cao cấp */}
       <AppSidebar
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
         activePage={activePage}
-        committedPage={committedPage}
-        hoveredPage={hoveredPage}
-        onHoverPage={onHoverPage}
         onNavigate={onNavigate}
       />
 
@@ -76,14 +67,10 @@ export default function MainLayout({
         />
 
         {/* Thanh điều hướng phân hệ phụ nằm ngang */}
-        <TopSubNav
-          activePage={activePage}
-          isHoveredPreview={Boolean(hoveredPage)}
-          onNavigate={onNavigate}
-        />
+        <TopSubNav activePage={activePage} onNavigate={onNavigate} />
 
-        {/* Viewport nội dung trang động: Hiển thị trọn vẹn trang tương ứng khi rê chuột */}
-        <main className={`page-viewport ${hoveredPage ? 'is-page-previewing' : ''}`}>
+        {/* Viewport nội dung trang động: ổn định, êm ái, chuyên nghiệp */}
+        <main className="page-viewport">
           <div className="page-content-wrapper">{children}</div>
           <AppFooter />
         </main>
