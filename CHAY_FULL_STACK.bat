@@ -14,7 +14,7 @@ start "Django Backend" cmd /k "python manage.py runserver"
 :: 2. Khoi dong Frontend React Vite
 echo [2/2] Khoi dong React TypeScript (Port 5173)...
 cd /d "%~dp0frontend"
-start "React Frontend" cmd /k "npm run dev"
+start "React Frontend" cmd /k "pnpm dev"
 
 timeout /t 3 >nul
 start http://127.0.0.1:8000/
