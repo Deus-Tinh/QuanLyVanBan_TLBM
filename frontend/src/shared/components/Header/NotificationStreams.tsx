@@ -7,15 +7,19 @@ export default function NotificationStreams() {
   const [activeTab, setActiveTab] = useState<NotificationStreamType>('incoming');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close when clicking outside
+  // Close when clicking outside (support both pointerdown and touchstart)
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const totalUnread = SAMPLE_STREAMS.reduce((acc, s) => acc + s.unreadCount, 0);
@@ -35,22 +39,68 @@ export default function NotificationStreams() {
       </button>
 
       {isOpen && (
-        <div className="dropdown-menu-wrapper notif-dropdown">
-          <div className="notif-header">
-            <div>
-              <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Thông Báo Văn Bản</span>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {totalUnread} văn bản chưa đọc
+        <>
+          <div
+            className="dropdown-mobile-backdrop"
+            onClick={() => setIsOpen(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10000,
+              background: 'rgba(0, 0, 0, 0.35)',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }}
+          />
+          <div className="dropdown-menu-wrapper notif-dropdown" style={{ zIndex: 10001 }}>
+            <div className="notif-header">
+              <div>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Thông Báo Văn Bản</span>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {totalUnread} văn bản chưa đọc
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  style={{
+                    fontSize: '0.78rem',
+                    color: 'var(--color-primary)',
+                    fontWeight: 600,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => alert('Đã đánh dấu đã đọc tất cả!')}
+                >
+                  Đánh dấu đã đọc
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  style={{
+                    width: '26px',
+                    height: '26px',
+                    borderRadius: '50%',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                  }}
+                  title="Đóng bảng thông báo"
+                  aria-label="Đóng"
+                >
+                  <i className="fa-solid fa-xmark" />
+                </button>
               </div>
             </div>
-            <button
-              type="button"
-              style={{ fontSize: '0.78rem', color: 'var(--color-primary)', fontWeight: 600 }}
-              onClick={() => alert('Đã đánh dấu đã đọc tất cả!')}
-            >
-              Đánh dấu đã đọc
-            </button>
-          </div>
 
           {/* 3 Streams Tab Navigation: Đến, Đi, Mật */}
           <div className="notif-tabs">
@@ -112,6 +162,7 @@ export default function NotificationStreams() {
             ))}
           </div>
         </div>
+      </>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { NavGroup, MainModule } from '../types/navigation';
-import { ThemeOption } from '../types/theme';
+import { ThemeOption, ThemeMode } from '../types/theme';
 import { UserProfile } from '../types/user';
 import { StreamData } from '../types/notification';
 
@@ -123,6 +123,26 @@ export const THEME_OPTIONS: ThemeOption[] = [
     borderPreview: '#a3e635',
   },
 ];
+
+export const LIGHT_THEMES: ThemeMode[] = [
+  'light',
+  'minimalism',
+  'neomorphism',
+  'claymorphism',
+  'skeuomorphism',
+  'brutalism',
+];
+
+export const DARK_THEMES: ThemeMode[] = [
+  'dark',
+  'glass',
+  'liquid-glass',
+  'maximalism',
+];
+
+export const isLightThemeMode = (theme: ThemeMode): boolean => {
+  return LIGHT_THEMES.includes(theme);
+};
 
 export const NAV_GROUPS: NavGroup[] = [
   {

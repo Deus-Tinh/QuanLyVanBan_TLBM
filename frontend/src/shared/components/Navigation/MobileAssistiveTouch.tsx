@@ -8,6 +8,7 @@ interface MobileAssistiveTouchProps {
   onNavigate: (pageId: ActivePageId) => void;
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
+  onToggleTheme?: () => void;
 }
 
 export default function MobileAssistiveTouch({
@@ -15,10 +16,42 @@ export default function MobileAssistiveTouch({
   onNavigate,
   currentTheme,
   onSelectTheme,
+  onToggleTheme,
 }: MobileAssistiveTouchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDimmed, setIsDimmed] = useState(false);
   const dimTimerRef = useRef<number | null>(null);
+
+  // Vị trí tọa độ kéo thả tự do của nút Home ảo (lưu vào localStorage)
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const saved = localStorage.getItem('tlbm_assistive_pos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    initialPosX: number;
+    initialPosY: number;
+    hasMoved: boolean;
+  }>({
+    startX: 0,
+    startY: 0,
+    initialPosX: 0,
+    initialPosY: 0,
+    hasMoved: false,
+  });
 
   // Xác định phân hệ cha đang chứa trang hiện tại
   const activeModule =
@@ -31,7 +64,7 @@ export default function MobileAssistiveTouch({
     if (dimTimerRef.current) {
       window.clearTimeout(dimTimerRef.current);
     }
-    if (!isOpen) {
+    if (!isOpen && !isDragging) {
       dimTimerRef.current = window.setTimeout(() => {
         setIsDimmed(true);
       }, 3500);
@@ -52,24 +85,135 @@ export default function MobileAssistiveTouch({
       window.removeEventListener('scroll', handleUserActivity);
       window.removeEventListener('touchstart', handleUserActivity);
     };
-  }, [isOpen]);
+  }, [isOpen, isDragging]);
+
+  // Xử lý kéo thả nút Home ảo tự do trên màn hình (Touch & Mouse)
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const deltaX = clientX - dragRef.current.startX;
+      const deltaY = clientY - dragRef.current.startY;
+
+      if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+        dragRef.current.hasMoved = true;
+      }
+
+      const newX = Math.min(Math.max(8, dragRef.current.initialPosX + deltaX), window.innerWidth - 64);
+      const newY = Math.min(Math.max(8, dragRef.current.initialPosY + deltaY), window.innerHeight - 64);
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handlePointerUp = () => {
+      setIsDragging(false);
+      if (dragRef.current.hasMoved) {
+        setPosition((currentPos) => {
+          if (currentPos) {
+            localStorage.setItem('tlbm_assistive_pos', JSON.stringify(currentPos));
+          }
+          return currentPos;
+        });
+      }
+    };
+
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchmove', handlePointerMove);
+      window.removeEventListener('touchend', handlePointerUp);
+    };
+  }, [isDragging]);
+
+  // Giữ vị trí nằm trong khung hình khi đổi kích thước cửa sổ
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition((prev) => {
+        if (!prev) return null;
+        return {
+          x: Math.min(prev.x, window.innerWidth - 64),
+          y: Math.min(prev.y, window.innerHeight - 64),
+        };
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleToggleTheme = () => {
-    const nextTheme: ThemeMode = currentTheme === 'dark' ? 'light' : 'dark';
-    onSelectTheme(nextTheme);
+    if (onToggleTheme) {
+      onToggleTheme();
+    } else {
+      const nextTheme: ThemeMode = currentTheme === 'dark' ? 'light' : 'dark';
+      onSelectTheme(nextTheme);
+    }
   };
 
   return (
     <aside className="mobile-assistive-touch" aria-label="Phím Home ảo AssistiveTouch">
-      {/* 1. NÚT HOME ẢO (AssistiveTouch FAB) */}
+      {/* 1. NÚT HOME ẢO (AssistiveTouch FAB - Kéo thả tự do như iOS) */}
       <button
         type="button"
-        className={`assistive-fab ${isDimmed ? 'is-dimmed' : ''} ${isOpen ? 'is-active' : ''}`}
-        onClick={() => {
-          setIsOpen((prev) => !prev);
+        className={`assistive-fab ${isDimmed && !isDragging ? 'is-dimmed' : ''} ${isOpen ? 'is-active' : ''}`}
+        style={
+          position
+            ? {
+                position: 'fixed',
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                bottom: 'auto',
+                right: 'auto',
+                touchAction: 'none',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                zIndex: 10000,
+              }
+            : {
+                position: 'fixed',
+                bottom: '24px',
+                right: '18px',
+                touchAction: 'none',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                zIndex: 10000,
+              }
+        }
+        onMouseDown={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          dragRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            initialPosX: rect.left,
+            initialPosY: rect.top,
+            hasMoved: false,
+          };
+          setIsDragging(true);
           resetDimTimer();
         }}
-        title="Mở menu hệ thống (AssistiveTouch)"
+        onTouchStart={(e) => {
+          const touch = e.touches[0];
+          const rect = e.currentTarget.getBoundingClientRect();
+          dragRef.current = {
+            startX: touch.clientX,
+            startY: touch.clientY,
+            initialPosX: rect.left,
+            initialPosY: rect.top,
+            hasMoved: false,
+          };
+          setIsDragging(true);
+          resetDimTimer();
+        }}
+        onClick={() => {
+          if (!dragRef.current.hasMoved) {
+            setIsOpen((prev) => !prev);
+            resetDimTimer();
+          }
+        }}
+        title="Mở menu hệ thống (AssistiveTouch) · Nhấn để mở, giữ để kéo thả"
         aria-label="Phím Home ảo"
       >
         <span className="fab-outer-ring">

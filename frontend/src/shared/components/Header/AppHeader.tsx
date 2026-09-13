@@ -8,15 +8,21 @@ import { ActivePageId } from '../../types/navigation';
 interface AppHeaderProps {
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
+  onToggleTheme?: () => void;
   onToggleMobileSidebar: () => void;
   onNavigate?: (page: ActivePageId) => void;
+  preferredLightTheme?: ThemeMode;
+  preferredDarkTheme?: ThemeMode;
 }
 
 export default function AppHeader({
   currentTheme,
   onSelectTheme,
+  onToggleTheme,
   onToggleMobileSidebar,
   onNavigate,
+  preferredLightTheme,
+  preferredDarkTheme,
 }: AppHeaderProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,8 +87,14 @@ export default function AppHeader({
         {/* Thông báo 3 luồng: Đến, Đi, Mật */}
         <NotificationStreams />
 
-        {/* Đổi Theme (Dark / Light / Glass) */}
-        <ThemeSelector currentTheme={currentTheme} onSelectTheme={onSelectTheme} />
+        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm (Không mở popup che khuất) */}
+        <ThemeSelector
+          currentTheme={currentTheme}
+          onSelectTheme={onSelectTheme}
+          onToggleTheme={onToggleTheme}
+          preferredLightTheme={preferredLightTheme}
+          preferredDarkTheme={preferredDarkTheme}
+        />
 
         {/* Hồ sơ cá nhân người dùng */}
         <UserDropdown onNavigate={onNavigate} />

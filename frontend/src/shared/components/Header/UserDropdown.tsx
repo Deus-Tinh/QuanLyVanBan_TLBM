@@ -11,13 +11,17 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('pointerdown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   const handleItemClick = (pageId: ActivePageId) => {
@@ -48,7 +52,23 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
       </button>
 
       {isOpen && (
-        <div className="dropdown-menu-wrapper user-dropdown-panel">
+        <>
+          <div
+            className="dropdown-mobile-backdrop"
+            onClick={() => setIsOpen(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 10000,
+              background: 'rgba(0, 0, 0, 0.35)',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }}
+          />
+          <div className="dropdown-menu-wrapper user-dropdown-panel" style={{ zIndex: 10001 }}>
           <div className="user-panel-header">
             <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{CURRENT_USER.fullName}</div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -86,6 +106,14 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
             <button
               type="button"
               className="user-menu-link"
+              onClick={() => handleItemClick('settings')}
+            >
+              <i className="fa-solid fa-gear" />
+              <span>Cài đặt</span>
+            </button>
+            <button
+              type="button"
+              className="user-menu-link"
               onClick={() => handleItemClick('login')}
             >
               <i className="fa-solid fa-right-to-bracket" />
@@ -107,6 +135,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
             </button>
           </div>
         </div>
+      </>
       )}
     </div>
   );

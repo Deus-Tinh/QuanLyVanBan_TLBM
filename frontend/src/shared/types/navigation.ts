@@ -3,6 +3,7 @@ export type ActivePageId =
   | 'login'
   | 'profile'
   | 'password_change'
+  | 'settings'
   | 'documents_incoming'
   | 'documents_outgoing'
   | 'documents_confidential'
