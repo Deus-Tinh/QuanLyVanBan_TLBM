@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SAMPLE_STREAMS } from '../../utils/constants';
 import { NotificationStreamType } from '../../types/notification';
+import { useTranslation } from '../../locales/i18n';
 
 export default function NotificationStreams() {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NotificationStreamType>('incoming');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -58,9 +60,9 @@ export default function NotificationStreams() {
           <div className="dropdown-menu-wrapper notif-dropdown" style={{ zIndex: 10001 }}>
             <div className="notif-header">
               <div>
-                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Thông Báo Văn Bản</span>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{t('notifications.title')}</span>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {totalUnread} văn bản chưa đọc
+                  {t('notifications.unreadCount', { count: totalUnread.toString() })}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -76,7 +78,7 @@ export default function NotificationStreams() {
                   }}
                   onClick={() => alert('Đã đánh dấu đã đọc tất cả!')}
                 >
-                  Đánh dấu đã đọc
+                  {t('notifications.markAllRead')}
                 </button>
                 <button
                   type="button"
@@ -104,34 +106,39 @@ export default function NotificationStreams() {
 
           {/* 3 Streams Tab Navigation: Đến, Đi, Mật */}
           <div className="notif-tabs">
-            {SAMPLE_STREAMS.map((stream) => (
-              <button
-                key={stream.type}
-                type="button"
-                className={`notif-tab-btn ${activeTab === stream.type ? 'active' : ''}`}
-                onClick={() => setActiveTab(stream.type)}
-              >
-                <i className={`fa-solid ${stream.icon}`} />
-                <span>{stream.label}</span>
-                {stream.unreadCount > 0 && (
-                  <span
-                    style={{
-                      fontSize: '0.68rem',
-                      padding: '1px 5px',
-                      borderRadius: '10px',
-                      background:
-                        stream.type === 'confidential'
-                          ? 'rgba(239, 68, 68, 0.2)'
-                          : 'rgba(59, 130, 246, 0.2)',
-                      color: stream.type === 'confidential' ? '#ef4444' : '#3b82f6',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {stream.unreadCount}
-                  </span>
-                )}
-              </button>
-            ))}
+            {SAMPLE_STREAMS.map((stream) => {
+              const streamLabelKey = `notifications.${stream.type}`;
+              const streamLabel = t(streamLabelKey) !== streamLabelKey ? t(streamLabelKey) : stream.label;
+
+              return (
+                <button
+                  key={stream.type}
+                  type="button"
+                  className={`notif-tab-btn ${activeTab === stream.type ? 'active' : ''}`}
+                  onClick={() => setActiveTab(stream.type)}
+                >
+                  <i className={`fa-solid ${stream.icon}`} />
+                  <span>{streamLabel}</span>
+                  {stream.unreadCount > 0 && (
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        padding: '1px 5px',
+                        borderRadius: '10px',
+                        background:
+                          stream.type === 'confidential'
+                            ? 'rgba(239, 68, 68, 0.2)'
+                            : 'rgba(59, 130, 246, 0.2)',
+                        color: stream.type === 'confidential' ? '#ef4444' : '#3b82f6',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {stream.unreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Stream Item List */}

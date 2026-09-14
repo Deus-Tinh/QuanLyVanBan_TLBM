@@ -1,6 +1,7 @@
 import React from 'react';
 import { MAIN_MODULES } from '../../utils/constants';
 import { ActivePageId } from '../../types/navigation';
+import { useTranslation } from '../../locales/i18n';
 
 interface AppSidebarProps {
   isMobileOpen: boolean;
@@ -22,6 +23,12 @@ export default function AppSidebar({
   onHoverPreview,
   onHoverLeave,
 }: AppSidebarProps) {
+  const { t } = useTranslation();
+
+  const getModuleLabel = (modId: string, fallback: string) => {
+    const key = modId === 'records_resources' ? 'records' : modId;
+    return t(`navigation.${key}`) !== `navigation.${key}` ? t(`navigation.${key}`) : fallback;
+  };
   return (
     <aside
       className={`app-sidebar ${isMobileOpen ? 'mobile-open' : ''}`}
@@ -50,6 +57,8 @@ export default function AppSidebar({
               .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
               .reduce((a, b) => a + b, 0);
 
+            const modLabel = getModuleLabel(mod.id, mod.label);
+
             return (
               <div key={mod.id} className="nav-item-wrapper">
                 <button
@@ -60,7 +69,7 @@ export default function AppSidebar({
                     onNavigate(mod.defaultPage);
                     onCloseMobile();
                   }}
-                  title={`${mod.label} (Rê chuột để xem trước, Bấm để ở lại trang)`}
+                  title={`${modLabel} (Rê chuột để xem trước, Bấm để ở lại trang)`}
                 >
                   <span className="nav-item-icon">
                     <i className={`fa-solid ${mod.icon}`} />
@@ -69,7 +78,7 @@ export default function AppSidebar({
                     )}
                   </span>
                   <span className="nav-item-mobile-label">
-                    <span className="mobile-label-title">{mod.label}</span>
+                    <span className="mobile-label-title">{modLabel}</span>
                     <span className="mobile-label-team">{mod.teamTag}</span>
                   </span>
                 </button>

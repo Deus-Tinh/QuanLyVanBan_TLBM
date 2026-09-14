@@ -16,13 +16,55 @@
     "group1DescSelf": "Nhóm 1 đang trong quá trình phát triển hoàn thiện giao diện và kết nối Backend Django.",
     "group1DescOther": "Nhóm 1 (PM: Châu Tuấn Kiệt) đang trong quá trình phát triển bộ khung Layout & chuẩn bị cổng API tích hợp với {team}."
   },
+  "header": {
+    "searchPlaceholder": "Tìm kiếm số hiệu VB, trích yếu, công việc...",
+    "clockTitle": "Đồng hồ hành chính thời gian thực",
+    "themeLight": "Chế độ Sáng",
+    "themeDark": "Chế độ Tối",
+    "language": "Ngôn ngữ",
+    "langVi": "Tiếng Việt",
+    "langEn": "English"
+  },
   "navigation": {
     "dashboard": "Bàn Làm Việc",
     "documents": "Quản Lý Văn Bản",
     "records": "Hồ Sơ & Tài Liệu",
     "workflow": "Công Việc & Ký Số",
     "system": "Tiện Ích & Hệ Thống",
-    "ai": "Trợ Lý AI Tra Cứu"
+    "ai": "Trợ Lý AI Tra Cứu",
+    "documents_incoming": "Văn Bản Đến",
+    "documents_outgoing": "Văn Bản Đi",
+    "documents_confidential": "Văn Bản Mật",
+    "resources": "Kho Tài Liệu",
+    "tasks": "Quản Lý Công Việc",
+    "approvals": "Quy Trình Ký Số",
+    "birthdays": "Sinh Nhật CBNV",
+    "meetings": "Đặt Phòng Họp",
+    "organizations": "Đơn Vị & Phòng Ban",
+    "employees": "Hồ Sơ Cán Bộ NV"
+  },
+  "userMenu": {
+    "profile": "Thông tin tài khoản",
+    "passwordChange": "Đổi mật khẩu",
+    "settings": "Cài đặt",
+    "loginDemo": "Trang đăng nhập (2 trường hợp)",
+    "logout": "Đăng xuất",
+    "logoutConfirm": "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống TLBM?",
+    "role": "PM · Nhóm 1"
+  },
+  "notifications": {
+    "title": "Thông Báo Văn Bản",
+    "incoming": "Đến",
+    "outgoing": "Đi",
+    "confidential": "Mật",
+    "markAllRead": "Đã đọc tất cả",
+    "viewAll": "Xem tất cả",
+    "unreadCount": "{count} chưa đọc"
+  },
+  "footer": {
+    "group1Notice": "Nhóm 1 đang trong quá trình phát triển",
+    "advisorPrefix": "GVHD",
+    "layoutLead": "Phụ trách Layout & Trang chủ"
   },
   "pages": {
     "dashboard": {

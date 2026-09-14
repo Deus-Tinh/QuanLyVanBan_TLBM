@@ -1044,6 +1044,60 @@
   border: 2px solid var(--bg-surface);
 }
 
+/* Language Switcher Pill Toggle */
+.lang-switcher-pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.lang-switcher-pill:hover {
+  border-color: var(--border-medium);
+}
+
+.lang-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  line-height: 1.2;
+}
+
+.lang-switch-btn .lang-flag {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.lang-switch-btn .lang-text {
+  letter-spacing: 0.04em;
+}
+
+.lang-switch-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: var(--bg-surface-hover);
+}
+
+.lang-switch-btn.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--color-primary-glow);
+  font-weight: 700;
+}
+
 /* ==========================================================================
    3. DROPDOWNS: NOTIFICATIONS, THEME, USER
    ========================================================================== */

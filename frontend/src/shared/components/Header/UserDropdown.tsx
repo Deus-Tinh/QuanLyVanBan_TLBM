@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CURRENT_USER } from '../../utils/constants';
 import { ActivePageId } from '../../types/navigation';
+import { useTranslation } from '../../locales/i18n';
 
 interface UserDropdownProps {
   onNavigate?: (page: ActivePageId) => void;
 }
 
 export default function UserDropdown({ onNavigate }: UserDropdownProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +45,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
         <div className="user-avatar-circle">{CURRENT_USER.avatar}</div>
         <div className="user-meta-info">
           <span className="user-name-label">{CURRENT_USER.fullName}</span>
-          <span className="user-role-label">PM · Nhóm 1</span>
+          <span className="user-role-label">{t('userMenu.role')}</span>
         </div>
         <i
           className="fa-solid fa-chevron-down"
@@ -93,7 +95,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
               onClick={() => handleItemClick('profile')}
             >
               <i className="fa-regular fa-user" />
-              <span>Thông tin tài khoản</span>
+              <span>{t('userMenu.profile')}</span>
             </button>
             <button
               type="button"
@@ -101,7 +103,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
               onClick={() => handleItemClick('password_change')}
             >
               <i className="fa-solid fa-key" />
-              <span>Đổi mật khẩu</span>
+              <span>{t('userMenu.passwordChange')}</span>
             </button>
             <button
               type="button"
@@ -109,7 +111,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
               onClick={() => handleItemClick('settings')}
             >
               <i className="fa-solid fa-gear" />
-              <span>Cài đặt</span>
+              <span>{t('userMenu.settings')}</span>
             </button>
             <button
               type="button"
@@ -117,21 +119,21 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
               onClick={() => handleItemClick('login')}
             >
               <i className="fa-solid fa-right-to-bracket" />
-              <span>Trang đăng nhập (2 trường hợp)</span>
+              <span>{t('userMenu.loginDemo')}</span>
             </button>
             <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
             <button
               type="button"
               className="user-menu-link logout"
               onClick={() => {
-                if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống TLBM?')) {
+                if (confirm(t('userMenu.logoutConfirm'))) {
                   handleItemClick('login');
                 }
                 setIsOpen(false);
               }}
             >
               <i className="fa-solid fa-arrow-right-from-bracket" />
-              <span>Đăng xuất</span>
+              <span>{t('userMenu.logout')}</span>
             </button>
           </div>
         </div>

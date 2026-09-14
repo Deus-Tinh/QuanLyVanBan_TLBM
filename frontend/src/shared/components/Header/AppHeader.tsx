@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import NotificationStreams from './NotificationStreams';
 import ThemeSelector from './ThemeSelector';
+import LanguageSwitcher from './LanguageSwitcher';
 import UserDropdown from './UserDropdown';
+import { useTranslation } from '../../locales/i18n';
 import { ThemeMode } from '../../types/theme';
 import { ActivePageId } from '../../types/navigation';
 
@@ -24,6 +26,7 @@ export default function AppHeader({
   preferredLightTheme,
   preferredDarkTheme,
 }: AppHeaderProps) {
+  const { t } = useTranslation();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -59,17 +62,17 @@ export default function AppHeader({
           <i className="fa-solid fa-magnifying-glass" />
           <input
             type="text"
-            placeholder="Tìm kiếm số hiệu VB, trích yếu, công việc..."
+            placeholder={t('header.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </form>
       </div>
 
-      {/* 2. Right Section: Live Clock, Notifications, Theme, User */}
+      {/* 2. Right Section: Live Clock, Notifications, Theme, Language, User */}
       <div className="header-right">
         {/* Đồng hồ hành chính chuẩn Thầy Duy */}
-        <div className="live-clock-card" title="Đồng hồ hành chính thời gian thực">
+        <div className="live-clock-card" title={t('header.clockTitle')}>
           <i className="fa-regular fa-clock" />
           <span className="clock-digits">{timeString}</span>
           <span className="clock-date">{dateString}</span>
@@ -86,6 +89,9 @@ export default function AppHeader({
           preferredLightTheme={preferredLightTheme}
           preferredDarkTheme={preferredDarkTheme}
         />
+
+        {/* Chuyển đổi ngôn ngữ Tiếng Việt / Tiếng Anh */}
+        <LanguageSwitcher />
 
         {/* Hồ sơ cá nhân người dùng */}
         <UserDropdown onNavigate={onNavigate} />

@@ -23,9 +23,9 @@ interface RouterProps {
   onNavigate: (page: ActivePageId) => void;
 }
 
-import commonJson, { t } from '../shared/locales/i18n';
+import { useTranslation } from '../shared/locales/i18n';
 
-// Bảng thông tin chi tiết từng phân hệ theo đúng đề cương ITC - Django - QLVB&TL.md được quản trị qua common.json (i18n)
+// Bảng thông tin chi tiết từng phân hệ theo đúng đề cương ITC - Django - QLVB&TL.md được quản trị qua file i18n
 interface PageMeta {
   title: string;
   module: string;
@@ -34,8 +34,6 @@ interface PageMeta {
   isGroup1: boolean;
   desc: string;
 }
-
-const PAGE_META = commonJson.pages as Record<ActivePageId, PageMeta>;
 
 export default function AppRouter({
   activePage,
@@ -48,6 +46,9 @@ export default function AppRouter({
   onSetPreferredDarkTheme,
   onNavigate,
 }: RouterProps) {
+  const { t, translations } = useTranslation();
+  const pageMap = (translations.pages || {}) as Record<ActivePageId, PageMeta>;
+
   // Trạng thái mở rộng danh sách phong cách: 'light' | 'dark' | null (chỉ mở khi bấm vào icon tương ứng)
   const [expandedMode, setExpandedMode] = useState<'light' | 'dark' | null>(() => {
     return isLightThemeMode(currentTheme) ? 'light' : 'dark';
@@ -61,7 +62,7 @@ export default function AppRouter({
     return <AiAssistantPage onNavigate={onNavigate} />;
   }
 
-  const meta = PAGE_META[activePage] || {
+  const meta = pageMap[activePage] || {
     title: activePage,
     module: 'Chức năng hệ thống',
     assignedTeam: 'Nhóm 1 (Trưởng nhóm: Châu Tuấn Kiệt)',
