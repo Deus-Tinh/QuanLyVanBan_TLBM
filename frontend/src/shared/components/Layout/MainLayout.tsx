@@ -199,48 +199,16 @@ export default function MainLayout({
       >
         {renderSidebarElements()}
 
-        {/* Cụm điều khiển nổi góc trên bên phải: Nút Về Trang Chủ & Nút Sáng/Tối */}
+        {/* Nút chuyển chế độ Sáng / Tối duy nhất nằm gọn gàng ở góc trên bên phải màn hình */}
         <div
-          className="ai-top-floating-controls"
+          className="ai-theme-floating-btn"
           style={{
             position: 'fixed',
             top: '12px',
             right: '18px',
             zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
           }}
         >
-          {/* Nút Về Trang Chủ (Home) rõ ràng, tiện lợi */}
-          <button
-            type="button"
-            onClick={() => onNavigate('dashboard')}
-            className="ai-home-floating-btn"
-            title="Quay về Trang chủ (Dashboard)"
-            aria-label="Về trang chủ"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              height: '38px',
-              padding: '0 14px',
-              borderRadius: '9999px',
-              background: 'var(--bg-surface-elevated, #1e293b)',
-              color: 'var(--text-primary, #ffffff)',
-              border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
-              cursor: 'pointer',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <i className="bi bi-house-door-fill" style={{ fontSize: '1rem', color: 'var(--color-primary)' }} />
-            <span>Trang chủ</span>
-          </button>
-
-          {/* Nút chuyển chế độ Sáng / Tối */}
           <ThemeSelector
             currentTheme={currentTheme}
             onSelectTheme={onSelectTheme}
