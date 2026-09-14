@@ -1,25 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import NotificationStreams from './NotificationStreams';
 import ThemeSelector from './ThemeSelector';
+import LanguageSwitcher from './LanguageSwitcher';
 import UserDropdown from './UserDropdown';
+import { useTranslation } from '../../locales/i18n';
 import { ThemeMode } from '../../types/theme';
 import { ActivePageId } from '../../types/navigation';
 
 interface AppHeaderProps {
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
+  onToggleTheme?: () => void;
   onToggleMobileSidebar: () => void;
+  onHoverSidebar?: () => void;
+  isSidebarOpen?: boolean;
   onNavigate?: (page: ActivePageId) => void;
+  preferredLightTheme?: ThemeMode;
+  preferredDarkTheme?: ThemeMode;
 }
 
 export default function AppHeader({
   currentTheme,
   onSelectTheme,
+  onToggleTheme,
   onToggleMobileSidebar,
+  onHoverSidebar,
+  isSidebarOpen,
   onNavigate,
+  preferredLightTheme,
+  preferredDarkTheme,
 }: AppHeaderProps) {
+  const { t } = useTranslation();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Live Administrative Clock: HH:mm:ss DD/MM/YYYY
   useEffect(() => {
@@ -37,42 +49,26 @@ export default function AppHeader({
     currentTime.getMonth() + 1
   )}/${currentTime.getFullYear()}`;
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      alert(`Đang tìm kiếm toàn hệ thống: "${searchQuery}"`);
-    }
-  };
-
   return (
     <header className="app-header">
-      {/* 1. Left Section: Mobile toggle & Global Search */}
+      {/* 1. Left Section: 3-bar Menu Trigger */}
       <div className="header-left">
         <button
           type="button"
-          className="mobile-menu-btn"
+          className={`header-menu-btn ${isSidebarOpen ? 'active' : ''}`}
           onClick={onToggleMobileSidebar}
-          title="Mở menu điều hướng"
-          aria-label="Mở menu"
+          onMouseEnter={onHoverSidebar}
+          title={t('header.menuTooltip')}
+          aria-label={t('header.menuAria')}
         >
           <i className="fa-solid fa-bars" />
         </button>
-
-        <form className="global-search-bar" onSubmit={handleSearchSubmit}>
-          <i className="fa-solid fa-magnifying-glass" />
-          <input
-            type="text"
-            placeholder="Tìm kiếm số hiệu VB, trích yếu, công việc..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </form>
       </div>
 
-      {/* 2. Right Section: Live Clock, Notifications, Theme, User */}
+      {/* 2. Right Section: Live Clock, Notifications, Theme, Language, User */}
       <div className="header-right">
         {/* Đồng hồ hành chính chuẩn Thầy Duy */}
-        <div className="live-clock-card" title="Đồng hồ hành chính thời gian thực">
+        <div className="live-clock-card" title={t('header.clockTitle')}>
           <i className="fa-regular fa-clock" />
           <span className="clock-digits">{timeString}</span>
           <span className="clock-date">{dateString}</span>
@@ -81,8 +77,17 @@ export default function AppHeader({
         {/* Thông báo 3 luồng: Đến, Đi, Mật */}
         <NotificationStreams />
 
-        {/* Đổi Theme (Dark / Light / Glass) */}
-        <ThemeSelector currentTheme={currentTheme} onSelectTheme={onSelectTheme} />
+        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm (Không mở popup che khuất) */}
+        <ThemeSelector
+          currentTheme={currentTheme}
+          onSelectTheme={onSelectTheme}
+          onToggleTheme={onToggleTheme}
+          preferredLightTheme={preferredLightTheme}
+          preferredDarkTheme={preferredDarkTheme}
+        />
+
+        {/* Chuyển đổi ngôn ngữ Tiếng Việt / Tiếng Anh */}
+        <LanguageSwitcher />
 
         {/* Hồ sơ cá nhân người dùng */}
         <UserDropdown onNavigate={onNavigate} />

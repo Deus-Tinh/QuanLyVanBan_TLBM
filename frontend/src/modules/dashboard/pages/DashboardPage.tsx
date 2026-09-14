@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { ActivePageId } from '../../../shared/types/navigation';
+import { useTranslation } from '../../../shared/locales/i18n';
 
 interface DashboardPageProps {
   onNavigate: (page: ActivePageId) => void;
 }
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchFilter, setSearchFilter] = useState<'all' | 'incoming' | 'outgoing'>('all');
 
@@ -14,8 +16,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       {/* 1. Welcome Hero Banner */}
       <div
         style={{
-          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(6, 182, 212, 0.08))',
-          border: '1px solid var(--border-subtle)',
+          background: 'linear-gradient(135deg, var(--color-primary-subtle), transparent)',
+          border: '1px solid var(--color-primary-border)',
           borderRadius: 'var(--radius-xl)',
           padding: '24px 28px',
           display: 'flex',
@@ -31,23 +33,24 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '1.4rem' }}>👋</span>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>
-              Xin chào, Châu Tuấn Kiệt
+              {t('dashboardDetails.greeting')}
             </h1>
             <span
               style={{
                 fontSize: '0.75rem',
                 padding: '3px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(59, 130, 246, 0.2)',
-                color: '#60a5fa',
+                background: 'var(--color-primary-subtle)',
+                border: '1px solid var(--color-primary-border)',
+                color: 'var(--color-primary)',
                 fontWeight: 700,
               }}
             >
-              PM · Trưởng Nhóm 1
+              {t('dashboardDetails.roleBadge')}
             </span>
           </div>
           <p style={{ color: 'var(--text-secondary)', marginTop: '6px', fontSize: '0.92rem' }}>
-            Bàn làm việc tổng quan · Đề cương Module 1.2 Trang chủ do <strong>Nhóm 1 phụ trách</strong> (Châu Tuấn Kiệt, Nguyễn Văn Hiếu, Nguyễn Duy Quân).
+            {t('dashboardDetails.leadDescription')}
           </p>
         </div>
 
@@ -64,12 +67,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
+              border: 'none',
+              cursor: 'pointer',
               boxShadow: '0 4px 12px var(--color-primary-glow)',
             }}
             onClick={() => onNavigate('documents_incoming')}
           >
             <i className="fa-solid fa-plus" />
-            <span>Tiếp nhận văn bản</span>
+            <span>{t('dashboardDetails.receiveDocBtn')}</span>
           </button>
         </div>
       </div>
@@ -88,7 +93,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--color-primary)' }} />
             <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)' }}>
-              Tìm Kiếm Nhanh Văn Bản Đến &amp; Văn Bản Đi
+              {t('dashboardDetails.quickSearchTitle')}
             </span>
           </div>
           <span
@@ -96,8 +101,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               fontSize: '0.72rem',
               padding: '3px 10px',
               borderRadius: 'var(--radius-full)',
-              background: 'rgba(245, 158, 11, 0.18)',
-              color: '#d97706',
+              background: 'var(--color-warning-subtle)',
+              border: '1px solid var(--color-warning-border)',
+              color: 'var(--color-warning-text)',
               fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
@@ -105,7 +111,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             }}
           >
             <i className="fa-solid fa-triangle-exclamation" />
-            Nhóm 1 đang trong quá trình phát triển
+            {t('common.group1Developing')}
           </span>
         </div>
 
@@ -122,9 +128,10 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 border: '1px solid var(--border-subtle)',
                 background: searchFilter === 'all' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
                 color: searchFilter === 'all' ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer',
               }}
             >
-              Tất cả
+              {t('dashboardDetails.filterAll')}
             </button>
             <button
               type="button"
@@ -137,9 +144,10 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 border: '1px solid var(--border-subtle)',
                 background: searchFilter === 'incoming' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
                 color: searchFilter === 'incoming' ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer',
               }}
             >
-              Văn bản Đến
+              {t('dashboardDetails.filterIncoming')}
             </button>
             <button
               type="button"
@@ -152,9 +160,10 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 border: '1px solid var(--border-subtle)',
                 background: searchFilter === 'outgoing' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
                 color: searchFilter === 'outgoing' ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer',
               }}
             >
-              Văn bản Đi
+              {t('dashboardDetails.filterOutgoing')}
             </button>
           </div>
 
@@ -163,7 +172,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Nhập số ký hiệu, trích yếu nội dung văn bản..."
+              placeholder={t('dashboardDetails.searchPlaceholder')}
               style={{
                 width: '100%',
                 padding: '9px 14px 9px 36px',
@@ -189,7 +198,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
           <button
             type="button"
-            onClick={() => alert('Nhóm 1 đang trong quá trình phát triển chức năng tìm kiếm kết nối cơ sở dữ liệu!')}
+            onClick={() => alert(t('dashboardDetails.searchDevAlert'))}
             style={{
               padding: '9px 18px',
               borderRadius: 'var(--radius-md)',
@@ -200,10 +209,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px var(--color-primary-glow)',
             }}
           >
             <i className="fa-solid fa-magnifying-glass" />
-            <span>Tìm kiếm</span>
+            <span>{t('dashboardDetails.searchBtn')}</span>
           </button>
         </div>
       </div>
@@ -212,21 +224,21 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)' }}>
-            📊 Thống Kê Số Lượng Văn Bản Đi &amp; Đến Theo Năm (2024 - 2026)
+            📊 {t('dashboardDetails.kpiTitle')}
           </div>
           <span
             style={{
               fontSize: '0.72rem',
               padding: '3px 10px',
               borderRadius: 'var(--radius-full)',
-              background: 'rgba(16, 185, 129, 0.15)',
-              color: '#10b981',
+              background: 'var(--color-success-subtle)',
+              border: '1px solid var(--color-success-border)',
+              color: 'var(--color-success)',
               fontWeight: 700,
             }}
           >
-            ✓ Đạt chuẩn đặc tả (Nhóm 1)
+            {t('dashboardDetails.kpiVerifiedTag')}
           </span>
-
         </div>
 
         <div
@@ -254,8 +266,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 width: '50px',
                 height: '50px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(59, 130, 246, 0.15)',
-                color: '#3b82f6',
+                background: 'var(--color-primary-subtle)',
+                color: 'var(--color-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -266,13 +278,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
             <div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                VĂN BẢN ĐẾN (NĂM 2026)
+                {t('dashboardDetails.incomingCard')}
               </div>
               <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 1,248
               </div>
-              <div style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 600 }}>
-                ↑ +12 văn bản mới hôm nay
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-success)', fontWeight: 600 }}>
+                {t('dashboardDetails.incomingToday')}
               </div>
             </div>
           </div>
@@ -295,8 +307,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 width: '50px',
                 height: '50px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'var(--color-success-subtle)',
+                color: 'var(--color-success)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -307,13 +319,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
             <div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                VĂN BẢN ĐI NỘI BỘ
+                {t('dashboardDetails.outgoingCard')}
               </div>
               <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 856
               </div>
-              <div style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 600 }}>
-                ↑ 100% đã phát hành
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-success)', fontWeight: 600 }}>
+                {t('dashboardDetails.outgoingStatus')}
               </div>
             </div>
           </div>
@@ -336,8 +348,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 width: '50px',
                 height: '50px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(239, 68, 68, 0.15)',
-                color: '#ef4444',
+                background: 'var(--color-danger-subtle)',
+                color: 'var(--color-danger)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -348,13 +360,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
             <div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                VĂN BẢN MẬT (AN NINH)
+                {t('dashboardDetails.confidentialCard')}
               </div>
               <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 24
               </div>
-              <div style={{ fontSize: '0.74rem', color: '#ef4444', fontWeight: 600 }}>
-                🔒 Phân quyền nghiêm ngặt
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+                {t('dashboardDetails.confidentialStatus')}
               </div>
             </div>
           </div>
@@ -377,8 +389,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 width: '50px',
                 height: '50px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(139, 92, 246, 0.15)',
-                color: '#8b5cf6',
+                background: 'var(--color-purple-subtle)',
+                color: 'var(--color-purple)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -389,13 +401,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
             </div>
             <div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                CÔNG VIỆC ĐANG XỬ LÝ
+                {t('dashboardDetails.tasksCard')}
               </div>
               <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 18
               </div>
-              <div style={{ fontSize: '0.74rem', color: '#f59e0b', fontWeight: 600 }}>
-                ⏱ 3 việc gần đến hạn
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-warning)', fontWeight: 600 }}>
+                {t('dashboardDetails.tasksNearDeadline')}
               </div>
             </div>
           </div>
@@ -416,9 +428,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fa-solid fa-cake-candles" style={{ color: '#ec4899', fontSize: '1.1rem' }} />
+              <i className="fa-solid fa-cake-candles" style={{ color: 'var(--color-pink)', fontSize: '1.1rem' }} />
               <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
-                Thông Báo Sinh Nhật
+                {t('dashboardDetails.birthdaysTitle')}
               </span>
             </div>
             <span
@@ -426,15 +438,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'var(--color-success-subtle)',
+                color: 'var(--color-success)',
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
               }}
             >
-              ✓ Đạt chuẩn (Nhóm 1)
+              {t('dashboardDetails.birthdaysVerified')}
             </span>
-
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -443,8 +454,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               style={{
                 padding: '10px 14px',
                 borderRadius: 'var(--radius-md)',
-                background: 'rgba(236, 72, 153, 0.08)',
-                border: '1px solid rgba(236, 72, 153, 0.25)',
+                background: 'var(--color-pink-subtle)',
+                border: '1px solid var(--color-pink-border)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -461,8 +472,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ec4899', background: '#fff', padding: '2px 8px', borderRadius: '10px' }}>
-                Hôm nay
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-pink)', background: 'var(--bg-surface)', padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--color-pink-border)' }}>
+                {t('dashboardDetails.today')}
               </span>
             </div>
 
@@ -489,8 +500,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                   </div>
                 </div>
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>
-                Ngày mai
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-info)', background: 'var(--color-info-subtle)', padding: '2px 8px', borderRadius: '10px', border: '1px solid var(--color-info-border)' }}>
+                {t('dashboardDetails.tomorrow')}
               </span>
             </div>
           </div>
@@ -508,9 +519,9 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fa-solid fa-calendar-check" style={{ color: '#10b981', fontSize: '1.1rem' }} />
+              <i className="fa-solid fa-calendar-check" style={{ color: 'var(--color-success)', fontSize: '1.1rem' }} />
               <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)' }}>
-                Lịch Sử Dụng Phòng Họp Hôm Nay
+                {t('dashboardDetails.meetingRoomsToday')}
               </span>
             </div>
             <span
@@ -518,14 +529,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'var(--color-success-subtle)',
+                color: 'var(--color-success)',
                 fontWeight: 700,
               }}
             >
-              ✓ Đạt chuẩn (Nhóm 1)
+              {t('dashboardDetails.birthdaysVerified')}
             </span>
-
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -548,8 +558,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                   08:30 - 11:30 · Chủ trì: NCS.ThS. Trần Phương Duy
                 </div>
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981' }}>
-                Đang diễn ra
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success)' }}>
+                {t('dashboardDetails.inProgress')}
               </span>
             </div>
 
@@ -572,8 +582,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                   14:00 - 16:30 · Điều phối: Châu Tuấn Kiệt (PM)
                 </div>
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b' }}>
-                Sắp tới
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-warning-text)' }}>
+                {t('dashboardDetails.upcoming')}
               </span>
             </div>
           </div>
@@ -595,8 +605,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fa-solid fa-inbox" style={{ color: '#3b82f6' }} />
-                <span>Danh Sách Văn Bản Đến Mới Nhất (5 cái)</span>
+                <i className="fa-solid fa-inbox" style={{ color: 'var(--color-info)' }} />
+                <span>{t('dashboardDetails.recentIncomingTitle')}</span>
               </div>
             </div>
             <span
@@ -604,23 +614,22 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'var(--color-success-subtle)',
+                color: 'var(--color-success)',
                 fontWeight: 700,
               }}
             >
-              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
+              {t('dashboardDetails.completedGroup1')}
             </span>
-
           </div>
 
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                  <th style={{ padding: '8px 6px' }}>Số, ký hiệu</th>
-                  <th style={{ padding: '8px 6px' }}>Trích yếu nội dung</th>
-                  <th style={{ padding: '8px 6px', width: '90px' }}>Ngày VB</th>
+                  <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.docNumber')}</th>
+                  <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.docSummary')}</th>
+                  <th style={{ padding: '8px 6px', width: '90px' }}>{t('dashboardDetails.docDate')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -657,7 +666,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 gap: '4px',
               }}
             >
-              <span>Xem thêm (qua trang văn bản đến)</span>
+              <span>{t('dashboardDetails.viewMoreIncoming')}</span>
               <i className="fa-solid fa-arrow-right" />
             </button>
           </div>
@@ -676,8 +685,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fa-solid fa-paper-plane" style={{ color: '#10b981' }} />
-                <span>Danh Sách Văn Bản Đi Nội Bộ (5 cái)</span>
+                <i className="fa-solid fa-paper-plane" style={{ color: 'var(--color-success)' }} />
+                <span>{t('dashboardDetails.recentOutgoingTitle')}</span>
               </div>
             </div>
             <span
@@ -685,23 +694,22 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'var(--color-success-subtle)',
+                color: 'var(--color-success)',
                 fontWeight: 700,
               }}
             >
-              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
+              {t('dashboardDetails.completedGroup1')}
             </span>
-
           </div>
 
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                  <th style={{ padding: '8px 6px' }}>Số, ký hiệu</th>
-                  <th style={{ padding: '8px 6px' }}>Trích yếu nội dung</th>
-                  <th style={{ padding: '8px 6px', width: '90px' }}>Ngày VB</th>
+                  <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.docNumber')}</th>
+                  <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.docSummary')}</th>
+                  <th style={{ padding: '8px 6px', width: '90px' }}>{t('dashboardDetails.docDate')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -713,7 +721,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                   { code: '31/QĐ-BL', title: 'Quyết định phân công nhiệm vụ đồ án Django', date: '06/09/2026' },
                 ].map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '9px 6px', fontWeight: 600, color: '#10b981' }}>{row.code}</td>
+                    <td style={{ padding: '9px 6px', fontWeight: 600, color: 'var(--color-success)' }}>{row.code}</td>
                     <td style={{ padding: '9px 6px', color: 'var(--text-main)' }}>{row.title}</td>
                     <td style={{ padding: '9px 6px', color: 'var(--text-muted)' }}>{row.date}</td>
                   </tr>
@@ -729,7 +737,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#10b981',
+                color: 'var(--color-success)',
                 fontWeight: 600,
                 fontSize: '0.84rem',
                 cursor: 'pointer',
@@ -738,7 +746,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 gap: '4px',
               }}
             >
-              <span>Xem thêm (qua trang văn bản đi)</span>
+              <span>{t('dashboardDetails.viewMoreOutgoing')}</span>
               <i className="fa-solid fa-arrow-right" />
             </button>
           </div>
@@ -760,8 +768,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fa-solid fa-list-check" style={{ color: '#8b5cf6' }} />
-                <span>Danh Sách Công Việc Được Giao (5 cái)</span>
+                <i className="fa-solid fa-list-check" style={{ color: 'var(--color-purple)' }} />
+                <span>{t('dashboardDetails.recentTasksTitle')}</span>
               </div>
             </div>
             <span
@@ -769,31 +777,30 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'var(--color-success-subtle)',
+                color: 'var(--color-success)',
                 fontWeight: 700,
               }}
             >
-              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
+              {t('dashboardDetails.completedGroup1')}
             </span>
-
           </div>
 
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                  <th style={{ padding: '8px 6px' }}>Tiêu đề công việc</th>
-                  <th style={{ padding: '8px 6px', width: '90px' }}>Hạn xử lý</th>
-                  <th style={{ padding: '8px 6px', width: '90px' }}>Trạng thái</th>
+                  <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.taskTitle')}</th>
+                  <th style={{ padding: '8px 6px', width: '90px' }}>{t('dashboardDetails.taskDue')}</th>
+                  <th style={{ padding: '8px 6px', width: '90px' }}>{t('dashboardDetails.taskStatus')}</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { title: 'Hoàn thiện bộ khung Layout Header Navbar (Nhóm 1)', due: '12/09/2026', status: 'Hoàn thành', color: '#10b981' },
-                  { title: 'Xây dựng API Văn bản đến và Văn bản đi (Nhóm 2)', due: '15/09/2026', status: 'Đang làm', color: '#f59e0b' },
-                  { title: 'Thiết kế danh mục Hồ sơ cấp 1 & cấp 2 (Nhóm 3)', due: '16/09/2026', status: 'Chờ duyệt', color: '#3b82f6' },
-                  { title: 'Cập nhật kho tài liệu biểu mẫu chung (Nhóm 4)', due: '18/09/2026', status: 'Đang làm', color: '#f59e0b' },
+                  { title: 'Hoàn thiện bộ khung Layout Header Navbar (Nhóm 1)', due: '12/09/2026', status: 'Hoàn thành', color: 'var(--color-success)' },
+                  { title: 'Xây dựng API Văn bản đến và Văn bản đi (Nhóm 2)', due: '15/09/2026', status: 'Đang làm', color: 'var(--color-warning-text)' },
+                  { title: 'Thiết kế danh mục Hồ sơ cấp 1 & cấp 2 (Nhóm 3)', due: '16/09/2026', status: 'Chờ duyệt', color: 'var(--color-info)' },
+                  { title: 'Cập nhật kho tài liệu biểu mẫu chung (Nhóm 4)', due: '18/09/2026', status: 'Đang làm', color: 'var(--color-warning-text)' },
                   { title: 'Tích hợp chữ ký số và sơ đồ trình ký (Nhóm 5)', due: '20/09/2026', status: 'Mới tạo', color: 'var(--text-muted)' },
                 ].map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -813,7 +820,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#8b5cf6',
+                color: 'var(--color-purple)',
                 fontWeight: 600,
                 fontSize: '0.84rem',
                 cursor: 'pointer',
@@ -822,7 +829,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 gap: '4px',
               }}
             >
-              <span>Xem thêm (qua trang công việc)</span>
+              <span>{t('dashboardDetails.viewMoreTasks')}</span>
               <i className="fa-solid fa-arrow-right" />
             </button>
           </div>
@@ -841,8 +848,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <i className="fa-solid fa-file-lines" style={{ color: '#06b6d4' }} />
-                <span>Danh Sách Biểu Mẫu, Tài Liệu Chung (5 cái)</span>
+                <i className="fa-solid fa-file-lines" style={{ color: 'var(--color-info)' }} />
+                <span>{t('dashboardDetails.recentResourcesTitle')}</span>
               </div>
             </div>
             <span
@@ -850,35 +857,34 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 fontSize: '0.7rem',
                 padding: '2px 8px',
                 borderRadius: 'var(--radius-full)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10b981',
+                background: 'var(--color-success-subtle)',
+                color: 'var(--color-success)',
                 fontWeight: 700,
               }}
             >
-              ✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)
+              {t('dashboardDetails.completedGroup1')}
             </span>
-
           </div>
 
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                  <th style={{ padding: '8px 6px' }}>Ký hiệu</th>
-                  <th style={{ padding: '8px 6px' }}>Tên tài liệu / Biểu mẫu</th>
-                  <th style={{ padding: '8px 6px', width: '80px' }}>Định dạng</th>
+                  <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.resourceCode')}</th>
+                  <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.resourceName')}</th>
+                  <th style={{ padding: '8px 6px', width: '80px' }}>{t('dashboardDetails.resourceFormat')}</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { code: 'BM-01/NS', title: 'Phiếu đề xuất tiếp nhận cán bộ nhân viên mới', ext: 'DOCX', color: '#3b82f6' },
-                  { code: 'BM-02/TC', title: 'Mẫu thanh toán tạm ứng công tác phí nội bộ', ext: 'XLSX', color: '#10b981' },
-                  { code: 'TL-03/BM', title: 'Quy trình xử lý văn bản đến và văn bản đi', ext: 'PDF', color: '#ef4444' },
-                  { code: 'BM-04/HC', title: 'Mẫu đăng ký phòng họp và trang thiết bị', ext: 'DOCX', color: '#3b82f6' },
-                  { code: 'TL-05/IT', title: 'Hướng dẫn cài đặt ứng dụng bảo mật TLBM', ext: 'PDF', color: '#ef4444' },
+                  { code: 'BM-01/NS', title: 'Phiếu đề xuất tiếp nhận cán bộ nhân viên mới', ext: 'DOCX', color: 'var(--color-info)' },
+                  { code: 'BM-02/TC', title: 'Mẫu thanh toán tạm ứng công tác phí nội bộ', ext: 'XLSX', color: 'var(--color-success)' },
+                  { code: 'TL-03/BM', title: 'Quy trình xử lý văn bản đến và văn bản đi', ext: 'PDF', color: 'var(--color-danger)' },
+                  { code: 'BM-04/HC', title: 'Mẫu đăng ký phòng họp và trang thiết bị', ext: 'DOCX', color: 'var(--color-info)' },
+                  { code: 'TL-05/IT', title: 'Hướng dẫn cài đặt ứng dụng bảo mật TLBM', ext: 'PDF', color: 'var(--color-danger)' },
                 ].map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '9px 6px', fontWeight: 600, color: '#06b6d4' }}>{row.code}</td>
+                    <td style={{ padding: '9px 6px', fontWeight: 600, color: 'var(--color-info)' }}>{row.code}</td>
                     <td style={{ padding: '9px 6px', color: 'var(--text-main)' }}>{row.title}</td>
                     <td style={{ padding: '9px 6px' }}>
                       <span style={{ fontSize: '0.72rem', padding: '2px 6px', borderRadius: '4px', background: row.color, color: '#fff', fontWeight: 700 }}>
@@ -898,7 +904,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#06b6d4',
+                color: 'var(--color-info)',
                 fontWeight: 600,
                 fontSize: '0.84rem',
                 cursor: 'pointer',
@@ -907,7 +913,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
                 gap: '4px',
               }}
             >
-              <span>Xem thêm (qua trang tài liệu chung)</span>
+              <span>{t('dashboardDetails.viewMoreResources')}</span>
               <i className="fa-solid fa-arrow-right" />
             </button>
           </div>
