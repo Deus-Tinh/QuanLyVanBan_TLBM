@@ -54,15 +54,6 @@ export default function AppHeader({
     <header className="app-header">
       {/* 1. Left Section: Mobile toggle & Global Search */}
       <div className="header-left">
-        <button
-          type="button"
-          className="mobile-menu-btn"
-          onClick={onToggleMobileSidebar}
-          title="Mở menu điều hướng"
-          aria-label="Mở menu"
-        >
-          <i className="fa-solid fa-bars" />
-        </button>
 
         <form className="global-search-bar" onSubmit={handleSearchSubmit}>
           <i className="fa-solid fa-magnifying-glass" />
