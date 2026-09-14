@@ -14,6 +14,7 @@ __pycache__/
 *$py.class
 *.sqlite3
 backend/db.sqlite3
+backend/media/
 backend/**/__pycache__/
 *.pyc
 
