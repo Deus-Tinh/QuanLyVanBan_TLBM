@@ -180,22 +180,18 @@ export default function AppSidebar({
                     isExpanded ? 'expanded' : ''
                   }`}
                 >
-                  {/* Hàng Phân Hệ chính kiểu Facebook */}
+                  {/* Hàng Phân Hệ chính kiểu Facebook: Bấm vào để MỞ RỘNG / THU GỌN mục con thay vì chuyển trang ngay */}
                   <div
                     className={`fb-module-row ${isModActive ? 'active' : ''} ${
                       isModPreview && !isModActive ? 'previewing' : ''
                     }`}
                     onClick={() => {
-                      // Nếu chưa mở, vừa mở rộng vừa chuyển trang mặc định
-                      if (!isExpanded) {
-                        toggleExpand(mod.id);
-                      }
-                      onNavigate(mod.defaultPage);
-                      onCloseMobile();
+                      toggleExpand(mod.id);
                     }}
                     onMouseEnter={() => onHoverPreview(mod.defaultPage)}
                     role="button"
                     tabIndex={0}
+                    title={`${modLabel} (${isExpanded ? 'Bấm để thu gọn' : 'Bấm để xem các mục con'})`}
                   >
                     {/* Hộp icon bo tròn rực rỡ chuẩn icon apps của FB */}
                     <div
@@ -219,7 +215,10 @@ export default function AppSidebar({
                     <button
                       type="button"
                       className="fb-accordion-toggle-btn"
-                      onClick={(e) => toggleExpand(mod.id, e)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpand(mod.id);
+                      }}
                       aria-label={isExpanded ? 'Thu gọn' : 'Mở rộng'}
                       title={isExpanded ? 'Thu gọn các mục con' : 'Mở danh sách mục con'}
                     >
@@ -316,7 +315,7 @@ export default function AppSidebar({
                 <i className="fa-solid fa-user-gear" />
               </div>
               <span className="fb-shortcut-name">
-                {t('navigation.profile') || 'Hồ sơ cá nhân'}
+                {t('userMenu.profile') !== 'userMenu.profile' ? t('userMenu.profile') : 'Hồ sơ cá nhân'}
               </span>
             </div>
 
@@ -337,7 +336,7 @@ export default function AppSidebar({
                 <i className="fa-solid fa-key" />
               </div>
               <span className="fb-shortcut-name">
-                {t('navigation.passwordChange') || 'Đổi mật khẩu'}
+                {t('userMenu.passwordChange') !== 'userMenu.passwordChange' ? t('userMenu.passwordChange') : 'Đổi mật khẩu'}
               </span>
             </div>
 
@@ -358,7 +357,7 @@ export default function AppSidebar({
                 <i className="fa-solid fa-gear" />
               </div>
               <span className="fb-shortcut-name">
-                {t('navigation.settings') || 'Cài đặt hệ thống'}
+                {t('userMenu.settings') !== 'userMenu.settings' ? t('userMenu.settings') : 'Cài đặt hệ thống'}
               </span>
             </div>
 
@@ -379,7 +378,7 @@ export default function AppSidebar({
                 <i className="fa-solid fa-wand-magic-sparkles" />
               </div>
               <span className="fb-shortcut-name">
-                {t('navigation.ai') || 'Trợ Lý AI TLBM'}
+                {t('navigation.ai') !== 'navigation.ai' ? t('navigation.ai') : 'Trợ Lý AI TLBM'}
               </span>
             </div>
           </div>
