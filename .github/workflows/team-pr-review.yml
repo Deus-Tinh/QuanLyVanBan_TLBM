@@ -1,0 +1,75 @@
+name: Route staging pull request reviews by team branch
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  request-team-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request the team that owns the source branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Do not check out or execute code from the pull request fork.
+            const teamByGroupBranch = {
+              '1_layout_home': 'team_1',
+              '2_documents': 'team_2',
+              '3_dossiers_documents': 'team_3',
+              '4_documents_templates': 'team_4',
+              '5_signing_workflow': 'team_5',
+              '6_tasks': 'team_6',
+              '7_meeting_rooms_birthdays_system': 'team_7',
+              '8_ai_chatbox': 'team_8',
+            };
+
+            const baseBranch = context.payload.pull_request.base.ref;
+            const sourceBranch = context.payload.pull_request.head.ref;
+
+            if (baseBranch !== 'staging') {
+              core.info(`Skipping PR with base branch: ${baseBranch}`);
+              return;
+            }
+
+            const teamSlug = teamByGroupBranch[sourceBranch];
+
+            if (!teamSlug) {
+              core.info(`No team mapping is configured for source branch: ${sourceBranch}`);
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const pullNumber = context.payload.pull_request.number;
+            const requested = await github.rest.pulls.listRequestedReviewers({
+              owner,
+              repo,
+              pull_number: pullNumber,
+            });
+
+            const alreadyRequested = requested.data.teams.some(
+              (team) => team.slug === teamSlug,
+            );
+
+            if (alreadyRequested) {
+              core.info(`Review already requested from ${teamSlug}.`);
+              return;
+            }
+
+            await github.rest.pulls.requestReviewers({
+              owner,
+              repo,
+              pull_number: pullNumber,
+              team_reviewers: [teamSlug],
+            });
+
+            core.info(`Requested review from ${teamSlug} for ${sourceBranch} -> ${baseBranch}.`);
