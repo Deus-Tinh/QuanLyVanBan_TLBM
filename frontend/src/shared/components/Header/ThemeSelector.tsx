@@ -38,7 +38,7 @@ export default function ThemeSelector({
         type="button"
         className={`header-action-btn theme-quick-toggle-btn ${isLight ? 'is-light-mode' : 'is-dark-mode'}`}
         onClick={handleToggle}
-        title={`Đang hiển thị: ${activeOption.name} · Nhấp để chuyển sang Giao diện ${nextModeName} (Vào Cài đặt để tùy biến)`}
+        title={`Đang hiển thị: ${activeOption.name} · Nhấp để chuyển sang Giao diện ${nextModeName}`}
         aria-label={`Chuyển sang giao diện ${nextModeName}`}
       >
         <i

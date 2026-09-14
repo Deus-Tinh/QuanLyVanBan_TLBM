@@ -55,18 +55,7 @@ export default function AppRouter({
       return <PasswordChangePage onNavigate={onNavigate} />;
 
     case 'settings':
-      return (
-        <SettingsPage
-          currentTheme={currentTheme}
-          onSelectTheme={onSelectTheme}
-          onToggleTheme={onToggleTheme}
-          preferredLightTheme={preferredLightTheme}
-          preferredDarkTheme={preferredDarkTheme}
-          onSetPreferredLightTheme={onSetPreferredLightTheme}
-          onSetPreferredDarkTheme={onSetPreferredDarkTheme}
-          onNavigate={onNavigate}
-        />
-      );
+      return <SettingsPage onNavigate={onNavigate} />;
 
     default:
       return <SyllabusPreview activePage={activePage} onNavigate={onNavigate} />;
