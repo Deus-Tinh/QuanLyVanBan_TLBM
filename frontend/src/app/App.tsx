@@ -12,22 +12,14 @@ export default function App() {
   const [committedPage, setCommittedPage] = useState<ActivePageId>('dashboard');
   const [previewPage, setPreviewPage] = useState<ActivePageId | null>(null);
 
-  // Giao diện thực tế đang kích hoạt
+  // Giao diện thực tế đang kích hoạt: Chỉ giữ lại 2 giao diện đẹp & hiện đại nhất (Sleek Dark & Clean Light)
   const [theme, setTheme] = useState<ThemeMode>(() => {
-    return (localStorage.getItem('tlbm_theme') as ThemeMode) || 'dark';
+    const saved = localStorage.getItem('tlbm_theme');
+    return saved === 'light' ? 'light' : 'dark';
   });
 
-  // Phong cách được chỉ định cho Chế độ Sáng (mặc định 'light' - Clean Light)
-  const [preferredLightTheme, setPreferredLightTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('tlbm_preferred_light_theme') as ThemeMode;
-    return saved && LIGHT_THEMES.includes(saved) ? saved : 'light';
-  });
-
-  // Phong cách được chỉ định cho Chế độ Tối (mặc định 'dark' - Sleek Dark)
-  const [preferredDarkTheme, setPreferredDarkTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('tlbm_preferred_dark_theme') as ThemeMode;
-    return saved && DARK_THEMES.includes(saved) ? saved : 'dark';
-  });
+  const preferredLightTheme: ThemeMode = 'light';
+  const preferredDarkTheme: ThemeMode = 'dark';
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -36,43 +28,21 @@ export default function App() {
 
   // Chuyển đổi nhanh 1-chạm giữa Sáng và Tối (dùng cho nút trên Header)
   const handleToggleTheme = () => {
-    if (isLightThemeMode(theme)) {
-      setTheme(preferredDarkTheme);
-    } else {
-      setTheme(preferredLightTheme);
-    }
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   };
 
   // Chọn trực tiếp 1 theme cụ thể
   const handleSelectTheme = (newTheme: ThemeMode) => {
-    setTheme(newTheme);
-    if (isLightThemeMode(newTheme)) {
-      setPreferredLightTheme(newTheme);
-      localStorage.setItem('tlbm_preferred_light_theme', newTheme);
-    } else {
-      setPreferredDarkTheme(newTheme);
-      localStorage.setItem('tlbm_preferred_dark_theme', newTheme);
-    }
+    const validTheme: ThemeMode = newTheme === 'light' ? 'light' : 'dark';
+    setTheme(validTheme);
   };
 
-  // Cấu hình phong cách đại diện cho Chế độ Sáng từ trang Cài đặt
-  const handleSetPreferredLight = (newTheme: ThemeMode) => {
-    setPreferredLightTheme(newTheme);
-    localStorage.setItem('tlbm_preferred_light_theme', newTheme);
-    // Nếu hiện tại đang ở chế độ Sáng thì áp dụng giao diện mới ngay lập tức
-    if (isLightThemeMode(theme)) {
-      setTheme(newTheme);
-    }
+  const handleSetPreferredLight = (_newTheme: ThemeMode) => {
+    setTheme('light');
   };
 
-  // Cấu hình phong cách đại diện cho Chế độ Tối từ trang Cài đặt
-  const handleSetPreferredDark = (newTheme: ThemeMode) => {
-    setPreferredDarkTheme(newTheme);
-    localStorage.setItem('tlbm_preferred_dark_theme', newTheme);
-    // Nếu hiện tại đang ở chế độ Tối thì áp dụng giao diện mới ngay lập tức
-    if (!isLightThemeMode(theme)) {
-      setTheme(newTheme);
-    }
+  const handleSetPreferredDark = (_newTheme: ThemeMode) => {
+    setTheme('dark');
   };
 
   // Trang thực tế đang hiển thị trên viewport

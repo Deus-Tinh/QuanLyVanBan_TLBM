@@ -31,10 +31,6 @@ export default function SettingsPage({
 }: SettingsPageProps) {
   const { t, currentLang } = useTranslation();
 
-  const [expandedMode, setExpandedMode] = useState<'light' | 'dark' | null>(() => {
-    return isLightThemeMode(currentTheme) ? 'light' : 'dark';
-  });
-
   const [assistiveTouchEnabled, setAssistiveTouchEnabled] = useState<boolean>(() => {
     return localStorage.getItem('tlbm_enable_assistive_touch') === 'true';
   });
@@ -128,220 +124,168 @@ export default function SettingsPage({
             </span>
           </div>
 
-          {/* 1.1. Chuyển đổi nhanh 2 Chế độ Sáng / Tối */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '16px' }}>
-            {/* Chế độ Sáng */}
+          {/* 1.1. Lựa chọn 2 Chế độ Giao diện đẹp & hiện đại nhất (Clean Light & Sleek Dark) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+            {/* 1. Clean Light */}
             <div
-              onClick={() => {
-                if (onSelectTheme && !isLightThemeMode(currentTheme)) {
-                  onSelectTheme(preferredLightTheme);
-                }
-                setExpandedMode(expandedMode === 'light' ? null : 'light');
-              }}
+              onClick={() => onSelectTheme?.('light')}
               style={{
-                padding: '16px',
+                padding: '18px',
                 borderRadius: 'var(--radius-lg)',
-                border: expandedMode === 'light'
-                  ? '2px solid var(--color-warning)'
-                  : isLightThemeMode(currentTheme)
-                  ? '1.5px solid var(--color-warning-border)'
+                border: currentTheme === 'light'
+                  ? '2px solid #f59e0b'
                   : '1px solid var(--border-subtle)',
-                background: expandedMode === 'light'
+                background: currentTheme === 'light'
                   ? 'var(--color-warning-subtle)'
                   : 'var(--bg-surface-elevated)',
                 cursor: 'pointer',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
+                flexDirection: 'column',
+                gap: '12px',
                 transition: 'all var(--transition-fast)',
+                boxShadow: currentTheme === 'light' ? '0 0 16px rgba(245, 158, 11, 0.25)' : 'none',
               }}
             >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                      color: '#d97706',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.25rem',
+                      boxShadow: '0 2px 8px rgba(245, 158, 11, 0.25)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i className="fa-solid fa-sun" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-main)' }}>
+                      Clean Light
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {currentLang === 'en' ? 'Modern Light Theme' : 'Chế độ Sáng Hiện Đại'}
+                    </div>
+                  </div>
+                </div>
+                {currentTheme === 'light' && (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#f59e0b', color: '#fff', padding: '3px 8px', borderRadius: '10px' }}>
+                    ✓ {t('settings.activeSelected')}
+                  </span>
+                )}
+              </div>
+
+              {/* Preview strip */}
               <div
                 style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                  color: '#d97706',
+                  height: '24px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)',
+                  border: '1px solid #cbd5e1',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.35rem',
-                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.25)',
-                  flexShrink: 0,
+                  padding: '0 10px',
+                  gap: '6px',
                 }}
               >
-                <i className="fa-solid fa-sun" />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }} />
               </div>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-main)' }}>
-                    {currentLang === 'en' ? 'Light Theme' : 'Chế độ Sáng'}
-                  </span>
-                  {isLightThemeMode(currentTheme) && (
-                    <span style={{ fontSize: '0.68rem', fontWeight: 700, background: 'var(--color-warning)', color: '#fff', padding: '2px 7px', borderRadius: '10px' }}>
-                      ✓ {t('settings.activeSelected')}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {t('settings.lightModeHeading')}: <strong style={{ color: 'var(--text-main)' }}>{THEME_OPTIONS.find((tOpt) => tOpt.id === preferredLightTheme)?.name}</strong>
-                </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                {currentLang === 'en'
+                  ? 'Clean office environment, crisp contrast, bright and elegant design for daytime productivity.'
+                  : 'Văn phòng trang nhã, tương phản chuẩn mực, sáng sủa và thanh lịch, tối ưu làm việc ban ngày.'}
               </div>
-
-              <i className={`fa-solid ${expandedMode === 'light' ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ color: 'var(--text-muted)' }} />
             </div>
 
-            {/* Chế độ Tối */}
+            {/* 2. Sleek Dark */}
             <div
-              onClick={() => {
-                if (onSelectTheme && isLightThemeMode(currentTheme)) {
-                  onSelectTheme(preferredDarkTheme);
-                }
-                setExpandedMode(expandedMode === 'dark' ? null : 'dark');
-              }}
+              onClick={() => onSelectTheme?.('dark')}
               style={{
-                padding: '16px',
+                padding: '18px',
                 borderRadius: 'var(--radius-lg)',
-                border: expandedMode === 'dark'
+                border: currentTheme === 'dark'
                   ? '2px solid var(--color-primary)'
-                  : !isLightThemeMode(currentTheme)
-                  ? '1.5px solid var(--color-primary-border)'
                   : '1px solid var(--border-subtle)',
-                background: expandedMode === 'dark'
+                background: currentTheme === 'dark'
                   ? 'var(--color-primary-subtle)'
                   : 'var(--bg-surface-elevated)',
                 cursor: 'pointer',
                 display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
+                flexDirection: 'column',
+                gap: '12px',
                 transition: 'all var(--transition-fast)',
+                boxShadow: currentTheme === 'dark' ? '0 0 16px var(--color-primary-glow)' : 'none',
               }}
             >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+                      color: '#38bdf8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.25rem',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <i className="fa-solid fa-moon" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-main)' }}>
+                      Sleek Dark
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {currentLang === 'en' ? 'Modern Dark Theme' : 'Chế độ Tối Công Nghệ'}
+                    </div>
+                  </div>
+                </div>
+                {currentTheme === 'dark' && (
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, background: 'var(--color-primary)', color: '#fff', padding: '3px 8px', borderRadius: '10px' }}>
+                    ✓ {t('settings.activeSelected')}
+                  </span>
+                )}
+              </div>
+
+              {/* Preview strip */}
               <div
                 style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #0f172a, #1e293b)',
-                  color: '#38bdf8',
+                  height: '24px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #0b0f17 0%, #1e293b 100%)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.35rem',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
-                  flexShrink: 0,
+                  padding: '0 10px',
+                  gap: '6px',
                 }}
               >
-                <i className="fa-solid fa-moon" />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38bdf8' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#818cf8' }} />
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399' }} />
               </div>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-main)' }}>
-                    {currentLang === 'en' ? 'Dark Theme' : 'Chế độ Tối'}
-                  </span>
-                  {!isLightThemeMode(currentTheme) && (
-                    <span style={{ fontSize: '0.68rem', fontWeight: 700, background: 'var(--color-primary)', color: '#fff', padding: '2px 7px', borderRadius: '10px' }}>
-                      ✓ {t('settings.activeSelected')}
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {t('settings.darkModeHeading')}: <strong style={{ color: 'var(--text-main)' }}>{THEME_OPTIONS.find((tOpt) => tOpt.id === preferredDarkTheme)?.name}</strong>
-                </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                {currentLang === 'en'
+                  ? 'Deep slate technology theme, reduces eye strain, sleek depth, and ideal for night-time work.'
+                  : 'Nền tối sâu công nghệ chống mỏi mắt, chiều sâu thanh lịch, bảo vệ thị lực và tiết kiệm năng lượng.'}
               </div>
-
-              <i className={`fa-solid ${expandedMode === 'dark' ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ color: 'var(--text-muted)' }} />
             </div>
           </div>
-
-          {/* 1.2. Danh sách các Theme chi tiết khi mở rộng */}
-          {expandedMode && (
-            <div
-              style={{
-                padding: '18px',
-                background: 'var(--bg-surface-elevated)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-subtle)',
-                marginTop: '12px',
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '12px' }}>
-                {expandedMode === 'light' ? t('settings.lightModeHeading') : t('settings.darkModeHeading')} ({expandedMode === 'light' ? '6 styles' : '4 styles'}):
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '12px' }}>
-                {THEME_OPTIONS.filter((tOpt) =>
-                  expandedMode === 'light' ? LIGHT_THEMES.includes(tOpt.id) : DARK_THEMES.includes(tOpt.id)
-                ).map((tOpt) => {
-                  const isCurrentActive = currentTheme === tOpt.id;
-                  const isPreferred = expandedMode === 'light' ? preferredLightTheme === tOpt.id : preferredDarkTheme === tOpt.id;
-
-                  return (
-                    <div
-                      key={tOpt.id}
-                      onClick={() => {
-                        if (expandedMode === 'light') {
-                          onSetPreferredLightTheme?.(tOpt.id);
-                        } else {
-                          onSetPreferredDarkTheme?.(tOpt.id);
-                        }
-                        onSelectTheme?.(tOpt.id);
-                      }}
-                      style={{
-                        padding: '12px',
-                        borderRadius: 'var(--radius-md)',
-                        border: isCurrentActive
-                          ? '2px solid var(--color-primary)'
-                          : isPreferred
-                          ? '1.5px solid var(--color-primary-border)'
-                          : '1px solid var(--border-subtle)',
-                        background: 'var(--bg-surface)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        transition: 'all var(--transition-fast)',
-                        boxShadow: isCurrentActive ? '0 0 12px var(--color-primary-glow)' : 'none',
-                      }}
-                    >
-                      {/* Thẻ preview màu */}
-                      <div
-                        style={{
-                          height: '42px',
-                          borderRadius: 'var(--radius-sm)',
-                          background: tOpt.previewGradient,
-                          border: `1px solid ${tOpt.borderPreview}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#fff',
-                          fontSize: '1rem',
-                          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-                        }}
-                      >
-                        <i className={`fa-solid ${tOpt.icon}`} />
-                      </div>
-
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-main)' }}>{tOpt.name}</span>
-                          {isCurrentActive && (
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-primary)' }}>● {t('settings.activeSelected')}</span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.3 }}>
-                          {tOpt.description}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Mẹo nhỏ */}
           <div
