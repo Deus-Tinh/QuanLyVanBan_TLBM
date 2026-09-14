@@ -1710,7 +1710,7 @@
   }
 
   .mobile-menu-btn {
-    display: inline-flex !important;
+    display: none !important;
   }
 
   /* 2. Khung nội dung chính chiếm toàn màn hình */
@@ -2212,10 +2212,7 @@
   }
 
   .mobile-menu-btn {
-    display: inline-flex !important;
-    width: 34px !important;
-    height: 34px !important;
-    font-size: 1.05rem !important;
+    display: none !important;
   }
 
   .header-left {
