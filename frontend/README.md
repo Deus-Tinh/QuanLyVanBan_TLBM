@@ -37,14 +37,14 @@ src/
 ├── shared/                     # Tài nguyên & Thành phần dùng chung toàn dự án
 │   ├── components/
 │   │   ├── Header/             # AppHeader, ThemeSelector, NotificationStreams, ProfileMenu
-│   │   ├── Layout/             # AppSidebar (Facebook Style), AppFooter, AssistiveTouch
+│   │   ├── Layout/             # AppSidebar (Phong cách truyền thống), AppFooter, AssistiveTouch
 │   │   ├── FloatingAiOrb/      # Quả cầu trợ lý AI nổi
 │   │   └── Syllabus/           # Component hiển thị tiến độ phân hệ đang phát triển
 │   ├── locales/
 │   │   └── i18n.tsx            # Quản lý từ điển Tiếng Việt & Tiếng Anh
 │   ├── styles/
 │   │   ├── global.css          # Design Tokens, bảng màu CSS Variables chuẩn mực
-│   │   └── layout.css          # Định dạng App Shell, Sidebar Facebook Style, Assistive Touch
+│   │   └── layout.css          # Định dạng App Shell, Sidebar truyền thống, Assistive Touch
 │   ├── types/                  # Khai báo TypeScript Interfaces (Navigation, Theme, User)
 │   └── utils/
 │       └── constants.ts        # Hằng số hệ thống, danh mục Navigation, danh mục Theme

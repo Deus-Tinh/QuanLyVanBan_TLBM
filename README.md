@@ -27,7 +27,7 @@ Hệ thống được phát triển theo mô hình **Full-Stack tách biệt**:
 
 | Nhóm | Trưởng nhóm & Thành viên | Module phụ trách | Phạm vi nghiệp vụ |
 | :---: | :--- | :--- | :--- |
-| **Nhóm 1** | **Châu Tuấn Kiệt (TN)**<br>Nguyễn Văn Hiếu<br>Nguyễn Duy Quân | **Layout & Dashboard** | - Kiến trúc App Shell (Header tinh gọn, Sidebar Facebook Style đa cấp, Footer)<br>- Đăng nhập nhân vật hoạt họa tương tác, Trang cá nhân, Đổi MK<br>- Trang chủ Dashboard (8 khối thống kê, sinh nhật, lịch họp, thông báo stream)<br>- Hệ thống 2 theme chuẩn mực (Sleek Dark & Clean Light) và phím Assistive Touch di động |
+| **Nhóm 1** | **Châu Tuấn Kiệt (TN)**<br>Nguyễn Văn Hiếu<br>Nguyễn Duy Quân | **Layout & Dashboard** | - Kiến trúc App Shell (Header tinh gọn, Sidebar truyền thống đa cấp, Footer)<br>- Đăng nhập nhân vật hoạt họa tương tác, Trang cá nhân, Đổi MK<br>- Trang chủ Dashboard (8 khối thống kê, sinh nhật, lịch họp, thông báo stream)<br>- Hệ thống 2 theme chuẩn mực (Sleek Dark & Clean Light) và phím Assistive Touch di động |
 | **Nhóm 2** | **Lê Trí Kiệt (TN)**<br>Nguyễn Anh Đô<br>Nguyễn Tấn Lộc Khiêm<br>Trần Nhật Tân | **Văn Bản** | - Quản lý Văn bản Đến, Văn bản Đi, Văn bản Mật<br>- Bộ lọc, tìm kiếm, Import/Export Excel, phân quyền người xem |
 | **Nhóm 3** | **Đặng Trường Thịnh (TN)**<br>Phan Thị Ánh Tuyền<br>Nguyễn Thị Yến Nhi | **Hồ Sơ** | - Danh mục hồ sơ cấp 1, cấp 2 (loại văn bản)<br>- Liên kết văn bản theo hồ sơ lưu trữ |
 | **Nhóm 4** | **Thượng Mạnh Quỳnh (TN)**<br>Huỳnh Thị Kim Trang<br>Nguyễn Chí Tín<br>Đỗ Trung Phong | **Tài Liệu & Biểu Mẫu** | - Danh mục tài liệu, biểu mẫu chung và nội bộ phòng ban<br>- Quản lý file đính kèm, hiệu lực văn bản |
@@ -113,11 +113,11 @@ Truy cập giao diện tại: `http://localhost:5173/`
 
 ## 🎨 5. Điểm nhấn giao diện (Module 1 — Nhóm 1)
 
-1. **Thanh điều hướng phong cách Facebook hiện đại (Facebook-Style Navigation)**:
-   - **App Icon Tiles**: Từng module sở hữu biểu tượng tile gradient rực rỡ, bo góc chuẩn mực tương tự thanh điều hướng Facebook.
+1. **Thanh điều hướng phong cách truyền thống hiện đại (Traditional Navigation)**:
+   - **App Icon Tiles**: Từng module sở hữu biểu tượng tile gradient rực rỡ, bo góc chuẩn mực, trực quan.
    - **Accordion Menu thông minh**: Nhấp vào module sẽ mở/đóng danh sách trang con mà không bị giật trang hay chuyển trang ngoài ý muốn. Khi hover chuột sẽ tự động xem trước flyout các trang con.
    - **Khu vực Lối tắt (Shortcuts)**: Truy cập tức thì vào Văn bản khẩn, Hồ sơ mật, Báo cáo nhanh,...
-   - **Tùy biến linh hoạt**: Người dùng có thể chuyển đổi giữa kiểu dáng Facebook và Dock cổ điển trong mục Cài đặt.
+   - **Tùy biến linh hoạt**: Người dùng có thể chuyển đổi giữa kiểu dáng truyền thống và Dock cổ điển trong mục Cài đặt.
 
 2. **Hệ thống 2 Giao diện chuẩn mực (Clean Light & Sleek Dark)**:
    - Tinh gọn từ 10 phong cách xuống **2 giao diện hiện đại nhất**, loại bỏ hoàn toàn mã CSS dư thừa giúp giao diện nhẹ và mượt mà:

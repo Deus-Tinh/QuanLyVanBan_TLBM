@@ -175,15 +175,15 @@ export default function SettingsPage({
                       width: '36px',
                       height: '36px',
                       borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #1877f2 0%, #0d5bbd 100%)',
+                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                       color: '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '1.2rem',
+                      fontSize: '1.1rem',
                     }}
                   >
-                    <i className="fa-brands fa-facebook" />
+                    <i className="fa-solid fa-table-columns" />
                   </div>
                   <div>
                     <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>
