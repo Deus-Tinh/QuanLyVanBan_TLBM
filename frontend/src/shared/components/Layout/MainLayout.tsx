@@ -56,13 +56,18 @@ export default function MainLayout({
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
   // Theo dõi vị trí con trỏ chuột toàn màn hình cho TẤT CẢ CÁC TRANG:
-  // - Khi tiến sát mép trái (<= 24px): Tự động trượt xổ sidebar ra
-  // - Khi rời khỏi bề ngang thanh sidebar (> 86px): TỰ ĐỘNG THỤT VỀ (nếu không ghim click)
+  // - Khi tiến sát mép trái (<= 24px) hoặc đang ở trong sidebar / flyout: Giữ sidebar mở
+  // - Khi rời khỏi toàn bộ sidebar và menu xổ xuống: TỰ ĐỘNG THỤT VỀ (nếu không ghim click)
   useEffect(() => {
     const handlePointerTrack = (e: MouseEvent) => {
-      if (e.clientX <= 24) {
+      const target = e.target as HTMLElement | null;
+      const isInsideSidebar =
+        target?.closest('.sidebar-slide-wrapper') !== null ||
+        target?.closest('.header-menu-btn') !== null;
+
+      if (e.clientX <= 24 || isInsideSidebar) {
         setIsSidebarHovered(true);
-      } else if (e.clientX > 86 && !isMobileOpen) {
+      } else if (e.clientX > 86 && !isInsideSidebar && !isMobileOpen) {
         setIsSidebarHovered(false);
         onHoverLeave();
       }

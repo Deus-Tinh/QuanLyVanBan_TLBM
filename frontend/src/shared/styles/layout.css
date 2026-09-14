@@ -494,9 +494,247 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-/* Ẩn flyout card vì người dùng muốn trang chính hiện lên trực tiếp khi rê chuột */
-.nav-flyout-card {
-  display: none !important;
+/* ==========================================================================
+   FLYOUT SUBMENU: XỔ XUỐNG CÁC MỤC CON KHI RÊ CHUỘT VÀO ICON PHÂN HỆ
+   ========================================================================== */
+
+.nav-subitems-flyout {
+  position: absolute;
+  left: calc(100% + 14px);
+  top: -6px;
+  width: clamp(280px, 25vw, 340px);
+  background: var(--bg-surface-elevated, #1e293b);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl, 14px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 12px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.96);
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.2s;
+  pointer-events: none;
+}
+
+/* Cầu nối vô hình giúp chuột rê mượt mà từ Icon sang Menu xổ xuống không bị rớt */
+.nav-subitems-flyout::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  top: -10px;
+  bottom: -10px;
+  width: 28px;
+  background: transparent;
+}
+
+/* Mũi tên trỏ vào icon */
+.nav-subitems-flyout::after {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 22px;
+  width: 10px;
+  height: 10px;
+  background: var(--bg-surface-elevated, #1e293b);
+  border-left: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  transform: rotate(45deg);
+}
+
+/* Hiển thị khi hover vào nav-item-wrapper hoặc có class visible */
+.nav-item-wrapper:hover .nav-subitems-flyout,
+.nav-subitems-flyout.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Đối với 2 mục cuối (Tiện ích & AI): menu căn theo đáy icon để không bị tràn màn hình */
+.nav-item-wrapper:nth-last-child(-n+2) .nav-subitems-flyout {
+  top: auto;
+  bottom: -6px;
+}
+
+.nav-item-wrapper:nth-last-child(-n+2) .nav-subitems-flyout::after {
+  top: auto;
+  bottom: 22px;
+}
+
+/* Header của Menu con xổ xuống */
+.flyout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 8px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
+}
+
+.flyout-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.flyout-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.flyout-team-tag {
+  font-size: 0.7rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.flyout-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+}
+
+/* Danh sách các nút con */
+.flyout-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.flyout-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 8px);
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition-fast, 0.15s ease);
+}
+
+.flyout-sub-item:hover,
+.flyout-sub-item.previewing {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-subtle);
+  transform: translateX(3px);
+}
+
+.flyout-sub-item.active {
+  background: var(--color-primary-subtle);
+  border-color: var(--color-primary-border);
+}
+
+.flyout-sub-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  color: var(--color-primary);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--transition-fast);
+}
+
+.flyout-sub-item:hover .flyout-sub-icon {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 10px var(--color-primary-glow);
+}
+
+.flyout-sub-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flyout-sub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.flyout-sub-name {
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flyout-sub-badge {
+  font-size: 0.68rem;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.flyout-sub-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.flyout-active-check {
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+/* Badge màu sắc chuẩn cho các tag con */
+.flyout-sub-badge.badge-blue,
+.tab-badge.badge-blue {
+  background: var(--color-primary-subtle, rgba(59, 130, 246, 0.15));
+  color: var(--color-primary, #3b82f6);
+}
+.flyout-sub-badge.badge-emerald,
+.tab-badge.badge-emerald {
+  background: var(--color-success-subtle, rgba(16, 185, 129, 0.15));
+  color: var(--color-success, #10b981);
+}
+.flyout-sub-badge.badge-rose,
+.tab-badge.badge-rose {
+  background: var(--color-danger-subtle, rgba(239, 68, 68, 0.15));
+  color: var(--color-danger, #ef4444);
+}
+.flyout-sub-badge.badge-amber,
+.tab-badge.badge-amber {
+  background: var(--color-warning-subtle, rgba(245, 158, 11, 0.15));
+  color: var(--color-warning-text, #f59e0b);
+}
+.flyout-sub-badge.badge-purple,
+.tab-badge.badge-purple {
+  background: var(--color-purple-subtle, rgba(139, 92, 246, 0.15));
+  color: var(--color-purple, #8b5cf6);
 }
 
 /* Khu vực phía dưới cùng khi thu gọn (Sidebar Bottom Action) */
