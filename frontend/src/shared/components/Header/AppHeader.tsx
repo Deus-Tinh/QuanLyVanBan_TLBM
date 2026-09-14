@@ -32,7 +32,6 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const { t } = useTranslation();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Live Administrative Clock: HH:mm:ss DD/MM/YYYY
   useEffect(() => {
@@ -50,16 +49,9 @@ export default function AppHeader({
     currentTime.getMonth() + 1
   )}/${currentTime.getFullYear()}`;
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      alert(`Đang tìm kiếm toàn hệ thống: "${searchQuery}"`);
-    }
-  };
-
   return (
     <header className="app-header">
-      {/* 1. Left Section: 3-bar Menu Trigger & Global Search */}
+      {/* 1. Left Section: 3-bar Menu Trigger */}
       <div className="header-left">
         <button
           type="button"
@@ -71,16 +63,6 @@ export default function AppHeader({
         >
           <i className="fa-solid fa-bars" />
         </button>
-
-        <form className="global-search-bar" onSubmit={handleSearchSubmit}>
-          <i className="fa-solid fa-magnifying-glass" />
-          <input
-            type="text"
-            placeholder={t('header.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </form>
       </div>
 
       {/* 2. Right Section: Live Clock, Notifications, Theme, Language, User */}
