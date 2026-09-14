@@ -916,7 +916,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               border: '1px solid #e5e7eb',
               fontSize: '0.68rem',
               fontWeight: 700,
-              color: '#2563eb',
+              color: 'var(--color-primary)',
               marginTop: '10px',
               width: 'fit-content',
               boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
@@ -927,7 +927,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             <span>NHÓM 1 · NGUYỄN VĂN HIẾU</span>
           </div>
 
-          <div className="character-hint" style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '6px', zIndex: 5 }}>
+          <div className="character-hint" style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '6px', zIndex: 5 }}>
             <i className="fa-regular fa-hand-pointer" style={{ marginRight: '4px' }} />
             <span>Thử click vào các bạn nhân vật để chơi cùng!</span>
           </div>
@@ -1053,7 +1053,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                 borderRadius: '12px',
                 padding: '9px 14px',
                 fontSize: '0.78rem',
-                color: '#b91c1c',
+                color: 'var(--color-danger)',
                 marginBottom: '16px',
                 textAlign: 'left',
                 display: 'flex',
@@ -1113,7 +1113,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                     right: '12px',
                     background: 'none',
                     border: 'none',
-                    color: showPassword ? '#2563eb' : '#9ca3af',
+                    color: showPassword ? 'var(--color-primary)' : 'var(--text-muted)',
                     cursor: 'pointer',
                     fontSize: '0.92rem',
                     padding: '4px',
@@ -1131,7 +1131,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 fontSize: '0.78rem',
-                color: '#4b5563',
+                color: 'var(--text-secondary)',
                 marginBottom: '20px',
               }}
             >
@@ -1149,7 +1149,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   e.preventDefault();
                   alert('Vui lòng liên hệ Quản trị viên ITC hoặc GVHD Trần Phương Duy để cấp lại mật khẩu!');
                 }}
-                style={{ color: '#111827', fontWeight: 600, textDecoration: 'none' }}
+                style={{ color: 'var(--text-main)', fontWeight: 600, textDecoration: 'none' }}
               >
                 Quên mật khẩu?
               </a>
@@ -1170,7 +1170,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               display: 'flex',
               alignItems: 'center',
               margin: '20px 0 16px 0',
-              color: '#9ca3af',
+              color: 'var(--text-muted)',
               fontSize: '0.74rem',
             }}
           >
@@ -1188,7 +1188,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               className={`quick-role-pill ${selectedRole === 'admin' ? 'active' : 'inactive'}`}
               onClick={() => handleRoleSelect('admin')}
             >
-              <i className="fa-solid fa-crown" style={{ color: selectedRole === 'admin' ? '#2563eb' : '#9ca3af' }} />
+              <i className="fa-solid fa-crown" style={{ color: selectedRole === 'admin' ? 'var(--color-primary)' : 'var(--text-muted)' }} />
               <span>Quản trị viên (Admin)</span>
             </button>
             <button
@@ -1196,12 +1196,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               className={`quick-role-pill ${selectedRole === 'staff' ? 'active' : 'inactive'}`}
               onClick={() => handleRoleSelect('staff')}
             >
-              <i className="fa-solid fa-user-tie" style={{ color: selectedRole === 'staff' ? '#2563eb' : '#9ca3af' }} />
+              <i className="fa-solid fa-user-tie" style={{ color: selectedRole === 'staff' ? 'var(--color-primary)' : 'var(--text-muted)' }} />
               <span>Cán bộ chuyên viên</span>
             </button>
           </div>
 
-          <div style={{ marginTop: '22px', fontSize: '0.72rem', color: '#9ca3af', textAlign: 'center' }}>
+          <div style={{ marginTop: '22px', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>
             <span>Đồ án ITC Django · GVHD: NCS.ThS. Trần Phương Duy · Nhóm 1</span>
           </div>
         </div>

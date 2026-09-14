@@ -129,7 +129,7 @@ export default function NotificationStreams() {
                           stream.type === 'confidential'
                             ? 'rgba(239, 68, 68, 0.2)'
                             : 'rgba(59, 130, 246, 0.2)',
-                        color: stream.type === 'confidential' ? '#ef4444' : '#3b82f6',
+                        color: stream.type === 'confidential' ? 'var(--color-danger)' : 'var(--color-primary)',
                         fontWeight: 700,
                       }}
                     >
@@ -149,12 +149,12 @@ export default function NotificationStreams() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="notif-code-badge">{item.code}</span>
                     {item.priority === 'urgent' && (
-                      <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700 }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 700 }}>
                         ● Khẩn
                       </span>
                     )}
                     {item.priority === 'confidential' && (
-                      <span style={{ fontSize: '0.7rem', color: '#f43f5e', fontWeight: 700 }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 700 }}>
                         🔒 Tuyệt Mật
                       </span>
                     )}
