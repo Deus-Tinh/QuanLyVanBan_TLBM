@@ -208,27 +208,6 @@ export default function MainLayout({
       >
         {renderSidebarElements()}
 
-        {/* Nút 3 gạch mở Menu điều hướng góc trên bên trái */}
-        <button
-          type="button"
-          className={`header-menu-btn ${isSidebarHovered || isMobileOpen ? 'active' : ''}`}
-          onClick={() => {
-            setIsMobileOpen((prev) => !prev);
-            setIsSidebarHovered((prev) => !prev);
-          }}
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          title={t('header.menuTooltip')}
-          aria-label={t('header.menuAria')}
-          style={{
-            position: 'fixed',
-            top: '12px',
-            left: '18px',
-            zIndex: 9999,
-          }}
-        >
-          <i className="fa-solid fa-bars" />
-        </button>
-
         {/* Nút chuyển chế độ Sáng / Tối duy nhất nằm gọn gàng ở góc trên bên phải màn hình */}
         <div
           className="ai-theme-floating-btn"
