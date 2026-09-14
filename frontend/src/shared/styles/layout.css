@@ -1064,22 +1064,18 @@
 .lang-switch-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  min-width: 34px;
   padding: 4px 10px;
   border-radius: var(--radius-full);
   border: none;
   background: transparent;
   color: var(--text-muted);
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   line-height: 1.2;
-}
-
-.lang-switch-btn .lang-flag {
-  font-size: 0.95rem;
-  line-height: 1;
 }
 
 .lang-switch-btn .lang-text {
