@@ -1,34 +1,6 @@
 ﻿# Project Rules & Safety Invariants (QuanLyVanBan_TLBM)
 
-## 1. CỔNG BẮT BUỘC: Pre-Push & Pre-PR Grill Gate
-
-> ### ⚠️ NGUYÊN TẮC CỐT LÕI: VIỆC HIỂU QUAN TRỌNG HƠN VIỆC THỰC THI
-> *(Hiểu thấu đáo những gì đã làm trước khi đưa vào đóng góp chung)*
-
-Khi nhận được bất kỳ yêu cầu nào liên quan đến:
-- `git push`, đẩy code lên remote repo;
-- Tạo Pull Request (`PR`), mở PR, nộp bài, merge PR;
-- Yêu cầu bàn giao hoặc release.
-
-**AGENT BẮT BUỘC PHẢI THỰC HIỆN CÁC BƯỚC SAU (CẤM PUSH NGAY):**
-
-1. **HIỂN THỊ NGUYÊN TẮC CỐT LÕI**:
-   - Nhắc lại nguyên tắc: *"Việc hiểu quan trọng hơn việc thực thi. Phải hiểu những gì đã làm trước khi đưa vào đóng góp chung."*
-2. **DỪNG LẠI & PHÂN TÍCH DIFF TỔNG THỂ**:
-   - Quét `git diff HEAD` để nắm rõ danh sách file và nội dung vừa sửa.
-3. **HỎI THỰC TẾ, DỄ HIỂU (KHÔNG ĐÁNH ĐỐ CAO SIÊU)**:
-   - Đặt 2 đến 3 câu hỏi thực chiến, gần gũi, xoay quanh đúng những gì vừa làm:
-     - **Vừa làm gì**: Task vừa rồi đã sửa/tạo những file nào và chức năng chính là gì?
-     - **Mục đích & Cách làm**: Tại sao lại làm như thế, luồng hoạt động cơ bản thế nào?
-     - **Kiểm tra an toàn**: Có ảnh hưởng gì tới các phần khác không? Đã đảm bảo các quy chuẩn cơ bản (i18n song ngữ, biến CSS tokens, không sót file rác) chưa?
-   - **TUYỆT ĐỐI KHÔNG**: Hỏi hàn lâm, lý thuyết cao siêu, bẫy thuật ngữ phức tạp hay kiểm tra trí nhớ học thuộc lòng code.
-4. **XÁC THỰC HIỂU VIỆC MÌNH LÀM**:
-   - Chỉ cần người prompt nắm rõ mình vừa làm gì, lý do làm và kiểm soát được rủi ro cơ bản là đạt.
-   - Khi đã thông suốt: Chạy Technical Gates (`pnpm --dir frontend run build`, `python backend/manage.py check`) và tiến hành thao tác `git push`.
-
----
-
-## 2. QUY CHUẨN VĂN PHONG TRÊN GIT (COMMITS, ISSUES, PRS)
+## 1. QUY CHUẨN VĂN PHONG TRÊN GIT (COMMITS, ISSUES, PRS)
 
 - **Văn phong Trung tính & Khách quan (Technical Report Style)**:
   - Tuyệt đối **KHÔNG dùng bất kỳ từ ngữ xưng hô cá nhân nào** (không "tôi", "em", "thầy", "bạn", không "t - m").
@@ -38,7 +10,7 @@ Khi nhận được bất kỳ yêu cầu nào liên quan đến:
 
 ---
 
-## 3. QUY ƯỚC CẤU TRÚC ISSUE (BUG REPORT)
+## 2. QUY ƯỚC CẤU TRÚC ISSUE (BUG REPORT)
 
 Mọi Issue báo cáo lỗi bắt buộc tuân theo đúng cấu trúc tiêu chuẩn:
 
@@ -73,7 +45,7 @@ Mọi Issue báo cáo lỗi bắt buộc tuân theo đúng cấu trúc tiêu chu
 
 ---
 
-## 4. QUY ƯỚC CẤU TRÚC PULL REQUEST (PR)
+## 3. QUY ƯỚC CẤU TRÚC PULL REQUEST (PR)
 
 Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
 
@@ -92,7 +64,7 @@ Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
 
 ---
 
-## 5. Các Invariant Kỹ thuật Bắt buộc
+## 4. Các Invariant Kỹ thuật Bắt buộc
 - **i18n (Trụ cột 1)**: 100% text trên giao diện React phải dùng `t('namespace.key')`. Mọi key mới phải có đầy đủ cả 2 nhánh `vi` và `en` trong `frontend/src/i18n/translations.js`.
 - **Design Tokens (Trụ cột 3)**: Không dùng mã màu Hex (`#...`) hay font-size pixel trong CSS. Bắt buộc dùng `var(--color-...)` và `var(--font-...)` từ `src/styles/global.css`.
 - **Git Flow**: Không commit/push trực tiếp vào `main`. Kiểm tra `git status` trước khi commit, không dùng `git add .` bừa bãi.
