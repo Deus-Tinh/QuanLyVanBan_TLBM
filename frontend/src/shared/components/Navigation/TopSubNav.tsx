@@ -29,11 +29,12 @@ export default function TopSubNav({
       <div className="top-sub-nav-inner">
         {/* 1. Tiêu đề Phân hệ cha (Trái) */}
         <div className="top-sub-nav-module-badge">
-          <div className="module-icon-box">
+          <div className="module-icon-box" title={`${activeModule.label} (${activeModule.teamTag})`}>
             <i className={`fa-solid ${activeModule.icon}`} />
           </div>
           <div className="module-info">
             <span className="module-name">{activeModule.label}</span>
+            <span className="module-name-short">{activeModule.shortLabel || activeModule.label}</span>
             <span className="module-team-tag">{activeModule.teamTag}</span>
           </div>
           <div className="module-divider" />

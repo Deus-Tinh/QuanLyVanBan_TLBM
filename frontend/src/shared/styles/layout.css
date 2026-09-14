@@ -1395,9 +1395,10 @@
 .top-sub-nav-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   gap: 16px;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -1420,6 +1421,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
 .module-info {
@@ -1434,6 +1436,18 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   line-height: 1.2;
+  white-space: nowrap;
+}
+
+.module-name-short {
+  display: none;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .module-team-tag {
@@ -1441,6 +1455,7 @@
   color: var(--color-primary);
   font-weight: 600;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .module-divider {
@@ -1448,6 +1463,7 @@
   height: 24px;
   background: var(--border-subtle);
   margin-left: 6px;
+  flex-shrink: 0;
 }
 
 /* 2. Horizontal Tabs (Giữa) */
@@ -1456,9 +1472,12 @@
   align-items: center;
   gap: 8px;
   flex: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
   padding: 4px 2px;
 }
 
@@ -1482,6 +1501,7 @@
   white-space: nowrap;
   user-select: none;
   text-decoration: none;
+  flex-shrink: 0 !important;
 }
 
 .sub-nav-tab-btn:hover:not(.active) {
@@ -1577,8 +1597,40 @@
     padding: 0 16px;
     height: 48px;
   }
+  .top-sub-nav-inner {
+    gap: 12px;
+  }
   .top-sub-nav-breadcrumb {
+    display: none !important;
+  }
+  .module-name {
     display: none;
+  }
+  .module-name-short {
+    display: inline-block;
+  }
+  .module-team-tag {
+    display: none;
+  }
+  .module-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 580px) {
+  .top-sub-nav {
+    padding: 0 10px;
+  }
+  .top-sub-nav-inner {
+    gap: 8px;
+  }
+  .module-info {
+    display: none;
+  }
+  .sub-nav-tab-btn {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    gap: 6px;
   }
 }
 
@@ -2111,6 +2163,10 @@
     padding: 16px 14px 0;
   }
 
+  .app-footer {
+    padding-bottom: 84px !important;
+  }
+
   /* Collapse user name/role label to avatar only to save vital header space */
   .user-pill-btn {
     padding: 2px !important;
@@ -2156,7 +2212,10 @@
   }
 
   .mobile-menu-btn {
-    display: none !important;
+    display: inline-flex !important;
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 1.05rem !important;
   }
 
   .header-left {
