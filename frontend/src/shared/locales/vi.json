@@ -23,7 +23,9 @@
     "themeDark": "Chế độ Tối",
     "language": "Ngôn ngữ",
     "langVi": "Tiếng Việt",
-    "langEn": "English"
+    "langEn": "English",
+    "menuTooltip": "Rê chuột hoặc bấm vào đây để mở menu điều hướng",
+    "menuAria": "Mở menu điều hướng"
   },
   "navigation": {
     "dashboard": "Bàn Làm Việc",

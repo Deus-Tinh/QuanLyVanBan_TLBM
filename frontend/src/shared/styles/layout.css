@@ -888,15 +888,45 @@
   position: relative;
 }
 
-/* Header Left: Mobile Hamburger & Global Search */
+/* Header Left: Hamburger Menu Button & Global Search */
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
+.header-menu-btn,
 .mobile-menu-btn {
-  display: none !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.header-menu-btn:hover,
+.mobile-menu-btn:hover,
+.header-menu-btn.active,
+.mobile-menu-btn.active {
+  background: var(--bg-surface-hover);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 12px var(--color-primary-glow);
+  transform: translateY(-1px);
+}
+
+.header-menu-btn:active,
+.mobile-menu-btn:active {
+  transform: translateY(0);
 }
 
 .global-search-bar {
@@ -1740,10 +1770,6 @@
     display: block !important;
   }
 
-  .mobile-menu-btn {
-    display: none !important;
-  }
-
   /* 2. Khung nội dung chính chiếm toàn màn hình */
   .main-container {
     width: 100% !important;
@@ -2240,10 +2266,6 @@
     padding: 0 10px;
     height: 58px;
     gap: 8px;
-  }
-
-  .mobile-menu-btn {
-    display: none !important;
   }
 
   .header-left {

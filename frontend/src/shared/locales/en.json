@@ -18,12 +18,14 @@
   },
   "header": {
     "searchPlaceholder": "Search document number, subject, tasks...",
-    "clockTitle": "Real-time Administrative Clock",
-    "themeLight": "Light Theme",
-    "themeDark": "Dark Theme",
+    "clockTitle": "Real-time administrative clock",
+    "themeLight": "Light Mode",
+    "themeDark": "Dark Mode",
     "language": "Language",
     "langVi": "Tiếng Việt",
-    "langEn": "English"
+    "langEn": "English",
+    "menuTooltip": "Hover or click here to open navigation menu",
+    "menuAria": "Open navigation menu"
   },
   "navigation": {
     "dashboard": "Workplace",

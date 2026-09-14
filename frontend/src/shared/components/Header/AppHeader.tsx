@@ -12,6 +12,8 @@ interface AppHeaderProps {
   onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
   onToggleMobileSidebar: () => void;
+  onHoverSidebar?: () => void;
+  isSidebarOpen?: boolean;
   onNavigate?: (page: ActivePageId) => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
@@ -22,6 +24,8 @@ export default function AppHeader({
   onSelectTheme,
   onToggleTheme,
   onToggleMobileSidebar,
+  onHoverSidebar,
+  isSidebarOpen,
   onNavigate,
   preferredLightTheme,
   preferredDarkTheme,
@@ -55,8 +59,18 @@ export default function AppHeader({
 
   return (
     <header className="app-header">
-      {/* 1. Left Section: Mobile toggle & Global Search */}
+      {/* 1. Left Section: 3-bar Menu Trigger & Global Search */}
       <div className="header-left">
+        <button
+          type="button"
+          className={`header-menu-btn ${isSidebarOpen ? 'active' : ''}`}
+          onClick={onToggleMobileSidebar}
+          onMouseEnter={onHoverSidebar}
+          title={t('header.menuTooltip')}
+          aria-label={t('header.menuAria')}
+        >
+          <i className="fa-solid fa-bars" />
+        </button>
 
         <form className="global-search-bar" onSubmit={handleSearchSubmit}>
           <i className="fa-solid fa-magnifying-glass" />

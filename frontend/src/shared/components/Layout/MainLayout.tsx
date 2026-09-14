@@ -8,6 +8,7 @@ import FloatingAIBox from '../AI/FloatingAIBox';
 import AppFooter from './AppFooter';
 import { ActivePageId } from '../../types/navigation';
 import { ThemeMode } from '../../types/theme';
+import { useTranslation } from '../../locales/i18n';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -38,6 +39,7 @@ export default function MainLayout({
   onHoverPreview,
   onHoverLeave,
 }: MainLayoutProps) {
+  const { t } = useTranslation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Tự động đóng mobile drawer nếu chuyển sang màn hình desktop
@@ -55,20 +57,22 @@ export default function MainLayout({
 
   // Theo dõi vị trí con trỏ chuột toàn màn hình cho TẤT CẢ CÁC TRANG:
   // - Khi tiến sát mép trái (<= 24px): Tự động trượt xổ sidebar ra
-  // - Khi rời khỏi bề ngang thanh sidebar (> 86px): TỰ ĐỘNG THỤT VỀ NGAY LẬP TỨC
+  // - Khi rời khỏi bề ngang thanh sidebar (> 86px): TỰ ĐỘNG THỤT VỀ (nếu không ghim click)
   useEffect(() => {
     const handlePointerTrack = (e: MouseEvent) => {
       if (e.clientX <= 24) {
         setIsSidebarHovered(true);
-      } else if (e.clientX > 86) {
+      } else if (e.clientX > 86 && !isMobileOpen) {
         setIsSidebarHovered(false);
         onHoverLeave();
       }
     };
 
     const handleWindowLeave = () => {
-      setIsSidebarHovered(false);
-      onHoverLeave();
+      if (!isMobileOpen) {
+        setIsSidebarHovered(false);
+        onHoverLeave();
+      }
     };
 
     window.addEventListener('mousemove', handlePointerTrack);
@@ -80,7 +84,7 @@ export default function MainLayout({
       window.removeEventListener('mouseleave', handleWindowLeave);
       window.removeEventListener('blur', handleWindowLeave);
     };
-  }, [onHoverLeave]);
+  }, [onHoverLeave, isMobileOpen]);
 
   // Bộ phần tử Sidebar trượt ẩn/hiện dùng chung cho toàn bộ các trang
   const renderSidebarElements = () => (
@@ -199,6 +203,27 @@ export default function MainLayout({
       >
         {renderSidebarElements()}
 
+        {/* Nút 3 gạch mở Menu điều hướng góc trên bên trái */}
+        <button
+          type="button"
+          className={`header-menu-btn ${isSidebarHovered || isMobileOpen ? 'active' : ''}`}
+          onClick={() => {
+            setIsMobileOpen((prev) => !prev);
+            setIsSidebarHovered((prev) => !prev);
+          }}
+          onMouseEnter={() => setIsSidebarHovered(true)}
+          title={t('header.menuTooltip')}
+          aria-label={t('header.menuAria')}
+          style={{
+            position: 'fixed',
+            top: '12px',
+            left: '18px',
+            zIndex: 9999,
+          }}
+        >
+          <i className="fa-solid fa-bars" />
+        </button>
+
         {/* Nút chuyển chế độ Sáng / Tối duy nhất nằm gọn gàng ở góc trên bên phải màn hình */}
         <div
           className="ai-theme-floating-btn"
@@ -250,6 +275,10 @@ export default function MainLayout({
           onToggleTheme={onToggleTheme}
           preferredLightTheme={preferredLightTheme}
           preferredDarkTheme={preferredDarkTheme}
+          isSidebarOpen={isSidebarHovered || isMobileOpen}
+          onHoverSidebar={() => {
+            setIsSidebarHovered(true);
+          }}
           onToggleMobileSidebar={() => {
             setIsMobileOpen((prev) => !prev);
             setIsSidebarHovered((prev) => !prev);
