@@ -2366,27 +2366,19 @@
 
 .ai-orb-inner {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  width: 100%;
+  height: 100%;
 }
 
 .ai-orb-icon {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   background: linear-gradient(135deg, #38bdf8, #818cf8);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 4px rgba(56, 189, 248, 0.4));
-}
-
-.ai-orb-chip {
-  font-size: 0.6rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  color: #38bdf8;
-  line-height: 1;
+  filter: drop-shadow(0 2px 6px rgba(56, 189, 248, 0.45));
 }
 
 .ai-orb-status-dot {
@@ -2780,10 +2772,6 @@
   background: linear-gradient(135deg, #ffffff, #f1f5f9);
   border-color: #3b82f6;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 0 12px rgba(59, 130, 246, 0.25);
-}
-
-[data-theme='light'] .floating-ai-orb .ai-orb-chip {
-  color: #2563eb;
 }
 
 [data-theme='light'] .floating-ai-orb .ai-orb-status-dot {

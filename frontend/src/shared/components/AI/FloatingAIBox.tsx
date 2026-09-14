@@ -353,7 +353,6 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
             <div className="ai-orb-pulse-ring" />
             <div className="ai-orb-inner">
               <i className="fa-solid fa-robot ai-orb-icon" />
-              <span className="ai-orb-chip">AI</span>
             </div>
             {/* Chấm trạng thái trực tuyến */}
             <span className="ai-orb-status-dot" />
