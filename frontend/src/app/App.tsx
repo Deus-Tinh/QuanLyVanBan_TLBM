@@ -12,10 +12,10 @@ export default function App() {
   const [committedPage, setCommittedPage] = useState<ActivePageId>('dashboard');
   const [previewPage, setPreviewPage] = useState<ActivePageId | null>(null);
 
-  // Giao diện thực tế đang kích hoạt: Chỉ giữ lại 2 giao diện đẹp & hiện đại nhất (Sleek Dark & Clean Light)
+  // Giao diện thực tế đang kích hoạt: Mặc định Clean Light cho người dùng mở web lần đầu
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const saved = localStorage.getItem('tlbm_theme');
-    return saved === 'light' ? 'light' : 'dark';
+    return saved === 'dark' ? 'dark' : 'light';
   });
 
   const preferredLightTheme: ThemeMode = 'light';
