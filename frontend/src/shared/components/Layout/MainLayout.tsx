@@ -53,6 +53,41 @@ export default function MainLayout({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Cài đặt phong cách thanh menu (Facebook Style vs Dock Style)
+  const [sidebarStyle, setSidebarStyle] = useState<'facebook' | 'dock'>(() => {
+    return (localStorage.getItem('tlbm_sidebar_style') as 'facebook' | 'dock') || 'facebook';
+  });
+
+  // Cài đặt phím Home ảo AssistiveTouch trên thiết bị di động (mặc định tắt, bật trong cài đặt)
+  const [isAssistiveTouchEnabled, setIsAssistiveTouchEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('tlbm_enable_assistive_touch') === 'true';
+  });
+
+  // Lắng nghe sự thay đổi cài đặt từ SettingsPage
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      const savedStyle = localStorage.getItem('tlbm_sidebar_style') as 'facebook' | 'dock';
+      if (savedStyle && (savedStyle === 'facebook' || savedStyle === 'dock')) {
+        setSidebarStyle(savedStyle);
+      }
+      const savedTouch = localStorage.getItem('tlbm_enable_assistive_touch');
+      setIsAssistiveTouchEnabled(savedTouch === 'true');
+    };
+
+    window.addEventListener('tlbm_settings_updated', handleSettingsUpdate);
+    window.addEventListener('storage', handleSettingsUpdate);
+    return () => {
+      window.removeEventListener('tlbm_settings_updated', handleSettingsUpdate);
+      window.removeEventListener('storage', handleSettingsUpdate);
+    };
+  }, []);
+
+  const handleToggleSidebarStyle = (style: 'facebook' | 'dock') => {
+    setSidebarStyle(style);
+    localStorage.setItem('tlbm_sidebar_style', style);
+    window.dispatchEvent(new Event('tlbm_settings_updated'));
+  };
+
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
   // Theo dõi vị trí con trỏ chuột toàn màn hình cho TẤT CẢ CÁC TRANG:
@@ -65,9 +100,11 @@ export default function MainLayout({
         target?.closest('.sidebar-slide-wrapper') !== null ||
         target?.closest('.header-menu-btn') !== null;
 
+      const sidebarThreshold = sidebarStyle === 'facebook' ? 295 : 86;
+
       if (e.clientX <= 24 || isInsideSidebar) {
         setIsSidebarHovered(true);
-      } else if (e.clientX > 86 && !isInsideSidebar && !isMobileOpen) {
+      } else if (e.clientX > sidebarThreshold && !isInsideSidebar && !isMobileOpen) {
         setIsSidebarHovered(false);
         onHoverLeave();
       }
@@ -89,7 +126,7 @@ export default function MainLayout({
       window.removeEventListener('mouseleave', handleWindowLeave);
       window.removeEventListener('blur', handleWindowLeave);
     };
-  }, [onHoverLeave, isMobileOpen]);
+  }, [onHoverLeave, isMobileOpen, sidebarStyle]);
 
   // Bộ phần tử Sidebar trượt ẩn/hiện dùng chung cho toàn bộ các trang
   const renderSidebarElements = () => (
@@ -160,6 +197,8 @@ export default function MainLayout({
           top: 0,
           bottom: 0,
           zIndex: 300,
+          width: sidebarStyle === 'facebook' ? '300px' : 'auto',
+          maxWidth: '85vw',
           transform: isSidebarHovered || isMobileOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease',
           boxShadow: isSidebarHovered || isMobileOpen ? '12px 0 40px rgba(0, 0, 0, 0.55)' : 'none',
@@ -186,6 +225,8 @@ export default function MainLayout({
           }}
           onHoverPreview={onHoverPreview}
           onHoverLeave={onHoverLeave}
+          sidebarStyle={sidebarStyle}
+          onToggleSidebarStyle={handleToggleSidebarStyle}
         />
       </div>
     </>
@@ -232,14 +273,16 @@ export default function MainLayout({
           {children}
         </main>
 
-        {/* 3. Phím Home ảo AssistiveTouch dành cho thiết bị di động & điều hướng nhanh */}
-        <MobileAssistiveTouch
-          activePage={activePage}
-          onNavigate={onNavigate}
-          currentTheme={currentTheme}
-          onSelectTheme={onSelectTheme}
-          onToggleTheme={onToggleTheme}
-        />
+        {/* 3. Phím Home ảo AssistiveTouch dành cho thiết bị di động & điều hướng nhanh (Tùy chọn cấu hình trong Cài Đặt) */}
+        {isAssistiveTouchEnabled && (
+          <MobileAssistiveTouch
+            activePage={activePage}
+            onNavigate={onNavigate}
+            currentTheme={currentTheme}
+            onSelectTheme={onSelectTheme}
+            onToggleTheme={onToggleTheme}
+          />
+        )}
       </div>
     );
   }
@@ -284,14 +327,16 @@ export default function MainLayout({
         </main>
       </div>
 
-      {/* 3. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động */}
-      <MobileAssistiveTouch
-        activePage={activePage}
-        onNavigate={onNavigate}
-        currentTheme={currentTheme}
-        onSelectTheme={onSelectTheme}
-        onToggleTheme={onToggleTheme}
-      />
+      {/* 3. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động (Tùy chọn cấu hình trong Cài Đặt) */}
+      {isAssistiveTouchEnabled && (
+        <MobileAssistiveTouch
+          activePage={activePage}
+          onNavigate={onNavigate}
+          currentTheme={currentTheme}
+          onSelectTheme={onSelectTheme}
+          onToggleTheme={onToggleTheme}
+        />
+      )}
 
       {/* 4. Box AI Trợ Lý nổi tự do có thể kéo thả bất kỳ vị trí nào trên giao diện */}
       <FloatingAIBox onNavigate={onNavigate} />

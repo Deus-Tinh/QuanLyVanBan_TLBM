@@ -3038,4 +3038,513 @@
   border-color: #ffffff;
 }
 
+/* ==========================================================================
+   THANH MENU ĐIỀU HƯỚNG BÊN TRÁI PHONG CÁCH FACEBOOK (FACEBOOK-STYLE SIDEBAR)
+   ========================================================================== */
+
+.app-sidebar.sidebar-style-facebook {
+  width: 300px;
+  max-width: 85vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  user-select: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* 1. Phần Header: Thẻ hồ sơ cá nhân chuẩn Facebook */
+.fb-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 12px 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-sidebar);
+  flex-shrink: 0;
+}
+
+.fb-user-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex: 1;
+  min-width: 0;
+}
+
+.fb-user-card:hover {
+  background: var(--bg-surface-hover);
+}
+
+.fb-user-avatar-wrap {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+}
+
+.fb-user-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--bg-surface-elevated);
+  border: 2px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fb-user-online-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2.5px solid var(--bg-sidebar);
+  box-shadow: 0 0 4px #10b981;
+}
+
+.fb-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.fb-user-name {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.fb-user-role {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.fb-user-card-arrow {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+  margin-left: 4px;
+}
+
+.fb-user-card:hover .fb-user-card-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+  color: var(--color-primary);
+}
+
+.fb-mobile-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-surface-elevated);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 6px;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.fb-mobile-close-btn:hover {
+  background: var(--color-danger-subtle, rgba(239, 68, 68, 0.15));
+  color: var(--color-danger, #ef4444);
+}
+
+/* 2. Vùng cuộn danh mục Facebook */
+.fb-sidebar-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 10px 16px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+.fb-sidebar-scrollable::-webkit-scrollbar {
+  width: 5px;
+}
+
+.fb-sidebar-scrollable::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+
+.fb-section-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 10px 10px 6px 10px;
+  opacity: 0.85;
+}
+
+.fb-modules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fb-module-group {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-fast);
+}
+
+.fb-module-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.fb-module-row:hover {
+  background: var(--bg-surface-hover);
+}
+
+.fb-module-row.active {
+  background: var(--color-primary-subtle);
+}
+
+.fb-module-row.previewing:not(.active) {
+  background: var(--bg-surface-elevated);
+}
+
+/* Icon App kiểu Facebook bo góc gradient rực rỡ */
+.fb-module-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform var(--transition-fast);
+}
+
+.fb-module-row:hover .fb-module-icon-box {
+  transform: scale(1.05);
+}
+
+.fb-module-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.fb-module-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.fb-module-title {
+  font-size: 0.91rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.fb-module-row.active .fb-module-title {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.fb-badge-count {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+  flex-shrink: 0;
+}
+
+.fb-module-team {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.fb-accordion-toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
+.fb-accordion-toggle-btn:hover {
+  background: var(--bg-surface-elevated);
+  color: var(--text-main);
+}
+
+.fb-chevron-icon {
+  font-size: 0.75rem;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fb-chevron-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* Menu con Accordion mở trực tiếp bên dưới phân hệ */
+.fb-subitems-accordion {
+  margin-left: 22px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  animation: fbSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fbSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fb-subitem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.fb-subitem-row:hover {
+  background: var(--bg-surface-hover);
+}
+
+.fb-subitem-row.active {
+  background: var(--color-primary-subtle);
+}
+
+.fb-subitem-mini-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  background: var(--bg-surface-elevated);
+  color: var(--text-secondary);
+}
+
+.fb-subitem-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.fb-subitem-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.fb-subitem-name {
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fb-subitem-row.active .fb-subitem-name {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.fb-subitem-desc {
+  font-size: 0.71rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fb-subitem-badge {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-weight: 700;
+}
+
+.fb-active-check {
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Phân cách và Lối tắt Shortcuts */
+.fb-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 12px 10px 8px 10px;
+}
+
+.fb-shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fb-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.fb-shortcut-row:hover {
+  background: var(--bg-surface-hover);
+}
+
+.fb-shortcut-row.active {
+  background: var(--color-primary-subtle);
+}
+
+.fb-shortcut-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 0.92rem;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.fb-shortcut-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fb-shortcut-row.active .fb-shortcut-name {
+  color: var(--color-primary);
+}
+
+/* 3. Phần Footer thanh Sidebar: Switcher và Live ping */
+.fb-sidebar-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-sidebar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.fb-switch-style-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.fb-switch-style-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.fb-footer-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.fb-status-text {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+
 
