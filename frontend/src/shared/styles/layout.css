@@ -1975,7 +1975,8 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
-  z-index: 999;
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1100 !important;
   cursor: pointer;
   animation: fadeInBackdrop 0.2s ease;
 }
@@ -1998,6 +1999,11 @@
 
 /* Tablet & Mobile Screens (<= 992px) */
 @media (max-width: 992px) {
+  /* Khung trượt sidebar trên mobile nổi trên backdrop */
+  .sidebar-slide-wrapper {
+    z-index: 1200 !important;
+  }
+
   /* Cho phép thanh sidebar hiển thị bình thường khi trượt trong sidebar-slide-wrapper */
   .sidebar-slide-wrapper .app-sidebar,
   .sidebar-slide-wrapper .app-sidebar.collapsed {
@@ -3042,17 +3048,37 @@
    THANH MENU ĐIỀU HƯỚNG BÊN TRÁI PHONG CÁCH FACEBOOK (FACEBOOK-STYLE SIDEBAR)
    ========================================================================== */
 
-.app-sidebar.sidebar-style-facebook {
-  width: 300px;
-  max-width: 85vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border-subtle);
+.app-sidebar.sidebar-style-facebook,
+[data-theme] .app-sidebar.sidebar-style-facebook,
+[data-theme='light'] .app-sidebar.sidebar-style-facebook,
+[data-theme='dark'] .app-sidebar.sidebar-style-facebook {
+  width: 300px !important;
+  max-width: 85vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: var(--bg-surface-elevated, #ffffff) !important;
+  border-right: 1px solid var(--border-subtle) !important;
   user-select: none;
-  overflow: hidden;
-  box-sizing: border-box;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  z-index: 1200 !important;
+}
+
+[data-theme='light'] .app-sidebar.sidebar-style-facebook {
+  background: #ffffff !important;
+  border-right: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme='dark'] .app-sidebar.sidebar-style-facebook {
+  background: #0f172a !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
 }
 
 /* 1. Phần Header: Thẻ hồ sơ cá nhân chuẩn Facebook */
@@ -3062,8 +3088,10 @@
   justify-content: space-between;
   padding: 14px 12px 10px 12px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-sidebar);
+  background: inherit !important;
   flex-shrink: 0;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-user-card {
@@ -3177,10 +3205,12 @@
 
 /* 2. Vùng cuộn danh mục Facebook */
 .fb-sidebar-scrollable {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px 10px 16px 10px;
+  width: 100% !important;
+  box-sizing: border-box !important;
   scrollbar-width: thin;
   scrollbar-color: var(--border-subtle) transparent;
 }
@@ -3202,12 +3232,16 @@
   color: var(--text-muted);
   padding: 10px 10px 6px 10px;
   opacity: 0.85;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-modules-list {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-module-group {
@@ -3215,6 +3249,8 @@
   flex-direction: column;
   border-radius: var(--radius-lg);
   transition: background var(--transition-fast);
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-module-row {
@@ -3226,6 +3262,8 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-module-row:hover {
@@ -3454,6 +3492,8 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-shortcut-row {
@@ -3464,6 +3504,8 @@
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--transition-fast);
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-shortcut-row:hover {
@@ -3504,12 +3546,14 @@
 .fb-sidebar-footer {
   padding: 10px 14px;
   border-top: 1px solid var(--border-subtle);
-  background: var(--bg-sidebar);
+  background: inherit !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   flex-shrink: 0;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .fb-switch-style-btn {

@@ -175,6 +175,7 @@ export default function MainLayout({
       {(isMobileOpen || (isSidebarHovered && typeof window !== 'undefined' && window.innerWidth <= 992)) && (
         <div
           className="mobile-sidebar-backdrop"
+          style={{ zIndex: 1100 }}
           onClick={() => {
             setIsMobileOpen(false);
             setIsSidebarHovered(false);
@@ -196,13 +197,13 @@ export default function MainLayout({
           left: 0,
           top: 0,
           bottom: 0,
-          zIndex: 300,
+          zIndex: 1200,
           width: sidebarStyle === 'facebook' ? '300px' : 'auto',
           maxWidth: '85vw',
           transform: isSidebarHovered || isMobileOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease',
           boxShadow: isSidebarHovered || isMobileOpen ? '12px 0 40px rgba(0, 0, 0, 0.55)' : 'none',
-          background: 'var(--bg-sidebar)',
+          background: sidebarStyle === 'facebook' ? 'var(--bg-surface-elevated, #ffffff)' : 'var(--bg-sidebar)',
           borderRight: '1px solid var(--border-subtle)',
           height: '100vh',
           display: 'flex',
