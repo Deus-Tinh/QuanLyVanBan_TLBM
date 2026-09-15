@@ -8,8 +8,9 @@ Tài liệu này mô tả cấu trúc thư mục dự án, cách phân chia Back
 |---|---|
 | Backend | `backend/` |
 | Frontend | `frontend/` |
-| Environment mẫu | `.env.example` |
+| File lưu trữ tải lên | `media/` |
 | Tài liệu kỹ thuật | `docs/` |
+| Environment mẫu | `.env.example` |
 | Git ignore | `.gitignore` |
 | Tổng quan project | `README.md` |
 
@@ -17,6 +18,7 @@ Tài liệu này mô tả cấu trúc thư mục dự án, cách phân chia Back
 qlvbtl/
 ├── backend/
 ├── frontend/
+├── media/
 ├── docs/
 ├── .env.example
 ├── .gitignore
@@ -197,15 +199,63 @@ qlvbtl/
 │           ├── types/
 │           └── utils/
 │
-├── docs/
-│   ├── architecture/
-│   │   └── structure.md
-│   ├── api/
-│   │   └── api.md
-│   ├── database/
-│   │   └── schema.md
-│   └── development/
-│       └── setup.md
+├── media/                                  # Thư mục lưu trữ tệp tin tải lên (MEDIA_ROOT)
+│   ├── 02_documents/                       # Tệp văn bản đến, đi, mật
+│   │   ├── incoming/
+│   │   ├── outgoing/
+│   │   └── confidential/
+│   ├── 04_templates/                       # Biểu mẫu mẫu (.docx, .xlsx)
+│   ├── 05_signing/                         # Tờ trình ký (.pdf, .docx), ảnh chữ ký (.png)
+│   │   ├── attachments/
+│   │   └── signatures/
+│   ├── 06_tasks/                           # Tệp đính kèm xử lý công việc
+│   └── 07_meetings/                        # Biên bản, tài liệu phòng họp
+│
+├── docs/                                   # Tài liệu kỹ thuật dự án
+│   ├── common/                             # Tài liệu dùng chung toàn hệ thống
+│   │   ├── ITC - Django - QLVB&TL.md       # Đề bài & đặc tả tổng quan môn học
+│   │   ├── ITC - Django - QLVB&TL.xlsx     # Ma trận phân công chi tiết 8 nhóm
+│   │   ├── architecture/
+│   │   │   ├── structure.md                # Cấu trúc mã nguồn Backend & Frontend
+│   │   │   └── media_storage.md            # Quy chuẩn lưu trữ file upload (media/)
+│   │   ├── database/
+│   │   │   └── global_erd.md               # Sơ đồ liên kết thực thể (ERD) toàn hệ thống
+│   │   └── guidelines/
+│   │       ├── git_workflow.md             # Quy trình tạo nhánh, commit, PR
+│   │       └── coding_standards.md         # Chuẩn KISS, Fat Models, i18n, Tokens
+│   │
+│   └── modules/                            # Tài liệu đặc tả phân chia theo 8 nhóm
+│       ├── 01_layout_dashboard/            # Nhóm 1: Master layout, Sidebar, Dashboard
+│       │   ├── spec.md
+│       │   └── theme_tokens.md
+│       ├── 02_documents/                   # Nhóm 2: Văn bản đến, Văn bản đi, Văn bản mật
+│       │   ├── spec.md
+│       │   ├── schema.md
+│       │   └── api.md
+│       ├── 03_dossiers_records/            # Nhóm 3: Quản lý Hồ sơ lưu trữ
+│       │   ├── spec.md
+│       │   ├── schema.md
+│       │   └── api.md
+│       ├── 04_document_templates/          # Nhóm 4: Tài liệu & Biểu mẫu
+│       │   ├── spec.md
+│       │   ├── schema.md
+│       │   └── api.md
+│       ├── 05_signing_workflow/            # Nhóm 5: Quản lý Trình ký số (Hậu)
+│       │   ├── spec.md
+│       │   ├── schema.md
+│       │   └── api.md
+│       ├── 06_tasks_management/            # Nhóm 6: Giao việc & Xử lý công việc
+│       │   ├── spec.md
+│       │   ├── schema.md
+│       │   └── api.md
+│       ├── 07_system_admin_meetings/       # Nhóm 7: Quản trị hệ thống, Phòng họp, Sinh nhật
+│       │   ├── spec.md
+│       │   ├── schema.md
+│       │   └── api.md
+│       └── 08_ai_assistant/                # Nhóm 8: Chatbot AI tra cứu văn bản
+│           ├── spec.md
+│           ├── architecture.md
+│           └── api.md
 │
 ├── .env.example
 ├── .gitignore
@@ -294,3 +344,23 @@ QLVB&TL
 - Thành phần dùng chung đặt trong `frontend/src/shared/`.
 - Khi cần thay đổi cấu trúc dự án, cập nhật tài liệu này cùng thay đổi liên quan.
 - Không tạo thư mục rỗng chỉ để mô phỏng cây thư mục. Thư mục được thêm khi có mã nguồn, file cấu hình hoặc file đánh dấu cần thiết.
+
+---
+
+## 7. Quy chuẩn Lưu trữ Tệp tin (Media Storage) & Tài liệu (Docs)
+
+### 7.1. Quy chuẩn Lưu trữ Tệp tin tải lên (`media/`)
+- Mọi file tải lên hệ thống (văn bản scan, file đính kèm, ảnh con dấu, biểu mẫu) bắt buộc cấu hình lưu trữ tập trung tại thư mục gốc `media/` thông qua `MEDIA_ROOT = BASE_DIR / 'media'` trong `settings.py`.
+- Tuyệt đối không lưu file tự do ở thư mục gốc hoặc lưu ngoài `MEDIA_ROOT`.
+- Trong `models.FileField` hoặc `models.ImageField`, tham số `upload_to` bắt buộc phải đặt tiền tố là tên module tương ứng:
+  - Nhóm 2 (Văn bản): `upload_to='02_documents/%Y/%m/'`
+  - Nhóm 4 (Biểu mẫu): `upload_to='04_templates/'`
+  - Nhóm 5 (Trình ký): `upload_to='05_signing/documents/%Y/%m/'` hoặc `upload_to='05_signing/signatures/'`
+  - Nhóm 6 (Công việc): `upload_to='06_tasks/%Y/%m/'`
+  - Nhóm 7 (Phòng họp): `upload_to='07_meetings/%Y/%m/'`
+
+### 7.2. Quy chuẩn Tài liệu Dự án (`docs/`)
+- Toàn bộ tài liệu, đặc tả, biểu mẫu khảo sát, sơ đồ ERD đưa về thư mục chung `docs/`.
+- Tài liệu toàn cục, hướng dẫn cài đặt, quy trình Git để ở `docs/common/`.
+- Mỗi nhóm trong 8 nhóm chỉ quản lý và cập nhật tài liệu đặc tả của mình trong thư mục `docs/modules/<module_name>/`, tuyệt đối không ghi đè vào thư mục của nhóm khác để tránh xung đột mã nguồn trên Git.
+
