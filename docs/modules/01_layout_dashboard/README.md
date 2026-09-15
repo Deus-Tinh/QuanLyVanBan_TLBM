@@ -1,6 +1,7 @@
 # Tài Liệu Bàn Giao Nhóm 1 - App Shell, Layout & Hệ Thống Nền Tảng
 
 - **Đơn vị phụ trách:** Nhóm 1 (Trưởng nhóm: Châu Tuấn Kiệt)
+- **Thư mục module:** `docs/modules/01_layout_dashboard/`
 - **Nhiệm vụ đồ án:** Xây dựng khung ứng dụng App Shell (Header, Sidebar, Footer, Navigation), Hệ thống Theme Clean Light / Sleek Dark, Router URL-based qua `<Outlet />`, Dashboard trung tâm và Giao diện Đăng nhập Mock Auth.
 
 ## 1. Cấu Trúc App Shell Dùng Chung Cho 8 Nhóm

@@ -42,7 +42,7 @@ Hệ thống được phát triển theo mô hình **Full-Stack tách biệt**:
 
 Thư mục tài liệu `docs/` được tổ chức thành các phân vùng chuẩn mực:
 - `docs/common/`: Tài liệu kiến trúc tổng thể, quy trình Git và quy chuẩn lập trình dùng chung cho toàn bộ dự án.
-- `docs/module/team_X/`: Phân chia thư mục đặc tả chi tiết cho 8 nhóm chuyên trách độc lập (ví dụ `docs/module/team_1/` của Nhóm 1).
+- `docs/modules/`: Phân chia thư mục đặc tả chi tiết cho 8 nhóm chuyên trách độc lập (ví dụ `docs/modules/01_layout_dashboard/` của Nhóm 1).
 
 ```text
 DoAnCuoiKy/
@@ -62,7 +62,7 @@ DoAnCuoiKy/
 │   └── vite.config.ts
 ├── docs/                     # Hệ thống tài liệu dự án
 │   ├── common/               # Tài liệu dùng chung 8 nhóm
-│   └── module/               # Tài liệu bàn giao chuyên biệt từng nhóm
+│   └── modules/              # 8 thư mục đặc tả của 8 nhóm (01_layout_dashboard,...)
 ├── CHAY_FULL_STACK.bat       # Script khởi chạy 1-click cho Windows
 └── README.md
 ```

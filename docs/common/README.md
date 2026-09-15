@@ -4,14 +4,14 @@ Thư mục này lưu trữ các quy chuẩn kiến trúc, tài liệu tích hợ
 
 ## Cấu Trúc Tài Liệu
 - `docs/common/`: Quy chuẩn chung (Git workflow, quy ước API REST, chuẩn CORS, theme, token).
-- `docs/module/team_1/`: Bàn giao App Shell, Header, Sidebar, Footer, Router URL, Theme Nhóm 1.
-- `docs/module/team_2/`: Tài liệu Phân hệ Văn bản đến / đi / mật.
-- `docs/module/team_3/`: Tài liệu Phân hệ Hồ sơ tài liệu.
-- `docs/module/team_4/`: Tài liệu Phân hệ Tài nguyên biểu mẫu.
-- `docs/module/team_5/`: Tài liệu Phân hệ Trình ký & Phê duyệt.
-- `docs/module/team_6/`: Tài liệu Phân hệ Công việc & Họp.
-- `docs/module/team_7/`: Tài liệu Phân hệ Quản trị tổ chức & Nhân sự.
-- `docs/module/team_8/`: Tài liệu Phân hệ Báo cáo thống kê & Audit.
+- `docs/modules/01_layout_dashboard/`: Bàn giao App Shell, Header, Sidebar, Footer, Router URL, Theme Nhóm 1.
+- `docs/modules/02_documents/`: Tài liệu Phân hệ Văn bản đến / đi / mật.
+- `docs/modules/03_dossiers_records/`: Tài liệu Phân hệ Hồ sơ tài liệu.
+- `docs/modules/04_document_templates/`: Tài liệu Phân hệ Tài nguyên biểu mẫu.
+- `docs/modules/05_signing_workflow/`: Tài liệu Phân hệ Trình ký & Phê duyệt.
+- `docs/modules/06_tasks_management/`: Tài liệu Phân hệ Công việc & Họp.
+- `docs/modules/07_system_admin_meetings/`: Tài liệu Phân hệ Quản trị tổ chức & Nhân sự.
+- `docs/modules/08_ai_assistant/`: Tài liệu Phân hệ Trợ lý AI.
 
 ## Quy Định Tích Hợp Frontend
 - Quản lý gói: **Sử dụng duy nhất `pnpm`** (Nghiêm cấm dùng npm/yarn để tránh xung đột lockfile).
