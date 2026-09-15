@@ -1,3 +1,17 @@
-# Mốc 1: để trống để config/urls.py include được.
-# Mốc 2 (PR#2 của Đức) sẽ đăng ký toàn bộ route của module Công việc tại đây.
-urlpatterns = []
+from django.urls import include, path
+from rest_framework.routers import SimpleRouter
+
+from . import views
+
+app_name = "work"
+
+router = SimpleRouter()
+router.register("tasks", views.TaskViewSet, basename="task")
+router.register("attachments", views.AttachmentViewSet, basename="attachment")
+router.register("employees", views.EmployeeViewSet, basename="employee")
+
+# Được include tại config/urls.py với tiền tố "api/work/".
+urlpatterns = [
+    path("me/", views.MeView.as_view(), name="me"),
+    path("", include(router.urls)),
+]

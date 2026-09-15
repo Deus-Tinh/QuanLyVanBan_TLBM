@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Case, CharField, Exists, F, OuterRef, Q, Value, When
 from django.utils import timezone
 
@@ -62,6 +62,28 @@ def attachment_upload_to(instance, filename):
     return f"work/tasks/{instance.task_id}/{instance.kind.lower()}/{uuid.uuid4().hex}{extension}"
 
 
+def delete_stored_files_on_commit(file_names):
+    """
+    Xóa file vật lý sau khi transaction commit thành công.
+    Django không tự xóa file khi xóa bản ghi; nếu transaction lỗi thì file vẫn được giữ lại.
+    """
+    names = [name for name in file_names if name]
+    if not names:
+        return
+
+    def _delete():
+        from django.core.files.storage import default_storage
+
+        for name in names:
+            try:
+                default_storage.delete(name)
+            except OSError:
+                # File đã mất trên đĩa thì bỏ qua, không làm hỏng thao tác xóa dữ liệu.
+                pass
+
+    transaction.on_commit(_delete)
+
+
 # ==========================================================================
 # LỰA CHỌN (CHOICES)
 # ==========================================================================
@@ -78,6 +100,29 @@ class TaskStatus(models.TextChoices):
 
 
 FROZEN_STATUSES = {TaskStatus.CHUA_HOAN_THANH, TaskStatus.QUA_HAN}
+
+
+class TaskRuleError(Exception):
+    """
+    Thao tác bị chặn theo quy tắc nghiệp vụ.
+    - kind = "forbidden": sai vai trò (view trả 403)
+    - kind = "invalid_state": đúng vai trò nhưng trạng thái không cho phép (view trả 400)
+    Thông báo luôn nêu lý do và cách khắc phục.
+    """
+
+    FORBIDDEN = "forbidden"
+    INVALID_STATE = "invalid_state"
+
+    def __init__(self, message, kind=FORBIDDEN):
+        super().__init__(message)
+        self.message = message
+        self.kind = kind
+
+
+FROZEN_MESSAGE = (
+    "Công việc đã hết hạn khi chưa nộp bằng chứng nên đã bị khóa, không thể {action}. "
+    "Nếu vẫn cần thực hiện, hãy đề nghị người tạo giao công việc mới."
+)
 
 
 class ParticipantRole(models.TextChoices):
@@ -219,6 +264,181 @@ class Task(models.Model):
             if participant.user_id == user.id:
                 roles.add(participant.role)
         return roles
+
+    def get_status(self):
+        """Trạng thái đã annotate bởi with_status(); nếu chưa có thì truy vấn lại DB."""
+        status = getattr(self, "status", None)
+        if status is None:
+            status = Task.objects.with_status().values_list("status", flat=True).get(pk=self.pk)
+            self.status = status
+        return status
+
+    def evidence_files(self):
+        # Dùng .all() rồi lọc bằng Python để tận dụng prefetch_related khi có.
+        return [item for item in self.attachments.all() if item.kind == AttachmentKind.BANG_CHUNG]
+
+    def is_overdue(self):
+        return self.due_date < timezone.localdate()
+
+    # ----------------------------------------------------------------------
+    # QUY TẮC QUYỀN
+    # check_*: ném TaskRuleError kèm thông báo có hướng khắc phục.
+    # can_*:   trả True/False, dùng để sinh cờ `permissions` cho frontend.
+    # View và serializer CHỈ dùng các hàm này, không tự viết lại điều kiện.
+    # ----------------------------------------------------------------------
+
+    def check_edit(self, user):
+        roles = self.roles_of(user)
+        if not roles & {ROLE_CREATOR, ParticipantRole.CHU_TRI}:
+            raise TaskRuleError(
+                "Chỉ người tạo hoặc người chủ trì mới được sửa công việc này. "
+                "Nếu cần thay đổi, hãy liên hệ người tạo hoặc người chủ trì."
+            )
+        status = self.get_status()
+        if status == TaskStatus.CHO_DUYET:
+            raise TaskRuleError(
+                "Công việc đang chờ duyệt nên không thể sửa. "
+                "Nếu thông tin sai nghiêm trọng, hãy xóa công việc và tạo lại.",
+                TaskRuleError.INVALID_STATE,
+            )
+        if status == TaskStatus.HOAN_THANH:
+            raise TaskRuleError(
+                "Công việc đã hoàn thành nên không thể sửa. "
+                "Nếu thông tin sai nghiêm trọng, hãy xóa công việc và tạo lại.",
+                TaskRuleError.INVALID_STATE,
+            )
+        if status in FROZEN_STATUSES:
+            raise TaskRuleError(FROZEN_MESSAGE.format(action="sửa"), TaskRuleError.INVALID_STATE)
+
+    def check_delete(self, user):
+        if not self.roles_of(user) & {ROLE_CREATOR, ParticipantRole.CHU_TRI}:
+            raise TaskRuleError(
+                "Chỉ người tạo hoặc người chủ trì mới được xóa công việc này. "
+                "Nếu cần xóa, hãy liên hệ người tạo hoặc người chủ trì."
+            )
+
+    def can_mark_opened(self, user):
+        """Chỉ chủ trì / chỉ đạo / tham gia mở lần đầu, và chỉ khi chưa quá hạn, mới tính là 'đã mở'."""
+        roles = self.roles_of(user)
+        return (
+            bool(roles & {ParticipantRole.CHU_TRI, ParticipantRole.CHI_DAO, ParticipantRole.THAM_GIA})
+            and self.first_opened_at is None
+            and not self.is_overdue()
+        )
+
+    def check_submit_evidence(self, user):
+        if not self.roles_of(user) & {ParticipantRole.CHU_TRI, ParticipantRole.THAM_GIA}:
+            raise TaskRuleError(
+                "Chỉ người chủ trì hoặc cán bộ tham gia mới được nộp bằng chứng hoàn thành. "
+                "Nếu bạn cần tham gia xử lý, hãy đề nghị người tạo thêm bạn vào công việc."
+            )
+        status = self.get_status()
+        if status == TaskStatus.HOAN_THANH:
+            raise TaskRuleError(
+                "Công việc đã được duyệt hoàn thành nên không thể nộp thêm bằng chứng. "
+                "Nếu cần bổ sung, hãy đề nghị người chủ trì hoặc người chỉ đạo hủy duyệt trước.",
+                TaskRuleError.INVALID_STATE,
+            )
+        if status in FROZEN_STATUSES:
+            raise TaskRuleError(
+                FROZEN_MESSAGE.format(action="nộp bằng chứng"), TaskRuleError.INVALID_STATE
+            )
+
+    def check_delete_evidence(self, user, attachment):
+        if attachment.task_id != self.pk or attachment.kind != AttachmentKind.BANG_CHUNG:
+            raise TaskRuleError(
+                "File này không phải file bằng chứng của công việc. "
+                "File đính kèm lúc giao việc chỉ xóa được trong màn hình sửa công việc.",
+                TaskRuleError.INVALID_STATE,
+            )
+        if user is None or attachment.uploaded_by_id != user.id:
+            raise TaskRuleError(
+                "Bạn chỉ được xóa file bằng chứng do chính mình tải lên. "
+                "Nếu file này sai, hãy báo người đã tải file để họ xóa."
+            )
+        if self.get_status() == TaskStatus.HOAN_THANH:
+            raise TaskRuleError(
+                "Công việc đã được duyệt nên không thể xóa file bằng chứng. "
+                "Nếu cần thay file, hãy đề nghị người chủ trì hoặc người chỉ đạo hủy duyệt trước.",
+                TaskRuleError.INVALID_STATE,
+            )
+        if self.is_overdue() and len(self.evidence_files()) <= 1:
+            raise TaskRuleError(
+                "Công việc đã quá hạn, không thể xóa file bằng chứng cuối cùng. "
+                "Hãy nộp file mới trước rồi xóa file cũ sau.",
+                TaskRuleError.INVALID_STATE,
+            )
+
+    def check_approve(self, user):
+        if not self.roles_of(user) & {ParticipantRole.CHU_TRI, ParticipantRole.CHI_DAO}:
+            raise TaskRuleError(
+                "Chỉ người chủ trì hoặc người chỉ đạo mới được duyệt công việc. "
+                "Hãy báo người chủ trì hoặc người chỉ đạo vào duyệt."
+            )
+        status = self.get_status()
+        if status == TaskStatus.HOAN_THANH:
+            raise TaskRuleError(
+                "Công việc đã được duyệt trước đó. Hãy tải lại trang để xem trạng thái mới nhất.",
+                TaskRuleError.INVALID_STATE,
+            )
+        if status in FROZEN_STATUSES:
+            raise TaskRuleError(FROZEN_MESSAGE.format(action="duyệt"), TaskRuleError.INVALID_STATE)
+        if status != TaskStatus.CHO_DUYET:
+            raise TaskRuleError(
+                "Công việc chưa có file bằng chứng nào nên chưa thể duyệt. "
+                "Hãy chờ người chủ trì hoặc cán bộ tham gia nộp bằng chứng hoàn thành.",
+                TaskRuleError.INVALID_STATE,
+            )
+
+    def check_unapprove(self, user):
+        if not self.roles_of(user) & {ParticipantRole.CHU_TRI, ParticipantRole.CHI_DAO}:
+            raise TaskRuleError(
+                "Chỉ người chủ trì hoặc người chỉ đạo mới được hủy duyệt công việc. "
+                "Hãy báo người chủ trì hoặc người chỉ đạo nếu cần thu hồi kết quả duyệt."
+            )
+        if self.get_status() != TaskStatus.HOAN_THANH:
+            raise TaskRuleError(
+                "Công việc chưa được duyệt nên không có gì để hủy duyệt. "
+                "Hãy tải lại trang để xem trạng thái mới nhất.",
+                TaskRuleError.INVALID_STATE,
+            )
+
+    def check_comment(self, user):
+        if not self.roles_of(user):
+            raise TaskRuleError(
+                "Chỉ người liên quan đến công việc mới được ghi ý kiến. "
+                "Nếu bạn cần góp ý, hãy đề nghị người tạo thêm bạn vào công việc."
+            )
+        if self.get_status() in FROZEN_STATUSES:
+            raise TaskRuleError(FROZEN_MESSAGE.format(action="ghi thêm ý kiến"), TaskRuleError.INVALID_STATE)
+
+    def _passes(self, check, *args):
+        try:
+            check(*args)
+        except TaskRuleError:
+            return False
+        return True
+
+    def can_edit(self, user):
+        return self._passes(self.check_edit, user)
+
+    def can_delete(self, user):
+        return self._passes(self.check_delete, user)
+
+    def can_submit_evidence(self, user):
+        return self._passes(self.check_submit_evidence, user)
+
+    def can_delete_evidence(self, user, attachment):
+        return self._passes(self.check_delete_evidence, user, attachment)
+
+    def can_approve(self, user):
+        return self._passes(self.check_approve, user)
+
+    def can_unapprove(self, user):
+        return self._passes(self.check_unapprove, user)
+
+    def can_comment(self, user):
+        return self._passes(self.check_comment, user)
 
 
 class TaskParticipant(models.Model):
