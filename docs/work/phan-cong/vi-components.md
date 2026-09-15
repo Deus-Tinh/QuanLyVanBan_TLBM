@@ -110,7 +110,7 @@ Dự án có 2 giao diện sáng và tối. **Không được viết màu cụ t
 Mở file `frontend/src/shared/styles/global.css` xem danh sách biến màu, rồi dùng như sau:
 
 ```tsx
-style={{ color: "var(--color-text)" }}
+style={{ color: "var(--text-main)" }}
 ```
 
 Xem file `frontend/src/modules/dashboard/pages/DashboardPage.tsx` để học cách viết.
