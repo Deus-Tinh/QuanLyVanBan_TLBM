@@ -245,62 +245,8 @@ export default function MainLayout({
     </>
   );
 
-  // 1. Khi vào trang Trợ Lý AI: Tối giản, toàn màn hình, chỉ có nút Theme & Chat
-  if (currentActivePage === 'ai_assistant') {
-    return (
-      <div
-        className="ai-immersive-shell"
-        style={{
-          width: '100vw',
-          height: '100vh',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'var(--bg-app)',
-          position: 'relative',
-        }}
-      >
-        {renderSidebarElements()}
-
-        {/* Nút chuyển chế độ Sáng / Tối duy nhất nằm gọn gàng ở góc trên bên phải màn hình */}
-        <div
-          className="ai-theme-floating-btn"
-          style={{
-            position: 'fixed',
-            top: '12px',
-            right: '18px',
-            zIndex: 9999,
-          }}
-        >
-          <ThemeSelector
-            currentTheme={currentTheme}
-            onSelectTheme={onSelectTheme}
-            onToggleTheme={onToggleTheme}
-            preferredLightTheme={preferredLightTheme}
-            preferredDarkTheme={preferredDarkTheme}
-          />
-        </div>
-
-        {/* Toàn bộ không gian màn hình dành trọn vẹn 100% tràn viền cho trang Chat AI */}
-        <main style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: 0, width: '100%', height: '100%' }}>
-          {children || <Outlet />}
-        </main>
-
-        {/* 3. Phím Home ảo AssistiveTouch dành cho thiết bị di động & điều hướng nhanh (Tùy chọn cấu hình trong Cài Đặt) */}
-        {isAssistiveTouchEnabled && (
-          <MobileAssistiveTouch
-            activePage={currentActivePage}
-            onNavigate={handleNavigate}
-            currentTheme={currentTheme}
-            onSelectTheme={onSelectTheme}
-            onToggleTheme={onToggleTheme}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // 2. TẤT CẢ CÁC TRANG CÒN LẠI: Thanh Sidebar bên trái cũng tự động ẩn và trượt xổ ra khi rê chuột
+  // TẤT CẢ CÁC TRANG (/dashboard, /ai-assistant, /documents/...): 
+  // Header, Sidebar và Footer LUÔN TỒN TẠI CỐ ĐỊNH theo yêu cầu thống nhất kiến trúc PR
   return (
     <div className="app-shell" style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
 
