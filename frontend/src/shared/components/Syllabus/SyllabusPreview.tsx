@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '../../types/navigation';
 import { useTranslation } from '../../locales/i18n';
 
@@ -13,10 +14,11 @@ interface PageMeta {
 
 interface SyllabusPreviewProps {
   activePage: ActivePageId;
-  onNavigate: (page: ActivePageId) => void;
+  onNavigate?: (page: ActivePageId) => void;
 }
 
 export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPreviewProps) {
+  const navigate = useNavigate();
   const { t, translations } = useTranslation();
   const pageMap = (translations.pages || {}) as Record<ActivePageId, PageMeta>;
 
@@ -148,7 +150,10 @@ export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPrev
               cursor: 'pointer',
               boxShadow: '0 4px 12px var(--color-primary-glow)',
             }}
-            onClick={() => onNavigate('dashboard')}
+            onClick={() => {
+              if (onNavigate) onNavigate('dashboard');
+              navigate('/dashboard');
+            }}
           >
             <i className="fa-solid fa-arrow-left" />
             <span>{t('common.backToDashboard')}</span>

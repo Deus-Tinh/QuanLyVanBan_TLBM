@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
 
 interface PasswordChangePageProps {
-  onNavigate: (page: ActivePageId) => void;
+  onNavigate?: (page: ActivePageId) => void;
 }
 
 export default function PasswordChangePage({ onNavigate }: PasswordChangePageProps) {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -149,7 +151,10 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
                 fontSize: '0.9rem',
                 cursor: 'pointer',
               }}
-              onClick={() => onNavigate('dashboard')}
+              onClick={() => {
+                if (onNavigate) onNavigate('dashboard');
+                navigate('/dashboard');
+              }}
             >
               {t('common.backToDashboard')}
             </button>

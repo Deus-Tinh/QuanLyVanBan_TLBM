@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { AuthRole, UserSession } from '../types';
 
@@ -8,6 +9,7 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps) {
+  const navigate = useNavigate();
   const [username, setUsername] = useState<string>('admin');
   const [password, setPassword] = useState<string>('Admin@123');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -116,7 +118,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           origin: { y: 0.6 },
           colors: ['#ff6b35', '#6d28d9', '#facc15', '#3b82f6', '#10b981'],
         });
-      } catch (err) {
+      } catch {
         // Fallback
       }
 
@@ -131,9 +133,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
       setTimeout(() => {
         if (onLoginSuccess) {
           onLoginSuccess(session);
-        } else if (onNavigate) {
+        }
+        if (onNavigate) {
           onNavigate('dashboard');
         }
+        navigate('/dashboard');
       }, 700);
     }, 600);
   };
@@ -1041,9 +1045,33 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           <h2 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#111827', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
             Welcome back
           </h2>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: '0 0 20px 0' }}>
+          <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: '0 0 16px 0' }}>
             Vui lòng nhập thông tin xác thực để vào hệ thống tác nghiệp.
           </p>
+
+          {/* Banner minh bạch: Chế độ Mock Auth Prototype theo yêu cầu Code Review */}
+          <div
+            style={{
+              background: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              fontSize: '0.76rem',
+              color: '#92400e',
+              marginBottom: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+              <i className="fa-solid fa-shield-halved" style={{ color: '#d97706' }} />
+              <span>CHẾ ĐỘ MOCK AUTH (BẢN MẪU PROTOTYPE - NHÓM 1)</span>
+            </div>
+            <div style={{ color: '#78350f', fontSize: '0.73rem', lineHeight: '1.4' }}>
+              Giao diện giả lập kiểm thử App Shell. Chờ tích hợp API JWT từ Backend Django (Nhóm 1). Bạn có thể chọn nhanh nút Demo bên dưới hoặc nhập tài khoản bất kỳ.
+            </div>
+          </div>
 
           {error && (
             <div
@@ -1201,7 +1229,28 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             </button>
           </div>
 
-          <div style={{ marginTop: '22px', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--color-primary)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <i className="fa-solid fa-arrow-left" />
+              <span>Quay về Dashboard (Không cần đăng nhập)</span>
+            </button>
+          </div>
+
+          <div style={{ marginTop: '18px', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>
             <span>Đồ án ITC Django · GVHD: NCS.ThS. Trần Phương Duy · Nhóm 1</span>
           </div>
         </div>

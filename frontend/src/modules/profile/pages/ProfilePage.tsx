@@ -1,12 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
 
 interface ProfilePageProps {
-  onNavigate: (page: ActivePageId) => void;
+  onNavigate?: (page: ActivePageId) => void;
 }
 
 export default function ProfilePage({ onNavigate }: ProfilePageProps) {
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   return (
@@ -91,7 +93,10 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
               cursor: 'pointer',
               boxShadow: '0 4px 12px var(--color-primary-glow)',
             }}
-            onClick={() => onNavigate('dashboard')}
+            onClick={() => {
+              if (onNavigate) onNavigate('dashboard');
+              navigate('/dashboard');
+            }}
           >
             <i className="fa-solid fa-arrow-left" />
             <span>{t('common.backToDashboard')}</span>

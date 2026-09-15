@@ -3,12 +3,10 @@ import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
 
 interface SettingsPageProps {
-  onNavigate: (page: ActivePageId) => void;
+  onNavigate?: (page: ActivePageId) => void;
 }
 
-export default function SettingsPage({
-  onNavigate,
-}: SettingsPageProps) {
+export default function SettingsPage(_props: SettingsPageProps) {
   const { t, currentLang } = useTranslation();
 
   const [assistiveTouchEnabled, setAssistiveTouchEnabled] = useState<boolean>(() => {

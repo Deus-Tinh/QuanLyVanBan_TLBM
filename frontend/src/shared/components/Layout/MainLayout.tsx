@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import AppHeader from '../Header/AppHeader';
 import ThemeSelector from '../Header/ThemeSelector';
@@ -8,38 +9,49 @@ import FloatingAIBox from '../AI/FloatingAIBox';
 import AppFooter from './AppFooter';
 import { ActivePageId } from '../../types/navigation';
 import { ThemeMode } from '../../types/theme';
-import { useTranslation } from '../../locales/i18n';
+import { pathToPageId, pageIdToPath } from '../../utils/routes';
 
 interface MainLayoutProps {
-  children: React.ReactNode;
-  activePage: ActivePageId;
-  committedPage: ActivePageId;
-  previewPage: ActivePageId | null;
+  children?: React.ReactNode;
+  activePage?: ActivePageId;
+  committedPage?: ActivePageId;
+  previewPage?: ActivePageId | null;
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
-  onNavigate: (pageId: ActivePageId) => void;
-  onHoverPreview: (pageId: ActivePageId) => void;
-  onHoverLeave: () => void;
+  onNavigate?: (pageId: ActivePageId) => void;
+  onHoverPreview?: (pageId: ActivePageId) => void;
+  onHoverLeave?: () => void;
 }
 
 export default function MainLayout({
   children,
   activePage,
   committedPage,
-  previewPage,
+  previewPage = null,
   currentTheme,
   onSelectTheme,
   onToggleTheme,
   preferredLightTheme,
   preferredDarkTheme,
   onNavigate,
-  onHoverPreview,
-  onHoverLeave,
+  onHoverPreview = () => {},
+  onHoverLeave = () => {},
 }: MainLayoutProps) {
-  const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const currentActivePage = activePage || pathToPageId(location.pathname);
+  const effectiveCommittedPage = committedPage || currentActivePage;
+
+  const handleNavigate = (pageId: ActivePageId) => {
+    if (onNavigate) {
+      onNavigate(pageId);
+    }
+    navigate(pageIdToPath(pageId));
+  };
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   // Tự động đóng mobile drawer nếu chuyển sang màn hình desktop
@@ -216,11 +228,11 @@ export default function MainLayout({
             setIsMobileOpen(false);
             setIsSidebarHovered(false);
           }}
-          activePage={activePage}
-          committedPage={committedPage}
+          activePage={currentActivePage}
+          committedPage={effectiveCommittedPage}
           previewPage={previewPage}
           onNavigate={(pageId) => {
-            onNavigate(pageId);
+            handleNavigate(pageId);
             setIsSidebarHovered(false);
             setIsMobileOpen(false);
           }}
@@ -234,7 +246,7 @@ export default function MainLayout({
   );
 
   // 1. Khi vào trang Trợ Lý AI: Tối giản, toàn màn hình, chỉ có nút Theme & Chat
-  if (activePage === 'ai_assistant') {
+  if (currentActivePage === 'ai_assistant') {
     return (
       <div
         className="ai-immersive-shell"
@@ -271,14 +283,14 @@ export default function MainLayout({
 
         {/* Toàn bộ không gian màn hình dành trọn vẹn 100% tràn viền cho trang Chat AI */}
         <main style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: 0, width: '100%', height: '100%' }}>
-          {children}
+          {children || <Outlet />}
         </main>
 
         {/* 3. Phím Home ảo AssistiveTouch dành cho thiết bị di động & điều hướng nhanh (Tùy chọn cấu hình trong Cài Đặt) */}
         {isAssistiveTouchEnabled && (
           <MobileAssistiveTouch
-            activePage={activePage}
-            onNavigate={onNavigate}
+            activePage={currentActivePage}
+            onNavigate={handleNavigate}
             currentTheme={currentTheme}
             onSelectTheme={onSelectTheme}
             onToggleTheme={onToggleTheme}
@@ -311,19 +323,19 @@ export default function MainLayout({
             setIsMobileOpen((prev) => !prev);
             setIsSidebarHovered((prev) => !prev);
           }}
-          onNavigate={onNavigate}
+          onNavigate={handleNavigate}
         />
 
         {/* Thanh điều hướng phân hệ phụ nằm ngang */}
         <TopSubNav
-          activePage={activePage}
+          activePage={currentActivePage}
           isHoveredPreview={previewPage !== null}
-          onNavigate={onNavigate}
+          onNavigate={handleNavigate}
         />
 
         {/* Viewport nội dung trang động: ổn định, êm ái, chuyên nghiệp */}
         <main className="page-viewport">
-          <div className="page-content-wrapper">{children}</div>
+          <div className="page-content-wrapper">{children || <Outlet />}</div>
           <AppFooter />
         </main>
       </div>
@@ -331,8 +343,8 @@ export default function MainLayout({
       {/* 3. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động (Tùy chọn cấu hình trong Cài Đặt) */}
       {isAssistiveTouchEnabled && (
         <MobileAssistiveTouch
-          activePage={activePage}
-          onNavigate={onNavigate}
+          activePage={currentActivePage}
+          onNavigate={handleNavigate}
           currentTheme={currentTheme}
           onSelectTheme={onSelectTheme}
           onToggleTheme={onToggleTheme}
@@ -340,7 +352,7 @@ export default function MainLayout({
       )}
 
       {/* 4. Box AI Trợ Lý nổi tự do có thể kéo thả bất kỳ vị trí nào trên giao diện */}
-      <FloatingAIBox onNavigate={onNavigate} />
+      <FloatingAIBox onNavigate={handleNavigate} />
     </div>
   );
 }

@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 skills/
+*.tsbuildinfo
+.coverage
+coverage/
 
 # Editor directories and files
 .vscode/*
