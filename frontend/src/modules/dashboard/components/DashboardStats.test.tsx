@@ -10,10 +10,7 @@ describe('DashboardStats Component', () => {
         <DashboardStats />
       </MemoryRouter>
     );
-    expect(screen.getByText('1,248')).toBeInTheDocument();
-    expect(screen.getByText('856')).toBeInTheDocument();
-    expect(screen.getByText('24')).toBeInTheDocument();
-    expect(screen.getByText('18')).toBeInTheDocument();
+    expect(screen.getAllByText('0')).toHaveLength(4);
   });
 
   it('renders custom KPI values when provided', () => {

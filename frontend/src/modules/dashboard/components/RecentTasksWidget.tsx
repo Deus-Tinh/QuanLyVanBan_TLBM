@@ -15,40 +15,7 @@ interface RecentTasksWidgetProps {
   tasks?: TaskItem[];
 }
 
-const DEFAULT_TASKS: TaskItem[] = [
-  {
-    id: '1',
-    title: 'Rà soát dự thảo quy chế văn thư lưu trữ điện tử năm 2026',
-    due: '18/09/2026',
-    status: 'processing',
-    statusLabel: 'Đang xử lý',
-    variant: 'warning',
-  },
-  {
-    id: '2',
-    title: 'Phê duyệt kế hoạch công tác kiểm tra an toàn bảo mật định kỳ',
-    due: '15/09/2026',
-    status: 'completed',
-    statusLabel: 'Đã hoàn thành',
-    variant: 'success',
-  },
-  {
-    id: '3',
-    title: 'Tổng hợp báo cáo số liệu tiếp nhận văn bản liên ngành tháng 9',
-    due: '14/09/2026',
-    status: 'overdue',
-    statusLabel: 'Quá hạn xử lý',
-    variant: 'danger',
-  },
-  {
-    id: '4',
-    title: 'Hoàn thiện hồ sơ trình ký ban giám đốc về dự án hạ tầng số',
-    due: '20/09/2026',
-    status: 'pending',
-    statusLabel: 'Đang chờ duyệt',
-    variant: 'info',
-  },
-];
+const DEFAULT_TASKS: TaskItem[] = [];
 
 type TaskFilter = 'processing' | 'completed' | 'overdue' | 'pending';
 
@@ -126,8 +93,9 @@ export default function RecentTasksWidget({
       {/* Task List */}
       <div className="divide-y divide-border-subtle/70 min-h-[90px]">
         {filteredTasks.length === 0 ? (
-          <div className="p-4 text-xs text-muted text-left italic">
-            Không có nhiệm vụ nào
+          <div className="p-6 text-xs text-muted text-center flex flex-col items-center justify-center gap-1.5">
+            <i className="fa-solid fa-list-check text-xl opacity-40 text-primary" />
+            <span className="font-medium">Chưa có nhiệm vụ nào cần xử lý</span>
           </div>
         ) : (
           filteredTasks.map((t) => (

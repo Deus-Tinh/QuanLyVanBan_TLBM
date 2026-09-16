@@ -113,35 +113,42 @@ export default function NotificationStreams() {
 
             {/* Stream Item List */}
             <div className="flex-1 overflow-y-auto divide-y divide-subtle p-1 max-h-[360px]">
-              {currentStream.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 hover:bg-surface-hover rounded-lg transition-colors duration-fast cursor-pointer flex flex-col"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-surface border border-subtle text-text-secondary">
-                      {item.code}
-                    </span>
-                    {item.priority === 'urgent' && (
-                      <span className="text-[11px] text-danger font-bold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" /> Khẩn
-                      </span>
-                    )}
-                    {item.priority === 'confidential' && (
-                      <span className="text-[11px] text-danger font-bold flex items-center gap-1">
-                        🔒 Tuyệt Mật
-                      </span>
-                    )}
-                  </div>
-                  <div className="font-medium text-xs text-text-main line-clamp-2 leading-relaxed">
-                    {item.title}
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-text-muted mt-1.5">
-                    <span>{item.senderOrDept}</span>
-                    <span>{item.time}</span>
-                  </div>
+              {currentStream.items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center text-text-muted">
+                  <i className={`fa-solid ${currentStream.icon} text-2xl mb-2 opacity-30`} />
+                  <span className="text-xs font-medium">Không có thông báo mới</span>
                 </div>
-              ))}
+              ) : (
+                currentStream.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 hover:bg-surface-hover rounded-lg transition-colors duration-fast cursor-pointer flex flex-col"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-surface border border-subtle text-text-secondary">
+                        {item.code}
+                      </span>
+                      {item.priority === 'urgent' && (
+                        <span className="text-[11px] text-danger font-bold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" /> Khẩn
+                        </span>
+                      )}
+                      {item.priority === 'confidential' && (
+                        <span className="text-[11px] text-danger font-bold flex items-center gap-1">
+                          🔒 Tuyệt Mật
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-medium text-xs text-text-main line-clamp-2 leading-relaxed">
+                      {item.title}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-text-muted mt-1.5">
+                      <span>{item.senderOrDept}</span>
+                      <span>{item.time}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>

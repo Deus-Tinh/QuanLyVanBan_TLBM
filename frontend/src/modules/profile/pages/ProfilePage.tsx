@@ -12,6 +12,21 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
+  // Lấy thông tin phiên đăng nhập thực tế
+  const session = (() => {
+    try {
+      const raw = localStorage.getItem('tlbm_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const displayName = session?.fullName || session?.username || '—';
+  const displayRole = session?.roleTitle || session?.role || '—';
+  const displayDept = t('profile.sampleDept');
+  const displayEmail = session?.username ? `${session.username}@itc.edu.vn` : '—';
+
   return (
     <div className="max-w-4xl mx-auto my-5 flex flex-col gap-5">
       <Card className="p-7 sm:p-8">
@@ -26,28 +41,28 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
           <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
             <span className="text-xs text-muted font-medium">{t('profile.fullName')}:</span>
             <div className="font-bold text-base text-main mt-1">
-              {t('profile.sampleName')}
+              {displayName}
             </div>
           </div>
 
           <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
             <span className="text-xs text-muted font-medium">{t('profile.role')}:</span>
             <div className="font-bold text-base text-primary mt-1">
-              {t('profile.sampleRole')}
+              {displayRole}
             </div>
           </div>
 
           <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
             <span className="text-xs text-muted font-medium">{t('profile.department')}:</span>
             <div className="font-bold text-base text-main mt-1">
-              {t('profile.sampleDept')}
+              {displayDept}
             </div>
           </div>
 
           <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
             <span className="text-xs text-muted font-medium">{t('profile.email')}:</span>
             <div className="font-bold text-base text-main mt-1">
-              {t('profile.sampleEmail')}
+              {displayEmail}
             </div>
           </div>
         </div>

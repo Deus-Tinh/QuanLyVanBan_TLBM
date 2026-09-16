@@ -31,32 +31,7 @@ interface ChatSession {
   snippet: string;
 }
 
-const INITIAL_SESSIONS: ChatSession[] = [
-  {
-    id: 'session-1',
-    title: 'Tra cứu quy trình văn bản đến khẩn',
-    timeLabel: 'Hôm nay',
-    snippet: 'Quy trình tiếp nhận và bút phê văn bản...',
-  },
-  {
-    id: 'session-2',
-    title: 'Quy chuẩn tài liệu Tuyệt Mật TLBM',
-    timeLabel: 'Hôm nay',
-    snippet: 'Tiêu chuẩn bảo mật và mã hóa tài liệu...',
-  },
-  {
-    id: 'session-3',
-    title: 'Tóm tắt tờ trình số 312/TTr-TLBM',
-    timeLabel: 'Hôm qua',
-    snippet: 'Tờ trình thử nghiệm văn bản số...',
-  },
-  {
-    id: 'session-4',
-    title: 'Cơ cấu phòng ban & phân quyền cán bộ',
-    timeLabel: '7 ngày trước',
-    snippet: 'Ma trận quyền RBAC và phân quyền CBNV...',
-  },
-];
+const INITIAL_SESSIONS: ChatSession[] = [];
 
 const PROMPT_TEMPLATES = [
   {
@@ -124,22 +99,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     {
       id: 'msg-welcome',
       sender: 'ai',
-      text: `👋 **Xin chào ${CURRENT_USER.fullName} (${CURRENT_USER.role})!**\n\nTôi là **Trợ Lý AI TLBM** — hệ thống hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh.\n\nTôi đã được nạp dữ liệu toàn bộ danh mục văn bản, tờ trình, tài liệu mật và quy chế hành chính của cơ quan. Bạn có thể chọn thẻ mẫu bên dưới hoặc gõ câu hỏi bất kỳ!`,
-      time: '08:30',
-      citations: [
-        {
-          label: 'Quyết định 128/QĐ-BGDĐT (Đến)',
-          code: '128/QĐ-BGDĐT',
-          targetPage: 'documents_incoming',
-          type: 'incoming',
-        },
-        {
-          label: 'Nghị quyết 03/MẬT-HĐQT (Mật)',
-          code: '03/MẬT-HĐQT',
-          targetPage: 'documents_confidential',
-          type: 'confidential',
-        },
-      ],
+      text: `👋 **Xin chào!**\n\nTôi là **Trợ Lý AI TLBM** — hệ thống hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh.\n\nBạn có thể chọn thẻ mẫu bên dưới hoặc gõ câu hỏi bất kỳ!`,
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       quickPrompts: [
         '📋 Quy trình tiếp nhận văn bản đến?',
         '🔒 Tiêu chuẩn bảo mật tài liệu Tuyệt Mật?',

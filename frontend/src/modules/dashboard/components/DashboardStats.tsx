@@ -10,10 +10,10 @@ interface DashboardStatsProps {
 }
 
 export default function DashboardStats({
-  incomingCount = 1248,
-  outgoingCount = 856,
-  confidentialCount = 24,
-  tasksCount = 18,
+  incomingCount = 0,
+  outgoingCount = 0,
+  confidentialCount = 0,
+  tasksCount = 0,
 }: DashboardStatsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function DashboardStats({
     {
       title: 'Văn bản đến (2026)',
       count: incomingCount,
-      subtext: '+12 văn bản mới trong ngày',
+      subtext: incomingCount > 0 ? `+${incomingCount} văn bản mới trong ngày` : 'Chưa có phát sinh trong ngày',
       icon: 'fa-solid fa-inbox',
       path: '/documents/incoming',
       bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
@@ -30,7 +30,7 @@ export default function DashboardStats({
     {
       title: 'Văn bản đi (2026)',
       count: outgoingCount,
-      subtext: '+5 văn bản phát hành hôm nay',
+      subtext: outgoingCount > 0 ? `+${outgoingCount} văn bản phát hành hôm nay` : 'Chưa có phát hành hôm nay',
       icon: 'fa-solid fa-paper-plane',
       path: '/documents/outgoing',
       bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
@@ -38,7 +38,7 @@ export default function DashboardStats({
     {
       title: 'Văn bản mật (2026)',
       count: confidentialCount,
-      subtext: 'Bảo mật cao & trình duyệt riêng',
+      subtext: confidentialCount > 0 ? `${confidentialCount} văn bản bảo mật cao` : 'Không có văn bản mật tồn đọng',
       icon: 'fa-solid fa-shield-halved',
       path: '/documents/incoming',
       bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
@@ -46,7 +46,7 @@ export default function DashboardStats({
     {
       title: 'Nhiệm vụ - Thông báo',
       count: tasksCount,
-      subtext: '4 nhiệm vụ sắp đến hạn xử lý',
+      subtext: tasksCount > 0 ? `${tasksCount} nhiệm vụ cần xử lý` : 'Không có nhiệm vụ cần xử lý',
       icon: 'fa-solid fa-list-check',
       path: '/tasks',
       bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
