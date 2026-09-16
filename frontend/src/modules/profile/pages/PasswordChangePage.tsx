@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
-import { Card, Badge, Button } from '../../../shared/components/ui';
+import { Card, Button } from '../../../shared/components/ui';
 
 interface PasswordChangePageProps {
   onNavigate?: (page: ActivePageId) => void;

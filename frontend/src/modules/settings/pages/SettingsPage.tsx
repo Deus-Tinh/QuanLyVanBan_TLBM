@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
+import { Button } from '../../../shared/components/ui';
 
 interface SettingsPageProps {
   onNavigate?: (page: ActivePageId) => void;
@@ -163,40 +164,23 @@ export default function SettingsPage(_props: SettingsPageProps) {
         </div>
 
         {/* Nút hành động */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
-          <button
+        <div className="flex justify-end gap-3 mt-2.5 flex-wrap">
+          <Button
             type="button"
-            style={{
-              padding: '10px 20px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--bg-surface-elevated)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-secondary)',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-            }}
+            variant="secondary"
+            size="md"
             onClick={handleResetSettings}
           >
             {t('settings.resetDefault')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            style={{
-              padding: '10px 22px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary)',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px var(--color-primary-glow)',
-            }}
+            variant="primary"
+            size="md"
             onClick={handleSaveSettings}
           >
             {t('settings.saveSettings')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

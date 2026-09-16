@@ -70,7 +70,7 @@ export default function AppHeader({
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Tìm kiếm văn bản đến/đi theo số ký hiệu hoặc trích yếu..."
-              className="w-full pl-3.5 pr-8 py-1.5 rounded-sm border border-border-subtle bg-surface text-main text-xs focus:outline-none focus:border-[#0a3871] focus:ring-1 focus:ring-[#0a3871] transition-all placeholder:text-muted shadow-xs"
+              className="w-full pl-3.5 pr-8 py-1.5 rounded-sm border border-border-subtle bg-surface text-main text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-muted shadow-xs"
             />
             <button
               type="button"
