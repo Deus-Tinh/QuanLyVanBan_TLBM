@@ -973,28 +973,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             </div>
           </div>
 
-          {/* Badge phân công Nhóm 1 */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 12px',
-              borderRadius: '9999px',
-              background: '#ffffff',
-              border: '1px solid #e5e7eb',
-              fontSize: '0.68rem',
-              fontWeight: 700,
-              color: 'var(--color-primary)',
-              marginTop: '10px',
-              width: 'fit-content',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-              zIndex: 5,
-            }}
-          >
-            <i className="fa-solid fa-shield-halved" />
-            <span>NHÓM 1 · NGUYỄN VĂN HIẾU</span>
-          </div>
 
           <div className="character-hint" style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '6px', zIndex: 5 }}>
             <i className="fa-regular fa-hand-pointer" style={{ marginRight: '4px' }} />
