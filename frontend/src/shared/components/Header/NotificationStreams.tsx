@@ -48,7 +48,7 @@ export default function NotificationStreams() {
             className="fixed inset-0 z-[10000] bg-backdrop backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] max-h-[520px] rounded-xl bg-surface-elevated border border-subtle shadow-glass flex flex-col z-[10001] overflow-hidden">
+          <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-[380px] max-h-[calc(100vh-80px)] sm:max-h-[520px] rounded-xl bg-surface-elevated border border-subtle shadow-glass flex flex-col z-[10001] overflow-hidden">
             <div className="p-3.5 border-b border-subtle flex items-center justify-between bg-surface/40">
               <div>
                 <span className="font-bold text-sm text-text-main">{t('notifications.title')}</span>
