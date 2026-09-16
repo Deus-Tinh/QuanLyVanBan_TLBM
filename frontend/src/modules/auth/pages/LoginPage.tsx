@@ -112,6 +112,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
       setIsSuccess(true);
 
       try {
+        // [DEVOPS AUDIT NOTE]:
+        // Thư viện bên thứ ba 'canvas-confetti' vẽ trực tiếp lên HTML5 Canvas,
+        // API này bắt buộc nhận mảng chuỗi mã màu hex thuần, không thể đọc CSS/Tailwind classes.
         confetti({
           particleCount: 100,
           spread: 75,

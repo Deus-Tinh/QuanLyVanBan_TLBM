@@ -4,8 +4,12 @@
 
 /* ==========================================================================
    TLBM DESIGN SYSTEM - GLOBAL TOKENS & CSS VARIABLES
-   Designed for Group 1 (Layout & Dashboard) - Chau Tuan Kiet (PM)
-   Taste-Skill Standard: Premium UI, Glassmorphism, Micro-interactions
+   [DEVOPS AUDIT NOTE]:
+   - File này là NGUỒN GỐC TẬP TRUNG (Single Source of Truth) của Design Tokens.
+   - Các mã màu gốc tại đây được ánh xạ tự động vào tailwind.config.js thông qua
+     các biến CSS var(--...). Bắt buộc khai báo tại đây.
+   - Mọi components trong ứng dụng bắt buộc sử dụng Tailwind classes (text-primary,
+     bg-surface,...) và TUYỆT ĐỐI KHÔNG hardcode màu riêng lẻ trong JSX/TSX.
    ========================================================================== */
 
 :root {
