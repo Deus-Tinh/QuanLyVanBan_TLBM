@@ -61,28 +61,36 @@ const INITIAL_SESSIONS: ChatSession[] = [
 const PROMPT_TEMPLATES = [
   {
     icon: 'fa-inbox',
-    color: '#3b82f6',
+    color: 'var(--color-primary)',
+    bg: 'var(--color-primary-subtle)',
+    border: 'var(--color-primary-border)',
     title: 'Tiếp nhận Văn bản Đến',
     desc: 'Hỏi các bước vào sổ, scan số hóa và trình Ban Giám Hiệu bút phê.',
     query: 'Hướng dẫn quy trình tiếp nhận và xử lý văn bản đến trong ngày?',
   },
   {
     icon: 'fa-shield-halved',
-    color: '#ef4444',
+    color: 'var(--color-danger)',
+    bg: 'var(--color-danger-subtle)',
+    border: 'var(--color-danger-border)',
     title: 'Xử lý Văn bản Mật',
     desc: 'Quy chuẩn mã hóa, xác thực 2FA và quyền xem tài liệu Tuyệt Mật.',
     query: 'Quy định bảo mật và quy trình chuyển giao văn bản mật 03/MẬT-HĐQT?',
   },
   {
     icon: 'fa-file-signature',
-    color: '#f59e0b',
+    color: 'var(--color-warning-text)',
+    bg: 'var(--color-warning-subtle)',
+    border: 'var(--color-warning-border)',
     title: 'Quy trình Trình Ký Số',
     desc: 'Sơ đồ luồng ký số Token PKI/Cloud HSM và phát hành văn bản đi.',
     query: 'Làm thế nào để tạo luồng trình ký số điện tử trên Module 5?',
   },
   {
     icon: 'fa-sitemap',
-    color: '#10b981',
+    color: 'var(--color-success)',
+    bg: 'var(--color-success-subtle)',
+    border: 'var(--color-success-border)',
     title: 'Cơ cấu & Phân quyền',
     desc: 'Tra cứu danh mục phòng ban Cấp 1, Cấp 2 và ma trận quyền CBNV.',
     query: 'Hệ thống phân quyền CBNV Nhóm 7 hoạt động như thế nào?',
@@ -500,7 +508,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                     className="ai-prompt-card"
                     onClick={() => handleSend(tmpl.query)}
                   >
-                    <div className="prompt-card-icon" style={{ color: tmpl.color, background: `${tmpl.color}18` }}>
+                    <div className="prompt-card-icon" style={{ color: tmpl.color, background: tmpl.bg, border: `1px solid ${tmpl.border}` }}>
                       <i className={`fa-solid ${tmpl.icon}`} />
                     </div>
                     <div className="prompt-card-body">

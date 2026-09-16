@@ -86,6 +86,7 @@
   --header-border-bottom: rgba(255, 255, 255, 0.08);
   --sidebar-border-right: rgba(255, 255, 255, 0.08);
   --color-warning-text: #fbbf24;
+  --bg-backdrop: rgba(0, 0, 0, 0.45);
 }
 
 /* 2. Clean Light Theme */
@@ -112,6 +113,7 @@
   --backdrop-blur: blur(16px);
   --header-border-bottom: #e2e8f0;
   --sidebar-border-right: #e2e8f0;
+  --bg-backdrop: rgba(0, 0, 0, 0.2);
 }
 
 /* ==========================================================================

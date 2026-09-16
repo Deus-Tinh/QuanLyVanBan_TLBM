@@ -65,7 +65,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
               right: 0,
               bottom: 0,
               zIndex: 10000,
-              background: 'rgba(0, 0, 0, 0.35)',
+              background: 'var(--bg-backdrop, rgba(0, 0, 0, 0.35))',
               backdropFilter: 'blur(2px)',
               WebkitBackdropFilter: 'blur(2px)',
             }}

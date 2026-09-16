@@ -52,7 +52,7 @@ export default function NotificationStreams() {
               right: 0,
               bottom: 0,
               zIndex: 10000,
-              background: 'rgba(0, 0, 0, 0.35)',
+              background: 'var(--bg-backdrop, rgba(0, 0, 0, 0.35))',
               backdropFilter: 'blur(2px)',
               WebkitBackdropFilter: 'blur(2px)',
             }}
@@ -87,7 +87,7 @@ export default function NotificationStreams() {
                     width: '26px',
                     height: '26px',
                     borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.1)',
+                    background: 'var(--bg-surface-hover)',
                     border: '1px solid var(--border-subtle)',
                     color: 'var(--text-secondary)',
                     display: 'flex',
@@ -127,8 +127,8 @@ export default function NotificationStreams() {
                         borderRadius: '10px',
                         background:
                           stream.type === 'confidential'
-                            ? 'rgba(239, 68, 68, 0.2)'
-                            : 'rgba(59, 130, 246, 0.2)',
+                            ? 'var(--color-danger-subtle)'
+                            : 'var(--color-primary-subtle)',
                         color: stream.type === 'confidential' ? 'var(--color-danger)' : 'var(--color-primary)',
                         fontWeight: 700,
                       }}
