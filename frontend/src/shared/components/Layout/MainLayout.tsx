@@ -51,18 +51,31 @@ export default function MainLayout({
     }
     navigate(pageIdToPath(pageId));
   };
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  // Tự động đóng mobile drawer nếu chuyển sang màn hình desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 992) {
-        setIsMobileOpen(false);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  // Trạng thái mở/đóng Sidebar: Mặc định mở trên desktop (>= 1024px), điều khiển hoàn toàn bằng nút bấm (Click)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem('tlbm_sidebar_open');
+    if (saved !== null) {
+      return saved === 'true';
+    }
+    return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
+  });
+
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen((prev) => {
+      const next = !prev;
+      localStorage.setItem('tlbm_sidebar_open', String(next));
+      return next;
+    });
+  };
+
+  // Đóng sidebar khi điều hướng trên màn hình nhỏ
+  const handleItemNavigate = (pageId: ActivePageId) => {
+    handleNavigate(pageId);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  };
 
   // Cài đặt phong cách thanh menu (Facebook Style vs Dock Style)
   const [sidebarStyle, setSidebarStyle] = useState<'facebook' | 'dock'>(() => {
@@ -99,135 +112,61 @@ export default function MainLayout({
     window.dispatchEvent(new Event('tlbm_settings_updated'));
   };
 
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-
-  // Theo dõi vị trí con trỏ chuột toàn màn hình cho TẤT CẢ CÁC TRANG:
-  useEffect(() => {
-    const handlePointerTrack = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isInsideSidebar =
-        target?.closest('.sidebar-slide-wrapper') !== null ||
-        target?.closest('.header-menu-btn') !== null;
-
-      const sidebarThreshold = sidebarStyle === 'facebook' ? 295 : 86;
-
-      if (e.clientX <= 24 || isInsideSidebar) {
-        setIsSidebarHovered(true);
-      } else if (e.clientX > sidebarThreshold && !isInsideSidebar && !isMobileOpen) {
-        setIsSidebarHovered(false);
-        onHoverLeave();
-      }
-    };
-
-    const handleWindowLeave = () => {
-      if (!isMobileOpen) {
-        setIsSidebarHovered(false);
-        onHoverLeave();
-      }
-    };
-
-    window.addEventListener('mousemove', handlePointerTrack);
-    window.addEventListener('mouseleave', handleWindowLeave);
-    window.addEventListener('blur', handleWindowLeave);
-
-    return () => {
-      window.removeEventListener('mousemove', handlePointerTrack);
-      window.removeEventListener('mouseleave', handleWindowLeave);
-      window.removeEventListener('blur', handleWindowLeave);
-    };
-  }, [onHoverLeave, isMobileOpen, sidebarStyle]);
-
-  // Bộ phần tử Sidebar trượt ẩn/hiện dùng chung cho toàn bộ các trang
-  const renderSidebarElements = () => (
-    <>
-      {/* VÙNG CẢM ỨNG MÉP TRÁI */}
-      <div
-        className="fixed left-0 top-0 bottom-0 w-5 z-[299] cursor-pointer"
-        onClick={() => setIsSidebarHovered((prev) => !prev)}
-        onMouseEnter={() => setIsSidebarHovered(true)}
-        title="Rê chuột hoặc bấm vào mép trái để mở menu"
-      />
-
-      {/* Chỉ báo nhỏ ở mép trái */}
-      <div
-        className={`fixed left-0 top-1/2 -translate-y-1/2 rounded-r-md bg-primary shadow-glow transition-all duration-fast z-[298] cursor-pointer h-16 pointer-events-auto ${
-          isSidebarHovered ? 'w-2 opacity-90' : 'w-1 opacity-45'
-        }`}
-        onClick={() => setIsSidebarHovered((prev) => !prev)}
-        title="Bấm để mở menu điều hướng"
-      />
-
-      {/* Lớp phủ mờ backdrop khi menu được mở rộng */}
-      {(isMobileOpen || (isSidebarHovered && typeof window !== 'undefined' && window.innerWidth <= 992)) && (
+  return (
+    <div className="app-shell w-screen h-screen overflow-hidden flex bg-app relative">
+      {/* 1. Lớp phủ mờ Backdrop trên Mobile / Tablet khi Sidebar mở ra */}
+      {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[1100] cursor-pointer transition-opacity duration-normal"
-          onClick={() => {
-            setIsMobileOpen(false);
-            setIsSidebarHovered(false);
-          }}
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[1100] lg:hidden cursor-pointer transition-opacity duration-normal"
+          onClick={() => setIsSidebarOpen(false)}
           aria-label="Đóng menu điều hướng"
         />
       )}
 
-      {/* THANH BÊN TRÁI: Trượt xổ ra mượt mà */}
+      {/* 2. Thanh điều hướng Sidebar bên trái:
+             - Desktop (lg:): CỐ ĐỊNH dạng cột (Fixed column layout), đứng cạnh nội dung chính, KHÔNG che phủ dashboard!
+             - Mobile (<lg:): Drawer trượt nổi xổ ra khi bấm nút hamburger.
+             - Điều khiển 100% bằng nút bấm (Click), hoàn toàn KHÔNG tự bung khi rê chuột.
+      */}
       <div
-        className={`sidebar-slide-wrapper fixed left-0 top-0 bottom-0 z-[1200] max-w-[85vw] h-screen flex border-r border-border-subtle transition-transform duration-normal ease-out ${
-          sidebarStyle === 'facebook' ? 'w-[300px] bg-surface-elevated' : 'w-auto bg-sidebar'
-        } ${
-          isSidebarHovered || isMobileOpen
-            ? 'translate-x-0 shadow-2xl pointer-events-auto'
-            : '-translate-x-full pointer-events-none'
+        className={`h-full z-[1200] lg:z-30 shrink-0 transition-all duration-300 ease-in-out ${
+          isSidebarOpen
+            ? `${
+                sidebarStyle === 'facebook' ? 'w-[290px]' : 'w-18'
+              } fixed lg:static inset-y-0 left-0 shadow-2xl lg:shadow-none`
+            : 'w-0 -translate-x-full lg:translate-x-0 overflow-hidden pointer-events-none'
         }`}
-        onMouseEnter={() => setIsSidebarHovered(true)}
-        onMouseLeave={() => {
-          setIsSidebarHovered(false);
-          onHoverLeave();
-        }}
       >
-        <AppSidebar
-          isMobileOpen={isMobileOpen}
-          onCloseMobile={() => {
-            setIsMobileOpen(false);
-            setIsSidebarHovered(false);
-          }}
-          activePage={currentActivePage}
-          committedPage={effectiveCommittedPage}
-          previewPage={previewPage}
-          onNavigate={(pageId) => {
-            handleNavigate(pageId);
-            setIsSidebarHovered(false);
-            setIsMobileOpen(false);
-          }}
-          onHoverPreview={onHoverPreview}
-          onHoverLeave={onHoverLeave}
-          sidebarStyle={sidebarStyle}
-          onToggleSidebarStyle={handleToggleSidebarStyle}
-        />
+        <div
+          className={`h-full overflow-hidden ${
+            sidebarStyle === 'facebook' ? 'w-[290px]' : 'w-18'
+          }`}
+        >
+          <AppSidebar
+            isMobileOpen={isSidebarOpen}
+            onCloseMobile={() => setIsSidebarOpen(false)}
+            activePage={currentActivePage}
+            committedPage={effectiveCommittedPage}
+            previewPage={previewPage}
+            onNavigate={handleItemNavigate}
+            onHoverPreview={onHoverPreview}
+            onHoverLeave={onHoverLeave}
+            sidebarStyle={sidebarStyle}
+            onToggleSidebarStyle={handleToggleSidebarStyle}
+          />
+        </div>
       </div>
-    </>
-  );
 
-  return (
-    <div className="app-shell w-screen h-screen overflow-hidden relative flex bg-app">
-      {/* Thanh điều hướng Navbar bên trái */}
-      {renderSidebarElements()}
-
-      {/* 2. Khung nội dung chính & Thanh Header đỉnh */}
-      <div className="main-container w-full flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+      {/* 3. Khung nội dung chính & Thanh Header đỉnh */}
+      <div className="main-container flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <AppHeader
           currentTheme={currentTheme}
           onSelectTheme={onSelectTheme}
           onToggleTheme={onToggleTheme}
           preferredLightTheme={preferredLightTheme}
           preferredDarkTheme={preferredDarkTheme}
-          isSidebarOpen={isSidebarHovered || isMobileOpen}
-          onHoverSidebar={() => {
-            setIsSidebarHovered(true);
-          }}
-          onToggleMobileSidebar={() => {
-            setIsMobileOpen((prev) => !prev);
-            setIsSidebarHovered((prev) => !prev);
-          }}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={handleToggleSidebar}
           onNavigate={handleNavigate}
         />
 
@@ -247,7 +186,7 @@ export default function MainLayout({
         </main>
       </div>
 
-      {/* 3. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động */}
+      {/* 4. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động */}
       {isAssistiveTouchEnabled && (
         <MobileAssistiveTouch
           activePage={currentActivePage}
@@ -258,7 +197,7 @@ export default function MainLayout({
         />
       )}
 
-      {/* 4. Box AI Trợ Lý nổi tự do có thể kéo thả */}
+      {/* 5. Box AI Trợ Lý nổi tự do có thể kéo thả */}
       <FloatingAIBox onNavigate={handleNavigate} />
     </div>
   );

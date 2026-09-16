@@ -11,8 +11,7 @@ interface AppHeaderProps {
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
-  onToggleMobileSidebar: () => void;
-  onHoverSidebar?: () => void;
+  onToggleSidebar: () => void;
   isSidebarOpen?: boolean;
   onNavigate?: (pageId: ActivePageId) => void;
   preferredLightTheme?: ThemeMode;
@@ -23,8 +22,7 @@ export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleTheme,
-  onToggleMobileSidebar,
-  onHoverSidebar,
+  onToggleSidebar,
   isSidebarOpen,
   onNavigate,
   preferredLightTheme,
@@ -51,17 +49,16 @@ export default function AppHeader({
 
   return (
     <header className="h-14 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
-      {/* 1. Left Section: 3-bar Menu Trigger */}
+      {/* 1. Left Section: 3-bar Menu Trigger - Bấm vào để Mở / Đóng cố định thanh menu */}
       <div className="flex items-center gap-3">
         <button
           type="button"
-          className={`w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast ${
+          className={`w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer ${
             isSidebarOpen ? 'text-primary bg-primary-subtle' : ''
           }`}
-          onClick={onToggleMobileSidebar}
-          onMouseEnter={onHoverSidebar}
-          title={t('header.menuTooltip')}
-          aria-label={t('header.menuAria')}
+          onClick={onToggleSidebar}
+          title={isSidebarOpen ? 'Thu gọn thanh điều hướng (Bấm để đóng)' : 'Mở thanh điều hướng cố định (Bấm để mở)'}
+          aria-label={isSidebarOpen ? 'Thu gọn thanh điều hướng' : 'Mở thanh điều hướng'}
         >
           <i className="fa-solid fa-bars text-base" />
         </button>
@@ -71,7 +68,7 @@ export default function AppHeader({
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Đồng hồ hành chính chuẩn Thầy Duy */}
         <div
-          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-subtle text-xs text-text-secondary select-none shadow-sm"
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-subtle text-xs text-text-secondary select-none shadow-xs"
           title={t('header.clockTitle')}
         >
           <i className="fa-regular fa-clock text-primary" />
