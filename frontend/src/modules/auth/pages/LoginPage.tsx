@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
-import { AuthRole, UserSession } from '../types';
+import { UserSession } from '../types';
 import '../styles/login-characters.css';
 
 interface LoginPageProps {
@@ -11,10 +11,9 @@ interface LoginPageProps {
 
 export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps) {
   const navigate = useNavigate();
-  const [username, setUsername] = useState<string>('admin');
-  const [password, setPassword] = useState<string>('Admin@123');
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [selectedRole, setSelectedRole] = useState<AuthRole>('admin');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
@@ -80,18 +79,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   const orangeOffset = calculatePupilOffset(orangeEyesRef.current, 6);
   const yellowOffset = calculatePupilOffset(yellowEyesRef.current, 5);
 
-  const handleRoleSelect = (role: AuthRole) => {
-    setSelectedRole(role);
-    setError('');
-    triggerTypingAnimation();
-    if (role === 'admin') {
-      setUsername('admin');
-      setPassword('Admin@123');
-    } else {
-      setUsername('canbo');
-      setPassword('Canbo@123');
-    }
-  };
 
   const handleCharClick = (charName: string) => {
     setClickedChar(charName);
@@ -302,27 +289,18 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mb-0.5">
             Welcome back
           </h2>
-          <p className="text-xs text-slate-500 mb-2.5">
+          <p className="text-xs text-slate-500 mb-4">
             Vui lòng nhập thông tin xác thực để vào hệ thống tác nghiệp.
           </p>
 
-          {/* Banner minh bạch: Chế độ Mock Auth Prototype theo yêu cầu Code Review */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-2 text-xs text-amber-900 mb-2.5 flex items-center gap-2">
-            <i className="fa-solid fa-shield-halved text-amber-600 text-sm shrink-0" />
-            <div className="leading-tight">
-              <span className="font-bold text-amber-800">Chế độ Mock Auth: </span>
-              <span className="text-[11px] text-amber-900/90">Chọn nhanh tài khoản mẫu bên dưới hoặc nhập tài khoản bất kỳ để trải nghiệm.</span>
-            </div>
-          </div>
-
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-2 text-xs text-danger mb-2.5 flex items-center gap-2 animate-fade-in">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-2.5 text-xs text-danger mb-3 flex items-center gap-2 animate-fade-in">
               <i className="fa-solid fa-triangle-exclamation" />
               <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-2.5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div className="text-left">
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Tài khoản / Mã nhân viên
@@ -337,9 +315,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   }}
                   onFocus={() => setIsUsernameFocused(true)}
                   onBlur={() => setIsUsernameFocused(false)}
-                  placeholder="admin hoặc mã CBNV..."
+                  placeholder="Nhập tên đăng nhập hoặc mã cán bộ..."
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm outline-none transition-all focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm outline-none transition-all focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
                 />
               </div>
             </div>
@@ -358,14 +336,14 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   }}
                   onFocus={() => setIsPasswordFocused(true)}
                   onBlur={() => setIsPasswordFocused(false)}
-                  placeholder="••••••••"
+                  placeholder="Nhập mật khẩu..."
                   required
-                  className="w-full px-3 py-2 pr-10 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm outline-none transition-all focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 bg-white text-slate-900 text-sm outline-none transition-all focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu (Nhân vật sẽ ngạc nhiên!)'}
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   className="absolute right-3 text-slate-400 hover:text-primary transition-colors text-sm p-1"
                 >
                   <i className={`fa-regular ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`} />
@@ -373,7 +351,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-600 pt-0.5">
+            <div className="flex items-center justify-between text-xs text-slate-600 pt-1">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -386,7 +364,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                 href="#forgot"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('Vui lòng liên hệ Quản trị viên ITC hoặc GVHD Trần Phương Duy để cấp lại mật khẩu!');
+                  alert('Vui lòng liên hệ Quản trị viên hệ thống để cấp lại mật khẩu!');
                 }}
                 className="font-semibold text-slate-900 hover:underline"
               >
@@ -397,50 +375,14 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             <button
               type="submit"
               disabled={isLoading || isSuccess}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-black active:translate-y-0 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-black active:translate-y-0 text-white text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 mt-1"
             >
-              <span>{isSuccess ? '✓ Đăng nhập thành công!' : isLoading ? 'Đang xác thực...' : 'Log in'}</span>
+              <span>{isSuccess ? '✓ Đăng nhập thành công!' : isLoading ? 'Đang xác thực...' : 'Đăng nhập'}</span>
               <i className="fa-solid fa-arrow-right text-xs" />
             </button>
           </form>
 
-          <div className="flex items-center my-3 text-slate-400 text-xs">
-            <div className="flex-1 h-px bg-slate-200" />
-            <span className="px-2 font-semibold uppercase tracking-wider text-[10px]">
-              chọn nhanh tài khoản mẫu
-            </span>
-            <div className="flex-1 h-px bg-slate-200" />
-          </div>
-
-          {/* 2 nút chọn nhanh quyền Quản trị & Cán bộ */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                selectedRole === 'admin'
-                  ? 'bg-blue-50 border border-blue-600 text-blue-700 shadow-sm'
-                  : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
-              }`}
-              onClick={() => handleRoleSelect('admin')}
-            >
-              <i className="fa-solid fa-crown" />
-              <span>Quản trị viên (Admin)</span>
-            </button>
-            <button
-              type="button"
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                selectedRole === 'staff'
-                  ? 'bg-blue-50 border border-blue-600 text-blue-700 shadow-sm'
-                  : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
-              }`}
-              onClick={() => handleRoleSelect('staff')}
-            >
-              <i className="fa-solid fa-user-tie" />
-              <span>Cán bộ chuyên viên</span>
-            </button>
-          </div>
-
-          <div className="mt-3 text-center text-[11px] text-slate-400">
+          <div className="mt-5 text-center text-[11px] text-slate-400">
             <span>Đồ án ITC Django · GVHD: NCS.ThS. Trần Phương Duy · Nhóm 1</span>
           </div>
         </div>
