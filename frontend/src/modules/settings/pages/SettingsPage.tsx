@@ -13,17 +13,12 @@ export default function SettingsPage(_props: SettingsPageProps) {
     return localStorage.getItem('tlbm_enable_assistive_touch') === 'true';
   });
 
-  const [sidebarStyle, setSidebarStyle] = useState<'facebook' | 'dock'>(() => {
-    return (localStorage.getItem('tlbm_sidebar_style') as 'facebook' | 'dock') || 'facebook';
-  });
-
   const [aiModel, setAiModel] = useState<'gpt4o' | 'claude' | 'llama'>(() => {
     return (localStorage.getItem('tlbm_ai_model') as 'gpt4o' | 'claude' | 'llama') || 'gpt4o';
   });
 
   const handleSaveSettings = () => {
     localStorage.setItem('tlbm_enable_assistive_touch', String(assistiveTouchEnabled));
-    localStorage.setItem('tlbm_sidebar_style', sidebarStyle);
     localStorage.setItem('tlbm_ai_model', aiModel);
     window.dispatchEvent(new Event('tlbm_settings_updated'));
     window.dispatchEvent(new Event('tlbm_ai_model_updated'));
@@ -32,10 +27,8 @@ export default function SettingsPage(_props: SettingsPageProps) {
 
   const handleResetSettings = () => {
     setAssistiveTouchEnabled(false);
-    setSidebarStyle('facebook');
     setAiModel('gpt4o');
     localStorage.setItem('tlbm_enable_assistive_touch', 'false');
-    localStorage.setItem('tlbm_sidebar_style', 'facebook');
     localStorage.setItem('tlbm_ai_model', 'gpt4o');
     window.dispatchEvent(new Event('tlbm_settings_updated'));
     window.dispatchEvent(new Event('tlbm_ai_model_updated'));
@@ -125,65 +118,6 @@ export default function SettingsPage(_props: SettingsPageProps) {
           </div>
         </div>
 
-        {/* 4. Phong cách Thanh Điều Hướng (Navigation Layout) */}
-        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '22px' }}>
-          <div style={{ marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fa-solid fa-table-columns" style={{ color: 'var(--color-primary)' }} />
-              <span>{t('settings.sidebarStyleTitle')}</span>
-            </h3>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-              {t('settings.sidebarStyleDesc')}
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-            {/* Card Facebook Style Standard */}
-            <div
-              style={{
-                padding: '16px',
-                borderRadius: 'var(--radius-lg)',
-                border: '2px solid var(--color-primary)',
-                background: 'var(--color-primary-subtle)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                boxShadow: '0 0 14px var(--color-primary-glow)',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.1rem',
-                    }}
-                  >
-                    <i className="fa-solid fa-table-columns" />
-                  </div>
-                  <div>
-                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>
-                      {t('settings.sidebarStyleFacebook')}
-                    </span>
-                  </div>
-                </div>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                  ● {t('settings.activeSelected')}
-                </span>
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
-                {t('settings.sidebarStyleFacebookDesc')}
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* 5. Tiện ích di động & Hỗ trợ thao tác (Nút Home ảo AssistiveTouch) */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '22px' }}>
