@@ -164,7 +164,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 24px 16px;
+          padding: clamp(10px, 2.5vh, 24px) 16px;
           box-sizing: border-box;
           background: #090d16;
           background-image: 
@@ -174,41 +174,43 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             linear-gradient(145deg, #07090e 0%, #0f172a 100%);
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
           position: relative;
+          overflow-y: auto;
         }
 
         .interactive-card-container {
           display: flex;
           width: 100%;
-          max-width: 920px;
-          min-height: 570px;
+          max-width: 880px;
           background: #ffffff;
-          border-radius: 36px;
+          border-radius: 28px;
           overflow: hidden;
           box-shadow: 
-            0 25px 60px -15px rgba(0, 0, 0, 0.55),
+            0 20px 50px -12px rgba(0, 0, 0, 0.55),
             0 0 0 1px rgba(255, 255, 255, 0.14);
           position: relative;
           z-index: 10;
           animation: cardAppear 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+          margin: auto;
         }
 
         @keyframes cardAppear {
-          from { opacity: 0; transform: translateY(20px) scale(0.97); }
+          from { opacity: 0; transform: translateY(16px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         /* NỬA TRÁI: SÂN KHẤU HOẠT HỌA */
         .character-stage-panel {
-          flex: 1 1 46%;
+          flex: 1 1 44%;
           background: #eeedf2;
           position: relative;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          padding: 36px 32px 0 32px;
+          padding: 24px 24px 0 24px;
           box-sizing: border-box;
           overflow: hidden;
           user-select: none;
+          min-height: 380px;
         }
 
         /* TÁCH RIÊNG: Animation nhịp thở bập bênh (Idle Bobber) KHÔNG đè transform của body */
@@ -276,9 +278,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         .character-cluster {
           position: absolute;
           bottom: 0;
-          left: 28px;
+          left: 20px;
           width: 330px;
-          height: 240px;
+          height: 230px;
+          transform: scale(0.88);
+          transform-origin: bottom left;
           ${error ? 'animation: errorShake 0.45s ease-in-out;' : ''}
           ${isSuccess ? 'animation: celebrateJump 0.6s ease-in-out infinite;' : ''}
         }
@@ -601,9 +605,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
         /* NỬA PHẢI: FORM ĐĂNG NHẬP */
         .login-form-panel {
-          flex: 1 1 54%;
+          flex: 1 1 56%;
           background: #ffffff;
-          padding: 44px 42px;
+          padding: 24px 32px;
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -616,9 +620,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         }
 
         .form-star-icon {
-          font-size: 1.55rem;
+          font-size: 1.25rem;
           color: #111827;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
           display: inline-block;
           width: fit-content;
           animation: starTwinkle 3s ease-in-out infinite;
@@ -626,16 +630,16 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         }
 
         .input-floating-group {
-          margin-bottom: 16px;
+          margin-bottom: 10px;
           text-align: left;
         }
 
         .input-floating-group label {
           display: block;
-          font-size: 0.78rem;
+          font-size: 0.74rem;
           font-weight: 700;
           color: #374151;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
 
         .input-field-wrapper {
@@ -646,12 +650,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
         .clean-input {
           width: 100%;
-          padding: 11px 14px;
-          border-radius: 12px;
+          padding: 9px 12px;
+          border-radius: 10px;
           border: 1.5px solid #e5e7eb;
           background: #ffffff;
           color: #111827;
-          font-size: 0.88rem;
+          font-size: 0.85rem;
           font-family: inherit;
           outline: none;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -666,11 +670,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
         .black-pill-btn {
           width: 100%;
-          padding: 13px;
+          padding: 10px 14px;
           border-radius: 9999px;
           background: #18181b;
           color: #ffffff;
-          font-size: 0.9rem;
+          font-size: 0.88rem;
           font-weight: 700;
           border: none;
           cursor: pointer;
@@ -684,8 +688,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
         .black-pill-btn:hover {
           background: #000000;
-          transform: translateY(-2px);
-          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
         }
 
         .black-pill-btn:active {
@@ -694,9 +698,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
         .quick-role-pill {
           flex: 1;
-          padding: 9px 12px;
+          padding: 7px 10px;
           border-radius: 9999px;
-          font-size: 0.76rem;
+          font-size: 0.74rem;
           font-weight: 700;
           cursor: pointer;
           display: flex;
@@ -712,7 +716,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           border: 1.5px solid #2563eb;
           color: #1d4ed8;
           transform: translateY(-1px);
-          box-shadow: 0 3px 10px rgba(37, 99, 235, 0.15);
+          box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
         }
 
         .quick-role-pill.inactive {
@@ -731,19 +735,18 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         /* 1. Màn hình Tablet & Laptop nhỏ (769px - 1024px) */
         @media (max-width: 1024px) {
           .interactive-card-container {
-            max-width: 860px;
-            min-height: 520px;
+            max-width: 840px;
           }
           .character-stage-panel {
-            padding: 30px 24px 0 24px;
+            padding: 20px 20px 0 20px;
           }
           .character-cluster {
-            transform: scale(0.88);
+            transform: scale(0.82);
             transform-origin: bottom left;
-            left: 18px;
+            left: 14px;
           }
           .login-form-panel {
-            padding: 36px 30px;
+            padding: 20px 24px;
           }
         }
 
@@ -755,21 +758,21 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           }
           .interactive-card-container {
             flex-direction: column;
-            border-radius: 28px;
-            max-width: 520px;
-            margin: 44px auto 20px auto;
+            border-radius: 24px;
+            max-width: 500px;
+            margin: 20px auto;
           }
           .character-stage-panel {
-            min-height: 200px;
-            padding: 20px 20px 0 20px;
+            min-height: 190px;
+            padding: 18px 18px 0 18px;
           }
           .character-cluster {
             left: 50%;
-            transform: translateX(-50%) scale(0.78);
+            transform: translateX(-50%) scale(0.74);
             transform-origin: bottom center;
           }
           .login-form-panel {
-            padding: 28px 24px;
+            padding: 22px 20px;
           }
           .back-btn-dashboard {
             top: 10px !important;
@@ -785,61 +788,113 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             padding: 10px 8px;
           }
           .interactive-card-container {
-            border-radius: 24px;
-            margin-top: 48px;
+            border-radius: 20px;
+            margin-top: 24px;
           }
           .character-stage-panel {
-            min-height: 175px;
-            padding: 16px 14px 0 14px;
+            min-height: 165px;
+            padding: 14px 12px 0 12px;
           }
           .character-hint {
             display: none !important;
           }
           .character-cluster {
             left: 50%;
-            transform: translateX(-50%) scale(0.68);
+            transform: translateX(-50%) scale(0.64);
             transform-origin: bottom center;
           }
           .login-form-panel {
-            padding: 22px 16px;
+            padding: 18px 14px;
           }
           .form-star-icon {
-            font-size: 1.3rem;
-            margin-bottom: 4px;
+            font-size: 1.15rem;
+            margin-bottom: 2px;
           }
           .login-form-panel h2 {
-            font-size: 1.4rem !important;
+            font-size: 1.3rem !important;
           }
           .login-form-panel p {
-            font-size: 0.78rem !important;
-            margin-bottom: 16px !important;
+            font-size: 0.75rem !important;
+            margin-bottom: 12px !important;
           }
           .quick-role-wrapper {
             flex-direction: column !important;
-            gap: 8px !important;
+            gap: 6px !important;
           }
           .quick-role-pill {
             width: 100% !important;
-            padding: 8px 12px !important;
-            font-size: 0.75rem !important;
+            padding: 7px 10px !important;
+            font-size: 0.72rem !important;
           }
         }
 
         /* 4. Màn hình Điện thoại siêu nhỏ (<= 360px) */
         @media (max-width: 360px) {
           .character-cluster {
-            transform: translateX(-50%) scale(0.58);
+            transform: translateX(-50%) scale(0.55);
           }
           .character-stage-panel {
-            min-height: 155px;
+            min-height: 145px;
           }
           .clean-input {
-            padding: 9px 10px;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+          }
+          .black-pill-btn {
+            padding: 9px;
+            font-size: 0.82rem;
+          }
+        }
+
+        /* 5. Tương thích màn hình chiều cao hạn chế (laptop tiêu chuẩn, chưa mở Fullscreen F11) */
+        @media (max-height: 720px) {
+          .interactive-login-page {
+            padding: 8px 12px;
+          }
+          .login-form-panel {
+            padding: 16px 24px;
+          }
+          .character-stage-panel {
+            padding: 16px 18px 0 18px;
+            min-height: 320px;
+          }
+          .character-cluster {
+            transform: scale(0.78);
+            transform-origin: bottom left;
+          }
+          .input-floating-group {
+            margin-bottom: 7px;
+          }
+          .clean-input {
+            padding: 7px 10px;
             font-size: 0.82rem;
           }
           .black-pill-btn {
-            padding: 11px;
+            padding: 8px 12px;
             font-size: 0.84rem;
+          }
+        }
+
+        @media (max-height: 600px) {
+          .interactive-login-page {
+            padding: 4px 8px;
+          }
+          .interactive-card-container {
+            border-radius: 20px;
+          }
+          .login-form-panel {
+            padding: 10px 18px;
+          }
+          .character-stage-panel {
+            padding: 10px 14px 0 14px;
+            min-height: 280px;
+          }
+          .character-cluster {
+            transform: scale(0.68);
+            transform-origin: bottom left;
+          }
+          .mock-auth-banner {
+            display: none !important;
           }
         }
 
@@ -1052,34 +1107,33 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         <div className="login-form-panel">
           <div className="form-star-icon" title="Hệ thống xác thực SSO">✦</div>
 
-          <h2 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#111827', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#111827', margin: '0 0 2px 0', letterSpacing: '-0.4px' }}>
             Welcome back
           </h2>
-          <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: '0 0 16px 0' }}>
+          <p style={{ fontSize: '0.76rem', color: '#6b7280', margin: '0 0 10px 0' }}>
             Vui lòng nhập thông tin xác thực để vào hệ thống tác nghiệp.
           </p>
 
           {/* Banner minh bạch: Chế độ Mock Auth Prototype theo yêu cầu Code Review */}
           <div
+            className="mock-auth-banner"
             style={{
               background: '#fffbeb',
               border: '1px solid #fde68a',
-              borderRadius: '12px',
-              padding: '10px 14px',
-              fontSize: '0.76rem',
+              borderRadius: '10px',
+              padding: '6px 10px',
+              fontSize: '0.72rem',
               color: '#92400e',
-              marginBottom: '18px',
+              marginBottom: '10px',
               display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
+              alignItems: 'center',
+              gap: '8px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
-              <i className="fa-solid fa-shield-halved" style={{ color: '#d97706' }} />
-              <span>CHẾ ĐỘ MOCK AUTH (BẢN MẪU PROTOTYPE - NHÓM 1)</span>
-            </div>
-            <div style={{ color: '#78350f', fontSize: '0.73rem', lineHeight: '1.4' }}>
-              Giao diện giả lập kiểm thử App Shell. Chờ tích hợp API JWT từ Backend Django (Nhóm 1). Bạn có thể chọn nhanh nút Demo bên dưới hoặc nhập tài khoản bất kỳ.
+            <i className="fa-solid fa-shield-halved" style={{ color: '#d97706', fontSize: '0.85rem', flexShrink: 0 }} />
+            <div style={{ lineHeight: '1.35' }}>
+              <span style={{ fontWeight: 700 }}>Chế độ Mock Auth: </span>
+              <span>Chọn nhanh tài khoản mẫu bên dưới hoặc nhập tài khoản bất kỳ để trải nghiệm.</span>
             </div>
           </div>
 
@@ -1088,11 +1142,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               style={{
                 background: '#fef2f2',
                 border: '1px solid #fecaca',
-                borderRadius: '12px',
-                padding: '9px 14px',
-                fontSize: '0.78rem',
+                borderRadius: '10px',
+                padding: '7px 12px',
+                fontSize: '0.75rem',
                 color: 'var(--color-danger)',
-                marginBottom: '16px',
+                marginBottom: '10px',
                 textAlign: 'left',
                 display: 'flex',
                 alignItems: 'center',
@@ -1125,7 +1179,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               </div>
             </div>
 
-            <div className="input-floating-group" style={{ marginBottom: '14px' }}>
+            <div className="input-floating-group">
               <label>Mật khẩu xác thực</label>
               <div className="input-field-wrapper">
                 <input
@@ -1140,7 +1194,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   placeholder="••••••••"
                   required
                   className="clean-input"
-                  style={{ paddingRight: '42px' }}
+                  style={{ paddingRight: '40px' }}
                 />
                 <button
                   type="button"
@@ -1148,12 +1202,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu (Nhân vật sẽ ngạc nhiên!)'}
                   style={{
                     position: 'absolute',
-                    right: '12px',
+                    right: '10px',
                     background: 'none',
                     border: 'none',
                     color: showPassword ? 'var(--color-primary)' : 'var(--text-muted)',
                     cursor: 'pointer',
-                    fontSize: '0.92rem',
+                    fontSize: '0.88rem',
                     padding: '4px',
                     transition: 'color 0.2s',
                   }}
@@ -1168,9 +1222,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: '0.78rem',
+                fontSize: '0.74rem',
                 color: 'var(--text-secondary)',
-                marginBottom: '20px',
+                marginBottom: '12px',
               }}
             >
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
@@ -1179,7 +1233,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                   defaultChecked
                   style={{ accentColor: '#18181b', cursor: 'pointer' }}
                 />
-                <span>Ghi nhớ phiên đăng nhập (30 ngày)</span>
+                <span>Ghi nhớ phiên (30 ngày)</span>
               </label>
               <a
                 href="#forgot"
@@ -1199,7 +1253,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               className="black-pill-btn"
             >
               <span>{isSuccess ? '✓ Đăng nhập thành công!' : isLoading ? 'Đang xác thực...' : 'Log in'}</span>
-              <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.8rem' }} />
+              <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.78rem' }} />
             </button>
           </form>
 
@@ -1207,20 +1261,20 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             style={{
               display: 'flex',
               alignItems: 'center',
-              margin: '20px 0 16px 0',
+              margin: '12px 0 10px 0',
               color: 'var(--text-muted)',
-              fontSize: '0.74rem',
+              fontSize: '0.7rem',
             }}
           >
             <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
-            <span style={{ padding: '0 10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <span style={{ padding: '0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               chọn nhanh tài khoản mẫu
             </span>
             <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
           </div>
 
           {/* 2 nút chọn nhanh quyền Quản trị & Cán bộ */}
-          <div className="quick-role-wrapper" style={{ display: 'flex', gap: '10px' }}>
+          <div className="quick-role-wrapper" style={{ display: 'flex', gap: '8px' }}>
             <button
               type="button"
               className={`quick-role-pill ${selectedRole === 'admin' ? 'active' : 'inactive'}`}
@@ -1239,28 +1293,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             </button>
           </div>
 
-          <div style={{ marginTop: '16px', textAlign: 'center' }}>
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--color-primary)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <i className="fa-solid fa-arrow-left" />
-              <span>Quay về Dashboard (Không cần đăng nhập)</span>
-            </button>
-          </div>
-
-          <div style={{ marginTop: '18px', fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          <div style={{ marginTop: '12px', fontSize: '0.68rem', color: 'var(--text-muted)', textAlign: 'center' }}>
             <span>Đồ án ITC Django · GVHD: NCS.ThS. Trần Phương Duy · Nhóm 1</span>
           </div>
         </div>
