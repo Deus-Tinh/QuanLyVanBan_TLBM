@@ -1,6 +1,6 @@
 # Hướng dẫn xử lý theo cấu trúc dự án
 
-Tài liệu tham chiếu chính là [`docs/architecture/structure.md`](../docs/architecture/structure.md).
+Tài liệu tham chiếu chính là [`docs/common/architecture/structure.md`](../docs/common/architecture/structure.md).
 
 Khi tạo hoặc di chuyển mã nguồn:
 
