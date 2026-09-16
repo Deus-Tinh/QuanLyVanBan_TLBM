@@ -133,6 +133,13 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         roleTitle: isRoleAdmin ? 'Quản trị viên tối cao' : 'Cán bộ xử lý văn bản',
       };
 
+      try {
+        localStorage.setItem('tlbm_session', JSON.stringify(session));
+        window.dispatchEvent(new Event('tlbm_auth_changed'));
+      } catch {
+        // ignore
+      }
+
       setTimeout(() => {
         if (onLoginSuccess) {
           onLoginSuccess(session);
@@ -140,7 +147,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         if (onNavigate) {
           onNavigate('dashboard');
         }
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }, 700);
     }, 600);
   };

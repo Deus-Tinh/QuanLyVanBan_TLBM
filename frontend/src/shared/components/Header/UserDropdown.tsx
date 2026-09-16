@@ -33,6 +33,34 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
     }
   };
 
+  const [session, setSession] = useState<{ fullName?: string; username?: string; roleTitle?: string } | null>(() => {
+    try {
+      const raw = localStorage.getItem('tlbm_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleAuth = () => {
+      try {
+        const raw = localStorage.getItem('tlbm_session');
+        setSession(raw ? JSON.parse(raw) : null);
+      } catch {
+        setSession(null);
+      }
+    };
+    window.addEventListener('tlbm_auth_changed', handleAuth);
+    window.addEventListener('storage', handleAuth);
+    return () => {
+      window.removeEventListener('tlbm_auth_changed', handleAuth);
+      window.removeEventListener('storage', handleAuth);
+    };
+  }, []);
+
+  const displayName = session?.fullName || CURRENT_USER.fullName;
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -47,7 +75,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
         </div>
         <div className="hidden md:flex flex-col text-left">
           <span className="text-xs font-semibold text-text-main leading-tight">
-            {CURRENT_USER.fullName}
+            {displayName}
           </span>
         </div>
         <i className="fa-solid fa-chevron-down text-[10px] text-text-muted ml-0.5" />
@@ -61,8 +89,10 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
           />
           <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-surface-elevated border border-subtle shadow-glass p-1.5 z-[10001] flex flex-col">
             <div className="p-2.5 border-b border-subtle mb-1">
-              <div className="font-semibold text-sm text-text-main">{CURRENT_USER.fullName}</div>
-              <div className="text-xs text-text-muted truncate">{CURRENT_USER.email}</div>
+              <div className="font-semibold text-sm text-text-main">{displayName}</div>
+              <div className="text-xs text-text-muted truncate">
+                {session?.roleTitle || CURRENT_USER.email}
+              </div>
             </div>
 
             <div className="flex flex-col gap-0.5">
@@ -104,6 +134,8 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-danger hover:bg-danger-subtle transition-colors text-left"
                 onClick={() => {
                   if (confirm(t('userMenu.logoutConfirm'))) {
+                    localStorage.removeItem('tlbm_session');
+                    window.dispatchEvent(new Event('tlbm_auth_changed'));
                     handleItemClick('login');
                   }
                   setIsOpen(false);

@@ -18,6 +18,30 @@ interface RouterProps {
   preferredDarkTheme?: ThemeMode;
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(() => {
+    return Boolean(localStorage.getItem('tlbm_session'));
+  });
+
+  React.useEffect(() => {
+    const handleAuth = () => {
+      setIsAuthenticated(Boolean(localStorage.getItem('tlbm_session')));
+    };
+    window.addEventListener('tlbm_auth_changed', handleAuth);
+    window.addEventListener('storage', handleAuth);
+    return () => {
+      window.removeEventListener('tlbm_auth_changed', handleAuth);
+      window.removeEventListener('storage', handleAuth);
+    };
+  }, []);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 export default function AppRouter({
   currentTheme,
   onSelectTheme,
@@ -30,16 +54,18 @@ export default function AppRouter({
       {/* Route Standalone: Màn hình Đăng Nhập */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Routes có Layout chung (Header, Sidebar, TopSubNav, Footer) thông qua <Outlet /> */}
+      {/* Routes có Layout chung (được bảo vệ bởi ProtectedRoute - yêu cầu đăng nhập trước) */}
       <Route
         element={
-          <MainLayout
-            currentTheme={currentTheme}
-            onSelectTheme={onSelectTheme}
-            onToggleTheme={onToggleTheme}
-            preferredLightTheme={preferredLightTheme}
-            preferredDarkTheme={preferredDarkTheme}
-          />
+          <ProtectedRoute>
+            <MainLayout
+              currentTheme={currentTheme}
+              onSelectTheme={onSelectTheme}
+              onToggleTheme={onToggleTheme}
+              preferredLightTheme={preferredLightTheme}
+              preferredDarkTheme={preferredDarkTheme}
+            />
+          </ProtectedRoute>
         }
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
