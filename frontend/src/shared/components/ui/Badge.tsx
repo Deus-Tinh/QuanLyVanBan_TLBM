@@ -4,6 +4,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'pink' | 'secondary';
   size?: 'sm' | 'md';
   dot?: boolean;
+  withDot?: boolean;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
@@ -11,9 +12,11 @@ export const Badge: React.FC<BadgeProps> = ({
   variant = 'primary',
   size = 'md',
   dot = false,
+  withDot = false,
   className = '',
   ...props
 }) => {
+  const hasDot = dot || withDot;
   const baseStyles =
     'inline-flex items-center font-bold rounded-full select-none tracking-wide leading-none';
 
@@ -49,7 +52,7 @@ export const Badge: React.FC<BadgeProps> = ({
       className={`${baseStyles} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
       {...props}
     >
-      {dot && <span className={`w-1.5 h-1.5 rounded-full ${dotColors[variant]} shrink-0`} />}
+      {hasDot && <span className={`w-1.5 h-1.5 rounded-full ${dotColors[variant]} shrink-0`} />}
       {children}
     </span>
   );

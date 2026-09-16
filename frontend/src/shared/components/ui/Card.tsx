@@ -2,18 +2,25 @@ import React from 'react';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverable?: boolean;
+  glass?: boolean;
+  hoverEffect?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({
   children,
   hoverable = false,
+  glass = false,
+  hoverEffect = false,
   className = '',
   ...props
 }) => {
+  const isHover = hoverable || hoverEffect;
   return (
     <div
       className={`bg-surface border border-border-subtle rounded-xl shadow-sm transition-all duration-normal ${
-        hoverable ? 'hover:shadow-md hover:border-primary/40 hover:-translate-y-0.5' : ''
+        glass ? 'backdrop-blur-md bg-surface/80 shadow-glass' : ''
+      } ${
+        isHover ? 'hover:shadow-md hover:border-primary/40 hover:-translate-y-1' : ''
       } ${className}`}
       {...props}
     >
@@ -58,7 +65,7 @@ export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement
   ...props
 }) => {
   return (
-    <p className={`text-xs text-muted mt-1 m-0 ${className}`} {...props}>
+    <p className={`text-xs text-muted m-0 ${className}`} {...props}>
       {children}
     </p>
   );
@@ -83,7 +90,7 @@ export const CardFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 }) => {
   return (
     <div
-      className={`p-4 pt-3 border-t border-border-subtle flex items-center justify-between ${className}`}
+      className={`p-4 pt-3 border-t border-border-subtle flex items-center justify-between gap-3 ${className}`}
       {...props}
     >
       {children}
