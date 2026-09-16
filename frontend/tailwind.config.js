@@ -95,6 +95,8 @@ export default {
         'shortcut-amber': 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)',
         'shortcut-slate': 'linear-gradient(135deg, #64748b 0%, #334155 100%)',
         'shortcut-purple': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+        'auth-backdrop':
+          'radial-gradient(at 10% 15%, var(--color-primary-subtle) 0px, transparent 55%), radial-gradient(at 90% 85%, var(--color-pink-subtle) 0px, transparent 55%), radial-gradient(at 50% 50%, var(--color-warning-subtle) 0px, transparent 65%), linear-gradient(145deg, var(--bg-app) 0%, var(--bg-surface-elevated) 100%)',
       },
       borderRadius: {
         xs: 'var(--radius-xs)',
