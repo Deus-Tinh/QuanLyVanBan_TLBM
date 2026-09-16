@@ -18,7 +18,7 @@ export const Badge: React.FC<BadgeProps> = ({
 }) => {
   const hasDot = dot || withDot;
   const baseStyles =
-    'inline-flex items-center font-bold rounded-full select-none tracking-wide leading-none';
+    'inline-flex items-center font-bold rounded-full select-none tracking-wide leading-none whitespace-nowrap shrink-0';
 
   const sizeStyles = {
     sm: 'text-[0.68rem] px-2 py-0.5 gap-1',

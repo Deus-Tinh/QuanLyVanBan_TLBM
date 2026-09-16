@@ -17,19 +17,28 @@ export default function SettingsPage(_props: SettingsPageProps) {
     return (localStorage.getItem('tlbm_sidebar_style') as 'facebook' | 'dock') || 'facebook';
   });
 
+  const [aiModel, setAiModel] = useState<'gpt4o' | 'claude' | 'llama'>(() => {
+    return (localStorage.getItem('tlbm_ai_model') as 'gpt4o' | 'claude' | 'llama') || 'gpt4o';
+  });
+
   const handleSaveSettings = () => {
     localStorage.setItem('tlbm_enable_assistive_touch', String(assistiveTouchEnabled));
     localStorage.setItem('tlbm_sidebar_style', sidebarStyle);
+    localStorage.setItem('tlbm_ai_model', aiModel);
     window.dispatchEvent(new Event('tlbm_settings_updated'));
+    window.dispatchEvent(new Event('tlbm_ai_model_updated'));
     alert(t('settings.saveSuccessAlert'));
   };
 
   const handleResetSettings = () => {
     setAssistiveTouchEnabled(false);
     setSidebarStyle('facebook');
+    setAiModel('gpt4o');
     localStorage.setItem('tlbm_enable_assistive_touch', 'false');
     localStorage.setItem('tlbm_sidebar_style', 'facebook');
+    localStorage.setItem('tlbm_ai_model', 'gpt4o');
     window.dispatchEvent(new Event('tlbm_settings_updated'));
+    window.dispatchEvent(new Event('tlbm_ai_model_updated'));
     alert(t('settings.resetSuccessAlert'));
   };
 
@@ -52,24 +61,7 @@ export default function SettingsPage(_props: SettingsPageProps) {
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
             <i className="fa-solid fa-gear" style={{ color: 'var(--color-primary)' }} />
             <span>{t('settings.title')}</span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              ({t('settings.moduleTag')})
-            </span>
           </h2>
-
-          <span
-            style={{
-              fontSize: '0.75rem',
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-warning-subtle)',
-              border: '1px solid var(--color-warning-border)',
-              color: 'var(--color-warning-text)',
-              fontWeight: 700,
-            }}
-          >
-            {t('common.group1Developing')}
-          </span>
         </div>
 
         {/* 1. Cấu hình thông báo */}
@@ -133,11 +125,11 @@ export default function SettingsPage(_props: SettingsPageProps) {
           </div>
         </div>
 
-        {/* 4. Phong cách Thanh Điều Hướng Bên Trái (Facebook Style vs Dock Style) */}
+        {/* 4. Phong cách Thanh Điều Hướng (Navigation Layout) */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '22px' }}>
           <div style={{ marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fa-solid fa-bars-staggered" style={{ color: 'var(--color-primary)' }} />
+            <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fa-solid fa-table-columns" style={{ color: 'var(--color-primary)' }} />
               <span>{t('settings.sidebarStyleTitle')}</span>
             </h3>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px' }}>
@@ -146,24 +138,17 @@ export default function SettingsPage(_props: SettingsPageProps) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
-            {/* Card Facebook Style */}
+            {/* Card Facebook Style Standard */}
             <div
-              onClick={() => setSidebarStyle('facebook')}
               style={{
                 padding: '16px',
                 borderRadius: 'var(--radius-lg)',
-                border: sidebarStyle === 'facebook'
-                  ? '2px solid var(--color-primary)'
-                  : '1px solid var(--border-subtle)',
-                background: sidebarStyle === 'facebook'
-                  ? 'var(--color-primary-subtle)'
-                  : 'var(--bg-surface-elevated)',
-                cursor: 'pointer',
+                border: '2px solid var(--color-primary)',
+                background: 'var(--color-primary-subtle)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
-                transition: 'all var(--transition-fast)',
-                boxShadow: sidebarStyle === 'facebook' ? '0 0 14px var(--color-primary-glow)' : 'none',
+                boxShadow: '0 0 14px var(--color-primary-glow)',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -189,68 +174,12 @@ export default function SettingsPage(_props: SettingsPageProps) {
                     </span>
                   </div>
                 </div>
-                {sidebarStyle === 'facebook' && (
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                    ● {t('settings.activeSelected')}
-                  </span>
-                )}
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  ● {t('settings.activeSelected')}
+                </span>
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
                 {t('settings.sidebarStyleFacebookDesc')}
-              </div>
-            </div>
-
-            {/* Card Dock Style */}
-            <div
-              onClick={() => setSidebarStyle('dock')}
-              style={{
-                padding: '16px',
-                borderRadius: 'var(--radius-lg)',
-                border: sidebarStyle === 'dock'
-                  ? '2px solid var(--color-primary)'
-                  : '1px solid var(--border-subtle)',
-                background: sidebarStyle === 'dock'
-                  ? 'var(--color-primary-subtle)'
-                  : 'var(--bg-surface-elevated)',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                transition: 'all var(--transition-fast)',
-                boxShadow: sidebarStyle === 'dock' ? '0 0 14px var(--color-primary-glow)' : 'none',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #64748b 0%, #334155 100%)',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.1rem',
-                    }}
-                  >
-                    <i className="fa-solid fa-layer-group" />
-                  </div>
-                  <div>
-                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>
-                      {t('settings.sidebarStyleDock')}
-                    </span>
-                  </div>
-                </div>
-                {sidebarStyle === 'dock' && (
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-                    ● {t('settings.activeSelected')}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
-                {t('settings.sidebarStyleDockDesc')}
               </div>
             </div>
           </div>
@@ -278,6 +207,47 @@ export default function SettingsPage(_props: SettingsPageProps) {
                   {t('settings.assistiveTouchDesc')}
                 </span>
               </div>
+            </label>
+          </div>
+        </div>
+
+        {/* 6. Cấu hình Mô hình Trợ lý AI (AI Model) */}
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '22px' }}>
+          <div style={{ marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fa-solid fa-microchip" style={{ color: 'var(--color-primary)' }} />
+              <span>Cấu hình Mô hình Trợ lý AI</span>
+            </h3>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Lựa chọn mô hình ngôn ngữ lớn (LLM) phục vụ tra cứu văn bản, quy trình và tương tác với Trợ lý AI.
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', border: '1px solid var(--border-subtle)' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                Mô hình đang kích hoạt:
+              </span>
+              <select
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value as 'gpt4o' | 'claude' | 'llama')}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-surface)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.88rem',
+                  fontWeight: 600,
+                  outline: 'none',
+                  cursor: 'pointer',
+                  maxWidth: '360px',
+                }}
+              >
+                <option value="gpt4o">GPT-4o Enterprise (Khuyên dùng)</option>
+                <option value="claude">Claude 3.5 Sonnet</option>
+                <option value="llama">Llama 3 TLBM Finetuned (Nội bộ)</option>
+              </select>
             </label>
           </div>
         </div>

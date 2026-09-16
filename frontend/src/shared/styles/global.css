@@ -66,62 +66,125 @@
 }
 
 /* ==========================================================================
-   THEME PALETTES (Dark / Light / Glassmorphism)
+   THEME PALETTES (Eye-Care Balanced Contrast)
    ========================================================================== */
 
-/* 1. Sleek Dark Theme (Default) */
+/* 1. Sleek Eye-Care Dark Theme (Dịu mắt, chống chói lóa, màu slate ấm áp) */
 [data-theme='dark'] {
-  --bg-app: #0b0f17;
-  --bg-surface: #111827;
-  --bg-surface-elevated: #1e293b;
-  --bg-surface-hover: #334155;
-  --bg-sidebar: #0f172a;
-  --bg-header: rgba(15, 23, 42, 0.85);
+  --bg-app: #0f172a;               /* Slate-900: êm dịu, không bị đen kịt gây rát mắt */
+  --bg-surface: #182234;           /* Slate dịu nhẹ cho các bảng & thẻ nội dung */
+  --bg-surface-elevated: #1e293b;  /* Slate-800 nổi khối tự nhiên */
+  --bg-surface-hover: #273549;     /* Hover êm ái */
+  --bg-sidebar: #131c2e;           /* Thanh điều hướng xanh đen trang nhã */
+  --bg-header: rgba(19, 28, 46, 0.88);
 
-  --text-main: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-main: #e2e8f0;            /* Slate-200: chữ sáng dịu nhẹ, không chói gắt */
+  --text-secondary: #94a3b8;       /* Slate-400: độ tương phản chuẩn WCAG AAA */
+  --text-muted: #64748b;           /* Slate-500 */
 
-  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.09);
   --border-focus: #3b82f6;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.35);
 
   --backdrop-blur: blur(16px);
   --header-border-bottom: rgba(255, 255, 255, 0.08);
   --sidebar-border-right: rgba(255, 255, 255, 0.08);
   --color-warning-text: #fbbf24;
-  --bg-backdrop: rgba(0, 0, 0, 0.45);
+  --bg-backdrop: rgba(15, 23, 42, 0.6);
 }
 
-/* 2. Clean Light Theme */
+/* 2. Soft Warm Sand Light Theme (Ám vàng đất dịu mắt, chống chói lóa, phong cách giấy in mộc) */
 [data-theme='light'] {
-  --bg-app: #f1f5f9;
-  --bg-surface: #ffffff;
-  --bg-surface-elevated: #ffffff;
-  --bg-surface-hover: #f8fafc;
-  --bg-sidebar: #ffffff;
-  --bg-header: rgba(255, 255, 255, 0.9);
+  --bg-app: #f5f3ec;               /* Nền vàng cát ấm nhẹ dịu mắt, triệt tiêu ánh sáng xanh */
+  --bg-surface: #fdfcf9;           /* Bề mặt thẻ trắng ngà giấy mộc tự nhiên */
+  --bg-surface-elevated: #ffffff;  /* Lớp nổi khối nhẹ nhàng */
+  --bg-surface-hover: #ebe7dc;     /* Hover cát nhạt mịn màng */
+  --bg-sidebar: #faf8f3;           /* Sidebar trắng ngà đồng điệu */
+  --bg-header: rgba(250, 248, 243, 0.94);
 
-  --text-main: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-main: #292524;            /* Stone-800: than ấm dịu, đọc văn bản lâu không mỏi mắt */
+  --text-secondary: #57534e;       /* Stone-600 */
+  --text-muted: #78716c;           /* Stone-500 */
 
-  --border-subtle: #e2e8f0;
+  --border-subtle: #e5e0d3;        /* Viền be cát ấm áp, hài hòa */
   --border-focus: #2563eb;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.12);
-  --shadow-glass: 0 8px 30px rgba(0, 0, 0, 0.08);
+  --shadow-xs: 0 1px 2px rgba(41, 37, 36, 0.04);
+  --shadow-sm: 0 1px 3px rgba(41, 37, 36, 0.05);
+  --shadow-md: 0 4px 14px rgba(41, 37, 36, 0.07);
+  --shadow-lg: 0 12px 28px rgba(41, 37, 36, 0.09);
+  --shadow-glass: 0 8px 30px rgba(41, 37, 36, 0.07);
 
   --backdrop-blur: blur(16px);
-  --header-border-bottom: #e2e8f0;
-  --sidebar-border-right: #e2e8f0;
-  --bg-backdrop: rgba(0, 0, 0, 0.2);
+  --header-border-bottom: #e5e0d3;
+  --sidebar-border-right: #e5e0d3;
+  --bg-backdrop: rgba(41, 37, 36, 0.3);
+}
+
+/* ==========================================================================
+   SMOOTH THEME CROSSFADE TRANSITIONS
+   (Chuyển đổi Sáng/Tối mượt mà, hòa sắc êm ái, chống sốc thị giác đột ngột)
+   ========================================================================== */
+
+html,
+body,
+.app-shell,
+header,
+aside,
+main,
+footer,
+nav,
+div,
+section,
+article,
+table,
+tr,
+th,
+td,
+input,
+select,
+textarea,
+button,
+span,
+p,
+h1, h2, h3, h4, h5, h6,
+i {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 0.35s;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   ANIMATION UTILITIES (animate-in, fade-in, slide-in)
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromBottom {
+  from { transform: translateY(1rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-in {
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.slide-in-from-bottom-4 {
+  animation-name: slideInFromBottom;
 }
 
 /* ==========================================================================

@@ -1,6 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../../shared/locales/i18n';
-import { Card, Badge } from '../../../shared/components/ui';
 
 interface DashboardStatsProps {
   incomingCount?: number;
@@ -16,94 +16,68 @@ export default function DashboardStats({
   tasksCount = 18,
 }: DashboardStatsProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const cards = [
+    {
+      title: 'Văn bản đến (2026)',
+      count: incomingCount,
+      subtext: '+12 văn bản mới trong ngày',
+      icon: 'fa-solid fa-inbox',
+      path: '/documents/incoming',
+      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+    },
+    {
+      title: 'Văn bản đi (2026)',
+      count: outgoingCount,
+      subtext: '+5 văn bản phát hành hôm nay',
+      icon: 'fa-solid fa-paper-plane',
+      path: '/documents/outgoing',
+      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+    },
+    {
+      title: 'Văn bản mật (2026)',
+      count: confidentialCount,
+      subtext: 'Bảo mật cao & trình duyệt riêng',
+      icon: 'fa-solid fa-shield-halved',
+      path: '/documents/incoming',
+      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+    },
+    {
+      title: 'Nhiệm vụ - Thông báo',
+      count: tasksCount,
+      subtext: '4 nhiệm vụ sắp đến hạn xử lý',
+      icon: 'fa-solid fa-list-check',
+      path: '/tasks',
+      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+    },
+  ];
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
-        <div className="font-bold text-sm text-main flex items-center gap-2">
-          <span>📊 {t('dashboardDetails.kpiTitle')}</span>
-          <Badge variant="primary" size="sm">
-            Mock Data (Prototype)
-          </Badge>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      {cards.map((card, idx) => (
+        <div
+          key={idx}
+          onClick={() => navigate(card.path)}
+          className={`${card.bgClass} text-white p-4 px-5 rounded-sm border shadow-xs transition-all duration-fast flex justify-between items-center cursor-pointer select-none`}
+        >
+          <div>
+            <div className="text-xs uppercase tracking-wider font-semibold text-blue-100/90 mb-1">
+              {card.title}
+            </div>
+            <div className="text-2xl lg:text-3xl font-bold tracking-tight">
+              {card.count.toLocaleString()}
+            </div>
+            <div className="text-[11px] text-blue-200/80 mt-1 flex items-center gap-1.5">
+              <span>{card.subtext}</span>
+            </div>
+          </div>
+          <div className="w-12 h-12 rounded-sm bg-white/10 border border-white/10 flex items-center justify-center text-white text-xl shrink-0">
+            <i className={card.icon} />
+          </div>
         </div>
-        <Badge variant="success" size="sm">
-          {t('dashboardDetails.kpiVerifiedTag')}
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: VB Đến */}
-        <Card hoverable className="p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-primary-subtle text-primary border border-primary-border flex items-center justify-center text-xl shrink-0">
-            <i className="fa-solid fa-inbox" />
-          </div>
-          <div>
-            <div className="text-xs text-muted font-semibold">
-              {t('dashboardDetails.incomingCard')}
-            </div>
-            <div className="text-2xl font-extrabold text-main">
-              {incomingCount.toLocaleString()}
-            </div>
-            <div className="text-xs text-success font-semibold">
-              {t('dashboardDetails.incomingToday')}
-            </div>
-          </div>
-        </Card>
-
-        {/* Card 2: VB Đi */}
-        <Card hoverable className="p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-success-subtle text-success border border-success-border flex items-center justify-center text-xl shrink-0">
-            <i className="fa-solid fa-paper-plane" />
-          </div>
-          <div>
-            <div className="text-xs text-muted font-semibold">
-              {t('dashboardDetails.outgoingCard')}
-            </div>
-            <div className="text-2xl font-extrabold text-main">
-              {outgoingCount.toLocaleString()}
-            </div>
-            <div className="text-xs text-success font-semibold">
-              {t('dashboardDetails.outgoingStatus')}
-            </div>
-          </div>
-        </Card>
-
-        {/* Card 3: VB Mật */}
-        <Card hoverable className="p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-danger-subtle text-danger border border-danger-border flex items-center justify-center text-xl shrink-0">
-            <i className="fa-solid fa-shield-halved" />
-          </div>
-          <div>
-            <div className="text-xs text-muted font-semibold">
-              {t('dashboardDetails.confidentialCard')}
-            </div>
-            <div className="text-2xl font-extrabold text-main">
-              {confidentialCount.toLocaleString()}
-            </div>
-            <div className="text-xs text-danger font-semibold">
-              {t('dashboardDetails.confidentialStatus')}
-            </div>
-          </div>
-        </Card>
-
-        {/* Card 4: Công Việc */}
-        <Card hoverable className="p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-purple-subtle text-purple border border-purple-border flex items-center justify-center text-xl shrink-0">
-            <i className="fa-solid fa-list-check" />
-          </div>
-          <div>
-            <div className="text-xs text-muted font-semibold">
-              {t('dashboardDetails.tasksCard')}
-            </div>
-            <div className="text-2xl font-extrabold text-main">
-              {tasksCount.toLocaleString()}
-            </div>
-            <div className="text-xs text-warning-text font-semibold">
-              {t('dashboardDetails.tasksNearDeadline')}
-            </div>
-          </div>
-        </Card>
-      </div>
+      ))}
     </div>
   );
 }
+

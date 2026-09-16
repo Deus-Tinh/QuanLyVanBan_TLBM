@@ -59,7 +59,12 @@ export default {
         header: 'var(--bg-header)',
         backdrop: 'var(--bg-backdrop)',
 
-        // Typography tokens
+        // Typography tokens (supports both text-main and text-text-main)
+        text: {
+          main: 'var(--text-main)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)',
+        },
         main: 'var(--text-main)',
         secondary: 'var(--text-secondary)',
         muted: 'var(--text-muted)',
@@ -70,6 +75,14 @@ export default {
           subtle: 'var(--border-subtle)',
           focus: 'var(--border-focus)',
         },
+      },
+      borderColor: {
+        DEFAULT: 'var(--border-subtle)',
+        subtle: 'var(--border-subtle)',
+        focus: 'var(--border-focus)',
+      },
+      spacing: {
+        18: '4.5rem',
       },
       backgroundImage: {
         'fb-blue': 'linear-gradient(135deg, #1877f2 0%, #0d5bbd 100%)',
@@ -92,11 +105,26 @@ export default {
         full: 'var(--radius-full)',
       },
       boxShadow: {
+        xs: 'var(--shadow-xs)',
         sm: 'var(--shadow-sm)',
         md: 'var(--shadow-md)',
         lg: 'var(--shadow-lg)',
         glass: 'var(--shadow-glass)',
         glow: '0 0 14px var(--color-primary-glow)',
+      },
+      keyframes: {
+        fadeIn: {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
+        slideInFromBottom: {
+          from: { transform: 'translateY(1rem)', opacity: '0' },
+          to: { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
+      animation: {
+        'fade-in': 'fadeIn 150ms ease-out both',
+        'slide-in-bottom': 'slideInFromBottom 200ms ease-out both',
       },
       transitionDuration: {
         fast: '150ms',

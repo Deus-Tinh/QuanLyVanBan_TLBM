@@ -49,7 +49,6 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
           <span className="text-xs font-semibold text-text-main leading-tight">
             {CURRENT_USER.fullName}
           </span>
-          <span className="text-[10px] text-text-muted leading-tight">{t('userMenu.role')}</span>
         </div>
         <i className="fa-solid fa-chevron-down text-[10px] text-text-muted ml-0.5" />
       </button>
@@ -64,7 +63,6 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
             <div className="p-2.5 border-b border-subtle mb-1">
               <div className="font-semibold text-sm text-text-main">{CURRENT_USER.fullName}</div>
               <div className="text-xs text-text-muted truncate">{CURRENT_USER.email}</div>
-              <div className="text-[11px] text-primary font-medium mt-1">{CURRENT_USER.team}</div>
             </div>
 
             <div className="flex flex-col gap-0.5">

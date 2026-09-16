@@ -34,33 +34,18 @@ export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPrev
 
   return (
     <div className="max-w-3xl mx-auto my-8 flex flex-col gap-5">
-      {/* 1. Banner Thông Báo Chính Thức Của Nhóm 1 */}
-      <Card
-        className={`relative overflow-hidden border ${
-          meta.isGroup1 ? 'border-warning/30' : 'border-primary/30'
-        }`}
-      >
+      <Card className="relative overflow-hidden border border-primary/30 shadow-sm">
         <CardContent className="p-7 sm:p-8">
-          {/* Nhãn trạng thái Nhóm 1 */}
           <div className="flex items-center justify-between flex-wrap gap-2.5 mb-4">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <Badge variant={meta.isGroup1 ? 'warning' : 'primary'} size="md">
-                <i
-                  className={`mr-1.5 ${
-                    meta.isGroup1 ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-info'
-                  }`}
-                />
-                {meta.isGroup1 ? t('common.group1Developing') : t('common.group1Layout')}
+              <Badge variant="primary" size="md">
+                <i className="fa-solid fa-clock-rotate-left mr-1.5" />
+                Đang chuẩn bị dữ liệu
               </Badge>
-
               <Badge variant="secondary" size="md">
-                {meta.codeRef}
+                TLBM v2.0
               </Badge>
             </div>
-
-            <span className="text-xs text-text-muted">
-              {t('common.outline')}: <strong className="text-text-main">{meta.module}</strong>
-            </span>
           </div>
 
           {/* Tiêu đề chức năng */}
@@ -73,19 +58,17 @@ export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPrev
             {meta.desc}
           </p>
 
-          {/* Thông báo chi tiết phụ trách */}
+          {/* Thông báo trạng thái hệ thống */}
           <div className="mt-5 p-4 rounded-xl bg-surface border border-subtle flex flex-col gap-2 text-xs sm:text-sm">
             <div className="flex items-center gap-2">
-              <strong className="text-text-main shrink-0">📌 {t('common.assignedUnit')}:</strong>
-              <span className="text-primary font-semibold">{meta.assignedTeam}</span>
+              <strong className="text-text-main shrink-0">📌 Bộ phận quản lý:</strong>
+              <span className="text-primary font-semibold">Ban Quản Trị Hệ Thống TLBM</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <strong className="text-text-main shrink-0">⚠️ {t('common.currentStatus')}:</strong>
-              <span className="text-warning font-semibold">
-                {meta.isGroup1
-                  ? t('common.group1DescSelf')
-                  : t('common.group1DescOther', { team: meta.assignedTeam })}
+              <strong className="text-text-main shrink-0">ℹ️ Trạng thái:</strong>
+              <span className="text-text-secondary font-medium">
+                Phân hệ đang được hoàn thiện quy trình nghiệp vụ và kết nối dữ liệu máy chủ.
               </span>
             </div>
           </div>
@@ -100,7 +83,7 @@ export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPrev
                 navigate('/dashboard');
               }}
             >
-              {t('common.backToDashboard')}
+              Quay lại Bàn Làm Việc (Trang chủ)
             </Button>
           </div>
         </CardContent>

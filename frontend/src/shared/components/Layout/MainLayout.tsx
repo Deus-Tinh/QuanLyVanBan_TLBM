@@ -61,6 +61,11 @@ export default function MainLayout({
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
   });
 
+  const handleCloseSidebar = () => {
+    setIsSidebarOpen(false);
+    localStorage.setItem('tlbm_sidebar_open', 'false');
+  };
+
   const handleToggleSidebar = () => {
     setIsSidebarOpen((prev) => {
       const next = !prev;
@@ -69,18 +74,10 @@ export default function MainLayout({
     });
   };
 
-  // Đóng sidebar khi điều hướng trên màn hình nhỏ
+  // Điều hướng trang mà không thu menu lại theo yêu cầu
   const handleItemNavigate = (pageId: ActivePageId) => {
     handleNavigate(pageId);
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-    }
   };
-
-  // Cài đặt phong cách thanh menu (Facebook Style vs Dock Style)
-  const [sidebarStyle, setSidebarStyle] = useState<'facebook' | 'dock'>(() => {
-    return (localStorage.getItem('tlbm_sidebar_style') as 'facebook' | 'dock') || 'facebook';
-  });
 
   // Cài đặt phím Home ảo AssistiveTouch trên thiết bị di động
   const [isAssistiveTouchEnabled, setIsAssistiveTouchEnabled] = useState<boolean>(() => {
@@ -89,11 +86,10 @@ export default function MainLayout({
 
   // Lắng nghe sự thay đổi cài đặt từ SettingsPage
   useEffect(() => {
+    // Xóa bỏ cài đặt dock cũ nếu có trong localStorage
+    localStorage.removeItem('tlbm_sidebar_style');
+
     const handleSettingsUpdate = () => {
-      const savedStyle = localStorage.getItem('tlbm_sidebar_style') as 'facebook' | 'dock';
-      if (savedStyle && (savedStyle === 'facebook' || savedStyle === 'dock')) {
-        setSidebarStyle(savedStyle);
-      }
       const savedTouch = localStorage.getItem('tlbm_enable_assistive_touch');
       setIsAssistiveTouchEnabled(savedTouch === 'true');
     };
@@ -106,59 +102,45 @@ export default function MainLayout({
     };
   }, []);
 
-  const handleToggleSidebarStyle = (style: 'facebook' | 'dock') => {
-    setSidebarStyle(style);
-    localStorage.setItem('tlbm_sidebar_style', style);
-    window.dispatchEvent(new Event('tlbm_settings_updated'));
-  };
-
   return (
     <div className="app-shell w-screen h-screen overflow-hidden flex bg-app relative">
-      {/* 1. Lớp phủ mờ Backdrop trên Mobile / Tablet khi Sidebar mở ra */}
+      {/* 1. Lớp phủ mờ Backdrop trên toàn màn hình bên phải (trừ menu) khi Sidebar mở */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[1100] lg:hidden cursor-pointer transition-opacity duration-normal"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-label="Đóng menu điều hướng"
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[1100] cursor-pointer transition-opacity duration-300 animate-in fade-in"
+          onClick={handleCloseSidebar}
+          aria-label="Thu gọn menu điều hướng"
+          title="Bấm vào vùng mờ bên phải để thu gọn menu"
         />
       )}
 
-      {/* 2. Thanh điều hướng Sidebar bên trái:
-             - Desktop (lg:): CỐ ĐỊNH dạng cột (Fixed column layout), đứng cạnh nội dung chính, KHÔNG che phủ dashboard!
-             - Mobile (<lg:): Drawer trượt nổi xổ ra khi bấm nút hamburger.
-             - Điều khiển 100% bằng nút bấm (Click), hoàn toàn KHÔNG tự bung khi rê chuột.
+      {/* 2. Thanh điều hướng Sidebar dạng Drawer trượt từ bên trái ra:
+             - Nằm đè lên lớp backdrop mờ (z-[1200] > z-[1100]) nên menu hoàn toàn rõ nét.
+             - Màn hình bên phải (trừ menu) bị mờ bởi backdrop.
+             - Chỉ thu menu lại khi người dùng bấm vào phần mờ bên phải.
+             - Không thu menu lại khi người dùng bấm vào các mục con.
       */}
       <div
-        className={`h-full z-[1200] lg:z-30 shrink-0 transition-all duration-300 ease-in-out ${
-          isSidebarOpen
-            ? `${
-                sidebarStyle === 'facebook' ? 'w-[290px]' : 'w-18'
-              } fixed lg:static inset-y-0 left-0 shadow-2xl lg:shadow-none`
-            : 'w-0 -translate-x-full lg:translate-x-0 overflow-hidden pointer-events-none'
+        className={`fixed inset-y-0 left-0 z-[1200] w-[290px] h-full transition-transform duration-300 ease-in-out shadow-2xl bg-surface-elevated ${
+          isSidebarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
         }`}
       >
-        <div
-          className={`h-full overflow-hidden ${
-            sidebarStyle === 'facebook' ? 'w-[290px]' : 'w-18'
-          }`}
-        >
+        <div className="h-full overflow-hidden w-[290px]">
           <AppSidebar
             isMobileOpen={isSidebarOpen}
-            onCloseMobile={() => setIsSidebarOpen(false)}
+            onCloseMobile={handleCloseSidebar}
             activePage={currentActivePage}
             committedPage={effectiveCommittedPage}
             previewPage={previewPage}
             onNavigate={handleItemNavigate}
             onHoverPreview={onHoverPreview}
             onHoverLeave={onHoverLeave}
-            sidebarStyle={sidebarStyle}
-            onToggleSidebarStyle={handleToggleSidebarStyle}
           />
         </div>
       </div>
 
       {/* 3. Khung nội dung chính & Thanh Header đỉnh */}
-      <div className="main-container flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+      <div className="main-container flex-1 min-w-0 flex flex-col h-full overflow-hidden w-full">
         <AppHeader
           currentTheme={currentTheme}
           onSelectTheme={onSelectTheme}
@@ -170,20 +152,31 @@ export default function MainLayout({
           onNavigate={handleNavigate}
         />
 
-        {/* Thanh điều hướng phân hệ phụ nằm ngang */}
-        <TopSubNav
-          activePage={currentActivePage}
-          isHoveredPreview={previewPage !== null}
-          onNavigate={handleNavigate}
-        />
+        {/* Thanh điều hướng phân hệ phụ nằm ngang - Ẩn khi vào trang Trợ lý AI */}
+        {currentActivePage !== 'ai_assistant' && location.pathname !== '/ai-assistant' && (
+          <TopSubNav
+            activePage={currentActivePage}
+            isHoveredPreview={previewPage !== null}
+            onNavigate={handleNavigate}
+          />
+        )}
 
         {/* Viewport nội dung trang động: ổn định, êm ái, chuyên nghiệp */}
-        <main className="page-viewport flex-1 overflow-y-auto overflow-x-hidden flex flex-col bg-app">
-          <div className="page-content-wrapper flex-1 p-4 sm:p-6 max-w-[1600px] w-full mx-auto">
-            {children || <Outlet />}
-          </div>
-          <AppFooter />
-        </main>
+        {(() => {
+          const isAiPage = currentActivePage === 'ai_assistant' || location.pathname === '/ai-assistant';
+          return (
+            <main className={`page-viewport flex-1 flex flex-col bg-app ${
+              isAiPage ? 'overflow-hidden h-full' : 'overflow-y-auto overflow-x-hidden'
+            }`}>
+              <div className={`page-content-wrapper flex-1 w-full mx-auto ${
+                isAiPage ? 'p-0 max-w-none h-full flex flex-col overflow-hidden' : 'p-4 sm:p-6 max-w-[1600px]'
+              }`}>
+                {children || <Outlet />}
+              </div>
+              {!isAiPage && <AppFooter />}
+            </main>
+          );
+        })()}
       </div>
 
       {/* 4. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động */}
@@ -197,8 +190,10 @@ export default function MainLayout({
         />
       )}
 
-      {/* 5. Box AI Trợ Lý nổi tự do có thể kéo thả */}
-      <FloatingAIBox onNavigate={handleNavigate} />
+      {/* 5. Box AI Trợ Lý nổi - Tự động ẩn khi người dùng đang ở trang Trợ lý AI toàn màn hình */}
+      {currentActivePage !== 'ai_assistant' && location.pathname !== '/ai-assistant' && (
+        <FloatingAIBox onNavigate={handleNavigate} />
+      )}
     </div>
   );
 }

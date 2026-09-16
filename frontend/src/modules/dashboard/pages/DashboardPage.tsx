@@ -1,137 +1,62 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../../../shared/locales/i18n';
+import React from 'react';
 import DashboardStats from '../components/DashboardStats';
-import QuickSearchWidget from '../components/QuickSearchWidget';
 import IncomingDocumentsWidget from '../components/IncomingDocumentsWidget';
 import RecentOutgoingWidget from '../components/RecentOutgoingWidget';
 import RecentTasksWidget from '../components/RecentTasksWidget';
+import MeetingsWidget from '../components/MeetingsWidget';
 import BirthdaysWidget from '../components/BirthdaysWidget';
-import RecentResourcesWidget from '../components/RecentResourcesWidget';
-import { Card, Badge, Button } from '../../../shared/components/ui';
+import NewTasksWidget from '../components/NewTasksWidget';
 
 const ALL_INCOMING = [
-  { code: '128/QĐ-BGDĐT', title: 'Hướng dẫn công tác năm học mới 2026', date: '11/09/2026' },
-  { code: '45/CV-UBND', title: 'Tăng cường an toàn thông tin CSDL nhà nước', date: '10/09/2026' },
-  { code: '09/TB-ITC', title: 'Thông báo lịch bảo vệ đồ án chuyên ngành', date: '09/09/2026' },
-  { code: '77/HD-TCHQ', title: 'Quy trình kiểm tra hồ sơ điện tử liên ngành', date: '08/09/2026' },
-  { code: '14/KH-ITC', title: 'Kế hoạch triển khai hệ thống quản lý văn bản', date: '07/09/2026' },
+  { code: '4234/SCB-TGĐ.25.00', title: 'Công văn về việc đăng ký mua 17 xe chở tiền cũ hiệu Mitsubishi Pajero bán thanh lý của SCB', date: '15/12/2025' },
+  { code: '2955/SCB-TGĐ.25.00', title: 'Công văn về việc thanh lý tài sản của SCB tại Hà Nội', date: '29/09/2025' },
+  { code: '4919/SCB-TGĐ.24.00', title: 'Công văn về việc đăng ký mua 17 xe ô tô chuyên dùng cũ bán thanh lý lần 3/2024 của SCB', date: '07/10/2024' },
+  { code: '4190/SCB-TGĐ.24.00', title: 'Công văn về việc đăng ký mua 17 xe ô tô chuyên dùng cũ bán thanh lý lần 2/2024 của SCB', date: '22/08/2024' },
+  { code: '2736/SCB-TGĐ.24.00', title: 'Công văn về việc đăng ký mua 23 xe ô tô chuyên dùng bán thanh lý lần 1/2024 của SCB', date: '10/06/2024' },
 ];
 
 const ALL_OUTGOING = [
-  { code: '210/TB-BL', title: 'Thông báo kết luận cuộc họp giao ban quý 3', date: '11/09/2026' },
-  { code: '89/QĐ-BL', title: 'Quyết định ban hành khung an ninh thông tin', date: '10/09/2026' },
-  { code: '62/TTr-ITC', title: 'Tờ trình phê duyệt kinh phí trang bị máy chủ', date: '09/09/2026' },
-  { code: '55/CV-BL', title: 'Công văn gửi các đơn vị phòng ban cấp 2', date: '08/09/2026' },
-  { code: '31/QĐ-BL', title: 'Quyết định phân công nhiệm vụ đồ án Django', date: '06/09/2026' },
+  { code: '10438/368/2026/QĐ-TGĐ', title: 'Quyết định về việc chấm dứt Hợp đồng lao động theo nguyện vọng cá nhân đối với Ông Nguyễn Đình Đăng...', date: '02/03/2026' },
+  { code: '10434/367/2026/QĐ-TGĐ', title: 'Quyết định về việc Tiếp nhận thử việc Bà Lê Huỳnh Yến Phương làm Nhân viên Chăm sóc Khách hàng...', date: '26/02/2026' },
+  { code: '10433/357/2026/QĐ-TGĐ', title: 'Quyết định về việc Tái bổ nhiệm Bà Võ Thị Thời giữ chức danh Phó Giám đốc kiêm Trưởng phòng kinh doanh...', date: '26/02/2026' },
+  { code: '10440/13/2026/TB-HĐQT', title: 'Thông báo về việc thăm viếng tang Lễ', date: '20/02/2026' },
+  { code: '10439/12/2026/TB-HĐQT', title: 'Thông báo về việc thăm viếng tang Lễ', date: '20/02/2026' },
 ];
 
-interface DashboardPageProps {
-  onNavigate?: (page: string) => void;
-}
-
-export default function DashboardPage({ onNavigate }: DashboardPageProps) {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchFilter, setSearchFilter] = useState<'all' | 'incoming' | 'outgoing'>('all');
-
-  const handleNavigate = (pathOrPageId: string) => {
-    if (pathOrPageId.startsWith('/')) {
-      navigate(pathOrPageId);
-    } else if (onNavigate) {
-      onNavigate(pathOrPageId);
-    } else {
-      navigate(`/${pathOrPageId.replace('_', '/')}`);
-    }
-  };
-
-  const filteredIncoming = useMemo(() => {
-    if (searchFilter === 'outgoing') return [];
-    if (!searchTerm.trim()) return ALL_INCOMING;
-    const term = searchTerm.toLowerCase();
-    return ALL_INCOMING.filter(
-      (d) => d.code.toLowerCase().includes(term) || d.title.toLowerCase().includes(term)
-    );
-  }, [searchTerm, searchFilter]);
-
-  const filteredOutgoing = useMemo(() => {
-    if (searchFilter === 'incoming') return [];
-    if (!searchTerm.trim()) return ALL_OUTGOING;
-    const term = searchTerm.toLowerCase();
-    return ALL_OUTGOING.filter(
-      (d) => d.code.toLowerCase().includes(term) || d.title.toLowerCase().includes(term)
-    );
-  }, [searchTerm, searchFilter]);
-
-  const handleSearchClick = () => {
-    if (searchTerm.trim()) {
-      const matchCount = filteredIncoming.length + filteredOutgoing.length;
-      console.log(`[Dashboard Search] Tìm thấy ${matchCount} kết quả cho: "${searchTerm}"`);
-    }
-  };
-
+export default function DashboardPage() {
   return (
-    <div className="flex flex-col gap-6">
-      {/* 1. Welcome Hero Banner */}
-      <Card className="bg-gradient-to-br from-primary-subtle to-transparent border-primary-border p-6 sm:p-7 flex justify-between items-center flex-wrap gap-4 backdrop-blur-md">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-2xl">👋</span>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-main m-0">
-              {t('dashboardDetails.greeting')}
-            </h1>
-            <Badge variant="primary" size="sm">
-              {t('dashboardDetails.roleBadge')}
-            </Badge>
-          </div>
-          <p className="text-secondary mt-1.5 text-sm m-0">
-            {t('dashboardDetails.leadDescription')}
-          </p>
-        </div>
-
-        <div className="flex gap-2.5 flex-wrap">
-          <Button
-            variant="primary"
-            size="md"
-            icon="fa-plus"
-            onClick={() => handleNavigate('/documents/incoming')}
-          >
-            {t('dashboardDetails.receiveDocBtn')}
-          </Button>
-        </div>
-      </Card>
-
-      {/* 2. KHỐI TÌM KIẾM VĂN BẢN ĐẾN VÀ ĐI */}
-      <QuickSearchWidget
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        searchFilter={searchFilter}
-        setSearchFilter={setSearchFilter}
-        onSearch={handleSearchClick}
-      />
-
-      {/* 3. KPI METRICS DECK & THỐNG KÊ */}
+    <div className="flex flex-col gap-3">
+      {/* 1. 4 KHỐI THỐNG KÊ XANH NAVY ĐẬM */}
       <DashboardStats />
 
-      {/* 4. KHỐI WIDGET: THÔNG BÁO SINH NHẬT THEO NGÀY T, T + 1 & PHÒNG HỌP */}
-      <BirthdaysWidget />
+      {/* 2. BỐ CỤC CHÍNH 2 CỘT (Trái ~72% / Phải ~28%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+        {/* Cột trái: 2 bảng song song + Danh sách nhiệm vụ */}
+        <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-3">
+          {/* Song song 2 bảng: Văn bản đến & Văn bản đi (luôn hiển thị song song) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <IncomingDocumentsWidget documents={ALL_INCOMING} />
+            <RecentOutgoingWidget documents={ALL_OUTGOING} />
+          </div>
 
-      {/* 5. DANH SÁCH VĂN BẢN ĐẾN & VĂN BẢN ĐI */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {searchFilter !== 'outgoing' && (
-          <IncomingDocumentsWidget documents={filteredIncoming} />
-        )}
-        {searchFilter !== 'incoming' && (
-          <RecentOutgoingWidget documents={filteredOutgoing} />
-        )}
-      </div>
+          {/* Danh sách nhiệm vụ với radio filter */}
+          <RecentTasksWidget />
+        </div>
 
-      {/* 6. DANH SÁCH CÔNG VIỆC & TÀI LIỆU, BIỂU MẪU CHUNG */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <RecentTasksWidget />
-        <RecentResourcesWidget />
+        {/* Cột phải: Lịch họp + Sinh nhật + Nhiệm vụ mới */}
+        <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-3">
+          {/* Lịch họp mới nhất */}
+          <MeetingsWidget />
+
+          {/* Thông báo sinh nhật */}
+          <BirthdaysWidget />
+
+          {/* Nhiệm vụ mới (công việc) */}
+          <NewTasksWidget />
+        </div>
       </div>
     </div>
   );
 }
+
+

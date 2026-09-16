@@ -27,14 +27,7 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
           <h2 className="text-xl font-extrabold text-main flex items-center gap-2.5 m-0">
             <span>🔑</span>
             <span>{t('passwordChange.title')}</span>
-            <span className="text-sm text-muted font-medium">
-              ({t('passwordChange.moduleTag')})
-            </span>
           </h2>
-
-          <Badge variant="warning" size="sm">
-            {t('common.group1Developing')}
-          </Badge>
         </div>
 
         <form onSubmit={handleSubmit} className="max-w-md flex flex-col gap-3.5">

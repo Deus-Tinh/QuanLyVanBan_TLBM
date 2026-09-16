@@ -1,7 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../../../shared/locales/i18n';
-import { Card, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui';
 
 export interface DocumentItem {
   code: string;
@@ -14,60 +12,64 @@ interface IncomingDocumentsWidgetProps {
 }
 
 const DEFAULT_DOCUMENTS: DocumentItem[] = [
-  { code: '128/QĐ-BGDĐT', title: 'Hướng dẫn công tác năm học mới 2026', date: '11/09/2026' },
-  { code: '45/CV-UBND', title: 'Tăng cường an toàn thông tin CSDL nhà nước', date: '10/09/2026' },
-  { code: '09/TB-ITC', title: 'Thông báo lịch bảo vệ đồ án chuyên ngành', date: '09/09/2026' },
-  { code: '77/HD-TCHQ', title: 'Quy trình kiểm tra hồ sơ điện tử liên ngành', date: '08/09/2026' },
-  { code: '14/KH-ITC', title: 'Kế hoạch triển khai hệ thống quản lý văn bản', date: '07/09/2026' },
+  { code: '4234/SCB-TGĐ.25.00', title: 'Công văn về việc đăng ký mua 17 xe chở tiền cũ hiệu Mitsubishi Pajero bán thanh lý của SCB', date: '15/12/2025' },
+  { code: '2955/SCB-TGĐ.25.00', title: 'Công văn về việc thanh lý tài sản của SCB tại Hà Nội', date: '29/09/2025' },
+  { code: '4919/SCB-TGĐ.24.00', title: 'Công văn về việc đăng ký mua 17 xe ô tô chuyên dùng cũ bán thanh lý lần 3/2024 của SCB', date: '07/10/2024' },
+  { code: '4190/SCB-TGĐ.24.00', title: 'Công văn về việc đăng ký mua 17 xe ô tô chuyên dùng cũ bán thanh lý lần 2/2024 của SCB', date: '22/08/2024' },
+  { code: '2736/SCB-TGĐ.24.00', title: 'Công văn về việc đăng ký mua 23 xe ô tô chuyên dùng bán thanh lý lần 1/2024 của SCB', date: '10/06/2024' },
 ];
 
 export default function IncomingDocumentsWidget({
   documents = DEFAULT_DOCUMENTS,
 }: IncomingDocumentsWidgetProps) {
-  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
-    <Card className="p-5">
-      <div className="flex justify-between items-center mb-3.5 flex-wrap gap-2">
-        <div className="font-bold text-sm text-main flex items-center gap-1.5">
-          <i className="fa-solid fa-inbox text-info" />
-          <span>{t('dashboardDetails.recentIncomingTitle')}</span>
+    <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col h-full">
+      {/* Header: Solid Navy Blue */}
+      <div className="bg-[#0a3871] text-white px-3 py-1.5 flex justify-between items-center select-none">
+        <div className="flex items-center gap-1.5 font-bold text-xs">
+          <i className="fa-solid fa-inbox text-[11px]" />
+          <span>Văn bản đến</span>
         </div>
-        <Badge variant="success" size="sm">
-          {t('dashboardDetails.completedGroup1')}
-        </Badge>
+        <span className="text-[11px] font-normal text-white/80">
+          Cập nhật: 15/12/2025
+        </span>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-32">{t('dashboardDetails.docNumber')}</TableHead>
-            <TableHead>{t('dashboardDetails.docSummary')}</TableHead>
-            <TableHead className="w-24">{t('dashboardDetails.docDate')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {documents.map((row, idx) => (
-            <TableRow key={idx}>
-              <TableCell className="font-semibold text-primary">{row.code}</TableCell>
-              <TableCell>{row.title}</TableCell>
-              <TableCell className="text-muted">{row.date}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {/* Rows */}
+      <div className="flex-1 divide-y divide-border-subtle/70">
+        {documents.map((doc, idx) => (
+          <div
+            key={idx}
+            onClick={() => navigate('/documents/incoming')}
+            className="p-2.5 px-3 hover:bg-surface-hover transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs mb-0.5">
+              <span className="text-secondary font-medium">
+                Số ký hiệu: <span className="text-primary font-semibold group-hover:underline">{doc.code}</span>
+              </span>
+              <span className="text-muted text-[11px] shrink-0">{doc.date}</span>
+            </div>
+            <div className="text-xs text-secondary line-clamp-1 group-hover:text-main transition-colors" title={doc.title}>
+              {doc.title}
+            </div>
+          </div>
+        ))}
+      </div>
 
-      <div className="mt-3.5 text-right">
+      {/* Footer: Xem thêm » on the left */}
+      <div className="p-2 px-3 bg-surface-elevated/40 border-t border-border-subtle/70 text-left">
         <button
           type="button"
           onClick={() => navigate('/documents/incoming')}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover transition-colors duration-fast cursor-pointer"
+          className="text-xs font-semibold text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer inline-flex items-center gap-1"
         >
-          <span>{t('dashboardDetails.viewMoreIncoming')}</span>
-          <i className="fa-solid fa-arrow-right text-[0.7rem]" />
+          <span>Xem thêm »</span>
         </button>
       </div>
-    </Card>
+    </div>
   );
 }
+
+

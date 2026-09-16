@@ -1,109 +1,50 @@
 import React from 'react';
-import { useTranslation } from '../../../shared/locales/i18n';
-import { Card, Badge } from '../../../shared/components/ui';
+
+const EMPLOYEES = [
+  {
+    name: 'Nguyễn Thị Hiền',
+    position: 'Tổ trưởng Kiểm toán nội bộ',
+    department: 'Ban Kiểm toán nội bộ',
+  },
+  {
+    name: 'Đinh Thị Kiều Hạnh',
+    position: 'Phó phụ trách Phòng',
+    department: 'Bảo Long Nam Sài Gòn',
+  },
+  {
+    name: 'Trịnh Thị Giang',
+    position: 'Nhân viên',
+    department: 'Bảo Long Trung Bộ',
+  },
+];
 
 export default function BirthdaysWidget() {
-  const { t } = useTranslation();
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      {/* Widget Sinh Nhật T, T+1 */}
-      <Card className="p-5 sm:p-6">
-        <div className="flex justify-between items-center mb-3.5 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <i className="fa-solid fa-cake-candles text-pink text-lg" />
-            <span className="font-bold text-sm text-main whitespace-nowrap">
-              {t('dashboardDetails.birthdaysTitle')}
+    <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col">
+      {/* Forest Green Header */}
+      <div className="bg-[#168b3e] text-white px-3 py-1.5 flex justify-between items-center select-none text-xs font-bold">
+        <div className="flex items-center gap-1.5">
+          <i className="fa-solid fa-cake-candles text-[11px]" />
+          <span>Thông báo sinh nhật - ngày 16-09 (3 cán bộ)</span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-3 text-xs flex flex-col gap-1.5">
+        <div className="text-red-600 dark:text-red-400 font-bold text-xs mb-1 select-none">
+          Chúc mừng sinh nhật:
+        </div>
+        {EMPLOYEES.map((emp, idx) => (
+          <div key={idx} className="flex items-start gap-1.5 text-secondary leading-relaxed">
+            <span className="text-red-500 select-none">•</span>
+            <span className="text-main">
+              <span className="font-semibold">{emp.name}</span> ({emp.position}) - {emp.department}
             </span>
           </div>
-          <Badge variant="success" size="sm">
-            {t('dashboardDetails.birthdaysVerified')}
-          </Badge>
-        </div>
-
-        <div className="flex flex-col gap-2.5">
-          {/* Sinh nhật hôm nay */}
-          <div className="p-3 px-3.5 rounded-lg bg-pink-subtle border border-pink-border flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="text-xl">🎂</span>
-              <div>
-                <div className="font-bold text-sm text-main">
-                  Nguyễn Văn Hiếu
-                </div>
-                <div className="text-xs text-muted">
-                  Nhóm 1 · Ban Công nghệ Thông tin
-                </div>
-              </div>
-            </div>
-            <Badge variant="pink" size="sm">
-              {t('dashboardDetails.today')}
-            </Badge>
-          </div>
-
-          {/* Sinh nhật ngày mai */}
-          <div className="p-3 px-3.5 rounded-lg bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="text-xl">🎈</span>
-              <div>
-                <div className="font-bold text-sm text-main">
-                  Lê Trí Kiệt
-                </div>
-                <div className="text-xs text-muted">
-                  Trưởng Nhóm 2 · Phân hệ Văn bản
-                </div>
-              </div>
-            </div>
-            <Badge variant="info" size="sm">
-              {t('dashboardDetails.tomorrow')}
-            </Badge>
-          </div>
-        </div>
-      </Card>
-
-      {/* Widget Phòng Họp */}
-      <Card className="p-5 sm:p-6">
-        <div className="flex justify-between items-center mb-3.5 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <i className="fa-solid fa-calendar-check text-success text-lg" />
-            <span className="font-bold text-sm text-main whitespace-nowrap">
-              {t('dashboardDetails.meetingRoomsToday')}
-            </span>
-          </div>
-          <Badge variant="success" size="sm">
-            {t('dashboardDetails.birthdaysVerified')}
-          </Badge>
-        </div>
-
-        <div className="flex flex-col gap-2.5">
-          <div className="p-3 px-3.5 rounded-lg bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3">
-            <div>
-              <div className="font-bold text-sm text-main">
-                Phòng Họp A201 (Hội nghị Ban Giám Đốc)
-              </div>
-              <div className="text-xs text-muted">
-                08:30 - 11:30 · Chủ trì: NCS.ThS. Trần Phương Duy
-              </div>
-            </div>
-            <Badge variant="success" size="sm">
-              {t('dashboardDetails.inProgress')}
-            </Badge>
-          </div>
-
-          <div className="p-3 px-3.5 rounded-lg bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3">
-            <div>
-              <div className="font-bold text-sm text-main">
-                Phòng Họp B105 (Họp Sprint Review Nhóm 1 - 8)
-              </div>
-              <div className="text-xs text-muted">
-                14:00 - 16:30 · Điều phối: Châu Tuấn Kiệt (PM)
-              </div>
-            </div>
-            <Badge variant="warning" size="sm">
-              {t('dashboardDetails.upcoming')}
-            </Badge>
-          </div>
-        </div>
-      </Card>
+        ))}
+      </div>
     </div>
   );
 }
+
+

@@ -19,14 +19,7 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
           <h2 className="text-xl font-extrabold text-main flex items-center gap-2.5 m-0">
             <span>👤</span>
             <span>{t('profile.title')}</span>
-            <span className="text-sm text-muted font-medium">
-              ({t('profile.moduleTag')})
-            </span>
           </h2>
-
-          <Badge variant="warning" size="sm">
-            {t('common.group1Developing')}
-          </Badge>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

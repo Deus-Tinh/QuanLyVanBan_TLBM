@@ -1,68 +1,70 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../../../shared/locales/i18n';
 import { DocumentItem } from './IncomingDocumentsWidget';
-import { Card, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui';
 
 interface RecentOutgoingWidgetProps {
   documents?: DocumentItem[];
 }
 
 const DEFAULT_OUTGOING: DocumentItem[] = [
-  { code: '210/TB-BL', title: 'Thông báo kết luận cuộc họp giao ban quý 3', date: '11/09/2026' },
-  { code: '89/QĐ-BL', title: 'Quyết định ban hành khung an ninh thông tin', date: '10/09/2026' },
-  { code: '62/TTr-ITC', title: 'Tờ trình phê duyệt kinh phí trang bị máy chủ', date: '09/09/2026' },
-  { code: '55/CV-BL', title: 'Công văn gửi các đơn vị phòng ban cấp 2', date: '08/09/2026' },
-  { code: '31/QĐ-BL', title: 'Quyết định phân công nhiệm vụ đồ án Django', date: '06/09/2026' },
+  { code: '10438/368/2026/QĐ-TGĐ', title: 'Quyết định về việc chấm dứt Hợp đồng lao động theo nguyện vọng cá nhân đối với Ông Nguyễn Đình Đăng...', date: '02/03/2026' },
+  { code: '10434/367/2026/QĐ-TGĐ', title: 'Quyết định về việc Tiếp nhận thử việc Bà Lê Huỳnh Yến Phương làm Nhân viên Chăm sóc Khách hàng...', date: '26/02/2026' },
+  { code: '10433/357/2026/QĐ-TGĐ', title: 'Quyết định về việc Tái bổ nhiệm Bà Võ Thị Thời giữ chức danh Phó Giám đốc kiêm Trưởng phòng kinh doanh...', date: '26/02/2026' },
+  { code: '10440/13/2026/TB-HĐQT', title: 'Thông báo về việc thăm viếng tang Lễ', date: '20/02/2026' },
+  { code: '10439/12/2026/TB-HĐQT', title: 'Thông báo về việc thăm viếng tang Lễ', date: '20/02/2026' },
 ];
 
 export default function RecentOutgoingWidget({
   documents = DEFAULT_OUTGOING,
 }: RecentOutgoingWidgetProps) {
-  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
-    <Card className="p-5">
-      <div className="flex justify-between items-center mb-3.5 flex-wrap gap-2">
-        <div className="font-bold text-sm text-main flex items-center gap-1.5">
-          <i className="fa-solid fa-paper-plane text-success" />
-          <span>{t('dashboardDetails.recentOutgoingTitle')}</span>
+    <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col h-full">
+      {/* Header: Solid Navy Blue */}
+      <div className="bg-[#0a3871] text-white px-3 py-1.5 flex justify-between items-center select-none">
+        <div className="flex items-center gap-1.5 font-bold text-xs">
+          <i className="fa-solid fa-paper-plane text-[11px]" />
+          <span>Văn bản đi</span>
         </div>
-        <Badge variant="success" size="sm">
-          {t('dashboardDetails.completedGroup1')}
-        </Badge>
+        <span className="text-[11px] font-normal text-white/80">
+          Cập nhật: 02/03/2026
+        </span>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-32">{t('dashboardDetails.docNumber')}</TableHead>
-            <TableHead>{t('dashboardDetails.docSummary')}</TableHead>
-            <TableHead className="w-24">{t('dashboardDetails.docDate')}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {documents.map((row, idx) => (
-            <TableRow key={idx}>
-              <TableCell className="font-semibold text-success">{row.code}</TableCell>
-              <TableCell>{row.title}</TableCell>
-              <TableCell className="text-muted">{row.date}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      {/* Rows */}
+      <div className="flex-1 divide-y divide-border-subtle/70">
+        {documents.map((doc, idx) => (
+          <div
+            key={idx}
+            onClick={() => navigate('/documents/outgoing')}
+            className="p-2.5 px-3 hover:bg-surface-hover transition-colors cursor-pointer group"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs mb-0.5">
+              <span className="text-secondary font-medium">
+                Số ký hiệu: <span className="text-primary font-semibold group-hover:underline">{doc.code}</span>
+              </span>
+              <span className="text-muted text-[11px] shrink-0">{doc.date}</span>
+            </div>
+            <div className="text-xs text-secondary line-clamp-1 group-hover:text-main transition-colors" title={doc.title}>
+              {doc.title}
+            </div>
+          </div>
+        ))}
+      </div>
 
-      <div className="mt-3.5 text-right">
+      {/* Footer: Xem thêm » on the left */}
+      <div className="p-2 px-3 bg-surface-elevated/40 border-t border-border-subtle/70 text-left">
         <button
           type="button"
           onClick={() => navigate('/documents/outgoing')}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-success hover:text-success-hover transition-colors duration-fast cursor-pointer"
+          className="text-xs font-semibold text-primary hover:text-primary-hover hover:underline transition-colors cursor-pointer inline-flex items-center gap-1"
         >
-          <span>{t('dashboardDetails.viewMoreOutgoing')}</span>
-          <i className="fa-solid fa-arrow-right text-[0.7rem]" />
+          <span>Xem thêm »</span>
         </button>
       </div>
-    </Card>
+    </div>
   );
 }
+
+
