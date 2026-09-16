@@ -321,7 +321,6 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
       {/* 1. NÚT ORB THU NHỎ (Kéo tự do, có thể đặt ở bất kỳ góc nào) */}
       {!isOpen && (
         <div
-          className="floating-ai-root"
           style={{
             position: 'fixed',
             left: `${position.x}px`,
@@ -331,7 +330,9 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
           }}
         >
           <div
-            className={`floating-ai-orb ${isDragging && draggingTarget === 'orb' ? 'is-dragging' : ''}`}
+            className={`relative w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-primary to-cyan-400 p-0.5 shadow-glass cursor-pointer flex items-center justify-center transition-transform duration-fast hover:scale-105 active:scale-95 ${
+              isDragging && draggingTarget === 'orb' ? 'cursor-grabbing scale-105' : ''
+            }`}
             onMouseDown={(e) => startDragging('orb', e.clientX, e.clientY)}
             onTouchStart={(e) => {
               if (e.touches.length > 0) {
@@ -342,7 +343,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
               if (!dragRef.current.hasMoved) {
                 setIsOpen(true);
                 setIsMinimized(false);
-                setWindowDragOffset(null); // Tự tính toán vị trí xổ thông minh
+                setWindowDragOffset(null);
               }
             }}
             title="Trợ Lý AI Tra Cứu TLBM (Kéo di chuyển tự do · Nhấp để mở)"
@@ -350,12 +351,12 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
             tabIndex={0}
           >
             {/* Vòng hào quang sáng xung quanh */}
-            <div className="ai-orb-pulse-ring" />
-            <div className="ai-orb-inner">
-              <i className="fa-solid fa-robot ai-orb-icon" />
+            <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping -z-10" />
+            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-primary text-lg shadow-inner">
+              <i className="fa-solid fa-robot" />
             </div>
             {/* Chấm trạng thái trực tuyến */}
-            <span className="ai-orb-status-dot" />
+            <span className="absolute top-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-surface" />
           </div>
         </div>
       )}
@@ -364,8 +365,8 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
       {isOpen && (
         <div
           ref={windowRef}
-          className={`floating-ai-window ${isMinimized ? 'is-minimized' : ''} ${
-            isDragging && draggingTarget === 'window' ? 'is-dragging' : ''
+          className={`rounded-2xl bg-surface-elevated/95 backdrop-blur-xl border border-subtle shadow-glass flex flex-col overflow-hidden transition-all duration-fast ${
+            isDragging && draggingTarget === 'window' ? 'cursor-grabbing opacity-90' : ''
           }`}
           style={{
             position: 'fixed',
@@ -380,7 +381,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
         >
           {/* Thanh tiêu đề (Header): Có thể nắm kéo di chuyển cả cửa sổ */}
           <div
-            className="ai-window-header"
+            className="p-3 bg-surface border-b border-subtle flex items-center justify-between cursor-move select-none"
             onMouseDown={(e) => startDragging('window', e.clientX, e.clientY)}
             onTouchStart={(e) => {
               if (e.touches.length > 0) {
@@ -389,24 +390,26 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
             }}
             title="Nhấn giữ và kéo để di chuyển hộp AI tự do trên màn hình"
           >
-            <div className="ai-header-left">
-              <div className="ai-avatar-badge">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-500 to-primary text-white flex items-center justify-center text-sm relative shadow-xs">
                 <i className="fa-solid fa-robot" />
-                <span className="ai-live-dot" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-surface" />
               </div>
-              <div className="ai-header-info">
-                <div className="ai-header-title">
-                  <span>Trợ Lý AI TLBM</span>
-                  <span className="ai-model-tag">GPT-4o</span>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-text-main">Trợ Lý AI TLBM</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-subtle text-purple font-mono font-semibold">
+                    GPT-4o
+                  </span>
                 </div>
-                <div className="ai-header-desc">Kéo di chuyển tự do • Tự căn chỉnh vị trí</div>
+                <div className="text-[10px] text-text-muted">Kéo di chuyển tự do • Tự căn chỉnh vị trí</div>
               </div>
             </div>
 
-            <div className="ai-header-actions" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
-                className="ai-header-btn"
+                className="w-7 h-7 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center transition-colors text-xs"
                 onClick={handleClearHistory}
                 title="Làm mới đoạn chat"
               >
@@ -415,7 +418,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
               <button
                 type="button"
-                className="ai-header-btn"
+                className="w-7 h-7 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center transition-colors text-xs"
                 onClick={() => setIsMinimized(!isMinimized)}
                 title={isMinimized ? 'Mở rộng hộp thoại' : 'Thu nhỏ'}
               >
@@ -424,7 +427,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
               <button
                 type="button"
-                className="ai-header-btn close-btn"
+                className="w-7 h-7 rounded-lg text-text-muted hover:text-danger hover:bg-danger-subtle flex items-center justify-center transition-colors text-xs"
                 onClick={() => {
                   setIsOpen(false);
                   setWindowDragOffset(null);
@@ -439,22 +442,28 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
           {/* Thân cửa sổ chat (khi không bị thu nhỏ) */}
           {!isMinimized && (
             <>
-              <div className="ai-chat-body">
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-3 max-h-[380px]">
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`ai-message-row ${msg.sender === 'user' ? 'is-user' : 'is-ai'}`}
+                    className={`flex gap-2.5 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {msg.sender === 'ai' && (
-                      <div className="ai-message-avatar">
+                      <div className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shrink-0 mt-0.5">
                         <i className="fa-solid fa-brain" />
                       </div>
                     )}
 
-                    <div className="ai-message-bubble-wrapper">
-                      <div className="ai-message-bubble">
+                    <div className="flex flex-col gap-1 max-w-[85%]">
+                      <div
+                        className={`p-3 text-xs leading-relaxed ${
+                          msg.sender === 'user'
+                            ? 'bg-primary text-white rounded-2xl rounded-tr-sm shadow-xs'
+                            : 'bg-surface border border-subtle text-text-main rounded-2xl rounded-tl-sm shadow-xs'
+                        }`}
+                      >
                         {msg.text.split('\n').map((line, idx) => (
-                          <p key={idx} style={{ margin: '3px 0' }}>
+                          <p key={idx} className="my-0.5">
                             {line}
                           </p>
                         ))}
@@ -462,36 +471,38 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
                       {/* Các nút bấm gợi ý câu hỏi nhanh (Quick Replies) */}
                       {msg.quickReplies && msg.quickReplies.length > 0 && (
-                        <div className="ai-quick-replies-container">
+                        <div className="flex flex-col gap-1 mt-1">
                           {msg.quickReplies.map((reply, rIdx) => (
                             <button
                               key={rIdx}
                               type="button"
-                              className="ai-quick-reply-pill"
+                              className="w-full text-left text-[11px] py-1.5 px-2.5 rounded-lg bg-surface-hover hover:bg-primary-subtle text-text-secondary hover:text-primary border border-subtle hover:border-primary/40 transition-colors flex items-center gap-1.5 cursor-pointer"
                               onClick={() => handleSendMessage(reply)}
                             >
-                              <i className="fa-solid fa-bolt-lightning" />
+                              <i className="fa-solid fa-bolt-lightning text-[10px] text-warning" />
                               <span>{reply}</span>
                             </button>
                           ))}
                         </div>
                       )}
 
-                      <span className="ai-message-time">{msg.time}</span>
+                      <span className="text-[10px] text-text-muted mt-0.5">
+                        {msg.time}
+                      </span>
                     </div>
                   </div>
                 ))}
 
                 {/* Trạng thái AI đang phản hồi */}
                 {isTyping && (
-                  <div className="ai-message-row is-ai">
-                    <div className="ai-message-avatar">
+                  <div className="flex gap-2.5 justify-start items-center">
+                    <div className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shrink-0">
                       <i className="fa-solid fa-brain" />
                     </div>
-                    <div className="ai-typing-indicator">
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
-                      <span className="typing-dot" />
+                    <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-subtle text-text-muted text-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.2s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.4s]" />
                     </div>
                   </div>
                 )}
@@ -501,7 +512,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
               {/* Thanh nhập tin nhắn ở đáy */}
               <form
-                className="ai-input-form"
+                className="p-2.5 bg-surface border-t border-subtle flex items-center gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   handleSendMessage();
@@ -509,7 +520,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
               >
                 <input
                   type="text"
-                  className="ai-input-field"
+                  className="flex-1 bg-surface-elevated border border-subtle rounded-xl px-3 py-2 text-xs text-text-main placeholder:text-text-muted focus:border-primary transition-colors"
                   placeholder="Hỏi trợ lý AI về văn bản, quy trình..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
@@ -517,7 +528,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
                 <button
                   type="button"
-                  className="ai-action-btn"
+                  className="w-8 h-8 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center text-xs transition-colors"
                   title="Nhập bằng giọng nói (Mô phỏng)"
                   onClick={() => alert('Chức năng nhận diện giọng nói tiếng Việt đang được kết nối Micro!')}
                 >
@@ -526,7 +537,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
                 <button
                   type="submit"
-                  className="ai-send-btn"
+                  className="w-8 h-8 rounded-lg bg-primary hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center text-xs transition-colors shadow-xs"
                   disabled={!inputMessage.trim()}
                   title="Gửi câu hỏi"
                 >
