@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
+import { Card, Badge, Button } from '../../../shared/components/ui';
 
 interface PasswordChangePageProps {
-  onNavigate: (page: ActivePageId) => void;
+  onNavigate?: (page: ActivePageId) => void;
 }
 
 export default function PasswordChangePage({ onNavigate }: PasswordChangePageProps) {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [currentPass, setCurrentPass] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -18,43 +21,18 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
   };
 
   return (
-    <div style={{ maxWidth: '820px', margin: '20px auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '28px 32px',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '10px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+    <div className="max-w-4xl mx-auto my-5 flex flex-col gap-5">
+      <Card className="p-7 sm:p-8">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-2.5">
+          <h2 className="text-xl font-extrabold text-main flex items-center gap-2.5 m-0">
             <span>🔑</span>
             <span>{t('passwordChange.title')}</span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              ({t('passwordChange.moduleTag')})
-            </span>
           </h2>
-
-          <span
-            style={{
-              fontSize: '0.75rem',
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-warning-subtle)',
-              border: '1px solid var(--color-warning-border)',
-              color: 'var(--color-warning-text)',
-              fontWeight: 700,
-            }}
-          >
-            {t('common.group1Developing')}
-          </span>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ maxWidth: '440px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSubmit} className="max-w-md flex flex-col gap-3.5">
           <div>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+            <label className="text-sm font-semibold text-secondary block mb-1.5">
               {t('passwordChange.currentPassword')}:
             </label>
             <input
@@ -62,21 +40,12 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
               placeholder={t('passwordChange.currentPasswordPlaceholder')}
               value={currentPass}
               onChange={(e) => setCurrentPass(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '6px',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface-elevated)',
-                color: 'var(--text-main)',
-                fontSize: '0.9rem',
-              }}
+              className="w-full px-3.5 py-2.5 rounded-sm border border-border-subtle bg-surface-elevated text-main text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-fast placeholder:text-muted"
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+            <label className="text-sm font-semibold text-secondary block mb-1.5">
               {t('passwordChange.newPassword')}:
             </label>
             <input
@@ -84,21 +53,12 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
               placeholder={t('passwordChange.newPasswordPlaceholder')}
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '6px',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface-elevated)',
-                color: 'var(--text-main)',
-                fontSize: '0.9rem',
-              }}
+              className="w-full px-3.5 py-2.5 rounded-sm border border-border-subtle bg-surface-elevated text-main text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-fast placeholder:text-muted"
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+            <label className="text-sm font-semibold text-secondary block mb-1.5">
               {t('passwordChange.confirmPassword')}:
             </label>
             <input
@@ -106,56 +66,33 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
               placeholder={t('passwordChange.confirmPasswordPlaceholder')}
               value={confirmPass}
               onChange={(e) => setConfirmPass(e.target.value)}
-              style={{
-                width: '100%',
-                marginTop: '6px',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface-elevated)',
-                color: 'var(--text-main)',
-                fontSize: '0.9rem',
-              }}
+              className="w-full px-3.5 py-2.5 rounded-sm border border-border-subtle bg-surface-elevated text-main text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-fast placeholder:text-muted"
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '10px', flexWrap: 'wrap' }}>
-            <button
+          <div className="flex gap-3 mt-2.5 flex-wrap">
+            <Button
               type="submit"
-              style={{
-                padding: '10px 20px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--color-primary)',
-                color: '#ffffff',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px var(--color-primary-glow)',
-              }}
+              variant="primary"
+              size="md"
             >
               {t('passwordChange.submitBtn')}
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
-              style={{
-                padding: '10px 18px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--bg-surface-elevated)',
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border-subtle)',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                cursor: 'pointer',
+              variant="secondary"
+              size="md"
+              onClick={() => {
+                if (onNavigate) onNavigate('dashboard');
+                navigate('/dashboard');
               }}
-              onClick={() => onNavigate('dashboard')}
             >
               {t('common.backToDashboard')}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

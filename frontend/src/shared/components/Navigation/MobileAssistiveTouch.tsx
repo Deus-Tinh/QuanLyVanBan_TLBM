@@ -156,11 +156,13 @@ export default function MobileAssistiveTouch({
   };
 
   return (
-    <aside className="mobile-assistive-touch" aria-label="Phím Home ảo AssistiveTouch">
+    <aside aria-label="Phím Home ảo AssistiveTouch">
       {/* 1. NÚT HOME ẢO (AssistiveTouch FAB - Kéo thả tự do như iOS) */}
       <button
         type="button"
-        className={`assistive-fab ${isDimmed && !isDragging ? 'is-dimmed' : ''} ${isOpen ? 'is-active' : ''}`}
+        className={`w-14 h-14 rounded-full bg-slate-900/85 border border-white/20 shadow-glass flex items-center justify-center select-none backdrop-blur-md transition-opacity duration-300 ${
+          isDimmed && !isDragging ? 'opacity-40 hover:opacity-100' : 'opacity-100'
+        } ${isOpen ? 'ring-2 ring-primary' : ''}`}
         style={
           position
             ? {
@@ -216,9 +218,9 @@ export default function MobileAssistiveTouch({
         title="Mở menu hệ thống (AssistiveTouch) · Nhấn để mở, giữ để kéo thả"
         aria-label="Phím Home ảo"
       >
-        <span className="fab-outer-ring">
-          <span className="fab-inner-core">
-            <span className="fab-center-dot" />
+        <span className="w-10 h-10 rounded-full border border-white/40 flex items-center justify-center pointer-events-none">
+          <span className="w-6 h-6 rounded-full bg-white/70 flex items-center justify-center shadow-xs">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-900" />
           </span>
         </span>
       </button>
@@ -226,34 +228,34 @@ export default function MobileAssistiveTouch({
       {/* 2. BẢNG ĐIỀU KHIỂN MODAL DẠNG KÍNH MỜ (Khi bung ra) */}
       {isOpen && (
         <div
-          className="assistive-modal-backdrop"
+          className="fixed inset-0 z-[10002] bg-backdrop backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setIsOpen(false)}
           aria-label="Đóng menu"
         >
           <div
-            className="assistive-modal-card"
-            onClick={(e) => e.stopPropagation()} // Ngăn click bên trong làm đóng bảng
+            className="w-full max-w-sm rounded-2xl bg-surface-elevated border border-subtle shadow-glass p-4 flex flex-col gap-4 z-[10003]"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header nhỏ thông tin hệ thống */}
-            <div className="assistive-card-header">
-              <div className="assistive-header-brand">
-                <div className="assistive-header-icon">
+            <div className="flex items-center justify-between pb-3 border-b border-subtle">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-sm shadow-xs">
                   <i className="fa-solid fa-file-shield" />
                 </div>
-                <div className="assistive-header-title-box">
-                  <span className="assistive-title">TLBM Mobile</span>
-                  <span className="assistive-sub">Menu Hệ Thống</span>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm text-text-main leading-tight">TLBM Mobile</span>
+                  <span className="text-[11px] text-text-muted leading-tight">Menu Hệ Thống</span>
                 </div>
               </div>
 
-              <div className="assistive-status-chip">
-                <span className="status-dot" />
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-success-subtle text-success text-[11px] font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                 <span>Trực tuyến</span>
               </div>
             </div>
 
             {/* Lưới 6 Phân hệ biểu tượng phong cách Apple */}
-            <div className="assistive-grid">
+            <div className="grid grid-cols-3 gap-2.5">
               {MAIN_MODULES.map((mod) => {
                 const isSelected = activeModule.id === mod.id;
                 const numericBadges = mod.subItems
@@ -264,46 +266,46 @@ export default function MobileAssistiveTouch({
                   <button
                     key={mod.id}
                     type="button"
-                    className={`assistive-grid-item ${isSelected ? 'selected' : ''}`}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all text-center cursor-pointer relative ${
+                      isSelected
+                        ? 'bg-primary-subtle/40 border-primary-border shadow-xs'
+                        : 'border-transparent hover:border-subtle hover:bg-surface-hover'
+                    }`}
                     onClick={() => {
                       onNavigate(mod.defaultPage);
                       setIsOpen(false);
                     }}
                   >
-                    <div className="assistive-icon-container">
+                    <div className="w-11 h-11 rounded-xl bg-surface border border-subtle flex items-center justify-center text-lg text-primary mb-1.5 relative shadow-xs">
                       <i className={`fa-solid ${mod.icon}`} />
                       {numericBadges > 0 && (
-                        <span className="assistive-item-badge">{numericBadges}</span>
+                        <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-danger text-white ring-2 ring-surface">
+                          {numericBadges}
+                        </span>
                       )}
                     </div>
-                    <span className="assistive-item-label">{mod.label}</span>
-                    <span className="assistive-item-team">{mod.teamTag}</span>
+                    <span className="text-xs font-medium text-text-main truncate w-full">{mod.label}</span>
+                    <span className="text-[10px] text-text-muted font-mono">{mod.teamTag}</span>
                   </button>
                 );
               })}
             </div>
 
             {/* Thanh thao tác nhanh ở đáy: Đổi Theme & Đóng nhanh */}
-            <div className="assistive-footer-actions">
+            <div className="flex items-center justify-between pt-3 border-t border-subtle gap-2">
               <button
                 type="button"
-                className="assistive-action-pill"
+                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-surface border border-subtle text-xs font-medium text-text-main hover:bg-surface-hover transition-colors"
                 onClick={handleToggleTheme}
                 title="Chuyển đổi giao diện Sáng / Tối"
               >
-                <i
-                  className={`fa-solid ${
-                    currentTheme === 'dark' ? 'fa-sun' : 'fa-moon'
-                  }`}
-                />
-                <span>
-                  {currentTheme === 'dark' ? 'Chế độ Sáng' : 'Chế độ Tối'}
-                </span>
+                <i className={`fa-solid ${currentTheme === 'dark' ? 'fa-sun' : 'fa-moon'}`} />
+                <span>{currentTheme === 'dark' ? 'Chế độ Sáng' : 'Chế độ Tối'}</span>
               </button>
 
               <button
                 type="button"
-                className="assistive-close-circle"
+                className="w-9 h-9 rounded-full bg-surface border border-subtle text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center text-sm transition-colors"
                 onClick={() => setIsOpen(false)}
                 title="Đóng bảng AssistiveTouch"
                 aria-label="Đóng bảng"

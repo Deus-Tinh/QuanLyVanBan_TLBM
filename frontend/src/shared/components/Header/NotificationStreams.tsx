@@ -28,54 +28,38 @@ export default function NotificationStreams() {
   const currentStream = SAMPLE_STREAMS.find((s) => s.type === activeTab) || SAMPLE_STREAMS[0];
 
   return (
-    <div style={{ position: 'relative' }} ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        className="header-action-btn"
+        className="relative w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast"
         onClick={() => setIsOpen(!isOpen)}
         title="Thông báo văn bản (Đến, Đi, Mật)"
         aria-label="Thông báo"
       >
-        <i className="fa-regular fa-bell" />
-        {totalUnread > 0 && <span className="action-badge-dot" />}
+        <i className="fa-regular fa-bell text-base" />
+        {totalUnread > 0 && (
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger ring-2 ring-header" />
+        )}
       </button>
 
       {isOpen && (
         <>
           <div
-            className="dropdown-mobile-backdrop"
+            className="fixed inset-0 z-[10000] bg-backdrop backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 10000,
-              background: 'rgba(0, 0, 0, 0.35)',
-              backdropFilter: 'blur(2px)',
-              WebkitBackdropFilter: 'blur(2px)',
-            }}
           />
-          <div className="dropdown-menu-wrapper notif-dropdown" style={{ zIndex: 10001 }}>
-            <div className="notif-header">
+          <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-[380px] max-h-[calc(100vh-80px)] sm:max-h-[520px] rounded-xl bg-surface-elevated border border-subtle shadow-glass flex flex-col z-[10001] overflow-hidden">
+            <div className="p-3.5 border-b border-subtle flex items-center justify-between bg-surface/40">
               <div>
-                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{t('notifications.title')}</span>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span className="font-bold text-sm text-text-main">{t('notifications.title')}</span>
+                <div className="text-xs text-text-muted">
                   {t('notifications.unreadCount', { count: totalUnread.toString() })}
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  style={{
-                    fontSize: '0.78rem',
-                    color: 'var(--color-primary)',
-                    fontWeight: 600,
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
+                  className="text-xs text-primary font-semibold hover:underline bg-transparent border-0 cursor-pointer"
                   onClick={() => alert('Đã đánh dấu đã đọc tất cả!')}
                 >
                   {t('notifications.markAllRead')}
@@ -83,19 +67,7 @@ export default function NotificationStreams() {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  style={{
-                    width: '26px',
-                    height: '26px',
-                    borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-secondary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                  }}
+                  className="w-6 h-6 rounded-full bg-surface-hover border border-subtle text-text-secondary flex items-center justify-center hover:text-text-main text-xs"
                   title="Đóng bảng thông báo"
                   aria-label="Đóng"
                 >
@@ -104,72 +76,75 @@ export default function NotificationStreams() {
               </div>
             </div>
 
-          {/* 3 Streams Tab Navigation: Đến, Đi, Mật */}
-          <div className="notif-tabs">
-            {SAMPLE_STREAMS.map((stream) => {
-              const streamLabelKey = `notifications.${stream.type}`;
-              const streamLabel = t(streamLabelKey) !== streamLabelKey ? t(streamLabelKey) : stream.label;
+            {/* 3 Streams Tab Navigation: Đến, Đi, Mật */}
+            <div className="flex items-center p-1.5 bg-surface border-b border-subtle gap-1">
+              {SAMPLE_STREAMS.map((stream) => {
+                const streamLabelKey = `notifications.${stream.type}`;
+                const streamLabel = t(streamLabelKey) !== streamLabelKey ? t(streamLabelKey) : stream.label;
 
-              return (
-                <button
-                  key={stream.type}
-                  type="button"
-                  className={`notif-tab-btn ${activeTab === stream.type ? 'active' : ''}`}
-                  onClick={() => setActiveTab(stream.type)}
-                >
-                  <i className={`fa-solid ${stream.icon}`} />
-                  <span>{streamLabel}</span>
-                  {stream.unreadCount > 0 && (
-                    <span
-                      style={{
-                        fontSize: '0.68rem',
-                        padding: '1px 5px',
-                        borderRadius: '10px',
-                        background:
+                return (
+                  <button
+                    key={stream.type}
+                    type="button"
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors duration-fast ${
+                      activeTab === stream.type
+                        ? 'bg-surface-elevated text-primary font-semibold shadow-sm'
+                        : 'text-text-muted hover:text-text-main hover:bg-surface-hover'
+                    }`}
+                    onClick={() => setActiveTab(stream.type)}
+                  >
+                    <i className={`fa-solid ${stream.icon} text-xs`} />
+                    <span>{streamLabel}</span>
+                    {stream.unreadCount > 0 && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
                           stream.type === 'confidential'
-                            ? 'rgba(239, 68, 68, 0.2)'
-                            : 'rgba(59, 130, 246, 0.2)',
-                        color: stream.type === 'confidential' ? 'var(--color-danger)' : 'var(--color-primary)',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {stream.unreadCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                            ? 'bg-danger-subtle text-danger'
+                            : 'bg-primary-subtle text-primary'
+                        }`}
+                      >
+                        {stream.unreadCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Stream Item List */}
-          <div className="notif-list">
-            {currentStream.items.map((item) => (
-              <div key={item.id} className="notif-item">
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="notif-code-badge">{item.code}</span>
+            {/* Stream Item List */}
+            <div className="flex-1 overflow-y-auto divide-y divide-subtle p-1 max-h-[360px]">
+              {currentStream.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3 hover:bg-surface-hover rounded-lg transition-colors duration-fast cursor-pointer flex flex-col"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-surface border border-subtle text-text-secondary">
+                      {item.code}
+                    </span>
                     {item.priority === 'urgent' && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 700 }}>
-                        ● Khẩn
+                      <span className="text-[11px] text-danger font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" /> Khẩn
                       </span>
                     )}
                     {item.priority === 'confidential' && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-danger)', fontWeight: 700 }}>
+                      <span className="text-[11px] text-danger font-bold flex items-center gap-1">
                         🔒 Tuyệt Mật
                       </span>
                     )}
                   </div>
-                  <div className="notif-item-title">{item.title}</div>
-                  <div className="notif-item-meta">
+                  <div className="font-medium text-xs text-text-main line-clamp-2 leading-relaxed">
+                    {item.title}
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-text-muted mt-1.5">
                     <span>{item.senderOrDept}</span>
                     <span>{item.time}</span>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </>
+        </>
       )}
     </div>
   );

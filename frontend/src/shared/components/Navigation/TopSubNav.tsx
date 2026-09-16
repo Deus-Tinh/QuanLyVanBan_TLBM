@@ -11,7 +11,6 @@ interface TopSubNavProps {
 
 export default function TopSubNav({
   activePage,
-  isHoveredPreview,
   onNavigate,
 }: TopSubNavProps) {
   const { t } = useTranslation();
@@ -42,57 +41,79 @@ export default function TopSubNav({
 
   return (
     <nav
-      className="top-sub-nav"
+      className="h-9 px-4 sm:px-6 bg-app flex items-center justify-between shrink-0 overflow-x-auto select-none"
       aria-label="Điều hướng phân hệ con"
     >
-      <div className="top-sub-nav-inner">
-        {/* 1. Tiêu đề Phân hệ cha (Trái) */}
-        <div className="top-sub-nav-module-badge">
-          <div className="module-icon-box" title={`${activeModuleLabel} (${activeModule.teamTag})`}>
+      <div className="flex items-center gap-4 w-full min-w-max">
+        {/* 1. Breadcrumb định hướng nhanh (Chuyển sang TRÁI theo yêu cầu) */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div
+            className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shadow-xs"
+            title={`${activeModuleLabel} (${activeModule.teamTag})`}
+          >
             <i className={`fa-solid ${activeModule.icon}`} />
           </div>
-          <div className="module-info">
-            <span className="module-name">{activeModuleLabel}</span>
-            <span className="module-name-short">{activeModule.shortLabel || activeModuleLabel}</span>
-            <span className="module-team-tag">{activeModule.teamTag}</span>
+          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <button
+              type="button"
+              className="hover:text-primary transition-colors cursor-pointer"
+              onClick={() => onNavigate('dashboard')}
+              title="Về Bàn làm việc"
+            >
+              {t('navigation.system')}
+            </button>
+            <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
+            <button
+              type="button"
+              className="hover:text-primary transition-colors cursor-pointer"
+              onClick={() => onNavigate(activeModule.defaultPage)}
+              title={`Chuyển tới ${activeModuleLabel}`}
+            >
+              {activeModuleLabel}
+            </button>
+            {activeModule.id !== 'dashboard' && (
+              <>
+                <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
+                <span className="text-text-main font-semibold">{activeSubLabel}</span>
+              </>
+            )}
           </div>
-          <div className="module-divider" />
+          {activeModule.subItems.length > 1 && (
+            <div className="h-4 w-px bg-subtle mx-2" />
+          )}
         </div>
 
-        {/* 2. Danh sách các Tab con nằm ngang (Giữa) */}
-        <div className="top-sub-nav-tabs">
-          {activeModule.subItems.map((sub) => {
-            const isSelected = activePage === sub.id;
-            const subLabel = getSubItemLabel(sub.id, sub.label);
-            return (
-              <button
-                key={sub.id}
-                type="button"
-                className={`sub-nav-tab-btn ${isSelected ? 'active' : ''}`}
-                onClick={() => onNavigate(sub.id)}
-                title={`${subLabel} (Bấm để ở lại trang này)`}
-              >
-                <i className={`fa-solid ${sub.icon} tab-icon`} />
-                <span className="tab-label">{subLabel}</span>
+        {/* 2. Danh sách các Tab con nằm ngang (Chỉ hiển thị khi phân hệ có nhiều hơn 1 mục con) */}
+        {activeModule.subItems.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto">
+            {activeModule.subItems.map((sub) => {
+              const isSelected = activePage === sub.id;
+              const subLabel = getSubItemLabel(sub.id, sub.label);
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-colors duration-fast cursor-pointer ${
+                    isSelected
+                      ? 'bg-primary-subtle text-primary font-semibold shadow-xs'
+                      : 'text-text-secondary hover:text-text-main hover:bg-surface-hover'
+                  }`}
+                  onClick={() => onNavigate(sub.id)}
+                  title={`${subLabel} (Bấm để ở lại trang này)`}
+                >
+                  <i className={`fa-solid ${sub.icon} text-xs`} />
+                  <span>{subLabel}</span>
 
-                {sub.badge !== undefined && (
-                  <span className={`tab-badge badge-${sub.badgeColor || 'blue'}`}>
-                    {sub.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 3. Breadcrumb định hướng nhanh (Phải) */}
-        <div className="top-sub-nav-breadcrumb">
-          <span className="crumb-root">{t('navigation.system')}</span>
-          <i className="fa-solid fa-angle-right crumb-sep" />
-          <span className="crumb-mod">{activeModuleLabel}</span>
-          <i className="fa-solid fa-angle-right crumb-sep" />
-          <span className="crumb-active">{activeSubLabel}</span>
-        </div>
+                  {sub.badge !== undefined && (
+                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary text-white">
+                      {sub.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </nav>
   );

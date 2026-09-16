@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import NotificationStreams from './NotificationStreams';
 import ThemeSelector from './ThemeSelector';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserDropdown from './UserDropdown';
-import { useTranslation } from '../../locales/i18n';
 import { ThemeMode } from '../../types/theme';
 import { ActivePageId } from '../../types/navigation';
 
@@ -11,10 +11,9 @@ interface AppHeaderProps {
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
-  onToggleMobileSidebar: () => void;
-  onHoverSidebar?: () => void;
+  onToggleSidebar: () => void;
   isSidebarOpen?: boolean;
-  onNavigate?: (page: ActivePageId) => void;
+  onNavigate?: (pageId: ActivePageId) => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
 }
@@ -23,61 +22,74 @@ export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleTheme,
-  onToggleMobileSidebar,
-  onHoverSidebar,
+  onToggleSidebar,
   isSidebarOpen,
   onNavigate,
   preferredLightTheme,
   preferredDarkTheme,
 }: AppHeaderProps) {
-  const { t } = useTranslation();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isAIPage = location.pathname === '/ai-assistant';
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Live Administrative Clock: HH:mm:ss DD/MM/YYYY
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      navigate(`/documents/incoming?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
-  const formatPad = (n: number) => n.toString().padStart(2, '0');
-  const timeString = `${formatPad(currentTime.getHours())}:${formatPad(
-    currentTime.getMinutes()
-  )}:${formatPad(currentTime.getSeconds())}`;
-  const dateString = `${formatPad(currentTime.getDate())}/${formatPad(
-    currentTime.getMonth() + 1
-  )}/${currentTime.getFullYear()}`;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit();
+    }
+  };
 
   return (
-    <header className="app-header">
-      {/* 1. Left Section: 3-bar Menu Trigger */}
-      <div className="header-left">
-        <button
-          type="button"
-          className={`header-menu-btn ${isSidebarOpen ? 'active' : ''}`}
-          onClick={onToggleMobileSidebar}
-          onMouseEnter={onHoverSidebar}
-          title={t('header.menuTooltip')}
-          aria-label={t('header.menuAria')}
-        >
-          <i className="fa-solid fa-bars" />
-        </button>
+    <header className="h-14 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
+      {/* 1. Left Section: 3-bar Menu Trigger & Thanh tìm kiếm văn bản */}
+      <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
+        {!isSidebarOpen && (
+          <button
+            type="button"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
+            onClick={onToggleSidebar}
+            title="Mở thanh điều hướng (Bấm để mở)"
+            aria-label="Mở thanh điều hướng"
+          >
+            <i className="fa-solid fa-bars text-base" />
+          </button>
+        )}
+
+        {/* Thanh tìm kiếm văn bản đưa lên phần bên trái Header - Ẩn khi vào trang AI Assistant */}
+        {!isAIPage && (
+          <div className="relative w-full max-w-[420px] hidden sm:block">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Tìm kiếm văn bản đến/đi theo số ký hiệu hoặc trích yếu..."
+              className="w-full pl-3.5 pr-8 py-1.5 rounded-sm border border-border-subtle bg-surface text-main text-xs focus:outline-none focus:border-[#0a3871] focus:ring-1 focus:ring-[#0a3871] transition-all placeholder:text-muted shadow-xs"
+            />
+            <button
+              type="button"
+              onClick={handleSearchSubmit}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors cursor-pointer p-0.5"
+              title="Tìm kiếm"
+            >
+              <i className="fa-solid fa-magnifying-glass text-xs" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 2. Right Section: Live Clock, Notifications, Theme, Language, User */}
-      <div className="header-right">
-        {/* Đồng hồ hành chính chuẩn Thầy Duy */}
-        <div className="live-clock-card" title={t('header.clockTitle')}>
-          <i className="fa-regular fa-clock" />
-          <span className="clock-digits">{timeString}</span>
-          <span className="clock-date">{dateString}</span>
-        </div>
-
+      {/* 2. Right Section: Notifications, Theme, Language, User */}
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Thông báo 3 luồng: Đến, Đi, Mật */}
         <NotificationStreams />
 
-        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm (Không mở popup che khuất) */}
+        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm */}
         <ThemeSelector
           currentTheme={currentTheme}
           onSelectTheme={onSelectTheme}

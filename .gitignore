@@ -7,6 +7,11 @@ dist-ssr/
 .eslintcache
 frontend/node_modules/
 frontend/dist/
+skills/
+frontend/skills/
+*.tsbuildinfo
+.coverage
+coverage/
 
 # Python & Django
 __pycache__/

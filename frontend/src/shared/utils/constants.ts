@@ -7,13 +7,17 @@ export const CURRENT_USER: UserProfile = {
   id: 1,
   username: 'chautuankiet',
   fullName: 'Châu Tuấn Kiệt',
-  role: 'Project Manager (PM) · Nhóm 1',
-  team: 'Nhóm 1 (Layout & Dashboard)',
+  role: 'Project Manager (PM)',
+  team: 'Ban Công Nghệ Thông Tin',
   department: 'Ban Công Nghệ Thông Tin',
   avatar: '👨‍💼',
   email: 'kiet.ct@itc.edu.vn',
 };
 
+// [DEVOPS AUDIT NOTE]:
+// previewGradient và borderPreview dưới đây là các ô màu mẫu tĩnh (swatches)
+// dùng riêng cho bộ chọn theme (ThemeSelector) để người dùng xem trước màu sắc
+// trước khi áp dụng, không phải là style của UI components.
 export const THEME_OPTIONS: ThemeOption[] = [
   // 1. Chế độ Tối Hiện Đại (Sleek Dark)
   {
