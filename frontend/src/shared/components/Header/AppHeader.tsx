@@ -14,7 +14,7 @@ interface AppHeaderProps {
   onToggleMobileSidebar: () => void;
   onHoverSidebar?: () => void;
   isSidebarOpen?: boolean;
-  onNavigate?: (page: ActivePageId) => void;
+  onNavigate?: (pageId: ActivePageId) => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
 }
@@ -50,34 +50,39 @@ export default function AppHeader({
   )}/${currentTime.getFullYear()}`;
 
   return (
-    <header className="app-header">
+    <header className="h-14 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
       {/* 1. Left Section: 3-bar Menu Trigger */}
-      <div className="header-left">
+      <div className="flex items-center gap-3">
         <button
           type="button"
-          className={`header-menu-btn ${isSidebarOpen ? 'active' : ''}`}
+          className={`w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast ${
+            isSidebarOpen ? 'text-primary bg-primary-subtle' : ''
+          }`}
           onClick={onToggleMobileSidebar}
           onMouseEnter={onHoverSidebar}
           title={t('header.menuTooltip')}
           aria-label={t('header.menuAria')}
         >
-          <i className="fa-solid fa-bars" />
+          <i className="fa-solid fa-bars text-base" />
         </button>
       </div>
 
       {/* 2. Right Section: Live Clock, Notifications, Theme, Language, User */}
-      <div className="header-right">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Đồng hồ hành chính chuẩn Thầy Duy */}
-        <div className="live-clock-card" title={t('header.clockTitle')}>
-          <i className="fa-regular fa-clock" />
-          <span className="clock-digits">{timeString}</span>
-          <span className="clock-date">{dateString}</span>
+        <div
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-subtle text-xs text-text-secondary select-none shadow-sm"
+          title={t('header.clockTitle')}
+        >
+          <i className="fa-regular fa-clock text-primary" />
+          <span className="font-mono font-semibold text-text-main text-xs">{timeString}</span>
+          <span className="text-text-muted text-[11px] border-l border-subtle pl-2">{dateString}</span>
         </div>
 
         {/* Thông báo 3 luồng: Đến, Đi, Mật */}
         <NotificationStreams />
 
-        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm (Không mở popup che khuất) */}
+        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm */}
         <ThemeSelector
           currentTheme={currentTheme}
           onSelectTheme={onSelectTheme}

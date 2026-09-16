@@ -8,6 +8,7 @@ import RecentOutgoingWidget from '../components/RecentOutgoingWidget';
 import RecentTasksWidget from '../components/RecentTasksWidget';
 import BirthdaysWidget from '../components/BirthdaysWidget';
 import RecentResourcesWidget from '../components/RecentResourcesWidget';
+import { Card, Badge, Button } from '../../../shared/components/ui';
 
 const ALL_INCOMING = [
   { code: '128/QĐ-BGDĐT', title: 'Hướng dẫn công tác năm học mới 2026', date: '11/09/2026' },
@@ -45,7 +46,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     }
   };
 
-  // Lọc dữ liệu tìm kiếm tương tác (Interactive filter thay vì alert)
   const filteredIncoming = useMemo(() => {
     if (searchFilter === 'outgoing') return [];
     if (!searchTerm.trim()) return ALL_INCOMING;
@@ -65,7 +65,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   }, [searchTerm, searchFilter]);
 
   const handleSearchClick = () => {
-    // Scroll smoothly to results or feedback
     if (searchTerm.trim()) {
       const matchCount = filteredIncoming.length + filteredOutgoing.length;
       console.log(`[Dashboard Search] Tìm thấy ${matchCount} kết quả cho: "${searchTerm}"`);
@@ -73,72 +72,35 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="flex flex-col gap-6">
       {/* 1. Welcome Hero Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, var(--color-primary-subtle), transparent)',
-          border: '1px solid var(--color-primary-border)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '24px 28px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
-          backdropFilter: 'var(--backdrop-blur)',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
+      <Card className="bg-gradient-to-br from-primary-subtle to-transparent border-primary-border p-6 sm:p-7 flex justify-between items-center flex-wrap gap-4 backdrop-blur-md">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '1.4rem' }}>👋</span>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-2xl">👋</span>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-main m-0">
               {t('dashboardDetails.greeting')}
             </h1>
-            <span
-              style={{
-                fontSize: '0.75rem',
-                padding: '3px 8px',
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--color-primary-subtle)',
-                border: '1px solid var(--color-primary-border)',
-                color: 'var(--color-primary)',
-                fontWeight: 700,
-              }}
-            >
+            <Badge variant="primary" size="sm">
               {t('dashboardDetails.roleBadge')}
-            </span>
+            </Badge>
           </div>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '6px', fontSize: '0.92rem' }}>
+          <p className="text-secondary mt-1.5 text-sm m-0">
             {t('dashboardDetails.leadDescription')}
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            style={{
-              padding: '10px 18px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px var(--color-primary-glow)',
-            }}
+        <div className="flex gap-2.5 flex-wrap">
+          <Button
+            variant="primary"
+            size="md"
+            icon="fa-plus"
             onClick={() => handleNavigate('/documents/incoming')}
           >
-            <i className="fa-solid fa-plus" />
-            <span>{t('dashboardDetails.receiveDocBtn')}</span>
-          </button>
+            {t('dashboardDetails.receiveDocBtn')}
+          </Button>
         </div>
-      </div>
+      </Card>
 
       {/* 2. KHỐI TÌM KIẾM VĂN BẢN ĐẾN VÀ ĐI */}
       <QuickSearchWidget
@@ -149,14 +111,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         onSearch={handleSearchClick}
       />
 
-      {/* 3. KPI METRICS DECK & THỐNG KÊ (Component Tách Riêng) */}
+      {/* 3. KPI METRICS DECK & THỐNG KÊ */}
       <DashboardStats />
 
       {/* 4. KHỐI WIDGET: THÔNG BÁO SINH NHẬT THEO NGÀY T, T + 1 & PHÒNG HỌP */}
       <BirthdaysWidget />
 
-      {/* 5. DANH SÁCH VĂN BẢN ĐẾN & VĂN BẢN ĐI (Component Tách Riêng) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '20px' }}>
+      {/* 5. DANH SÁCH VĂN BẢN ĐẾN & VĂN BẢN ĐI */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {searchFilter !== 'outgoing' && (
           <IncomingDocumentsWidget documents={filteredIncoming} />
         )}
@@ -165,8 +127,8 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         )}
       </div>
 
-      {/* 6. DANH SÁCH CÔNG VIỆC & TÀI LIỆU, BIỂU MẪU CHUNG (Component Tách Riêng) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: '20px' }}>
+      {/* 6. DANH SÁCH CÔNG VIỆC & TÀI LIỆU, BIỂU MẪU CHUNG */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <RecentTasksWidget />
         <RecentResourcesWidget />
       </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../../shared/locales/i18n';
 import { DocumentItem } from './IncomingDocumentsWidget';
+import { Card, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../shared/components/ui';
 
 interface RecentOutgoingWidgetProps {
   documents?: DocumentItem[];
@@ -22,95 +23,46 @@ export default function RecentOutgoingWidget({
   const navigate = useNavigate();
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-xl)',
-        padding: '20px',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '14px',
-          flexWrap: 'wrap',
-          gap: '8px',
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: '0.98rem',
-              color: 'var(--text-main)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <i className="fa-solid fa-paper-plane" style={{ color: 'var(--color-success)' }} />
-            <span>{t('dashboardDetails.recentOutgoingTitle')}</span>
-          </div>
+    <Card className="p-5">
+      <div className="flex justify-between items-center mb-3.5 flex-wrap gap-2">
+        <div className="font-bold text-sm text-main flex items-center gap-1.5">
+          <i className="fa-solid fa-paper-plane text-success" />
+          <span>{t('dashboardDetails.recentOutgoingTitle')}</span>
         </div>
-        <span
-          style={{
-            fontSize: '0.7rem',
-            padding: '2px 8px',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--color-success-subtle)',
-            color: 'var(--color-success)',
-            fontWeight: 700,
-          }}
-        >
+        <Badge variant="success" size="sm">
           {t('dashboardDetails.completedGroup1')}
-        </span>
+        </Badge>
       </div>
 
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <table style={{ width: '100%', minWidth: '460px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-muted)', textAlign: 'left' }}>
-              <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.docNumber')}</th>
-              <th style={{ padding: '8px 6px' }}>{t('dashboardDetails.docSummary')}</th>
-              <th style={{ padding: '8px 6px', width: '90px' }}>{t('dashboardDetails.docDate')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {documents.map((row, idx) => (
-              <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <td style={{ padding: '9px 6px', fontWeight: 600, color: 'var(--color-success)' }}>{row.code}</td>
-                <td style={{ padding: '9px 6px', color: 'var(--text-main)' }}>{row.title}</td>
-                <td style={{ padding: '9px 6px', color: 'var(--text-muted)' }}>{row.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-32">{t('dashboardDetails.docNumber')}</TableHead>
+            <TableHead>{t('dashboardDetails.docSummary')}</TableHead>
+            <TableHead className="w-24">{t('dashboardDetails.docDate')}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {documents.map((row, idx) => (
+            <TableRow key={idx}>
+              <TableCell className="font-semibold text-success">{row.code}</TableCell>
+              <TableCell>{row.title}</TableCell>
+              <TableCell className="text-muted">{row.date}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
 
-      <div style={{ marginTop: '14px', textAlign: 'right' }}>
+      <div className="mt-3.5 text-right">
         <button
           type="button"
           onClick={() => navigate('/documents/outgoing')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--color-success)',
-            fontWeight: 600,
-            fontSize: '0.84rem',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-          }}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-success hover:text-success-hover transition-colors duration-fast cursor-pointer"
         >
           <span>{t('dashboardDetails.viewMoreOutgoing')}</span>
-          <i className="fa-solid fa-arrow-right" />
+          <i className="fa-solid fa-arrow-right text-[0.7rem]" />
         </button>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from '../../../shared/locales/i18n';
+import { Card, Badge, Button } from '../../../shared/components/ui';
 
 interface QuickSearchWidgetProps {
   searchTerm: string;
@@ -25,170 +26,81 @@ export default function QuickSearchWidget({
   };
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-xl)',
-        padding: '20px 24px',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '12px',
-          flexWrap: 'wrap',
-          gap: '8px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--color-primary)' }} />
-          <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)' }}>
+    <Card className="p-5 sm:p-6">
+      <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <i className="fa-solid fa-magnifying-glass text-primary" />
+          <span className="font-bold text-sm text-main">
             {t('dashboardDetails.quickSearchTitle')}
           </span>
-          <span
-            style={{
-              fontSize: '0.68rem',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-primary-subtle)',
-              border: '1px solid var(--color-primary-border)',
-              color: 'var(--color-primary)',
-              fontWeight: 600,
-            }}
-          >
+          <Badge variant="primary" size="sm">
             Mock Filter
-          </span>
+          </Badge>
         </div>
-        <span
-          style={{
-            fontSize: '0.72rem',
-            padding: '3px 10px',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--color-warning-subtle)',
-            border: '1px solid var(--color-warning-border)',
-            color: 'var(--color-warning-text)',
-            fontWeight: 700,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-          }}
-        >
-          <i className="fa-solid fa-triangle-exclamation" />
+        <Badge variant="warning" size="sm">
+          <i className="fa-solid fa-triangle-exclamation mr-1" />
           {t('common.group1Developing')}
-        </span>
+        </Badge>
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      <div className="flex gap-2.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           <button
             type="button"
             onClick={() => setSearchFilter('all')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              border: '1px solid var(--border-subtle)',
-              background: searchFilter === 'all' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-              color: searchFilter === 'all' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
+            className={`px-3.5 py-2 rounded-md text-xs font-semibold border transition-all duration-fast cursor-pointer ${
+              searchFilter === 'all'
+                ? 'bg-primary text-white border-primary shadow-sm'
+                : 'bg-surface-elevated text-secondary border-border-subtle hover:bg-surface-hover hover:text-main'
+            }`}
           >
             {t('dashboardDetails.filterAll')}
           </button>
           <button
             type="button"
             onClick={() => setSearchFilter('incoming')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              border: '1px solid var(--border-subtle)',
-              background: searchFilter === 'incoming' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-              color: searchFilter === 'incoming' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
+            className={`px-3.5 py-2 rounded-md text-xs font-semibold border transition-all duration-fast cursor-pointer ${
+              searchFilter === 'incoming'
+                ? 'bg-primary text-white border-primary shadow-sm'
+                : 'bg-surface-elevated text-secondary border-border-subtle hover:bg-surface-hover hover:text-main'
+            }`}
           >
             {t('dashboardDetails.filterIncoming')}
           </button>
           <button
             type="button"
             onClick={() => setSearchFilter('outgoing')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              border: '1px solid var(--border-subtle)',
-              background: searchFilter === 'outgoing' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-              color: searchFilter === 'outgoing' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
+            className={`px-3.5 py-2 rounded-md text-xs font-semibold border transition-all duration-fast cursor-pointer ${
+              searchFilter === 'outgoing'
+                ? 'bg-primary text-white border-primary shadow-sm'
+                : 'bg-surface-elevated text-secondary border-border-subtle hover:bg-surface-hover hover:text-main'
+            }`}
           >
             {t('dashboardDetails.filterOutgoing')}
           </button>
         </div>
 
-        <div style={{ flex: 1, minWidth: 'min(100%, 240px)', position: 'relative' }}>
+        <div className="flex-1 min-w-[min(100%,240px)] relative">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={t('dashboardDetails.searchPlaceholder')}
-            style={{
-              width: '100%',
-              padding: '9px 14px 9px 36px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-surface-elevated)',
-              color: 'var(--text-main)',
-              fontSize: '0.88rem',
-            }}
+            className="w-full pl-9 pr-3.5 py-2 rounded-md border border-border-subtle bg-surface-elevated text-main text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all duration-fast placeholder:text-muted"
           />
-          <i
-            className="fa-solid fa-search"
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-muted)',
-              fontSize: '0.85rem',
-            }}
-          />
+          <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs" />
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="md"
+          icon="fa-magnifying-glass"
           onClick={onSearch}
-          style={{
-            padding: '9px 18px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--color-primary)',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: '0.88rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px var(--color-primary-glow)',
-          }}
         >
-          <i className="fa-solid fa-magnifying-glass" />
-          <span>{t('dashboardDetails.searchBtn')}</span>
-        </button>
+          {t('dashboardDetails.searchBtn')}
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from '../../../shared/locales/i18n';
+import { Card, Badge } from '../../../shared/components/ui';
 
 interface DashboardStatsProps {
   incomingCount?: number;
@@ -18,217 +19,90 @@ export default function DashboardStats({
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '12px',
-          flexWrap: 'wrap',
-          gap: '8px',
-        }}
-      >
-        <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <div className="font-bold text-sm text-main flex items-center gap-2">
           <span>📊 {t('dashboardDetails.kpiTitle')}</span>
-          <span
-            style={{
-              fontSize: '0.68rem',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-primary-subtle)',
-              border: '1px solid var(--color-primary-border)',
-              color: 'var(--color-primary)',
-              fontWeight: 600,
-            }}
-          >
+          <Badge variant="primary" size="sm">
             Mock Data (Prototype)
-          </span>
+          </Badge>
         </div>
-        <span
-          style={{
-            fontSize: '0.72rem',
-            padding: '3px 10px',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--color-success-subtle)',
-            border: '1px solid var(--color-success-border)',
-            color: 'var(--color-success)',
-            fontWeight: 700,
-          }}
-        >
+        <Badge variant="success" size="sm">
           {t('dashboardDetails.kpiVerifiedTag')}
-        </span>
+        </Badge>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
-          gap: '18px',
-        }}
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: VB Đến */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary-subtle)',
-              color: 'var(--color-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
+        <Card hoverable className="p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-lg bg-primary-subtle text-primary border border-primary-border flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-inbox" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div className="text-xs text-muted font-semibold">
               {t('dashboardDetails.incomingCard')}
             </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <div className="text-2xl font-extrabold text-main">
               {incomingCount.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-success)', fontWeight: 600 }}>
+            <div className="text-xs text-success font-semibold">
               {t('dashboardDetails.incomingToday')}
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 2: VB Đi */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-success-subtle)',
-              color: 'var(--color-success)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
+        <Card hoverable className="p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-lg bg-success-subtle text-success border border-success-border flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-paper-plane" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div className="text-xs text-muted font-semibold">
               {t('dashboardDetails.outgoingCard')}
             </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <div className="text-2xl font-extrabold text-main">
               {outgoingCount.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-success)', fontWeight: 600 }}>
+            <div className="text-xs text-success font-semibold">
               {t('dashboardDetails.outgoingStatus')}
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 3: VB Mật */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-danger-subtle)',
-              color: 'var(--color-danger)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
+        <Card hoverable className="p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-lg bg-danger-subtle text-danger border border-danger-border flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-shield-halved" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div className="text-xs text-muted font-semibold">
               {t('dashboardDetails.confidentialCard')}
             </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <div className="text-2xl font-extrabold text-main">
               {confidentialCount.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-danger)', fontWeight: 600 }}>
+            <div className="text-xs text-danger font-semibold">
               {t('dashboardDetails.confidentialStatus')}
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 4: Công Việc */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-purple-subtle)',
-              color: 'var(--color-purple)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
+        <Card hoverable className="p-5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-lg bg-purple-subtle text-purple border border-purple-border flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-list-check" />
           </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div className="text-xs text-muted font-semibold">
               {t('dashboardDetails.tasksCard')}
             </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <div className="text-2xl font-extrabold text-main">
               {tasksCount.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-warning)', fontWeight: 600 }}>
+            <div className="text-xs text-warning-text font-semibold">
               {t('dashboardDetails.tasksNearDeadline')}
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

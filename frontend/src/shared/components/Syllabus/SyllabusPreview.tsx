@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '../../types/navigation';
 import { useTranslation } from '../../locales/i18n';
+import { Button, Badge, Card, CardContent } from '../ui';
 
 interface PageMeta {
   title: string;
@@ -32,134 +33,78 @@ export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPrev
   };
 
   return (
-    <div style={{ maxWidth: '820px', margin: '30px auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div className="max-w-3xl mx-auto my-8 flex flex-col gap-5">
       {/* 1. Banner Thông Báo Chính Thức Của Nhóm 1 */}
-      <div
-        style={{
-          background: meta.isGroup1
-            ? 'linear-gradient(135deg, var(--color-warning-subtle), transparent)'
-            : 'linear-gradient(135deg, var(--color-primary-subtle), transparent)',
-          border: meta.isGroup1
-            ? '1px solid var(--color-warning-border)'
-            : '1px solid var(--color-primary-border)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '28px 32px',
-          boxShadow: 'var(--shadow-md)',
-          backdropFilter: 'var(--backdrop-blur)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
+      <Card
+        className={`relative overflow-hidden border ${
+          meta.isGroup1 ? 'border-warning/30' : 'border-primary/30'
+        }`}
       >
-        {/* Nhãn trạng thái Nhóm 1 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span
-              style={{
-                fontSize: '0.78rem',
-                padding: '5px 12px',
-                borderRadius: 'var(--radius-full)',
-                background: meta.isGroup1 ? 'var(--color-warning-subtle)' : 'var(--color-primary-subtle)',
-                border: meta.isGroup1 ? '1px solid var(--color-warning-border)' : '1px solid var(--color-primary-border)',
-                color: meta.isGroup1 ? 'var(--color-warning-text)' : 'var(--color-primary)',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
+        <CardContent className="p-7 sm:p-8">
+          {/* Nhãn trạng thái Nhóm 1 */}
+          <div className="flex items-center justify-between flex-wrap gap-2.5 mb-4">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <Badge variant={meta.isGroup1 ? 'warning' : 'primary'} size="md">
+                <i
+                  className={`mr-1.5 ${
+                    meta.isGroup1 ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-info'
+                  }`}
+                />
+                {meta.isGroup1 ? t('common.group1Developing') : t('common.group1Layout')}
+              </Badge>
+
+              <Badge variant="secondary" size="md">
+                {meta.codeRef}
+              </Badge>
+            </div>
+
+            <span className="text-xs text-text-muted">
+              {t('common.outline')}: <strong className="text-text-main">{meta.module}</strong>
+            </span>
+          </div>
+
+          {/* Tiêu đề chức năng */}
+          <h1 className="text-2xl font-extrabold text-text-main mt-1 tracking-tight">
+            {meta.title}
+          </h1>
+
+          {/* Mô tả nghiệp vụ */}
+          <p className="text-text-secondary mt-2.5 text-sm leading-relaxed">
+            {meta.desc}
+          </p>
+
+          {/* Thông báo chi tiết phụ trách */}
+          <div className="mt-5 p-4 rounded-xl bg-surface border border-subtle flex flex-col gap-2 text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <strong className="text-text-main shrink-0">📌 {t('common.assignedUnit')}:</strong>
+              <span className="text-primary font-semibold">{meta.assignedTeam}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <strong className="text-text-main shrink-0">⚠️ {t('common.currentStatus')}:</strong>
+              <span className="text-warning font-semibold">
+                {meta.isGroup1
+                  ? t('common.group1DescSelf')
+                  : t('common.group1DescOther', { team: meta.assignedTeam })}
+              </span>
+            </div>
+          </div>
+
+          {/* Nút hành động */}
+          <div className="mt-6 flex gap-3 flex-wrap">
+            <Button
+              variant="primary"
+              icon="fa-solid fa-arrow-left"
+              onClick={() => {
+                if (onNavigate) onNavigate('dashboard');
+                navigate('/dashboard');
               }}
             >
-              <i className={meta.isGroup1 ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-info'} />
-              {meta.isGroup1 ? t('common.group1Developing') : t('common.group1Layout')}
-            </span>
-
-            <span
-              style={{
-                fontSize: '0.75rem',
-                padding: '4px 10px',
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                color: 'var(--text-secondary)',
-                fontWeight: 600,
-              }}
-            >
-              {meta.codeRef}
-            </span>
+              {t('common.backToDashboard')}
+            </Button>
           </div>
-
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {t('common.outline')}: <strong>{meta.module}</strong>
-          </span>
-        </div>
-
-        {/* Tiêu đề chức năng */}
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '4px' }}>
-          {meta.title}
-        </h1>
-
-        {/* Mô tả nghiệp vụ */}
-        <p style={{ color: 'var(--text-secondary)', marginTop: '10px', fontSize: '0.95rem', lineHeight: 1.6 }}>
-          {meta.desc}
-        </p>
-
-        {/* Thông báo chi tiết phụ trách */}
-        <div
-          style={{
-            marginTop: '20px',
-            padding: '16px 20px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            fontSize: '0.88rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <strong style={{ color: 'var(--text-main)' }}>📌 {t('common.assignedUnit')}:</strong>
-            <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{meta.assignedTeam}</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <strong style={{ color: 'var(--text-main)' }}>⚠️ {t('common.currentStatus')}:</strong>
-            <span style={{ color: 'var(--color-warning-text)', fontWeight: 700 }}>
-              {meta.isGroup1
-                ? t('common.group1DescSelf')
-                : t('common.group1DescOther', { team: meta.assignedTeam })}
-            </span>
-          </div>
-        </div>
-
-        {/* Nút hành động */}
-        <div style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            style={{
-              padding: '10px 22px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px var(--color-primary-glow)',
-            }}
-            onClick={() => {
-              if (onNavigate) onNavigate('dashboard');
-              navigate('/dashboard');
-            }}
-          >
-            <i className="fa-solid fa-arrow-left" />
-            <span>{t('common.backToDashboard')}</span>
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

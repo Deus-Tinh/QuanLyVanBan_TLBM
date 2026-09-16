@@ -9,27 +9,35 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="lang-switcher-pill" role="group" aria-label="Language switcher">
+    <div className="flex items-center p-0.5 rounded-full bg-surface-elevated border border-border-subtle select-none" role="group" aria-label="Language switcher">
       <button
         type="button"
-        className={`lang-switch-btn ${currentLang === 'vi' ? 'active' : ''}`}
+        className={`px-2.5 py-1 rounded-full text-[0.72rem] font-bold transition-all duration-fast cursor-pointer ${
+          currentLang === 'vi'
+            ? 'bg-primary text-white shadow-sm'
+            : 'text-muted hover:text-main bg-transparent'
+        }`}
         onClick={() => handleToggle('vi')}
         title="Tiếng Việt (VN)"
         aria-label="Chuyển sang Tiếng Việt"
         aria-pressed={currentLang === 'vi'}
       >
-        <span className="lang-text">VN</span>
+        <span>VN</span>
       </button>
 
       <button
         type="button"
-        className={`lang-switch-btn ${currentLang === 'en' ? 'active' : ''}`}
+        className={`px-2.5 py-1 rounded-full text-[0.72rem] font-bold transition-all duration-fast cursor-pointer ${
+          currentLang === 'en'
+            ? 'bg-primary text-white shadow-sm'
+            : 'text-muted hover:text-main bg-transparent'
+        }`}
         onClick={() => handleToggle('en')}
         title="English (EN)"
         aria-label="Switch to English"
         aria-pressed={currentLang === 'en'}
       >
-        <span className="lang-text">EN</span>
+        <span>EN</span>
       </button>
     </div>
   );

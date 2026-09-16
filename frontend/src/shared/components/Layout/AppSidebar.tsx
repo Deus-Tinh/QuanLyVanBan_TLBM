@@ -16,30 +16,30 @@ interface AppSidebarProps {
   onToggleSidebarStyle?: (style: 'facebook' | 'dock') => void;
 }
 
-// Màu gradient phong cách Facebook cho từng phân hệ
-const FB_MODULE_GRADIENTS: Record<string, { bg: string; icon: string }> = {
+// Màu gradient phong cách Facebook cho từng phân hệ qua Tailwind tokens
+const FB_MODULE_GRADIENTS: Record<string, { bgClass: string; icon: string }> = {
   records_resources: {
-    bg: 'linear-gradient(135deg, #1877f2 0%, #0d5bbd 100%)', // FB Blue
+    bgClass: 'bg-fb-blue',
     icon: 'fa-folder-tree',
   },
   documents_operations: {
-    bg: 'linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)', // Electric Cyan Blue
+    bgClass: 'bg-fb-cyan',
     icon: 'fa-file-signature',
   },
   communications_notices: {
-    bg: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)', // Red/Coral Alert
+    bgClass: 'bg-fb-coral',
     icon: 'fa-bullhorn',
   },
   system_administration: {
-    bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', // Amber/Orange
+    bgClass: 'bg-fb-amber',
     icon: 'fa-chart-pie',
   },
   workflow_tasks: {
-    bg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', // Violet/Indigo
+    bgClass: 'bg-fb-violet',
     icon: 'fa-list-check',
   },
   archive_digital: {
-    bg: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)', // Pink/Fuchsia
+    bgClass: 'bg-fb-pink',
     icon: 'fa-box-archive',
   },
 };
@@ -60,7 +60,6 @@ export default function AppSidebar({
 
   // Trạng thái mở accordion của các module trong phong cách Facebook
   const [expandedModIds, setExpandedModIds] = useState<Record<string, boolean>>(() => {
-    // Tự động mở phân hệ chứa trang đang hoạt động
     const initial: Record<string, boolean> = {};
     MAIN_MODULES.forEach((mod) => {
       if (mod.subItems.some((s) => s.id === committedPage)) {
@@ -110,13 +109,13 @@ export default function AppSidebar({
   if (sidebarStyle === 'facebook') {
     return (
       <aside
-        className={`app-sidebar sidebar-style-facebook ${isMobileOpen ? 'mobile-open' : ''}`}
+        className="w-[300px] h-screen flex flex-col bg-surface-elevated border-r border-subtle transition-all duration-normal select-none overflow-hidden"
         aria-label="Thanh điều hướng phong cách Facebook"
       >
         {/* Phần Header Sidebar: Thẻ thông tin cá nhân (Profile Card) chuẩn Facebook */}
-        <div className="fb-sidebar-header">
+        <div className="p-3 border-b border-subtle flex items-center justify-between shrink-0">
           <div
-            className="fb-user-card"
+            className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-hover cursor-pointer transition-colors duration-fast flex-1 min-w-0"
             onClick={() => {
               onNavigate('profile');
               onCloseMobile();
@@ -125,22 +124,24 @@ export default function AppSidebar({
             tabIndex={0}
             title={t('navigation.profile') || 'Hồ sơ người dùng'}
           >
-            <div className="fb-user-avatar-wrap">
-              <div className="fb-user-avatar">{CURRENT_USER.avatar}</div>
-              <span className="fb-user-online-badge" />
+            <div className="relative w-10 h-10 shrink-0">
+              <div className="w-10 h-10 rounded-full bg-surface border border-subtle flex items-center justify-center text-base shadow-xs">
+                {CURRENT_USER.avatar}
+              </div>
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-surface" />
             </div>
-            <div className="fb-user-info">
-              <div className="fb-user-name">{CURRENT_USER.fullName}</div>
-              <div className="fb-user-role">{CURRENT_USER.role.split('·')[0]}</div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="text-sm font-bold text-text-main truncate">{CURRENT_USER.fullName}</div>
+              <div className="text-xs text-text-muted truncate">{CURRENT_USER.role.split('·')[0]}</div>
             </div>
-            <i className="fa-solid fa-chevron-right fb-user-card-arrow" />
+            <i className="fa-solid fa-chevron-right text-xs text-text-muted" />
           </div>
 
           {/* Nút đóng trên mobile */}
           {isMobileOpen && (
             <button
               type="button"
-              className="fb-mobile-close-btn"
+              className="w-8 h-8 rounded-full bg-surface border border-subtle text-text-muted hover:text-text-main flex items-center justify-center text-xs ml-2 shrink-0"
               onClick={onCloseMobile}
               aria-label="Đóng menu"
             >
@@ -150,13 +151,13 @@ export default function AppSidebar({
         </div>
 
         {/* Nội dung danh sách điều hướng có thể cuộn */}
-        <div className="fb-sidebar-scrollable">
+        <div className="flex-1 overflow-y-auto p-2 space-y-3">
           {/* Phân nhóm: Danh mục phân hệ chính */}
-          <div className="fb-section-label">
-            <span>{t('navigation.records') !== 'navigation.records' ? t('navigation.records') : 'Phân hệ quản lý'}</span>
+          <div className="px-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-text-muted">
+            {t('navigation.records') !== 'navigation.records' ? t('navigation.records') : 'Phân hệ quản lý'}
           </div>
 
-          <div className="fb-modules-list">
+          <div className="space-y-1">
             {MAIN_MODULES.map((mod) => {
               const isModActive = mod.subItems.some((s) => s.id === committedPage);
               const isModPreview =
@@ -164,26 +165,24 @@ export default function AppSidebar({
               const isExpanded = !!expandedModIds[mod.id];
               const modLabel = getModuleLabel(mod.id, mod.label);
               const styling = FB_MODULE_GRADIENTS[mod.id] || {
-                bg: 'linear-gradient(135deg, #1877f2 0%, #0d5bbd 100%)',
+                bgClass: 'bg-fb-blue',
                 icon: mod.icon,
               };
 
-              // Tổng số badge
               const totalBadges = mod.subItems
                 .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
                 .reduce((a, b) => a + b, 0);
 
               return (
-                <div
-                  key={mod.id}
-                  className={`fb-module-group ${isModActive ? 'active-group' : ''} ${
-                    isExpanded ? 'expanded' : ''
-                  }`}
-                >
-                  {/* Hàng Phân Hệ chính kiểu Facebook: Bấm vào để MỞ RỘNG / THU GỌN mục con thay vì chuyển trang ngay */}
+                <div key={mod.id} className="rounded-xl overflow-hidden transition-colors">
+                  {/* Hàng Phân Hệ chính kiểu Facebook */}
                   <div
-                    className={`fb-module-row ${isModActive ? 'active' : ''} ${
-                      isModPreview && !isModActive ? 'previewing' : ''
+                    className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-fast ${
+                      isModActive
+                        ? 'bg-primary-subtle text-primary font-semibold'
+                        : isModPreview
+                        ? 'bg-surface-hover text-text-main'
+                        : 'hover:bg-surface-hover text-text-main'
                     }`}
                     onClick={() => {
                       toggleExpand(mod.id);
@@ -193,28 +192,27 @@ export default function AppSidebar({
                     tabIndex={0}
                     title={`${modLabel} (${isExpanded ? 'Bấm để thu gọn' : 'Bấm để xem các mục con'})`}
                   >
-                    {/* Hộp icon bo tròn rực rỡ chuẩn icon apps của FB */}
                     <div
-                      className="fb-module-icon-box"
-                      style={{ background: styling.bg }}
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm shrink-0 shadow-xs ${styling.bgClass}`}
                     >
                       <i className={`fa-solid ${mod.icon}`} />
                     </div>
 
-                    <div className="fb-module-content">
-                      <div className="fb-module-title-row">
-                        <span className="fb-module-title">{modLabel}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold truncate">{modLabel}</span>
                         {totalBadges > 0 && (
-                          <span className="fb-badge-count">{totalBadges}</span>
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-danger text-white">
+                            {totalBadges}
+                          </span>
                         )}
                       </div>
-                      <span className="fb-module-team">{mod.teamTag}</span>
+                      <span className="text-[10px] text-text-muted font-mono">{mod.teamTag}</span>
                     </div>
 
-                    {/* Nút bấm mũi tên mở rộng / thu gọn danh mục con */}
                     <button
                       type="button"
-                      className="fb-accordion-toggle-btn"
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-text-main"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleExpand(mod.id);
@@ -223,8 +221,8 @@ export default function AppSidebar({
                       title={isExpanded ? 'Thu gọn các mục con' : 'Mở danh sách mục con'}
                     >
                       <i
-                        className={`fa-solid fa-chevron-down fb-chevron-icon ${
-                          isExpanded ? 'rotated' : ''
+                        className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-fast ${
+                          isExpanded ? 'rotate-180' : ''
                         }`}
                       />
                     </button>
@@ -232,7 +230,7 @@ export default function AppSidebar({
 
                   {/* Danh sách mục con thả xuống dạng Accordion */}
                   {isExpanded && (
-                    <div className="fb-subitems-accordion">
+                    <div className="pl-4 pr-1 py-1 space-y-1 border-l-2 border-subtle ml-6 my-1">
                       {mod.subItems.map((sub) => {
                         const isSubActive = committedPage === sub.id;
                         const isSubPreview = previewPage === sub.id;
@@ -242,8 +240,12 @@ export default function AppSidebar({
                         return (
                           <div
                             key={sub.id}
-                            className={`fb-subitem-row ${isSubActive ? 'active' : ''} ${
-                              isSubPreview ? 'previewing' : ''
+                            className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-colors duration-fast ${
+                              isSubActive
+                                ? 'bg-primary text-white font-medium shadow-xs'
+                                : isSubPreview
+                                ? 'bg-surface-hover text-text-main'
+                                : 'hover:bg-surface-hover text-text-secondary hover:text-text-main'
                             }`}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -254,17 +256,18 @@ export default function AppSidebar({
                             role="button"
                             tabIndex={0}
                           >
-                            <div className="fb-subitem-indicator" />
-                            <div className={`fb-subitem-mini-icon badge-${sub.badgeColor || 'blue'}`}>
+                            <div className="w-5 h-5 rounded flex items-center justify-center text-[11px] shrink-0">
                               <i className={`fa-solid ${sub.icon}`} />
                             </div>
-                            <div className="fb-subitem-text">
-                              <div className="fb-subitem-name-row">
-                                <span className="fb-subitem-name">{subLabel}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs truncate">{subLabel}</span>
                                 {sub.badge !== undefined && (
                                   <span
-                                    className={`fb-subitem-badge badge-${
-                                      sub.badgeColor || 'blue'
+                                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                      isSubActive
+                                        ? 'bg-white text-primary'
+                                        : 'bg-primary-subtle text-primary'
                                     }`}
                                   >
                                     {sub.badge}
@@ -272,13 +275,18 @@ export default function AppSidebar({
                                 )}
                               </div>
                               {subDesc && (
-                                <span className="fb-subitem-desc" title={subDesc}>
+                                <span
+                                  className={`text-[10px] truncate block ${
+                                    isSubActive ? 'text-white/80' : 'text-text-muted'
+                                  }`}
+                                  title={subDesc}
+                                >
                                   {subDesc}
                                 </span>
                               )}
                             </div>
                             {isSubActive && (
-                              <i className="fa-solid fa-circle-check fb-active-check" />
+                              <i className="fa-solid fa-circle-check text-xs ml-1 text-white" />
                             )}
                           </div>
                         );
@@ -290,17 +298,20 @@ export default function AppSidebar({
             })}
           </div>
 
-          <div className="fb-divider" />
+          <div className="h-px bg-subtle my-2" />
 
           {/* Phần Lối tắt nhanh chuẩn Facebook (Shortcuts) */}
-          <div className="fb-section-label">
-            <span>{t('settings.shortcutsTitle') || 'Lối tắt của bạn'}</span>
+          <div className="px-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-text-muted">
+            {t('settings.shortcutsTitle') || 'Lối tắt của bạn'}
           </div>
 
-          <div className="fb-shortcuts-list">
-            {/* Lối tắt 1: Hồ sơ cá nhân */}
+          <div className="space-y-1">
             <div
-              className={`fb-shortcut-row ${committedPage === 'profile' ? 'active' : ''}`}
+              className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-fast ${
+                committedPage === 'profile'
+                  ? 'bg-primary-subtle text-primary font-semibold'
+                  : 'hover:bg-surface-hover text-text-main'
+              }`}
               onClick={() => {
                 onNavigate('profile');
                 onCloseMobile();
@@ -308,20 +319,20 @@ export default function AppSidebar({
               role="button"
               tabIndex={0}
             >
-              <div
-                className="fb-shortcut-icon"
-                style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }}
-              >
+              <div className="w-9 h-9 rounded-xl bg-shortcut-blue flex items-center justify-center text-white text-sm shrink-0 shadow-xs">
                 <i className="fa-solid fa-user-gear" />
               </div>
-              <span className="fb-shortcut-name">
+              <span className="text-xs font-semibold truncate">
                 {t('userMenu.profile') !== 'userMenu.profile' ? t('userMenu.profile') : 'Hồ sơ cá nhân'}
               </span>
             </div>
 
-            {/* Lối tắt 2: Đổi mật khẩu */}
             <div
-              className={`fb-shortcut-row ${committedPage === 'password_change' ? 'active' : ''}`}
+              className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-fast ${
+                committedPage === 'password_change'
+                  ? 'bg-primary-subtle text-primary font-semibold'
+                  : 'hover:bg-surface-hover text-text-main'
+              }`}
               onClick={() => {
                 onNavigate('password_change');
                 onCloseMobile();
@@ -329,20 +340,22 @@ export default function AppSidebar({
               role="button"
               tabIndex={0}
             >
-              <div
-                className="fb-shortcut-icon"
-                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)' }}
-              >
+              <div className="w-9 h-9 rounded-xl bg-shortcut-amber flex items-center justify-center text-white text-sm shrink-0 shadow-xs">
                 <i className="fa-solid fa-key" />
               </div>
-              <span className="fb-shortcut-name">
-                {t('userMenu.passwordChange') !== 'userMenu.passwordChange' ? t('userMenu.passwordChange') : 'Đổi mật khẩu'}
+              <span className="text-xs font-semibold truncate">
+                {t('userMenu.passwordChange') !== 'userMenu.passwordChange'
+                  ? t('userMenu.passwordChange')
+                  : 'Đổi mật khẩu'}
               </span>
             </div>
 
-            {/* Lối tắt 3: Cài đặt hệ thống */}
             <div
-              className={`fb-shortcut-row ${committedPage === 'settings' ? 'active' : ''}`}
+              className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-fast ${
+                committedPage === 'settings'
+                  ? 'bg-primary-subtle text-primary font-semibold'
+                  : 'hover:bg-surface-hover text-text-main'
+              }`}
               onClick={() => {
                 onNavigate('settings');
                 onCloseMobile();
@@ -350,20 +363,20 @@ export default function AppSidebar({
               role="button"
               tabIndex={0}
             >
-              <div
-                className="fb-shortcut-icon"
-                style={{ background: 'linear-gradient(135deg, #64748b 0%, #334155 100%)' }}
-              >
+              <div className="w-9 h-9 rounded-xl bg-shortcut-slate flex items-center justify-center text-white text-sm shrink-0 shadow-xs">
                 <i className="fa-solid fa-gear" />
               </div>
-              <span className="fb-shortcut-name">
+              <span className="text-xs font-semibold truncate">
                 {t('userMenu.settings') !== 'userMenu.settings' ? t('userMenu.settings') : 'Cài đặt hệ thống'}
               </span>
             </div>
 
-            {/* Lối tắt 4: Trợ lý AI TLBM */}
             <div
-              className={`fb-shortcut-row ${committedPage === 'ai_assistant' ? 'active' : ''}`}
+              className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-fast ${
+                committedPage === 'ai_assistant'
+                  ? 'bg-primary-subtle text-primary font-semibold'
+                  : 'hover:bg-surface-hover text-text-main'
+              }`}
               onClick={() => {
                 onNavigate('ai_assistant');
                 onCloseMobile();
@@ -371,13 +384,10 @@ export default function AppSidebar({
               role="button"
               tabIndex={0}
             >
-              <div
-                className="fb-shortcut-icon"
-                style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' }}
-              >
+              <div className="w-9 h-9 rounded-xl bg-shortcut-purple flex items-center justify-center text-white text-sm shrink-0 shadow-xs">
                 <i className="fa-solid fa-wand-magic-sparkles" />
               </div>
-              <span className="fb-shortcut-name">
+              <span className="text-xs font-semibold truncate">
                 {t('navigation.ai') !== 'navigation.ai' ? t('navigation.ai') : 'Trợ Lý AI TLBM'}
               </span>
             </div>
@@ -385,10 +395,10 @@ export default function AppSidebar({
         </div>
 
         {/* Chân trang Sidebar: Bộ chuyển đổi giao diện nhanh & Tình trạng hệ thống */}
-        <div className="fb-sidebar-footer">
+        <div className="p-3 border-t border-subtle flex items-center justify-between shrink-0 bg-surface/30">
           <button
             type="button"
-            className="fb-switch-style-btn"
+            className="flex items-center gap-2 text-xs text-text-muted hover:text-text-main font-medium py-1 px-2 rounded-lg hover:bg-surface-hover transition-colors"
             onClick={() => {
               if (onToggleSidebarStyle) {
                 onToggleSidebarStyle('dock');
@@ -396,13 +406,13 @@ export default function AppSidebar({
             }}
             title="Chuyển sang kiểu Dock thu nhỏ tối giản"
           >
-            <i className="fa-solid fa-layer-group" />
-            <span>{t('settings.sidebarStyleDock') || 'Kiểu Dock thu nhỏ'}</span>
+            <i className="fa-solid fa-layer-group text-primary" />
+            <span>{t('settings.sidebarStyleDock') || 'Kiểu Dock'}</span>
           </button>
 
-          <div className="fb-footer-status">
-            <span className="live-status-ping" />
-            <span className="fb-status-text">TLBM v2.0 · Online</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+            <span>TLBM v2.0</span>
           </div>
         </div>
       </aside>
@@ -412,87 +422,77 @@ export default function AppSidebar({
   // 2. GIAO DIỆN PHONG CÁCH DOCK THU NHỎ (COMPACT DOCK)
   return (
     <aside
-      className={`app-sidebar ${isMobileOpen ? 'mobile-open' : ''}`}
+      className="w-18 h-screen flex flex-col justify-between items-center py-3 bg-sidebar border-r border-subtle select-none"
       onMouseLeave={() => {
         setHoveredModId(null);
         onHoverLeave();
       }}
     >
       {/* Dãy 6 Icon Phân Hệ Chuẩn Dock Nổi có Menu xổ xuống các mục con */}
-      <div className="sidebar-nav-container-distributed">
-        <div className="sidebar-nav-scroll-viewport">
-          {MAIN_MODULES.map((mod) => {
-            const isCommittedActive = mod.subItems.some((item) => item.id === committedPage);
-            const isPreviewHovered =
-              previewPage !== null && mod.subItems.some((item) => item.id === previewPage);
+      <div className="w-full flex-1 flex flex-col items-center gap-2 overflow-y-auto py-2">
+        {MAIN_MODULES.map((mod) => {
+          const isCommittedActive = mod.subItems.some((item) => item.id === committedPage);
+          const isPreviewHovered =
+            previewPage !== null && mod.subItems.some((item) => item.id === previewPage);
 
-            let btnClasses = 'nav-item-btn';
-            if (isCommittedActive) {
-              btnClasses += ' committed-active active';
-            }
-            if (isPreviewHovered && !isCommittedActive) {
-              btnClasses += ' hover-preview-lighter';
-            }
+          const numericBadges = mod.subItems
+            .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
+            .reduce((a, b) => a + b, 0);
 
-            // Tính tổng số lượng badge thông báo
-            const numericBadges = mod.subItems
-              .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
-              .reduce((a, b) => a + b, 0);
+          const modLabel = getModuleLabel(mod.id, mod.label);
+          const isDropdownVisible = hoveredModId === mod.id;
 
-            const modLabel = getModuleLabel(mod.id, mod.label);
-            const isDropdownVisible = hoveredModId === mod.id;
-
-            return (
-              <div
-                key={mod.id}
-                className={`nav-item-wrapper ${isDropdownVisible ? 'has-dropdown-open' : ''}`}
-                onMouseEnter={() => {
-                  setHoveredModId(mod.id);
-                  onHoverPreview(mod.defaultPage);
-                }}
-                onMouseLeave={() => {
+          return (
+            <div
+              key={mod.id}
+              className="relative group flex items-center justify-center"
+              onMouseEnter={() => {
+                setHoveredModId(mod.id);
+                onHoverPreview(mod.defaultPage);
+              }}
+              onMouseLeave={() => {
+                setHoveredModId(null);
+              }}
+            >
+              <button
+                type="button"
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-fast relative cursor-pointer ${
+                  isCommittedActive
+                    ? 'bg-primary text-white shadow-md'
+                    : isPreviewHovered
+                    ? 'bg-surface-hover text-text-main'
+                    : 'text-text-secondary hover:text-text-main hover:bg-surface-hover'
+                }`}
+                onClick={() => {
+                  onNavigate(mod.defaultPage);
+                  onCloseMobile();
                   setHoveredModId(null);
                 }}
+                title={`${modLabel} (Rê chuột để mở danh sách mục con)`}
               >
-                <button
-                  type="button"
-                  className={btnClasses}
-                  onClick={() => {
-                    onNavigate(mod.defaultPage);
-                    onCloseMobile();
-                    setHoveredModId(null);
-                  }}
-                  title={`${modLabel} (Rê chuột để mở danh sách mục con)`}
-                >
-                  <span className="nav-item-icon">
-                    <i className={`fa-solid ${mod.icon}`} />
-                    {numericBadges > 0 && (
-                      <span className="nav-item-mini-badge">{numericBadges}</span>
-                    )}
+                <i className={`fa-solid ${mod.icon} text-base`} />
+                {numericBadges > 0 && (
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-danger text-white ring-2 ring-sidebar">
+                    {numericBadges}
                   </span>
-                  <span className="nav-item-mobile-label">
-                    <span className="mobile-label-title">{modLabel}</span>
-                    <span className="mobile-label-team">{mod.teamTag}</span>
-                  </span>
-                </button>
+                )}
+              </button>
 
-                {/* MENU XỔ XUỐNG CÁC MỤC CON KHI RÊ CHUỘT VÀO ICON */}
+              {/* MENU XỔ XUỐNG CÁC MỤC CON KHI RÊ CHUỘT VÀO ICON */}
+              {isDropdownVisible && (
                 <div
-                  className={`nav-subitems-flyout ${isDropdownVisible ? 'visible' : ''}`}
+                  className="absolute left-full top-0 ml-2 w-64 rounded-xl bg-surface-elevated border border-subtle shadow-glass p-2 z-[1300] flex flex-col gap-1 animate-in fade-in duration-150"
                   role="menu"
                   aria-label={`Danh mục con của ${modLabel}`}
                 >
-                  <div className="flyout-header">
-                    <div className="flyout-title-wrap">
-                      <span className="flyout-title">{modLabel}</span>
-                      <span className="flyout-team-tag">{mod.teamTag}</span>
-                    </div>
-                    <span className="flyout-count">
-                      {mod.subItems.length} {t('common.filterAll')}
+                  <div className="px-2 py-1.5 border-b border-subtle flex items-center justify-between text-xs">
+                    <span className="font-bold text-text-main">{modLabel}</span>
+                    <span className="text-[10px] px-1 rounded bg-surface border border-subtle text-text-muted">
+                      {mod.teamTag}
                     </span>
                   </div>
 
-                  <div className="flyout-items-list">
+                  <div className="max-h-72 overflow-y-auto flex flex-col gap-0.5 pt-1">
                     {mod.subItems.map((sub) => {
                       const isSubActive = committedPage === sub.id;
                       const isSubPreview = previewPage === sub.id;
@@ -504,7 +504,13 @@ export default function AppSidebar({
                           key={sub.id}
                           type="button"
                           role="menuitem"
-                          className={`flyout-sub-item ${isSubActive ? 'active' : ''} ${isSubPreview ? 'previewing' : ''}`}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg text-left transition-colors duration-fast ${
+                            isSubActive
+                              ? 'bg-primary text-white font-medium'
+                              : isSubPreview
+                              ? 'bg-surface-hover text-text-main'
+                              : 'hover:bg-surface-hover text-text-secondary hover:text-text-main'
+                          }`}
                           onMouseEnter={(e) => {
                             e.stopPropagation();
                             onHoverPreview(sub.id);
@@ -516,74 +522,64 @@ export default function AppSidebar({
                             setHoveredModId(null);
                           }}
                         >
-                          <div className={`flyout-sub-icon badge-${sub.badgeColor || 'blue'}`}>
+                          <div className="w-5 h-5 rounded flex items-center justify-center text-[11px] shrink-0">
                             <i className={`fa-solid ${sub.icon}`} />
                           </div>
-                          <div className="flyout-sub-content">
-                            <div className="flyout-sub-row">
-                              <span className="flyout-sub-name">{subLabel}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs truncate">{subLabel}</span>
                               {sub.badge !== undefined && (
-                                <span className={`flyout-sub-badge badge-${sub.badgeColor || 'blue'}`}>
+                                <span
+                                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                    isSubActive ? 'bg-white text-primary' : 'bg-primary-subtle text-primary'
+                                  }`}
+                                >
                                   {sub.badge}
                                 </span>
                               )}
                             </div>
                             {subDesc && (
-                              <span className="flyout-sub-desc" title={subDesc}>
+                              <span
+                                className={`text-[10px] truncate block ${
+                                  isSubActive ? 'text-white/80' : 'text-text-muted'
+                                }`}
+                                title={subDesc}
+                              >
                                 {subDesc}
                               </span>
                             )}
                           </div>
                           {isSubActive && (
-                            <i className="fa-solid fa-circle-check flyout-active-check" />
+                            <i className="fa-solid fa-circle-check text-xs ml-1 text-white" />
                           )}
                         </button>
                       );
                     })}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Phía dưới cùng: Trạng thái & Nút chuyển sang kiểu Facebook */}
-      <div className="sidebar-collapsed-bottom">
+      <div className="flex flex-col items-center gap-2 pt-2 border-t border-subtle w-full">
         <button
           type="button"
-          className="dock-switch-style-btn"
+          className="w-10 h-10 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center transition-colors cursor-pointer"
           onClick={() => {
             if (onToggleSidebarStyle) {
               onToggleSidebarStyle('facebook');
             }
           }}
           title="Chuyển sang kiểu menu Facebook"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '8px',
-            fontSize: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '8px',
-            transition: 'all 0.2s',
-          }}
         >
-          <i className="fa-brands fa-facebook" style={{ color: 'var(--color-primary)' }} />
+          <i className="fa-brands fa-facebook text-primary text-base" />
         </button>
 
-        <div
-          className="sidebar-bottom-status-dot"
-          title="Hệ thống trực tuyến v2.0 (Nhóm 1)"
-        >
-          <span className="live-status-ping" />
-        </div>
+        <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" title="Hệ thống trực tuyến v2.0 (Nhóm 1)" />
       </div>
     </aside>
   );
 }
-

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import AppHeader from '../Header/AppHeader';
-import ThemeSelector from '../Header/ThemeSelector';
 import TopSubNav from '../Navigation/TopSubNav';
 import MobileAssistiveTouch from '../Navigation/MobileAssistiveTouch';
 import FloatingAIBox from '../AI/FloatingAIBox';
@@ -70,7 +69,7 @@ export default function MainLayout({
     return (localStorage.getItem('tlbm_sidebar_style') as 'facebook' | 'dock') || 'facebook';
   });
 
-  // Cài đặt phím Home ảo AssistiveTouch trên thiết bị di động (mặc định tắt, bật trong cài đặt)
+  // Cài đặt phím Home ảo AssistiveTouch trên thiết bị di động
   const [isAssistiveTouchEnabled, setIsAssistiveTouchEnabled] = useState<boolean>(() => {
     return localStorage.getItem('tlbm_enable_assistive_touch') === 'true';
   });
@@ -103,8 +102,6 @@ export default function MainLayout({
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
   // Theo dõi vị trí con trỏ chuột toàn màn hình cho TẤT CẢ CÁC TRANG:
-  // - Khi tiến sát mép trái (<= 24px) hoặc đang ở trong sidebar / flyout: Giữ sidebar mở
-  // - Khi rời khỏi toàn bộ sidebar và menu xổ xuống: TỰ ĐỘNG THỤT VỀ (nếu không ghim click)
   useEffect(() => {
     const handlePointerTrack = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -143,51 +140,27 @@ export default function MainLayout({
   // Bộ phần tử Sidebar trượt ẩn/hiện dùng chung cho toàn bộ các trang
   const renderSidebarElements = () => (
     <>
-      {/* VÙNG CẢM ỨNG MÉP TRÁI: Rê chuột vào mép trái màn hình thì thanh Sidebar trượt xổ ra */}
+      {/* VÙNG CẢM ỨNG MÉP TRÁI */}
       <div
-        className="sidebar-edge-hotspot"
+        className="fixed left-0 top-0 bottom-0 w-5 z-[299] cursor-pointer"
         onClick={() => setIsSidebarHovered((prev) => !prev)}
         onMouseEnter={() => setIsSidebarHovered(true)}
-        style={{
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: '20px',
-          zIndex: 299,
-          cursor: 'pointer',
-        }}
         title="Rê chuột hoặc bấm vào mép trái để mở menu"
       />
 
-      {/* Chỉ báo nhỏ ở mép trái giúp người dùng dễ dàng nhận biết vị trí thanh sidebar ẩn */}
+      {/* Chỉ báo nhỏ ở mép trái */}
       <div
-        className="sidebar-edge-indicator"
+        className={`fixed left-0 top-1/2 -translate-y-1/2 rounded-r-md bg-primary shadow-glow transition-all duration-fast z-[298] cursor-pointer h-16 pointer-events-auto ${
+          isSidebarHovered ? 'w-2 opacity-90' : 'w-1 opacity-45'
+        }`}
         onClick={() => setIsSidebarHovered((prev) => !prev)}
-        style={{
-          position: 'fixed',
-          left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: isSidebarHovered ? '8px' : '4px',
-          height: '64px',
-          borderRadius: '0 6px 6px 0',
-          background: 'var(--color-primary)',
-          boxShadow: '0 0 10px var(--color-primary-glow)',
-          opacity: isSidebarHovered ? 0.9 : 0.45,
-          zIndex: 298,
-          transition: 'all 0.2s ease',
-          pointerEvents: 'auto',
-          cursor: 'pointer',
-        }}
         title="Bấm để mở menu điều hướng"
       />
 
       {/* Lớp phủ mờ backdrop khi menu được mở rộng */}
       {(isMobileOpen || (isSidebarHovered && typeof window !== 'undefined' && window.innerWidth <= 992)) && (
         <div
-          className="mobile-sidebar-backdrop"
-          style={{ zIndex: 1100 }}
+          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[1100] cursor-pointer transition-opacity duration-normal"
           onClick={() => {
             setIsMobileOpen(false);
             setIsSidebarHovered(false);
@@ -196,30 +169,19 @@ export default function MainLayout({
         />
       )}
 
-      {/* THANH BÊN TRÁI: Bị ẩn kéo sang trái (-100%), khi rê chuột vào thì trượt xổ ra mượt mà */}
+      {/* THANH BÊN TRÁI: Trượt xổ ra mượt mà */}
       <div
-        className="sidebar-slide-wrapper"
+        className={`sidebar-slide-wrapper fixed left-0 top-0 bottom-0 z-[1200] max-w-[85vw] h-screen flex border-r border-border-subtle transition-transform duration-normal ease-out ${
+          sidebarStyle === 'facebook' ? 'w-[300px] bg-surface-elevated' : 'w-auto bg-sidebar'
+        } ${
+          isSidebarHovered || isMobileOpen
+            ? 'translate-x-0 shadow-2xl pointer-events-auto'
+            : '-translate-x-full pointer-events-none'
+        }`}
         onMouseEnter={() => setIsSidebarHovered(true)}
         onMouseLeave={() => {
           setIsSidebarHovered(false);
           onHoverLeave();
-        }}
-        style={{
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 1200,
-          width: sidebarStyle === 'facebook' ? '300px' : 'auto',
-          maxWidth: '85vw',
-          transform: isSidebarHovered || isMobileOpen ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease',
-          boxShadow: isSidebarHovered || isMobileOpen ? '12px 0 40px rgba(0, 0, 0, 0.55)' : 'none',
-          background: sidebarStyle === 'facebook' ? 'var(--bg-surface-elevated, #ffffff)' : 'var(--bg-sidebar)',
-          borderRight: '1px solid var(--border-subtle)',
-          height: '100vh',
-          display: 'flex',
-          pointerEvents: isSidebarHovered || isMobileOpen ? 'auto' : 'none',
         }}
       >
         <AppSidebar
@@ -245,16 +207,13 @@ export default function MainLayout({
     </>
   );
 
-  // TẤT CẢ CÁC TRANG (/dashboard, /ai-assistant, /documents/...): 
-  // Header, Sidebar và Footer LUÔN TỒN TẠI CỐ ĐỊNH theo yêu cầu thống nhất kiến trúc PR
   return (
-    <div className="app-shell" style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
-
-      {/* Thanh điều hướng Navbar bên trái: Tự động ẩn kéo sang trái (-100%), rê chuột trượt xổ ra */}
+    <div className="app-shell w-screen h-screen overflow-hidden relative flex bg-app">
+      {/* Thanh điều hướng Navbar bên trái */}
       {renderSidebarElements()}
 
-      {/* 2. Khung nội dung chính & Thanh Header đỉnh (Chiếm trọn vẹn 100% không gian màn hình) */}
-      <div className="main-container" style={{ width: '100%', flex: 1, minWidth: 0 }}>
+      {/* 2. Khung nội dung chính & Thanh Header đỉnh */}
+      <div className="main-container w-full flex-1 min-w-0 flex flex-col h-full overflow-hidden">
         <AppHeader
           currentTheme={currentTheme}
           onSelectTheme={onSelectTheme}
@@ -280,13 +239,15 @@ export default function MainLayout({
         />
 
         {/* Viewport nội dung trang động: ổn định, êm ái, chuyên nghiệp */}
-        <main className="page-viewport">
-          <div className="page-content-wrapper">{children || <Outlet />}</div>
+        <main className="page-viewport flex-1 overflow-y-auto overflow-x-hidden flex flex-col bg-app">
+          <div className="page-content-wrapper flex-1 p-4 sm:p-6 max-w-[1600px] w-full mx-auto">
+            {children || <Outlet />}
+          </div>
           <AppFooter />
         </main>
       </div>
 
-      {/* 3. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động (Tùy chọn cấu hình trong Cài Đặt) */}
+      {/* 3. Phím Home ảo AssistiveTouch dành riêng cho thiết bị di động */}
       {isAssistiveTouchEnabled && (
         <MobileAssistiveTouch
           activePage={currentActivePage}
@@ -297,7 +258,7 @@ export default function MainLayout({
         />
       )}
 
-      {/* 4. Box AI Trợ Lý nổi tự do có thể kéo thả bất kỳ vị trí nào trên giao diện */}
+      {/* 4. Box AI Trợ Lý nổi tự do có thể kéo thả */}
       <FloatingAIBox onNavigate={handleNavigate} />
     </div>
   );

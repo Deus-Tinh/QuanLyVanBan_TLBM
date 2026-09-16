@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ==========================================================================
    TLBM DESIGN SYSTEM - GLOBAL TOKENS & CSS VARIABLES
    Designed for Group 1 (Layout & Dashboard) - Chau Tuan Kiet (PM)

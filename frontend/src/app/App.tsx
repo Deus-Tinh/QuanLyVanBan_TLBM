@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import AppRouter from './router';
 import { ThemeMode } from '../shared/types/theme';
 import '../shared/styles/global.css';
-import '../shared/styles/layout.css';
 
 export default function App() {
   // Giao diện thực tế đang kích hoạt: Mặc định Clean Light cho người dùng mở web lần đầu

@@ -33,39 +33,26 @@ export default function ThemeSelector({
   const nextModeName = isLight ? `Tối (${darkOption.name})` : `Sáng (${lightOption.name})`;
 
   return (
-    <div className="theme-toggle-container">
+    <div className="relative">
       <button
         type="button"
-        className={`header-action-btn theme-quick-toggle-btn ${isLight ? 'is-light-mode' : 'is-dark-mode'}`}
+        className={`relative w-9 h-9 rounded-lg border flex items-center justify-center transition-all duration-fast cursor-pointer ${
+          isLight
+            ? 'bg-warning-subtle border-warning-border hover:border-warning'
+            : 'bg-info-subtle border-info-border hover:border-info'
+        }`}
         onClick={handleToggle}
         title={`Đang hiển thị: ${activeOption.name} · Nhấp để chuyển sang Giao diện ${nextModeName}`}
         aria-label={`Chuyển sang giao diện ${nextModeName}`}
       >
         <i
-          className={`fa-solid ${isLight ? 'fa-sun' : 'fa-moon'} theme-toggle-icon`}
-          style={{
-            color: isLight ? '#f59e0b' : '#38bdf8',
-            fontSize: '1.08rem',
-            filter: isLight
-              ? 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.6))'
-              : 'drop-shadow(0 0 6px rgba(56, 189, 248, 0.6))',
-            transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          }}
+          className={`fa-solid ${isLight ? 'fa-sun text-warning-text' : 'fa-moon text-info'} text-base transition-transform duration-300 hover:scale-110`}
         />
         {/* Điểm nhấn chế độ */}
         <span
-          style={{
-            position: 'absolute',
-            bottom: '5px',
-            right: '5px',
-            width: '6px',
-            height: '6px',
-            borderRadius: '50%',
-            background: isLight ? '#f59e0b' : '#38bdf8',
-            boxShadow: isLight
-              ? '0 0 6px #f59e0b'
-              : '0 0 6px #38bdf8',
-          }}
+          className={`absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full ${
+            isLight ? 'bg-warning-text' : 'bg-info'
+          }`}
         />
       </button>
     </div>
