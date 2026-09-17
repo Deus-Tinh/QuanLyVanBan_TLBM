@@ -39,49 +39,81 @@ export default function TopSubNav({
   const activeModuleLabel = getModuleLabel(activeModule.id, activeModule.label);
   const activeSubLabel = getSubItemLabel(currentSubItem.id, currentSubItem.label);
 
+  const isAccountPage = activePage === 'password_change' || activePage === 'profile' || activePage === 'settings';
+  const accountMeta: Record<string, { icon: string; title: string }> = {
+    password_change: { icon: 'fa-key', title: t('passwordChange.title') },
+    profile: { icon: 'fa-user-gear', title: t('profile.title') },
+    settings: { icon: 'fa-gear', title: t('settings.title') },
+  };
+
   return (
     <nav
       className="h-9 px-4 sm:px-6 bg-app flex items-center justify-between shrink-0 overflow-x-auto select-none"
       aria-label="Điều hướng phân hệ con"
     >
       <div className="flex items-center gap-4 w-full min-w-max">
-        {/* 1. Breadcrumb định hướng nhanh (Chuyển sang TRÁI theo yêu cầu) */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div
-            className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shadow-xs"
-            title={`${activeModuleLabel} (${activeModule.teamTag})`}
-          >
-            <i className={`fa-solid ${activeModule.icon}`} />
+        {/* 1. Breadcrumb định hướng nhanh */}
+        {isAccountPage ? (
+          <div className="flex items-center gap-2 shrink-0">
+            <div
+              className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shadow-xs"
+              title={accountMeta[activePage]?.title}
+            >
+              <i className={`fa-solid ${accountMeta[activePage]?.icon || 'fa-user'}`} />
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+              <button
+                type="button"
+                className="hover:text-primary transition-colors cursor-pointer"
+                onClick={() => onNavigate('dashboard')}
+                title="Về Bàn làm việc"
+              >
+                {t('navigation.dashboard')}
+              </button>
+              <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
+              <span className="text-text-main font-semibold">
+                {accountMeta[activePage]?.title}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-            <button
-              type="button"
-              className="hover:text-primary transition-colors cursor-pointer"
-              onClick={() => onNavigate('dashboard')}
-              title="Về Bàn làm việc"
+        ) : (
+          <div className="flex items-center gap-2 shrink-0">
+            <div
+              className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shadow-xs"
+              title={`${activeModuleLabel} (${activeModule.teamTag})`}
             >
-              {t('navigation.system')}
-            </button>
-            <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
-            <button
-              type="button"
-              className="hover:text-primary transition-colors cursor-pointer"
-              onClick={() => onNavigate(activeModule.defaultPage)}
-              title={`Chuyển tới ${activeModuleLabel}`}
-            >
-              {activeModuleLabel}
-            </button>
-            {activeModule.id !== 'dashboard' && (
-              <>
-                <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
-                <span className="text-text-main font-semibold">{activeSubLabel}</span>
-              </>
+              <i className={`fa-solid ${activeModule.icon}`} />
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+              <button
+                type="button"
+                className="hover:text-primary transition-colors cursor-pointer"
+                onClick={() => onNavigate('dashboard')}
+                title="Về Bàn làm việc"
+              >
+                {t('navigation.system')}
+              </button>
+              <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
+              <button
+                type="button"
+                className="hover:text-primary transition-colors cursor-pointer"
+                onClick={() => onNavigate(activeModule.defaultPage)}
+                title={`Chuyển tới ${activeModuleLabel}`}
+              >
+                {activeModuleLabel}
+              </button>
+              {activeModule.id !== 'dashboard' && (
+                <>
+                  <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
+                  <span className="text-text-main font-semibold">{activeSubLabel}</span>
+                </>
+              )}
+            </div>
+            {activeModule.subItems.length > 1 && (
+              <div className="h-4 w-px bg-subtle mx-2" />
             )}
           </div>
-          {activeModule.subItems.length > 1 && (
-            <div className="h-4 w-px bg-subtle mx-2" />
-          )}
-        </div>
+        )}
 
         {/* 2. Danh sách các Tab con nằm ngang (Chỉ hiển thị khi phân hệ có nhiều hơn 1 mục con) */}
         {activeModule.subItems.length > 1 && (
