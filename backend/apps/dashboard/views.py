@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import timedelta
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -55,9 +55,7 @@ def overview_view(request):
     }
     """
     today = timezone.localdate()
-    tomorrow = today.replace(day=today.day + 1) if today.day < 28 else (
-        date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)
-    )
+    tomorrow = today + timedelta(days=1)
 
     # ── 1. Thống kê số liệu tổng quan ──────────────────────────────────────
     current_year = today.year

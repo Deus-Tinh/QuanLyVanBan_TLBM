@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
 from .models import StaffProfile
-from .serializers import UserProfileSerializer, ChangePasswordSerializer
+from .serializers import ChangePasswordSerializer
 
 
 # ─────────────────────────────────────────────────────────────────────────────
