@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import sys
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,7 +42,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Third-party apps
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     # Các app nghiệp vụ
+    "accounts",
+    "dashboard",
     "birthdays",
 ]
 
@@ -117,7 +124,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Ho_Chi_Minh"
 
 USE_I18N = True
 
@@ -146,4 +153,39 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:\d+$",
     r"^http://127\.0\.0\.1:\d+$",
 ]
+
+# ─────────────────────────────────────────────────
+# Django REST Framework — Cấu hình mặc định
+# ─────────────────────────────────────────────────
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+    "DEFAULT_RENDERER_CLASSES": (
+        "rest_framework.renderers.JSONRenderer",
+    ),
+}
+
+# ─────────────────────────────────────────────────
+# SimpleJWT — Cấu hình token
+# ─────────────────────────────────────────────────
+SIMPLE_JWT = {
+    # Access token tồn tại 8 giờ làm việc (1 ngày)
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    # Refresh token tồn tại 7 ngày
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Cấp refresh token mới mỗi lần dùng
+    "ROTATE_REFRESH_TOKENS": True,
+    # Đưa refresh token cũ vào blacklist sau khi cấp mới
+    "BLACKLIST_AFTER_ROTATION": True,
+    # Header chuẩn: Authorization: Bearer <token>
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # Claim fields
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
 

@@ -190,10 +190,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             </div>
           </div>
 
-          <div className="text-xs text-muted mt-2 z-10 hidden sm:flex items-center gap-1.5">
-            <i className="fa-regular fa-hand-pointer" />
-            <span>Thử click vào các bạn nhân vật để chơi cùng!</span>
-          </div>
 
           {/* CỤM 4 NHÂN VẬT HOẠT HỌA */}
           <div className={`character-cluster scale-[0.78] sm:scale-[0.84] md:scale-[0.88] origin-bottom-left ${error ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}>
