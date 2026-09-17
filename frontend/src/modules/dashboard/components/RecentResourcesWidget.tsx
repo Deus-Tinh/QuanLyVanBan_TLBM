@@ -22,16 +22,16 @@ export default function RecentResourcesWidget({
 
   return (
     <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col">
-      {/* Header bar: Deep Slate / Navy */}
-      <div className="bg-slate-800 text-white px-3.5 py-2 flex justify-between items-center select-none">
-        <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
-          <i className="fa-solid fa-file-lines text-blue-200" />
+      {/* Header bar: Standardized Solid Blue */}
+      <div className="bg-primary text-white px-3 py-1.5 flex justify-between items-center select-none">
+        <div className="flex items-center gap-1.5 font-bold text-xs">
+          <i className="fa-solid fa-file-lines text-[11px]" />
           <span>Biểu mẫu & Tài nguyên chung</span>
         </div>
         <button
           type="button"
           onClick={() => navigate('/resources')}
-          className="text-xs text-blue-100 hover:text-white font-medium cursor-pointer"
+          className="text-xs text-white/90 hover:text-white font-medium cursor-pointer"
         >
           Xem thêm »
         </button>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MAIN_MODULES } from '../../utils/constants';
 import { ActivePageId } from '../../types/navigation';
 import { useTranslation } from '../../locales/i18n';
+import { Logo } from '../common/Logo';
 
 interface AppSidebarProps {
   isMobileOpen: boolean;
@@ -105,13 +106,17 @@ export default function AppSidebar({
       className="w-[290px] h-screen flex flex-col bg-surface-elevated border-r border-subtle select-none overflow-hidden"
       aria-label="Thanh điều hướng cố định"
     >
-      {/* Header Sidebar: Tiêu đề & Nút đóng menu */}
+      {/* Header Sidebar: Logo Bảo Long & Nút đóng menu */}
       <div className="p-3 border-b border-subtle flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 px-1">
-          <i className="fa-solid fa-bars-staggered text-primary text-sm" />
-          <span className="text-xs font-bold uppercase tracking-wider text-text-muted">
-            Menu điều hướng
-          </span>
+        <div
+          className="flex items-center gap-2 px-1 cursor-pointer transition-opacity hover:opacity-85"
+          onClick={() => {
+            onNavigate('dashboard');
+            onCloseMobile();
+          }}
+          title="Bảo Long Insurance - Về Trang Chủ"
+        >
+          <Logo size="sm" />
         </div>
         <button
           type="button"
@@ -133,10 +138,16 @@ export default function AppSidebar({
 
         <div className="space-y-1">
           {MAIN_MODULES.map((mod) => {
-            const isModActive = mod.subItems.some((s) => s.id === committedPage);
+            const isDirectPage = mod.id === 'dashboard' || mod.subItems.length <= 1;
+            const isModActive = isDirectPage
+              ? committedPage === mod.defaultPage || committedPage === mod.id
+              : mod.subItems.some((s) => s.id === committedPage);
             const isModPreview =
-              previewPage !== null && mod.subItems.some((s) => s.id === previewPage);
-            const isExpanded = !!expandedModIds[mod.id];
+              previewPage !== null &&
+              (isDirectPage
+                ? previewPage === mod.defaultPage || previewPage === mod.id
+                : mod.subItems.some((s) => s.id === previewPage));
+            const isExpanded = !isDirectPage && !!expandedModIds[mod.id];
             const modLabel = getModuleLabel(mod.id, mod.label);
             const styling = FB_MODULE_GRADIENTS[mod.id] || {
               bgClass: 'bg-fb-blue',
@@ -158,12 +169,21 @@ export default function AppSidebar({
                       : 'hover:bg-surface-hover text-text-main'
                   }`}
                   onClick={() => {
-                    toggleExpand(mod.id);
+                    if (isDirectPage) {
+                      onNavigate(mod.defaultPage);
+                      onCloseMobile();
+                    } else {
+                      toggleExpand(mod.id);
+                    }
                   }}
                   onMouseEnter={() => onHoverPreview(mod.defaultPage)}
                   role="button"
                   tabIndex={0}
-                  title={`${modLabel} (${isExpanded ? 'Bấm để thu gọn' : 'Bấm để xem các mục con'})`}
+                  title={
+                    isDirectPage
+                      ? `${modLabel} (Bấm để mở trang)`
+                      : `${modLabel} (${isExpanded ? 'Bấm để thu gọn' : 'Bấm để xem các mục con'})`
+                  }
                 >
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm shrink-0 shadow-xs ${styling.bgClass}`}
@@ -181,26 +201,28 @@ export default function AppSidebar({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-text-main shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleExpand(mod.id);
-                    }}
-                    aria-label={isExpanded ? 'Thu gọn' : 'Mở rộng'}
-                    title={isExpanded ? 'Thu gọn các mục con' : 'Mở danh sách mục con'}
-                  >
-                    <i
-                      className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-fast ${
-                        isExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
+                  {!isDirectPage && (
+                    <button
+                      type="button"
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-text-main shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpand(mod.id);
+                      }}
+                      aria-label={isExpanded ? 'Thu gọn' : 'Mở rộng'}
+                      title={isExpanded ? 'Thu gọn các mục con' : 'Mở danh sách mục con'}
+                    >
+                      <i
+                        className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-fast ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                  )}
                 </div>
 
-                {/* Danh sách mục con thả xuống dạng Accordion */}
-                {isExpanded && (
+                {/* Danh sách mục con thả xuống dạng Accordion (chỉ hiển thị khi không phải trang đơn và đang mở) */}
+                {!isDirectPage && isExpanded && (
                   <div className="pl-4 pr-1 py-1 space-y-1 border-l-2 border-subtle ml-6 my-1">
                     {mod.subItems.map((sub) => {
                       const isSubActive = committedPage === sub.id;
@@ -221,7 +243,7 @@ export default function AppSidebar({
                           onClick={(e) => {
                             e.stopPropagation();
                             onNavigate(sub.id);
-                            // Không thu menu lại khi người dùng bấm vào mục con
+                            onCloseMobile();
                           }}
                           onMouseEnter={() => onHoverPreview(sub.id)}
                           role="button"

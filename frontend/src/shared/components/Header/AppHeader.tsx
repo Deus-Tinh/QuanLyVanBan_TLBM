@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
 import NotificationStreams from './NotificationStreams';
 import ThemeSelector from './ThemeSelector';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -12,76 +11,52 @@ interface AppHeaderProps {
   onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
   onToggleSidebar: () => void;
+  onHoverSidebar?: () => void;
   isSidebarOpen?: boolean;
+  interfaceStyle?: 'classic' | 'modern';
   onNavigate?: (pageId: ActivePageId) => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
 }
+
+import { Logo } from '../common/Logo';
 
 export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleTheme,
   onToggleSidebar,
+  onHoverSidebar,
   isSidebarOpen,
+  interfaceStyle = 'classic',
   onNavigate,
   preferredLightTheme,
   preferredDarkTheme,
 }: AppHeaderProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isAIPage = location.pathname === '/ai-assistant';
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim()) {
-      navigate(`/documents/incoming?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearchSubmit();
-    }
-  };
-
   return (
     <header className="h-14 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
-      {/* 1. Left Section: 3-bar Menu Trigger & Thanh tìm kiếm văn bản */}
-      <div className="flex items-center gap-3 flex-1 min-w-0 mr-4">
-        {!isSidebarOpen && (
+      {/* 1. Left Section: 3-bar Menu Trigger (chỉ hiển thị ở Giao diện Cổ điển) & Bao Long Logo */}
+      <div className="flex items-center gap-3">
+        {!isSidebarOpen && interfaceStyle !== 'modern' && (
           <button
             type="button"
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
+            className="header-menu-btn w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
             onClick={onToggleSidebar}
+            onMouseEnter={onHoverSidebar}
             title="Mở thanh điều hướng (Bấm để mở)"
             aria-label="Mở thanh điều hướng"
           >
             <i className="fa-solid fa-bars text-base" />
           </button>
         )}
-
-        {/* Thanh tìm kiếm văn bản đưa lên phần bên trái Header - Ẩn khi vào trang AI Assistant */}
-        {!isAIPage && (
-          <div className="relative w-full max-w-[420px] hidden sm:block">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Tìm kiếm văn bản đến/đi theo số ký hiệu hoặc trích yếu..."
-              className="w-full pl-3.5 pr-8 py-1.5 rounded-sm border border-border-subtle bg-surface text-main text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-muted shadow-xs"
-            />
-            <button
-              type="button"
-              onClick={handleSearchSubmit}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors cursor-pointer p-0.5"
-              title="Tìm kiếm"
-            >
-              <i className="fa-solid fa-magnifying-glass text-xs" />
-            </button>
-          </div>
-        )}
+        <div
+          className="flex items-center cursor-pointer transition-opacity hover:opacity-85"
+          onClick={() => onNavigate?.('dashboard')}
+          onMouseEnter={interfaceStyle === 'modern' ? onHoverSidebar : undefined}
+          title="Bảo Long Insurance - Về Trang Chủ"
+        >
+          <Logo size="md" />
+        </div>
       </div>
 
       {/* 2. Right Section: Notifications, Theme, Language, User */}

@@ -154,7 +154,7 @@ export default function MobileAssistiveTouch({
       {/* 1. NÚT HOME ẢO (AssistiveTouch FAB - Kéo thả tự do như iOS) */}
       <button
         type="button"
-        className={`w-14 h-14 rounded-full bg-slate-900/85 border border-white/20 shadow-glass flex items-center justify-center select-none backdrop-blur-md transition-opacity duration-300 ${
+        className={`w-14 h-14 rounded-full bg-neutral-900/90 border border-white/20 shadow-glass flex items-center justify-center select-none backdrop-blur-md transition-opacity duration-300 ${
           isDimmed && !isDragging && !isOpen ? 'opacity-40 hover:opacity-100' : 'opacity-100'
         } ${isOpen ? 'ring-2 ring-primary' : ''}`}
         style={
@@ -214,7 +214,7 @@ export default function MobileAssistiveTouch({
       >
         <span className="w-10 h-10 rounded-full border border-white/40 flex items-center justify-center pointer-events-none">
           <span className="w-6 h-6 rounded-full bg-white/70 flex items-center justify-center shadow-xs">
-            <span className="w-2.5 h-2.5 rounded-full bg-slate-900" />
+            <span className="w-2.5 h-2.5 rounded-full bg-neutral-900" />
           </span>
         </span>
       </button>

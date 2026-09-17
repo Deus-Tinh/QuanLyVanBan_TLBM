@@ -89,6 +89,7 @@ export default function AppRouter({
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
         <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
         <Route path="/employees" element={<SyllabusPreview activePage="employees" />} />
+        <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
         <Route path="/roles" element={<SyllabusPreview activePage="roles" />} />
 
         {/* Tiện ích Cá nhân & Trợ lý AI (Nhóm 1 phụ trách) */}

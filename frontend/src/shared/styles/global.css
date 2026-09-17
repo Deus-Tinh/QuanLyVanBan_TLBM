@@ -69,61 +69,67 @@
    THEME PALETTES (Eye-Care Balanced Contrast)
    ========================================================================== */
 
-/* 1. Sleek Eye-Care Dark Theme (Dịu mắt, chống chói lóa, màu slate ấm áp) */
+/* 1. Cyber Midnight SaaS Dark Theme (Màu sắc chuẩn theo ảnh mẫu: Nền #0a0d14, Card #121824, Nút #5550e9) */
 [data-theme='dark'] {
-  --bg-app: #0f172a;               /* Slate-900: êm dịu, không bị đen kịt gây rát mắt */
-  --bg-surface: #182234;           /* Slate dịu nhẹ cho các bảng & thẻ nội dung */
-  --bg-surface-elevated: #1e293b;  /* Slate-800 nổi khối tự nhiên */
-  --bg-surface-hover: #273549;     /* Hover êm ái */
-  --bg-sidebar: #131c2e;           /* Thanh điều hướng xanh đen trang nhã */
-  --bg-header: rgba(19, 28, 46, 0.88);
+  --bg-app: #0a0d14;               /* Nền chính sâu thẳm siêu tối chuẩn ảnh mẫu */
+  --bg-surface: #121824;           /* Bề mặt thẻ card & widget chuẩn ảnh mẫu */
+  --bg-surface-elevated: #171f2e;  /* Khối nổi modal, drawer, menu popover */
+  --bg-surface-hover: #1e283b;     /* Hover thẻ / mục con mượt mà */
+  --bg-sidebar: #0d111a;           /* Thanh điều hướng tối sâu sang trọng */
+  --bg-header: rgba(10, 13, 20, 0.88); /* Kính mờ đồng bộ nền chính */
 
-  --text-main: #e2e8f0;            /* Slate-200: chữ sáng dịu nhẹ, không chói gắt */
-  --text-secondary: #94a3b8;       /* Slate-400: độ tương phản chuẩn WCAG AAA */
-  --text-muted: #64748b;           /* Slate-500 */
+  --color-primary: #5550e9;        /* Nút & điểm nhấn Indigo Electric chuẩn nút 'Mua ngay' */
+  --color-primary-hover: #4843dc;
+  --color-primary-glow: rgba(85, 80, 233, 0.4);
+  --color-primary-subtle: rgba(85, 80, 233, 0.16);
+  --color-primary-border: rgba(85, 80, 233, 0.35);
 
-  --border-subtle: rgba(255, 255, 255, 0.09);
-  --border-focus: #3b82f6;
+  --text-main: #f8fafc;            /* Chữ trắng tinh sáng nét */
+  --text-secondary: #94a3b8;       /* Xám bạc tương phản chuẩn */
+  --text-muted: #64748b;           /* Xám trung tính */
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --border-subtle: rgba(255, 255, 255, 0.08); /* Viền hairline siêu mỏng */
+  --border-focus: #5550e9;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.75);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.6);
 
   --backdrop-blur: blur(16px);
-  --header-border-bottom: rgba(255, 255, 255, 0.08);
-  --sidebar-border-right: rgba(255, 255, 255, 0.08);
-  --color-warning-text: #fbbf24;
-  --bg-backdrop: rgba(15, 23, 42, 0.6);
+  --header-border-bottom: rgba(255, 255, 255, 0.07);
+  --sidebar-border-right: rgba(255, 255, 255, 0.07);
+  --color-warning-text: #f59e0b;
+  --bg-backdrop: rgba(0, 0, 0, 0.7);
 }
 
-/* 2. Soft Warm Sand Light Theme (Ám vàng đất dịu mắt, chống chói lóa, phong cách giấy in mộc) */
+/* 2. Modern Clean Light Theme (Màu sắc và nền chuẩn i chang hình: Nền #f1f4f9, Card #ffffff, Viền #e2e8f0) */
 [data-theme='light'] {
-  --bg-app: #f5f3ec;               /* Nền vàng cát ấm nhẹ dịu mắt, triệt tiêu ánh sáng xanh */
-  --bg-surface: #fdfcf9;           /* Bề mặt thẻ trắng ngà giấy mộc tự nhiên */
+  --bg-app: #f1f4f9;               /* Nền xanh xám nhạt hiện đại chuẩn 100% theo ảnh mẫu */
+  --bg-surface: #ffffff;           /* Bề mặt thẻ trắng tinh khiết chuẩn ảnh mẫu */
   --bg-surface-elevated: #ffffff;  /* Lớp nổi khối nhẹ nhàng */
-  --bg-surface-hover: #ebe7dc;     /* Hover cát nhạt mịn màng */
-  --bg-sidebar: #faf8f3;           /* Sidebar trắng ngà đồng điệu */
-  --bg-header: rgba(250, 248, 243, 0.94);
+  --bg-surface-hover: #f1f5f9;     /* Hover mượt mà */
+  --bg-sidebar: #ffffff;           /* Sidebar trắng sáng */
+  --bg-header: rgba(241, 244, 249, 0.92);
 
-  --text-main: #292524;            /* Stone-800: than ấm dịu, đọc văn bản lâu không mỏi mắt */
-  --text-secondary: #57534e;       /* Stone-600 */
-  --text-muted: #78716c;           /* Stone-500 */
+  --text-main: #0f172a;            /* Slate-900: Chữ đen đậm rõ nét */
+  --text-secondary: #475569;       /* Slate-600: Xám trung tính */
+  --text-muted: #64748b;           /* Slate-500: Xám nhạt */
 
-  --border-subtle: #e5e0d3;        /* Viền be cát ấm áp, hài hòa */
-  --border-focus: #2563eb;
+  --border-subtle: #e2e8f0;        /* Viền mỏng chuẩn ảnh mẫu */
+  --border-focus: #3b82f6;
 
-  --shadow-xs: 0 1px 2px rgba(41, 37, 36, 0.04);
-  --shadow-sm: 0 1px 3px rgba(41, 37, 36, 0.05);
-  --shadow-md: 0 4px 14px rgba(41, 37, 36, 0.07);
-  --shadow-lg: 0 12px 28px rgba(41, 37, 36, 0.09);
-  --shadow-glass: 0 8px 30px rgba(41, 37, 36, 0.07);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.1);
+  --shadow-glass: 0 8px 30px rgba(0, 0, 0, 0.06);
 
   --backdrop-blur: blur(16px);
-  --header-border-bottom: #e5e0d3;
-  --sidebar-border-right: #e5e0d3;
-  --bg-backdrop: rgba(41, 37, 36, 0.3);
+  --header-border-bottom: #e2e8f0;
+  --sidebar-border-right: #e2e8f0;
+  --bg-backdrop: rgba(15, 23, 42, 0.4);
 }
 
 /* ==========================================================================
@@ -232,9 +238,27 @@ input, select, textarea {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.25);
+  background: rgba(160, 160, 160, 0.22);
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.45);
+  background: rgba(160, 160, 160, 0.4);
 }
+
+/* Continuous Seamless Marquee for Announcements & Birthdays */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 48s linear infinite;
+  will-change: transform;
+}
+

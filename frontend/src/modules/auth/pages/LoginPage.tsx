@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { UserSession } from '../types';
+import { Logo } from '../../../shared/components/common/Logo';
 import '../styles/login-characters.css';
 
 interface LoginPageProps {
@@ -297,8 +298,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         {/* NỬA PHẢI: FORM ĐĂNG NHẬP SANG TRỌNG                          */}
         {/* ============================================================ */}
         <div className="w-full md:w-[55%] bg-surface p-5 md:p-8 flex flex-col justify-center">
-          <div className="text-xl text-primary mb-1 inline-block cursor-pointer animate-pulse" title="Hệ thống xác thực SSO">
-            ✦
+          <div className="mb-3" title="Bảo Long Insurance">
+            <Logo size="lg" />
           </div>
 
           <h2 className="text-2xl font-extrabold text-main tracking-tight mb-0.5">

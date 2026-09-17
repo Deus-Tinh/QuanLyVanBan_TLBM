@@ -15,6 +15,7 @@ export type ActivePageId =
   | 'birthdays'
   | 'organizations'
   | 'employees'
+  | 'positions'
   | 'roles'
   | 'ai_assistant';
 

@@ -1,44 +1,60 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import QuickSearchWidget from '../components/QuickSearchWidget';
 import DashboardStats from '../components/DashboardStats';
 import IncomingDocumentsWidget from '../components/IncomingDocumentsWidget';
 import RecentOutgoingWidget from '../components/RecentOutgoingWidget';
 import RecentTasksWidget from '../components/RecentTasksWidget';
-import MeetingsWidget from '../components/MeetingsWidget';
 import BirthdaysWidget from '../components/BirthdaysWidget';
-import NewTasksWidget from '../components/NewTasksWidget';
+import ModernDashboardView from '../components/ModernDashboardView';
 
-export default function DashboardPage() {
+interface DashboardPageProps {
+  onNavigate?: (page: string) => void;
+}
+
+export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const [interfaceStyle, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
+    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      const savedStyle = (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
+      setInterfaceStyle(savedStyle);
+    };
+
+    window.addEventListener('tlbm_settings_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('tlbm_settings_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
+  // 1. Giao diện Hiện đại (Modern UI): bo góc mềm mại, icon đa sắc, bảng và thẻ hiện đại theo ảnh mẫu
+  if (interfaceStyle === 'modern') {
+    return <ModernDashboardView onNavigate={onNavigate} />;
+  }
+
+  // 2. Giao diện Cổ điển (Classic UI): phong cách GovTech đặc trưng, 3 khối navy, bảng phẳng gọn
   return (
     <div className="flex flex-col gap-3">
-      {/* 1. 4 KHỐI THỐNG KÊ XANH NAVY ĐẬM */}
+      {/* 1. THANH TÌM KIẾM VĂN BẢN ĐẾN / ĐI (CHUYỂN TỪ HEADER XUỐNG DƯỚI) */}
+      <QuickSearchWidget />
+
+      {/* 2. 3 KHỐI THỐNG KÊ XANH NAVY ĐẬM */}
       <DashboardStats />
 
-      {/* 2. BỐ CỤC CHÍNH 2 CỘT (Trái ~72% / Phải ~28%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-        {/* Cột trái: 2 bảng song song + Danh sách nhiệm vụ */}
-        <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-3">
-          {/* Song song 2 bảng: Văn bản đến & Văn bản đi (luôn hiển thị song song) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <IncomingDocumentsWidget />
-            <RecentOutgoingWidget />
-          </div>
+      {/* 3. THANH MARQUEE CHẠY CHỮ SINH NHẬT CBNV (ĐẶT NGAY DƯỚI THỐNG KÊ) */}
+      <BirthdaysWidget />
 
-          {/* Danh sách nhiệm vụ với radio filter */}
-          <RecentTasksWidget />
-        </div>
-
-        {/* Cột phải: Lịch họp + Sinh nhật + Nhiệm vụ mới */}
-        <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-3">
-          {/* Lịch họp mới nhất */}
-          <MeetingsWidget />
-
-          {/* Thông báo sinh nhật */}
-          <BirthdaysWidget />
-
-          {/* Nhiệm vụ mới (công việc) */}
-          <NewTasksWidget />
-        </div>
+      {/* 4. SONG SONG 2 BẢNG: VĂN BẢN ĐẾN & VĂN BẢN ĐI (TOÀN CHIỀU RỘNG) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <IncomingDocumentsWidget />
+        <RecentOutgoingWidget />
       </div>
+
+      {/* 5. DANH SÁCH NHIỆM VỤ ĐẦY ĐỦ 4 BỘ LỌC */}
+      <RecentTasksWidget />
     </div>
   );
 }

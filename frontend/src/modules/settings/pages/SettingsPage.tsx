@@ -5,6 +5,10 @@ import { Button } from '../../../shared/components/ui';
 export default function SettingsPage() {
   const { t } = useTranslation();
 
+  const [interfaceStyle, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
+    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
+  });
+
   const [assistiveTouchEnabled, setAssistiveTouchEnabled] = useState<boolean>(() => {
     return localStorage.getItem('tlbm_enable_assistive_touch') === 'true';
   });
@@ -13,7 +17,16 @@ export default function SettingsPage() {
     return (localStorage.getItem('tlbm_ai_model') as 'gpt4o' | 'claude' | 'llama') || 'gpt4o';
   });
 
+  const handleSelectStyle = (style: 'classic' | 'modern') => {
+    setInterfaceStyle(style);
+    localStorage.setItem('tlbm_interface_style', style);
+    document.documentElement.setAttribute('data-ui-style', style);
+    window.dispatchEvent(new Event('tlbm_settings_updated'));
+  };
+
   const handleSaveSettings = () => {
+    localStorage.setItem('tlbm_interface_style', interfaceStyle);
+    document.documentElement.setAttribute('data-ui-style', interfaceStyle);
     localStorage.setItem('tlbm_enable_assistive_touch', String(assistiveTouchEnabled));
     localStorage.setItem('tlbm_ai_model', aiModel);
     window.dispatchEvent(new Event('tlbm_settings_updated'));
@@ -22,11 +35,11 @@ export default function SettingsPage() {
   };
 
   const handleResetSettings = () => {
+    handleSelectStyle('classic');
     setAssistiveTouchEnabled(false);
     setAiModel('gpt4o');
     localStorage.setItem('tlbm_enable_assistive_touch', 'false');
     localStorage.setItem('tlbm_ai_model', 'gpt4o');
-    window.dispatchEvent(new Event('tlbm_settings_updated'));
     window.dispatchEvent(new Event('tlbm_ai_model_updated'));
     alert(t('settings.resetSuccessAlert'));
   };
@@ -42,7 +55,82 @@ export default function SettingsPage() {
           </h2>
         </div>
 
-        {/* 1. Cấu hình thông báo */}
+        {/* 1. Tùy chọn Phong cách Giao diện (Interface Style) */}
+        <div className="border-b border-border-subtle pb-5.5">
+          <div className="mb-3.5">
+            <h3 className="text-base font-bold text-main flex items-center gap-2">
+              <i className="fa-solid fa-palette text-primary" />
+              <span>{t('settings.interfaceStyleTitle')}</span>
+            </h3>
+            <div className="text-xs text-muted mt-1">
+              {t('settings.interfaceStyleDesc')}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Giao diện Cổ điển */}
+            <div
+              onClick={() => handleSelectStyle('classic')}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex flex-col gap-2 relative ${
+                interfaceStyle === 'classic'
+                  ? 'border-primary bg-primary-subtle/25 shadow-xs'
+                  : 'border-border-subtle bg-surface-elevated hover:border-border hover:bg-surface-hover'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🏛️</span>
+                  <span className="text-sm font-bold text-main">{t('settings.interfaceStyleClassic')}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface border border-border-subtle text-muted">
+                    {t('settings.interfaceStyleClassicBadge')}
+                  </span>
+                  {interfaceStyle === 'classic' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">
+                      ✓ Đang dùng
+                    </span>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-secondary leading-relaxed m-0">
+                {t('settings.interfaceStyleClassicDesc')}
+              </p>
+            </div>
+
+            {/* Giao diện Hiện đại */}
+            <div
+              onClick={() => handleSelectStyle('modern')}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex flex-col gap-2 relative ${
+                interfaceStyle === 'modern'
+                  ? 'border-primary bg-primary-subtle/25 shadow-xs'
+                  : 'border-border-subtle bg-surface-elevated hover:border-border hover:bg-surface-hover'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">✨</span>
+                  <span className="text-sm font-bold text-main">{t('settings.interfaceStyleModern')}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface border border-border-subtle text-muted">
+                    {t('settings.interfaceStyleModernBadge')}
+                  </span>
+                  {interfaceStyle === 'modern' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">
+                      ✓ Đang dùng
+                    </span>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-secondary leading-relaxed m-0">
+                {t('settings.interfaceStyleModernDesc')}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Cấu hình thông báo */}
         <div className="border-b border-border-subtle pb-5.5">
           <h3 className="text-base font-bold text-main mb-3.5">
             🔔 {t('settings.notificationSectionTitle')}
@@ -63,7 +151,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 2. Bảo mật tài khoản */}
+        {/* 3. Bảo mật tài khoản */}
         <div className="border-b border-border-subtle pb-5.5">
           <h3 className="text-base font-bold text-main mb-3.5">
             🛡️ {t('settings.securitySectionTitle')}
@@ -80,7 +168,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 3. Tiện ích di động & Hỗ trợ thao tác (Nút Home ảo AssistiveTouch) */}
+        {/* 4. Tiện ích di động & Hỗ trợ thao tác (Nút Home ảo AssistiveTouch) */}
         <div>
           <h3 className="text-base font-bold text-main mb-3 flex items-center gap-2">
             <i className="fa-solid fa-mobile-screen text-primary" />
@@ -106,7 +194,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 4. Cấu hình Mô hình Trợ lý AI (AI Model) */}
+        {/* 5. Cấu hình Mô hình Trợ lý AI (AI Model) */}
         <div className="border-t border-border-subtle pt-5.5">
           <div className="mb-3.5">
             <h3 className="text-base font-bold text-main flex items-center gap-2">

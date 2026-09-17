@@ -52,7 +52,7 @@ export default function MainLayout({
     navigate(pageIdToPath(pageId));
   };
 
-  // Trạng thái mở/đóng Sidebar: Mặc định mở trên desktop (>= 1024px), điều khiển hoàn toàn bằng nút bấm (Click)
+  // Trạng thái mở/đóng Sidebar: Mặc định mở trên desktop (>= 1024px)
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     const saved = localStorage.getItem('tlbm_sidebar_open');
     if (saved !== null) {
@@ -61,8 +61,17 @@ export default function MainLayout({
     return typeof window !== 'undefined' ? window.innerWidth >= 1024 : true;
   });
 
+  // Trạng thái rê chuột mở sidebar (Chỉ áp dụng ở Giao diện Hiện đại)
+  const [isSidebarHovered, setIsSidebarHovered] = useState<boolean>(false);
+
+  // Phong cách giao diện: 'classic' | 'modern'
+  const [interfaceStyle, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
+    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
+  });
+
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
+    setIsSidebarHovered(false);
     localStorage.setItem('tlbm_sidebar_open', 'false');
   };
 
@@ -74,9 +83,10 @@ export default function MainLayout({
     });
   };
 
-  // Điều hướng trang mà không thu menu lại theo yêu cầu
+  // Điều hướng trang và thu gọn thanh menu, đảm bảo không lưu lại lớp phủ mờ trên màn hình
   const handleItemNavigate = (pageId: ActivePageId) => {
     handleNavigate(pageId);
+    handleCloseSidebar();
   };
 
   // Cài đặt phím Home ảo AssistiveTouch trên thiết bị di động
@@ -92,7 +102,12 @@ export default function MainLayout({
     const handleSettingsUpdate = () => {
       const savedTouch = localStorage.getItem('tlbm_enable_assistive_touch');
       setIsAssistiveTouchEnabled(savedTouch === 'true');
+      const savedStyle = (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
+      setInterfaceStyle(savedStyle);
+      document.documentElement.setAttribute('data-ui-style', savedStyle);
     };
+
+    handleSettingsUpdate();
 
     window.addEventListener('tlbm_settings_updated', handleSettingsUpdate);
     window.addEventListener('storage', handleSettingsUpdate);
@@ -102,32 +117,101 @@ export default function MainLayout({
     };
   }, []);
 
+  // CHỈ Ở GIAO DIỆN HIỆN ĐẠI: Rê chuột sang mép trái (<= 24px) thì menu trượt xổ ra, rê chuột ra ngoài thì thu lại
+  useEffect(() => {
+    if (interfaceStyle !== 'modern') {
+      return;
+    }
+
+    const handlePointerTrack = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInsideSidebar =
+        target?.closest('.sidebar-slide-wrapper') !== null ||
+        target?.closest('.header-menu-btn') !== null;
+
+      const sidebarThreshold = 300;
+
+      // Rê chuột sát mép trái (<= 24px) hoặc bên trong sidebar -> Mở menu
+      if (e.clientX <= 24 || isInsideSidebar) {
+        setIsSidebarHovered(true);
+      } else if (e.clientX > sidebarThreshold && !isInsideSidebar && !isSidebarOpen) {
+        // Khi rê chuột ra ngoài khu vực menu sang bên phải -> Thu menu lại
+        setIsSidebarHovered(false);
+        onHoverLeave();
+      }
+    };
+
+    const handleWindowLeave = () => {
+      if (!isSidebarOpen) {
+        setIsSidebarHovered(false);
+        onHoverLeave();
+      }
+    };
+
+    window.addEventListener('mousemove', handlePointerTrack);
+    window.addEventListener('mouseleave', handleWindowLeave);
+    window.addEventListener('blur', handleWindowLeave);
+
+    return () => {
+      window.removeEventListener('mousemove', handlePointerTrack);
+      window.removeEventListener('mouseleave', handleWindowLeave);
+      window.removeEventListener('blur', handleWindowLeave);
+    };
+  }, [interfaceStyle, isSidebarOpen, onHoverLeave]);
+
+  const isEffectiveSidebarOpen = isSidebarOpen || (interfaceStyle === 'modern' && isSidebarHovered);
+
   return (
     <div className="app-shell w-screen h-screen overflow-hidden flex bg-app relative">
-      {/* 1. Lớp phủ mờ Backdrop trên toàn màn hình bên phải (trừ menu) khi Sidebar mở */}
-      {isSidebarOpen && (
+      {/* Vùng cảm ứng mép trái dành riêng cho Giao diện Hiện đại */}
+      {interfaceStyle === 'modern' && (
+        <>
+          <div
+            className="fixed left-0 top-0 bottom-0 w-6 z-[299] cursor-pointer"
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            title="Rê chuột sang mép trái để mở menu"
+          />
+          <div
+            className={`fixed left-0 top-1/2 -translate-y-1/2 rounded-r-md bg-primary shadow-glow transition-all duration-fast z-[298] cursor-pointer h-16 pointer-events-auto ${
+              isEffectiveSidebarOpen ? 'w-2 opacity-90' : 'w-1 opacity-45'
+            }`}
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onClick={handleToggleSidebar}
+            title="Rê chuột sang mép trái để mở menu"
+          />
+        </>
+      )}
+
+      {/* 1. Lớp phủ Backdrop trong suốt/nhẹ trên màn hình bên phải khi Sidebar mở - Không dùng backdrop-blur để không gây mờ màn hình */}
+      {isEffectiveSidebarOpen && (
         <div
-          className="fixed inset-0 bg-backdrop backdrop-blur-sm z-[1100] cursor-pointer transition-opacity duration-300 animate-in fade-in"
+          className="fixed inset-0 bg-black/10 z-[1100] cursor-pointer transition-opacity duration-300 animate-in fade-in"
           onClick={handleCloseSidebar}
           aria-label="Thu gọn menu điều hướng"
-          title="Bấm vào vùng mờ bên phải để thu gọn menu"
+          title="Bấm vào bên ngoài để thu gọn menu"
         />
       )}
 
-      {/* 2. Thanh điều hướng Sidebar dạng Drawer trượt từ bên trái ra:
-             - Nằm đè lên lớp backdrop mờ (z-[1200] > z-[1100]) nên menu hoàn toàn rõ nét.
-             - Màn hình bên phải (trừ menu) bị mờ bởi backdrop.
-             - Chỉ thu menu lại khi người dùng bấm vào phần mờ bên phải.
-             - Không thu menu lại khi người dùng bấm vào các mục con.
-      */}
+      {/* 2. Thanh điều hướng Sidebar dạng Drawer trượt từ bên trái ra */}
       <div
-        className={`fixed inset-y-0 left-0 z-[1200] w-[290px] h-full transition-transform duration-300 ease-in-out shadow-2xl bg-surface-elevated ${
-          isSidebarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
+        className={`sidebar-slide-wrapper fixed inset-y-0 left-0 z-[1200] w-[290px] h-full transition-transform duration-300 ease-in-out shadow-2xl bg-surface-elevated ${
+          isEffectiveSidebarOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none'
         }`}
+        onMouseEnter={() => {
+          if (interfaceStyle === 'modern') {
+            setIsSidebarHovered(true);
+          }
+        }}
+        onMouseLeave={() => {
+          if (interfaceStyle === 'modern' && !isSidebarOpen) {
+            setIsSidebarHovered(false);
+            onHoverLeave();
+          }
+        }}
       >
         <div className="h-full overflow-hidden w-[290px]">
           <AppSidebar
-            isMobileOpen={isSidebarOpen}
+            isMobileOpen={isEffectiveSidebarOpen}
             onCloseMobile={handleCloseSidebar}
             activePage={currentActivePage}
             committedPage={effectiveCommittedPage}
@@ -147,8 +231,14 @@ export default function MainLayout({
           onToggleTheme={onToggleTheme}
           preferredLightTheme={preferredLightTheme}
           preferredDarkTheme={preferredDarkTheme}
-          isSidebarOpen={isSidebarOpen}
+          isSidebarOpen={isEffectiveSidebarOpen}
+          interfaceStyle={interfaceStyle}
           onToggleSidebar={handleToggleSidebar}
+          onHoverSidebar={() => {
+            if (interfaceStyle === 'modern') {
+              setIsSidebarHovered(true);
+            }
+          }}
           onNavigate={handleNavigate}
         />
 

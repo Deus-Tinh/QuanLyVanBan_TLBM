@@ -7,7 +7,7 @@
     "group1Notice": "Nhóm 1 đang trong quá trình phát triển"
   },
   "common": {
-    "backToDashboard": "Quay lại Bàn Làm Việc (Trang chủ)",
+    "backToDashboard": "Quay lại Trang Chủ",
     "assignedUnit": "Đơn vị phụ trách",
     "currentStatus": "Trạng thái hiện tại",
     "outline": "Đề cương",
@@ -28,7 +28,7 @@
     "menuAria": "Mở menu điều hướng"
   },
   "navigation": {
-    "dashboard": "Bàn Làm Việc",
+    "dashboard": "Trang Chủ",
     "documents": "Quản Lý Văn Bản",
     "records": "Hồ Sơ & Tài Liệu",
     "workflow": "Công Việc & Ký Số",
@@ -43,7 +43,9 @@
     "birthdays": "Sinh Nhật CBNV",
     "meetings": "Đặt Phòng Họp",
     "organizations": "Đơn Vị & Phòng Ban",
-    "employees": "Hồ Sơ Cán Bộ NV"
+    "positions": "Danh Mục Chức Vụ",
+    "employees": "Hồ Sơ Cán Bộ NV",
+    "roles": "Phân Quyền & Vai Trò"
   },
   "userMenu": {
     "profile": "Thông tin tài khoản",
@@ -59,10 +61,11 @@
     "role": "Cán bộ nghiệp vụ"
   },
   "notifications": {
-    "title": "Thông Báo Văn Bản",
+    "title": "Thông Báo Hệ Thống",
     "incoming": "Đến",
     "outgoing": "Đi",
     "confidential": "Mật",
+    "meetings": "Lịch Họp",
     "markAllRead": "Đã đọc tất cả",
     "viewAll": "Xem tất cả",
     "unreadCount": "{count} chưa đọc"
@@ -173,6 +176,14 @@
     "activeSelected": "Đang kích hoạt",
     "tipTitle": "Tiện ích chuyển đổi nhanh",
     "tipDesc": "Nút bấm trên thanh Header (cạnh đồng hồ) là nút chuyển đổi trực tiếp 1-chạm giữa Giao diện Sáng và Giao diện Tối bạn đã cấu hình tại đây.",
+    "interfaceStyleTitle": "Tùy chọn phong cách giao diện",
+    "interfaceStyleDesc": "Lựa chọn phong cách hiển thị phù hợp với nhu cầu sử dụng và thói quen làm việc của bạn.",
+    "interfaceStyleClassic": "Giao diện Cổ điển",
+    "interfaceStyleClassicBadge": "Chuẩn hành chính",
+    "interfaceStyleClassicDesc": "Bố cục Cổng điều hành hành chính chuẩn mực. Mật độ thông tin cao, tông Navy công quyền trang trọng, thanh Marquee sinh nhật và bảng biểu tra cứu chuyên dụng.",
+    "interfaceStyleModern": "Giao diện Hiện đại",
+    "interfaceStyleModernBadge": "Trực quan mới",
+    "interfaceStyleModernDesc": "Phong cách giao diện phẳng thế hệ mới. Bố cục thoáng đãng, bo góc mềm mại, tối ưu hiển thị trực quan theo xu hướng ứng dụng quản lý hiện đại.",
     "notificationSectionTitle": "Cấu hình thông báo văn bản",
     "notifIncoming": "Nhận thông báo khi có văn bản đến mới được phân phối",
     "notifUrgent": "Cảnh báo âm thanh đối với văn bản có độ khẩn \"HỎA TỐC\" hoặc \"TUYỆT MẬT\"",
@@ -321,6 +332,14 @@
       "codeRef": "Mục 7.3 · Độ khó: 0.80",
       "isGroup1": false,
       "desc": "Thêm Khối/Khu vực Cấp 1, Đơn vị phòng ban Cấp 2, quản lý số thứ tự ưu tiên."
+    },
+    "positions": {
+      "title": "Danh Mục Chức Vụ & Chức Vị",
+      "module": "Module 7.4: Quản trị Hệ thống - Danh mục Chức vụ",
+      "assignedTeam": "Nhóm 7 (Phân hệ Tiện ích & Quản trị)",
+      "codeRef": "Mục 7.4 · Độ khó: 0.80",
+      "isGroup1": false,
+      "desc": "Danh sách chức vụ theo thứ tự ưu tiên, thêm mới, import file Excel và tìm kiếm chức vụ."
     },
     "employees": {
       "title": "Quản Lý Hồ Sơ Cán Bộ Nhân Viên (CBNV)",

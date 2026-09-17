@@ -7,16 +7,16 @@ import { StreamData } from '../types/notification';
 // dùng riêng cho bộ chọn theme (ThemeSelector) để người dùng xem trước màu sắc
 // trước khi áp dụng, không phải là style của UI components.
 export const THEME_OPTIONS: ThemeOption[] = [
-  // 1. Chế độ Tối Hiện Đại (Sleek Dark)
+  // 1. Chế độ Tối Hiện Đại (Cyber Midnight Dark)
   {
     id: 'dark',
     name: 'Sleek Dark',
     icon: 'fa-moon',
     category: 'modern',
     categoryLabel: 'Chế độ Tối',
-    description: 'Nền tối sâu công nghệ chống mỏi mắt, tương phản dịu êm, bảo vệ thị lực tối đa',
-    previewGradient: 'linear-gradient(135deg, #0b0f17 0%, #1e293b 100%)',
-    borderPreview: 'rgba(56, 189, 248, 0.4)',
+    description: 'Nền đen sâu thẳm #0a0d14, thẻ tối cao cấp #121824 cùng điểm nhấn Indigo hiện đại',
+    previewGradient: 'linear-gradient(135deg, #0a0d14 0%, #121824 100%)',
+    borderPreview: 'rgba(85, 80, 233, 0.45)',
   },
   // 2. Chế độ Sáng Hiện Đại (Clean Light)
   {
@@ -143,9 +143,19 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: 'fa-sitemap',
       },
       {
+        id: 'positions',
+        label: 'Danh Mục Chức Vụ',
+        icon: 'fa-id-badge',
+      },
+      {
         id: 'employees',
         label: 'Hồ Sơ Cán Bộ NV',
         icon: 'fa-users',
+      },
+      {
+        id: 'roles',
+        label: 'Phân Quyền Nhóm Quyền',
+        icon: 'fa-user-shield',
       },
     ],
   },
@@ -170,7 +180,7 @@ export const NAV_GROUPS: NavGroup[] = [
 export const MAIN_MODULES: MainModule[] = [
   {
     id: 'dashboard',
-    label: 'Bàn Làm Việc',
+    label: 'Trang Chủ',
     shortLabel: 'Trang Chủ',
     icon: 'fa-gauge-high',
     teamTag: 'Nhóm 1',
@@ -178,7 +188,7 @@ export const MAIN_MODULES: MainModule[] = [
     subItems: [
       {
         id: 'dashboard',
-        label: 'Trang Chủ Dashboard',
+        label: 'Trang Chủ',
         icon: 'fa-chart-pie',
         description: 'Bàn làm việc tổng quan, thống kê số liệu năm',
       },
@@ -283,10 +293,22 @@ export const MAIN_MODULES: MainModule[] = [
         description: 'Cơ cấu khối, ban và chi nhánh Bảo Long',
       },
       {
+        id: 'positions',
+        label: 'Danh Mục Chức Vụ',
+        icon: 'fa-id-badge',
+        description: 'Quản lý chức vụ, chức vị và thứ tự ưu tiên',
+      },
+      {
         id: 'employees',
         label: 'Hồ Sơ Cán Bộ NV',
         icon: 'fa-users',
         description: 'Danh sách và thông tin nhân sự toàn công ty',
+      },
+      {
+        id: 'roles',
+        label: 'Phân Quyền & Vai Trò',
+        icon: 'fa-user-shield',
+        description: 'Ma trận nhóm quyền và phân quyền người dùng',
       },
     ],
   },
@@ -330,6 +352,14 @@ export const SAMPLE_STREAMS: StreamData[] = [
     label: 'Văn Bản Mật',
     icon: 'fa-shield-halved',
     color: 'rose',
+    unreadCount: 0,
+    items: [],
+  },
+  {
+    type: 'meetings',
+    label: 'Lịch Họp',
+    icon: 'fa-calendar-days',
+    color: 'amber',
     unreadCount: 0,
     items: [],
   },

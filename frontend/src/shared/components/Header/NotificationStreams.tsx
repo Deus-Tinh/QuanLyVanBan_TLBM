@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SAMPLE_STREAMS } from '../../utils/constants';
 import { NotificationStreamType } from '../../types/notification';
 import { useTranslation } from '../../locales/i18n';
 
 export default function NotificationStreams() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NotificationStreamType>('incoming');
@@ -76,8 +78,8 @@ export default function NotificationStreams() {
               </div>
             </div>
 
-            {/* 3 Streams Tab Navigation: Đến, Đi, Mật */}
-            <div className="flex items-center p-1.5 bg-surface border-b border-subtle gap-1">
+            {/* Streams Tab Navigation: Đến, Đi, Mật, Lịch Họp */}
+            <div className="flex items-center p-1.5 bg-surface border-b border-subtle gap-1 overflow-x-auto">
               {SAMPLE_STREAMS.map((stream) => {
                 const streamLabelKey = `notifications.${stream.type}`;
                 const streamLabel = t(streamLabelKey) !== streamLabelKey ? t(streamLabelKey) : stream.label;
@@ -86,7 +88,7 @@ export default function NotificationStreams() {
                   <button
                     key={stream.type}
                     type="button"
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors duration-fast ${
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors duration-fast whitespace-nowrap ${
                       activeTab === stream.type
                         ? 'bg-surface-elevated text-primary font-semibold shadow-sm'
                         : 'text-text-muted hover:text-text-main hover:bg-surface-hover'
@@ -116,7 +118,9 @@ export default function NotificationStreams() {
               {currentStream.items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-center text-text-muted">
                   <i className={`fa-solid ${currentStream.icon} text-2xl mb-2 opacity-30`} />
-                  <span className="text-xs font-medium">Không có thông báo mới</span>
+                  <span className="text-xs font-medium">
+                    {activeTab === 'meetings' ? 'Chưa có lịch họp mới' : 'Không có thông báo mới'}
+                  </span>
                 </div>
               ) : (
                 currentStream.items.map((item) => (
@@ -150,6 +154,23 @@ export default function NotificationStreams() {
                 ))
               )}
             </div>
+
+            {/* Footer xem thêm khi ở tab Lịch Họp */}
+            {activeTab === 'meetings' && (
+              <div className="p-2.5 border-t border-subtle bg-surface/50 text-center select-none">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate('/meetings');
+                  }}
+                  className="text-xs text-primary font-semibold hover:underline flex items-center justify-center gap-1 mx-auto"
+                >
+                  <i className="fa-regular fa-calendar-check text-xs" />
+                  <span>Xem lịch phòng họp chi tiết & đăng ký »</span>
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}

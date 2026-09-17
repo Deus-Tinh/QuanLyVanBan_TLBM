@@ -7,7 +7,7 @@
     "group1Notice": "Group 1 currently in active development"
   },
   "common": {
-    "backToDashboard": "Back to Dashboard",
+    "backToDashboard": "Back to Home",
     "assignedUnit": "Responsible Unit",
     "currentStatus": "Current Status",
     "outline": "Course Outline",
@@ -28,7 +28,7 @@
     "menuAria": "Open navigation menu"
   },
   "navigation": {
-    "dashboard": "Workplace",
+    "dashboard": "Home",
     "documents": "Documents",
     "records": "Dossiers & Files",
     "workflow": "Tasks & Signing",
@@ -43,7 +43,9 @@
     "birthdays": "Staff Birthdays",
     "meetings": "Meeting Rooms",
     "organizations": "Departments",
-    "employees": "Staff Directory"
+    "positions": "Job Positions",
+    "employees": "Staff Directory",
+    "roles": "Roles & Permissions"
   },
   "userMenu": {
     "profile": "Account Profile",
@@ -59,10 +61,11 @@
     "role": "System Officer"
   },
   "notifications": {
-    "title": "Document Notifications",
+    "title": "System Notifications",
     "incoming": "Incoming",
     "outgoing": "Outgoing",
     "confidential": "Confidential",
+    "meetings": "Meetings",
     "markAllRead": "Mark all read",
     "viewAll": "View all",
     "unreadCount": "{count} unread"
@@ -173,6 +176,14 @@
     "activeSelected": "Currently Active",
     "tipTitle": "Quick Toggle Utility",
     "tipDesc": "The 1-touch button on the Header (next to the clock) directly switches between the Light and Dark designs you configured here.",
+    "interfaceStyleTitle": "Interface Style Option",
+    "interfaceStyleDesc": "Choose the visual presentation style that best fits your workflow and preference.",
+    "interfaceStyleClassic": "Classic Administrative UI",
+    "interfaceStyleClassicBadge": "Institutional Standard",
+    "interfaceStyleClassicDesc": "Authoritative GovTech portal layout. High information density, formal navy palette, birthday marquee ticker, and compact operational tables.",
+    "interfaceStyleModern": "Modern Visual UI",
+    "interfaceStyleModernBadge": "Next-Gen Visual",
+    "interfaceStyleModernDesc": "Contemporary flat design. Spacious card margins, softer corner radii, and visual clarity aligned with modern SaaS enterprise standards.",
     "notificationSectionTitle": "Document Notification Configuration",
     "notifIncoming": "Receive alerts when a new incoming document is routed",
     "notifUrgent": "Sound alerts for documents marked \"URGENT\" or \"CONFIDENTIAL\"",
@@ -321,6 +332,14 @@
       "codeRef": "Item 7.3 · Difficulty: 0.80",
       "isGroup1": false,
       "desc": "Manage Tier-1 Divisions/Regions, Tier-2 Departments, and priority display ordering."
+    },
+    "positions": {
+      "title": "Job Positions Directory",
+      "module": "Module 7.4: System Admin - Job Positions",
+      "assignedTeam": "Group 7 (System & Utilities Subsystem)",
+      "codeRef": "Item 7.4 · Difficulty: 0.80",
+      "isGroup1": false,
+      "desc": "Position list by priority order, creation, Excel template import and position search."
     },
     "employees": {
       "title": "Staff Directory & Personnel Records",
