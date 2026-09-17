@@ -24,8 +24,8 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
 
   const displayName = session?.fullName || session?.username || '—';
   const displayRole = session?.roleTitle || session?.role || '—';
-  const displayDept = t('profile.sampleDept');
-  const displayEmail = session?.username ? `${session.username}@itc.edu.vn` : '—';
+  const displayDept = session?.department || (session ? t('profile.sampleDept') : '—');
+  const displayEmail = session?.email || (session?.username ? `${session.username}@donvi.gov.vn` : '—');
 
   return (
     <div className="max-w-4xl mx-auto my-5 flex flex-col gap-5">

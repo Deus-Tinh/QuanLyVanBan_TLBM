@@ -1,18 +1,6 @@
 import { NavGroup, MainModule } from '../types/navigation';
 import { ThemeOption, ThemeMode } from '../types/theme';
-import { UserProfile } from '../types/user';
 import { StreamData } from '../types/notification';
-
-export const CURRENT_USER: UserProfile = {
-  id: 0,
-  username: 'canbo',
-  fullName: 'Cán Bộ Nhân Viên',
-  role: 'Cán Bộ Nghiệp Vụ',
-  team: 'Đơn vị / Phòng ban',
-  department: 'Đơn vị / Phòng ban',
-  avatar: '👤',
-  email: 'canbo@tlbm.gov.vn',
-};
 
 // [DEVOPS AUDIT NOTE]:
 // previewGradient và borderPreview dưới đây là các ô màu mẫu tĩnh (swatches)

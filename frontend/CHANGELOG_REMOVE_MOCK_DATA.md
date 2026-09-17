@@ -71,6 +71,25 @@ Bản cập nhật này giải quyết triệt để 100% các điểm "Chưa đ
 
 ---
 
-## 4. Cam Kết & Trạng Thái Sẵn Sàng Cho Staging
+## 4. Bổ Sung Phúc Đáp Review Final (P1 & P2 Bundle Check)
 
-Mọi thay đổi đã được kiểm chứng trực tiếp trên môi trường máy chủ và tệp bundle thực tế. Mã nguồn nhánh `1_layout_home` đã sẵn sàng để Merge vào `staging`.
+Nhóm 1 đã xử lý dứt điểm 2 tồn đọng cuối cùng do DevOps Reviewer phát hiện trong production bundle:
+
+1. **P1 — Loại bỏ triệt để email cá nhân & dữ liệu mẫu khỏi locale (`vi.json`, `en.json`, `common.json`) và `ProfilePage.tsx`:**
+   - Xóa bỏ hoàn toàn key `sampleEmail: "kiet.ct@itc.edu.vn"`, `sampleName`, `sampleRole` khỏi toàn bộ các tệp locale (`common.json`, `vi.json`, `en.json`).
+   - Xóa bỏ toàn bộ danh sách họ tên sinh viên các nhóm 2–8 trong mục `pages.*.assignedTeam`, quy chuẩn hóa thành tên phân hệ trung tính (`Nhóm 2 (Phân hệ Quản lý Văn bản)`, `Group 2 (Document Management Subsystem)`).
+   - Trong `ProfilePage.tsx`: đổi email hiển thị sang format trung tính dựa trên session `session?.email || (session?.username ? `${session.username}@donvi.gov.vn` : '—')`, tuyệt đối không còn đuôi `@itc.edu.vn`. Khi `session === null`, hiển thị `—` (Empty State).
+
+2. **P2 — Loại bỏ Fallback Mock User Object (`CURRENT_USER` / `Hn`) khi chưa có session:**
+   - Xóa bỏ hoàn toàn export `CURRENT_USER` (`canbo`, `canbo@tlbm.gov.vn`) khỏi `frontend/src/shared/utils/constants.ts`.
+   - Cập nhật `UserDropdown.tsx`: Khi `session === null`, render trạng thái Khách / Empty State chuẩn mực (icon `fa-regular fa-user`, text "Chưa đăng nhập", tiêu đề dropdown hiển thị "Chưa đăng nhập / Vui lòng đăng nhập để tiếp tục", ẩn hoàn toàn email mock, cung cấp nút Đăng nhập trực tiếp).
+
+3. **Kết quả kiểm định Production Bundle mới (`dist/assets/index-ClxUyO8V.js`):**
+   - Tìm kiếm chuỗi `kiet.ct@itc.edu.vn`, `itc.edu.vn`, `canbo@tlbm.gov.vn`, `canbo@`, `sampleemail`, tên cá nhân: **0 kết quả (MATCH: 0)**.
+   - Bundle sạch 100%, không còn bất kỳ dữ liệu cá nhân hay mock user object nào được bake cứng vào runtime.
+
+---
+
+## 5. Cam Kết & Trạng Thái Sẵn Sàng Cho Staging
+
+Mọi thay đổi đã được kiểm chứng trực tiếp trên môi trường máy chủ và tệp bundle thực tế. Mã nguồn nhánh `1_layout_home` đã đạt 100% tiêu chuẩn DevOps và sẵn sàng Merge vào `staging`.
