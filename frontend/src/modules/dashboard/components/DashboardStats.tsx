@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../../../shared/locales/i18n';
 
 interface DashboardStatsProps {
   incomingCount?: number;
@@ -15,7 +14,6 @@ export default function DashboardStats({
   confidentialCount = 0,
   tasksCount = 0,
 }: DashboardStatsProps) {
-  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const cards = [
@@ -25,7 +23,7 @@ export default function DashboardStats({
       subtext: incomingCount > 0 ? `+${incomingCount} văn bản mới trong ngày` : 'Chưa có phát sinh trong ngày',
       icon: 'fa-solid fa-inbox',
       path: '/documents/incoming',
-      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
     },
     {
       title: 'Văn bản đi (2026)',
@@ -33,7 +31,7 @@ export default function DashboardStats({
       subtext: outgoingCount > 0 ? `+${outgoingCount} văn bản phát hành hôm nay` : 'Chưa có phát hành hôm nay',
       icon: 'fa-solid fa-paper-plane',
       path: '/documents/outgoing',
-      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
     },
     {
       title: 'Văn bản mật (2026)',
@@ -41,7 +39,7 @@ export default function DashboardStats({
       subtext: confidentialCount > 0 ? `${confidentialCount} văn bản bảo mật cao` : 'Không có văn bản mật tồn đọng',
       icon: 'fa-solid fa-shield-halved',
       path: '/documents/incoming',
-      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
     },
     {
       title: 'Nhiệm vụ - Thông báo',
@@ -49,7 +47,7 @@ export default function DashboardStats({
       subtext: tasksCount > 0 ? `${tasksCount} nhiệm vụ cần xử lý` : 'Không có nhiệm vụ cần xử lý',
       icon: 'fa-solid fa-list-check',
       path: '/tasks',
-      bgClass: 'bg-[#003865] hover:bg-[#002f55] border-[#002a4d]',
+      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
     },
   ];
 

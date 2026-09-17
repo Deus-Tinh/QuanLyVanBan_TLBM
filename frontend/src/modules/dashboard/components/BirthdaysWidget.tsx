@@ -6,7 +6,7 @@ export default function BirthdaysWidget() {
   return (
     <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col">
       {/* Forest Green Header */}
-      <div className="bg-[#168b3e] text-white px-3 py-1.5 flex justify-between items-center select-none text-xs font-bold">
+      <div className="bg-success text-white px-3 py-1.5 flex justify-between items-center select-none text-xs font-bold">
         <div className="flex items-center gap-1.5">
           <i className="fa-solid fa-cake-candles text-[11px]" />
           <span>Thông báo sinh nhật {EMPLOYEES.length > 0 ? `(${EMPLOYEES.length} cán bộ)` : ''}</span>

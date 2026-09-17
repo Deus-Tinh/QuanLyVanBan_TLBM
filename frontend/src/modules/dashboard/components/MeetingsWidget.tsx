@@ -9,7 +9,7 @@ export default function MeetingsWidget() {
   return (
     <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col">
       {/* Amber Header */}
-      <div className="bg-[#d9822b] text-white px-3 py-1.5 flex justify-between items-center select-none text-xs font-bold">
+      <div className="bg-warning text-white px-3 py-1.5 flex justify-between items-center select-none text-xs font-bold">
         <div className="flex items-center gap-1.5">
           <i className="fa-regular fa-calendar-days text-[11px]" />
           <span>Lịch họp mới nhất</span>

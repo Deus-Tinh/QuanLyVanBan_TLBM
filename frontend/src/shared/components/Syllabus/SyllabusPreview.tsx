@@ -20,13 +20,13 @@ interface SyllabusPreviewProps {
 
 export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPreviewProps) {
   const navigate = useNavigate();
-  const { t, translations } = useTranslation();
+  const { translations } = useTranslation();
   const pageMap = (translations.pages || {}) as Record<ActivePageId, PageMeta>;
 
   const meta = pageMap[activePage] || {
     title: activePage,
     module: 'Chức năng hệ thống',
-    assignedTeam: 'Nhóm 1 (Trưởng nhóm: Châu Tuấn Kiệt)',
+    assignedTeam: 'Nhóm 1 (Phân hệ Trang chủ & Quản lý Văn bản)',
     codeRef: 'ITC Django MĐ501911',
     isGroup1: true,
     desc: 'Phân hệ quản lý văn bản & tài liệu mật TLBM.',

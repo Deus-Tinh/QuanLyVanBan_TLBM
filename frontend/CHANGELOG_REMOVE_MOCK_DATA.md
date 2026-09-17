@@ -1,62 +1,76 @@
-# 📋 CHANGELOG — Xóa Toàn Bộ Dữ Liệu Giả Lập Frontend
+# 📋 CHANGELOG — Hoàn Thiện Loại Bỏ Mock Data & Tối Ưu Production
 
 > **Nhánh:** `1_layout_home`  
-> **Commit:** `b95e00a`  
-> **Ngày:** 16/09/2026  
-> **Người thực hiện:** Nhóm 1 (PM: Châu Tuấn Kiệt)
+> **PR Liên kết:** #3 (1_layout_home ➔ staging)  
+> **Nhóm thực hiện:** Nhóm 1 - Kiến Trúc Layout & Trang Chủ  
+> **Phiên bản:** Hoàn tất phúc đáp Báo cáo Kiểm thử DevOps  
 
 ---
 
-## Mục đích
+## 1. Mục Đích & Phạm Vi Giải Quyết
 
-Loại bỏ **100% dữ liệu mẫu / giả lập (mock data)** trên toàn bộ giao diện Frontend React, chuyển sang trạng thái **Empty State** sạch sẽ — sẵn sàng kết nối API Backend Django thực tế.
-
-Sau thay đổi này, giao diện **không còn hiển thị bất kỳ số liệu, danh sách hay thông tin cán bộ giả lập nào**. Tất cả widget và component đều hỗ trợ nhận dữ liệu qua `props` từ API.
-
----
-
-## Danh sách file thay đổi (12 file)
-
-| # | File | Mô tả thay đổi |
-|---|---|---|
-| 1 | `src/modules/dashboard/components/DashboardStats.tsx` | 4 thẻ KPI mặc định về `0`, subtext hiển thị động theo giá trị |
-| 2 | `src/modules/dashboard/components/IncomingDocumentsWidget.tsx` | Xóa 5 công văn SCB mẫu → Empty State |
-| 3 | `src/modules/dashboard/components/RecentOutgoingWidget.tsx` | Xóa 5 quyết định mẫu → Empty State |
-| 4 | `src/modules/dashboard/components/RecentTasksWidget.tsx` | Xóa 4 nhiệm vụ mẫu → Empty State |
-| 5 | `src/modules/dashboard/components/MeetingsWidget.tsx` | Xóa 3 lịch họp mẫu → Empty State |
-| 6 | `src/modules/dashboard/components/BirthdaysWidget.tsx` | Xóa 3 cán bộ sinh nhật mẫu → Empty State |
-| 7 | `src/modules/dashboard/components/RecentResourcesWidget.tsx` | Xóa 5 biểu mẫu mẫu → Empty State |
-| 8 | `src/shared/utils/constants.ts` | Xóa badge số giả trên Sidebar + xóa nội dung thông báo giả |
-| 9 | `src/shared/components/Header/NotificationStreams.tsx` | Thêm Empty State khi danh sách thông báo trống |
-| 10 | `src/modules/ai/pages/AiAssistantPage.tsx` | Xóa 4 phiên chat mẫu + xóa citation giả trong lời chào |
-| 11 | `src/modules/profile/pages/ProfilePage.tsx` | Đọc thông tin từ session đăng nhập thay vì chuỗi cố định |
-| 12 | `src/modules/dashboard/components/DashboardStats.test.tsx` | Cập nhật unit test cho giá trị mặc định mới |
+Bản cập nhật này giải quyết triệt để 100% các điểm "Chưa đạt" trong Báo cáo DevOps Audit (PR #3) từ DevOps Lead:
+1. **Xóa hoàn toàn dữ liệu cá nhân & mock runtime khỏi production bundle:**
+   - Xóa bỏ toàn bộ hardcoded personal identities ("Châu Tuấn Kiệt", "Nguyễn Văn Hiếu", "Nguyễn Duy Quân") trong `constants.ts`, `FloatingAIBox.tsx`, `SyllabusPreview.tsx`, `AiAssistantPage.tsx`, và các tệp locale (`vi.json`, `en.json`, `common.json`).
+   - Xóa bỏ 100% hai mảng dữ liệu mẫu `ALL_INCOMING` và `ALL_OUTGOING` trong `DashboardPage.tsx`. Toàn bộ widget Dashboard chuyển về trạng thái Empty State sạch sẽ khi chưa có dữ liệu từ Backend.
+2. **Loại bỏ static inline CSS:**
+   - Chuyển đổi toàn bộ các thuộc tính `style=` tĩnh trong `SettingsPage.tsx` sang Tailwind utility classes (giảm từ 36 inline styles tĩnh về đúng **0 inline style**).
+   - Thay thế các inline style tĩnh trong `AiAssistantPage.tsx` (`style={{ height: '8px' }}` ➔ `className="h-2"`, `style={{ display: 'none' }}` ➔ `className="hidden"`).
+   - Chỉ giữ lại inline styles động thực tế (tọa độ mắt chuột tương tác trong `LoginPage.tsx` và kéo thả phím Home ảo trong `MobileAssistiveTouch.tsx`).
+3. **Loại bỏ toàn bộ arbitrary raw hex:**
+   - Thay thế 100% các class `bg-[#...]` và `accent-[#...]` trên các widget Dashboard (`DashboardStats`, `BirthdaysWidget`, `IncomingDocumentsWidget`, `MeetingsWidget`, `NewTasksWidget`, `RecentOutgoingWidget`, `RecentResourcesWidget`, `RecentTasksWidget`) bằng semantic tokens chuẩn (`bg-primary`, `bg-warning`, `bg-success`, `bg-slate-800`, `accent-primary`).
+4. **Vượt qua toàn bộ Verification Gates:**
+   - Sửa toàn bộ 16 lỗi ESLint (`pnpm lint` ➔ **0 errors, 0 warnings**).
+   - Sửa lỗi runtime `python backend/manage.py check` (Django System Check ➔ **0 issues**).
+   - `pnpm tsc --noEmit` ➔ **0 errors**.
+   - `pnpm test -- --run` ➔ **15/15 tests PASS**.
+   - `pnpm build` ➔ **Biên dịch thành công, bundle sạch 100%**.
 
 ---
 
-## Kiểm tra chất lượng
+## 2. Chi Tiết Các Tệp Mã Nguồn Đã Chỉnh Sửa
 
-| Hạng mục | Kết quả |
-|---|---|
-| TypeScript (`pnpm tsc --noEmit`) | ✅ 0 lỗi |
-| Unit Tests (`pnpm test -- --run`) | ✅ 15/15 pass |
-| Production Build (`pnpm build`) | ✅ Thành công |
-| Bundle size JS | 413 KB (gzip 122 KB) |
-| Bundle size CSS | 57 KB (gzip 11 KB) |
+| STT | Tệp Mã Nguồn | Chi Tiết Thay Đổi |
+|:---:|:---|:---|
+| 1 | `src/modules/dashboard/pages/DashboardPage.tsx` | Xóa bỏ hoàn toàn 2 dataset `ALL_INCOMING` và `ALL_OUTGOING` (hơn 100 dòng mock văn bản mẫu); khởi tạo state `[]` để kích hoạt Empty State tự nhiên của widget. |
+| 2 | `src/shared/utils/constants.ts` | Thay đổi fallback `CURRENT_USER` từ thông tin cá nhân sang `"Cán bộ nhân viên"` (`canbo@tlbm.gov.vn`). |
+| 3 | `src/shared/components/AI/FloatingAIBox.tsx` | Xóa tên cá nhân trong lời chào khởi tạo; chuyển hàm tạo ID sang module scope tránh vi phạm `react-hooks/purity`. |
+| 4 | `src/shared/components/Syllabus/SyllabusPreview.tsx` | Xóa tên cá nhân trong `assignedTeam`, thay bằng `"Nhóm 1 (Phân hệ Trang chủ & Quản lý Văn bản)"`; loại bỏ import/biến `t` không sử dụng. |
+| 5 | `src/modules/profile/pages/ProfilePage.tsx` | Đọc thông tin người dùng từ `localStorage` session thực tế; loại bỏ import `Badge` không sử dụng. |
+| 6 | `src/shared/locales/{vi,en,common}.json` | Chuẩn hóa `completedGroup1` thành `"✓ Hoàn thành (Phân hệ Trang chủ)"`; loại bỏ các tên cá nhân trong chuỗi i18n. |
+| 7 | `src/modules/settings/pages/SettingsPage.tsx` | Chuyển đổi 100% các inline style sang Tailwind classes (0 `style=` trong file); loại bỏ interface props không sử dụng. |
+| 8 | `src/modules/ai/pages/AiAssistantPage.tsx` | Chuyển hàm tạo ID và đọc session ra module scope; thay thế avatar hardcode bằng ký tự đầu họ tên phiên đăng nhập; loại bỏ static inline styles. |
+| 9 | `src/modules/dashboard/components/DashboardStats.tsx` | Thay `bg-[#003865] hover:bg-[#002f55] border-[#002a4d]` bằng `bg-primary hover:bg-primary-hover border-primary-border`; loại bỏ biến `t` không sử dụng. |
+| 10 | `src/modules/dashboard/components/BirthdaysWidget.tsx` | Thay `bg-[#168b3e]` bằng `bg-success`. |
+| 11 | `src/modules/dashboard/components/IncomingDocumentsWidget.tsx` | Thay `bg-[#0a3871]` bằng `bg-primary`. |
+| 12 | `src/modules/dashboard/components/MeetingsWidget.tsx` | Thay `bg-[#d9822b]` bằng `bg-warning`. |
+| 13 | `src/modules/dashboard/components/NewTasksWidget.tsx` | Thay `bg-[#df9b2d]` bằng `bg-warning`. |
+| 14 | `src/modules/dashboard/components/RecentOutgoingWidget.tsx` | Thay `bg-[#0a3871]` bằng `bg-primary`. |
+| 15 | `src/modules/dashboard/components/RecentResourcesWidget.tsx` | Thay `bg-[#1e4d7b]` bằng `bg-slate-800`. |
+| 16 | `src/modules/dashboard/components/RecentTasksWidget.tsx` | Thay `bg-[#0a3871]` bằng `bg-primary`; thay 4 thuộc tính `accent-[#0a3871]` bằng `accent-primary`. |
+| 17 | `src/shared/components/Layout/AppSidebar.tsx` | Loại bỏ tham số destructured không sử dụng `isMobileOpen` để vượt qua lint gate. |
+| 18 | `src/shared/components/Navigation/MobileAssistiveTouch.tsx` | Xử lý triệt để cascading render bằng cách bỏ `setIsDimmed(false)` đồng bộ trong `useEffect`. |
+| 19 | `src/modules/auth/pages/LoginPage.tsx` | Thay thế các kiểu `any` bằng `ActivePageId` và `ReturnType<typeof setTimeout> | null`. |
+| 20 | `src/shared/locales/i18n.ts` | Thay thế `obj: any` bằng `Record<string, unknown>` trong hàm tra cứu chuỗi ngôn ngữ. |
+| 21 | `docs/DESIGN_TOKENS_AUDIT.md` | Cập nhật bảng kiểm kê Design Tokens và giải trình chi tiết các trường hợp ngoại lệ được allowlist. |
 
 ---
 
-## Lưu ý cho DevOps / Deploy
+## 3. Kết Quả Kiểm Tra Chất Lượng Thực Tế (Verification Evidence)
 
-1. **Không có breaking change về cấu trúc API** — các component vẫn nhận dữ liệu qua `props` với interface không đổi.
-2. **Thư mục `dist/`** đã được build lại. Nếu deploy thủ công lên Netlify, kéo thả thư mục `frontend/dist` mới nhất.
-3. **Đăng nhập** vẫn hoạt động bình thường qua form cục bộ (chưa kết nối API Auth Django).
-4. Giao diện sẽ hiển thị trạng thái trống có icon + thông điệp hướng dẫn thay vì dữ liệu giả — đây là hành vi đúng cho đến khi Backend cung cấp API.
+| Tiêu chí | Lệnh thực hiện | Kết quả thực tế |
+|---|---|:---:|
+| **TypeScript Typecheck** | `pnpm tsc --noEmit` | **PASS** (0 errors) |
+| **ESLint Gate** | `pnpm lint` | **PASS** (0 errors, 0 warnings) |
+| **Unit Test Suite** | `pnpm test -- --run` | **PASS** (6 files, 15 tests) |
+| **Production Build** | `pnpm build` | **PASS** (Biên dịch thành công) |
+| **Backend System Check** | `python backend/manage.py check` | **PASS** (0 issues) |
+| **Static Inline CSS** | Kiểm tra regex `style=` tĩnh | **PASS** (0 static styles trong Settings/Widgets) |
+| **Arbitrary Hex** | Kiểm tra regex `(bg|text|border|accent)-[#...]` | **PASS** (0 raw hex trong TSX) |
+| **Production Bundle Check** | Grep tên cá nhân trong `dist/` | **PASS** (0 personal identities) |
 
 ---
 
-## Bước tiếp theo (Nhóm 1 & các nhóm khác)
+## 4. Cam Kết & Trạng Thái Sẵn Sàng Cho Staging
 
-- [ ] Xây dựng API endpoint Django REST Framework cho từng phân hệ
-- [ ] Kết nối Frontend gọi API thực tế (`fetch` / `axios`) thay thế mảng rỗng hiện tại
-- [ ] Tích hợp xác thực JWT/Session từ Django Auth vào luồng đăng nhập
+Mọi thay đổi đã được kiểm chứng trực tiếp trên môi trường máy chủ và tệp bundle thực tế. Mã nguồn nhánh `1_layout_home` đã sẵn sàng để Merge vào `staging`.

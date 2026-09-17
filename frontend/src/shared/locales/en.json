@@ -14,7 +14,7 @@
     "group1Developing": "Group 1 Currently In Development",
     "group1Layout": "Group 1 Layout & Shell Architecture",
     "group1DescSelf": "Group 1 is actively developing and finalizing UI components with Django Backend integration.",
-    "group1DescOther": "Group 1 (PM: Chau Tuan Kiet) is developing the shell layout & preparing API integration endpoints with {team}."
+    "group1DescOther": "Group 1 is developing the shell layout & preparing API integration endpoints with {team}."
   },
   "header": {
     "searchPlaceholder": "Search document number, subject, tasks...",
@@ -69,9 +69,9 @@
     "layoutLead": "Layout & Workplace Lead"
   },
   "dashboardDetails": {
-    "greeting": "Welcome, Chau Tuan Kiet",
-    "roleBadge": "PM · Group 1 Lead",
-    "leadDescription": "Executive Workplace · Module 1.2 Dashboard Outline lead by Group 1 (Chau Tuan Kiet, Nguyen Van Hieu, Nguyen Duy Quan).",
+    "greeting": "Welcome, Staff Member",
+    "roleBadge": "Specialist Officer",
+    "leadDescription": "Executive Workplace · Document & Confidential Archive Management System (TLBM).",
     "receiveDocBtn": "Receive Document",
     "quickSearchTitle": "Quick Search Incoming & Outgoing Documents",
     "filterAll": "All",
@@ -100,7 +100,7 @@
     "inProgress": "In Progress",
     "upcoming": "Upcoming",
     "recentIncomingTitle": "Latest Incoming Documents (Top 5)",
-    "completedGroup1": "✓ Completed (Group 1 · Nguyen Van Hieu)",
+    "completedGroup1": "✓ Completed (Group 1)",
     "docNumber": "No. / Ref Code",
     "docSummary": "Summary / Subject",
     "docDate": "Doc Date",
@@ -125,7 +125,7 @@
     "role": "Project Role",
     "department": "Work Unit",
     "email": "Contact Email",
-    "sampleName": "Chau Tuan Kiet",
+    "sampleName": "Staff Member",
     "sampleRole": "Project Manager (PM) · Group 1 Lead",
     "sampleDept": "IT Department (ITC)",
     "sampleEmail": "kiet.ct@itc.edu.vn"
@@ -186,43 +186,43 @@
   "pages": {
     "dashboard": {
       "title": "Workplace & Executive Dashboard",
-      "module": "Module 1.2: Main Dashboard",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.2 · Difficulty: 0.80",
+      "module": "Module 1.2: Executive Dashboard",
+      "assignedTeam": "Group 1 (Layout & Dashboard Subsystem)",
+      "codeRef": "Item 1.2 · Complexity: 0.80",
       "isGroup1": true,
-      "desc": "Annual document statistics, T/T+1 birthday alerts, meeting room scheduling, incoming/outgoing doc search, top 5 documents, tasks, and shared resources."
+      "desc": "Annual document statistics, birthdays, meeting rooms, fast search, top documents, tasks, and shared resources."
     },
     "login": {
-      "title": "System Authentication Portal (Staff & Administrator)",
+      "title": "System Authentication (Staff & Administrator)",
       "module": "Module 1.1: Layout & Authentication",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "assignedTeam": "Group 1 (Authentication Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "Account verification for corporate personnel and system administrators featuring dual dedicated interfaces."
+      "desc": "Authentication flow for staff members and system administrators with dual visual layouts."
     },
     "profile": {
-      "title": "User Profile & Personal Credentials",
-      "module": "Module 1.1: Layout & Account Profile",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "title": "Personal Profile & Account Information",
+      "module": "Module 1.1: Layout & Account Info",
+      "assignedTeam": "Group 1 (Profile Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "View and update personal profile, corporate position, assigned department, email, and contact number."
+      "desc": "View and update profile credentials, department, organization unit, email, and phone number."
     },
     "password_change": {
-      "title": "Account Password Management",
+      "title": "Change Account Password",
       "module": "Module 1.1: Layout & Account Security",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "assignedTeam": "Group 1 (Security Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "Change user password with irreversible one-way cryptographic hashing security standards."
+      "desc": "Change user password following one-way cryptographic security policy."
     },
     "settings": {
-      "title": "System Preferences & Workspace Customization",
+      "title": "System Settings & Personal Preferences",
       "module": "Module 1.1: Layout & System Settings",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "assignedTeam": "Group 1 (Settings Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "Configure personal preferences, urgent dispatch notifications, 2FA dual-factor authentication, language, and theme modes."
+      "desc": "Personalize workspace notifications, 2FA security, language locale, and display appearance."
     },
     "documents_incoming": {
       "title": "Incoming Documents Management",

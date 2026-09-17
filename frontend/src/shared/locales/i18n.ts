@@ -75,12 +75,12 @@ export function t(
   const dict = DICTIONARIES[lang] || DICTIONARIES.vi;
   const fallbackDict = DICTIONARIES.vi;
 
-  const resolvePath = (obj: any, path: string) => {
+  const resolvePath = (obj: Record<string, unknown>, path: string) => {
     const parts = path.split('.');
-    let cur = obj;
+    let cur: unknown = obj;
     for (const p of parts) {
-      if (cur && typeof cur === 'object' && p in cur) {
-        cur = cur[p];
+      if (cur && typeof cur === 'object' && p in (cur as Record<string, unknown>)) {
+        cur = (cur as Record<string, unknown>)[p];
       } else {
         return undefined;
       }

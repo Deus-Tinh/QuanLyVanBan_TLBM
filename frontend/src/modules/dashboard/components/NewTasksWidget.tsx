@@ -7,7 +7,7 @@ export default function NewTasksWidget() {
   return (
     <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col">
       {/* Yellow/Amber Header */}
-      <div className="bg-[#df9b2d] text-white px-3 py-1.5 flex justify-between items-center select-none text-xs font-bold">
+      <div className="bg-warning text-white px-3 py-1.5 flex justify-between items-center select-none text-xs font-bold">
         <div className="flex items-center gap-1.5">
           <i className="fa-solid fa-briefcase text-[11px]" />
           <span>Nhiệm vụ mới (công việc)</span>

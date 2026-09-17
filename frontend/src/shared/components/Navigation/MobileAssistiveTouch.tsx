@@ -20,7 +20,6 @@ export default function MobileAssistiveTouch({
 }: MobileAssistiveTouchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDimmed, setIsDimmed] = useState(false);
-  const dimTimerRef = useRef<number | null>(null);
 
   // Vị trí tọa độ kéo thả tự do của nút Home ảo (lưu vào localStorage)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(() => {
@@ -59,29 +58,24 @@ export default function MobileAssistiveTouch({
     MAIN_MODULES[0];
 
   // Cơ chế tự động mờ phím Home ảo sau 3.5s nếu không tương tác
-  const resetDimTimer = () => {
-    setIsDimmed(false);
-    if (dimTimerRef.current) {
-      window.clearTimeout(dimTimerRef.current);
-    }
-    if (!isOpen && !isDragging) {
-      dimTimerRef.current = window.setTimeout(() => {
-        setIsDimmed(true);
-      }, 3500);
-    }
-  };
-
   useEffect(() => {
-    resetDimTimer();
+    if (isOpen || isDragging) {
+      return;
+    }
 
-    const handleUserActivity = () => resetDimTimer();
+    const timer = window.setTimeout(() => {
+      setIsDimmed(true);
+    }, 3500);
+
+    const handleUserActivity = () => {
+      setIsDimmed(false);
+    };
+
     window.addEventListener('scroll', handleUserActivity, { passive: true });
     window.addEventListener('touchstart', handleUserActivity, { passive: true });
 
     return () => {
-      if (dimTimerRef.current) {
-        window.clearTimeout(dimTimerRef.current);
-      }
+      window.clearTimeout(timer);
       window.removeEventListener('scroll', handleUserActivity);
       window.removeEventListener('touchstart', handleUserActivity);
     };
@@ -161,7 +155,7 @@ export default function MobileAssistiveTouch({
       <button
         type="button"
         className={`w-14 h-14 rounded-full bg-slate-900/85 border border-white/20 shadow-glass flex items-center justify-center select-none backdrop-blur-md transition-opacity duration-300 ${
-          isDimmed && !isDragging ? 'opacity-40 hover:opacity-100' : 'opacity-100'
+          isDimmed && !isDragging && !isOpen ? 'opacity-40 hover:opacity-100' : 'opacity-100'
         } ${isOpen ? 'ring-2 ring-primary' : ''}`}
         style={
           position
@@ -194,7 +188,7 @@ export default function MobileAssistiveTouch({
             hasMoved: false,
           };
           setIsDragging(true);
-          resetDimTimer();
+          setIsDimmed(false);
         }}
         onTouchStart={(e) => {
           const touch = e.touches[0];
@@ -207,12 +201,12 @@ export default function MobileAssistiveTouch({
             hasMoved: false,
           };
           setIsDragging(true);
-          resetDimTimer();
+          setIsDimmed(false);
         }}
         onClick={() => {
           if (!dragRef.current.hasMoved) {
             setIsOpen((prev) => !prev);
-            resetDimTimer();
+            setIsDimmed(false);
           }
         }}
         title="Mở menu hệ thống (AssistiveTouch) · Nhấn để mở, giữ để kéo thả"

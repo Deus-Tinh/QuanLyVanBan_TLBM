@@ -32,7 +32,7 @@ export default function RecentTasksWidget({
   return (
     <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col">
       {/* Header: Solid Navy Blue */}
-      <div className="bg-[#0a3871] text-white px-3 py-1.5 flex justify-between items-center select-none">
+      <div className="bg-primary text-white px-3 py-1.5 flex justify-between items-center select-none">
         <div className="flex items-center gap-1.5 font-bold text-xs">
           <i className="fa-solid fa-list-check text-[11px]" />
           <span>Danh sách nhiệm vụ</span>
@@ -54,7 +54,7 @@ export default function RecentTasksWidget({
             name="task_status_filter"
             checked={filter === 'processing'}
             onChange={() => setFilter('processing')}
-            className="accent-[#0a3871] cursor-pointer"
+            className="accent-primary cursor-pointer"
           />
           <span>Đang xử lý</span>
         </label>
@@ -64,7 +64,7 @@ export default function RecentTasksWidget({
             name="task_status_filter"
             checked={filter === 'completed'}
             onChange={() => setFilter('completed')}
-            className="accent-[#0a3871] cursor-pointer"
+            className="accent-primary cursor-pointer"
           />
           <span>Đã hoàn thành</span>
         </label>
@@ -74,7 +74,7 @@ export default function RecentTasksWidget({
             name="task_status_filter"
             checked={filter === 'overdue'}
             onChange={() => setFilter('overdue')}
-            className="accent-[#0a3871] cursor-pointer"
+            className="accent-primary cursor-pointer"
           />
           <span>Quá hạn xử lý</span>
         </label>
@@ -84,7 +84,7 @@ export default function RecentTasksWidget({
             name="task_status_filter"
             checked={filter === 'pending'}
             onChange={() => setFilter('pending')}
-            className="accent-[#0a3871] cursor-pointer"
+            className="accent-primary cursor-pointer"
           />
           <span>Đang chờ duyệt</span>
         </label>

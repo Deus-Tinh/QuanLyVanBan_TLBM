@@ -4,14 +4,14 @@ import { UserProfile } from '../types/user';
 import { StreamData } from '../types/notification';
 
 export const CURRENT_USER: UserProfile = {
-  id: 1,
-  username: 'chautuankiet',
-  fullName: 'Châu Tuấn Kiệt',
-  role: 'Project Manager (PM)',
-  team: 'Ban Công Nghệ Thông Tin',
-  department: 'Ban Công Nghệ Thông Tin',
-  avatar: '👨‍💼',
-  email: 'kiet.ct@itc.edu.vn',
+  id: 0,
+  username: 'canbo',
+  fullName: 'Cán Bộ Nhân Viên',
+  role: 'Cán Bộ Nghiệp Vụ',
+  team: 'Đơn vị / Phòng ban',
+  department: 'Đơn vị / Phòng ban',
+  avatar: '👤',
+  email: 'canbo@tlbm.gov.vn',
 };
 
 // [DEVOPS AUDIT NOTE]:

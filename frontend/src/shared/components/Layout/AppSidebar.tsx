@@ -45,7 +45,6 @@ const FB_MODULE_GRADIENTS: Record<string, { bgClass: string; icon: string }> = {
 };
 
 export default function AppSidebar({
-  isMobileOpen,
   onCloseMobile,
   committedPage,
   previewPage,

@@ -13,11 +13,21 @@ interface Message {
   quickReplies?: string[];
 }
 
+let floatingMsgSeq = 0;
+function createBoxMessage(sender: 'ai' | 'user', text: string): Message {
+  return {
+    id: `${sender}-${Date.now().toString(36)}-${++floatingMsgSeq}`,
+    sender,
+    text,
+    time: 'Vừa xong',
+  };
+}
+
 const INITIAL_MESSAGES: Message[] = [
   {
     id: 'msg-init',
     sender: 'ai',
-    text: `👋 **Xin chào Châu Tuấn Kiệt!**\nTôi là **Trợ Lý AI TLBM (GPT-4o)** — trợ lý tra cứu quy trình và hỗ trợ nghiệp vụ văn bản.\n\nHãy chọn gợi ý bên dưới hoặc gõ câu hỏi để tôi hỗ trợ bạn ngay!`,
+    text: `👋 **Xin chào Quý Cán bộ!**\nTôi là **Trợ Lý AI TLBM (GPT-4o)** — trợ lý tra cứu quy trình và hỗ trợ nghiệp vụ văn bản.\n\nHãy chọn gợi ý bên dưới hoặc gõ câu hỏi để tôi hỗ trợ bạn ngay!`,
     time: 'Vừa xong',
     quickReplies: [
       '📋 Quy trình tiếp nhận văn bản đến?',
@@ -81,12 +91,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
     const text = (textToSend || inputMessage).trim();
     if (!text) return;
 
-    const userMsg: Message = {
-      id: `user-${Math.random().toString(36).slice(2, 9)}`,
-      sender: 'user',
-      text,
-      time: 'Vừa xong',
-    };
+    const userMsg = createBoxMessage('user', text);
 
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
@@ -95,12 +100,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
     // Giả lập độ trễ xử lý AI thông minh
     setTimeout(() => {
       const replyText = generateAIResponse(text);
-      const aiMsg: Message = {
-        id: `ai-${Math.random().toString(36).slice(2, 9)}`,
-        sender: 'ai',
-        text: replyText,
-        time: 'Vừa xong',
-      };
+      const aiMsg = createBoxMessage('ai', replyText);
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
     }, 650);

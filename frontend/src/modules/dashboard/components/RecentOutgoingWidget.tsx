@@ -16,7 +16,7 @@ export default function RecentOutgoingWidget({
   return (
     <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col h-full">
       {/* Header: Solid Navy Blue */}
-      <div className="bg-[#0a3871] text-white px-3 py-1.5 flex justify-between items-center select-none">
+      <div className="bg-primary text-white px-3 py-1.5 flex justify-between items-center select-none">
         <div className="flex items-center gap-1.5 font-bold text-xs">
           <i className="fa-solid fa-paper-plane text-[11px]" />
           <span>Văn bản đi</span>

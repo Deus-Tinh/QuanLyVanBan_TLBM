@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActivePageId } from '../../../shared/types/navigation';
-import { CURRENT_USER } from '../../../shared/utils/constants';
 import '../styles/ai-chat.css';
 
 interface AiAssistantPageProps {
@@ -71,6 +70,41 @@ const PROMPT_TEMPLATES = [
     query: 'Hệ thống phân quyền cán bộ nhân viên hoạt động như thế nào?',
   },
 ];
+
+function getSessionUser() {
+  try {
+    const raw = localStorage.getItem('tlbm_session');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        fullName: parsed.fullName || 'Cán bộ nhân viên',
+        role: parsed.roleTitle || 'Cán bộ nghiệp vụ',
+      };
+    }
+  } catch {
+    // fallback
+  }
+  return {
+    fullName: 'Cán bộ nhân viên',
+    role: 'Cán bộ nghiệp vụ',
+  };
+}
+
+let chatMsgSeq = 0;
+function createAiMessage(
+  sender: 'user' | 'ai',
+  text: string,
+  citations?: CitationLink[]
+): ChatMessage {
+  const now = new Date();
+  return {
+    id: `${sender}-${now.getTime()}-${++chatMsgSeq}`,
+    sender,
+    text,
+    time: now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    citations,
+  };
+}
 
 export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const [sessions, setSessions] = useState<ChatSession[]>(INITIAL_SESSIONS);
@@ -234,8 +268,9 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     }
 
     // Mặc định
+    const currentUser = getSessionUser();
     return {
-      text: `🤖 **Trợ Lý AI TLBM (Mô hình: ${selectedModel.toUpperCase()}):**\n\nTôi đã tiếp nhận câu hỏi của bạn: *"${promptText}"*.\n\nDựa trên dữ liệu hệ thống Quản lý Văn bản:\n- 👤 **Người dùng:** ${CURRENT_USER.fullName} (${CURRENT_USER.role})\n- 🗂️ **Hệ thống liên kết:** Phân hệ Văn bản đến/đi, Hồ sơ tài liệu, Quy trình duyệt ký.\n\nBạn có thể chọn một trong các liên kết dưới đây để truy cập nhanh tài liệu:`,
+      text: `🤖 **Trợ Lý AI TLBM (Mô hình: ${selectedModel.toUpperCase()}):**\n\nTôi đã tiếp nhận câu hỏi của bạn: *"${promptText}"*.\n\nDựa trên dữ liệu hệ thống Quản lý Văn bản:\n- 👤 **Người dùng:** ${currentUser.fullName} (${currentUser.role})\n- 🗂️ **Hệ thống liên kết:** Phân hệ Văn bản đến/đi, Hồ sơ tài liệu, Quy trình duyệt ký.\n\nBạn có thể chọn một trong các liên kết dưới đây để truy cập nhanh tài liệu:`,
       citations: [
         {
           label: 'Văn bản Đến',
@@ -264,13 +299,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     if (!text && !attachedFile) return;
 
     const queryContent = attachedFile ? `[Tệp đính kèm: ${attachedFile}]\n${text}` : text;
-
-    const userMsg: ChatMessage = {
-      id: `usr-${Date.now()}`,
-      sender: 'user',
-      text: queryContent,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    };
+    const userMsg = createAiMessage('user', queryContent);
 
     setMessages((prev) => [...prev, userMsg]);
     setInputVal('');
@@ -285,13 +314,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     // Giả lập độ trễ AI sinh kết quả
     setTimeout(() => {
       const response = generateResponse(text);
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: response.text,
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        citations: response.citations,
-      };
+      const aiMsg = createAiMessage('ai', response.text, response.citations);
 
       setMessages((prev) => [...prev, aiMsg]);
       setIsGenerating(false);
@@ -500,7 +523,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 {/* Avatar người gửi */}
                 <div className="message-avatar">
                   {msg.sender === 'user' ? (
-                    <span className="user-avatar-text">Kiệt</span>
+                    <span className="user-avatar-text">{getSessionUser().fullName.charAt(0) || 'U'}</span>
                   ) : (
                     <i className="fa-solid fa-brain" />
                   )}
@@ -510,14 +533,14 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 <div className="message-content-wrapper">
                   <div className="message-header-meta">
                     <span className="sender-name">
-                      {msg.sender === 'user' ? CURRENT_USER.fullName : 'Trợ Lý AI TLBM (GPT-4o)'}
+                      {msg.sender === 'user' ? getSessionUser().fullName : 'Trợ Lý AI TLBM (GPT-4o)'}
                     </span>
                     <span className="message-time">{msg.time}</span>
                   </div>
 
                   <div className="message-bubble-body">
                     {msg.text.split('\n').map((line, lIdx) => {
-                      if (!line.trim()) return <div key={lIdx} style={{ height: '8px' }} />;
+                      if (!line.trim()) return <div key={lIdx} className="h-2" />;
 
                       // Header giả lập ###
                       if (line.startsWith('### ')) {
@@ -683,7 +706,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             <input
               ref={fileInputRef}
               type="file"
-              style={{ display: 'none' }}
+              className="hidden"
               onChange={handleFileSelect}
               accept=".pdf,.doc,.docx,.xlsx,.txt"
             />

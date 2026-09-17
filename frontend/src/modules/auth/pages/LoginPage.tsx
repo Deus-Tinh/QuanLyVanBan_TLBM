@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
+import { ActivePageId } from '../../../shared/types/navigation';
 import { UserSession } from '../types';
 import '../styles/login-characters.css';
 
 interface LoginPageProps {
-  onNavigate?: (pageId: any) => void;
+  onNavigate?: (pageId: ActivePageId) => void;
   onLoginSuccess?: (session: UserSession) => void;
 }
 
@@ -26,7 +27,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
 
   // Tọa độ con trỏ chuột
   const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const typingTimeoutRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs của các cụm mắt
   const purpleEyesRef = useRef<HTMLDivElement>(null);
@@ -52,32 +53,46 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     }, 300);
   };
 
-  // Tính toán độ lệch con ngươi theo góc lượng giác Math.atan2
-  const calculatePupilOffset = (eyeElem: HTMLElement | null, maxOffset: number = 6) => {
-    if (!eyeElem) return { x: 0, y: 0 };
-    if (isUsernameFocused) {
-      // Khi đang focus ô tài khoản: Cả 4 bạn cùng nhìn chăm chú sang bên phải (về form)
-      return { x: maxOffset * 0.95, y: 0 };
-    }
-    const rect = eyeElem.getBoundingClientRect();
-    const eyeCenterX = rect.left + rect.width / 2;
-    const eyeCenterY = rect.top + rect.height / 2;
+  const [pupilOffsets, setPupilOffsets] = useState({
+    purple: { x: 0, y: 0 },
+    black: { x: 0, y: 0 },
+    orange: { x: 0, y: 0 },
+    yellow: { x: 0, y: 0 },
+  });
 
-    const deltaX = mousePos.x - eyeCenterX;
-    const deltaY = mousePos.y - eyeCenterY;
-    const angle = Math.atan2(deltaY, deltaX);
-    const distance = Math.min(maxOffset, Math.hypot(deltaX, deltaY) / 28);
+  useEffect(() => {
+    const calculateOffset = (eyeElem: HTMLElement | null, maxOffset: number = 6) => {
+      if (!eyeElem) return { x: 0, y: 0 };
+      if (isUsernameFocused) {
+        return { x: maxOffset * 0.95, y: 0 };
+      }
+      const rect = eyeElem.getBoundingClientRect();
+      const eyeCenterX = rect.left + rect.width / 2;
+      const eyeCenterY = rect.top + rect.height / 2;
 
-    return {
-      x: Math.round(Math.cos(angle) * distance * 100) / 100,
-      y: Math.round(Math.sin(angle) * distance * 100) / 100,
+      const deltaX = mousePos.x - eyeCenterX;
+      const deltaY = mousePos.y - eyeCenterY;
+      const angle = Math.atan2(deltaY, deltaX);
+      const distance = Math.min(maxOffset, Math.hypot(deltaX, deltaY) / 28);
+
+      return {
+        x: Math.round(Math.cos(angle) * distance * 100) / 100,
+        y: Math.round(Math.sin(angle) * distance * 100) / 100,
+      };
     };
-  };
 
-  const purpleOffset = calculatePupilOffset(purpleEyesRef.current, 5);
-  const blackOffset = calculatePupilOffset(blackEyesRef.current, 7);
-  const orangeOffset = calculatePupilOffset(orangeEyesRef.current, 6);
-  const yellowOffset = calculatePupilOffset(yellowEyesRef.current, 5);
+    setPupilOffsets({
+      purple: calculateOffset(purpleEyesRef.current, 5),
+      black: calculateOffset(blackEyesRef.current, 7),
+      orange: calculateOffset(orangeEyesRef.current, 6),
+      yellow: calculateOffset(yellowEyesRef.current, 5),
+    });
+  }, [mousePos, isUsernameFocused]);
+
+  const purpleOffset = pupilOffsets.purple;
+  const blackOffset = pupilOffsets.black;
+  const orangeOffset = pupilOffsets.orange;
+  const yellowOffset = pupilOffsets.yellow;
 
 
   const handleCharClick = (charName: string) => {

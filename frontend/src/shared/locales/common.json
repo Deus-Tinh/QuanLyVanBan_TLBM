@@ -14,7 +14,7 @@
     "group1Developing": "Nhóm 1 đang trong quá trình phát triển",
     "group1Layout": "Nhóm 1 phụ trách khung giao diện",
     "group1DescSelf": "Nhóm 1 đang trong quá trình phát triển hoàn thiện giao diện và kết nối Backend Django.",
-    "group1DescOther": "Nhóm 1 (PM: Châu Tuấn Kiệt) đang trong quá trình phát triển bộ khung Layout & chuẩn bị cổng API tích hợp với {team}."
+    "group1DescOther": "Nhóm 1 đang trong quá trình phát triển bộ khung Layout & chuẩn bị cổng API tích hợp với {team}."
   },
   "header": {
     "searchPlaceholder": "Tìm kiếm số hiệu VB, trích yếu, công việc...",
@@ -69,9 +69,9 @@
     "layoutLead": "Phụ trách Layout & Trang chủ"
   },
   "dashboardDetails": {
-    "greeting": "Xin chào, Châu Tuấn Kiệt",
-    "roleBadge": "PM · Trưởng Nhóm 1",
-    "leadDescription": "Bàn làm việc tổng quan · Đề cương Module 1.2 Trang chủ do Nhóm 1 phụ trách (Châu Tuấn Kiệt, Nguyễn Văn Hiếu, Nguyễn Duy Quân).",
+    "greeting": "Xin chào, Cán bộ nhân viên",
+    "roleBadge": "Cán bộ nghiệp vụ",
+    "leadDescription": "Bàn làm việc tổng quan · Hệ thống Quản lý Văn bản & Tài liệu Mật (TLBM).",
     "receiveDocBtn": "Tiếp nhận văn bản",
     "quickSearchTitle": "Tìm Kiếm Nhanh Văn Bản Đến & Văn Bản Đi",
     "filterAll": "Tất cả",
@@ -100,7 +100,7 @@
     "inProgress": "Đang diễn ra",
     "upcoming": "Sắp tới",
     "recentIncomingTitle": "Danh Sách Văn Bản Đến Mới Nhất (5 cái)",
-    "completedGroup1": "✓ Hoàn thành (Nhóm 1 · Nguyễn Văn Hiếu)",
+    "completedGroup1": "✓ Hoàn thành (Phân hệ Trang chủ)",
     "docNumber": "Số, ký hiệu",
     "docSummary": "Trích yếu nội dung",
     "docDate": "Ngày VB",
@@ -125,7 +125,7 @@
     "role": "Vai trò trong dự án",
     "department": "Đơn vị công tác",
     "email": "Email liên hệ",
-    "sampleName": "Châu Tuấn Kiệt",
+    "sampleName": "Cán bộ nhân viên",
     "sampleRole": "Project Manager (PM) · Trưởng Nhóm 1",
     "sampleDept": "Ban Công Nghệ Thông Tin (ITC)",
     "sampleEmail": "kiet.ct@itc.edu.vn"
@@ -187,7 +187,7 @@
     "dashboard": {
       "title": "Bàn Làm Việc & Trang Chủ",
       "module": "Module 1.2: Trang chủ (Dashboard)",
-      "assignedTeam": "Nhóm 1 (Châu Tuấn Kiệt PM, Nguyễn Văn Hiếu, Nguyễn Duy Quân)",
+      "assignedTeam": "Nhóm 1 (Phân hệ Trang chủ & Layout)",
       "codeRef": "Mục 1.2 · Độ khó: 0.80",
       "isGroup1": true,
       "desc": "Thống kê văn bản năm, sinh nhật T/T+1, phòng họp, tìm kiếm VB đến/đi, top 5 văn bản, công việc, tài liệu."
@@ -195,7 +195,7 @@
     "login": {
       "title": "Trang Đăng Nhập Hệ Thống (2 trường hợp: CBNV & Quản trị viên)",
       "module": "Module 1.1: Layout & Đăng nhập",
-      "assignedTeam": "Nhóm 1 (Châu Tuấn Kiệt PM, Nguyễn Văn Hiếu, Nguyễn Duy Quân)",
+      "assignedTeam": "Nhóm 1 (Phân hệ Đăng nhập & Xác thực)",
       "codeRef": "Mục 1.1 · Độ khó: 0.60",
       "isGroup1": true,
       "desc": "Xác thực tài khoản cán bộ nhân viên và tài khoản quản trị hệ thống với 2 giao diện riêng biệt."
@@ -203,7 +203,7 @@
     "profile": {
       "title": "Thông Tin Người Dùng Cá Nhân",
       "module": "Module 1.1: Layout & Thông tin tài khoản",
-      "assignedTeam": "Nhóm 1 (Châu Tuấn Kiệt PM, Nguyễn Văn Hiếu, Nguyễn Duy Quân)",
+      "assignedTeam": "Nhóm 1 (Phân hệ Hồ sơ cá nhân)",
       "codeRef": "Mục 1.1 · Độ khó: 0.60",
       "isGroup1": true,
       "desc": "Xem và cập nhật thông tin cá nhân, chức vụ, đơn vị phòng ban, email và số điện thoại."
@@ -211,7 +211,7 @@
     "password_change": {
       "title": "Đổi Mật Khẩu Tài Khoản",
       "module": "Module 1.1: Layout & Bảo mật tài khoản",
-      "assignedTeam": "Nhóm 1 (Châu Tuấn Kiệt PM, Nguyễn Văn Hiếu, Nguyễn Duy Quân)",
+      "assignedTeam": "Nhóm 1 (Phân hệ Bảo mật tài khoản)",
       "codeRef": "Mục 1.1 · Độ khó: 0.60",
       "isGroup1": true,
       "desc": "Chức năng đổi mật khẩu người dùng với chính sách bảo mật mã hóa một chiều."
@@ -219,7 +219,7 @@
     "settings": {
       "title": "Cài Đặt Hệ Thống & Tùy Chọn Cá Nhân",
       "module": "Module 1.1: Layout & Cài đặt hệ thống",
-      "assignedTeam": "Nhóm 1 (Châu Tuấn Kiệt PM, Nguyễn Văn Hiếu, Nguyễn Duy Quân)",
+      "assignedTeam": "Nhóm 1 (Phân hệ Cài đặt hệ thống)",
       "codeRef": "Mục 1.1 · Độ khó: 0.60",
       "isGroup1": true,
       "desc": "Tùy biến cấu hình cá nhân, thông báo văn bản khẩn, bảo mật 2 lớp 2FA, ngôn ngữ và giao diện làm việc."

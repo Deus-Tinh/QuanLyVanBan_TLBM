@@ -23,7 +23,7 @@ export default function RecentResourcesWidget({
   return (
     <div className="bg-surface border border-border-subtle rounded-sm overflow-hidden shadow-xs flex flex-col">
       {/* Header bar: Deep Slate / Navy */}
-      <div className="bg-[#1e4d7b] text-white px-3.5 py-2 flex justify-between items-center select-none">
+      <div className="bg-slate-800 text-white px-3.5 py-2 flex justify-between items-center select-none">
         <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
           <i className="fa-solid fa-file-lines text-blue-200" />
           <span>Biểu mẫu & Tài nguyên chung</span>

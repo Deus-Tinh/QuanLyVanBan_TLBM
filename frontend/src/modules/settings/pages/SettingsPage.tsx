@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
-import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
 import { Button } from '../../../shared/components/ui';
 
-interface SettingsPageProps {
-  onNavigate?: (page: ActivePageId) => void;
-}
-
-export default function SettingsPage(_props: SettingsPageProps) {
+export default function SettingsPage() {
   const { t } = useTranslation();
 
   const [assistiveTouchEnabled, setAssistiveTouchEnabled] = useState<boolean>(() => {
@@ -37,60 +32,49 @@ export default function SettingsPage(_props: SettingsPageProps) {
   };
 
   return (
-    <div style={{ maxWidth: '840px', margin: '20px auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '28px 32px',
-          boxShadow: 'var(--shadow-sm)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-        }}
-      >
+    <div className="max-w-4xl mx-auto my-5 flex flex-col gap-5">
+      <div className="bg-surface border border-border-subtle rounded-xl p-7 sm:p-8 shadow-xs flex flex-col gap-6">
         {/* Header trang Cài đặt */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-            <i className="fa-solid fa-gear" style={{ color: 'var(--color-primary)' }} />
+        <div className="flex justify-between items-center border-b border-border-subtle pb-4.5 flex-wrap gap-2.5">
+          <h2 className="text-xl font-extrabold text-main flex items-center gap-2.5 m-0">
+            <i className="fa-solid fa-gear text-primary" />
             <span>{t('settings.title')}</span>
           </h2>
         </div>
 
         {/* 1. Cấu hình thông báo */}
-        <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '22px' }}>
-          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '14px' }}>
+        <div className="border-b border-border-subtle pb-5.5">
+          <h3 className="text-base font-bold text-main mb-3.5">
             🔔 {t('settings.notificationSectionTitle')}
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked />
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-2.5 text-sm text-secondary cursor-pointer hover:text-main transition-colors">
+              <input type="checkbox" defaultChecked className="accent-primary" />
               <span>{t('settings.notifIncoming')}</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked />
+            <label className="flex items-center gap-2.5 text-sm text-secondary cursor-pointer hover:text-main transition-colors">
+              <input type="checkbox" defaultChecked className="accent-primary" />
               <span>{t('settings.notifUrgent')}</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked />
+            <label className="flex items-center gap-2.5 text-sm text-secondary cursor-pointer hover:text-main transition-colors">
+              <input type="checkbox" defaultChecked className="accent-primary" />
               <span>{t('settings.notifDeadline')}</span>
             </label>
           </div>
         </div>
 
         {/* 2. Bảo mật tài khoản */}
-        <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '22px' }}>
-          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '14px' }}>
+        <div className="border-b border-border-subtle pb-5.5">
+          <h3 className="text-base font-bold text-main mb-3.5">
             🛡️ {t('settings.securitySectionTitle')}
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked />
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-2.5 text-sm text-secondary cursor-pointer hover:text-main transition-colors">
+              <input type="checkbox" defaultChecked className="accent-primary" />
               <span>{t('settings.secAutoLock')}</span>
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.88rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-              <input type="checkbox" defaultChecked />
+            <label className="flex items-center gap-2.5 text-sm text-secondary cursor-pointer hover:text-main transition-colors">
+              <input type="checkbox" defaultChecked className="accent-primary" />
               <span>{t('settings.sec2FA')}</span>
             </label>
           </div>
@@ -98,23 +82,23 @@ export default function SettingsPage(_props: SettingsPageProps) {
 
         {/* 3. Tiện ích di động & Hỗ trợ thao tác (Nút Home ảo AssistiveTouch) */}
         <div>
-          <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <i className="fa-solid fa-mobile-screen" style={{ color: 'var(--color-primary)' }} />
+          <h3 className="text-base font-bold text-main mb-3 flex items-center gap-2">
+            <i className="fa-solid fa-mobile-screen text-primary" />
             <span>{t('settings.mobileUtilitiesTitle')}</span>
           </h3>
-          <div style={{ background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-lg)', padding: '16px', border: '1px solid var(--border-subtle)' }}>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+          <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle">
+            <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={assistiveTouchEnabled}
                 onChange={(e) => setAssistiveTouchEnabled(e.target.checked)}
-                style={{ marginTop: '3px', cursor: 'pointer', accentColor: 'var(--color-primary)', transform: 'scale(1.15)' }}
+                className="mt-1 cursor-pointer accent-primary scale-110"
               />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-sm text-main">
                   {t('settings.assistiveTouchToggle')}
                 </span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                <span className="text-xs text-muted leading-relaxed">
                   {t('settings.assistiveTouchDesc')}
                 </span>
               </div>
@@ -122,38 +106,27 @@ export default function SettingsPage(_props: SettingsPageProps) {
           </div>
         </div>
 
-        {/* 6. Cấu hình Mô hình Trợ lý AI (AI Model) */}
-        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '22px' }}>
-          <div style={{ marginBottom: '14px' }}>
-            <h3 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <i className="fa-solid fa-microchip" style={{ color: 'var(--color-primary)' }} />
+        {/* 4. Cấu hình Mô hình Trợ lý AI (AI Model) */}
+        <div className="border-t border-border-subtle pt-5.5">
+          <div className="mb-3.5">
+            <h3 className="text-base font-bold text-main flex items-center gap-2">
+              <i className="fa-solid fa-microchip text-primary" />
               <span>Cấu hình Mô hình Trợ lý AI</span>
             </h3>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            <div className="text-xs text-muted mt-1">
               Lựa chọn mô hình ngôn ngữ lớn (LLM) phục vụ tra cứu văn bản, quy trình và tương tác với Trợ lý AI.
             </div>
           </div>
 
-          <div style={{ background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', border: '1px solid var(--border-subtle)' }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+          <div className="bg-surface-elevated rounded-lg p-4 sm:px-5 border border-border-subtle">
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-semibold text-main">
                 Mô hình đang kích hoạt:
               </span>
               <select
                 value={aiModel}
                 onChange={(e) => setAiModel(e.target.value as 'gpt4o' | 'claude' | 'llama')}
-                style={{
-                  padding: '9px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-surface)',
-                  color: 'var(--text-main)',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  outline: 'none',
-                  cursor: 'pointer',
-                  maxWidth: '360px',
-                }}
+                className="px-3 py-2 rounded-md border border-border-subtle bg-surface text-main text-sm font-semibold outline-none cursor-pointer max-w-sm focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               >
                 <option value="gpt4o">GPT-4o Enterprise (Khuyên dùng)</option>
                 <option value="claude">Claude 3.5 Sonnet</option>
