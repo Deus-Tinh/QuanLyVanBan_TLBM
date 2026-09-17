@@ -4,14 +4,12 @@ import { useNavigate } from 'react-router-dom';
 interface DashboardStatsProps {
   incomingCount?: number;
   outgoingCount?: number;
-  confidentialCount?: number;
   tasksCount?: number;
 }
 
 export default function DashboardStats({
   incomingCount = 0,
   outgoingCount = 0,
-  confidentialCount = 0,
   tasksCount = 0,
 }: DashboardStatsProps) {
   const navigate = useNavigate();
@@ -34,14 +32,6 @@ export default function DashboardStats({
       bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
     },
     {
-      title: 'Văn bản mật (2026)',
-      count: confidentialCount,
-      subtext: confidentialCount > 0 ? `${confidentialCount} văn bản bảo mật cao` : 'Không có văn bản mật tồn đọng',
-      icon: 'fa-solid fa-shield-halved',
-      path: '/documents/incoming',
-      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
-    },
-    {
       title: 'Nhiệm vụ - Thông báo',
       count: tasksCount,
       subtext: tasksCount > 0 ? `${tasksCount} nhiệm vụ cần xử lý` : 'Không có nhiệm vụ cần xử lý',
@@ -52,7 +42,7 @@ export default function DashboardStats({
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
       {cards.map((card, idx) => (
         <div
           key={idx}
