@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ActivePageId } from '../../../shared/types/navigation';
-import { CURRENT_USER } from '../../../shared/utils/constants';
 import '../styles/ai-chat.css';
 
 interface AiAssistantPageProps {
@@ -31,97 +30,116 @@ interface ChatSession {
   snippet: string;
 }
 
-const INITIAL_SESSIONS: ChatSession[] = [
-  {
-    id: 'session-1',
-    title: 'Tra cứu quy trình văn bản đến khẩn',
-    timeLabel: 'Hôm nay',
-    snippet: 'Quy trình tiếp nhận và bút phê văn bản...',
-  },
-  {
-    id: 'session-2',
-    title: 'Quy chuẩn tài liệu Tuyệt Mật TLBM',
-    timeLabel: 'Hôm nay',
-    snippet: 'Tiêu chuẩn bảo mật và mã hóa tài liệu...',
-  },
-  {
-    id: 'session-3',
-    title: 'Tóm tắt tờ trình số 312/TTr-TLBM',
-    timeLabel: 'Hôm qua',
-    snippet: 'Tờ trình thử nghiệm văn bản số...',
-  },
-  {
-    id: 'session-4',
-    title: 'Cơ cấu phòng ban & phân quyền Nhóm 7',
-    timeLabel: '7 ngày trước',
-    snippet: 'Ma trận quyền RBAC và phân quyền CBNV...',
-  },
-];
+const INITIAL_SESSIONS: ChatSession[] = [];
 
 const PROMPT_TEMPLATES = [
   {
     icon: 'fa-inbox',
-    color: '#3b82f6',
+    color: 'var(--color-primary)',
+    bg: 'var(--color-primary-subtle)',
+    border: 'var(--color-primary-border)',
     title: 'Tiếp nhận Văn bản Đến',
     desc: 'Hỏi các bước vào sổ, scan số hóa và trình Ban Giám Hiệu bút phê.',
     query: 'Hướng dẫn quy trình tiếp nhận và xử lý văn bản đến trong ngày?',
   },
   {
     icon: 'fa-shield-halved',
-    color: '#ef4444',
+    color: 'var(--color-danger)',
+    bg: 'var(--color-danger-subtle)',
+    border: 'var(--color-danger-border)',
     title: 'Xử lý Văn bản Mật',
     desc: 'Quy chuẩn mã hóa, xác thực 2FA và quyền xem tài liệu Tuyệt Mật.',
     query: 'Quy định bảo mật và quy trình chuyển giao văn bản mật 03/MẬT-HĐQT?',
   },
   {
     icon: 'fa-file-signature',
-    color: '#f59e0b',
+    color: 'var(--color-warning-text)',
+    bg: 'var(--color-warning-subtle)',
+    border: 'var(--color-warning-border)',
     title: 'Quy trình Trình Ký Số',
     desc: 'Sơ đồ luồng ký số Token PKI/Cloud HSM và phát hành văn bản đi.',
-    query: 'Làm thế nào để tạo luồng trình ký số điện tử trên Module 5?',
+    query: 'Làm thế nào để tạo luồng trình ký số điện tử trên hệ thống?',
   },
   {
     icon: 'fa-sitemap',
-    color: '#10b981',
+    color: 'var(--color-success)',
+    bg: 'var(--color-success-subtle)',
+    border: 'var(--color-success-border)',
     title: 'Cơ cấu & Phân quyền',
     desc: 'Tra cứu danh mục phòng ban Cấp 1, Cấp 2 và ma trận quyền CBNV.',
-    query: 'Hệ thống phân quyền CBNV Nhóm 7 hoạt động như thế nào?',
+    query: 'Hệ thống phân quyền cán bộ nhân viên hoạt động như thế nào?',
   },
 ];
+
+function getSessionUser() {
+  try {
+    const raw = localStorage.getItem('tlbm_session');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        fullName: parsed.fullName || 'Cán bộ nhân viên',
+        role: parsed.roleTitle || 'Cán bộ nghiệp vụ',
+      };
+    }
+  } catch {
+    // fallback
+  }
+  return {
+    fullName: 'Cán bộ nhân viên',
+    role: 'Cán bộ nghiệp vụ',
+  };
+}
+
+let chatMsgSeq = 0;
+function createAiMessage(
+  sender: 'user' | 'ai',
+  text: string,
+  citations?: CitationLink[]
+): ChatMessage {
+  const now = new Date();
+  return {
+    id: `${sender}-${now.getTime()}-${++chatMsgSeq}`,
+    sender,
+    text,
+    time: now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    citations,
+  };
+}
 
 export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const [sessions, setSessions] = useState<ChatSession[]>(INITIAL_SESSIONS);
   const [activeSessionId, setActiveSessionId] = useState<string>('session-1');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedModel, setSelectedModel] = useState<'gpt4o' | 'claude' | 'llama'>('gpt4o');
+  const [selectedModel, setSelectedModel] = useState<'gpt4o' | 'claude' | 'llama'>(() => {
+    return (localStorage.getItem('tlbm_ai_model') as 'gpt4o' | 'claude' | 'llama') || 'gpt4o';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const handleModelUpdate = () => {
+      const saved = (localStorage.getItem('tlbm_ai_model') as 'gpt4o' | 'claude' | 'llama') || 'gpt4o';
+      setSelectedModel(saved);
+    };
+    window.addEventListener('tlbm_ai_model_updated', handleModelUpdate);
+    window.addEventListener('storage', handleModelUpdate);
+    return () => {
+      window.removeEventListener('tlbm_ai_model_updated', handleModelUpdate);
+      window.removeEventListener('storage', handleModelUpdate);
+    };
+  }, []);
 
   // Danh sách tin nhắn theo session
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-welcome',
       sender: 'ai',
-      text: `👋 **Xin chào ${CURRENT_USER.fullName} (${CURRENT_USER.role})!**\n\nTôi là **Trợ Lý AI TLBM (GPT-4o)** — hệ thống hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh thuộc **Module 8 (Nhóm 8 phụ trách)**.\n\nTôi đã được nạp dữ liệu toàn bộ danh mục văn bản, tờ trình, tài liệu mật và quy chế hành chính của công ty. Bạn có thể chọn thẻ mẫu bên dưới hoặc gõ câu hỏi bất kỳ!`,
-      time: '08:30',
-      citations: [
-        {
-          label: 'Quyết định 128/QĐ-BGDĐT (Đến)',
-          code: '128/QĐ-BGDĐT',
-          targetPage: 'documents_incoming',
-          type: 'incoming',
-        },
-        {
-          label: 'Nghị quyết 03/MẬT-HĐQT (Mật)',
-          code: '03/MẬT-HĐQT',
-          targetPage: 'documents_confidential',
-          type: 'confidential',
-        },
-      ],
+      text: `👋 **Xin chào!**\n\nTôi là **Trợ Lý AI TLBM** — hệ thống hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh.\n\nBạn có thể chọn thẻ mẫu bên dưới hoặc gõ câu hỏi bất kỳ!`,
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       quickPrompts: [
         '📋 Quy trình tiếp nhận văn bản đến?',
         '🔒 Tiêu chuẩn bảo mật tài liệu Tuyệt Mật?',
-        '✍️ Hướng dẫn ký số Module 5?',
-        '👥 Xem phân quyền nhân sự Nhóm 7?',
+        '✍️ Hướng dẫn ký số điện tử?',
+        '👥 Xem phân quyền cán bộ nhân viên?',
       ],
     },
   ]);
@@ -177,7 +195,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
     if (q.includes('đến') || q.includes('tiếp nhận') || q.includes('128') || q.includes('vào sổ')) {
       return {
-        text: `📋 **Quy Trình Tiếp Nhận & Phân Phối Văn Bản Đến (Module 2 · Nhóm 2):**\n\n1. **Bước 1 (Tiếp nhận & Vào sổ):** Văn thư tiếp nhận công văn (bưu điện hoặc gửi qua mạng), kiểm tra dấu niêm phong, cấp số đến và ngày đến.\n2. **Bước 2 (Scan số hóa):** Quét tài liệu gốc định dạng PDF chất lượng cao, nhập trích yếu vào phân hệ Quản lý Văn Bản Đến.\n3. **Bước 3 (Bút phê lãnh đạo):** Trình Ban Giám Hiệu xem xét, phân công phòng ban xử lý chính và các đơn vị phối hợp.\n4. **Bước 4 (Theo dõi tiến độ):** Hệ thống tự động đẩy cảnh báo nhắc việc khi gần đến hạn xử lý.\n\n💡 **Dữ liệu văn bản liên quan trực tiếp:**`,
+        text: `📋 **Quy Trình Tiếp Nhận & Phân Phối Văn Bản Đến:**\n\n1. **Bước 1 (Tiếp nhận & Vào sổ):** Văn thư tiếp nhận công văn (bưu điện hoặc gửi qua mạng), kiểm tra dấu niêm phong, cấp số đến và ngày đến.\n2. **Bước 2 (Scan số hóa):** Quét tài liệu gốc định dạng PDF chất lượng cao, nhập trích yếu vào phân hệ Quản lý Văn Bản Đến.\n3. **Bước 3 (Bút phê lãnh đạo):** Trình Ban Giám Hiệu xem xét, phân công phòng ban xử lý chính và các đơn vị phối hợp.\n4. **Bước 4 (Theo dõi tiến độ):** Hệ thống tự động đẩy cảnh báo nhắc việc khi gần đến hạn xử lý.\n\n💡 **Dữ liệu văn bản liên quan trực tiếp:**`,
         citations: [
           {
             label: 'Xem văn bản: 128/QĐ-BGDĐT (Tuyển sinh & Tổ chức)',
@@ -211,7 +229,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
     if (q.includes('ký số') || q.includes('trình ký') || q.includes('module 5') || q.includes('312')) {
       return {
-        text: `✍️ **Quy Trình Trình Ký Số Điện Tử (Module 5 · Nhóm 5 Phụ Trách):**\n\n1. **Khởi tạo hồ sơ:** Cán bộ soạn thảo tờ trình, đính kèm dự thảo văn bản và tệp phụ lục.\n2. **Thiết lập luồng ký:** Chọn danh sách người ký duyệt (Trưởng phòng duyệt thể thức ➔ Lãnh đạo ký ban hành).\n3. **Ký số điện tử:** Lãnh đạo cắm Token PKI hoặc dùng chữ ký số đám mây (Cloud HSM) xác thực qua OTP.\n4. **Đóng dấu số & Chuyển luồng:** Văn thư đóng dấu cơ quan điện tử, hệ thống tự động sinh số hiệu văn bản đi và chuyển phát hành.\n\n📝 **Liên kết hồ sơ đang chờ ký:**`,
+        text: `✍️ **Quy Trình Trình Ký Số Điện Tử:**\n\n1. **Khởi tạo hồ sơ:** Cán bộ soạn thảo tờ trình, đính kèm dự thảo văn bản và tệp phụ lục.\n2. **Thiết lập luồng ký:** Chọn danh sách người ký duyệt (Trưởng phòng duyệt thể thức ➔ Lãnh đạo ký ban hành).\n3. **Ký số điện tử:** Lãnh đạo cắm Token PKI hoặc dùng chữ ký số đám mây (Cloud HSM) xác thực qua OTP.\n4. **Đóng dấu số & Chuyển luồng:** Văn thư đóng dấu cơ quan điện tử, hệ thống tự động sinh số hiệu văn bản đi và chuyển phát hành.\n\n📝 **Liên kết hồ sơ đang chờ ký:**`,
         citations: [
           {
             label: 'Tờ trình số 312/TTr-TLBM (Thử nghiệm hệ thống văn bản số)',
@@ -220,8 +238,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             type: 'approval',
           },
           {
-            label: 'Kiểm tra phân hệ: Quy trình Ký số Module 5',
-            code: 'MODULE-5',
+            label: 'Kiểm tra phân hệ: Quy trình Ký số điện tử',
+            code: 'APPROVALS-FLOW',
             targetPage: 'approvals',
             type: 'approval',
           },
@@ -231,17 +249,17 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
     if (q.includes('phân quyền') || q.includes('nhân sự') || q.includes('cbnv') || q.includes('nhóm 7')) {
       return {
-        text: `👥 **Cấu Trúc Phân Quyền & Quản Trị Nhân Sự (Module 7 · Nhóm 7):**\n\n- **Cơ cấu tổ chức 2 cấp:** Khối/Khu vực (Cấp 1) ➔ Đơn vị/Phòng ban (Cấp 2).\n- **Ma trận vai trò RBAC:**\n  + *Quản trị viên (Admin):* Cấu hình tham số hệ thống, quản lý tài khoản CBNV.\n  + *Lãnh đạo Ban/Khối:* Quyền duyệt bút phê, ký số và phân công nhiệm vụ.\n  + *Văn thư đơn vị:* Quyền vào sổ văn bản đến, cấp số văn bản đi, lưu trữ hồ sơ.\n  + *Cán bộ xử lý:* Nhận việc, giải quyết văn bản và báo cáo tiến độ.\n- **Bảo vệ quyền riêng tư:** Thông tin năm sinh và dữ liệu cá nhân của CBNV được tự động che giấu trên danh sách chung.`,
+        text: `👥 **Cấu Trúc Phân Quyền & Quản Trị Nhân Sự:**\n\n- **Cơ cấu tổ chức 2 cấp:** Khối/Khu vực (Cấp 1) ➔ Đơn vị/Phòng ban (Cấp 2).\n- **Ma trận vai trò RBAC:**\n  + *Quản trị viên (Admin):* Cấu hình tham số hệ thống, quản lý tài khoản CBNV.\n  + *Lãnh đạo Ban/Khối:* Quyền duyệt bút phê, ký số và phân công nhiệm vụ.\n  + *Văn thư đơn vị:* Quyền vào sổ văn bản đến, cấp số văn bản đi, lưu trữ hồ sơ.\n  + *Cán bộ xử lý:* Nhận việc, giải quyết văn bản và báo cáo tiến độ.\n- **Bảo vệ quyền riêng tư:** Thông tin năm sinh và dữ liệu cá nhân của CBNV được tự động che giấu trên danh sách chung.`,
         citations: [
           {
-            label: 'Quản lý Hồ Sơ CBNV (Module 7.5)',
-            code: 'MODULE-7.5',
+            label: 'Quản lý Hồ Sơ Cán Bộ Nhân Viên',
+            code: 'EMP-PROFILES',
             targetPage: 'employees',
             type: 'incoming',
           },
           {
-            label: 'Ma trận Phân quyền Sử dụng (Module 7.7)',
-            code: 'MODULE-7.7',
+            label: 'Ma trận Phân quyền Sử dụng',
+            code: 'ROLES-RBAC',
             targetPage: 'roles',
             type: 'confidential',
           },
@@ -250,23 +268,24 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     }
 
     // Mặc định
+    const currentUser = getSessionUser();
     return {
-      text: `🤖 **Trợ Lý AI TLBM (Mô hình: ${selectedModel.toUpperCase()}):**\n\nTôi đã tiếp nhận câu hỏi của bạn: *"${promptText}"*.\n\nDựa trên dữ liệu đề cương hệ thống Quản lý Văn bản TLBM:\n- 📌 **Dự án:** ITC Django MĐ501911\n- 👤 **Người dùng:** ${CURRENT_USER.fullName} (${CURRENT_USER.role})\n- 🗂️ **Hệ thống liên kết:** Nhóm 1 (Khung giao diện & Dashboard), Nhóm 2 (Văn bản đến/đi), Nhóm 8 (Trợ lý AI).\n\nBạn có thể chọn một trong các liên kết dưới đây để truy cập nhanh tài liệu:`,
+      text: `🤖 **Trợ Lý AI TLBM (Mô hình: ${selectedModel.toUpperCase()}):**\n\nTôi đã tiếp nhận câu hỏi của bạn: *"${promptText}"*.\n\nDựa trên dữ liệu hệ thống Quản lý Văn bản:\n- 👤 **Người dùng:** ${currentUser.fullName} (${currentUser.role})\n- 🗂️ **Hệ thống liên kết:** Phân hệ Văn bản đến/đi, Hồ sơ tài liệu, Quy trình duyệt ký.\n\nBạn có thể chọn một trong các liên kết dưới đây để truy cập nhanh tài liệu:`,
       citations: [
         {
-          label: 'Văn bản Đến (Nhóm 2)',
+          label: 'Văn bản Đến',
           code: 'INCOMING',
           targetPage: 'documents_incoming',
           type: 'incoming',
         },
         {
-          label: 'Văn bản Đi (Nhóm 2)',
+          label: 'Văn bản Đi',
           code: 'OUTGOING',
           targetPage: 'documents_outgoing',
           type: 'outgoing',
         },
         {
-          label: 'Quy trình Ký số (Nhóm 5)',
+          label: 'Quy trình Ký số',
           code: 'APPROVALS',
           targetPage: 'approvals',
           type: 'approval',
@@ -280,13 +299,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     if (!text && !attachedFile) return;
 
     const queryContent = attachedFile ? `[Tệp đính kèm: ${attachedFile}]\n${text}` : text;
-
-    const userMsg: ChatMessage = {
-      id: `usr-${Date.now()}`,
-      sender: 'user',
-      text: queryContent,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    };
+    const userMsg = createAiMessage('user', queryContent);
 
     setMessages((prev) => [...prev, userMsg]);
     setInputVal('');
@@ -301,13 +314,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     // Giả lập độ trễ AI sinh kết quả
     setTimeout(() => {
       const response = generateResponse(text);
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        text: response.text,
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        citations: response.citations,
-      };
+      const aiMsg = createAiMessage('ai', response.text, response.citations);
 
       setMessages((prev) => [...prev, aiMsg]);
       setIsGenerating(false);
@@ -412,7 +419,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               <span className="live-pulse-dot" />
               <span>Đã đồng bộ 482 văn bản TLBM</span>
             </div>
-            <div className="ai-partner-tag">Module 8 · Nhóm 8 & Nhóm 1</div>
+            <div className="ai-partner-tag">Hệ thống Trợ lý số · TLBM AI v2.5</div>
           </div>
         )}
       </aside>
@@ -429,32 +436,24 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               <div>
                 <div className="ai-brand-title">
                   <span>Trợ Lý AI Tra Cứu Quy Trình & Văn Bản</span>
-                  <span className="team-badge">Module 8 (Độ khó: 1.00)</span>
                 </div>
                 <div className="ai-brand-sub">Mô hình AI chuyên biệt cho hệ thống QLVB & TLBM</div>
               </div>
             </div>
           </div>
 
-          {/* Công cụ chọn mô hình & Thao tác */}
+          {/* Công cụ & Thao tác */}
           <div className="top-header-actions">
-            {/* Bộ chọn Model AI */}
-            <div className="model-selector-wrapper">
-              <label htmlFor="ai-model-select" className="model-select-label">
-                <i className="fa-solid fa-microchip" />
-                <span>Mô hình:</span>
-              </label>
-              <select
-                id="ai-model-select"
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value as any)}
-                className="model-select"
-              >
-                <option value="gpt4o">GPT-4o Enterprise (Khuyên dùng)</option>
-                <option value="claude">Claude 3.5 Sonnet</option>
-                <option value="llama">Llama 3 TLBM Finetuned (Nội bộ)</option>
-              </select>
-            </div>
+            {/* Nút Cài đặt AI (chuyển sang Cài đặt) */}
+            <button
+              type="button"
+              className="chat-action-btn"
+              onClick={() => onNavigate && onNavigate('settings')}
+              title="Cài đặt mô hình AI trong Cài đặt hệ thống"
+            >
+              <i className="fa-solid fa-gear" />
+              <span>Cài đặt AI</span>
+            </button>
 
             {/* Nút Xuất file */}
             <button
@@ -500,7 +499,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                     className="ai-prompt-card"
                     onClick={() => handleSend(tmpl.query)}
                   >
-                    <div className="prompt-card-icon" style={{ color: tmpl.color, background: `${tmpl.color}18` }}>
+                    <div className="prompt-card-icon" style={{ color: tmpl.color, background: tmpl.bg, border: `1px solid ${tmpl.border}` }}>
                       <i className={`fa-solid ${tmpl.icon}`} />
                     </div>
                     <div className="prompt-card-body">
@@ -524,7 +523,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 {/* Avatar người gửi */}
                 <div className="message-avatar">
                   {msg.sender === 'user' ? (
-                    <span className="user-avatar-text">Kiệt</span>
+                    <span className="user-avatar-text">{getSessionUser().fullName.charAt(0) || 'U'}</span>
                   ) : (
                     <i className="fa-solid fa-brain" />
                   )}
@@ -534,14 +533,14 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 <div className="message-content-wrapper">
                   <div className="message-header-meta">
                     <span className="sender-name">
-                      {msg.sender === 'user' ? CURRENT_USER.fullName : 'Trợ Lý AI TLBM (GPT-4o)'}
+                      {msg.sender === 'user' ? getSessionUser().fullName : 'Trợ Lý AI TLBM (GPT-4o)'}
                     </span>
                     <span className="message-time">{msg.time}</span>
                   </div>
 
                   <div className="message-bubble-body">
                     {msg.text.split('\n').map((line, lIdx) => {
-                      if (!line.trim()) return <div key={lIdx} style={{ height: '8px' }} />;
+                      if (!line.trim()) return <div key={lIdx} className="h-2" />;
 
                       // Header giả lập ###
                       if (line.startsWith('### ')) {
@@ -707,7 +706,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             <input
               ref={fileInputRef}
               type="file"
-              style={{ display: 'none' }}
+              className="hidden"
               onChange={handleFileSelect}
               accept=".pdf,.doc,.docx,.xlsx,.txt"
             />

@@ -1,4 +1,4 @@
-export type NotificationStreamType = 'incoming' | 'outgoing' | 'confidential';
+export type NotificationStreamType = 'incoming' | 'outgoing' | 'confidential' | 'meetings';
 
 export interface NotificationItem {
   id: string;

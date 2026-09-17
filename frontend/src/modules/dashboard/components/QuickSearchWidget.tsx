@@ -1,194 +1,69 @@
-import React from 'react';
-import { useTranslation } from '../../../shared/locales/i18n';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface QuickSearchWidgetProps {
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  searchFilter: 'all' | 'incoming' | 'outgoing';
-  setSearchFilter: (filter: 'all' | 'incoming' | 'outgoing') => void;
-  onSearch: () => void;
+  searchTerm?: string;
+  setSearchTerm?: (term: string) => void;
+  onSearch?: (term?: string) => void;
 }
 
 export default function QuickSearchWidget({
-  searchTerm,
-  setSearchTerm,
-  searchFilter,
-  setSearchFilter,
+  searchTerm: externalSearchTerm,
+  setSearchTerm: externalSetSearchTerm,
   onSearch,
 }: QuickSearchWidgetProps) {
-  const { t } = useTranslation();
+  const [internalSearchTerm, setInternalSearchTerm] = useState('');
+  const navigate = useNavigate();
+
+  const isControlled = externalSearchTerm !== undefined;
+  const currentSearchTerm = isControlled ? externalSearchTerm : internalSearchTerm;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (externalSetSearchTerm) {
+      externalSetSearchTerm(val);
+    }
+    if (!isControlled) {
+      setInternalSearchTerm(val);
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    if (onSearch) {
+      onSearch(currentSearchTerm);
+    } else if (currentSearchTerm.trim()) {
+      navigate(`/documents/incoming?q=${encodeURIComponent(currentSearchTerm.trim())}`);
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      onSearch();
+      handleSearchSubmit();
     }
   };
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-xl)',
-        padding: '20px 24px',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '12px',
-          flexWrap: 'wrap',
-          gap: '8px',
-        }}
+    <div className="w-full relative">
+      <input
+        type="text"
+        value={currentSearchTerm}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        placeholder="Tìm kiếm văn bản đến/đi theo số ký hiệu hoặc trích yếu..."
+        className="w-full pl-4 pr-10 py-2 rounded-sm border border-border-subtle bg-surface text-main text-xs sm:text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-xs placeholder:text-muted"
+      />
+      <button
+        type="button"
+        onClick={handleSearchSubmit}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition-colors cursor-pointer p-1"
+        title="Tìm kiếm"
+        aria-label="Tìm kiếm văn bản"
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--color-primary)' }} />
-          <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)' }}>
-            {t('dashboardDetails.quickSearchTitle')}
-          </span>
-          <span
-            style={{
-              fontSize: '0.68rem',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-primary-subtle)',
-              border: '1px solid var(--color-primary-border)',
-              color: 'var(--color-primary)',
-              fontWeight: 600,
-            }}
-          >
-            Mock Filter
-          </span>
-        </div>
-        <span
-          style={{
-            fontSize: '0.72rem',
-            padding: '3px 10px',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--color-warning-subtle)',
-            border: '1px solid var(--color-warning-border)',
-            color: 'var(--color-warning-text)',
-            fontWeight: 700,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-          }}
-        >
-          <i className="fa-solid fa-triangle-exclamation" />
-          {t('common.group1Developing')}
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => setSearchFilter('all')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              border: '1px solid var(--border-subtle)',
-              background: searchFilter === 'all' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-              color: searchFilter === 'all' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {t('dashboardDetails.filterAll')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSearchFilter('incoming')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              border: '1px solid var(--border-subtle)',
-              background: searchFilter === 'incoming' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-              color: searchFilter === 'incoming' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {t('dashboardDetails.filterIncoming')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSearchFilter('outgoing')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              border: '1px solid var(--border-subtle)',
-              background: searchFilter === 'outgoing' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-              color: searchFilter === 'outgoing' ? '#fff' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {t('dashboardDetails.filterOutgoing')}
-          </button>
-        </div>
-
-        <div style={{ flex: 1, minWidth: 'min(100%, 240px)', position: 'relative' }}>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('dashboardDetails.searchPlaceholder')}
-            style={{
-              width: '100%',
-              padding: '9px 14px 9px 36px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-surface-elevated)',
-              color: 'var(--text-main)',
-              fontSize: '0.88rem',
-            }}
-          />
-          <i
-            className="fa-solid fa-search"
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-muted)',
-              fontSize: '0.85rem',
-            }}
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={onSearch}
-          style={{
-            padding: '9px 18px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--color-primary)',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: '0.88rem',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            border: 'none',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px var(--color-primary-glow)',
-          }}
-        >
-          <i className="fa-solid fa-magnifying-glass" />
-          <span>{t('dashboardDetails.searchBtn')}</span>
-        </button>
-      </div>
+        <i className="fa-solid fa-magnifying-glass text-sm" />
+      </button>
     </div>
   );
 }
+
+
+

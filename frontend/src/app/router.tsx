@@ -18,6 +18,30 @@ interface RouterProps {
   preferredDarkTheme?: ThemeMode;
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(() => {
+    return Boolean(localStorage.getItem('tlbm_session'));
+  });
+
+  React.useEffect(() => {
+    const handleAuth = () => {
+      setIsAuthenticated(Boolean(localStorage.getItem('tlbm_session')));
+    };
+    window.addEventListener('tlbm_auth_changed', handleAuth);
+    window.addEventListener('storage', handleAuth);
+    return () => {
+      window.removeEventListener('tlbm_auth_changed', handleAuth);
+      window.removeEventListener('storage', handleAuth);
+    };
+  }, []);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 export default function AppRouter({
   currentTheme,
   onSelectTheme,
@@ -30,16 +54,18 @@ export default function AppRouter({
       {/* Route Standalone: Màn hình Đăng Nhập */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Routes có Layout chung (Header, Sidebar, TopSubNav, Footer) thông qua <Outlet /> */}
+      {/* Routes có Layout chung (được bảo vệ bởi ProtectedRoute - yêu cầu đăng nhập trước) */}
       <Route
         element={
-          <MainLayout
-            currentTheme={currentTheme}
-            onSelectTheme={onSelectTheme}
-            onToggleTheme={onToggleTheme}
-            preferredLightTheme={preferredLightTheme}
-            preferredDarkTheme={preferredDarkTheme}
-          />
+          <ProtectedRoute>
+            <MainLayout
+              currentTheme={currentTheme}
+              onSelectTheme={onSelectTheme}
+              onToggleTheme={onToggleTheme}
+              preferredLightTheme={preferredLightTheme}
+              preferredDarkTheme={preferredDarkTheme}
+            />
+          </ProtectedRoute>
         }
       >
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -63,6 +89,7 @@ export default function AppRouter({
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
         <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
         <Route path="/employees" element={<SyllabusPreview activePage="employees" />} />
+        <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
         <Route path="/roles" element={<SyllabusPreview activePage="roles" />} />
 
         {/* Tiện ích Cá nhân & Trợ lý AI (Nhóm 1 phụ trách) */}

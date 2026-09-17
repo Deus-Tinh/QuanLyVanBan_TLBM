@@ -36,6 +36,8 @@ export const pageIdToPath = (pageId: ActivePageId): string => {
       return '/organizations';
     case 'employees':
       return '/employees';
+    case 'positions':
+      return '/positions';
     case 'roles':
       return '/roles';
     default:
@@ -61,6 +63,7 @@ export const pathToPageId = (pathname: string): ActivePageId => {
   if (clean.startsWith('/birthdays')) return 'birthdays';
   if (clean.startsWith('/organizations')) return 'organizations';
   if (clean.startsWith('/employees')) return 'employees';
+  if (clean.startsWith('/positions')) return 'positions';
   if (clean.startsWith('/roles')) return 'roles';
   return 'dashboard';
 };

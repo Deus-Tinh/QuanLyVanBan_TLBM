@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import NotificationStreams from './NotificationStreams';
 import ThemeSelector from './ThemeSelector';
 import LanguageSwitcher from './LanguageSwitcher';
 import UserDropdown from './UserDropdown';
-import { useTranslation } from '../../locales/i18n';
 import { ThemeMode } from '../../types/theme';
 import { ActivePageId } from '../../types/navigation';
 
@@ -11,73 +10,61 @@ interface AppHeaderProps {
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
-  onToggleMobileSidebar: () => void;
+  onToggleSidebar: () => void;
   onHoverSidebar?: () => void;
   isSidebarOpen?: boolean;
-  onNavigate?: (page: ActivePageId) => void;
+  interfaceStyle?: 'classic' | 'modern';
+  onNavigate?: (pageId: ActivePageId) => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
 }
+
+import { Logo } from '../common/Logo';
 
 export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleTheme,
-  onToggleMobileSidebar,
+  onToggleSidebar,
   onHoverSidebar,
   isSidebarOpen,
+  interfaceStyle = 'classic',
   onNavigate,
   preferredLightTheme,
   preferredDarkTheme,
 }: AppHeaderProps) {
-  const { t } = useTranslation();
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Live Administrative Clock: HH:mm:ss DD/MM/YYYY
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatPad = (n: number) => n.toString().padStart(2, '0');
-  const timeString = `${formatPad(currentTime.getHours())}:${formatPad(
-    currentTime.getMinutes()
-  )}:${formatPad(currentTime.getSeconds())}`;
-  const dateString = `${formatPad(currentTime.getDate())}/${formatPad(
-    currentTime.getMonth() + 1
-  )}/${currentTime.getFullYear()}`;
-
   return (
-    <header className="app-header">
-      {/* 1. Left Section: 3-bar Menu Trigger */}
-      <div className="header-left">
-        <button
-          type="button"
-          className={`header-menu-btn ${isSidebarOpen ? 'active' : ''}`}
-          onClick={onToggleMobileSidebar}
-          onMouseEnter={onHoverSidebar}
-          title={t('header.menuTooltip')}
-          aria-label={t('header.menuAria')}
+    <header className="h-14 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
+      {/* 1. Left Section: 3-bar Menu Trigger (chỉ hiển thị ở Giao diện Cổ điển) & Bao Long Logo */}
+      <div className="flex items-center gap-3">
+        {!isSidebarOpen && interfaceStyle !== 'modern' && (
+          <button
+            type="button"
+            className="header-menu-btn w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
+            onClick={onToggleSidebar}
+            onMouseEnter={onHoverSidebar}
+            title="Mở thanh điều hướng (Bấm để mở)"
+            aria-label="Mở thanh điều hướng"
+          >
+            <i className="fa-solid fa-bars text-base" />
+          </button>
+        )}
+        <div
+          className="flex items-center cursor-pointer transition-opacity hover:opacity-85"
+          onClick={() => onNavigate?.('dashboard')}
+          onMouseEnter={interfaceStyle === 'modern' ? onHoverSidebar : undefined}
+          title="Bảo Long Insurance - Về Trang Chủ"
         >
-          <i className="fa-solid fa-bars" />
-        </button>
+          <Logo size="md" />
+        </div>
       </div>
 
-      {/* 2. Right Section: Live Clock, Notifications, Theme, Language, User */}
-      <div className="header-right">
-        {/* Đồng hồ hành chính chuẩn Thầy Duy */}
-        <div className="live-clock-card" title={t('header.clockTitle')}>
-          <i className="fa-regular fa-clock" />
-          <span className="clock-digits">{timeString}</span>
-          <span className="clock-date">{dateString}</span>
-        </div>
-
+      {/* 2. Right Section: Notifications, Theme, Language, User */}
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Thông báo 3 luồng: Đến, Đi, Mật */}
         <NotificationStreams />
 
-        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm (Không mở popup che khuất) */}
+        {/* Đổi nhanh Theme Sáng / Tối trực tiếp 1-chạm */}
         <ThemeSelector
           currentTheme={currentTheme}
           onSelectTheme={onSelectTheme}

@@ -1,10 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CURRENT_USER } from '../../utils/constants';
 import { ActivePageId } from '../../types/navigation';
 import { useTranslation } from '../../locales/i18n';
 
 interface UserDropdownProps {
   onNavigate?: (page: ActivePageId) => void;
+}
+
+interface SessionUser {
+  fullName?: string;
+  username?: string;
+  roleTitle?: string;
+  avatar?: string;
+  email?: string;
 }
 
 export default function UserDropdown({ onNavigate }: UserDropdownProps) {
@@ -33,111 +40,175 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
     }
   };
 
+  const [session, setSession] = useState<SessionUser | null>(() => {
+    try {
+      const raw = localStorage.getItem('tlbm_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleAuth = () => {
+      try {
+        const raw = localStorage.getItem('tlbm_session');
+        setSession(raw ? JSON.parse(raw) : null);
+      } catch {
+        setSession(null);
+      }
+    };
+    window.addEventListener('tlbm_auth_changed', handleAuth);
+    window.addEventListener('storage', handleAuth);
+    return () => {
+      window.removeEventListener('tlbm_auth_changed', handleAuth);
+      window.removeEventListener('storage', handleAuth);
+    };
+  }, []);
+
+  const displayName = session?.fullName || session?.username;
+  const displayRoleOrEmail = session?.roleTitle || session?.email || '';
+
   return (
-    <div style={{ position: 'relative' }} ref={dropdownRef}>
+    <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        className="user-pill-btn"
+        className="flex items-center gap-2 p-1 sm:pr-2.5 rounded-full hover:bg-surface-hover border border-transparent hover:border-subtle transition-all duration-fast"
         onClick={() => setIsOpen(!isOpen)}
-        title="Hồ sơ người dùng"
-        aria-label="Hồ sơ người dùng"
+        title={session ? 'Hồ sơ người dùng' : 'Tài khoản khách (Chưa đăng nhập)'}
+        aria-label={session ? 'Hồ sơ người dùng' : 'Tài khoản khách'}
       >
-        <div className="user-avatar-circle">{CURRENT_USER.avatar}</div>
-        <div className="user-meta-info">
-          <span className="user-name-label">{CURRENT_USER.fullName}</span>
-          <span className="user-role-label">{t('userMenu.role')}</span>
+        {session ? (
+          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-semibold flex items-center justify-center text-xs">
+            {session.avatar || '👤'}
+          </div>
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-surface-elevated border border-subtle text-text-muted flex items-center justify-center text-xs">
+            <i className="fa-regular fa-user" />
+          </div>
+        )}
+
+        <div className="hidden md:flex flex-col text-left">
+          <span className="text-xs font-semibold text-text-main leading-tight">
+            {displayName || t('userMenu.guest') || 'Chưa đăng nhập'}
+          </span>
         </div>
-        <i
-          className="fa-solid fa-chevron-down"
-          style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '4px' }}
-        />
+        <i className="fa-solid fa-chevron-down text-[10px] text-text-muted ml-0.5" />
       </button>
 
       {isOpen && (
         <>
           <div
-            className="dropdown-mobile-backdrop"
+            className="fixed inset-0 z-[10000] bg-backdrop backdrop-blur-sm"
             onClick={() => setIsOpen(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 10000,
-              background: 'rgba(0, 0, 0, 0.35)',
-              backdropFilter: 'blur(2px)',
-              WebkitBackdropFilter: 'blur(2px)',
-            }}
           />
-          <div className="dropdown-menu-wrapper user-dropdown-panel" style={{ zIndex: 10001 }}>
-          <div className="user-panel-header">
-            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{CURRENT_USER.fullName}</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              {CURRENT_USER.email}
+          <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-surface-elevated border border-subtle shadow-glass p-1.5 z-[10001] flex flex-col">
+            <div className="p-2.5 border-b border-subtle mb-1">
+              {session ? (
+                <>
+                  <div className="font-semibold text-sm text-text-main">{displayName}</div>
+                  {displayRoleOrEmail && (
+                    <div className="text-xs text-text-muted truncate mt-0.5">
+                      {displayRoleOrEmail}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="font-semibold text-sm text-text-muted flex items-center gap-1.5">
+                    <i className="fa-regular fa-circle-user text-xs" />
+                    <span>{t('userMenu.notLoggedIn') || 'Chưa đăng nhập'}</span>
+                  </div>
+                  <div className="text-xs text-text-muted truncate mt-0.5">
+                    {t('userMenu.pleaseLogin') || 'Vui lòng đăng nhập để tiếp tục'}
+                  </div>
+                </>
+              )}
             </div>
-            <div
-              style={{
-                fontSize: '0.72rem',
-                color: 'var(--color-primary)',
-                fontWeight: 600,
-                marginTop: '4px',
-              }}
-            >
-              {CURRENT_USER.team}
-            </div>
-          </div>
 
-          <div className="user-panel-menu">
-            <button
-              type="button"
-              className="user-menu-link"
-              onClick={() => handleItemClick('profile')}
-            >
-              <i className="fa-regular fa-user" />
-              <span>{t('userMenu.profile')}</span>
-            </button>
-            <button
-              type="button"
-              className="user-menu-link"
-              onClick={() => handleItemClick('password_change')}
-            >
-              <i className="fa-solid fa-key" />
-              <span>{t('userMenu.passwordChange')}</span>
-            </button>
-            <button
-              type="button"
-              className="user-menu-link"
-              onClick={() => handleItemClick('settings')}
-            >
-              <i className="fa-solid fa-gear" />
-              <span>{t('userMenu.settings')}</span>
-            </button>
-            <button
-              type="button"
-              className="user-menu-link"
-              onClick={() => handleItemClick('login')}
-            >
-              <i className="fa-solid fa-right-to-bracket" />
-              <span>{t('userMenu.loginDemo')}</span>
-            </button>
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
-            <button
-              type="button"
-              className="user-menu-link logout"
-              onClick={() => {
-                if (confirm(t('userMenu.logoutConfirm'))) {
-                  handleItemClick('login');
-                }
-                setIsOpen(false);
-              }}
-            >
-              <i className="fa-solid fa-arrow-right-from-bracket" />
-              <span>{t('userMenu.logout')}</span>
-            </button>
+            <div className="flex flex-col gap-0.5">
+              {session ? (
+                <>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    onClick={() => handleItemClick('profile')}
+                  >
+                    <i className="w-4 text-center fa-regular fa-user text-xs" />
+                    <span>{t('userMenu.profile')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    onClick={() => handleItemClick('password_change')}
+                  >
+                    <i className="w-4 text-center fa-solid fa-key text-xs" />
+                    <span>{t('userMenu.passwordChange')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    onClick={() => handleItemClick('settings')}
+                  >
+                    <i className="w-4 text-center fa-solid fa-gear text-xs" />
+                    <span>{t('userMenu.settings')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    onClick={() => handleItemClick('login')}
+                  >
+                    <i className="w-4 text-center fa-solid fa-right-to-bracket text-xs" />
+                    <span>{t('userMenu.loginDemo')}</span>
+                  </button>
+                  <hr className="my-1 border-0 border-t border-subtle" />
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-danger hover:bg-danger-subtle transition-colors text-left"
+                    onClick={() => {
+                      if (confirm(t('userMenu.logoutConfirm'))) {
+                        localStorage.removeItem('tlbm_session');
+                        window.dispatchEvent(new Event('tlbm_auth_changed'));
+                        handleItemClick('login');
+                      }
+                      setIsOpen(false);
+                    }}
+                  >
+                    <i className="w-4 text-center fa-solid fa-arrow-right-from-bracket text-xs" />
+                    <span>{t('userMenu.logout')}</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-primary font-medium hover:bg-primary/10 transition-colors text-left"
+                    onClick={() => handleItemClick('login')}
+                  >
+                    <i className="w-4 text-center fa-solid fa-right-to-bracket text-xs" />
+                    <span>{t('userMenu.login') || 'Đăng nhập'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    onClick={() => handleItemClick('login')}
+                  >
+                    <i className="w-4 text-center fa-solid fa-user-shield text-xs" />
+                    <span>{t('userMenu.loginDemo')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    onClick={() => handleItemClick('settings')}
+                  >
+                    <i className="w-4 text-center fa-solid fa-gear text-xs" />
+                    <span>{t('userMenu.settings')}</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </>
+        </>
       )}
     </div>
   );

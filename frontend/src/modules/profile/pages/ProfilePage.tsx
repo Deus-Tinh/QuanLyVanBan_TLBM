@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
+import { Card, Button } from '../../../shared/components/ui';
 
 interface ProfilePageProps {
   onNavigate?: (page: ActivePageId) => void;
@@ -11,98 +12,75 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
+  // Lấy thông tin phiên đăng nhập thực tế
+  const session = (() => {
+    try {
+      const raw = localStorage.getItem('tlbm_session');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const displayName = session?.fullName || session?.username || '—';
+  const displayRole = session?.roleTitle || session?.role || '—';
+  const displayDept = session?.department || (session ? t('profile.sampleDept') : '—');
+  const displayEmail = session?.email || (session?.username ? `${session.username}@donvi.gov.vn` : '—');
+
   return (
-    <div style={{ maxWidth: '820px', margin: '20px auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '28px 32px',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', flexWrap: 'wrap', gap: '10px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+    <div className="max-w-4xl mx-auto my-5 flex flex-col gap-5">
+      <Card className="p-7 sm:p-8">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-2.5">
+          <h2 className="text-xl font-extrabold text-main flex items-center gap-2.5 m-0">
             <span>👤</span>
             <span>{t('profile.title')}</span>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              ({t('profile.moduleTag')})
-            </span>
           </h2>
-
-          <span
-            style={{
-              fontSize: '0.75rem',
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-warning-subtle)',
-              border: '1px solid var(--color-warning-border)',
-              color: 'var(--color-warning-text)',
-              fontWeight: 700,
-            }}
-          >
-            {t('common.group1Developing')}
-          </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-          <div style={{ padding: '14px 18px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>{t('profile.fullName')}:</span>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)', marginTop: '4px' }}>
-              {t('profile.sampleName')}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
+            <span className="text-xs text-muted font-medium">{t('profile.fullName')}:</span>
+            <div className="font-bold text-base text-main mt-1">
+              {displayName}
             </div>
           </div>
 
-          <div style={{ padding: '14px 18px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>{t('profile.role')}:</span>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-primary)', marginTop: '4px' }}>
-              {t('profile.sampleRole')}
+          <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
+            <span className="text-xs text-muted font-medium">{t('profile.role')}:</span>
+            <div className="font-bold text-base text-primary mt-1">
+              {displayRole}
             </div>
           </div>
 
-          <div style={{ padding: '14px 18px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>{t('profile.department')}:</span>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)', marginTop: '4px' }}>
-              {t('profile.sampleDept')}
+          <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
+            <span className="text-xs text-muted font-medium">{t('profile.department')}:</span>
+            <div className="font-bold text-base text-main mt-1">
+              {displayDept}
             </div>
           </div>
 
-          <div style={{ padding: '14px 18px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>{t('profile.email')}:</span>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)', marginTop: '4px' }}>
-              {t('profile.sampleEmail')}
+          <div className="p-3.5 px-4.5 bg-surface-elevated border border-border-subtle rounded-lg">
+            <span className="text-xs text-muted font-medium">{t('profile.email')}:</span>
+            <div className="font-bold text-base text-main mt-1">
+              {displayEmail}
             </div>
           </div>
         </div>
 
-        <div style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            style={{
-              padding: '10px 20px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px var(--color-primary-glow)',
-            }}
+        <div className="mt-6 flex gap-3 flex-wrap">
+          <Button
+            variant="primary"
+            size="md"
+            icon="fa-arrow-left"
             onClick={() => {
               if (onNavigate) onNavigate('dashboard');
               navigate('/dashboard');
             }}
           >
-            <i className="fa-solid fa-arrow-left" />
-            <span>{t('common.backToDashboard')}</span>
-          </button>
+            {t('common.backToDashboard')}
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

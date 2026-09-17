@@ -1,235 +1,71 @@
 import React from 'react';
-import { useTranslation } from '../../../shared/locales/i18n';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardStatsProps {
   incomingCount?: number;
   outgoingCount?: number;
-  confidentialCount?: number;
   tasksCount?: number;
 }
 
 export default function DashboardStats({
-  incomingCount = 1248,
-  outgoingCount = 856,
-  confidentialCount = 24,
-  tasksCount = 18,
+  incomingCount = 0,
+  outgoingCount = 0,
+  tasksCount = 0,
 }: DashboardStatsProps) {
-  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const cards = [
+    {
+      title: 'Văn bản đến (2026)',
+      count: incomingCount,
+      subtext: incomingCount > 0 ? `+${incomingCount} văn bản mới trong ngày` : 'Chưa có phát sinh trong ngày',
+      icon: 'fa-solid fa-inbox',
+      path: '/documents/incoming',
+      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
+    },
+    {
+      title: 'Văn bản đi (2026)',
+      count: outgoingCount,
+      subtext: outgoingCount > 0 ? `+${outgoingCount} văn bản phát hành hôm nay` : 'Chưa có phát hành hôm nay',
+      icon: 'fa-solid fa-paper-plane',
+      path: '/documents/outgoing',
+      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
+    },
+    {
+      title: 'Nhiệm vụ - Thông báo',
+      count: tasksCount,
+      subtext: tasksCount > 0 ? `${tasksCount} nhiệm vụ cần xử lý` : 'Không có nhiệm vụ cần xử lý',
+      icon: 'fa-solid fa-list-check',
+      path: '/tasks',
+      bgClass: 'bg-primary hover:bg-primary-hover border-primary-border',
+    },
+  ];
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '12px',
-          flexWrap: 'wrap',
-          gap: '8px',
-        }}
-      >
-        <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>📊 {t('dashboardDetails.kpiTitle')}</span>
-          <span
-            style={{
-              fontSize: '0.68rem',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--color-primary-subtle)',
-              border: '1px solid var(--color-primary-border)',
-              color: 'var(--color-primary)',
-              fontWeight: 600,
-            }}
-          >
-            Mock Data (Prototype)
-          </span>
-        </div>
-        <span
-          style={{
-            fontSize: '0.72rem',
-            padding: '3px 10px',
-            borderRadius: 'var(--radius-full)',
-            background: 'var(--color-success-subtle)',
-            border: '1px solid var(--color-success-border)',
-            color: 'var(--color-success)',
-            fontWeight: 700,
-          }}
-        >
-          {t('dashboardDetails.kpiVerifiedTag')}
-        </span>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
-          gap: '18px',
-        }}
-      >
-        {/* Card 1: VB Đến */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+      {cards.map((card, idx) => (
         <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
+          key={idx}
+          onClick={() => navigate(card.path)}
+          className={`${card.bgClass} text-white p-4 px-5 rounded-sm border shadow-xs transition-all duration-fast flex justify-between items-center cursor-pointer select-none`}
         >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary-subtle)',
-              color: 'var(--color-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
-            <i className="fa-solid fa-inbox" />
-          </div>
           <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {t('dashboardDetails.incomingCard')}
+            <div className="text-xs uppercase tracking-wider font-semibold text-blue-100/90 mb-1">
+              {card.title}
             </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
-              {incomingCount.toLocaleString()}
+            <div className="text-2xl lg:text-3xl font-bold tracking-tight">
+              {card.count.toLocaleString()}
             </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-success)', fontWeight: 600 }}>
-              {t('dashboardDetails.incomingToday')}
+            <div className="text-[11px] text-blue-200/80 mt-1 flex items-center gap-1.5">
+              <span>{card.subtext}</span>
             </div>
+          </div>
+          <div className="w-12 h-12 rounded-sm bg-white/10 border border-white/10 flex items-center justify-center text-white text-xl shrink-0">
+            <i className={card.icon} />
           </div>
         </div>
-
-        {/* Card 2: VB Đi */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-success-subtle)',
-              color: 'var(--color-success)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
-            <i className="fa-solid fa-paper-plane" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {t('dashboardDetails.outgoingCard')}
-            </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
-              {outgoingCount.toLocaleString()}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-success)', fontWeight: 600 }}>
-              {t('dashboardDetails.outgoingStatus')}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: VB Mật */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-danger-subtle)',
-              color: 'var(--color-danger)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
-            <i className="fa-solid fa-shield-halved" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {t('dashboardDetails.confidentialCard')}
-            </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
-              {confidentialCount.toLocaleString()}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-danger)', fontWeight: 600 }}>
-              {t('dashboardDetails.confidentialStatus')}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Công Việc */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <div
-            style={{
-              width: '50px',
-              height: '50px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-purple-subtle)',
-              color: 'var(--color-purple)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.35rem',
-            }}
-          >
-            <i className="fa-solid fa-list-check" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {t('dashboardDetails.tasksCard')}
-            </div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
-              {tasksCount.toLocaleString()}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--color-warning)', fontWeight: 600 }}>
-              {t('dashboardDetails.tasksNearDeadline')}
-            </div>
-          </div>
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
+

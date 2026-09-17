@@ -7,14 +7,14 @@
     "group1Notice": "Group 1 currently in active development"
   },
   "common": {
-    "backToDashboard": "Back to Dashboard",
+    "backToDashboard": "Back to Home",
     "assignedUnit": "Responsible Unit",
     "currentStatus": "Current Status",
     "outline": "Course Outline",
     "group1Developing": "Group 1 Currently In Development",
     "group1Layout": "Group 1 Layout & Shell Architecture",
     "group1DescSelf": "Group 1 is actively developing and finalizing UI components with Django Backend integration.",
-    "group1DescOther": "Group 1 (PM: Chau Tuan Kiet) is developing the shell layout & preparing API integration endpoints with {team}."
+    "group1DescOther": "Group 1 is developing the shell layout & preparing API integration endpoints with {team}."
   },
   "header": {
     "searchPlaceholder": "Search document number, subject, tasks...",
@@ -28,7 +28,7 @@
     "menuAria": "Open navigation menu"
   },
   "navigation": {
-    "dashboard": "Workplace",
+    "dashboard": "Home",
     "documents": "Documents",
     "records": "Dossiers & Files",
     "workflow": "Tasks & Signing",
@@ -43,22 +43,29 @@
     "birthdays": "Staff Birthdays",
     "meetings": "Meeting Rooms",
     "organizations": "Departments",
-    "employees": "Staff Directory"
+    "positions": "Job Positions",
+    "employees": "Staff Directory",
+    "roles": "Roles & Permissions"
   },
   "userMenu": {
     "profile": "Account Profile",
     "passwordChange": "Change Password",
     "settings": "Settings",
     "loginDemo": "Login Portal (2 Cases)",
+    "login": "Sign In",
+    "guest": "Not signed in",
+    "notLoggedIn": "Not signed in",
+    "pleaseLogin": "Please sign in to continue",
     "logout": "Sign Out",
     "logoutConfirm": "Are you sure you want to sign out from the TLBM system?",
-    "role": "PM · Group 1"
+    "role": "System Officer"
   },
   "notifications": {
-    "title": "Document Notifications",
+    "title": "System Notifications",
     "incoming": "Incoming",
     "outgoing": "Outgoing",
     "confidential": "Confidential",
+    "meetings": "Meetings",
     "markAllRead": "Mark all read",
     "viewAll": "View all",
     "unreadCount": "{count} unread"
@@ -69,9 +76,9 @@
     "layoutLead": "Layout & Workplace Lead"
   },
   "dashboardDetails": {
-    "greeting": "Welcome, Chau Tuan Kiet",
-    "roleBadge": "PM · Group 1 Lead",
-    "leadDescription": "Executive Workplace · Module 1.2 Dashboard Outline lead by Group 1 (Chau Tuan Kiet, Nguyen Van Hieu, Nguyen Duy Quan).",
+    "greeting": "Welcome, Staff Member",
+    "roleBadge": "Specialist Officer",
+    "leadDescription": "Executive Workplace · Document & Confidential Archive Management System (TLBM).",
     "receiveDocBtn": "Receive Document",
     "quickSearchTitle": "Quick Search Incoming & Outgoing Documents",
     "filterAll": "All",
@@ -100,7 +107,7 @@
     "inProgress": "In Progress",
     "upcoming": "Upcoming",
     "recentIncomingTitle": "Latest Incoming Documents (Top 5)",
-    "completedGroup1": "✓ Completed (Group 1 · Nguyen Van Hieu)",
+    "completedGroup1": "✓ Completed (Group 1)",
     "docNumber": "No. / Ref Code",
     "docSummary": "Summary / Subject",
     "docDate": "Doc Date",
@@ -120,26 +127,40 @@
   },
   "profile": {
     "title": "Staff & Officer Profile",
-    "moduleTag": "Group 1 · Module 1.1",
+    "moduleTag": "Account Information",
     "fullName": "Full Name",
-    "role": "Project Role",
+    "role": "System Role",
     "department": "Work Unit",
     "email": "Contact Email",
-    "sampleName": "Chau Tuan Kiet",
-    "sampleRole": "Project Manager (PM) · Group 1 Lead",
-    "sampleDept": "IT Department (ITC)",
-    "sampleEmail": "kiet.ct@itc.edu.vn"
+    "sampleDept": "Operating Department / Division"
   },
   "passwordChange": {
     "title": "Set New Account Password",
-    "moduleTag": "Group 1 · Module 1.1",
+    "subtitle": "Changing your password periodically protects account access and classified records.",
+    "moduleTag": "Account Security",
     "currentPassword": "Current Password",
-    "currentPasswordPlaceholder": "Enter old password...",
+    "currentPasswordPlaceholder": "Enter current password...",
     "newPassword": "New Password",
     "newPasswordPlaceholder": "At least 8 characters, uppercase, numbers...",
     "confirmPassword": "Confirm New Password",
-    "confirmPasswordPlaceholder": "Re-enter new password...",
-    "submitBtn": "Update Password (Group 1 in development)"
+    "confirmPasswordPlaceholder": "Re-enter new password to verify...",
+    "submitBtn": "Update Password",
+    "backBtn": "Back to Dashboard",
+    "successMsg": "Password updated successfully! Please remember your new password.",
+    "mismatchError": "Confirmation password does not match!",
+    "emptyError": "Please fill in all required password fields!",
+    "tooShortError": "New password must be at least 8 characters!",
+    "securityGuidelinesTitle": "Password Security Guidelines",
+    "ruleMinLength": "At least 8 characters (12+ characters recommended)",
+    "ruleMixedCase": "Combine uppercase (A-Z) and lowercase (a-z) letters",
+    "ruleNumber": "Include at least one numerical digit (0-9)",
+    "ruleSpecial": "Special characters recommended (!@#$%^&*...)",
+    "ruleNoPersonal": "Avoid using birthdates, phone numbers or easy names",
+    "rulePeriodic": "Change your password regularly every 90 days",
+    "strengthWeak": "Weak",
+    "strengthFair": "Fair",
+    "strengthGood": "Good",
+    "strengthStrong": "Strong"
   },
   "settings": {
     "title": "System Settings & Preferences",
@@ -155,6 +176,14 @@
     "activeSelected": "Currently Active",
     "tipTitle": "Quick Toggle Utility",
     "tipDesc": "The 1-touch button on the Header (next to the clock) directly switches between the Light and Dark designs you configured here.",
+    "interfaceStyleTitle": "Interface Style Option",
+    "interfaceStyleDesc": "Choose the visual presentation style that best fits your workflow and preference.",
+    "interfaceStyleClassic": "Classic Administrative UI",
+    "interfaceStyleClassicBadge": "Institutional Standard",
+    "interfaceStyleClassicDesc": "Authoritative GovTech portal layout. High information density, formal navy palette, birthday marquee ticker, and compact operational tables.",
+    "interfaceStyleModern": "Modern Visual UI",
+    "interfaceStyleModernBadge": "Next-Gen Visual",
+    "interfaceStyleModernDesc": "Contemporary flat design. Spacious card margins, softer corner radii, and visual clarity aligned with modern SaaS enterprise standards.",
     "notificationSectionTitle": "Document Notification Configuration",
     "notifIncoming": "Receive alerts when a new incoming document is routed",
     "notifUrgent": "Sound alerts for documents marked \"URGENT\" or \"CONFIDENTIAL\"",
@@ -186,48 +215,48 @@
   "pages": {
     "dashboard": {
       "title": "Workplace & Executive Dashboard",
-      "module": "Module 1.2: Main Dashboard",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.2 · Difficulty: 0.80",
+      "module": "Module 1.2: Executive Dashboard",
+      "assignedTeam": "Group 1 (Layout & Dashboard Subsystem)",
+      "codeRef": "Item 1.2 · Complexity: 0.80",
       "isGroup1": true,
-      "desc": "Annual document statistics, T/T+1 birthday alerts, meeting room scheduling, incoming/outgoing doc search, top 5 documents, tasks, and shared resources."
+      "desc": "Annual document statistics, birthdays, meeting rooms, fast search, top documents, tasks, and shared resources."
     },
     "login": {
-      "title": "System Authentication Portal (Staff & Administrator)",
+      "title": "System Authentication (Staff & Administrator)",
       "module": "Module 1.1: Layout & Authentication",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "assignedTeam": "Group 1 (Authentication Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "Account verification for corporate personnel and system administrators featuring dual dedicated interfaces."
+      "desc": "Authentication flow for staff members and system administrators with dual visual layouts."
     },
     "profile": {
-      "title": "User Profile & Personal Credentials",
-      "module": "Module 1.1: Layout & Account Profile",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "title": "Personal Profile & Account Information",
+      "module": "Module 1.1: Layout & Account Info",
+      "assignedTeam": "Group 1 (Profile Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "View and update personal profile, corporate position, assigned department, email, and contact number."
+      "desc": "View and update profile credentials, department, organization unit, email, and phone number."
     },
     "password_change": {
-      "title": "Account Password Management",
+      "title": "Change Account Password",
       "module": "Module 1.1: Layout & Account Security",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "assignedTeam": "Group 1 (Security Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "Change user password with irreversible one-way cryptographic hashing security standards."
+      "desc": "Change user password following one-way cryptographic security policy."
     },
     "settings": {
-      "title": "System Preferences & Workspace Customization",
+      "title": "System Settings & Personal Preferences",
       "module": "Module 1.1: Layout & System Settings",
-      "assignedTeam": "Group 1 (Chau Tuan Kiet PM, Nguyen Van Hieu, Nguyen Duy Quan)",
-      "codeRef": "Item 1.1 · Difficulty: 0.60",
+      "assignedTeam": "Group 1 (Settings Subsystem)",
+      "codeRef": "Item 1.1 · Complexity: 0.60",
       "isGroup1": true,
-      "desc": "Configure personal preferences, urgent dispatch notifications, 2FA dual-factor authentication, language, and theme modes."
+      "desc": "Personalize workspace notifications, 2FA security, language locale, and display appearance."
     },
     "documents_incoming": {
       "title": "Incoming Documents Management",
       "module": "Module 2: Document Management (Incoming)",
-      "assignedTeam": "Group 2 (Le Tri Kiet, Nguyen Anh Do, Nguyen Tan Loc Khiem, Tran Nhat Tan)",
+      "assignedTeam": "Group 2 (Document Management Subsystem)",
       "codeRef": "Item 2.1 · Difficulty: 1.00",
       "isGroup1": false,
       "desc": "Document registry, details, date/year filtering, creation, Excel import/export, and role-based incoming document viewing."
@@ -235,7 +264,7 @@
     "documents_outgoing": {
       "title": "Internal Outgoing Documents",
       "module": "Module 2: Document Management (Outgoing)",
-      "assignedTeam": "Group 2 (Le Tri Kiet, Nguyen Anh Do, Nguyen Tan Loc Khiem, Tran Nhat Tan)",
+      "assignedTeam": "Group 2 (Document Management Subsystem)",
       "codeRef": "Item 2.2 · Difficulty: 1.00",
       "isGroup1": false,
       "desc": "Official internal dispatches, signatory management, receiving departments, validity periods, and file attachments."
@@ -243,7 +272,7 @@
     "documents_confidential": {
       "title": "Classified & Confidential Documents",
       "module": "Module 2: Document Management (Confidential)",
-      "assignedTeam": "Group 2 (Le Tri Kiet, Nguyen Anh Do, Nguyen Tan Loc Khiem, Tran Nhat Tan)",
+      "assignedTeam": "Group 2 (Document Management Subsystem)",
       "codeRef": "Item 2.3 · Difficulty: 1.00",
       "isGroup1": false,
       "desc": "Strictly encrypted confidential records routed exclusively to authorized departments or cleared personnel."
@@ -251,7 +280,7 @@
     "records": {
       "title": "Dossier & Document Category Registry",
       "module": "Module 3: Dossiers & Records (Tier 1 & 2)",
-      "assignedTeam": "Group 3 (Dang Truong Thinh, Phan Thi Anh Tuyen, Nguyen Thi Yen Nhi)",
+      "assignedTeam": "Group 3 (Records & Archives Subsystem)",
       "codeRef": "Item 3.1 & 3.2 · Difficulty: 0.80",
       "isGroup1": false,
       "desc": "Tier-1 dossier catalog, Tier-2 document categories, and cross-linking documents by dossier."
@@ -259,7 +288,7 @@
     "resources": {
       "title": "Standard Document Forms & Template Repository",
       "module": "Module 4: Documents & Templates",
-      "assignedTeam": "Group 4 (Thuong Manh Quynh, Huynh Thi Kim Trang, Nguyen Chi Tin, Do Trung Phong)",
+      "assignedTeam": "Group 4 (Resources & Templates Subsystem)",
       "codeRef": "Item 4.1 & 4.2 · Difficulty: 0.80",
       "isGroup1": false,
       "desc": "Tier-1 template directory and standardized organizational forms for company-wide download and utilization."
@@ -267,7 +296,7 @@
     "approvals": {
       "title": "Digital Signature & Electronic Approval Workflow",
       "module": "Module 5: Digital Approvals & Signing",
-      "assignedTeam": "Group 5 (Le Thanh Hau, Le Thanh Tai)",
+      "assignedTeam": "Group 5 (Digital Approvals Subsystem)",
       "codeRef": "Item 5.1 · Difficulty: 1.00",
       "isGroup1": false,
       "desc": "Create signing workflows, inspect approval trees, notify signatories, automated email routing, and PKI digital signatures."
@@ -275,7 +304,7 @@
     "tasks": {
       "title": "Task Assignment & Progress Tracking",
       "module": "Module 6: Task Management",
-      "assignedTeam": "Group 6 (Phan Ta Huu Duc, Nguyen Duy Bao, Do Ngoc Phat, Lam Chi Vi)",
+      "assignedTeam": "Group 6 (Task Management Subsystem)",
       "codeRef": "Item 6.1 · Difficulty: 0.80",
       "isGroup1": false,
       "desc": "Task log, resolution deadlines, lead handlers/participants, task commentary, and Excel reporting."
@@ -283,7 +312,7 @@
     "meetings": {
       "title": "Conference & Meeting Room Scheduling",
       "module": "Module 7.1: Meeting Room Utility",
-      "assignedTeam": "Group 7 (To Thanh Tan, Le Duy Khanh, Do Manh Quang, Nguyen Phan Minh Hieu, Tran Dinh Tinh)",
+      "assignedTeam": "Group 7 (System & Utilities Subsystem)",
       "codeRef": "Item 7.1 · Difficulty: 0.40",
       "isGroup1": false,
       "desc": "Book meeting rooms, track real-time daily schedules, and coordinate conference hall resources."
@@ -291,7 +320,7 @@
     "birthdays": {
       "title": "Staff Birthday Calendar & Automated Greetings (7.2)",
       "module": "Module 7.2: Staff Birthdays",
-      "assignedTeam": "Group 7 (To Thanh Tan, Le Duy Khanh, Do Manh Quang, Nguyen Phan Minh Hieu, Tran Dinh Tinh)",
+      "assignedTeam": "Group 7 (System & Utilities Subsystem)",
       "codeRef": "Item 7.2 · Difficulty: 0.40",
       "isGroup1": false,
       "desc": "Display employee birthday calendar with automated congratulatory email dispatch on schedule."
@@ -299,15 +328,23 @@
     "organizations": {
       "title": "Organizational Structure & Corporate Departments",
       "module": "Module 7.3: System Administration (Divisions & Depts)",
-      "assignedTeam": "Group 7 (To Thanh Tan, Le Duy Khanh, Do Manh Quang, Nguyen Phan Minh Hieu, Tran Dinh Tinh)",
+      "assignedTeam": "Group 7 (System & Utilities Subsystem)",
       "codeRef": "Item 7.3 · Difficulty: 0.80",
       "isGroup1": false,
       "desc": "Manage Tier-1 Divisions/Regions, Tier-2 Departments, and priority display ordering."
     },
+    "positions": {
+      "title": "Job Positions Directory",
+      "module": "Module 7.4: System Admin - Job Positions",
+      "assignedTeam": "Group 7 (System & Utilities Subsystem)",
+      "codeRef": "Item 7.4 · Difficulty: 0.80",
+      "isGroup1": false,
+      "desc": "Position list by priority order, creation, Excel template import and position search."
+    },
     "employees": {
       "title": "Staff Directory & Personnel Records",
       "module": "Module 7.5: Personnel Management",
-      "assignedTeam": "Group 7 (To Thanh Tan, Le Duy Khanh, Do Manh Quang, Nguyen Phan Minh Hieu, Tran Dinh Tinh)",
+      "assignedTeam": "Group 7 (System & Utilities Subsystem)",
       "codeRef": "Item 7.5 · Difficulty: 0.80",
       "isGroup1": false,
       "desc": "Employee rosters, corporate positions, role groups, administrative passwords, and masked birth years."
@@ -315,7 +352,7 @@
     "roles": {
       "title": "Role-Based Access Control & Permissions Matrix",
       "module": "Module 7.7: Access Control Matrix",
-      "assignedTeam": "Group 7 (To Thanh Tan, Le Duy Khanh, Do Manh Quang, Nguyen Phan Minh Hieu, Tran Dinh Tinh)",
+      "assignedTeam": "Group 7 (System & Utilities Subsystem)",
       "codeRef": "Item 7.7 · Difficulty: 0.80",
       "isGroup1": false,
       "desc": "Manage permission matrices, role groups: Administrator, Staff, and Document Archivist."
@@ -323,7 +360,7 @@
     "ai_assistant": {
       "title": "AI Knowledge Assistant & Document Retrieval Chatbot",
       "module": "Module 8: Chatbox AI",
-      "assignedTeam": "Group 8 (Tran Vu Giang Anh, Huynh Vuong Thanh Nha)",
+      "assignedTeam": "Group 8 (AI Assistant Subsystem)",
       "codeRef": "Item 8.1 · Difficulty: 1.00",
       "isGroup1": false,
       "desc": "Intelligent procedural Q&A, incoming/outgoing document search, and deep system cross-linking."
