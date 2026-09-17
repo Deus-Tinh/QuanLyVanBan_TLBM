@@ -18,13 +18,15 @@ class Command(BaseCommand):
             username="admin",
             defaults={
                 "email": "quantri@donvi.gov.vn",
-                "first_name": "Quan Tri Vien",
-                "last_name": "He Thong",
+                "first_name": "Quản Trị Viên",
+                "last_name": "Hệ Thống",
                 "is_staff": True,
                 "is_superuser": True,
             },
         )
         admin_user.set_password("Admin@123")
+        admin_user.first_name = "Quản Trị Viên"
+        admin_user.last_name = "Hệ Thống"
         admin_user.is_staff = True
         admin_user.is_superuser = True
         admin_user.is_active = True
@@ -35,9 +37,9 @@ class Command(BaseCommand):
         StaffProfile.objects.update_or_create(
             user=admin_user,
             defaults={
-                "full_name": "Quan Tri Vien He Thong",
-                "department": "Van phong Trung tam",
-                "position": "Quan tri vien toi cao",
+                "full_name": "Quản Trị Viên Hệ Thống",
+                "department": "Văn phòng Trung tâm",
+                "position": "Quản trị viên tối cao",
                 "role": "admin",
                 "phone": "028.3896.8888",
                 "birthday": today.replace(year=1990),
@@ -50,13 +52,15 @@ class Command(BaseCommand):
             username="canbo",
             defaults={
                 "email": "canbo@donvi.gov.vn",
-                "first_name": "Can Bo",
-                "last_name": "Xu Ly Van Ban",
+                "first_name": "Cán Bộ",
+                "last_name": "Xử Lý Văn Bản",
                 "is_staff": True,
                 "is_superuser": False,
             },
         )
         canbo_user.set_password("Canbo@123")
+        canbo_user.first_name = "Cán Bộ"
+        canbo_user.last_name = "Xử Lý Văn Bản"
         canbo_user.is_staff = True
         canbo_user.is_superuser = False
         canbo_user.is_active = True
@@ -67,9 +71,9 @@ class Command(BaseCommand):
         StaffProfile.objects.update_or_create(
             user=canbo_user,
             defaults={
-                "full_name": "Can Bo Xu Ly Van Ban",
-                "department": "Phong To chuc - Hanh chinh",
-                "position": "Chuyen vien van thu",
+                "full_name": "Cán Bộ Xử Lý Văn Bản",
+                "department": "Phòng Tổ chức - Hành chính",
+                "position": "Chuyên viên văn thư",
                 "role": "staff",
                 "phone": "028.3896.6666",
                 "birthday": today.replace(year=1995, month=tomorrow.month, day=tomorrow.day),
@@ -80,16 +84,16 @@ class Command(BaseCommand):
         # Xóa tài khoản cũ nếu có MSSV để đảm bảo DevOps audit
         User.objects.filter(username__contains="501250").delete()
 
-        # ── 3. Khởi tạo văn bản mẫu ──────────────────────────────────────────
+        # ── 3. Khởi tạo văn bản đến mẫu ──────────────────────────────────────
         incoming_samples = [
-            ("128/QD-UBND", "V/v phe duyet de an chuyen doi so cong vu giai doan 2026-2030", today, "UBND TP.HCM", False),
-            ("45/CV-STTTT", "Huong dan trien khai he thong quan ly van ban va dieu hanh", today - timedelta(days=1), "So Thong tin va Truyen thong", False),
-            ("09/BC-TTr", "Bao cao cong tac thanh tra hanh chinh quy 3/2026", today - timedelta(days=2), "Thanh tra Thanh pho", False),
-            ("88/TB-VP", "Thong bao ket luan cuoc hop giao ban thuong ky thang 9", today - timedelta(days=3), "Van phong UBND", False),
-            ("12/KH-SNV", "Ke hoach dao tao, boi duong can bo cong chuc nam 2026", today - timedelta(days=4), "So Noi vu", False),
+            ("128/QD-UBND", "V/v phê duyệt đề án chuyển đổi số công vụ giai đoạn 2026-2030", today, "UBND TP.HCM", False),
+            ("45/CV-STTTT", "Hướng dẫn triển khai hệ thống quản lý văn bản và điều hành", today - timedelta(days=1), "Sở Thông tin và Truyền thông", False),
+            ("09/BC-TTr", "Báo cáo công tác thanh tra hành chính quý 3/2026", today - timedelta(days=2), "Thanh tra Thành phố", False),
+            ("88/TB-VP", "Thông báo kết luận cuộc họp giao ban thường kỳ tháng 9", today - timedelta(days=3), "Văn phòng UBND", False),
+            ("12/KH-SNV", "Kế hoạch đào tạo, bồi dưỡng cán bộ công chức năm 2026", today - timedelta(days=4), "Sở Nội vụ", False),
         ]
         for code, title, issued_date, sender, is_conf in incoming_samples:
-            IncomingDocument.objects.get_or_create(
+            IncomingDocument.objects.update_or_create(
                 code=code,
                 defaults={
                     "title": title,
@@ -99,15 +103,16 @@ class Command(BaseCommand):
                 },
             )
 
+        # ── 4. Khởi tạo văn bản đi mẫu ───────────────────────────────────────
         outgoing_samples = [
-            ("52/TTr-ITC", "To trinh xin chu truong nang cap ha tang mang trung tam du lieu", today, "Ban Giam doc So", False),
-            ("104/GM-VP", "Giay moi hop ra soat tien do tich hop phan he Dashboard", today - timedelta(days=1), "Cac phong ban truc thuoc", False),
-            ("77/TB-BGD", "Thong bao lich nghi va phan cong truc co quan", today - timedelta(days=2), "Toan the CBNV", False),
-            ("33/CV-CNTT", "Cong van de nghi cung cap danh muc bieu mau dien tu", today - timedelta(days=3), "Trung tam Luu tru", False),
-            ("15/QD-ITC", "Quyet dinh kien toan to cong tac an toan an ninh mang", today - timedelta(days=5), "Ban Chi dao Chuyen doi so", True),
+            ("52/TTr-ITC", "Tờ trình xin chủ trương nâng cấp hạ tầng mạng trung tâm dữ liệu", today, "Ban Giám đốc Sở", False),
+            ("104/GM-VP", "Giấy mời họp rà soát tiến độ tích hợp phân hệ Dashboard", today - timedelta(days=1), "Các phòng ban trực thuộc", False),
+            ("77/TB-BGD", "Thông báo lịch nghỉ và phân công trực cơ quan", today - timedelta(days=2), "Toàn thể CBNV", False),
+            ("33/CV-CNTT", "Công văn đề nghị cung cấp danh mục biểu mẫu điện tử", today - timedelta(days=3), "Trung tâm Lưu trữ", False),
+            ("15/QD-ITC", "Quyết định kiện toàn tổ công tác an toàn an ninh mạng", today - timedelta(days=5), "Ban Chỉ đạo Chuyển đổi số", True),
         ]
         for code, title, issued_date, recipient, is_conf in outgoing_samples:
-            OutgoingDocument.objects.get_or_create(
+            OutgoingDocument.objects.update_or_create(
                 code=code,
                 defaults={
                     "title": title,
@@ -117,26 +122,26 @@ class Command(BaseCommand):
                 },
             )
 
-        # ── 4. Khởi tạo phòng họp hôm nay ───────────────────────────────────
-        MeetingRoom.objects.get_or_create(
-            room_name="Phong hop A1 - Khu A",
-            meeting_title="Hop giao ban dinh ky",
+        # ── 5. Khởi tạo phòng họp hôm nay ───────────────────────────────────
+        MeetingRoom.objects.update_or_create(
+            room_name="Phòng họp A1 - Khu A",
             date=today,
             defaults={
+                "meeting_title": "Họp giao ban định kỳ",
                 "start_time": time(8, 30),
                 "end_time": time(11, 30),
-                "organizer": "Van phong Trung tam",
+                "organizer": "Văn phòng Trung tâm",
                 "status": "ready",
             },
         )
-        MeetingRoom.objects.get_or_create(
-            room_name="Phong hop Truc tuyen B2",
-            meeting_title="Hop truc tuyen voi So TT&TT ve tich hop API",
+        MeetingRoom.objects.update_or_create(
+            room_name="Phòng họp Trực tuyến B2",
             date=today,
             defaults={
+                "meeting_title": "Họp trực tuyến với Sở TT&TT về tích hợp API",
                 "start_time": time(14, 0),
                 "end_time": time(16, 30),
-                "organizer": "Ban Cong nghe thong tin",
+                "organizer": "Ban Công nghệ thông tin",
                 "status": "upcoming",
             },
         )
