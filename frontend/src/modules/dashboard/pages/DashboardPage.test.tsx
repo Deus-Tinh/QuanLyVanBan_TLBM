@@ -9,7 +9,20 @@ describe('DashboardPage Style Switching', () => {
     localStorage.clear();
   });
 
-  it('renders Classic UI by default when tlbm_interface_style is not set or classic', () => {
+  it('renders Modern UI by default when tlbm_interface_style is not set', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
+    // Modern UI elements: 3 modern metric cards with 0 values (no mock data)
+    expect(screen.getAllByText('0')).toHaveLength(3);
+    expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
+    expect(screen.getByText(/Tìm Kiếm Nhanh Văn Bản Đến & Văn Bản Đi/i)).toBeInTheDocument();
+  });
+
+  it('renders Classic UI when tlbm_interface_style is set to classic', () => {
     localStorage.setItem('tlbm_interface_style', 'classic');
     render(
       <MemoryRouter>

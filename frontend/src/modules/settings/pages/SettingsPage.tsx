@@ -6,11 +6,7 @@ export default function SettingsPage() {
   const { t } = useTranslation();
 
   const [interfaceStyle, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
-    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
-  });
-
-  const [assistiveTouchEnabled, setAssistiveTouchEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('tlbm_enable_assistive_touch') === 'true';
+    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'modern';
   });
 
   const [aiModel, setAiModel] = useState<'gpt4o' | 'claude' | 'llama'>(() => {
@@ -27,7 +23,6 @@ export default function SettingsPage() {
   const handleSaveSettings = () => {
     localStorage.setItem('tlbm_interface_style', interfaceStyle);
     document.documentElement.setAttribute('data-ui-style', interfaceStyle);
-    localStorage.setItem('tlbm_enable_assistive_touch', String(assistiveTouchEnabled));
     localStorage.setItem('tlbm_ai_model', aiModel);
     window.dispatchEvent(new Event('tlbm_settings_updated'));
     window.dispatchEvent(new Event('tlbm_ai_model_updated'));
@@ -35,10 +30,8 @@ export default function SettingsPage() {
   };
 
   const handleResetSettings = () => {
-    handleSelectStyle('classic');
-    setAssistiveTouchEnabled(false);
+    handleSelectStyle('modern');
     setAiModel('gpt4o');
-    localStorage.setItem('tlbm_enable_assistive_touch', 'false');
     localStorage.setItem('tlbm_ai_model', 'gpt4o');
     window.dispatchEvent(new Event('tlbm_ai_model_updated'));
     alert(t('settings.resetSuccessAlert'));
@@ -71,69 +64,60 @@ export default function SettingsPage() {
             {/* Giao diện Cổ điển */}
             <div
               onClick={() => handleSelectStyle('classic')}
-              className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex flex-col gap-2 relative ${
+              className={`p-3.5 sm:p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between gap-3 ${
                 interfaceStyle === 'classic'
                   ? 'border-primary bg-primary-subtle/25 shadow-xs'
                   : 'border-border-subtle bg-surface-elevated hover:border-border hover:bg-surface-hover'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">🏛️</span>
-                  <span className="text-sm font-bold text-main">{t('settings.interfaceStyleClassic')}</span>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-colors ${
+                  interfaceStyle === 'classic' ? 'bg-primary text-white' : 'bg-surface border border-border-subtle text-primary'
+                }`}>
+                  <i className="fa-solid fa-building-columns" />
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface border border-border-subtle text-muted">
-                    {t('settings.interfaceStyleClassicBadge')}
-                  </span>
-                  {interfaceStyle === 'classic' && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">
-                      ✓ Đang dùng
-                    </span>
-                  )}
-                </div>
+                <span className="text-sm font-bold text-main">{t('settings.interfaceStyleClassic')}</span>
               </div>
-              <p className="text-xs text-secondary leading-relaxed m-0">
-                {t('settings.interfaceStyleClassicDesc')}
-              </p>
+              {interfaceStyle === 'classic' && (
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary text-white flex items-center gap-1.5 shadow-2xs">
+                  <i className="fa-solid fa-check text-[10px]" />
+                  <span>Đang dùng</span>
+                </span>
+              )}
             </div>
 
             {/* Giao diện Hiện đại */}
             <div
               onClick={() => handleSelectStyle('modern')}
-              className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex flex-col gap-2 relative ${
+              className={`p-3.5 sm:p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between gap-3 ${
                 interfaceStyle === 'modern'
                   ? 'border-primary bg-primary-subtle/25 shadow-xs'
                   : 'border-border-subtle bg-surface-elevated hover:border-border hover:bg-surface-hover'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">✨</span>
-                  <span className="text-sm font-bold text-main">{t('settings.interfaceStyleModern')}</span>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg transition-colors ${
+                  interfaceStyle === 'modern' ? 'bg-primary text-white' : 'bg-surface border border-border-subtle text-primary'
+                }`}>
+                  <i className="fa-solid fa-wand-magic-sparkles" />
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface border border-border-subtle text-muted">
-                    {t('settings.interfaceStyleModernBadge')}
-                  </span>
-                  {interfaceStyle === 'modern' && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white">
-                      ✓ Đang dùng
-                    </span>
-                  )}
-                </div>
+                <span className="text-sm font-bold text-main">{t('settings.interfaceStyleModern')}</span>
               </div>
-              <p className="text-xs text-secondary leading-relaxed m-0">
-                {t('settings.interfaceStyleModernDesc')}
-              </p>
+              {interfaceStyle === 'modern' && (
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary text-white flex items-center gap-1.5 shadow-2xs">
+                  <i className="fa-solid fa-check text-[10px]" />
+                  <span>Đang dùng</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         {/* 2. Cấu hình thông báo */}
         <div className="border-b border-border-subtle pb-5.5">
-          <h3 className="text-base font-bold text-main mb-3.5">
-            🔔 {t('settings.notificationSectionTitle')}
+          <h3 className="text-base font-bold text-main mb-3.5 flex items-center gap-2">
+            <i className="fa-solid fa-bell text-primary" />
+            <span>{t('settings.notificationSectionTitle')}</span>
           </h3>
           <div className="flex flex-col gap-3">
             <label className="flex items-center gap-2.5 text-sm text-secondary cursor-pointer hover:text-main transition-colors">
@@ -153,8 +137,9 @@ export default function SettingsPage() {
 
         {/* 3. Bảo mật tài khoản */}
         <div className="border-b border-border-subtle pb-5.5">
-          <h3 className="text-base font-bold text-main mb-3.5">
-            🛡️ {t('settings.securitySectionTitle')}
+          <h3 className="text-base font-bold text-main mb-3.5 flex items-center gap-2">
+            <i className="fa-solid fa-shield-halved text-primary" />
+            <span>{t('settings.securitySectionTitle')}</span>
           </h3>
           <div className="flex flex-col gap-3">
             <label className="flex items-center gap-2.5 text-sm text-secondary cursor-pointer hover:text-main transition-colors">
@@ -168,34 +153,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 4. Tiện ích di động & Hỗ trợ thao tác (Nút Home ảo AssistiveTouch) */}
+        {/* 4. Cấu hình Mô hình Trợ lý AI (AI Model) */}
         <div>
-          <h3 className="text-base font-bold text-main mb-3 flex items-center gap-2">
-            <i className="fa-solid fa-mobile-screen text-primary" />
-            <span>{t('settings.mobileUtilitiesTitle')}</span>
-          </h3>
-          <div className="bg-surface-elevated rounded-lg p-4 border border-border-subtle">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={assistiveTouchEnabled}
-                onChange={(e) => setAssistiveTouchEnabled(e.target.checked)}
-                className="mt-1 cursor-pointer accent-primary scale-110"
-              />
-              <div className="flex flex-col gap-1">
-                <span className="font-semibold text-sm text-main">
-                  {t('settings.assistiveTouchToggle')}
-                </span>
-                <span className="text-xs text-muted leading-relaxed">
-                  {t('settings.assistiveTouchDesc')}
-                </span>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        {/* 5. Cấu hình Mô hình Trợ lý AI (AI Model) */}
-        <div className="border-t border-border-subtle pt-5.5">
           <div className="mb-3.5">
             <h3 className="text-base font-bold text-main flex items-center gap-2">
               <i className="fa-solid fa-microchip text-primary" />

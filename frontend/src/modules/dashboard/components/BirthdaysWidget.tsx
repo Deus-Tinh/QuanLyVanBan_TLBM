@@ -59,9 +59,9 @@ export default function BirthdaysWidget({
   }
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-sm shadow-xs px-3 py-2 flex items-center gap-3 overflow-hidden relative select-none">
+    <div className="bg-surface border border-border-subtle rounded-xl shadow-sm px-3.5 py-2.5 flex items-center gap-3 overflow-hidden relative select-none">
       {/* Label / Badge cố định bên trái */}
-      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-success text-white text-xs font-bold shrink-0 shadow-2xs">
+      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-success text-white text-xs font-bold shrink-0 shadow-xs">
         <i className="fa-solid fa-cake-candles text-[11px]" />
         <span className="whitespace-nowrap">Chúc mừng sinh nhật:</span>
       </div>
@@ -80,8 +80,8 @@ export default function BirthdaysWidget({
               title={`${emp.name} - ${emp.birthdate} - ${emp.position} (${emp.department || ''})`}
             >
               {/* 1. ƯU TIÊN: TÊN */}
-              <span className="font-bold text-main flex items-center gap-1">
-                <span>🎂</span>
+              <span className="font-bold text-main flex items-center gap-1.5">
+                <i className="fa-solid fa-cake-candles text-pink shrink-0 text-[11px]" />
                 <span className="text-primary font-bold">{emp.name}</span>
               </span>
 

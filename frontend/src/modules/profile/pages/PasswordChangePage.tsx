@@ -21,6 +21,7 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Tính toán độ mạnh mật khẩu thực tế (0 - 4)
   const hasMinLength = newPass.length >= 8;
@@ -50,7 +51,7 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
   const isMatch = confirmPass.length > 0 && confirmPass === newPass;
   const isMismatch = confirmPass.length > 0 && confirmPass !== newPass;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!currentPass || !newPass || !confirmPass) {
@@ -68,11 +69,70 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
       return;
     }
 
-    // Giả lập cập nhật thành công
-    setFeedbackMsg({ type: 'success', text: t('passwordChange.successMsg') });
-    setCurrentPass('');
-    setNewPass('');
-    setConfirmPass('');
+    const token =
+      localStorage.getItem('tlbm_token') ||
+      (() => {
+        try {
+          return JSON.parse(localStorage.getItem('tlbm_session') || '{}')?.token;
+        } catch {
+          return null;
+        }
+      })();
+
+    if (!token) {
+      setFeedbackMsg({
+        type: 'error',
+        text: 'Chưa tìm thấy phiên đăng nhập hợp lệ. Vui lòng đăng nhập lại trước khi đổi mật khẩu!',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setFeedbackMsg(null);
+
+    try {
+      const response = await fetch('/api/auth/change-password/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          old_password: currentPass,
+          new_password: newPass,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.success === false) {
+        setIsLoading(false);
+        const errorMsg =
+          data.detail ||
+          data.message ||
+          data.error ||
+          (data.old_password && data.old_password[0]) ||
+          (data.new_password && data.new_password[0]) ||
+          'Mật khẩu hiện tại không chính xác hoặc không đáp ứng yêu cầu bảo mật.';
+        setFeedbackMsg({ type: 'error', text: errorMsg });
+        return;
+      }
+
+      setIsLoading(false);
+      setFeedbackMsg({
+        type: 'success',
+        text: data.message || data.detail || t('passwordChange.successMsg'),
+      });
+      setCurrentPass('');
+      setNewPass('');
+      setConfirmPass('');
+    } catch {
+      setIsLoading(false);
+      setFeedbackMsg({
+        type: 'error',
+        text: 'Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại sau!',
+      });
+    }
   };
 
   return (
@@ -250,10 +310,10 @@ export default function PasswordChangePage({ onNavigate }: PasswordChangePagePro
                 type="submit"
                 variant="primary"
                 size="md"
-                icon="fa-solid fa-floppy-disk"
-                disabled={!currentPass || !newPass || !confirmPass || isMismatch}
+                icon={isLoading ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-floppy-disk'}
+                disabled={isLoading || !currentPass || !newPass || !confirmPass || isMismatch}
               >
-                {t('passwordChange.submitBtn')}
+                {isLoading ? 'Đang cập nhật...' : t('passwordChange.submitBtn')}
               </Button>
 
               <Button

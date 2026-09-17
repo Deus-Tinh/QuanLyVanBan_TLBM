@@ -85,7 +85,7 @@
 .char-purple {
   width: 86px;
   height: 145px;
-  background: #6d28d9;
+  background: var(--color-purple, rgb(109, 40, 217));
   border-radius: 8px 8px 0 0;
   display: flex;
   flex-direction: column;
@@ -97,7 +97,7 @@
 }
 .char-purple:hover {
   transform: translateY(-8px) scale(1.03);
-  background: #7c3aed;
+  background: var(--color-purple, rgb(124, 58, 237));
 }
 .char-purple.eyes-closed {
   transform: translateY(16px) scale(0.95);
@@ -134,7 +134,7 @@
 .pupil-purple {
   width: 8px;
   height: 8px;
-  background: #111827;
+  background: rgb(17, 24, 39);
   border-radius: 50%;
   transition: transform 0.05s ease-out;
 }
@@ -142,7 +142,7 @@
 .purple-mouth {
   width: 6px;
   height: 6px;
-  background: #111827;
+  background: rgb(17, 24, 39);
   border-radius: 50%;
   margin-top: 10px;
   transition: all 0.2s ease;
@@ -157,7 +157,7 @@
 .char-black {
   width: 70px;
   height: 160px;
-  background: #18181b;
+  background: rgb(24, 24, 27);
   border-radius: 26px 26px 0 0;
   display: flex;
   flex-direction: column;
@@ -191,7 +191,7 @@
 .black-eye-sclera {
   width: 18px;
   height: 18px;
-  background: #ffffff;
+  background: rgb(255, 255, 255);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -213,7 +213,7 @@
 .black-pupil {
   width: 9px;
   height: 9px;
-  background: #000000;
+  background: rgb(0, 0, 0);
   border-radius: 50%;
   transition: transform 0.05s ease-out;
 }
@@ -222,7 +222,7 @@
 .char-orange {
   width: 180px;
   height: 95px;
-  background: #ff6b35;
+  background: rgb(255, 107, 53);
   border-radius: 100px 100px 0 0;
   display: flex;
   flex-direction: column;
@@ -235,7 +235,7 @@
 }
 .char-orange:hover {
   transform: translateY(-6px) scale(1.04);
-  background: #ff7844;
+  background: rgb(255, 120, 68);
 }
 .char-orange.eyes-closed {
   transform: translateY(8px);
@@ -263,7 +263,7 @@
   top: 8px;
   width: 14px;
   height: 7px;
-  background: #dc2626;
+  background: var(--color-danger, rgb(220, 38, 38));
   border-radius: 50%;
   transition: opacity 0.3s ease;
 }
@@ -274,7 +274,7 @@
   top: 8px;
   width: 14px;
   height: 7px;
-  background: #dc2626;
+  background: var(--color-danger, rgb(220, 38, 38));
   border-radius: 50%;
   transition: opacity 0.3s ease;
 }
@@ -298,7 +298,7 @@
 .pupil-orange {
   width: 11px;
   height: 11px;
-  background: #111827;
+  background: rgb(17, 24, 39);
   border-radius: 50%;
   transition: transform 0.05s ease-out;
 }
@@ -306,7 +306,7 @@
 .orange-mouth {
   width: 24px;
   height: 12px;
-  border-bottom: 3.5px solid #111827;
+  border-bottom: 3.5px solid rgb(17, 24, 39);
   border-radius: 0 0 16px 16px;
   margin-top: 8px;
   transition: all 0.2s ease;
@@ -315,7 +315,7 @@
   width: 12px;
   height: 12px;
   border-bottom: none;
-  background: #111827;
+  background: rgb(17, 24, 39);
   border-radius: 50%;
 }
 
@@ -323,7 +323,7 @@
 .char-yellow {
   width: 80px;
   height: 110px;
-  background: #facc15;
+  background: var(--color-warning, rgb(250, 204, 21));
   border-radius: 42px 42px 0 0;
   display: flex;
   flex-direction: column;
@@ -335,7 +335,7 @@
 }
 .char-yellow:hover {
   transform: translateY(-6px) scale(1.04) rotate(1deg);
-  background: #fcd34d;
+  background: var(--color-warning-hover, rgb(252, 211, 77));
 }
 .char-yellow.eyes-closed {
   transform: translateY(12px) rotate(-4deg);
@@ -376,7 +376,7 @@
 .pupil-yellow {
   width: 8.5px;
   height: 8.5px;
-  background: #111827;
+  background: rgb(17, 24, 39);
   border-radius: 50%;
   transition: transform 0.05s ease-out;
 }
@@ -387,7 +387,7 @@
   right: -8px;
   width: 28px;
   height: 3.5px;
-  background: #111827;
+  background: rgb(17, 24, 39);
   border-radius: 2px;
   transition: transform 0.2s ease;
 }

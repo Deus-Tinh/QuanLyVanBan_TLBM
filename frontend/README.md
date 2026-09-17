@@ -1,6 +1,6 @@
 # TLBM SYSTEM — FRONTEND ARCHITECTURE
 > **Phân hệ Giao diện Người dùng (React 18 + TypeScript + Vite)**  
-> **Nhóm phụ trách kiến trúc**: Nhóm 1 (Trưởng nhóm / PM: Châu Tuấn Kiệt)  
+> **Nhóm phụ trách kiến trúc**: Nhóm 1 (Kiến trúc App Shell, Xác thực & Dashboard)  
 > **Dự án**: Quản Lý Văn Bản và Tài Liệu (QLVB&TL) — Trường CĐ CNTT TP.HCM (ITC)
 
 ---

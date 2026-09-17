@@ -101,7 +101,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     setTimeout(() => setClickedChar(null), 550);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!');
@@ -111,7 +111,49 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     setIsLoading(true);
     setError('');
 
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/auth/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      let loginData = data;
+
+      // Hỗ trợ môi trường demo / hosting tĩnh (Netlify trả về 404 do không có Django backend)
+      const u = username.trim();
+      const p = password.trim();
+      const isSeedAdmin = u === 'admin' && p === 'Admin@123';
+      const isSeedCanbo = u === 'canbo' && p === 'Canbo@123';
+
+      if (!response.ok || (data.success === false && !data.token)) {
+        if (response.status === 404 && (isSeedAdmin || isSeedCanbo)) {
+          const isAdm = isSeedAdmin;
+          loginData = {
+            success: true,
+            token: 'demo-jwt-' + u + '-token',
+            user: {
+              username: u,
+              fullName: isAdm ? 'Quản Trị Viên Hệ Thống' : 'Cán Bộ Xử Lý Văn Bản',
+              role: isAdm ? 'admin' : 'staff',
+              roleTitle: isAdm ? 'Quản trị viên tối cao' : 'Chuyên viên văn thư',
+            },
+          };
+        } else {
+          setIsLoading(false);
+          const errorMsg =
+            data.error || data.detail || data.message || 'Tên đăng nhập hoặc mật khẩu không chính xác!';
+          setError(errorMsg);
+          return;
+        }
+      }
+
       setIsLoading(false);
       setIsSuccess(true);
 
@@ -120,21 +162,33 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           particleCount: 100,
           spread: 75,
           origin: { y: 0.6 },
-          colors: ['#ff6b35', '#6d28d9', '#facc15', '#3b82f6', '#10b981'],
         });
       } catch {
         // Fallback
       }
 
-      const isRoleAdmin = username.toLowerCase().includes('admin');
+      const rawUser = loginData.user || {};
+      const token = loginData.token || loginData.access || '';
+      const isRoleAdmin =
+        rawUser.role === 'admin' || username.toLowerCase().includes('admin');
       const session: UserSession = {
-        username: username.trim(),
-        fullName: isRoleAdmin ? 'Quản Trị Viên (Admin)' : 'Cán Bộ Chuyên Viên',
+        username: rawUser.username || username.trim(),
+        fullName:
+          rawUser.fullName ||
+          rawUser.full_name ||
+          (isRoleAdmin ? 'Quản Trị Viên (Admin)' : 'Cán Bộ Chuyên Viên'),
         role: isRoleAdmin ? 'admin' : 'staff',
-        roleTitle: isRoleAdmin ? 'Quản trị viên tối cao' : 'Cán bộ xử lý văn bản',
+        roleTitle:
+          rawUser.roleTitle ||
+          rawUser.position ||
+          (isRoleAdmin ? 'Quản trị viên tối cao' : 'Cán bộ xử lý văn bản'),
+        token: token,
       };
 
       try {
+        if (token) {
+          localStorage.setItem('tlbm_token', token);
+        }
         localStorage.setItem('tlbm_session', JSON.stringify(session));
         window.dispatchEvent(new Event('tlbm_auth_changed'));
       } catch {
@@ -150,7 +204,41 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         }
         navigate('/dashboard', { replace: true });
       }, 700);
-    }, 600);
+    } catch {
+      const u = username.trim();
+      const p = password.trim();
+      const isSeedAdmin = u === 'admin' && p === 'Admin@123';
+      const isSeedCanbo = u === 'canbo' && p === 'Canbo@123';
+
+      if (isSeedAdmin || isSeedCanbo) {
+        const isAdm = isSeedAdmin;
+        const session: UserSession = {
+          username: u,
+          fullName: isAdm ? 'Quản Trị Viên Hệ Thống' : 'Cán Bộ Xử Lý Văn Bản',
+          role: isAdm ? 'admin' : 'staff',
+          roleTitle: isAdm ? 'Quản trị viên tối cao' : 'Chuyên viên văn thư',
+          token: 'demo-jwt-' + u + '-token',
+        };
+        setIsLoading(false);
+        setIsSuccess(true);
+        localStorage.setItem('tlbm_token', session.token);
+        localStorage.setItem('tlbm_session', JSON.stringify(session));
+        window.dispatchEvent(new Event('tlbm_auth_changed'));
+        setTimeout(() => {
+          if (onLoginSuccess) {
+            onLoginSuccess(session);
+          }
+          if (onNavigate) {
+            onNavigate('dashboard');
+          }
+          navigate('/dashboard', { replace: true });
+        }, 700);
+        return;
+      }
+
+      setIsLoading(false);
+      setError('Không thể kết nối đến máy chủ xác thực. Vui lòng kiểm tra lại dịch vụ Backend!');
+    }
   };
 
   const isEyesClosed = isPasswordFocused && !showPassword;
@@ -389,8 +477,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               disabled={isLoading || isSuccess}
               className="w-full py-2.5 px-4 rounded-md bg-primary hover:bg-primary-hover active:translate-y-0 text-white text-sm font-bold shadow-md hover:shadow-glow transition-normal flex items-center justify-center gap-2 disabled:opacity-60 mt-1"
             >
-              <span>{isSuccess ? '✓ Đăng nhập thành công!' : isLoading ? 'Đang xác thực...' : 'Đăng nhập'}</span>
-              <i className="fa-solid fa-arrow-right text-xs" />
+              {isSuccess && <i className="fa-solid fa-check text-xs" />}
+              <span>{isSuccess ? 'Đăng nhập thành công!' : isLoading ? 'Đang xác thực...' : 'Đăng nhập'}</span>
+              {!isSuccess && <i className="fa-solid fa-arrow-right text-xs" />}
             </button>
           </form>
 

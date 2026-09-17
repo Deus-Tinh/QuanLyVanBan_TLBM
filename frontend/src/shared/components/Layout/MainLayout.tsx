@@ -161,6 +161,101 @@ export default function MainLayout({
 
   const isEffectiveSidebarOpen = isSidebarOpen || (interfaceStyle === 'modern' && isSidebarHovered);
 
+  // CỬ CHỈ VUỐT TRÊN THIẾT BỊ DI ĐỘNG (MOBILE SWIPE GESTURES):
+  // - Khi ở chế độ phone/di động: vuốt từ trái sang phải để mở menu điều hướng
+  // - Khi menu đang mở: vuốt từ phải sang trái để thu gọn menu
+  useEffect(() => {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let isTrackingTouch = false;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      touchStartTime = Date.now();
+      isTrackingTouch = true;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isTrackingTouch || e.changedTouches.length !== 1) return;
+      isTrackingTouch = false;
+
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+      const duration = Date.now() - touchStartTime;
+
+      // Giới hạn thời gian vuốt trong 600ms để đảm bảo cử chỉ dứt khoát
+      if (duration > 600) return;
+
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      // Thao tác vuốt ngang rõ rệt: khoảng cách ngang tối thiểu 40px và áp đảo hướng dọc
+      if (absX >= 40 && absX > absY * 1.2) {
+        // TRƯỜNG HỢP 1: Menu đang đóng -> Vuốt từ trái sang phải (deltaX > 0)
+        // Bắt đầu từ nửa trái màn hình (hoặc mép trái <= 150px)
+        if (!isEffectiveSidebarOpen && deltaX > 0) {
+          const maxLeftStart = Math.max(120, window.innerWidth * 0.5);
+          if (touchStartX <= maxLeftStart) {
+            setIsSidebarOpen(true);
+            localStorage.setItem('tlbm_sidebar_open', 'true');
+          }
+        }
+        // TRƯỜNG HỢP 2: Menu đang mở -> Vuốt từ phải sang trái (deltaX < 0) để thu gọn menu
+        else if (isEffectiveSidebarOpen && deltaX < 0) {
+          handleCloseSidebar();
+        }
+      }
+    };
+
+    const handleTouchCancel = () => {
+      isTrackingTouch = false;
+    };
+
+    // Hỗ trợ kiểm thử trên trình duyệt desktop ở kích thước màn hình nhỏ (< 1024px)
+    let mouseStartX = 0;
+    let mouseStartY = 0;
+    let isMouseTracking = false;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (window.innerWidth >= 1024) return;
+      if (!isEffectiveSidebarOpen && e.clientX <= 40) {
+        mouseStartX = e.clientX;
+        mouseStartY = e.clientY;
+        isMouseTracking = true;
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (!isMouseTracking) return;
+      isMouseTracking = false;
+      const deltaX = e.clientX - mouseStartX;
+      const deltaY = e.clientY - mouseStartY;
+      if (deltaX >= 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+        setIsSidebarOpen(true);
+        localStorage.setItem('tlbm_sidebar_open', 'true');
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', handleTouchCancel, { passive: true });
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchCancel);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isEffectiveSidebarOpen]);
+
   return (
     <div className="app-shell w-screen h-screen overflow-hidden flex bg-app relative">
       {/* Vùng cảm ứng mép trái dành riêng cho Giao diện Hiện đại */}

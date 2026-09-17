@@ -139,7 +139,8 @@ export default function NotificationStreams() {
                       )}
                       {item.priority === 'confidential' && (
                         <span className="text-[11px] text-danger font-bold flex items-center gap-1">
-                          🔒 Tuyệt Mật
+                          <i className="fa-solid fa-lock text-[10px]" />
+                          <span>Tuyệt Mật</span>
                         </span>
                       )}
                     </div>

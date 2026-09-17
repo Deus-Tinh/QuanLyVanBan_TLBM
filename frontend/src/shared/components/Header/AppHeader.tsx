@@ -35,15 +35,17 @@ export default function AppHeader({
 }: AppHeaderProps) {
   return (
     <header className="h-14 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
-      {/* 1. Left Section: 3-bar Menu Trigger (chỉ hiển thị ở Giao diện Cổ điển) & Bao Long Logo */}
+      {/* 1. Left Section: 3-bar Menu Trigger & Bao Long Logo */}
       <div className="flex items-center gap-3">
-        {!isSidebarOpen && interfaceStyle !== 'modern' && (
+        {!isSidebarOpen && (
           <button
             type="button"
-            className="header-menu-btn w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
+            className={`header-menu-btn w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0 ${
+              interfaceStyle === 'modern' ? 'lg:hidden' : ''
+            }`}
             onClick={onToggleSidebar}
             onMouseEnter={onHoverSidebar}
-            title="Mở thanh điều hướng (Bấm để mở)"
+            title="Mở thanh điều hướng (Bấm hoặc vuốt từ trái sang phải)"
             aria-label="Mở thanh điều hướng"
           >
             <i className="fa-solid fa-bars text-base" />

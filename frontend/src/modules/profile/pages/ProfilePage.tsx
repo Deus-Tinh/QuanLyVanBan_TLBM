@@ -32,7 +32,7 @@ export default function ProfilePage({ onNavigate }: ProfilePageProps) {
       <Card className="p-7 sm:p-8">
         <div className="flex justify-between items-center mb-6 flex-wrap gap-2.5">
           <h2 className="text-xl font-extrabold text-main flex items-center gap-2.5 m-0">
-            <span>👤</span>
+            <i className="fa-solid fa-user text-primary" />
             <span>{t('profile.title')}</span>
           </h2>
         </div>

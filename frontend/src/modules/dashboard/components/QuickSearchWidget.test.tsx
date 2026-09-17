@@ -28,10 +28,10 @@ describe('QuickSearchWidget Component', () => {
     );
 
     const input = screen.getByPlaceholderText('Tìm kiếm văn bản đến/đi theo số ký hiệu hoặc trích yếu...');
-    fireEvent.change(input, { target: { value: '128/QĐ-BGDĐT' } });
+    fireEvent.change(input, { target: { value: 'VB-2026-TEST' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
-    expect(handleSearch).toHaveBeenCalledWith('128/QĐ-BGDĐT');
+    expect(handleSearch).toHaveBeenCalledWith('VB-2026-TEST');
   });
 
   it('triggers onSearch callback when clicking the search button', () => {

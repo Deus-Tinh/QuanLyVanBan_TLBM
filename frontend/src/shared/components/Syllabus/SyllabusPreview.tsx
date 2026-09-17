@@ -61,12 +61,18 @@ export default function SyllabusPreview({ activePage, onNavigate }: SyllabusPrev
           {/* Thông báo trạng thái hệ thống */}
           <div className="mt-5 p-4 rounded-xl bg-surface border border-subtle flex flex-col gap-2 text-xs sm:text-sm">
             <div className="flex items-center gap-2">
-              <strong className="text-text-main shrink-0">📌 Bộ phận quản lý:</strong>
+              <strong className="text-text-main shrink-0 flex items-center gap-1.5">
+                <i className="fa-solid fa-thumbtack text-primary text-xs" />
+                <span>Bộ phận quản lý:</span>
+              </strong>
               <span className="text-primary font-semibold">Ban Quản Trị Hệ Thống TLBM</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <strong className="text-text-main shrink-0">ℹ️ Trạng thái:</strong>
+              <strong className="text-text-main shrink-0 flex items-center gap-1.5">
+                <i className="fa-solid fa-circle-info text-info text-xs" />
+                <span>Trạng thái:</span>
+              </strong>
               <span className="text-text-secondary font-medium">
                 Phân hệ đang được hoàn thiện quy trình nghiệp vụ và kết nối dữ liệu máy chủ.
               </span>

@@ -13,12 +13,12 @@ interface DashboardPageProps {
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [interfaceStyle, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
-    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
+    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'modern';
   });
 
   useEffect(() => {
     const handleUpdate = () => {
-      const savedStyle = (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'classic';
+      const savedStyle = (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'modern';
       setInterfaceStyle(savedStyle);
     };
 

@@ -35,36 +35,28 @@ const INITIAL_SESSIONS: ChatSession[] = [];
 const PROMPT_TEMPLATES = [
   {
     icon: 'fa-inbox',
-    color: 'var(--color-primary)',
-    bg: 'var(--color-primary-subtle)',
-    border: 'var(--color-primary-border)',
+    iconClass: 'text-primary bg-primary-subtle border-primary/30',
     title: 'Tiếp nhận Văn bản Đến',
     desc: 'Hỏi các bước vào sổ, scan số hóa và trình Ban Giám Hiệu bút phê.',
     query: 'Hướng dẫn quy trình tiếp nhận và xử lý văn bản đến trong ngày?',
   },
   {
     icon: 'fa-shield-halved',
-    color: 'var(--color-danger)',
-    bg: 'var(--color-danger-subtle)',
-    border: 'var(--color-danger-border)',
+    iconClass: 'text-danger bg-danger-subtle border-danger/30',
     title: 'Xử lý Văn bản Mật',
     desc: 'Quy chuẩn mã hóa, xác thực 2FA và quyền xem tài liệu Tuyệt Mật.',
-    query: 'Quy định bảo mật và quy trình chuyển giao văn bản mật 03/MẬT-HĐQT?',
+    query: 'Quy định bảo mật và quy trình chuyển giao văn bản tuyệt mật?',
   },
   {
     icon: 'fa-file-signature',
-    color: 'var(--color-warning-text)',
-    bg: 'var(--color-warning-subtle)',
-    border: 'var(--color-warning-border)',
+    iconClass: 'text-warning-text bg-warning-subtle border-warning/30',
     title: 'Quy trình Trình Ký Số',
     desc: 'Sơ đồ luồng ký số Token PKI/Cloud HSM và phát hành văn bản đi.',
     query: 'Làm thế nào để tạo luồng trình ký số điện tử trên hệ thống?',
   },
   {
     icon: 'fa-sitemap',
-    color: 'var(--color-success)',
-    bg: 'var(--color-success-subtle)',
-    border: 'var(--color-success-border)',
+    iconClass: 'text-success bg-success-subtle border-success/30',
     title: 'Cơ cấu & Phân quyền',
     desc: 'Tra cứu danh mục phòng ban Cấp 1, Cấp 2 và ma trận quyền CBNV.',
     query: 'Hệ thống phân quyền cán bộ nhân viên hoạt động như thế nào?',
@@ -133,13 +125,13 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     {
       id: 'msg-welcome',
       sender: 'ai',
-      text: `👋 **Xin chào!**\n\nTôi là **Trợ Lý AI TLBM** — hệ thống hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh.\n\nBạn có thể chọn thẻ mẫu bên dưới hoặc gõ câu hỏi bất kỳ!`,
+      text: `**Xin chào!**\n\nTôi là **Trợ Lý AI TLBM** — hệ thống hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh.\n\nBạn có thể chọn thẻ mẫu bên dưới hoặc gõ câu hỏi bất kỳ!`,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       quickPrompts: [
-        '📋 Quy trình tiếp nhận văn bản đến?',
-        '🔒 Tiêu chuẩn bảo mật tài liệu Tuyệt Mật?',
-        '✍️ Hướng dẫn ký số điện tử?',
-        '👥 Xem phân quyền cán bộ nhân viên?',
+        'Quy trình tiếp nhận văn bản đến?',
+        'Tiêu chuẩn bảo mật tài liệu Tuyệt Mật?',
+        'Hướng dẫn ký số điện tử?',
+        'Xem phân quyền cán bộ nhân viên?',
       ],
     },
   ]);
@@ -178,7 +170,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       {
         id: `msg-${Date.now()}`,
         sender: 'ai',
-        text: `🤖 **Phiên Trò Chuyện Mới Đã Sẵn Sàng!**\nBạn muốn tra cứu thông tin văn bản nào hôm nay? Hãy nhập số hiệu hoặc nội dung cần tìm kiếm.`,
+        text: `**Phiên Trò Chuyện Mới Đã Sẵn Sàng!**\nBạn muốn tra cứu thông tin văn bản nào hôm nay? Hãy nhập số hiệu hoặc nội dung cần tìm kiếm.`,
         time: 'Vừa xong',
         quickPrompts: [
           'Văn bản đến hôm nay',
@@ -193,19 +185,19 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const generateResponse = (promptText: string): { text: string; citations?: CitationLink[] } => {
     const q = promptText.toLowerCase();
 
-    if (q.includes('đến') || q.includes('tiếp nhận') || q.includes('128') || q.includes('vào sổ')) {
+    if (q.includes('đến') || q.includes('tiếp nhận') || q.includes('vào sổ')) {
       return {
-        text: `📋 **Quy Trình Tiếp Nhận & Phân Phối Văn Bản Đến:**\n\n1. **Bước 1 (Tiếp nhận & Vào sổ):** Văn thư tiếp nhận công văn (bưu điện hoặc gửi qua mạng), kiểm tra dấu niêm phong, cấp số đến và ngày đến.\n2. **Bước 2 (Scan số hóa):** Quét tài liệu gốc định dạng PDF chất lượng cao, nhập trích yếu vào phân hệ Quản lý Văn Bản Đến.\n3. **Bước 3 (Bút phê lãnh đạo):** Trình Ban Giám Hiệu xem xét, phân công phòng ban xử lý chính và các đơn vị phối hợp.\n4. **Bước 4 (Theo dõi tiến độ):** Hệ thống tự động đẩy cảnh báo nhắc việc khi gần đến hạn xử lý.\n\n💡 **Dữ liệu văn bản liên quan trực tiếp:**`,
+        text: `**Quy Trình Tiếp Nhận & Phân Phối Văn Bản Đến:**\n\n1. **Bước 1 (Tiếp nhận & Vào sổ):** Văn thư tiếp nhận công văn (bưu điện hoặc gửi qua mạng), kiểm tra dấu niêm phong, cấp số đến và ngày đến.\n2. **Bước 2 (Scan số hóa):** Quét tài liệu gốc định dạng PDF chất lượng cao, nhập trích yếu vào phân hệ Quản lý Văn Bản Đến.\n3. **Bước 3 (Bút phê lãnh đạo):** Trình Ban Giám Hiệu xem xét, phân công phòng ban xử lý chính và các đơn vị phối hợp.\n4. **Bước 4 (Theo dõi tiến độ):** Hệ thống tự động đẩy cảnh báo nhắc việc khi gần đến hạn xử lý.\n\n**Liên kết phân hệ liên quan:**`,
         citations: [
           {
-            label: 'Xem văn bản: 128/QĐ-BGDĐT (Tuyển sinh & Tổ chức)',
-            code: '128/QĐ-BGDĐT',
+            label: 'Phân hệ Quản lý Văn bản Đến',
+            code: 'DOCS-INCOMING',
             targetPage: 'documents_incoming',
             type: 'incoming',
           },
           {
-            label: 'Xem văn bản: 45/CV-UBND (An toàn thông tin số)',
-            code: '45/CV-UBND',
+            label: 'Danh mục Sổ Đăng ký Văn bản Đến',
+            code: 'DOCS-INCOMING-LOG',
             targetPage: 'documents_incoming',
             type: 'incoming',
           },
@@ -213,13 +205,13 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       };
     }
 
-    if (q.includes('mật') || q.includes('tuyệt mật') || q.includes('bảo mật') || q.includes('03')) {
+    if (q.includes('mật') || q.includes('tuyệt mật') || q.includes('bảo mật')) {
       return {
-        text: `🔒 **Quy Định Bảo Vệ Bí Mật Nhà Nước & Tài Liệu Mật (TLBM · Phân hệ Mật):**\n\n- **Phân loại cấp độ:** Hệ thống hỗ trợ 3 cấp độ: *Mật*, *Tối Mật*, *Tuyệt Mật* theo đúng quy chuẩn Bộ Công An.\n- **Kiểm soát truy cập:** Chỉ tài khoản có thẩm quyền và được giao đích danh mới được mở tệp nội dung.\n- **Mã hóa & Xác thực:** Toàn bộ tệp mật được mã hóa AES-256 trên cơ sở dữ liệu. Truy cập tài liệu Tuyệt Mật yêu cầu mã xác thực 2 bước (2FA).\n- **Nhật ký truy vết (Audit Trail):** Mọi hành vi đọc, tải hoặc in ấn đều được ghi nhận vào sổ nhật ký không thể xóa sửa.\n\n🛡️ **Liên kết văn bản mật đang theo dõi:**`,
+        text: `**Quy Định Bảo Vệ Bí Mật Nhà Nước & Tài Liệu Mật (TLBM · Phân hệ Mật):**\n\n- **Phân loại cấp độ:** Hệ thống hỗ trợ 3 cấp độ: *Mật*, *Tối Mật*, *Tuyệt Mật* theo đúng quy chuẩn Bộ Công An.\n- **Kiểm soát truy cập:** Chỉ tài khoản có thẩm quyền và được giao đích danh mới được mở tệp nội dung.\n- **Mã hóa & Xác thực:** Toàn bộ tệp mật được mã hóa AES-256 trên cơ sở dữ liệu. Truy cập tài liệu Tuyệt Mật yêu cầu mã xác thực 2 bước (2FA).\n- **Nhật ký truy vết (Audit Trail):** Mọi hành vi đọc, tải hoặc in ấn đều được ghi nhận vào sổ nhật ký không thể xóa sửa.\n\n**Liên kết phân hệ tài liệu mật:**`,
         citations: [
           {
-            label: 'Văn bản Tuyệt Mật: 03/MẬT-HĐQT (Phương án quy hoạch nhân sự)',
-            code: '03/MẬT-HĐQT',
+            label: 'Phân hệ Quản lý Tài liệu Mật',
+            code: 'DOCS-CONFIDENTIAL',
             targetPage: 'documents_confidential',
             type: 'confidential',
           },
@@ -227,13 +219,13 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       };
     }
 
-    if (q.includes('ký số') || q.includes('trình ký') || q.includes('module 5') || q.includes('312')) {
+    if (q.includes('ký số') || q.includes('trình ký') || q.includes('module 5')) {
       return {
-        text: `✍️ **Quy Trình Trình Ký Số Điện Tử:**\n\n1. **Khởi tạo hồ sơ:** Cán bộ soạn thảo tờ trình, đính kèm dự thảo văn bản và tệp phụ lục.\n2. **Thiết lập luồng ký:** Chọn danh sách người ký duyệt (Trưởng phòng duyệt thể thức ➔ Lãnh đạo ký ban hành).\n3. **Ký số điện tử:** Lãnh đạo cắm Token PKI hoặc dùng chữ ký số đám mây (Cloud HSM) xác thực qua OTP.\n4. **Đóng dấu số & Chuyển luồng:** Văn thư đóng dấu cơ quan điện tử, hệ thống tự động sinh số hiệu văn bản đi và chuyển phát hành.\n\n📝 **Liên kết hồ sơ đang chờ ký:**`,
+        text: `**Quy Trình Trình Ký Số Điện Tử:**\n\n1. **Khởi tạo hồ sơ:** Cán bộ soạn thảo tờ trình, đính kèm dự thảo văn bản và tệp phụ lục.\n2. **Thiết lập luồng ký:** Chọn danh sách người ký duyệt (Trưởng phòng duyệt thể thức -> Lãnh đạo ký ban hành).\n3. **Ký số điện tử:** Lãnh đạo cắm Token PKI hoặc dùng chữ ký số đám mây (Cloud HSM) xác thực qua OTP.\n4. **Đóng dấu số & Chuyển luồng:** Văn thư đóng dấu cơ quan điện tử, hệ thống tự động sinh số hiệu văn bản đi và chuyển phát hành.\n\n**Liên kết phân hệ trình ký:**`,
         citations: [
           {
-            label: 'Tờ trình số 312/TTr-TLBM (Thử nghiệm hệ thống văn bản số)',
-            code: '312/TTr-TLBM',
+            label: 'Danh sách Hồ sơ Trình ký',
+            code: 'APPROVALS-LIST',
             targetPage: 'approvals',
             type: 'approval',
           },
@@ -249,7 +241,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
     if (q.includes('phân quyền') || q.includes('nhân sự') || q.includes('cbnv') || q.includes('nhóm 7')) {
       return {
-        text: `👥 **Cấu Trúc Phân Quyền & Quản Trị Nhân Sự:**\n\n- **Cơ cấu tổ chức 2 cấp:** Khối/Khu vực (Cấp 1) ➔ Đơn vị/Phòng ban (Cấp 2).\n- **Ma trận vai trò RBAC:**\n  + *Quản trị viên (Admin):* Cấu hình tham số hệ thống, quản lý tài khoản CBNV.\n  + *Lãnh đạo Ban/Khối:* Quyền duyệt bút phê, ký số và phân công nhiệm vụ.\n  + *Văn thư đơn vị:* Quyền vào sổ văn bản đến, cấp số văn bản đi, lưu trữ hồ sơ.\n  + *Cán bộ xử lý:* Nhận việc, giải quyết văn bản và báo cáo tiến độ.\n- **Bảo vệ quyền riêng tư:** Thông tin năm sinh và dữ liệu cá nhân của CBNV được tự động che giấu trên danh sách chung.`,
+        text: `**Cấu Trúc Phân Quyền & Quản Trị Nhân Sự:**\n\n- **Cơ cấu tổ chức 2 cấp:** Khối/Khu vực (Cấp 1) -> Đơn vị/Phòng ban (Cấp 2).\n- **Ma trận vai trò RBAC:**\n  + *Quản trị viên (Admin):* Cấu hình tham số hệ thống, quản lý tài khoản CBNV.\n  + *Lãnh đạo Ban/Khối:* Quyền duyệt bút phê, ký số và phân công nhiệm vụ.\n  + *Văn thư đơn vị:* Quyền vào sổ văn bản đến, cấp số văn bản đi, lưu trữ hồ sơ.\n  + *Cán bộ xử lý:* Nhận việc, giải quyết văn bản và báo cáo tiến độ.\n- **Bảo vệ quyền riêng tư:** Thông tin năm sinh và dữ liệu cá nhân của CBNV được tự động che giấu trên danh sách chung.`,
         citations: [
           {
             label: 'Quản lý Hồ Sơ Cán Bộ Nhân Viên',
@@ -270,7 +262,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     // Mặc định
     const currentUser = getSessionUser();
     return {
-      text: `🤖 **Trợ Lý AI TLBM (Mô hình: ${selectedModel.toUpperCase()}):**\n\nTôi đã tiếp nhận câu hỏi của bạn: *"${promptText}"*.\n\nDựa trên dữ liệu hệ thống Quản lý Văn bản:\n- 👤 **Người dùng:** ${currentUser.fullName} (${currentUser.role})\n- 🗂️ **Hệ thống liên kết:** Phân hệ Văn bản đến/đi, Hồ sơ tài liệu, Quy trình duyệt ký.\n\nBạn có thể chọn một trong các liên kết dưới đây để truy cập nhanh tài liệu:`,
+      text: `**Trợ Lý AI TLBM (Mô hình: ${selectedModel.toUpperCase()}):**\n\nTôi đã tiếp nhận câu hỏi của bạn: *"${promptText}"*.\n\nDựa trên dữ liệu hệ thống Quản lý Văn bản:\n- **Người dùng:** ${currentUser.fullName} (${currentUser.role})\n- **Hệ thống liên kết:** Phân hệ Văn bản đến/đi, Hồ sơ tài liệu, Quy trình duyệt ký.\n\nBạn có thể chọn một trong các liên kết dưới đây để truy cập nhanh tài liệu:`,
       citations: [
         {
           label: 'Văn bản Đến',
@@ -499,7 +491,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                     className="ai-prompt-card"
                     onClick={() => handleSend(tmpl.query)}
                   >
-                    <div className="prompt-card-icon" style={{ color: tmpl.color, background: tmpl.bg, border: `1px solid ${tmpl.border}` }}>
+                    <div className={`prompt-card-icon border ${tmpl.iconClass}`}>
                       <i className={`fa-solid ${tmpl.icon}`} />
                     </div>
                     <div className="prompt-card-body">

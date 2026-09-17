@@ -27,13 +27,13 @@ const INITIAL_MESSAGES: Message[] = [
   {
     id: 'msg-init',
     sender: 'ai',
-    text: `👋 **Xin chào Quý Cán bộ!**\nTôi là **Trợ Lý AI TLBM (GPT-4o)** — trợ lý tra cứu quy trình và hỗ trợ nghiệp vụ văn bản.\n\nHãy chọn gợi ý bên dưới hoặc gõ câu hỏi để tôi hỗ trợ bạn ngay!`,
+    text: `**Xin chào Quý Cán bộ!**\nTôi là **Trợ Lý AI TLBM (GPT-4o)** — trợ lý tra cứu quy trình và hỗ trợ nghiệp vụ văn bản.\n\nHãy chọn gợi ý bên dưới hoặc gõ câu hỏi để tôi hỗ trợ bạn ngay!`,
     time: 'Vừa xong',
     quickReplies: [
-      '📋 Quy trình tiếp nhận văn bản đến?',
-      '🔒 Quy chế xử lý văn bản Tuyệt Mật?',
-      '✍️ Sơ đồ trình ký số điện tử?',
-      '👥 Phân quyền vai trò cán bộ nhân viên?',
+      'Quy trình tiếp nhận văn bản đến?',
+      'Quy chế xử lý văn bản Tuyệt Mật?',
+      'Sơ đồ trình ký số điện tử?',
+      'Phân quyền vai trò cán bộ nhân viên?',
     ],
   },
 ];
@@ -69,22 +69,22 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
     const q = query.toLowerCase();
 
     if (q.includes('văn bản đến') || q.includes('tiếp nhận') || q.includes('đến')) {
-      return `📋 **Quy Trình Tiếp Nhận Văn Bản Đến:**\n1. **Tiếp nhận & Vào sổ:** Văn thư tiếp nhận văn bản giấy hoặc điện tử, kiểm tra dấu và tính hợp lệ.\n2. **Số hóa & Phân loại:** Quét scan tài liệu PDF đính kèm, gắn số đến, phân loại độ khẩn (Thường/Khẩn/Hỏa tốc).\n3. **Trình Bút phê:** Chuyển Ban Giám Hiệu duyệt phân công đơn vị chủ trì xử lý qua hệ thống.`;
+      return `**Quy Trình Tiếp Nhận Văn Bản Đến:**\n1. **Tiếp nhận & Vào sổ:** Văn thư tiếp nhận văn bản giấy hoặc điện tử, kiểm tra dấu và tính hợp lệ.\n2. **Số hóa & Phân loại:** Quét scan tài liệu PDF đính kèm, gắn số đến, phân loại độ khẩn (Thường/Khẩn/Hỏa tốc).\n3. **Trình Bút phê:** Chuyển Ban Giám Hiệu duyệt phân công đơn vị chủ trì xử lý qua hệ thống.`;
     }
 
     if (q.includes('mật') || q.includes('tuyệt mật') || q.includes('bảo mật')) {
-      return `🔒 **Quy Chế Xử Lý Văn Bản Mật & Tuyệt Mật (TLBM):**\n- Phân định rõ 3 mức độ bảo mật: **Mật, Tối mật, Tuyệt mật**.\n- Văn bản Tuyệt mật được mã hóa đầu cuối, phân phối đích danh CBNV có thẩm quyền.\n- Hệ thống ghi vết nhật ký truy cập (Audit Log) theo tiêu chuẩn an toàn an ninh dữ liệu số.`;
+      return `**Quy Chế Xử Lý Văn Bản Mật & Tuyệt Mật (TLBM):**\n- Phân định rõ 3 mức độ bảo mật: **Mật, Tối mật, Tuyệt mật**.\n- Văn bản Tuyệt mật được mã hóa đầu cuối, phân phối đích danh CBNV có thẩm quyền.\n- Hệ thống ghi vết nhật ký truy cập (Audit Log) theo tiêu chuẩn an toàn an ninh dữ liệu số.`;
     }
 
     if (q.includes('ký số') || q.includes('trình ký') || q.includes('phê duyệt')) {
-      return `✍️ **Quy Trình Trình Ký Số Điện Tử:**\n- Cán bộ khởi tạo tờ trình/văn bản > Chọn luồng ký duyệt đa cấp.\n- Lãnh đạo xác thực ký số điện tử (USB Token / Cloud HSM).\n- Sau khi ký đủ thẩm quyền, hệ thống tự động ban hành và chuyển sang luồng Văn Bản Đi.`;
+      return `**Quy Trình Trình Ký Số Điện Tử:**\n- Cán bộ khởi tạo tờ trình/văn bản > Chọn luồng ký duyệt đa cấp.\n- Lãnh đạo xác thực ký số điện tử (USB Token / Cloud HSM).\n- Sau khi ký đủ thẩm quyền, hệ thống tự động ban hành và chuyển sang luồng Văn Bản Đi.`;
     }
 
     if (q.includes('phân quyền') || q.includes('nhân viên') || q.includes('cbnv')) {
-      return `👥 **Hệ Thống Phân Quyền & Hồ Sơ Cán Bộ Nhân Viên:**\n- Cấu trúc 2 cấp: Cấp 1 (Khối/Khu vực) và Cấp 2 (Đơn vị phòng ban).\n- Ma trận quyền RBAC chi tiết: Admin hệ thống, Lãnh đạo duyệt ký, Văn thư lưu trữ, Cán bộ chuyên môn.\n- Tự động che giấu năm sinh và mã hóa thông tin nhạy cảm của nhân sự.`;
+      return `**Hệ Thống Phân Quyền & Hồ Sơ Cán Bộ Nhân Viên:**\n- Cấu trúc 2 cấp: Cấp 1 (Khối/Khu vực) và Cấp 2 (Đơn vị phòng ban).\n- Ma trận quyền RBAC chi tiết: Admin hệ thống, Lãnh đạo duyệt ký, Văn thư lưu trữ, Cán bộ chuyên môn.\n- Tự động che giấu năm sinh và mã hóa thông tin nhạy cảm của nhân sự.`;
     }
 
-    return `🤖 **Trợ Lý AI TLBM (GPT-4o):**\nTôi đã ghi nhận yêu cầu của bạn về: *"${query}"*.\n\nTrong hệ thống TLBM, bạn có thể xem nhanh dữ liệu tại:\n- 📊 **Trang chủ Dashboard:** Thống kê văn bản đến/đi trong năm.\n- 📁 **Quản lý văn bản:** Danh mục phân loại và xử lý luồng công việc.\n- ⚙️ **Cài đặt:** Tùy chỉnh chế độ hiển thị Sáng/Tối theo sở thích.`;
+    return `**Trợ Lý AI TLBM (GPT-4o):**\nTôi đã ghi nhận yêu cầu của bạn về: *"${query}"*.\n\nTrong hệ thống TLBM, bạn có thể xem nhanh dữ liệu tại:\n- **Trang chủ Dashboard:** Thống kê văn bản đến/đi trong năm.\n- **Quản lý văn bản:** Danh mục phân loại và xử lý luồng công việc.\n- **Cài đặt:** Tùy chỉnh chế độ hiển thị Sáng/Tối theo sở thích.`;
   };
 
   const handleSendMessage = (textToSend?: string) => {

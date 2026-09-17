@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { useTranslation } from '../../../shared/locales/i18n';
 import { Badge } from '../../../shared/components/ui';
+import BirthdaysWidget, { BirthdayEmployee } from './BirthdaysWidget';
 
 export interface TaskItem {
   id: string;
@@ -26,6 +27,7 @@ export interface ModernDashboardViewProps {
   incomingDocuments?: DocumentItem[];
   outgoingDocuments?: DocumentItem[];
   tasks?: TaskItem[];
+  birthdays?: BirthdayEmployee[];
 }
 
 export default function ModernDashboardView({
@@ -36,6 +38,7 @@ export default function ModernDashboardView({
   incomingDocuments = [],
   outgoingDocuments = [],
   tasks = [],
+  birthdays,
 }: ModernDashboardViewProps) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,37 +70,14 @@ export default function ModernDashboardView({
   return (
     <div className="flex flex-col gap-6">
       {/* 1. Welcome Hero Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, var(--color-primary-subtle), var(--bg-surface))',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '24px 28px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
+      <div className="bg-gradient-to-br from-primary-subtle to-surface border border-border-subtle rounded-xl p-6 sm:px-7 sm:py-6 flex justify-between items-center flex-wrap gap-4 shadow-sm">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-2xl">👋</span>
+            <i className="fa-solid fa-hand text-2xl text-warning" />
             <h1 className="text-2xl font-extrabold text-main">
               {t('dashboardDetails.greeting')}
             </h1>
-            <span
-              style={{
-                fontSize: '0.75rem',
-                padding: '3px 10px',
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--color-primary-subtle)',
-                border: '1px solid var(--color-primary-border)',
-                color: 'var(--color-primary)',
-                fontWeight: 700,
-              }}
-            >
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary-subtle border border-primary-border text-primary font-bold">
               {t('dashboardDetails.roleBadge')}
             </span>
           </div>
@@ -109,20 +89,7 @@ export default function ModernDashboardView({
         <div>
           <button
             type="button"
-            style={{
-              padding: '10px 18px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px var(--color-primary-glow)',
-            }}
+            className="px-4 py-2.5 rounded-md bg-primary text-white font-semibold text-sm flex items-center gap-2 border-0 cursor-pointer shadow-md hover:bg-primary-hover transition-colors"
             onClick={() => onNavigate('documents_incoming')}
           >
             <i className="fa-solid fa-plus" />
@@ -132,15 +99,7 @@ export default function ModernDashboardView({
       </div>
 
       {/* 2. Modern Quick Search Widget */}
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '20px 24px',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
+      <div className="bg-surface border border-border-subtle rounded-xl p-5 sm:px-6 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <i className="fa-solid fa-magnifying-glass text-primary" />
           <span className="font-bold text-sm text-main">
@@ -153,48 +112,33 @@ export default function ModernDashboardView({
             <button
               type="button"
               onClick={() => setSearchFilter('all')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.84rem',
-                fontWeight: 600,
-                border: '1px solid var(--border-subtle)',
-                background: searchFilter === 'all' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-                color: searchFilter === 'all' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              className={`px-3.5 py-2 rounded-md text-xs font-semibold border border-border-subtle transition-colors cursor-pointer ${
+                searchFilter === 'all'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-surface-elevated text-secondary hover:text-main'
+              }`}
             >
               {t('dashboardDetails.filterAll')}
             </button>
             <button
               type="button"
               onClick={() => setSearchFilter('incoming')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.84rem',
-                fontWeight: 600,
-                border: '1px solid var(--border-subtle)',
-                background: searchFilter === 'incoming' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-                color: searchFilter === 'incoming' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              className={`px-3.5 py-2 rounded-md text-xs font-semibold border border-border-subtle transition-colors cursor-pointer ${
+                searchFilter === 'incoming'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-surface-elevated text-secondary hover:text-main'
+              }`}
             >
               {t('dashboardDetails.filterIncoming')}
             </button>
             <button
               type="button"
               onClick={() => setSearchFilter('outgoing')}
-              style={{
-                padding: '8px 14px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '0.84rem',
-                fontWeight: 600,
-                border: '1px solid var(--border-subtle)',
-                background: searchFilter === 'outgoing' ? 'var(--color-primary)' : 'var(--bg-surface-elevated)',
-                color: searchFilter === 'outgoing' ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              className={`px-3.5 py-2 rounded-md text-xs font-semibold border border-border-subtle transition-colors cursor-pointer ${
+                searchFilter === 'outgoing'
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-surface-elevated text-secondary hover:text-main'
+              }`}
             >
               {t('dashboardDetails.filterOutgoing')}
             </button>
@@ -206,45 +150,14 @@ export default function ModernDashboardView({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Nhập số ký hiệu, trích yếu nội dung văn bản..."
-              style={{
-                width: '100%',
-                padding: '9px 14px 9px 36px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-subtle)',
-                background: 'var(--bg-surface-elevated)',
-                color: 'var(--text-main)',
-                fontSize: '0.88rem',
-              }}
+              className="w-full pl-9 pr-3.5 py-2 rounded-md border border-border-subtle bg-surface-elevated text-main text-sm focus:outline-none focus:border-border-focus"
             />
-            <i
-              className="fa-solid fa-search"
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-muted)',
-                fontSize: '0.85rem',
-              }}
-            />
+            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm pointer-events-none" />
           </div>
 
           <button
             type="button"
-            style={{
-              padding: '9px 18px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary)',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.88rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px var(--color-primary-glow)',
-            }}
+            className="px-4 py-2 rounded-md bg-primary text-white font-semibold text-sm inline-flex items-center gap-1.5 border-0 cursor-pointer shadow-md hover:bg-primary-hover transition-colors"
           >
             <i className="fa-solid fa-magnifying-glass" />
             <span>{t('dashboardDetails.searchBtn')}</span>
@@ -257,32 +170,9 @@ export default function ModernDashboardView({
         {/* Card 1: VB Đến */}
         <div
           onClick={() => onNavigate('documents_incoming')}
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-            cursor: 'pointer',
-          }}
+          className="bg-surface border border-border-subtle rounded-lg p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-primary-border transition-colors"
         >
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-primary-subtle)',
-              color: 'var(--color-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.3rem',
-              flexShrink: 0,
-            }}
-          >
+          <div className="w-12 h-12 rounded-md bg-primary-subtle text-primary flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-inbox" />
           </div>
           <div>
@@ -301,32 +191,9 @@ export default function ModernDashboardView({
         {/* Card 2: VB Đi */}
         <div
           onClick={() => onNavigate('documents_outgoing')}
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-            cursor: 'pointer',
-          }}
+          className="bg-surface border border-border-subtle rounded-lg p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-success-border transition-colors"
         >
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-success-subtle)',
-              color: 'var(--color-success)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.3rem',
-              flexShrink: 0,
-            }}
-          >
+          <div className="w-12 h-12 rounded-md bg-success-subtle text-success flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-paper-plane" />
           </div>
           <div>
@@ -345,32 +212,9 @@ export default function ModernDashboardView({
         {/* Card 3: Nhiệm vụ */}
         <div
           onClick={() => onNavigate('tasks')}
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: 'var(--shadow-sm)',
-            cursor: 'pointer',
-          }}
+          className="bg-surface border border-border-subtle rounded-lg p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-purple-border transition-colors"
         >
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-purple-subtle)',
-              color: 'var(--color-purple)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.3rem',
-              flexShrink: 0,
-            }}
-          >
+          <div className="w-12 h-12 rounded-md bg-purple-subtle text-purple flex items-center justify-center text-xl shrink-0">
             <i className="fa-solid fa-list-check" />
           </div>
           <div>
@@ -387,20 +231,13 @@ export default function ModernDashboardView({
         </div>
       </div>
 
+      {/* Dải Marquee Chúc Mừng Sinh Nhật CBNV */}
+      <BirthdaysWidget birthdays={birthdays} />
+
       {/* 4. Hai Bảng Song Song: Văn Bản Đến & Văn Bản Đi */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Top Văn Bản Đến */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '20px',
-            boxShadow: 'var(--shadow-sm)',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
+        <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-3">
             <div className="font-bold text-sm text-main flex items-center gap-2">
               <i className="fa-solid fa-inbox text-primary" />
@@ -452,17 +289,7 @@ export default function ModernDashboardView({
         </div>
 
         {/* Top Văn Bản Đi */}
-        <div
-          style={{
-            background: 'var(--bg-surface)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '20px',
-            boxShadow: 'var(--shadow-sm)',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
+        <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-3">
             <div className="font-bold text-sm text-main flex items-center gap-2">
               <i className="fa-solid fa-paper-plane text-success" />
@@ -515,15 +342,7 @@ export default function ModernDashboardView({
       </div>
 
       {/* 5. Bảng Danh Sách Nhiệm Vụ (Clean Empty State) */}
-      <div
-        style={{
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)',
-          padding: '20px',
-          boxShadow: 'var(--shadow-sm)',
-        }}
-      >
+      <div className="bg-surface border border-border-subtle rounded-xl p-5 shadow-sm">
         <div className="flex justify-between items-center mb-3">
           <div className="font-bold text-sm text-main flex items-center gap-2">
             <i className="fa-solid fa-list-check text-purple" />
@@ -553,16 +372,11 @@ export default function ModernDashboardView({
               key={item.id}
               type="button"
               onClick={() => setTaskFilter(item.id)}
-              style={{
-                padding: '5px 12px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                border: '1px solid var(--border-subtle)',
-                background: taskFilter === item.id ? 'var(--color-purple)' : 'var(--bg-surface-elevated)',
-                color: taskFilter === item.id ? '#ffffff' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border border-border-subtle transition-colors cursor-pointer ${
+                taskFilter === item.id
+                  ? 'bg-purple text-white border-purple'
+                  : 'bg-surface-elevated text-secondary hover:text-main'
+              }`}
             >
               {item.label}
             </button>

@@ -11,7 +11,7 @@
 
 Bản cập nhật này giải quyết triệt để 100% các điểm "Chưa đạt" trong Báo cáo DevOps Audit (PR #3) từ DevOps Lead:
 1. **Xóa hoàn toàn dữ liệu cá nhân & mock runtime khỏi production bundle:**
-   - Xóa bỏ toàn bộ hardcoded personal identities ("Châu Tuấn Kiệt", "Nguyễn Văn Hiếu", "Nguyễn Duy Quân") trong `constants.ts`, `FloatingAIBox.tsx`, `SyllabusPreview.tsx`, `AiAssistantPage.tsx`, và các tệp locale (`vi.json`, `en.json`, `common.json`).
+   - Xóa bỏ toàn bộ hardcoded personal identities (họ tên thành viên, email sinh viên cá nhân) trong `constants.ts`, `FloatingAIBox.tsx`, `SyllabusPreview.tsx`, `AiAssistantPage.tsx`, và các tệp locale (`vi.json`, `en.json`, `common.json`).
    - Xóa bỏ 100% hai mảng dữ liệu mẫu `ALL_INCOMING` và `ALL_OUTGOING` trong `DashboardPage.tsx`. Toàn bộ widget Dashboard chuyển về trạng thái Empty State sạch sẽ khi chưa có dữ liệu từ Backend.
 2. **Loại bỏ static inline CSS:**
    - Chuyển đổi toàn bộ các thuộc tính `style=` tĩnh trong `SettingsPage.tsx` sang Tailwind utility classes (giảm từ 36 inline styles tĩnh về đúng **0 inline style**).
@@ -76,16 +76,16 @@ Bản cập nhật này giải quyết triệt để 100% các điểm "Chưa đ
 Nhóm 1 đã xử lý dứt điểm 2 tồn đọng cuối cùng do DevOps Reviewer phát hiện trong production bundle:
 
 1. **P1 — Loại bỏ triệt để email cá nhân & dữ liệu mẫu khỏi locale (`vi.json`, `en.json`, `common.json`) và `ProfilePage.tsx`:**
-   - Xóa bỏ hoàn toàn key `sampleEmail: "kiet.ct@itc.edu.vn"`, `sampleName`, `sampleRole` khỏi toàn bộ các tệp locale (`common.json`, `vi.json`, `en.json`).
+   - Xóa bỏ hoàn toàn key `sampleEmail`, `sampleName`, `sampleRole` khỏi toàn bộ các tệp locale (`common.json`, `vi.json`, `en.json`).
    - Xóa bỏ toàn bộ danh sách họ tên sinh viên các nhóm 2–8 trong mục `pages.*.assignedTeam`, quy chuẩn hóa thành tên phân hệ trung tính (`Nhóm 2 (Phân hệ Quản lý Văn bản)`, `Group 2 (Document Management Subsystem)`).
-   - Trong `ProfilePage.tsx`: đổi email hiển thị sang format trung tính dựa trên session `session?.email || (session?.username ? `${session.username}@donvi.gov.vn` : '—')`, tuyệt đối không còn đuôi `@itc.edu.vn`. Khi `session === null`, hiển thị `—` (Empty State).
+   - Trong `ProfilePage.tsx`: đổi email hiển thị sang format trung tính dựa trên session `session?.email || (session?.username ? `${session.username}@donvi.gov.vn` : '—')`, tuyệt đối không còn đuôi email sinh viên cá nhân. Khi `session === null`, hiển thị `—` (Empty State).
 
 2. **P2 — Loại bỏ Fallback Mock User Object (`CURRENT_USER` / `Hn`) khi chưa có session:**
    - Xóa bỏ hoàn toàn export `CURRENT_USER` (`canbo`, `canbo@tlbm.gov.vn`) khỏi `frontend/src/shared/utils/constants.ts`.
    - Cập nhật `UserDropdown.tsx`: Khi `session === null`, render trạng thái Khách / Empty State chuẩn mực (icon `fa-regular fa-user`, text "Chưa đăng nhập", tiêu đề dropdown hiển thị "Chưa đăng nhập / Vui lòng đăng nhập để tiếp tục", ẩn hoàn toàn email mock, cung cấp nút Đăng nhập trực tiếp).
 
 3. **Kết quả kiểm định Production Bundle mới (`dist/assets/index-ClxUyO8V.js`):**
-   - Tìm kiếm chuỗi `kiet.ct@itc.edu.vn`, `itc.edu.vn`, `canbo@tlbm.gov.vn`, `canbo@`, `sampleemail`, tên cá nhân: **0 kết quả (MATCH: 0)**.
+   - Tìm kiếm chuỗi email sinh viên cá nhân, địa chỉ miền trường cũ, `canbo@tlbm.gov.vn`, `canbo@`, `sampleemail`, tên cá nhân: **0 kết quả (MATCH: 0)**.
    - Bundle sạch 100%, không còn bất kỳ dữ liệu cá nhân hay mock user object nào được bake cứng vào runtime.
 
 ---

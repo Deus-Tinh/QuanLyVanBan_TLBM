@@ -80,7 +80,11 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
       >
         {session ? (
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-semibold flex items-center justify-center text-xs">
-            {session.avatar || '👤'}
+            {session.avatar ? (
+              <img src={session.avatar} alt="Avatar" className="w-full h-full rounded-full object-cover" />
+            ) : (
+              <i className="fa-solid fa-user" />
+            )}
           </div>
         ) : (
           <div className="w-8 h-8 rounded-full bg-surface-elevated border border-subtle text-text-muted flex items-center justify-center text-xs">

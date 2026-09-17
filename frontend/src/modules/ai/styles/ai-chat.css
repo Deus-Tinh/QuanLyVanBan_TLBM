@@ -60,7 +60,7 @@
   padding: 10px 14px;
   border-radius: var(--radius-md);
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--text-white, rgb(255, 255, 255));
   border: none;
   font-weight: 700;
   font-size: 0.86rem;
@@ -318,8 +318,8 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #1e3a8a, #4f46e5);
-  color: #38bdf8;
+  background: linear-gradient(135deg, rgb(30, 58, 138), rgb(79, 70, 229));
+  color: var(--color-info, rgb(56, 189, 248));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -548,14 +548,14 @@
 }
 
 .is-ai .message-avatar {
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-purple));
+  color: var(--text-white, rgb(255, 255, 255));
   box-shadow: 0 2px 8px var(--color-primary-glow);
 }
 
 .is-user .message-avatar {
-  background: linear-gradient(135deg, #18191e, #2a2c36);
-  color: #38bdf8;
+  background: linear-gradient(135deg, rgb(24, 25, 30), rgb(42, 44, 54));
+  color: var(--color-info, rgb(56, 189, 248));
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
@@ -610,7 +610,7 @@
 
 .is-user .message-bubble-body {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--text-white, rgb(255, 255, 255));
   border-top-right-radius: var(--radius-xs);
   box-shadow: 0 4px 16px var(--color-primary-glow);
 }
@@ -731,7 +731,7 @@
 
 .followup-btn:hover {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--text-white, rgb(255, 255, 255));
   border-color: var(--color-primary);
   transform: translateY(-1px);
 }
@@ -893,7 +893,7 @@
   border-radius: var(--radius-md);
   border: none;
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--text-white, rgb(255, 255, 255));
   display: flex;
   align-items: center;
   justify-content: center;
