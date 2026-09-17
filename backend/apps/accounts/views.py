@@ -27,15 +27,26 @@ def _get_or_create_profile(user):
 
 
 def _build_user_payload(user):
-    """Trả về dict thông tin user dùng chung cho login & profile response."""
+    """Trả về dict thông tin user dùng chung cho login & profile response, hỗ trợ cả camelCase lẫn snake_case."""
     profile = _get_or_create_profile(user)
+    full_name = profile.full_name or user.get_full_name() or user.username
+    department = profile.department or "Văn phòng Trung tâm"
+    position = profile.position or ("Quản trị viên tối cao" if profile.role == "admin" else "Chuyên viên văn thư")
+    date_joined_str = user.date_joined.strftime("%Y-%m-%d") if user.date_joined else ""
+
     return {
         "id": user.id,
         "username": user.username,
         "email": user.email,
-        "full_name": profile.full_name,
-        "department": profile.department,
-        "position": profile.position,
+        # CamelCase (theo API Contract Hieu.md)
+        "fullName": full_name,
+        "unit": department,
+        "roleTitle": position,
+        "dateJoined": date_joined_str,
+        # Snake_case (tương thích backward)
+        "full_name": full_name,
+        "department": department,
+        "position": position,
         "role": profile.role,
         "phone": profile.phone,
         "avatar_url": profile.avatar_url,
@@ -52,49 +63,45 @@ def _build_user_payload(user):
 def login_view(request):
     """
     Đăng nhập và cấp JWT token.
-
-    Request body:
-        { "username": "...", "password": "..." }
-
-    Response 200:
-        {
-            "access": "<jwt_access_token>",
-            "refresh": "<jwt_refresh_token>",
-            "user": { id, username, email, full_name, department, position, role, ... }
-        }
-
-    Response 401:
-        { "detail": "Tài khoản hoặc mật khẩu không chính xác." }
+    Khớp 100% API Contract của Hieu.md:
+      Response 200: { "success": true, "token": "...", "access": "...", "user": { ... } }
+      Response 401: { "success": false, "error": "...", "detail": "..." }
     """
     username = request.data.get("username", "").strip()
     password = request.data.get("password", "")
 
     if not username or not password:
+        msg = "Vui lòng nhập đầy đủ tài khoản và mật khẩu."
         return Response(
-            {"detail": "Vui lòng nhập đầy đủ tài khoản và mật khẩu."},
+            {"success": False, "error": msg, "detail": msg},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user = authenticate(request, username=username, password=password)
 
     if user is None:
+        msg = "Tên đăng nhập hoặc mật khẩu không chính xác!"
         return Response(
-            {"detail": "Tài khoản hoặc mật khẩu không chính xác."},
+            {"success": False, "error": msg, "detail": msg},
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
     if not user.is_active:
+        msg = "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên."
         return Response(
-            {"detail": "Tài khoản đã bị vô hiệu hóa. Liên hệ Quản trị viên ITC."},
+            {"success": False, "error": msg, "detail": msg},
             status=status.HTTP_403_FORBIDDEN,
         )
 
     # Cấp JWT token
     refresh = RefreshToken.for_user(user)
+    access_token = str(refresh.access_token)
 
     return Response(
         {
-            "access": str(refresh.access_token),
+            "success": True,
+            "token": access_token,
+            "access": access_token,
             "refresh": str(refresh),
             "user": _build_user_payload(user),
         },
@@ -147,22 +154,32 @@ def change_password_view(request):
     new_password = serializer.validated_data["new_password"]
 
     if not user.check_password(old_password):
+        msg = "Mật khẩu hiện tại không chính xác!"
         return Response(
-            {"detail": "Mật khẩu cũ không đúng."},
+            {"success": False, "message": msg, "error": msg, "detail": msg},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if len(new_password) < 8:
+        msg = "Mật khẩu mới phải có tối thiểu 8 ký tự!"
+        return Response(
+            {"success": False, "message": msg, "error": msg, "detail": msg},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     if old_password == new_password:
+        msg = "Mật khẩu mới phải khác mật khẩu cũ."
         return Response(
-            {"detail": "Mật khẩu mới phải khác mật khẩu cũ."},
+            {"success": False, "message": msg, "error": msg, "detail": msg},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user.set_password(new_password)
     user.save()
 
+    msg = "Cập nhật mật khẩu thành công! Vui lòng đăng nhập lại."
     return Response(
-        {"detail": "Mật khẩu đã được cập nhật thành công."},
+        {"success": True, "message": msg, "detail": msg},
         status=status.HTTP_200_OK,
     )
 
@@ -175,32 +192,19 @@ def change_password_view(request):
 @permission_classes([IsAuthenticated])
 def logout_view(request):
     """
-    Đăng xuất — đưa refresh token vào blacklist để vô hiệu hóa.
-
-    Request body:
-        { "refresh": "<refresh_token>" }
-
-    Response 200:
-        { "detail": "Đăng xuất thành công." }
+    Đăng xuất — đưa refresh token vào blacklist để vô hiệu hóa (nếu có refresh token),
+    hoặc hủy phiên làm việc.
     """
     refresh_token = request.data.get("refresh")
 
-    if not refresh_token:
-        return Response(
-            {"detail": "Vui lòng cung cấp refresh token."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    try:
-        token = RefreshToken(refresh_token)
-        token.blacklist()
-    except TokenError as e:
-        return Response(
-            {"detail": f"Token không hợp lệ hoặc đã hết hạn: {str(e)}"},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    if refresh_token:
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            pass  # Nếu token đã hết hạn hoặc không hợp lệ, vẫn cho phép đăng xuất an toàn
 
     return Response(
-        {"detail": "Đăng xuất thành công."},
+        {"success": True, "message": "Đã đăng xuất", "detail": "Đã đăng xuất"},
         status=status.HTTP_200_OK,
     )

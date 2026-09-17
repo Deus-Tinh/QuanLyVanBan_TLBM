@@ -62,20 +62,32 @@ def overview_view(request):
     incoming_qs = IncomingDocument.objects.filter(issued_date__year=current_year)
     outgoing_qs = OutgoingDocument.objects.filter(issued_date__year=current_year)
 
+    incoming_total = incoming_qs.count()
+    outgoing_total = outgoing_qs.count()
+    confidential_total = (
+        incoming_qs.filter(is_confidential=True).count()
+        + outgoing_qs.filter(is_confidential=True).count()
+    )
+    tasks_pending = 0  # Placeholder — sẽ tích hợp khi Nhóm 6 hoàn tất API Tasks
+
     stats = {
-        "incoming_total": incoming_qs.count(),
-        "outgoing_total": outgoing_qs.count(),
-        "confidential_total": (
-            incoming_qs.filter(is_confidential=True).count()
-            + outgoing_qs.filter(is_confidential=True).count()
-        ),
-        # tasks_pending: placeholder — sẽ tích hợp khi Nhóm 6 hoàn tất API Tasks
-        "tasks_pending": 0,
+        "incoming_total": incoming_total,
+        "outgoing_total": outgoing_total,
+        "confidential_total": confidential_total,
+        "tasks_pending": tasks_pending,
+    }
+
+    kpis = {
+        "incomingCount": incoming_total,
+        "outgoingCount": outgoing_total,
+        "confidentialCount": confidential_total,
+        "tasksCount": tasks_pending,
     }
 
     # ── 2. Top 5 văn bản đến mới nhất ──────────────────────────────────────
     recent_incoming = [
         {
+            "id": doc.id,
             "code": doc.code,
             "title": doc.title,
             "date": doc.issued_date.strftime("%d/%m/%Y"),
@@ -87,6 +99,7 @@ def overview_view(request):
     # ── 3. Top 5 văn bản đi mới nhất ───────────────────────────────────────
     recent_outgoing = [
         {
+            "id": doc.id,
             "code": doc.code,
             "title": doc.title,
             "date": doc.issued_date.strftime("%d/%m/%Y"),
@@ -98,43 +111,96 @@ def overview_view(request):
     # ── 4. Lịch phòng họp hôm nay ──────────────────────────────────────────
     today_meetings = [
         {
+            "id": f"room-{m.id}",
             "room_name": m.room_name,
+            "roomName": m.room_name,
             "meeting_title": m.meeting_title,
+            "topic": m.meeting_title,
             "start_time": m.start_time.strftime("%H:%M"),
             "end_time": m.end_time.strftime("%H:%M"),
+            "time": f"{m.start_time.strftime('%H:%M')} - {m.end_time.strftime('%H:%M')}",
             "organizer": m.organizer,
-            "status": m.status,
+            "status": m.status or "ready",
         }
         for m in MeetingRoom.objects.filter(date=today)
     ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
-    def _birthday_list(target_date):
-        profiles = StaffProfile.objects.filter(
-            birthday__month=target_date.month,
-            birthday__day=target_date.day,
-        ).select_related("user")
-        return [
+    today_profiles = StaffProfile.objects.filter(
+        birthday__month=today.month,
+        birthday__day=today.day,
+    ).select_related("user")
+
+    tomorrow_profiles = StaffProfile.objects.filter(
+        birthday__month=tomorrow.month,
+        birthday__day=tomorrow.day,
+    ).select_related("user")
+
+    # Mảng phẳng birthdays chuẩn BirthdayEmployee của React
+    birthdays_list = []
+    for p in today_profiles:
+        birthdays_list.append({
+            "id": p.id,
+            "name": p.full_name,
+            "fullName": p.full_name,
+            "full_name": p.full_name,
+            "birthdate": f"{today.strftime('%d/%m')} (Hôm nay)",
+            "position": p.position or "Chuyên viên",
+            "roleTitle": p.position or "Chuyên viên",
+            "department": p.department or "Ban Quản lý",
+            "unit": p.department or "Ban Quản lý",
+            "isToday": True,
+            "label": "Hôm nay",
+        })
+    for p in tomorrow_profiles:
+        birthdays_list.append({
+            "id": p.id,
+            "name": p.full_name,
+            "fullName": p.full_name,
+            "full_name": p.full_name,
+            "birthdate": f"{tomorrow.strftime('%d/%m')} (Ngày mai)",
+            "position": p.position or "Chuyên viên",
+            "roleTitle": p.position or "Chuyên viên",
+            "department": p.department or "Ban Quản lý",
+            "unit": p.department or "Ban Quản lý",
+            "isToday": False,
+            "label": "Ngày mai",
+        })
+
+    birthdays_by_day = {
+        "today": [
             {
                 "full_name": p.full_name,
                 "department": p.department,
                 "position": p.position,
             }
-            for p in profiles
-        ]
-
-    birthdays = {
-        "today": _birthday_list(today),
-        "tomorrow": _birthday_list(tomorrow),
+            for p in today_profiles
+        ],
+        "tomorrow": [
+            {
+                "full_name": p.full_name,
+                "department": p.department,
+                "position": p.position,
+            }
+            for p in tomorrow_profiles
+        ],
     }
 
     return Response(
         {
+            # Hợp đồng chuẩn Hieu.md
+            "kpis": kpis,
+            "recentIncoming": recent_incoming,
+            "recentOutgoing": recent_outgoing,
+            "tasks": [],
+            "meetingRooms": today_meetings,
+            "birthdays": birthdays_list,
+            # Tương thích backward
             "stats": stats,
             "recent_incoming": recent_incoming,
             "recent_outgoing": recent_outgoing,
             "today_meetings": today_meetings,
-            "birthdays": birthdays,
+            "birthdays_by_day": birthdays_by_day,
         },
         status=status.HTTP_200_OK,
     )

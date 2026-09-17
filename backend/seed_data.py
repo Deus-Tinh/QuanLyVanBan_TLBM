@@ -1,153 +1,155 @@
 """
-Script khởi tạo dữ liệu mẫu cho môi trường phát triển.
-Chạy bằng: .venv\Scripts\python manage.py shell < seed_data.py
-
-Tạo:
-  - 1 superuser: admin / admin123456
-  - 1 user thường: staff01 / staff123456
-  - 5 văn bản đến mẫu
-  - 5 văn bản đi mẫu
-  - 2 phòng họp hôm nay
+Script khởi tạo dữ liệu mẫu chuẩn công vụ cho môi trường phát triển.
+Chạy bằng: python manage.py seed_accounts
+hoặc: python seed_data.py
 """
 import os
-import django
 from datetime import date, time, timedelta
+import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 from accounts.models import StaffProfile
 from dashboard.models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 print("=" * 60)
-print("🌱 SEED DATA — Hệ thống QLVB&TL ITC")
+print("SEED DATA — Hệ thống Quản lý Văn bản & Tài liệu Mật (QLVB & TLBM)")
 print("=" * 60)
 
-# ─────────────────────────────────────────────────────────────────────────────
 # 1. Tài khoản Admin
-# ─────────────────────────────────────────────────────────────────────────────
-if not User.objects.filter(username="admin").exists():
-    admin_user = User.objects.create_superuser(
-        username="admin",
-        email="admin@itc.edu.vn",
-        password="admin123456",
-        first_name="Quản trị",
-        last_name="Viên",
-    )
-    StaffProfile.objects.create(
-        user=admin_user,
-        full_name="Quản trị viên ITC",
-        department="Ban Giám đốc",
-        position="Quản trị viên hệ thống",
-        role="admin",
-        phone="028.3800.1234",
-        birthday=date(1990, 1, 15),
-    )
-    print("✅ Tạo admin: admin / admin123456")
-else:
-    print("⏩ admin đã tồn tại, bỏ qua.")
+admin_user, _ = User.objects.get_or_create(
+    username="admin",
+    defaults={
+        "email": "quantri@donvi.gov.vn",
+        "first_name": "Quản Trị Viên",
+        "last_name": "Hệ Thống",
+        "is_staff": True,
+        "is_superuser": True,
+    },
+)
+admin_user.set_password("Admin@123")
+admin_user.is_staff = True
+admin_user.is_superuser = True
+admin_user.is_active = True
+admin_user.email = "quantri@donvi.gov.vn"
+admin_user.save()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. Tài khoản Cán bộ mẫu
-# ─────────────────────────────────────────────────────────────────────────────
-if not User.objects.filter(username="hieu501250367").exists():
-    staff_user = User.objects.create_user(
-        username="hieu501250367",
-        email="hieu.501250367@itc.edu.vn",
-        password="hieu123456",
-        first_name="Hiếu",
-        last_name="Nguyễn Văn",
-    )
-    today = date.today()
-    StaffProfile.objects.create(
-        user=staff_user,
-        full_name="Nguyễn Văn Hiếu",
-        department="Ban Công nghệ Thông tin",
-        position="Cán bộ Lập trình Backend",
-        role="staff",
-        phone="090.0000.001",
-        # Sinh nhật hôm nay để test widget
-        birthday=today.replace(year=2000),
-    )
-    print("✅ Tạo cán bộ: hieu501250367 / hieu123456 (sinh nhật hôm nay để test)")
-else:
-    print("⏩ hieu501250367 đã tồn tại, bỏ qua.")
+StaffProfile.objects.update_or_create(
+    user=admin_user,
+    defaults={
+        "full_name": "Quản Trị Viên Hệ Thống",
+        "department": "Văn phòng Trung tâm",
+        "position": "Quản trị viên tối cao",
+        "role": "admin",
+        "phone": "028.3896.8888",
+        "birthday": date(1990, timezone.localdate().month, timezone.localdate().day),
+    },
+)
+print("✓ Tài khoản Admin: admin / Admin@123 (quantri@donvi.gov.vn)")
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 2. Tài khoản Cán bộ (staff)
+canbo_user, _ = User.objects.get_or_create(
+    username="canbo",
+    defaults={
+        "email": "canbo@donvi.gov.vn",
+        "first_name": "Cán Bộ",
+        "last_name": "Xử Lý Văn Bản",
+        "is_staff": True,
+        "is_superuser": False,
+    },
+)
+canbo_user.set_password("Canbo@123")
+canbo_user.is_staff = True
+canbo_user.is_superuser = False
+canbo_user.is_active = True
+canbo_user.email = "canbo@donvi.gov.vn"
+canbo_user.save()
+
+tomorrow = timezone.localdate() + timedelta(days=1)
+StaffProfile.objects.update_or_create(
+    user=canbo_user,
+    defaults={
+        "full_name": "Cán Bộ Xử Lý Văn Bản",
+        "department": "Phòng Tổ chức - Hành chính",
+        "position": "Chuyên viên văn thư",
+        "role": "staff",
+        "phone": "028.3896.6666",
+        "birthday": date(1995, tomorrow.month, tomorrow.day),
+    },
+)
+print("✓ Tài khoản Cán bộ: canbo / Canbo@123 (canbo@donvi.gov.vn)")
+
+# Xóa tài khoản cũ nếu có MSSV để đảm bảo DevOps audit
+User.objects.filter(username__contains="501250").delete()
+
 # 3. Văn bản đến mẫu
-# ─────────────────────────────────────────────────────────────────────────────
-if IncomingDocument.objects.count() == 0:
-    today = date.today()
-    incoming_data = [
-        ("128/QĐ-BGDĐT", "Hướng dẫn công tác năm học mới 2026", today - timedelta(days=0), "Bộ Giáo dục và Đào tạo"),
-        ("45/CV-UBND",   "Tăng cường an toàn thông tin CSDL nhà nước", today - timedelta(days=1), "UBND TP.HCM"),
-        ("09/TB-ITC",    "Thông báo lịch bảo vệ đồ án chuyên ngành", today - timedelta(days=2), "ITC — Phòng Đào tạo"),
-        ("77/HD-TCHQ",   "Quy trình kiểm tra hồ sơ điện tử liên ngành", today - timedelta(days=3), "Tổng cục Hải quan"),
-        ("14/KH-ITC",    "Kế hoạch triển khai hệ thống quản lý văn bản", today - timedelta(days=4), "ITC — Ban Giám đốc"),
-    ]
-    for code, title, issued_date, sender in incoming_data:
-        IncomingDocument.objects.create(
-            code=code, title=title, issued_date=issued_date, sender=sender
-        )
-    print(f"✅ Tạo {len(incoming_data)} văn bản đến mẫu.")
-else:
-    print(f"⏩ Đã có {IncomingDocument.objects.count()} văn bản đến, bỏ qua.")
+today = timezone.localdate()
+incoming_docs = [
+    ("128/QĐ-UBND", "V/v phê duyệt đề án chuyển đổi số công vụ giai đoạn 2026-2030", today, "UBND TP.HCM", False),
+    ("45/CV-STTTT", "Hướng dẫn triển khai hệ thống quản lý văn bản và điều hành", today - timedelta(days=1), "Sở Thông tin và Truyền thông", False),
+    ("09/BC-TTr", "Báo cáo công tác thanh tra hành chính quý 3/2026", today - timedelta(days=2), "Thanh tra Thành phố", False),
+    ("88/TB-VP", "Thông báo kết luận cuộc họp giao ban thường kỳ tháng 9", today - timedelta(days=3), "Văn phòng UBND", False),
+    ("12/KH-SNV", "Kế hoạch đào tạo, bồi dưỡng cán bộ công chức năm 2026", today - timedelta(days=4), "Sở Nội vụ", False),
+]
+for code, title, issued_date, sender, is_conf in incoming_docs:
+    IncomingDocument.objects.get_or_create(
+        code=code,
+        defaults={
+            "title": title,
+            "issued_date": issued_date,
+            "sender": sender,
+            "is_confidential": is_conf,
+        },
+    )
+print(f"✓ Đã đồng bộ {len(incoming_docs)} văn bản đến mẫu.")
 
-# ─────────────────────────────────────────────────────────────────────────────
 # 4. Văn bản đi mẫu
-# ─────────────────────────────────────────────────────────────────────────────
-if OutgoingDocument.objects.count() == 0:
-    today = date.today()
-    outgoing_data = [
-        ("210/TB-BL",   "Thông báo kết luận cuộc họp giao ban quý 3",          today - timedelta(days=0), "Các phòng ban ITC"),
-        ("89/QĐ-BL",    "Quyết định ban hành khung an ninh thông tin",          today - timedelta(days=1), "Ban Công nghệ"),
-        ("62/TTr-ITC",  "Tờ trình phê duyệt kinh phí trang bị máy chủ",        today - timedelta(days=2), "Ban Giám đốc"),
-        ("55/CV-BL",    "Công văn gửi các đơn vị phòng ban cấp 2",             today - timedelta(days=3), "Các phòng ban"),
-        ("31/QĐ-BL",    "Quyết định phân công nhiệm vụ đồ án Django",           today - timedelta(days=5), "Nhóm 1-8 Đồ án"),
-    ]
-    for code, title, issued_date, recipient in outgoing_data:
-        OutgoingDocument.objects.create(
-            code=code, title=title, issued_date=issued_date, recipient=recipient
-        )
-    print(f"✅ Tạo {len(outgoing_data)} văn bản đi mẫu.")
-else:
-    print(f"⏩ Đã có {OutgoingDocument.objects.count()} văn bản đi, bỏ qua.")
+outgoing_docs = [
+    ("52/TTr-ITC", "Tờ trình xin chủ trương nâng cấp hạ tầng mạng trung tâm dữ liệu", today, "Ban Giám đốc Sở", False),
+    ("104/GM-VP", "Giấy mời họp rà soát tiến độ tích hợp phân hệ Dashboard", today - timedelta(days=1), "Các phòng ban trực thuộc", False),
+    ("77/TB-BGD", "Thông báo lịch nghỉ và phân công trực cơ quan", today - timedelta(days=2), "Toàn thể CBNV", False),
+    ("33/CV-CNTT", "Công văn đề nghị cung cấp danh mục biểu mẫu điện tử", today - timedelta(days=3), "Trung tâm Lưu trữ", False),
+    ("15/QĐ-ITC", "Quyết định kiện toàn tổ công tác an toàn an ninh mạng", today - timedelta(days=5), "Ban Chỉ đạo Chuyển đổi số", True),
+]
+for code, title, issued_date, recipient, is_conf in outgoing_docs:
+    OutgoingDocument.objects.get_or_create(
+        code=code,
+        defaults={
+            "title": title,
+            "issued_date": issued_date,
+            "recipient": recipient,
+            "is_confidential": is_conf,
+        },
+    )
+print(f"✓ Đã đồng bộ {len(outgoing_docs)} văn bản đi mẫu.")
 
-# ─────────────────────────────────────────────────────────────────────────────
 # 5. Phòng họp hôm nay
-# ─────────────────────────────────────────────────────────────────────────────
-if MeetingRoom.objects.filter(date=date.today()).count() == 0:
-    today = date.today()
-    meetings_data = [
-        ("Phòng Họp A201", "Hội nghị Ban Giám Đốc", time(8, 30), time(11, 30), "NCS.ThS. Trần Phương Duy", "ongoing"),
-        ("Phòng Họp B105", "Họp Sprint Review Nhóm 1-8 Đồ án Django", time(14, 0), time(16, 30), "Châu Tuấn Kiệt (PM)", "upcoming"),
-    ]
-    for room, title, start, end, organizer, status in meetings_data:
-        MeetingRoom.objects.create(
-            room_name=room,
-            meeting_title=title,
-            date=today,
-            start_time=start,
-            end_time=end,
-            organizer=organizer,
-            status=status,
-        )
-    print(f"✅ Tạo {len(meetings_data)} phòng họp hôm nay.")
-else:
-    print(f"⏩ Đã có phòng họp hôm nay, bỏ qua.")
-
-print()
+MeetingRoom.objects.get_or_create(
+    room_name="Phòng họp A1 - Khu A",
+    meeting_title="Họp giao ban định kỳ",
+    date=today,
+    defaults={
+        "start_time": time(8, 30),
+        "end_time": time(11, 30),
+        "organizer": "Văn phòng Trung tâm",
+        "status": "ready",
+    },
+)
+MeetingRoom.objects.get_or_create(
+    room_name="Phòng họp Trực tuyến B2",
+    meeting_title="Họp trực tuyến với Sở TT&TT về tích hợp API",
+    date=today,
+    defaults={
+        "start_time": time(14, 0),
+        "end_time": time(16, 30),
+        "organizer": "Ban Công nghệ thông tin",
+        "status": "upcoming",
+    },
+)
+print("✓ Đã đồng bộ 2 phòng họp mẫu cho hôm nay.")
 print("=" * 60)
-print("🎉 Seed data hoàn thành!")
-print()
-print("Tài khoản để test:")
-print("  👑 admin         / admin123456  → Quyền: admin")
-print("  👤 hieu501250367 / hieu123456   → Quyền: staff (sinh nhật hôm nay)")
-print()
-print("Endpoint API:")
-print("  POST http://127.0.0.1:8000/api/auth/login/")
-print("  GET  http://127.0.0.1:8000/api/auth/profile/        (cần Bearer token)")
-print("  GET  http://127.0.0.1:8000/api/dashboard/overview/  (cần Bearer token)")
-print("  http://127.0.0.1:8000/admin/")
+print("HOÀN TẤT SEED DỮ LIỆU CHUẨN HIEU.MD & DEVOPS AUDIT!")
 print("=" * 60)
