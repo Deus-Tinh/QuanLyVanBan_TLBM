@@ -265,8 +265,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         {/* ============================================================ */}
         <div className="w-full md:w-[45%] bg-surface-elevated relative flex flex-col justify-between p-5 md:p-6 select-none overflow-hidden min-h-[280px] md:min-h-[380px] border-b md:border-b-0 md:border-r border-border-subtle">
           <div className="flex items-center gap-2.5 z-10">
-            <div className="w-10 h-10 rounded-md bg-shortcut-blue text-white flex items-center justify-center text-lg shadow-sm">
-              <i className="fa-solid fa-folder-open" />
+            <div className="w-10 h-10 rounded-lg bg-surface border border-subtle flex items-center justify-center shadow-sm p-1.5 shrink-0">
+              <img src="/favicon.png" alt="Bảo Long Icon" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="text-sm font-extrabold text-main leading-tight">
