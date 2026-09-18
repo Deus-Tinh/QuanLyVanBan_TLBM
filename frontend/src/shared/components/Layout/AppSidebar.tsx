@@ -15,35 +15,11 @@ interface AppSidebarProps {
   onHoverLeave?: () => void;
   sidebarStyle?: 'facebook' | 'dock';
   onToggleSidebarStyle?: (style: 'facebook' | 'dock') => void;
+  isCollapsed?: boolean;
+  onExpandSidebar?: () => void;
+  isPinned?: boolean;
+  onTogglePin?: () => void;
 }
-
-// Màu gradient cho từng phân hệ qua Tailwind tokens
-const FB_MODULE_GRADIENTS: Record<string, { bgClass: string; icon: string }> = {
-  records_resources: {
-    bgClass: 'bg-fb-blue',
-    icon: 'fa-folder-tree',
-  },
-  documents_operations: {
-    bgClass: 'bg-fb-cyan',
-    icon: 'fa-file-signature',
-  },
-  communications_notices: {
-    bgClass: 'bg-fb-coral',
-    icon: 'fa-bullhorn',
-  },
-  system_administration: {
-    bgClass: 'bg-fb-amber',
-    icon: 'fa-chart-pie',
-  },
-  workflow_tasks: {
-    bgClass: 'bg-fb-violet',
-    icon: 'fa-list-check',
-  },
-  archive_digital: {
-    bgClass: 'bg-fb-pink',
-    icon: 'fa-box-archive',
-  },
-};
 
 export default function AppSidebar({
   onCloseMobile,
@@ -51,6 +27,11 @@ export default function AppSidebar({
   previewPage,
   onNavigate,
   onHoverPreview = () => {},
+  onHoverLeave = () => {},
+  isCollapsed = false,
+  onExpandSidebar,
+  isPinned = false,
+  onTogglePin,
 }: AppSidebarProps) {
   const { t } = useTranslation();
 
@@ -83,8 +64,7 @@ export default function AppSidebar({
   };
 
   const getModuleLabel = (modId: string, fallback: string) => {
-    const key = modId === 'records_resources' ? 'records' : modId;
-    return t(`navigation.${key}`) !== `navigation.${key}` ? t(`navigation.${key}`) : fallback;
+    return t(`navigation.${modId}`) !== `navigation.${modId}` ? t(`navigation.${modId}`) : fallback;
   };
 
   const getSubItemLabel = (subId: string, fallback: string) => {
@@ -95,213 +75,401 @@ export default function AppSidebar({
     return fallback;
   };
 
-  const getSubItemDesc = (subId: string, fallback?: string) => {
-    const descKey = `pages.${subId}.desc`;
-    if (t(descKey) !== descKey) return t(descKey);
-    return fallback || '';
-  };
+  // Xác định mục đang active
+  const activeModule = MAIN_MODULES.find((mod) => {
+    const isDirect = mod.id === 'dashboard' || mod.subItems.length <= 1;
+    return isDirect
+      ? committedPage === mod.defaultPage || committedPage === mod.id || previewPage === mod.defaultPage || previewPage === mod.id
+      : mod.subItems.some((s) => s.id === committedPage || s.id === previewPage);
+  });
+  const activeId = committedPage === 'settings' ? 'settings' : (activeModule?.id || 'dashboard');
 
+  // =========================================================================
+  // TRẠNG THÁI THU GỌN (COLLAPSED RAIL): 72px PHÂN BỔ ĐỀU, TỐI GIẢN CHUẨN XÁC
+  // RÊ CHUỘT VÀO SẼ TỰ ĐỘNG XỔ MENU RA (XỬ LÝ QUA ONMOUSEENTER Ở WRAPPER)
+  // =========================================================================
+  if (isCollapsed) {
+    return (
+      <aside
+        className="w-full h-full flex flex-col items-center justify-between bg-surface-elevated border-r border-subtle select-none py-3 px-1.5 transition-all duration-300 overflow-hidden"
+        aria-label="Thanh điều hướng thu gọn"
+      >
+        {/* 1. Header: Logo Bảo Long icon */}
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group"
+          onClick={() => {
+            onExpandSidebar?.();
+          }}
+          title="Bảo Long Insurance"
+        >
+          <img
+            src="/baolong-icon.png"
+            alt="Bảo Long Logo"
+            className="w-8 h-8 object-contain transition-transform group-hover:scale-105"
+          />
+        </div>
+
+        {/* 2. Danh sách các icon - LUÔN PHÂN BỔ ĐỀU & NỀN XANH TỐI GIẢN, CHUẨN TÂM 100% */}
+        <div className="flex-1 w-full flex flex-col justify-evenly items-center my-2">
+          {MAIN_MODULES.map((mod) => {
+            const isDirectPage = mod.id === 'dashboard' || mod.subItems.length <= 1;
+            const isActive = activeId === mod.id;
+            const modLabel = getModuleLabel(mod.id, mod.label);
+            const totalBadges = mod.subItems
+              .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
+              .reduce((a, b) => a + b, 0);
+
+            return (
+              <div
+                key={mod.id}
+                className="relative flex items-center justify-center w-full"
+              >
+                <button
+                  type="button"
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-200 relative ${
+                    isActive
+                      ? 'bg-primary text-white shadow-md shadow-primary/25 scale-105'
+                      : 'text-text-main hover:bg-surface-hover hover:text-primary'
+                  }`}
+                  onClick={() => {
+                    if (isDirectPage) {
+                      onNavigate(mod.defaultPage);
+                    } else {
+                      setExpandedModIds((prev) => ({ ...prev, [mod.id]: true }));
+                    }
+                    onExpandSidebar?.();
+                  }}
+                  onMouseEnter={() => {
+                    setExpandedModIds((prev) => ({ ...prev, [mod.id]: true }));
+                    onHoverPreview(mod.defaultPage);
+                  }}
+                  title={modLabel}
+                  aria-label={modLabel}
+                >
+                  <i
+                    className={`fa-solid ${mod.icon} text-base transition-transform ${
+                      isActive ? 'text-white' : ''
+                    }`}
+                  />
+                  {totalBadges > 0 && (
+                    <span
+                      className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center shadow-xs ${
+                        isActive
+                          ? 'bg-white text-primary'
+                          : 'bg-primary text-white'
+                      }`}
+                    >
+                      {totalBadges}
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Icon Cài đặt ở cuối danh sách phân bổ đều */}
+          <div className="relative flex items-center justify-center w-full pt-2 border-t border-subtle/60">
+            <button
+              type="button"
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-200 ${
+                activeId === 'settings'
+                  ? 'bg-primary text-white shadow-md shadow-primary/25 scale-105'
+                  : 'text-text-main hover:bg-surface-hover hover:text-primary'
+              }`}
+              onClick={() => {
+                onNavigate('settings');
+                onExpandSidebar?.();
+              }}
+              onMouseEnter={() => {
+                onHoverPreview('settings');
+              }}
+              title="Cài đặt hệ thống"
+              aria-label="Cài đặt hệ thống"
+            >
+              <i
+                className={`fa-solid fa-gear text-base transition-transform ${
+                  activeId === 'settings' ? 'text-white' : ''
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // =========================================================================
+  // TRẠNG THÁI MỞ RỘNG (EXPANDED SIDEBAR): BỐ CỤC ỔN ĐỊNH, CHUẨN UX CHUYÊN NGHIỆP
+  // =========================================================================
   return (
     <aside
-      className="w-[290px] h-screen flex flex-col bg-surface-elevated border-r border-subtle select-none overflow-hidden"
-      aria-label="Thanh điều hướng cố định"
+      className="w-[290px] h-full flex flex-col bg-surface-elevated border-r border-subtle select-none overflow-hidden"
+      aria-label="Thanh điều hướng mở rộng"
+      onMouseLeave={onHoverLeave}
     >
-      {/* Header Sidebar: Logo Bảo Long & Nút đóng menu */}
-      <div className="p-3 border-b border-subtle flex items-center justify-between shrink-0">
+      {/* Header Sidebar: Logo Bảo Long & Nút điều khiển (Ghim / Thu gọn) */}
+      <div className="h-16 px-3.5 border-b border-subtle flex items-center justify-between shrink-0 bg-surface-elevated">
         <div
-          className="flex items-center gap-2 px-1 cursor-pointer transition-opacity hover:opacity-85"
+          className="flex items-center gap-2 px-1 cursor-pointer transition-transform hover:scale-[1.03]"
           onClick={() => {
             onNavigate('dashboard');
             onCloseMobile();
           }}
           title="Bảo Long Insurance - Về Trang Chủ"
         >
-          <Logo size="sm" />
+          <Logo size="lg" className="h-9 sm:h-10" />
         </div>
-        <button
-          type="button"
-          className="w-8 h-8 rounded-full bg-surface border border-subtle text-text-muted hover:text-text-main flex items-center justify-center text-xs cursor-pointer transition-colors"
-          onClick={onCloseMobile}
-          aria-label="Thu gọn menu"
-          title="Thu gọn menu"
-        >
-          <i className="fa-solid fa-xmark" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {onTogglePin && (
+            <button
+              type="button"
+              className={`w-7 h-7 rounded-lg border border-subtle flex items-center justify-center text-xs cursor-pointer transition-all duration-200 ${
+                isPinned
+                  ? 'bg-primary-subtle text-primary border-primary/30 rotate-45 shadow-2xs'
+                  : 'bg-surface text-text-muted hover:text-text-main hover:bg-surface-hover'
+              }`}
+              onClick={onTogglePin}
+              aria-label={isPinned ? 'Bỏ ghim thanh điều hướng' : 'Ghim thanh điều hướng cố định'}
+              title={isPinned ? 'Bỏ ghim thanh điều hướng (bấm để thu gọn tự do)' : 'Ghim thanh điều hướng (giữ mở để làm việc liên tục)'}
+            >
+              <i className="fa-solid fa-thumbtack text-[11px]" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="w-7 h-7 rounded-lg bg-surface border border-subtle text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center text-xs cursor-pointer transition-colors"
+            onClick={onCloseMobile}
+            aria-label="Thu gọn menu"
+            title="Thu gọn menu"
+          >
+            <i className="fa-solid fa-chevron-left text-[11px]" />
+          </button>
+        </div>
       </div>
 
-      {/* Nội dung danh sách điều hướng có thể cuộn */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-3">
-        {/* Phân nhóm: Danh mục phân hệ chính */}
-        <div className="px-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-text-muted">
-          {t('navigation.records') !== 'navigation.records' ? t('navigation.records') : 'Phân hệ quản lý'}
-        </div>
+      {/* Danh sách 6 phân hệ chính (Tầng 1) - Bố cục ổn định, thoải mái, không bị nhảy vị trí */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
+        {MAIN_MODULES.map((mod) => {
+          const isDirectPage = mod.id === 'dashboard' || mod.subItems.length <= 1;
+          const isModActive = isDirectPage
+            ? committedPage === mod.defaultPage || committedPage === mod.id || previewPage === mod.defaultPage || previewPage === mod.id
+            : mod.subItems.some((s) => s.id === committedPage || s.id === previewPage);
+          const isExpanded = !isDirectPage && !!expandedModIds[mod.id];
+          const modLabel = getModuleLabel(mod.id, mod.label);
 
-        <div className="space-y-1">
-          {MAIN_MODULES.map((mod) => {
-            const isDirectPage = mod.id === 'dashboard' || mod.subItems.length <= 1;
-            const isModActive = isDirectPage
-              ? committedPage === mod.defaultPage || committedPage === mod.id
-              : mod.subItems.some((s) => s.id === committedPage);
-            const isModPreview =
-              previewPage !== null &&
-              (isDirectPage
-                ? previewPage === mod.defaultPage || previewPage === mod.id
-                : mod.subItems.some((s) => s.id === previewPage));
-            const isExpanded = !isDirectPage && !!expandedModIds[mod.id];
-            const modLabel = getModuleLabel(mod.id, mod.label);
-            const styling = FB_MODULE_GRADIENTS[mod.id] || {
-              bgClass: 'bg-fb-blue',
-              icon: mod.icon,
-            };
+          const totalBadges = mod.subItems
+            .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
+            .reduce((a, b) => a + b, 0);
 
-            const totalBadges = mod.subItems
-              .map((s) => (typeof s.badge === 'number' ? s.badge : 0))
-              .reduce((a, b) => a + b, 0);
-
+          // TRƯỜNG HỢP 1: MỤC ĐƠN (Ví dụ: Dashboard)
+          if (isDirectPage) {
             return (
-              <div key={mod.id} className="rounded-xl overflow-hidden transition-colors">
-                <div
-                  className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors duration-fast ${
+              <div key={mod.id} className="relative flex items-center">
+                <button
+                  type="button"
+                  className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-left cursor-pointer transition-all duration-200 ${
                     isModActive
-                      ? 'bg-primary-subtle text-primary font-semibold'
-                      : isModPreview
-                      ? 'bg-surface-hover text-text-main'
-                      : 'hover:bg-surface-hover text-text-main'
+                      ? 'bg-primary text-white font-bold shadow-md shadow-primary/25'
+                      : 'text-text-main hover:bg-surface-hover group'
                   }`}
                   onClick={() => {
-                    if (isDirectPage) {
-                      onNavigate(mod.defaultPage);
-                      onCloseMobile();
-                    } else {
-                      toggleExpand(mod.id);
-                    }
+                    onNavigate(mod.defaultPage);
+                    onCloseMobile();
                   }}
                   onMouseEnter={() => onHoverPreview(mod.defaultPage)}
-                  role="button"
-                  tabIndex={0}
-                  title={
-                    isDirectPage
-                      ? `${modLabel} (Bấm để mở trang)`
-                      : `${modLabel} (${isExpanded ? 'Bấm để thu gọn' : 'Bấm để xem các mục con'})`
-                  }
+                  title={modLabel}
                 >
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm shrink-0 shadow-xs ${styling.bgClass}`}
+                  <i
+                    className={`fa-solid ${mod.icon} text-base w-5 text-center transition-colors ${
+                      isModActive
+                        ? 'text-white'
+                        : 'text-text-main group-hover:text-primary'
+                    }`}
+                  />
+                  <span
+                    className={`text-sm font-semibold truncate flex-1 transition-colors ${
+                      isModActive
+                        ? 'text-white'
+                        : 'text-text-main group-hover:text-primary'
+                    }`}
                   >
-                    <i className={`fa-solid ${mod.icon}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="text-xs font-semibold truncate whitespace-nowrap">{modLabel}</span>
-                      {totalBadges > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-danger text-white shrink-0 whitespace-nowrap">
-                          {totalBadges}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {!isDirectPage && (
-                    <button
-                      type="button"
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-text-muted hover:text-text-main shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleExpand(mod.id);
-                      }}
-                      aria-label={isExpanded ? 'Thu gọn' : 'Mở rộng'}
-                      title={isExpanded ? 'Thu gọn các mục con' : 'Mở danh sách mục con'}
+                    {modLabel}
+                  </span>
+                  {totalBadges > 0 && (
+                    <span
+                      className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${
+                        isModActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-primary text-white'
+                      }`}
                     >
-                      <i
-                        className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-fast ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </button>
+                      {totalBadges}
+                    </span>
                   )}
-                </div>
-
-                {/* Danh sách mục con thả xuống dạng Accordion (chỉ hiển thị khi không phải trang đơn và đang mở) */}
-                {!isDirectPage && isExpanded && (
-                  <div className="pl-4 pr-1 py-1 space-y-1 border-l-2 border-subtle ml-6 my-1">
-                    {mod.subItems.map((sub) => {
-                      const isSubActive = committedPage === sub.id;
-                      const isSubPreview = previewPage === sub.id;
-                      const subLabel = getSubItemLabel(sub.id, sub.label);
-                      const subDesc = getSubItemDesc(sub.id, sub.description);
-
-                      return (
-                        <div
-                          key={sub.id}
-                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-colors duration-fast ${
-                            isSubActive
-                              ? 'bg-primary text-white font-medium shadow-xs'
-                              : isSubPreview
-                              ? 'bg-surface-hover text-text-main'
-                              : 'hover:bg-surface-hover text-text-secondary hover:text-text-main'
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onNavigate(sub.id);
-                            onCloseMobile();
-                          }}
-                          onMouseEnter={() => onHoverPreview(sub.id)}
-                          role="button"
-                          tabIndex={0}
-                        >
-                          <div className="w-5 h-5 rounded flex items-center justify-center text-[11px] shrink-0">
-                            <i className={`fa-solid ${sub.icon}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1.5">
-                              <span className="text-xs truncate whitespace-nowrap">{subLabel}</span>
-                              {sub.badge !== undefined && (
-                                <span
-                                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold shrink-0 whitespace-nowrap ${
-                                    isSubActive
-                                      ? 'bg-white text-primary'
-                                      : 'bg-primary-subtle text-primary'
-                                  }`}
-                                >
-                                  {sub.badge}
-                                </span>
-                              )}
-                            </div>
-                            {subDesc && (
-                              <span
-                                className={`text-[10px] truncate block ${
-                                  isSubActive ? 'text-white/80' : 'text-text-muted'
-                                }`}
-                                title={subDesc}
-                              >
-                                {subDesc}
-                              </span>
-                            )}
-                          </div>
-                          {isSubActive && (
-                            <i className="fa-solid fa-circle-check text-xs ml-1 text-white" />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                </button>
               </div>
             );
-          })}
-        </div>
+          }
+
+          // TRƯỜNG HỢP 2: PHÂN HỆ ĐANG MỞ RỘNG (DẠNG THẺ NỔI TRẮNG)
+          if (isExpanded) {
+            return (
+              <div
+                key={mod.id}
+                className="bg-surface rounded-2xl border border-primary/25 shadow-sm p-2 space-y-1 transition-all duration-200"
+              >
+                {/* Header của thẻ phân hệ */}
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left cursor-pointer hover:bg-primary-subtle/40 transition-colors"
+                  onClick={() => toggleExpand(mod.id)}
+                  title={`${modLabel} (Bấm để thu gọn)`}
+                >
+                  <i className={`fa-solid ${mod.icon} text-base w-5 text-center text-primary`} />
+                  <span className="text-sm font-bold text-primary truncate flex-1">
+                    {modLabel}
+                  </span>
+                  <i className="fa-solid fa-chevron-up text-xs text-primary" />
+                </button>
+
+                {/* Danh sách các mục con bên trong thẻ nổi */}
+                <div className="space-y-0.5 pt-0.5">
+                  {mod.subItems.map((sub) => {
+                    const isSubActive = committedPage === sub.id || previewPage === sub.id;
+                    const subLabel = getSubItemLabel(sub.id, sub.label);
+
+                    return (
+                      <div
+                        key={sub.id}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150 ${
+                          isSubActive
+                            ? 'bg-primary-subtle text-primary font-bold shadow-2xs'
+                            : 'text-text-main hover:bg-primary-subtle/30 hover:text-primary font-medium group hover:translate-x-0.5'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigate(sub.id);
+                          onCloseMobile();
+                        }}
+                        onMouseEnter={() => onHoverPreview(sub.id)}
+                        role="button"
+                        tabIndex={0}
+                        title={subLabel}
+                      >
+                        <i
+                          className={`fa-solid ${sub.icon} text-xs w-4 text-center transition-colors ${
+                            isSubActive
+                              ? 'text-primary'
+                              : 'text-text-secondary group-hover:text-primary'
+                          }`}
+                        />
+                        <span className="text-xs truncate flex-1">{subLabel}</span>
+                        {sub.badge !== undefined && (
+                          <span
+                            className={`min-w-[18px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                              isSubActive
+                                ? 'bg-primary text-white'
+                                : 'bg-primary-subtle text-primary'
+                            }`}
+                          >
+                            {sub.badge}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          }
+
+          // TRƯỜNG HỢP 3: PHÂN HỆ ĐANG THU GỌN (COLLAPSED)
+          return (
+            <div key={mod.id} className="relative flex items-center">
+              <button
+                type="button"
+                className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-left cursor-pointer transition-all duration-200 ${
+                  isModActive
+                    ? 'bg-primary text-white font-bold shadow-md shadow-primary/25'
+                    : 'text-text-main hover:bg-surface-hover group'
+                }`}
+                onClick={() => toggleExpand(mod.id)}
+                onMouseEnter={() => onHoverPreview(mod.defaultPage)}
+                title={`${modLabel} (Bấm để mở rộng)`}
+              >
+                <i
+                  className={`fa-solid ${mod.icon} text-base w-5 text-center transition-colors ${
+                    isModActive
+                      ? 'text-white'
+                      : 'text-text-main group-hover:text-primary'
+                  }`}
+                />
+                <span
+                  className={`text-sm font-semibold truncate flex-1 transition-colors ${
+                    isModActive
+                      ? 'text-white'
+                      : 'text-text-main group-hover:text-primary'
+                  }`}
+                >
+                  {modLabel}
+                </span>
+                {totalBadges > 0 && (
+                  <span
+                    className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 mr-1 ${
+                      isModActive
+                        ? 'bg-white/20 text-white'
+                        : 'bg-primary text-white'
+                    }`}
+                  >
+                    {totalBadges}
+                  </span>
+                )}
+                <i
+                  className={`fa-solid fa-chevron-down text-xs transition-colors ${
+                    isModActive
+                      ? 'text-white/80'
+                      : 'text-text-muted group-hover:text-text-main'
+                  }`}
+                />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Chân trang Sidebar: Tình trạng hệ thống */}
-      <div className="p-3 border-t border-subtle flex items-center justify-between shrink-0 bg-surface/30">
-        <div className="flex items-center gap-2 text-xs font-semibold text-text-main">
-          <i className="fa-solid fa-shield-halved text-primary text-sm" />
-          <span>TLBM System</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
-          <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          <span>Online v2.0</span>
-        </div>
+      {/* VÙNG TIỆN ÍCH CỐ ĐỊNH Ở ĐÁY (PINNED BOTTOM SECTION) */}
+      <div className="shrink-0 border-t border-subtle p-3 bg-surface-elevated/95 backdrop-blur-xs">
+        {/* Mục Cài đặt - Vị trí cố định, quen thuộc, dễ bấm */}
+        <button
+          type="button"
+          className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-left cursor-pointer transition-all duration-200 ${
+            committedPage === 'settings'
+              ? 'bg-primary text-white font-bold shadow-md shadow-primary/25'
+              : 'text-text-main hover:bg-surface-hover group'
+          }`}
+          onClick={() => {
+            onNavigate('settings');
+            onCloseMobile();
+          }}
+          title="Cài đặt hệ thống"
+        >
+          <i
+            className={`fa-solid fa-gear text-base w-5 text-center transition-colors ${
+              committedPage === 'settings'
+                ? 'text-white'
+                : 'text-black dark:text-white group-hover:text-primary'
+            }`}
+          />
+          <span
+            className={`text-sm font-semibold truncate flex-1 transition-colors ${
+              committedPage === 'settings'
+                ? 'text-white'
+                : 'text-text-main group-hover:text-primary'
+            }`}
+          >
+            Cài đặt
+          </span>
+        </button>
       </div>
     </aside>
   );

@@ -10,7 +10,7 @@ export default function AppFooter() {
       <div className="flex items-center gap-2.5">
         <Logo size="xs" className="opacity-75" />
         <div>
-          <strong className="text-main">{t('app.name') || 'Bảo Long Insurance'}</strong> — Hệ Thống Quản Lý Văn Bản &amp; Tài Liệu Mật
+          <strong className="text-main">{t('app.name') || 'Hệ Thống Quản Lý Văn Bản & Tài Liệu'}</strong>
         </div>
       </div>
       <div>

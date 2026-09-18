@@ -34,30 +34,28 @@ export default function AppHeader({
   preferredDarkTheme,
 }: AppHeaderProps) {
   return (
-    <header className="h-14 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
+    <header className="h-16 px-4 bg-header border-b border-subtle flex items-center justify-between shrink-0 z-30 backdrop-blur-md transition-colors duration-normal">
       {/* 1. Left Section: 3-bar Menu Trigger & Bao Long Logo */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3.5">
         {!isSidebarOpen && (
           <button
             type="button"
-            className={`header-menu-btn w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0 ${
-              interfaceStyle === 'modern' ? 'lg:hidden' : ''
-            }`}
+            className="header-menu-btn w-10 h-10 rounded-xl flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
             onClick={onToggleSidebar}
             onMouseEnter={onHoverSidebar}
-            title="Mở thanh điều hướng (Bấm hoặc vuốt từ trái sang phải)"
+            title="Mở thanh điều hướng (Bấm hoặc rê chuột)"
             aria-label="Mở thanh điều hướng"
           >
-            <i className="fa-solid fa-bars text-base" />
+            <i className="fa-solid fa-bars text-lg" />
           </button>
         )}
         <div
-          className="flex items-center cursor-pointer transition-opacity hover:opacity-85"
+          className="flex items-center cursor-pointer transition-transform hover:scale-[1.03]"
           onClick={() => onNavigate?.('dashboard')}
           onMouseEnter={interfaceStyle === 'modern' ? onHoverSidebar : undefined}
           title="Bảo Long Insurance - Về Trang Chủ"
         >
-          <Logo size="md" />
+          <Logo size="xl" className="h-11 sm:h-12" />
         </div>
       </div>
 

@@ -48,69 +48,76 @@ export default function TopSubNav({
 
   return (
     <nav
-      className="h-9 px-4 sm:px-6 bg-app flex items-center justify-between shrink-0 overflow-x-auto select-none"
+      className="top-subnav h-11 px-4 sm:px-6 bg-app flex items-center justify-between shrink-0 overflow-x-auto select-none"
       aria-label="Điều hướng phân hệ con"
     >
       <div className="flex items-center gap-4 w-full min-w-max">
         {/* 1. Breadcrumb định hướng nhanh */}
         {isAccountPage ? (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             <div
-              className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shadow-xs"
+              className="w-8 h-8 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-sm shadow-2xs"
               title={accountMeta[activePage]?.title}
             >
               <i className={`fa-solid ${accountMeta[activePage]?.icon || 'fa-user'}`} />
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
               <button
                 type="button"
-                className="hover:text-primary transition-colors cursor-pointer"
+                className="hover:text-primary transition-colors cursor-pointer font-medium"
                 onClick={() => onNavigate('dashboard')}
-                title="Về Bàn làm việc"
               >
-                {t('navigation.dashboard')}
+                {t('navigation.dashboard') || 'Trang Chủ'}
               </button>
-              <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
-              <span className="text-text-main font-semibold">
+              <i className="fa-solid fa-angle-right text-xs text-text-muted" />
+              <span className="text-text-main font-bold">
                 {accountMeta[activePage]?.title}
               </span>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             <div
-              className="w-7 h-7 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-xs shadow-xs"
+              className="w-8 h-8 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-sm shadow-2xs"
               title={`${activeModuleLabel} (${activeModule.teamTag})`}
             >
               <i className={`fa-solid ${activeModule.icon}`} />
             </div>
-            <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-              <button
-                type="button"
-                className="hover:text-primary transition-colors cursor-pointer"
-                onClick={() => onNavigate('dashboard')}
-                title="Về Bàn làm việc"
-              >
-                {t('navigation.system')}
-              </button>
-              <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
-              <button
-                type="button"
-                className="hover:text-primary transition-colors cursor-pointer"
-                onClick={() => onNavigate(activeModule.defaultPage)}
-                title={`Chuyển tới ${activeModuleLabel}`}
-              >
-                {activeModuleLabel}
-              </button>
-              {activeModule.id !== 'dashboard' && (
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
+              {activeModule.id === 'dashboard' ? (
+                <span className="text-text-main font-bold text-sm flex items-center gap-1.5">
+                  <span>{t('navigation.dashboard') || 'Trang Chủ'}</span>
+                </span>
+              ) : (
                 <>
-                  <i className="fa-solid fa-angle-right text-[10px] text-text-muted" />
-                  <span className="text-text-main font-semibold">{activeSubLabel}</span>
+                  <button
+                    type="button"
+                    className="hover:text-primary transition-colors cursor-pointer font-medium"
+                    onClick={() => onNavigate('dashboard')}
+                    title="Về Trang Chủ"
+                  >
+                    {t('navigation.dashboard') || 'Trang Chủ'}
+                  </button>
+                  <i className="fa-solid fa-angle-right text-xs text-text-muted" />
+                  <button
+                    type="button"
+                    className="hover:text-primary transition-colors cursor-pointer font-medium"
+                    onClick={() => onNavigate(activeModule.defaultPage)}
+                    title={`Chuyển tới ${activeModuleLabel}`}
+                  >
+                    {activeModuleLabel}
+                  </button>
+                  {activeSubLabel !== activeModuleLabel && (
+                    <>
+                      <i className="fa-solid fa-angle-right text-xs text-text-muted" />
+                      <span className="text-text-main font-bold">{activeSubLabel}</span>
+                    </>
+                  )}
                 </>
               )}
             </div>
             {activeModule.subItems.length > 1 && (
-              <div className="h-4 w-px bg-subtle mx-2" />
+              <div className="h-5 w-px bg-subtle mx-2" />
             )}
           </div>
         )}

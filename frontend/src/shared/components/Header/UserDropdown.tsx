@@ -97,16 +97,11 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
             {displayName || t('userMenu.guest') || 'Chưa đăng nhập'}
           </span>
         </div>
-        <i className="fa-solid fa-chevron-down text-[10px] text-text-muted ml-0.5" />
+        <i className={`fa-solid fa-chevron-down text-[10px] text-text-muted ml-0.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
       {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[10000] bg-backdrop backdrop-blur-sm"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-surface-elevated border border-subtle shadow-glass p-1.5 z-[10001] flex flex-col">
+        <div className="dropdown-animate absolute right-0 top-full mt-2 w-64 rounded-xl bg-white dark:bg-[#171f2e] border border-subtle shadow-2xl p-1.5 z-[10001] flex flex-col backdrop-blur-none">
             <div className="p-2.5 border-b border-subtle mb-1">
               {session ? (
                 <>
@@ -212,7 +207,6 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
               )}
             </div>
           </div>
-        </>
       )}
     </div>
   );

@@ -19,7 +19,7 @@ describe('DashboardPage Style Switching', () => {
     // Modern UI elements: 3 modern metric cards with 0 values (no mock data)
     expect(screen.getAllByText('0')).toHaveLength(3);
     expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
-    expect(screen.getByText(/Tìm Kiếm Nhanh Văn Bản Đến & Văn Bản Đi/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Nhập số ký hiệu/i)).toBeInTheDocument();
   });
 
   it('renders Classic UI when tlbm_interface_style is set to classic', () => {
@@ -46,7 +46,7 @@ describe('DashboardPage Style Switching', () => {
     // Modern UI elements: 3 modern metric cards with 0 values (no mock data)
     expect(screen.getAllByText('0')).toHaveLength(3);
     expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
-    expect(screen.getByText(/Tìm Kiếm Nhanh Văn Bản Đến & Văn Bản Đi/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Nhập số ký hiệu/i)).toBeInTheDocument();
   });
 
   it('dynamically switches to Modern UI when tlbm_settings_updated event fires', () => {
@@ -67,6 +67,6 @@ describe('DashboardPage Style Switching', () => {
 
     expect(screen.getAllByText('0')).toHaveLength(3);
     expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
-    expect(screen.getByText(/Tìm Kiếm Nhanh Văn Bản Đến & Văn Bản Đi/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Nhập số ký hiệu/i)).toBeInTheDocument();
   });
 });

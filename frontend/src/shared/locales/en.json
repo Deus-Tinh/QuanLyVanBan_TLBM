@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "Document & Confidential Records Management System (TLBM)",
-    "shortName": "EDMS & TLBM",
+    "name": "Document & Records Management System",
+    "shortName": "EDMS & Records",
     "advisor": "MSc. Tran Phuong Duy",
     "course": "ITC Course - Django Full-Stack (MD501911)",
     "group1Notice": "Group 1 currently in active development"
@@ -80,6 +80,7 @@
     "roleBadge": "Specialist Officer",
     "leadDescription": "Executive Workplace · Document & Confidential Archive Management System (TLBM).",
     "receiveDocBtn": "Receive Document",
+    "bookMeetingRoomBtn": "Book Meeting Room",
     "quickSearchTitle": "Quick Search Incoming & Outgoing Documents",
     "filterAll": "All",
     "filterIncoming": "Incoming",
@@ -95,7 +96,7 @@
     "outgoingStatus": "↑ 100% issued",
     "confidentialCard": "CONFIDENTIAL (SECURITY)",
     "confidentialStatus": "🔒 Strictly Restricted",
-    "tasksCard": "TASKS IN PROGRESS",
+    "tasksCard": "TASKS PENDING",
     "tasksNearDeadline": "⏱ 3 tasks near deadline",
     "birthdaysTitle": "Birthday Notifications",
     "birthdaysVerified": "✓ Standard Met (Group 1)",
@@ -123,7 +124,23 @@
     "resourceCode": "Ref Code",
     "resourceName": "Document / Template Name",
     "resourceFormat": "Format",
-    "viewMoreResources": "View more (Go to Common Resources)"
+    "viewMoreResources": "View more (Go to Common Resources)",
+    "noIncomingToday": "No documents recorded today",
+    "noOutgoingToday": "No documents issued today",
+    "noTasksPending": "No tasks pending",
+    "updatedLatest": "Updated: Latest",
+    "noIncomingData": "No incoming documents available",
+    "noOutgoingData": "No outgoing documents available",
+    "noTasksData": "No pending tasks to process",
+    "noResourcesData": "No documents & templates data available",
+    "happyBirthday": "Happy Birthday:",
+    "newIncomingToday": "new documents today",
+    "issuedToday": "documents issued today",
+    "tasksToProcess": "tasks to process",
+    "filterProcessing": "In Progress",
+    "filterCompleted": "Completed",
+    "filterOverdue": "Overdue",
+    "filterPending": "Pending Approval"
   },
   "profile": {
     "title": "Staff & Officer Profile",

@@ -22,6 +22,7 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     expect(screen.getByText('Chưa có dữ liệu văn bản đến')).toBeInTheDocument();
     expect(screen.getByText('Chưa có dữ liệu văn bản đi')).toBeInTheDocument();
     expect(screen.getByText('Chưa có nhiệm vụ nào cần xử lý')).toBeInTheDocument();
+    expect(screen.getByText('Chưa có dữ liệu tài liệu & biểu mẫu')).toBeInTheDocument();
 
     // No mock text
     expect(screen.queryByText(/Mock Filter/i)).not.toBeInTheDocument();
@@ -32,16 +33,13 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     expect(screen.queryByText('210/TB-BL')).not.toBeInTheDocument();
   });
 
-  it('renders quick search bar with filter pills and search input', () => {
+  it('renders simplified quick search input bar', () => {
     render(
       <MemoryRouter>
         <ModernDashboardView />
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Tất cả')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Văn bản Đến$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Văn bản Đi$/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Nhập số ký hiệu/i)).toBeInTheDocument();
   });
 
@@ -104,9 +102,9 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
       </MemoryRouter>
     );
 
-    const receiveBtn = screen.getByRole('button', { name: /Tiếp nhận văn bản/i });
-    fireEvent.click(receiveBtn);
+    const bookBtn = screen.getByRole('button', { name: /Đặt phòng họp/i });
+    fireEvent.click(bookBtn);
 
-    expect(mockNavigate).toHaveBeenCalledWith('documents_incoming');
+    expect(mockNavigate).toHaveBeenCalledWith('meetings');
   });
 });

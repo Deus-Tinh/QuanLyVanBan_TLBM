@@ -120,12 +120,12 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
   return (
     <>
-      {/* 1. NÚT AI ROBOT NỔI CỐ ĐỊNH XUỐNG GÓC DƯỚI BÊN PHẢI */}
+      {/* 1. NÚT AI ROBOT NỔI CỐ ĐỊNH XUỐNG GÓC DƯỚI BÊN PHẢI (Nhích lên để không che thanh footer) */}
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-[9998]">
+        <div className="fixed bottom-[72px] right-6 sm:right-8 z-[9998]">
           <button
             type="button"
-            className="relative w-12 h-12 rounded-full bg-gradient-to-tr from-purple-600 via-primary to-cyan-400 p-0.5 shadow-glass cursor-pointer flex items-center justify-center transition-transform duration-fast hover:scale-110 active:scale-95 group"
+            className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 via-primary to-cyan-400 p-[2.5px] shadow-xl hover:shadow-2xl shadow-primary/25 cursor-pointer flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 group"
             onClick={() => {
               setIsOpen(true);
               setIsMinimized(false);
@@ -135,21 +135,21 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
           >
             {/* Vòng hào quang sáng xung quanh */}
             <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping -z-10" />
-            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-primary text-lg shadow-inner group-hover:bg-primary group-hover:text-white transition-colors duration-fast">
+            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-primary text-2xl shadow-inner group-hover:bg-primary group-hover:text-white transition-colors duration-fast">
               <i className="fa-solid fa-robot" />
             </div>
             {/* Chấm trạng thái trực tuyến */}
-            <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-surface shadow-xs" />
+            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-surface shadow-xs" />
           </button>
         </div>
       )}
 
-      {/* 2. CỬA SỔ HỘI THOẠI AI CHATBOX (Cố định góc dưới bên phải) */}
+      {/* 2. CỬA SỔ HỘI THOẠI AI CHATBOX (Cố định góc dưới bên phải, nằm trên thanh footer) */}
       {isOpen && (
         <div
           ref={windowRef}
-          className={`fixed bottom-6 right-6 z-[9999] w-[390px] max-w-[calc(100vw-32px)] rounded-2xl bg-surface-elevated/95 backdrop-blur-xl border border-subtle shadow-2xl flex flex-col overflow-hidden transition-all duration-fast animate-in fade-in slide-in-from-bottom-4 ${
-            isMinimized ? 'h-14' : 'h-[540px] max-h-[calc(100vh-80px)]'
+          className={`fixed bottom-[68px] right-6 z-[9999] w-[390px] max-w-[calc(100vw-32px)] rounded-2xl bg-surface-elevated/95 backdrop-blur-xl border border-subtle shadow-2xl flex flex-col overflow-hidden transition-all duration-fast animate-in fade-in slide-in-from-bottom-4 ${
+            isMinimized ? 'h-14' : 'h-[540px] max-h-[calc(100vh-120px)]'
           }`}
         >
           {/* Thanh tiêu đề (Header) */}

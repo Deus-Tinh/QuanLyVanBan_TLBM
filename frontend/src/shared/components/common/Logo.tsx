@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface LogoProps extends React.ImgHTMLAttributes<HTMLImageElement> {
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   variant?: 'auto' | 'white' | 'dark';
 }
 
@@ -11,6 +11,7 @@ const SIZE_MAP = {
   md: 'h-8',
   lg: 'h-10',
   xl: 'h-12',
+  '2xl': 'h-14',
 };
 
 export const Logo: React.FC<LogoProps> = ({
