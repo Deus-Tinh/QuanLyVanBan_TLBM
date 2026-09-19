@@ -80,6 +80,18 @@ def login_view(request):
     user = authenticate(request, username=username, password=password)
 
     if user is None:
+        from django.contrib.auth.models import User
+        try:
+            existing_user = User.objects.get(username=username)
+            if not existing_user.is_active and existing_user.check_password(password):
+                msg = "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên."
+                return Response(
+                    {"success": False, "error": msg, "detail": msg},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        except User.DoesNotExist:
+            pass
+
         msg = "Tên đăng nhập hoặc mật khẩu không chính xác!"
         return Response(
             {"success": False, "error": msg, "detail": msg},

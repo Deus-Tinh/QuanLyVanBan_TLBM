@@ -7,6 +7,8 @@ import { useTranslation } from '@i18n/translate';
 import LanguageSwitcher from '@components/layout/LanguageSwitcher';
 import LoginCharacters from '@components/auth/LoginCharacters';
 import LoginForm from '@components/auth/LoginForm';
+import authService from '@lib/authService';
+import { ApiError } from '@lib/apiClient';
 import '@styles/login-characters.css';
 
 interface LoginPageProps {
@@ -45,57 +47,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: username.trim(),
-          password: password.trim(),
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      let loginData = data;
-
-      // Hỗ trợ chế độ dự phòng kiểm thử cục bộ khi chưa kết nối backend
-      const u = username.trim();
-      const p = password.trim();
-      const isSeedAdmin = u === 'admin' && p === 'Admin@123';
-      const isSeedCanbo = u === 'canbo' && p === 'Canbo@123';
-
-      if (!response.ok || (data.success === false && !data.token)) {
-        if ((response.status === 404 || response.status === 401) && (isSeedAdmin || isSeedCanbo)) {
-          const isAdm = isSeedAdmin;
-          loginData = {
-            success: true,
-            token: 'demo-jwt-' + u + '-token',
-            user: {
-              username: u,
-              fullName: isAdm ? 'Quản Trị Viên Hệ Thống' : 'Cán Bộ Xử Lý Văn Bản',
-              role: isAdm ? 'admin' : 'staff',
-              roleTitle: isAdm ? 'Quản trị viên tối cao' : 'Chuyên viên văn thư',
-            },
-          };
-        } else {
-          setIsLoading(false);
-          // Chuẩn hóa lỗi theo i18n để tự động đổi ngôn ngữ khi người dùng chọn VI/EN
-          if (
-            response.status === 401 ||
-            response.status === 400 ||
-            data.error?.toLowerCase().includes('không chính xác') ||
-            data.detail?.toLowerCase().includes('credentials')
-          ) {
-            setErrorKey('auth.invalidCredentials');
-          } else if (data.error || data.detail || data.message) {
-            setCustomError(data.error || data.detail || data.message);
-          } else {
-            setErrorKey('auth.invalidCredentials');
-          }
-          return;
-        }
-      }
+      const session = await authService.login({ username, password });
 
       setIsLoading(false);
       setIsSuccess(true);
@@ -107,35 +59,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           origin: { y: 0.6 },
         });
       } catch {
-        // Fallback
-      }
-
-      const rawUser = loginData.user || {};
-      const token = loginData.token || loginData.access || '';
-      const isRoleAdmin =
-        rawUser.role === 'admin' || username.toLowerCase().includes('admin');
-      const session: UserSession = {
-        username: rawUser.username || username.trim(),
-        fullName:
-          rawUser.fullName ||
-          rawUser.full_name ||
-          (isRoleAdmin ? 'Quản Trị Viên (Admin)' : 'Cán Bộ Chuyên Viên'),
-        role: isRoleAdmin ? 'admin' : 'staff',
-        roleTitle:
-          rawUser.roleTitle ||
-          rawUser.position ||
-          (isRoleAdmin ? 'Quản trị viên tối cao' : 'Cán bộ xử lý văn bản'),
-        token: token,
-      };
-
-      try {
-        if (token) {
-          localStorage.setItem('tlbm_token', token);
-        }
-        localStorage.setItem('tlbm_session', JSON.stringify(session));
-        window.dispatchEvent(new Event('tlbm_auth_changed'));
-      } catch {
-        // ignore
+        // Fallback confetti
       }
 
       setTimeout(() => {
@@ -147,40 +71,32 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         }
         navigate('/dashboard', { replace: true });
       }, 700);
-    } catch {
-      const u = username.trim();
-      const p = password.trim();
-      const isSeedAdmin = u === 'admin' && p === 'Admin@123';
-      const isSeedCanbo = u === 'canbo' && p === 'Canbo@123';
-
-      if (isSeedAdmin || isSeedCanbo) {
-        const isAdm = isSeedAdmin;
-        const session: UserSession = {
-          username: u,
-          fullName: isAdm ? 'Quản Trị Viên Hệ Thống' : 'Cán Bộ Xử Lý Văn Bản',
-          role: isAdm ? 'admin' : 'staff',
-          roleTitle: isAdm ? 'Quản trị viên tối cao' : 'Chuyên viên văn thư',
-          token: 'demo-jwt-' + u + '-token',
-        };
-        setIsLoading(false);
-        setIsSuccess(true);
-        localStorage.setItem('tlbm_token', session.token);
-        localStorage.setItem('tlbm_session', JSON.stringify(session));
-        window.dispatchEvent(new Event('tlbm_auth_changed'));
-        setTimeout(() => {
-          if (onLoginSuccess) {
-            onLoginSuccess(session);
-          }
-          if (onNavigate) {
-            onNavigate('dashboard');
-          }
-          navigate('/dashboard', { replace: true });
-        }, 700);
-        return;
-      }
-
+    } catch (err: unknown) {
       setIsLoading(false);
-      setErrorKey('auth.networkError');
+      if (err instanceof ApiError) {
+        if (err.status === 401 || err.status === 400) {
+          const detail = (err.data?.error || err.data?.detail || '').toLowerCase();
+          if (detail.includes('không chính xác') || detail.includes('credentials')) {
+            setErrorKey('auth.invalidCredentials');
+          } else if (err.data?.error || err.data?.detail) {
+            setCustomError(err.data.error || err.data.detail || '');
+          } else {
+            setErrorKey('auth.invalidCredentials');
+          }
+        } else if (err.status === 403) {
+          setCustomError(
+            err.data?.error ||
+            err.data?.detail ||
+            'Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên.'
+          );
+        } else if (err.status === 0) {
+          setErrorKey('auth.networkError');
+        } else {
+          setCustomError(err.data?.error || err.data?.detail || err.message);
+        }
+      } else {
+        setErrorKey('auth.networkError');
+      }
     }
   };
 

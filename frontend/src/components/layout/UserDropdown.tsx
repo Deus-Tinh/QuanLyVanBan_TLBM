@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ActivePageId } from '@app-types/navigation';
 import { useTranslation } from '@i18n/translate';
+import authService from '@lib/authService';
 
 interface UserDropdownProps {
   onNavigate?: (page: ActivePageId) => void;
@@ -204,10 +205,9 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
                   <button
                     type="button"
                     className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-danger hover:bg-danger-subtle font-semibold transition-colors text-left cursor-pointer"
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirm(t('userMenu.logoutConfirm'))) {
-                        localStorage.removeItem('tlbm_session');
-                        window.dispatchEvent(new Event('tlbm_auth_changed'));
+                        await authService.logout();
                         handleItemClick('login');
                       } else {
                         closeWithAnimation();
