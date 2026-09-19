@@ -58,16 +58,27 @@ def overview_view(request):
     tomorrow = today + timedelta(days=1)
 
     # ── 1. Thống kê số liệu tổng quan ──────────────────────────────────────
+    user = request.user
+    profile = getattr(user, "profile", None)
+    is_admin = user.is_superuser or (profile and profile.role == "admin")
+
     current_year = today.year
     incoming_qs = IncomingDocument.objects.filter(issued_date__year=current_year)
     outgoing_qs = OutgoingDocument.objects.filter(issued_date__year=current_year)
 
+    if not is_admin:
+        # Cán bộ thường không được phép xem hoặc thống kê văn bản mật
+        incoming_qs = incoming_qs.filter(is_confidential=False)
+        outgoing_qs = outgoing_qs.filter(is_confidential=False)
+        confidential_total = 0
+    else:
+        confidential_total = (
+            incoming_qs.filter(is_confidential=True).count()
+            + outgoing_qs.filter(is_confidential=True).count()
+        )
+
     incoming_total = incoming_qs.count()
     outgoing_total = outgoing_qs.count()
-    confidential_total = (
-        incoming_qs.filter(is_confidential=True).count()
-        + outgoing_qs.filter(is_confidential=True).count()
-    )
     tasks_pending = 0  # Placeholder — sẽ tích hợp khi Nhóm 6 hoàn tất API Tasks
 
     stats = {
@@ -85,6 +96,10 @@ def overview_view(request):
     }
 
     # ── 2. Top 5 văn bản đến mới nhất ──────────────────────────────────────
+    recent_incoming_qs = IncomingDocument.objects.all()
+    if not is_admin:
+        recent_incoming_qs = recent_incoming_qs.filter(is_confidential=False)
+
     recent_incoming = [
         {
             "id": doc.id,
@@ -93,10 +108,14 @@ def overview_view(request):
             "date": doc.issued_date.strftime("%d/%m/%Y"),
             "sender": doc.sender,
         }
-        for doc in IncomingDocument.objects.all()[:5]
+        for doc in recent_incoming_qs[:5]
     ]
 
     # ── 3. Top 5 văn bản đi mới nhất ───────────────────────────────────────
+    recent_outgoing_qs = OutgoingDocument.objects.all()
+    if not is_admin:
+        recent_outgoing_qs = recent_outgoing_qs.filter(is_confidential=False)
+
     recent_outgoing = [
         {
             "id": doc.id,
@@ -105,7 +124,7 @@ def overview_view(request):
             "date": doc.issued_date.strftime("%d/%m/%Y"),
             "recipient": doc.recipient,
         }
-        for doc in OutgoingDocument.objects.all()[:5]
+        for doc in recent_outgoing_qs[:5]
     ]
 
     # ── 4. Lịch phòng họp hôm nay ──────────────────────────────────────────
