@@ -100,4 +100,26 @@ desktop.ini
 # Local Notes & Changelogs
 CHANGELOG_REMOVE_MOCK_DATA.md
 frontend/CHANGELOG_REMOVE_MOCK_DATA.md
+CHAY_FULL_STACK.bat
+AGENTS.md
+
+# AI Assistant & IDE Agents
+.agents/
+
+# Netlify (Personal Testing & Deployment)
+netlify.toml
+frontend/netlify.toml
+.netlify/
+frontend/.netlify/
+_redirects
+frontend/public/_redirects
+
+# Vite Temporary & Cache Files
+.vite/
+frontend/.vite/
+*.timestamp-*
+frontend/*.timestamp-*
+
+
+
 
