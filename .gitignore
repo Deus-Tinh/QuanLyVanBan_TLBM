@@ -40,13 +40,17 @@ ENV/
 env.bak/
 venv.bak/
 
-# Local Database & Uploaded Media Files
+# Local Database, Seed Migrations & Uploaded Media Files
 *.sqlite3
 backend/db.sqlite3
 backend/media/
 media/
 backend/static_root/
 static_root/
+seed_data.py
+backend/seed_data.py
+backend/apps/*/migrations/*seed*.py
+backend/apps/accounts/management/commands/seed_accounts.py
 
 # Unit Test & Linter Cache
 .pytest_cache/
