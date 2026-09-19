@@ -8,6 +8,7 @@ import AiAssistantPage from '../modules/ai/pages/AiAssistantPage';
 import ProfilePage from '../modules/profile/pages/ProfilePage';
 import PasswordChangePage from '../modules/profile/pages/PasswordChangePage';
 import SettingsPage from '../modules/settings/pages/SettingsPage';
+import TasksPage from '../modules/work/pages/TasksPage';
 import SyllabusPreview from '../shared/components/Syllabus/SyllabusPreview';
 
 interface RouterProps {
@@ -56,6 +57,9 @@ export default function AppRouter({
 
     case 'settings':
       return <SettingsPage onNavigate={onNavigate} />;
+
+    case 'tasks':
+      return <TasksPage />;
 
     default:
       return <SyllabusPreview activePage={activePage} onNavigate={onNavigate} />;

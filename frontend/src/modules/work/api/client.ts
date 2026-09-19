@@ -31,6 +31,16 @@ export function setMockUserId(userId: number | string | null): void {
   }
 }
 
+/** Header xác thực gắn vào mọi request; khi có JWT của nhóm 7 thì đổi tại đây. */
+export function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const mockUserId = getMockUserId();
+  if (mockUserId) {
+    headers['X-Mock-User-Id'] = mockUserId;
+  }
+  return headers;
+}
+
 // ---------------------------------------------------------------------------
 
 export type FieldErrors = Record<string, string[]>;
@@ -72,7 +82,15 @@ function buildUrl(path: string, params?: RequestOptions['params']): string {
   return url.toString();
 }
 
-function flattenErrors(payload: unknown): { message: string; fieldErrors: FieldErrors } {
+/** Lỗi của danh sách (ví dụ nhiều file) có dạng lồng nhau {"0": ["..."]}: gom hết thành câu chữ. */
+function collectMessages(value: unknown): string[] {
+  if (typeof value === 'string') return value ? [value] : [];
+  if (Array.isArray(value)) return value.flatMap(collectMessages);
+  if (value && typeof value === 'object') return Object.values(value as Record<string, unknown>).flatMap(collectMessages);
+  return [];
+}
+
+export function flattenErrors(payload: unknown): { message: string; fieldErrors: FieldErrors } {
   const fieldErrors: FieldErrors = {};
   let message = '';
 
@@ -82,9 +100,7 @@ function flattenErrors(payload: unknown): { message: string; fieldErrors: FieldE
 
   if (payload && typeof payload === 'object') {
     Object.entries(payload as Record<string, unknown>).forEach(([field, value]) => {
-      const messages = (Array.isArray(value) ? value : [value])
-        .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
-        .filter(Boolean);
+      const messages = collectMessages(value);
       if (!messages.length) return;
       fieldErrors[field] = messages;
       if (!message) message = messages[0];
@@ -94,7 +110,7 @@ function flattenErrors(payload: unknown): { message: string; fieldErrors: FieldE
   return { message, fieldErrors };
 }
 
-function messageForStatus(status: number): string {
+export function messageForStatus(status: number): string {
   if (status === 401) {
     return 'Chưa xác định được người dùng. Hãy chọn lại người dùng ở ô "Đang giả lập user" rồi thử lại.';
   }
@@ -112,12 +128,7 @@ function messageForStatus(status: number): string {
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, params, signal } = options;
-  const headers: Record<string, string> = {};
-
-  const mockUserId = getMockUserId();
-  if (mockUserId) {
-    headers['X-Mock-User-Id'] = mockUserId;
-  }
+  const headers = authHeaders();
 
   let payload: BodyInit | undefined;
   if (body instanceof FormData) {
