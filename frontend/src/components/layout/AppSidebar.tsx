@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MAIN_MODULES } from '@lib/constants';
 import { ActivePageId } from '@app-types/navigation';
 import { useTranslation } from '@i18n/translate';
@@ -91,22 +91,22 @@ export default function AppSidebar({
   if (isCollapsed) {
     return (
       <aside
-        className="w-full h-full flex flex-col items-center justify-between bg-surface-elevated border-r border-subtle select-none py-3 px-1.5 transition-all duration-300 overflow-hidden"
+        className="w-full h-full flex flex-col items-center justify-between bg-sidebar border-r border-subtle rounded-none select-none py-3 px-1.5 transition-all duration-300 overflow-hidden"
         aria-label="Thanh điều hướng thu gọn"
       >
-        {/* 1. Header: Logo Bảo Long icon */}
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer hover:bg-surface-hover transition-colors shrink-0 group"
-          onClick={() => {
-            onExpandSidebar?.();
-          }}
-          title="Bảo Long Insurance"
-        >
-          <Logo
-            type="icon"
-            size="md"
-            className="w-8 h-8 transition-transform group-hover:scale-105"
-          />
+        {/* 1. Header: Nút mở rộng menu điều hướng (tránh trùng Logo với Header) */}
+        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+          <button
+            type="button"
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors cursor-pointer"
+            onClick={() => {
+              onExpandSidebar?.();
+            }}
+            title="Mở rộng menu điều hướng"
+            aria-label="Mở rộng menu điều hướng"
+          >
+            <i className="fa-solid fa-bars text-base" />
+          </button>
         </div>
 
         {/* 2. Danh sách các icon - LUÔN PHÂN BỔ ĐỀU & NỀN XANH TỐI GIẢN, CHUẨN TÂM 100% */}
@@ -167,31 +167,14 @@ export default function AppSidebar({
             );
           })}
 
-          {/* Icon Cài đặt ở cuối danh sách phân bổ đều */}
-          <div className="relative flex items-center justify-center w-full pt-2 border-t border-subtle/60">
-            <button
-              type="button"
-              className={`w-11 h-11 rounded-2xl flex items-center justify-center cursor-pointer transition-all duration-200 ${
-                activeId === 'settings'
-                  ? 'bg-primary text-white shadow-md shadow-primary/25 scale-105'
-                  : 'text-text-main hover:bg-surface-hover hover:text-primary'
-              }`}
-              onClick={() => {
-                onNavigate('settings');
-                onExpandSidebar?.();
-              }}
-              onMouseEnter={() => {
-                onHoverPreview('settings');
-              }}
-              title="Cài đặt hệ thống"
-              aria-label="Cài đặt hệ thống"
-            >
-              <i
-                className={`fa-solid fa-gear text-base transition-transform ${
-                  activeId === 'settings' ? 'text-white' : ''
-                }`}
-              />
-            </button>
+          {/* Thông tin phiên bản ở cuối dải Icon Rail */}
+          <div
+            className="relative flex flex-col items-center justify-center w-full pt-2.5 border-t border-subtle/60 cursor-default"
+            title="Phiên bản hệ thống: TLBM v2.0 (2026)"
+          >
+            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-surface border border-subtle text-text-muted select-none">
+              v2.0
+            </span>
           </div>
         </div>
       </aside>
@@ -203,12 +186,12 @@ export default function AppSidebar({
   // =========================================================================
   return (
     <aside
-      className="w-[290px] h-full flex flex-col bg-surface-elevated border-r border-subtle select-none overflow-hidden"
+      className="w-[290px] h-full flex flex-col bg-sidebar border-r border-subtle rounded-none select-none overflow-hidden"
       aria-label="Thanh điều hướng mở rộng"
       onMouseLeave={onHoverLeave}
     >
       {/* Header Sidebar: Logo Bảo Long & Nút điều khiển (Ghim / Thu gọn) */}
-      <div className="h-16 px-3.5 border-b border-subtle flex items-center justify-between shrink-0 bg-surface-elevated">
+      <div className="sidebar-header h-16 px-3.5 border-b border-subtle flex items-center justify-between shrink-0 bg-sidebar rounded-none">
         <div
           className="flex items-center gap-2 px-1 cursor-pointer transition-transform hover:scale-[1.03]"
           onClick={() => {
@@ -220,10 +203,11 @@ export default function AppSidebar({
           <Logo size="lg" className="h-9 sm:h-10" />
         </div>
         <div className="flex items-center gap-1.5">
+          {/* Nút Ghim cố định Sidebar (chỉ hiển thị trên Desktop >= 1024px) */}
           {onTogglePin && (
             <button
               type="button"
-              className={`w-7 h-7 rounded-lg border border-subtle flex items-center justify-center text-xs cursor-pointer transition-all duration-200 ${
+              className={`hidden lg:flex w-7 h-7 rounded-lg border border-subtle items-center justify-center text-xs cursor-pointer transition-all duration-200 ${
                 isPinned
                   ? 'bg-primary-subtle text-primary border-primary/30 rotate-45 shadow-2xs'
                   : 'bg-surface text-text-muted hover:text-text-main hover:bg-surface-hover'
@@ -235,12 +219,13 @@ export default function AppSidebar({
               <i className="fa-solid fa-thumbtack text-[11px]" />
             </button>
           )}
+          {/* Nút Thu gọn Sidebar về Icon Rail */}
           <button
             type="button"
             className="w-7 h-7 rounded-lg bg-surface border border-subtle text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center text-xs cursor-pointer transition-colors"
             onClick={onCloseMobile}
-            aria-label="Thu gọn menu"
-            title="Thu gọn menu"
+            aria-label="Thu gọn menu về dải biểu tượng"
+            title="Thu gọn menu về dải biểu tượng (Icon Rail)"
           >
             <i className="fa-solid fa-chevron-left text-[11px]" />
           </button>
@@ -437,39 +422,18 @@ export default function AppSidebar({
         })}
       </div>
 
-      {/* VÙNG TIỆN ÍCH CỐ ĐỊNH Ở ĐÁY (PINNED BOTTOM SECTION) */}
-      <div className="shrink-0 border-t border-subtle p-3 bg-surface-elevated/95 backdrop-blur-xs">
-        {/* Mục Cài đặt - Vị trí cố định, quen thuộc, dễ bấm */}
-        <button
-          type="button"
-          className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-left cursor-pointer transition-all duration-200 ${
-            committedPage === 'settings'
-              ? 'bg-primary text-white font-bold shadow-md shadow-primary/25'
-              : 'text-text-main hover:bg-surface-hover group'
-          }`}
-          onClick={() => {
-            onNavigate('settings');
-            onCloseMobile();
-          }}
-          title="Cài đặt hệ thống"
-        >
-          <i
-            className={`fa-solid fa-gear text-base w-5 text-center transition-colors ${
-              committedPage === 'settings'
-                ? 'text-white'
-                : 'text-black dark:text-white group-hover:text-primary'
-            }`}
-          />
-          <span
-            className={`text-sm font-semibold truncate flex-1 transition-colors ${
-              committedPage === 'settings'
-                ? 'text-white'
-                : 'text-text-main group-hover:text-primary'
-            }`}
-          >
-            Cài đặt
-          </span>
-        </button>
+      {/* VÙNG THÔNG TIN PHIÊN BẢN CỐ ĐỊNH Ở ĐÁY (PINNED BOTTOM VERSION INFO) */}
+      <div className="sidebar-footer shrink-0 border-t border-subtle px-4 py-3 bg-sidebar/95 backdrop-blur-xs flex items-center justify-between rounded-none">
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Hệ thống trực tuyến" />
+            <span className="text-xs font-semibold text-text-main truncate">Bảo Long TLBM</span>
+          </div>
+          <span className="text-[11px] text-text-muted mt-0.5">Phiên bản v2.0</span>
+        </div>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface border border-subtle text-text-muted font-semibold shrink-0">
+          2026
+        </span>
       </div>
     </aside>
   );

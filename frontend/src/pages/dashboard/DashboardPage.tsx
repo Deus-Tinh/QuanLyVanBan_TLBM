@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ActivePageId } from '@app-types/navigation';
+import { pageIdToPath } from '@lib/routes';
 import QuickSearchWidget from '@components/dashboard/QuickSearchWidget';
 import DashboardStats from '@components/dashboard/DashboardStats';
 import IncomingDocumentsWidget from '@components/dashboard/IncomingDocumentsWidget';
@@ -12,6 +15,15 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const navigate = useNavigate();
+
+  const handleNavigate = (pageId: ActivePageId) => {
+    if (onNavigate) {
+      onNavigate(pageId);
+    }
+    navigate(pageIdToPath(pageId));
+  };
+
   const [interfaceStyle, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
     return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'modern';
   });
@@ -32,7 +44,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   // 1. Giao diện Hiện đại (Modern UI): bo góc mềm mại, icon đa sắc, bảng và thẻ hiện đại theo ảnh mẫu
   if (interfaceStyle === 'modern') {
-    return <ModernDashboardView onNavigate={onNavigate} />;
+    return <ModernDashboardView onNavigate={handleNavigate} />;
   }
 
   // 2. Giao diện Cổ điển (Classic UI): phong cách GovTech đặc trưng, 3 khối navy, bảng phẳng gọn

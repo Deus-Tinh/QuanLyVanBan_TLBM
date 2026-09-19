@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LoginPage from './LoginPage';
@@ -40,6 +40,46 @@ describe('LoginPage i18n and Language Switching', () => {
     expect(screen.getByText('Account / Employee ID')).toBeInTheDocument();
     expect(screen.getByText('Authentication Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+  });
+
+  it('displays authentication error in active language and translates dynamically', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        success: false,
+        error: 'Tên đăng nhập hoặc mật khẩu không chính xác!',
+      }),
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
+    // Chuyển sang tiếng Anh
+    const enBtn = screen.getByRole('button', { name: /switch to english/i });
+    fireEvent.click(enBtn);
+
+    // Điền tài khoản sai và submit
+    const userInput = screen.getByPlaceholderText('Enter username or employee code...');
+    const passInput = screen.getByPlaceholderText('Enter password...');
+    const submitBtn = screen.getByRole('button', { name: /sign in/i });
+
+    fireEvent.change(userInput, { target: { value: 'admind' } });
+    fireEvent.change(passInput, { target: { value: 'wrongpass' } });
+    fireEvent.click(submitBtn);
+
+    // Thông báo lỗi phải hiển thị bằng tiếng Anh
+    expect(await screen.findByText('Incorrect username or password!')).toBeInTheDocument();
+
+    // Khi chuyển lại tiếng Việt
+    const viBtn = screen.getByRole('button', { name: /chuyển sang tiếng việt/i });
+    fireEvent.click(viBtn);
+
+    // Thông báo lỗi phải tự động chuyển sang tiếng Việt
+    expect(screen.getByText('Tên đăng nhập hoặc mật khẩu không chính xác!')).toBeInTheDocument();
   });
 });
 

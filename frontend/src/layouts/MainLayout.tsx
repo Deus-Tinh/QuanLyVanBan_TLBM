@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import AppSidebar from '@components/layout/AppSidebar';
 import AppHeader from '@components/layout/AppHeader';
@@ -80,12 +80,23 @@ export default function MainLayout({
   };
 
   // Phong cách giao diện: 'classic' | 'modern' (Mặc định Hiện đại Glassmorphism)
-  const [interfaceStyle, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
+  const [, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
     return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'modern';
   });
 
+  // Trạng thái hover để mở rộng thanh Sidebar tự động khi rê chuột
+  const [isSidebarHovered, setIsSidebarHovered] = useState<boolean>(false);
+  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleCloseSidebar = () => {
     setIsSidebarOpen(false);
+    setIsSidebarPinned(false);
+    localStorage.setItem('tlbm_sidebar_pinned', 'false');
+    setIsSidebarHovered(false);
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
     localStorage.setItem('tlbm_sidebar_open_v2', 'false');
   };
 
@@ -101,10 +112,6 @@ export default function MainLayout({
       return next;
     });
   };
-
-  // Trạng thái hover để mở rộng thanh Sidebar tự động khi rê chuột
-  const [isSidebarHovered, setIsSidebarHovered] = useState<boolean>(false);
-  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSidebarMouseEnter = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) return;
@@ -173,22 +180,6 @@ export default function MainLayout({
   // Menu hiển thị mở rộng khi: đã ghim, hoặc người dùng chủ động mở, hoặc đang rê chuột vào
   const isEffectiveSidebarOpen = isSidebarPinned || isSidebarOpen || isSidebarHovered;
 
-  // Cảm biến rê chuột mép trái màn hình lớn (Desktop): Rê sát mép trái (<= 24px) tự động trượt mở siêu mượt
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const handleWindowMouseMove = (e: MouseEvent) => {
-      if (window.innerWidth < 1024) return;
-      if (!isEffectiveSidebarOpen && e.clientX <= 24) {
-        handleSidebarMouseEnter();
-      }
-    };
-
-    window.addEventListener('mousemove', handleWindowMouseMove, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', handleWindowMouseMove);
-    };
-  }, [isEffectiveSidebarOpen]);
 
   // CỬ CHỈ VUỐT TRÊN THIẾT BỊ DI ĐỘNG (MOBILE SWIPE GESTURES):
   // - Khi ở chế độ phone/di động: vuốt từ trái sang phải để mở menu điều hướng
@@ -290,38 +281,26 @@ export default function MainLayout({
       className="app-shell w-screen h-screen overflow-hidden flex relative bg-app"
       style={{ backgroundColor: 'var(--bg-canvas)' }}
     >
-      {/* 1. Lớp phủ Backdrop trong suốt/nhẹ: Chỉ hiển thị khi menu mở dạng drawer tạm thời (chưa ghim) */}
-      {isEffectiveSidebarOpen && (!isSidebarPinned || (typeof window !== 'undefined' && window.innerWidth < 1024)) && (
+      {/* 1. Lớp phủ Backdrop: Chỉ hiển thị trên thiết bị di động / màn hình hẹp khi mở drawer */}
+      {isEffectiveSidebarOpen && (typeof window !== 'undefined' && window.innerWidth < 1024) && (
         <div
-          className="fixed inset-0 bg-black/15 z-[1100] cursor-pointer transition-opacity duration-300 animate-in fade-in"
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-[1100] cursor-pointer transition-opacity duration-300 animate-in fade-in"
           onClick={handleCloseSidebar}
           aria-label="Thu gọn menu điều hướng"
           title="Bấm vào bên ngoài để thu gọn menu"
         />
       )}
 
-      {/* Vùng cảm ứng mép trái màn hình: Mở rộng vùng chạm (24px) kèm vạch chỉ báo viền mờ tinh tế */}
-      {!isEffectiveSidebarOpen && (
-        <div
-          className="fixed inset-y-0 left-0 w-6 z-[1150] pointer-events-auto cursor-pointer group"
-          onMouseEnter={handleSidebarMouseEnter}
-          aria-label="Rê chuột để mở menu điều hướng"
-        >
-          {/* Vạch phát sáng nhẹ báo hiệu chạm mép trái */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-24 rounded-r-full bg-primary/30 group-hover:bg-primary group-hover:w-2 transition-all duration-300 shadow-xs" />
-        </div>
-      )}
-
-      {/* 2. Thanh điều hướng Sidebar: Trượt êm bằng đường cong gia tốc Deceleration Curve (cubic-bezier) */}
+      {/* 2. Thanh điều hướng Sidebar: Dải Icon Rail (72px) khi thu gọn, mở rộng (290px) khi mở/ghim */}
       <div
-        className={`sidebar-slide-wrapper fixed inset-y-0 left-0 z-[1200] h-full transform-gpu bg-surface-elevated border-r border-subtle ${
+        className={`sidebar-slide-wrapper fixed inset-y-0 left-0 z-[1200] h-full transform-gpu bg-surface-elevated border-r border-subtle rounded-none ${
           isEffectiveSidebarOpen
             ? 'w-[290px] translate-x-0 pointer-events-auto shadow-2xl'
-            : 'w-[290px] -translate-x-full pointer-events-none'
+            : 'max-lg:-translate-x-full max-lg:pointer-events-none lg:w-[72px] lg:translate-x-0 lg:pointer-events-auto lg:shadow-none'
         }`}
         style={{
-          transition: 'transform 0.36s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease',
-          willChange: 'transform',
+          transition: 'width 0.28s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease',
+          willChange: 'width, transform',
         }}
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
@@ -336,7 +315,7 @@ export default function MainLayout({
             onNavigate={handleItemNavigate}
             onHoverPreview={onHoverPreview}
             onHoverLeave={onHoverLeave}
-            isCollapsed={false}
+            isCollapsed={!isEffectiveSidebarOpen}
             onExpandSidebar={handleOpenSidebar}
             isPinned={isSidebarPinned}
             onTogglePin={handleTogglePinSidebar}
@@ -344,13 +323,13 @@ export default function MainLayout({
         </div>
       </div>
 
-      {/* 3. Khung nội dung chính & Thanh Header đỉnh - Toàn màn hình khi thanh đóng */}
+      {/* 3. Khung nội dung chính & Thanh Header đỉnh */}
       <div
         className={`main-container flex-1 min-w-0 flex flex-col h-full overflow-hidden w-full ${
-          isSidebarPinned && isEffectiveSidebarOpen ? 'lg:pl-[290px]' : 'pl-0'
+          isSidebarPinned && isEffectiveSidebarOpen ? 'lg:pl-[290px]' : 'lg:pl-[72px] pl-0'
         }`}
         style={{
-          transition: 'padding-left 0.36s cubic-bezier(0.16, 1, 0.3, 1)',
+          transition: 'padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         <AppHeader
@@ -360,9 +339,7 @@ export default function MainLayout({
           preferredLightTheme={preferredLightTheme}
           preferredDarkTheme={preferredDarkTheme}
           isSidebarOpen={isEffectiveSidebarOpen}
-          interfaceStyle={interfaceStyle}
           onToggleSidebar={handleToggleSidebar}
-          onHoverSidebar={handleSidebarMouseEnter}
           onNavigate={handleNavigate}
         />
 
