@@ -394,3 +394,28 @@
 .yellow-mouth-line.shocked {
   transform: rotate(-12deg) scaleX(1.2);
 }
+
+/* Đảm bảo thẻ đăng nhập là một khối thống nhất liền mạch, không bị bo góc hay tách thẻ ở giữa */
+.login-card-container > div {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+}
+
+@media (min-width: 768px) {
+  .login-card-container > div:first-child {
+    border-right: 1px solid var(--border-subtle) !important;
+  }
+  .login-card-container > div:last-child {
+    border-right: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .login-card-container > div:first-child {
+    border-bottom: 1px solid var(--border-subtle) !important;
+    border-right: none !important;
+  }
+}

@@ -259,11 +259,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
       )}
 
       {/* THẺ ĐĂNG NHẬP CHÍNH */}
-      <div className="w-full max-w-4xl bg-surface rounded-xl overflow-hidden shadow-lg flex flex-col md:flex-row relative z-10 my-auto border border-border-subtle animate-fade-in">
+      <div className="login-card-container w-full max-w-4xl bg-surface rounded-2xl overflow-hidden shadow-lg flex flex-col md:flex-row relative z-10 my-auto border border-border-subtle animate-fade-in">
         {/* ============================================================ */}
         {/* NỬA TRÁI: SÂN KHẤU 4 NHÂN VẬT HOẠT HỌA CÓ ANIMATION PHONG PHÚ */}
         {/* ============================================================ */}
-        <div className="w-full md:w-[45%] bg-surface-elevated relative flex flex-col justify-between p-5 md:p-6 select-none overflow-hidden min-h-[280px] md:min-h-[380px] border-b md:border-b-0 md:border-r border-border-subtle">
+        <div className="w-full md:w-[45%] bg-surface-elevated !rounded-none !shadow-none !border-0 md:!border-r md:!border-solid md:!border-border-subtle relative flex flex-col justify-between p-5 md:p-6 select-none overflow-hidden min-h-[280px] md:min-h-[380px]">
           <div className="flex items-center gap-2.5 z-10">
             <div className="w-10 h-10 rounded-lg bg-surface border border-subtle flex items-center justify-center shadow-sm p-1.5 shrink-0">
               <img src="/favicon.png" alt="Bảo Long Icon" className="w-full h-full object-contain" />
@@ -386,7 +386,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         {/* ============================================================ */}
         {/* NỬA PHẢI: FORM ĐĂNG NHẬP SANG TRỌNG                          */}
         {/* ============================================================ */}
-        <div className="w-full md:w-[55%] bg-surface p-5 md:p-8 flex flex-col justify-center">
+        <div className="w-full md:w-[55%] bg-surface !rounded-none !shadow-none !border-none relative flex flex-col justify-center p-5 md:p-8">
           <h2 className="text-2xl font-extrabold text-main tracking-tight mb-0.5">
             Welcome back
           </h2>
