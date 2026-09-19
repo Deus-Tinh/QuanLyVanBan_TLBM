@@ -1,4 +1,4 @@
-name: Route staging pull request reviews by team branch
+name: Route pull request reviews by workflow rule
 
 on:
   pull_request_target:
@@ -7,61 +7,97 @@ on:
       - reopened
       - ready_for_review
       - synchronize
-      - edited
 
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
-  request-team-review:
+  route-reviewers:
     runs-on: ubuntu-latest
     steps:
-      - name: Request the team that owns the source branch
+      - name: Request reviewers based on base branch and author role
         uses: actions/github-script@v7
         with:
           script: |
-            // Do not check out or execute code from the pull request fork.
-            const teamByGroupBranch = {
-              '1_layout_home': 'team_1',
-              '2_documents': 'team_2',
-              '3_dossiers_documents': 'team_3',
-              '4_documents_templates': 'team_4',
-              '5_signing_workflow': 'team_5',
-              '6_tasks': 'team_6',
-              '7_meeting_rooms_birthdays_system': 'team_7',
-              '8_ai_chatbox': 'team_8',
+            const baseBranch = context.payload.pull_request.base.ref;
+            const author = context.payload.pull_request.user.login;
+            const pullNumber = context.payload.pull_request.number;
+            const { owner, repo } = context.repo;
+
+            const groupConfigs = {
+              '1_layout_home': {
+                lead: 'kietphuchau-create',
+                members: ['kietphuchau-create', 'hieunguyenpro1919', 'nguyenduyquan0609-cyber'],
+              },
+              '2_documents': {
+                lead: 'kietle205thll-bot',
+                members: ['kietle205thll-bot', 'nguyenanhdo0949-create', 'khiemtan1712-oss', 'thas109'],
+              },
+              '3_dossiers_documents': {
+                lead: 'thinhabc27-sys',
+                members: ['thinhabc27-sys', 'nhi150807-blip', 'hoctap970-cloud'],
+              },
+              '4_documents_templates': {
+                lead: 'woqzxje',
+                members: ['woqzxje', 'CTnn1001', 'tranghuynhitwork-prog', 'TFong-DEV'],
+              },
+              '5_signing_workflow': {
+                lead: 'thanhhau15112000-dev',
+                members: ['thanhhau15112000-dev', 'krvin2007'],
+              },
+              '6_tasks': {
+                lead: 'phantahuuduc',
+                members: ['phantahuuduc', 'em123ngao-arch', 'dongocphat007-ctrl', 'technology-web'],
+              },
+              '7_meeting_rooms_birthdays_system': {
+                lead: 'Thanhtan1208',
+                members: ['Thanhtan1208', 'sidehieu03-collab', 'leduykhanhdevs', 'domanhquang2006-ops', 'Deus-Tinh'],
+              },
+              '8_ai_chatbox': {
+                lead: 'teiusoa-web',
+                members: ['teiusoa-web', 'tnha4209-cmyk'],
+              },
             };
 
-            const baseBranch = context.payload.pull_request.base.ref;
-            const sourceBranch = context.payload.pull_request.head.ref;
+            let targetReviewers = [];
 
-            if (baseBranch !== 'staging') {
-              core.info(`Skipping PR with base branch: ${baseBranch}`);
+            if (baseBranch === 'staging') {
+              // Kịch bản 3: Nộp vào staging -> Gán thanhhau15112000-dev
+              targetReviewers = ['thanhhau15112000-dev'];
+            } else if (groupConfigs[baseBranch]) {
+              const config = groupConfigs[baseBranch];
+              if (author === config.lead) {
+                // Kịch bản 2: Nhóm trưởng tự mở PR vào nhánh nhóm -> Gán toàn bộ thành viên còn lại trong nhóm
+                targetReviewers = config.members.filter((m) => m !== author);
+              } else {
+                // Kịch bản 1: Thành viên nộp vào nhánh nhóm -> Gán Nhóm trưởng
+                targetReviewers = [config.lead];
+              }
+            } else {
+              core.info(`Skipping PR with unhandled base branch: ${baseBranch}`);
               return;
             }
 
-            const teamSlug = teamByGroupBranch[sourceBranch];
+            // Loại trừ chính tác giả PR khỏi danh sách review
+            targetReviewers = targetReviewers.filter((u) => u !== author);
 
-            if (!teamSlug) {
-              core.info(`No team mapping is configured for source branch: ${sourceBranch}`);
+            if (targetReviewers.length === 0) {
+              core.info('No eligible reviewers found.');
               return;
             }
 
-            const { owner, repo } = context.repo;
-            const pullNumber = context.payload.pull_request.number;
+            // Lấy danh sách reviewer hiện có trên PR để tránh gọi API trùng
             const requested = await github.rest.pulls.listRequestedReviewers({
               owner,
               repo,
               pull_number: pullNumber,
             });
+            const existingUsers = requested.data.users.map((u) => u.login);
+            const toRequest = targetReviewers.filter((u) => !existingUsers.includes(u));
 
-            const alreadyRequested = requested.data.teams.some(
-              (team) => team.slug === teamSlug,
-            );
-
-            if (alreadyRequested) {
-              core.info(`Review already requested from ${teamSlug}.`);
+            if (toRequest.length === 0) {
+              core.info('All target reviewers are already requested.');
               return;
             }
 
@@ -69,7 +105,7 @@ jobs:
               owner,
               repo,
               pull_number: pullNumber,
-              team_reviewers: [teamSlug],
+              reviewers: toRequest,
             });
 
-            core.info(`Requested review from ${teamSlug} for ${sourceBranch} -> ${baseBranch}.`);
+            core.info(`Successfully requested reviewers: ${toRequest.join(', ')} on PR #${pullNumber}`);
