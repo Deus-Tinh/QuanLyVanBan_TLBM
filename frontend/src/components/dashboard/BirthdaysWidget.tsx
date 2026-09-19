@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { useTranslation } from '@i18n/translate';
 
 export interface BirthdayEmployee {
@@ -68,11 +68,16 @@ export default function BirthdaysWidget({
   }
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-xl shadow-sm px-4 py-3 flex items-center gap-3.5 overflow-hidden relative select-none">
+    <div className="bg-surface border border-border-subtle rounded-xl shadow-sm px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2.5 sm:gap-3.5 overflow-hidden relative select-none">
       {/* Label / Badge cố định bên trái */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success text-white text-sm font-bold shrink-0 shadow-xs">
-        <i className="fa-solid fa-cake-candles text-xs" />
-        <span className="whitespace-nowrap">{t('dashboardDetails.happyBirthday') || 'Chúc mừng sinh nhật:'}</span>
+      <div
+        className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-success text-white text-sm font-bold shrink-0 shadow-xs"
+        title={t('dashboardDetails.happyBirthday') || 'Chúc mừng sinh nhật'}
+      >
+        <i className="fa-solid fa-cake-candles text-sm sm:text-xs" />
+        <span className="whitespace-nowrap hidden sm:inline">
+          {t('dashboardDetails.happyBirthday') || 'Chúc mừng sinh nhật:'}
+        </span>
       </div>
 
       {/* Marquee Viewport with Optical Edge Alpha Masking */}
