@@ -476,17 +476,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               {!isSuccess && <i className="fa-solid fa-arrow-right text-xs" />}
             </button>
           </form>
-
-          {/* HUY HIỆU BẢO MẬT & TIÊU CHUẨN AN TOÀN THÔNG TIN */}
-          <div className="mt-5 pt-3.5 border-t border-border-subtle/80 flex items-center justify-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-elevated/70 border border-border-subtle text-[11px] text-muted select-none shadow-2xs">
-              <i className="fa-solid fa-shield-halved text-primary text-xs" />
-              <span className="font-medium text-secondary">Mã hóa TLS 1.3 / AES-256</span>
-              <span className="text-border-subtle">|</span>
-              <i className="fa-solid fa-lock text-primary text-[10px]" />
-              <span>Tiêu chuẩn ISO 27001</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
