@@ -270,12 +270,17 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             </div>
             <div>
               <div className="text-sm font-extrabold text-main leading-tight">
-                QLVB &amp; TL
+                Quản lý văn bản &amp; Tài liệu Bảo Long
               </div>
-              <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
-                HỆ THỐNG ĐIỀU HÀNH
+              <div className="text-[11px] font-bold text-primary tracking-wide">
+                Chuyển đổi số
               </div>
             </div>
+          </div>
+
+          {/* Logo Bảo Long đặt ở vùng trống, dịch sang trái và nâng lên trên theo yêu cầu */}
+          <div className="my-auto py-2 flex flex-col items-start pl-1 sm:pl-2 z-10 pointer-events-none -translate-y-11">
+            <Logo size="xl" className="h-12 md:h-13 opacity-95 drop-shadow-sm" />
           </div>
 
 
@@ -382,10 +387,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         {/* NỬA PHẢI: FORM ĐĂNG NHẬP SANG TRỌNG                          */}
         {/* ============================================================ */}
         <div className="w-full md:w-[55%] bg-surface p-5 md:p-8 flex flex-col justify-center">
-          <div className="mb-3" title="Bảo Long Insurance">
-            <Logo size="lg" />
-          </div>
-
           <h2 className="text-2xl font-extrabold text-main tracking-tight mb-0.5">
             Welcome back
           </h2>
@@ -455,7 +456,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="checkbox"
-                  defaultChecked
                   className="accent-primary cursor-pointer rounded-xs"
                 />
                 <span>Ghi nhớ phiên (30 ngày)</span>
@@ -482,10 +482,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
               {!isSuccess && <i className="fa-solid fa-arrow-right text-xs" />}
             </button>
           </form>
-
-          <div className="mt-5 text-center text-[11px] text-muted">
-            <span>Đồ án ITC Django · GVHD: NCS.ThS. Trần Phương Duy · Nhóm 1</span>
-          </div>
         </div>
       </div>
     </div>
