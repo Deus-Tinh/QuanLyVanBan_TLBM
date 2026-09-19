@@ -1,4 +1,4 @@
-﻿# ĐẶC TẢ NHIỆM VỤ: NHÁNH 5 — PHÂN HỆ TRÌNH KÝ (SIGNING WORKFLOW)
+# ĐẶC TẢ NHIỆM VỤ: NHÁNH 5 — PHÂN HỆ TRÌNH KÝ (SIGNING WORKFLOW)
 
 > **Tài liệu căn cứ:** 
 > - File đặc tả dự án: `ITC - Django - QLVB&TL (2).xlsx` (Sheet `Tổng quan`, dòng R14).
@@ -151,7 +151,7 @@ Xây dựng phân hệ **Trình ký (Signing Workflow)** hoàn chỉnh hỗ tr�
 
 1. **Phân tách mã nguồn độc lập (Modular Isolation):**
    - Backend: Toàn bộ logic nằm trọn gói tại `backend/apps/signing/`.
-   - Frontend: Toàn bộ views/components/styles nằm trọn gói tại `frontend/src/modules/signing/`.
+   - Frontend: Toàn bộ màn hình đặt tại `frontend/src/pages/signing/`, components tại `frontend/src/components/signing/`.
 2. **Kịch bản đồng bộ với PR #3 và Staging:**
    - Trong thời gian PR #3 đang được tái cấu trúc, Nhóm 5 tập trung hoàn thiện module nội bộ độc lập.
    - Khi `staging` chính thức ổn định và merge nền tảng chung, Nhóm 5 thực hiện rebase nhánh `5_signing_workflow` lên `staging` và cắm route `signing` vào router chính mà không gây bất kỳ xung đột nào.

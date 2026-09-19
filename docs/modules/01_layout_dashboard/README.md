@@ -25,7 +25,7 @@ Các nhóm cắm màn hình nghiệp vụ vào `<Outlet />` bên trong `MainLayo
 
 ## 2. Hướng Dẫn Kế Thừa Theme & Token Màu Sắc
 
-Tất cả các thành phần UI nên dùng CSS Variables đã định nghĩa tại `frontend/src/shared/styles/variables.css`:
+Tất cả các thành phần UI nên dùng CSS Variables đã định nghĩa tại `frontend/src/styles/global.css` (hoặc import qua `@styles/global.css`):
 - Màu chính: `var(--color-primary)`
 - Nền bề mặt: `var(--bg-surface)`
 - Nền trang: `var(--bg-app)`
