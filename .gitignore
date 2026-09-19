@@ -96,3 +96,8 @@ desktop.ini
 *.tmp
 *~
 *.orig
+
+# Local Notes & Changelogs
+CHANGELOG_REMOVE_MOCK_DATA.md
+frontend/CHANGELOG_REMOVE_MOCK_DATA.md
+
