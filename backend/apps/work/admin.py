@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 
-from .models import ParticipantRole, Task, TaskAttachment, TaskComment, TaskParticipant, TaskStatus
+from .models import AttachmentKind, ParticipantRole, Task, TaskAttachment, TaskComment, TaskParticipant, TaskStatus
 
 
 class TaskParticipantInlineFormSet(BaseInlineFormSet):
@@ -39,10 +39,34 @@ class TaskParticipantInline(admin.TabularInline):
 
 
 class TaskAttachmentInline(admin.TabularInline):
+    """File đính kèm lúc giao việc: thêm / bỏ được."""
+
     model = TaskAttachment
     extra = 0
-    fields = ("kind", "file", "original_name", "size", "uploaded_by", "uploaded_at")
+    verbose_name = "File đính kèm lúc giao việc"
+    verbose_name_plural = "File đính kèm lúc giao việc"
+    fields = ("file", "original_name", "size", "uploaded_by", "uploaded_at")
     readonly_fields = ("original_name", "size", "uploaded_by", "uploaded_at")
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(kind=AttachmentKind.GIAO_VIEC)
+
+
+class TaskEvidenceInline(admin.TabularInline):
+    """File bằng chứng luôn nằm trong ý kiến, chỉ tạo được từ trang chi tiết công việc."""
+
+    model = TaskAttachment
+    extra = 0
+    verbose_name = "File bằng chứng (trong ý kiến)"
+    verbose_name_plural = "File bằng chứng (trong ý kiến)"
+    fields = ("original_name", "size", "comment", "uploaded_by", "uploaded_at")
+    readonly_fields = fields
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(kind=AttachmentKind.BANG_CHUNG)
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 class TaskCommentInline(admin.TabularInline):
@@ -89,7 +113,7 @@ class TaskAdmin(admin.ModelAdmin):
             ),
         }),
     )
-    inlines = (TaskParticipantInline, TaskAttachmentInline, TaskCommentInline)
+    inlines = (TaskParticipantInline, TaskAttachmentInline, TaskCommentInline, TaskEvidenceInline)
 
     def get_queryset(self, request):
         return super().get_queryset(request).with_status().select_related("created_by")
@@ -116,8 +140,11 @@ class TaskAdmin(admin.ModelAdmin):
             obj.delete()
         for instance in instances:
             # Người tải file / người ghi ý kiến mặc định là tài khoản admin đang thao tác.
-            if isinstance(instance, TaskAttachment) and not instance.uploaded_by_id:
-                instance.uploaded_by = request.user
+            if isinstance(instance, TaskAttachment):
+                if not instance.kind:
+                    instance.kind = AttachmentKind.GIAO_VIEC
+                if not instance.uploaded_by_id:
+                    instance.uploaded_by = request.user
             if isinstance(instance, TaskComment) and not instance.author_id:
                 instance.author = request.user
             instance.save()

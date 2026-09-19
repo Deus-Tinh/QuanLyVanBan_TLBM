@@ -32,6 +32,8 @@ export interface Attachment {
   size: number;
   uploadedBy: Employee;
   uploadedAt: string;
+  /** File bằng chứng luôn thuộc một ý kiến; file giao việc thì null. */
+  commentId: number | null;
   downloadUrl: string;
   canDelete: boolean;
 }
@@ -41,6 +43,8 @@ export interface TaskComment {
   content: string;
   author: Employee;
   createdAt: string;
+  /** File kết quả gửi kèm ý kiến (chính là bằng chứng hoàn thành). */
+  attachments: Attachment[];
 }
 
 export interface TaskPermissions {
@@ -48,6 +52,7 @@ export interface TaskPermissions {
   canDelete: boolean;
   canApprove: boolean;
   canUnapprove: boolean;
+  /** Được đính kèm file kết quả khi ghi ý kiến (chủ trì, cán bộ tham gia). */
   canSubmitEvidence?: boolean;
   canComment?: boolean;
 }

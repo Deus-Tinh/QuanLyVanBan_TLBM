@@ -63,11 +63,15 @@ class WorkTestBase(APITestCase):
         return task
 
     def add_evidence(self, task, user=None, name="bang-chung.pdf"):
+        """Tạo file bằng chứng đúng cách: nằm trong một ý kiến của người nộp."""
+        author = user or self.member
+        comment = TaskComment.objects.create(task=task, author=author, content="Nộp kết quả")
         return TaskAttachment.objects.create(
             task=task,
+            comment=comment,
             kind=AttachmentKind.BANG_CHUNG,
             file=pdf_file(name),
-            uploaded_by=user or self.member,
+            uploaded_by=author,
         )
 
     def status_of(self, task):
@@ -276,6 +280,13 @@ class TaskCreateApiTests(WorkTestBase):
         self.assertEqual([f["fileName"] for f in response.data["attachments"]], ["Kế hoạch.pdf", "Phụ lục.pdf"])
         self.assertEqual(response.data["evidences"], [])
 
+    def test_file_luu_theo_thu_muc_nam_thang(self):
+        self.login(self.creator)
+        self.client.post("/api/work/tasks/", self.payload(attachments=[pdf_file("Kế hoạch.pdf")]), format="multipart")
+        stored = TaskAttachment.objects.get().file.name
+        self.assertTrue(stored.startswith(f"06_tasks/{self.today:%Y/%m}/"), stored)
+        self.assertTrue(stored.endswith(".pdf"))
+
     def test_khong_bat_buoc_file_dinh_kem(self):
         self.login(self.creator)
         response = self.client.post("/api/work/tasks/", self.payload(), format="multipart")
@@ -473,45 +484,125 @@ class TaskOpenApiTests(WorkTestBase):
 
 
 class TaskEvidenceApiTests(WorkTestBase):
-    def submit(self, task, user, *names):
+    """Nộp kết quả = ghi ý kiến kèm file. File kèm theo là bằng chứng hoàn thành."""
+
+    def submit(self, task, user, *names, content="Đã hoàn thành, gửi kết quả."):
         self.login(user)
         files = [pdf_file(name) for name in (names or ("bang-chung.pdf",))]
-        return self.client.post(self.task_url(task, "evidences/"), {"files": files}, format="multipart")
+        return self.client.post(
+            self.task_url(task, "comments/"), {"content": content, "files": files}, format="multipart"
+        )
 
-    def test_tham_gia_nop_bang_chung_chuyen_cho_duyet(self):
+    def detail(self, task):
+        return self.client.get(self.task_url(task)).data
+
+    def test_tham_gia_gui_y_kien_kem_file_chuyen_cho_duyet(self):
         task = self.make_task(first_opened_at=timezone.now())
-        response = self.submit(task, self.member)
+        response = self.submit(task, self.member, "Kết quả.pdf")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
-        self.assertEqual(response.data["status"], "CHO_DUYET")
-        self.assertEqual(len(response.data["evidences"]), 1)
-        self.assertEqual(response.data["evidences"][0]["uploadedBy"]["id"], self.member.pk)
-        self.assertIsNotNone(response.data["firstEvidenceAt"])
+        self.assertEqual(response.data["content"], "Đã hoàn thành, gửi kết quả.")
+        self.assertEqual([f["fileName"] for f in response.data["attachments"]], ["Kết quả.pdf"])
+        self.assertEqual(response.data["attachments"][0]["kind"], "BANG_CHUNG")
+        self.assertEqual(response.data["attachments"][0]["commentId"], response.data["id"])
+        self.assertTrue(response.data["attachments"][0]["canDelete"])
+
+        detail = self.detail(task)
+        self.assertEqual(detail["status"], "CHO_DUYET")
+        self.assertEqual(len(detail["evidences"]), 1)
+        self.assertEqual(detail["evidences"][0]["uploadedBy"]["id"], self.member.pk)
+        self.assertIsNotNone(detail["firstEvidenceAt"])
+
+    def test_y_kien_chi_co_file_khong_can_noi_dung(self):
+        task = self.make_task(first_opened_at=timezone.now())
+        response = self.submit(task, self.member, content="")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["content"], "")
+
+    def test_y_kien_khong_kem_file_khong_doi_trang_thai(self):
+        task = self.make_task(first_opened_at=timezone.now())
+        self.login(self.member)
+        response = self.client.post(self.task_url(task, "comments/"), {"content": "Đang làm, mai xong."})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["attachments"], [])
+        self.assertEqual(self.detail(task)["status"], "DANG_XU_LY")
+
+    def test_nhieu_file_trong_mot_y_kien(self):
+        task = self.make_task(first_opened_at=timezone.now())
+        response = self.submit(task, self.host, "a.pdf", "b.pdf")
+        self.assertEqual(len(response.data["attachments"]), 2)
+        self.assertEqual(TaskComment.objects.filter(task=task).count(), 1)
 
     def test_nguoi_khac_nop_them_khi_dang_cho_duyet(self):
         task = self.make_task(first_opened_at=timezone.now())
         self.submit(task, self.member)
         response = self.submit(task, self.host, "bo-sung.pdf")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(len(response.data["evidences"]), 2)
+        self.assertEqual(len(self.detail(task)["evidences"]), 2)
 
-    def test_chi_dao_khong_duoc_nop(self):
+    def test_chi_dao_va_nguoi_tao_chi_ghi_y_kien_chu_khong_kem_file(self):
         task = self.make_task()
-        response = self.submit(task, self.director)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("đề nghị người tạo thêm bạn", response.data["detail"])
+        for user in (self.director, self.creator):
+            response = self.submit(task, user)
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertIn("gửi ý kiến dạng chữ", response.data["detail"])
+            response = self.client.post(self.task_url(task, "comments/"), {"content": "Góp ý"})
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(TaskAttachment.objects.filter(task=task).exists())
 
     def test_dong_bang_khong_nop_duoc(self):
         task = self.make_task(created_offset=-5, due_offset=-1, first_opened_at=timezone.now())
         response = self.submit(task, self.member)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("đã bị khóa", response.data["detail"])
+        self.assertFalse(TaskComment.objects.filter(task=task).exists())
 
-    def test_da_hoan_thanh_khong_nop_them(self):
+    def test_da_hoan_thanh_khong_kem_file_nhung_van_ghi_y_kien_duoc(self):
         task = self.make_task(approved_at=timezone.now(), approved_by=self.host)
         self.add_evidence(task)
         response = self.submit(task, self.member)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("hủy duyệt trước", response.data["detail"])
+        self.assertEqual(TaskComment.objects.filter(task=task).count(), 1)
+        response = self.client.post(self.task_url(task, "comments/"), {"content": "Cảm ơn đã duyệt"})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_file_sai_dinh_dang_trong_y_kien_bi_chan_va_khong_luu_gi(self):
+        task = self.make_task(first_opened_at=timezone.now())
+        self.login(self.member)
+        bad = SimpleUploadedFile("virus.exe", b"MZ", content_type="application/octet-stream")
+        response = self.client.post(
+            self.task_url(task, "comments/"), {"content": "Kết quả", "files": [bad]}, format="multipart"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("PDF, DOC/DOCX, JPG, JPEG hoặc PNG", str(response.data["files"]))
+        self.assertFalse(TaskComment.objects.filter(task=task).exists())
+
+    def test_khong_con_api_nop_bang_chung_rieng(self):
+        task = self.make_task()
+        self.login(self.member)
+        response = self.client.post(self.task_url(task, "evidences/"), {"files": [pdf_file()]}, format="multipart")
+        self.assertIn(response.status_code, (status.HTTP_404_NOT_FOUND, status.HTTP_405_METHOD_NOT_ALLOWED))
+
+    def test_xoa_file_thi_y_kien_van_con(self):
+        task = self.make_task(first_opened_at=timezone.now())
+        evidence = self.add_evidence(task, user=self.member)
+        comment_id = evidence.comment_id
+        self.login(self.member)
+        response = self.client.delete(self.task_url(task, f"evidences/{evidence.pk}/"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertTrue(TaskComment.objects.filter(pk=comment_id).exists())
+        comments = self.client.get(self.task_url(task, "comments/")).data
+        self.assertEqual(comments[0]["content"], "Nộp kết quả")
+        self.assertEqual(comments[0]["attachments"], [])
+
+    def test_rang_buoc_db_file_bang_chung_phai_nam_trong_y_kien(self):
+        from django.db import IntegrityError, transaction
+
+        task = self.make_task()
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            TaskAttachment.objects.create(
+                task=task, kind=AttachmentKind.BANG_CHUNG, file=pdf_file(), uploaded_by=self.member
+            )
 
     def test_chi_nguoi_upload_xoa_duoc_file_cua_minh(self):
         task = self.make_task(first_opened_at=timezone.now())
@@ -583,19 +674,30 @@ class TaskApprovalApiTests(WorkTestBase):
         self.assertEqual(response.data["status"], "HOAN_THANH")
         self.assertEqual(response.data["approvedBy"]["id"], self.director.pk)
 
-    def test_tham_gia_va_nguoi_tao_khong_duoc_duyet(self):
+    def test_tham_gia_va_admin_khong_lien_quan_khong_duoc_duyet(self):
         task = self.waiting_task()
-        for user in (self.member, self.creator):
+        for user in (self.member, self.admin):
             self.login(user)
             response = self.client.post(self.task_url(task, "approve/"))
             self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertIn("người tạo, người chủ trì hoặc người chỉ đạo", response.data["detail"])
+
+    def test_nguoi_tao_duyet_va_huy_duyet_duoc(self):
+        task = self.waiting_task()
+        self.login(self.creator)
+        response = self.client.post(self.task_url(task, "approve/"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["approvedBy"]["id"], self.creator.pk)
+        self.assertTrue(response.data["permissions"]["canUnapprove"])
+        response = self.client.post(self.task_url(task, "unapprove/"))
+        self.assertEqual(response.data["status"], "CHO_DUYET")
 
     def test_chua_co_bang_chung_khong_duyet_duoc(self):
         task = self.make_task(first_opened_at=timezone.now())
         self.login(self.host)
         response = self.client.post(self.task_url(task, "approve/"))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Hãy chờ người chủ trì hoặc cán bộ tham gia nộp", response.data["detail"])
+        self.assertIn("gửi ý kiến kèm file kết quả", response.data["detail"])
 
     def test_cho_duyet_qua_han_van_duyet_duoc(self):
         task = self.waiting_task(created_offset=-5, due_offset=-1)

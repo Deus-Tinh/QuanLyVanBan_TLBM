@@ -57,9 +57,13 @@ def validate_work_file(file):
 
 
 def attachment_upload_to(instance, filename):
-    """Lưu file bằng tên ngẫu nhiên để tránh trùng tên và lỗi ký tự tiếng Việt."""
+    """
+    Lưu vào media/06_tasks/<năm>/<tháng>/ theo quy định của PM.
+    Tên file trên đĩa là chuỗi ngẫu nhiên để tránh trùng tên và lỗi ký tự tiếng Việt;
+    tên gốc được giữ ở cột original_name.
+    """
     extension = Path(filename).suffix.lower()
-    return f"work/tasks/{instance.task_id}/{instance.kind.lower()}/{uuid.uuid4().hex}{extension}"
+    return f"06_tasks/{timezone.localdate():%Y/%m}/{uuid.uuid4().hex}{extension}"
 
 
 def delete_stored_files_on_commit(file_names):
@@ -129,6 +133,10 @@ class ParticipantRole(models.TextChoices):
     CHU_TRI = "CHU_TRI", "Chủ trì giải quyết công việc"
     CHI_DAO = "CHI_DAO", "Chỉ đạo - Theo dõi tiến độ xử lý công việc"
     THAM_GIA = "THAM_GIA", "Cán bộ tham gia giải quyết công việc"
+
+
+# Người được duyệt / hủy duyệt: người tạo, chủ trì, chỉ đạo.
+APPROVER_ROLES = {ROLE_CREATOR, ParticipantRole.CHU_TRI, ParticipantRole.CHI_DAO}
 
 
 class AttachmentKind(models.TextChoices):
@@ -204,6 +212,10 @@ class Task(models.Model):
         related_name="work_created_tasks",
     )
     is_public = models.BooleanField("Trạng thái hiển thị", default=True)
+    # TODO: FK toi van ban cua nhom 2 - cho ten model
+    # Công việc có thể phát sinh từ Văn bản đến / Văn bản đi. Khi nhóm 2 chốt tên model, thêm:
+    # van_ban = models.ForeignKey("<app>.<Model>", verbose_name="Văn bản liên quan",
+    #                             on_delete=models.SET_NULL, null=True, blank=True, related_name="work_tasks")
 
     # Mốc hệ thống phục vụ tính trạng thái (đầy đủ giờ - phút - giây).
     first_opened_at = models.DateTimeField("Thời điểm mở lần đầu", null=True, blank=True)
@@ -329,19 +341,19 @@ class Task(models.Model):
     def check_submit_evidence(self, user):
         if not self.roles_of(user) & {ParticipantRole.CHU_TRI, ParticipantRole.THAM_GIA}:
             raise TaskRuleError(
-                "Chỉ người chủ trì hoặc cán bộ tham gia mới được nộp bằng chứng hoàn thành. "
-                "Nếu bạn cần tham gia xử lý, hãy đề nghị người tạo thêm bạn vào công việc."
+                "Chỉ người chủ trì hoặc cán bộ tham gia mới được đính kèm file kết quả vào ý kiến. "
+                "Hãy bỏ file và gửi ý kiến dạng chữ, hoặc báo người chủ trì nộp kết quả."
             )
         status = self.get_status()
         if status == TaskStatus.HOAN_THANH:
             raise TaskRuleError(
-                "Công việc đã được duyệt hoàn thành nên không thể nộp thêm bằng chứng. "
-                "Nếu cần bổ sung, hãy đề nghị người chủ trì hoặc người chỉ đạo hủy duyệt trước.",
+                "Công việc đã được duyệt hoàn thành nên không thể đính kèm thêm file kết quả. "
+                "Hãy gửi ý kiến không kèm file, hoặc đề nghị người có quyền duyệt hủy duyệt trước.",
                 TaskRuleError.INVALID_STATE,
             )
         if status in FROZEN_STATUSES:
             raise TaskRuleError(
-                FROZEN_MESSAGE.format(action="nộp bằng chứng"), TaskRuleError.INVALID_STATE
+                FROZEN_MESSAGE.format(action="nộp kết quả"), TaskRuleError.INVALID_STATE
             )
 
     def check_delete_evidence(self, user, attachment):
@@ -370,10 +382,10 @@ class Task(models.Model):
             )
 
     def check_approve(self, user):
-        if not self.roles_of(user) & {ParticipantRole.CHU_TRI, ParticipantRole.CHI_DAO}:
+        if not self.roles_of(user) & APPROVER_ROLES:
             raise TaskRuleError(
-                "Chỉ người chủ trì hoặc người chỉ đạo mới được duyệt công việc. "
-                "Hãy báo người chủ trì hoặc người chỉ đạo vào duyệt."
+                "Chỉ người tạo, người chủ trì hoặc người chỉ đạo mới được duyệt công việc. "
+                "Hãy báo một trong những người này vào duyệt."
             )
         status = self.get_status()
         if status == TaskStatus.HOAN_THANH:
@@ -385,16 +397,16 @@ class Task(models.Model):
             raise TaskRuleError(FROZEN_MESSAGE.format(action="duyệt"), TaskRuleError.INVALID_STATE)
         if status != TaskStatus.CHO_DUYET:
             raise TaskRuleError(
-                "Công việc chưa có file bằng chứng nào nên chưa thể duyệt. "
-                "Hãy chờ người chủ trì hoặc cán bộ tham gia nộp bằng chứng hoàn thành.",
+                "Công việc chưa có file kết quả nào nên chưa thể duyệt. "
+                "Hãy chờ người chủ trì hoặc cán bộ tham gia gửi ý kiến kèm file kết quả.",
                 TaskRuleError.INVALID_STATE,
             )
 
     def check_unapprove(self, user):
-        if not self.roles_of(user) & {ParticipantRole.CHU_TRI, ParticipantRole.CHI_DAO}:
+        if not self.roles_of(user) & APPROVER_ROLES:
             raise TaskRuleError(
-                "Chỉ người chủ trì hoặc người chỉ đạo mới được hủy duyệt công việc. "
-                "Hãy báo người chủ trì hoặc người chỉ đạo nếu cần thu hồi kết quả duyệt."
+                "Chỉ người tạo, người chủ trì hoặc người chỉ đạo mới được hủy duyệt công việc. "
+                "Hãy báo một trong những người này nếu cần thu hồi kết quả duyệt."
             )
         if self.get_status() != TaskStatus.HOAN_THANH:
             raise TaskRuleError(
@@ -522,6 +534,15 @@ class TaskAttachment(models.Model):
         related_name="attachments",
     )
     kind = models.CharField("Loại file", max_length=20, choices=AttachmentKind.choices)
+    # File bằng chứng luôn nằm trong một ý kiến: nộp kết quả = ghi ý kiến kèm file.
+    comment = models.ForeignKey(
+        TaskComment,
+        verbose_name="Ý kiến chứa file",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="attachments",
+    )
     file = models.FileField(
         "File",
         upload_to=attachment_upload_to,
@@ -544,6 +565,19 @@ class TaskAttachment(models.Model):
         ordering = ["uploaded_at", "id"]
         indexes = [
             models.Index(fields=["task", "kind"], name="work_attachment_task_kind_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(kind=AttachmentKind.GIAO_VIEC, comment__isnull=True)
+                    | Q(kind=AttachmentKind.BANG_CHUNG, comment__isnull=False)
+                ),
+                name="work_attachment_evidence_in_comment",
+                violation_error_message=(
+                    "File bằng chứng phải nằm trong một ý kiến, còn file giao việc thì không. "
+                    "Hãy nộp kết quả bằng cách ghi ý kiến kèm file trên trang chi tiết công việc."
+                ),
+            ),
         ]
 
     def __str__(self):

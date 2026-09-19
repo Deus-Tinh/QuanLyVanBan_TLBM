@@ -60,12 +60,23 @@ class AttachmentSerializer(serializers.ModelSerializer):
     fileName = serializers.CharField(source="original_name", read_only=True)
     uploadedBy = EmployeeBriefSerializer(source="uploaded_by", read_only=True)
     uploadedAt = serializers.DateTimeField(source="uploaded_at", read_only=True)
+    commentId = serializers.IntegerField(source="comment_id", read_only=True)
     downloadUrl = serializers.SerializerMethodField()
     canDelete = serializers.SerializerMethodField()
 
     class Meta:
         model = TaskAttachment
-        fields = ["id", "kind", "fileName", "size", "uploadedBy", "uploadedAt", "downloadUrl", "canDelete"]
+        fields = [
+            "id",
+            "kind",
+            "fileName",
+            "size",
+            "uploadedBy",
+            "uploadedAt",
+            "commentId",
+            "downloadUrl",
+            "canDelete",
+        ]
 
     def get_downloadUrl(self, obj):
         url = reverse("work:attachment-download", kwargs={"pk": obj.pk})
@@ -439,35 +450,56 @@ class TaskWriteSerializer(serializers.Serializer):
 
 
 # ==========================================================================
-# ===== KHU VỰC: Bằng chứng hoàn thành, ý kiến =====
+# ===== KHU VỰC: Ý kiến xử lý (kèm file kết quả = bằng chứng hoàn thành) =====
 # ==========================================================================
 
-class EvidenceUploadSerializer(serializers.Serializer):
-    files = serializers.ListField(
-        child=work_file_field(),
-        allow_empty=False,
-        error_messages={
-            "required": "Chưa có file bằng chứng nào được chọn. Hãy chọn ít nhất một file rồi bấm nộp.",
-            "empty": "Chưa có file bằng chứng nào được chọn. Hãy chọn ít nhất một file rồi bấm nộp.",
-        },
-    )
-
-
 class CommentSerializer(serializers.ModelSerializer):
+    """
+    Ghi ý kiến, có thể kèm file (không bắt buộc). File kèm theo là file kết quả (bằng chứng):
+    có file đầu tiên thì công việc chuyển sang Chờ duyệt.
+    """
+
     content = serializers.CharField(
         max_length=5000,
+        allow_blank=True,
+        required=False,
+        default="",
         error_messages={
-            "required": "Hãy nhập nội dung ý kiến trước khi gửi.",
-            "blank": "Nội dung ý kiến đang trống. Hãy nhập nội dung trước khi gửi.",
             "max_length": "Ý kiến dài quá 5000 ký tự. Hãy rút gọn hoặc tách thành nhiều ý kiến.",
         },
     )
+    files = serializers.ListField(child=work_file_field(), required=False, write_only=True)
     author = EmployeeBriefSerializer(read_only=True)
     createdAt = serializers.DateTimeField(source="created_at", read_only=True)
+    attachments = serializers.SerializerMethodField()
 
     class Meta:
         model = TaskComment
-        fields = ["id", "content", "author", "createdAt"]
+        fields = ["id", "content", "files", "author", "createdAt", "attachments"]
+
+    def get_attachments(self, obj):
+        return AttachmentSerializer(list(obj.attachments.all()), many=True, context=self.context).data
+
+    def validate(self, attrs):
+        attrs["content"] = attrs.get("content", "").strip()
+        if not attrs["content"] and not attrs.get("files"):
+            raise serializers.ValidationError({
+                "content": "Ý kiến đang trống. Hãy nhập nội dung hoặc đính kèm file kết quả trước khi gửi."
+            })
+        return attrs
+
+    def create(self, validated_data):
+        files = validated_data.pop("files", [])
+        comment = TaskComment.objects.create(**validated_data)
+        for uploaded in files:
+            TaskAttachment.objects.create(
+                task=comment.task,
+                comment=comment,
+                kind=AttachmentKind.BANG_CHUNG,
+                file=uploaded,
+                uploaded_by=comment.author,
+            )
+        return comment
 
 
 # ==========================================================================

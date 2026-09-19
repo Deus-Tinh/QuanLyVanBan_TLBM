@@ -35,7 +35,6 @@ from .models import (
 from .serializers import (
     CommentSerializer,
     EmployeeSerializer,
-    EvidenceUploadSerializer,
     LatestTaskSerializer,
     MeSerializer,
     TaskDetailSerializer,
@@ -308,26 +307,6 @@ class TaskViewSet(
             ).update(first_opened_at=timezone.now(), first_opened_by=request.user)
         return self.detail_response(task.pk)
 
-    @action(detail=True, methods=["post"], url_path="evidences")
-    def submit_evidence(self, request, pk=None):
-        task = self.get_object()
-        try:
-            task.check_submit_evidence(request.user)
-        except TaskRuleError as error:
-            raise_rule_error(error)
-
-        serializer = EvidenceUploadSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            for uploaded in serializer.validated_data["files"]:
-                TaskAttachment.objects.create(
-                    task=task,
-                    kind=AttachmentKind.BANG_CHUNG,
-                    file=uploaded,
-                    uploaded_by=request.user,
-                )
-        return self.detail_response(task.pk, status.HTTP_201_CREATED)
-
     @action(detail=True, methods=["delete"], url_path=r"evidences/(?P<attachment_id>\d+)")
     def delete_evidence(self, request, pk=None, attachment_id=None):
         task = self.get_object()
@@ -390,21 +369,46 @@ class TaskViewSet(
 
     @action(detail=True, methods=["get", "post"])
     def comments(self, request, pk=None):
+        """
+        GET: danh sách ý kiến (cũ trước, mới sau) kèm file.
+        POST: ghi ý kiến, có thể kèm file kết quả; đây là cách duy nhất để nộp bằng chứng hoàn thành.
+        """
         task = self.get_object()
+        context = {**self.get_serializer_context(), "task": task}
 
         if request.method == "GET":
-            items = TaskComment.objects.filter(task=task).select_related("author").order_by("created_at", "id")
-            return Response(CommentSerializer(items, many=True).data)
+            attachments = Prefetch(
+                "attachments",
+                queryset=TaskAttachment.objects.select_related("uploaded_by").order_by("uploaded_at", "id"),
+            )
+            items = (
+                TaskComment.objects.filter(task=task)
+                .select_related("author")
+                .prefetch_related(attachments)
+                .order_by("created_at", "id")
+            )
+            return Response(CommentSerializer(items, many=True, context=context).data)
 
         try:
             task.check_comment(request.user)
         except TaskRuleError as error:
             raise_rule_error(error)
 
-        serializer = CommentSerializer(data=request.data)
+        serializer = CommentSerializer(data=request.data, context=context)
         serializer.is_valid(raise_exception=True)
-        comment = serializer.save(task=task, author=request.user)
-        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
+        if serializer.validated_data.get("files"):
+            try:
+                task.check_submit_evidence(request.user)
+            except TaskRuleError as error:
+                raise_rule_error(error)
+
+        with transaction.atomic():
+            comment = serializer.save(task=task, author=request.user)
+
+        # Đọc lại công việc để cờ canDelete của file mới tính theo trạng thái mới nhất.
+        fresh_task = self.get_queryset().get(pk=task.pk)
+        data = CommentSerializer(comment, context={**context, "task": fresh_task}).data
+        return Response(data, status=status.HTTP_201_CREATED)
 
 
 class AttachmentViewSet(WorkApiMixin, viewsets.GenericViewSet):
