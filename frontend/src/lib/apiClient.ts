@@ -44,6 +44,29 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+async function handleResponse<T>(res: Response): Promise<T> {
+  const headersObj = res.headers;
+  const contentType = headersObj?.get ? headersObj.get('content-type') : null;
+  const isJson = !contentType || contentType.includes('application/json');
+  let data: unknown;
+  if (isJson && typeof res.json === 'function') {
+    data = await res.json().catch(() => ({}));
+  } else if (typeof res.text === 'function') {
+    data = await res.text();
+  } else {
+    data = {};
+  }
+
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      typeof data === 'object' && data !== null ? (data as ApiErrorResponse) : { error: String(data) }
+    );
+  }
+
+  return data as T;
+}
+
 export async function apiClient<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
@@ -95,10 +118,10 @@ export async function apiClient<T = unknown>(
               processQueue(null, newAccess);
               isRefreshing = false;
 
-              // Thực hiện lại request ban đầu với token mới
+              // Thực hiện lại request ban đầu với token mới và kiểm tra response.ok
               headers.set('Authorization', `Bearer ${newAccess}`);
               const retryRes = await fetch(url, { ...options, headers });
-              return (await retryRes.json()) as T;
+              return await handleResponse<T>(retryRes);
             }
           }
           throw new Error('Refresh token invalid');
@@ -120,8 +143,8 @@ export async function apiClient<T = unknown>(
             resolve: (newToken: string) => {
               headers.set('Authorization', `Bearer ${newToken}`);
               fetch(url, { ...options, headers })
-                .then((res) => res.json())
-                .then((data) => resolve(data as T))
+                .then((res) => handleResponse<T>(res))
+                .then(resolve)
                 .catch(reject);
             },
             reject,
@@ -131,23 +154,7 @@ export async function apiClient<T = unknown>(
     }
   }
 
-  const headersObj = response.headers;
-  const contentType = headersObj?.get ? headersObj.get('content-type') : null;
-  const isJson = !contentType || contentType.includes('application/json');
-  let data: unknown;
-  if (isJson && typeof response.json === 'function') {
-    data = await response.json().catch(() => ({}));
-  } else if (typeof response.text === 'function') {
-    data = await response.text();
-  } else {
-    data = {};
-  }
-
-  if (!response.ok) {
-    throw new ApiError(response.status, typeof data === 'object' && data !== null ? (data as ApiErrorResponse) : { error: String(data) });
-  }
-
-  return data as T;
+  return await handleResponse<T>(response);
 }
 
 apiClient.get = <T>(endpoint: string, options?: RequestInit) =>

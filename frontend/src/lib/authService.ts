@@ -32,7 +32,7 @@ export const authService = {
   async login(credentials: { username: string; password: string }): Promise<UserSession> {
     const payload = {
       username: credentials.username.trim(),
-      password: credentials.password.trim(),
+      password: credentials.password,
     };
 
     const data = await apiClient.post<LoginResponse>('/api/auth/login/', payload);
@@ -47,8 +47,7 @@ export const authService = {
     const refreshToken = data.refresh || '';
     const rawUser = data.user || {};
 
-    const isRoleAdmin =
-      rawUser.role === 'admin' || credentials.username.toLowerCase().includes('admin');
+    const isRoleAdmin = rawUser.role === 'admin';
 
     const session: UserSession = {
       username: rawUser.username || credentials.username.trim(),

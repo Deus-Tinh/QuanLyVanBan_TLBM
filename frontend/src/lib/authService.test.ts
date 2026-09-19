@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import authService from './authService';
+import apiClient, { ApiError } from './apiClient';
 
 describe('authService Unit Tests (Issue #8 Django Auth & Session Management)', () => {
   beforeEach(() => {
@@ -42,6 +43,80 @@ describe('authService Unit Tests (Issue #8 Django Auth & Session Management)', (
     expect(authService.getSession()?.username).toBe('admin');
   });
 
+  it('does NOT infer admin role if backend returns role staff, even if username contains admin', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({
+        success: true,
+        access: 'jwt-access-token-guest',
+        refresh: 'jwt-refresh-token-guest',
+        user: {
+          id: 99,
+          username: 'admin_intern',
+          fullName: 'Thực Tập Sinh',
+          role: 'staff',
+          roleTitle: 'Cán bộ thực tập',
+        },
+      }),
+    });
+
+    const session = await authService.login({
+      username: 'admin_intern',
+      password: 'InternPassword123',
+    });
+
+    // Quyền phải là staff theo backend, không tự đoán admin
+    expect(session.role).toBe('staff');
+    expect(session.roleTitle).toBe('Cán bộ thực tập');
+  });
+
+  it('preserves exact password without trimming whitespace', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({
+        success: true,
+        access: 'jwt-token-whitespace',
+        user: { id: 2, username: 'test_user', role: 'staff' },
+      }),
+    });
+    globalThis.fetch = fetchMock;
+
+    const rawPasswordWithSpaces = '   my secure password with space   ';
+    await authService.login({
+      username: '  test_user  ',
+      password: rawPasswordWithSpaces,
+    });
+
+    expect(fetchMock).toHaveBeenCalled();
+    const calledBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(calledBody.username).toBe('test_user'); // username được trim
+    expect(calledBody.password).toBe(rawPasswordWithSpaces); // password KHÔNG bị trim
+  });
+
+  it('does not store token or session when login fails', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({
+        success: false,
+        error: 'Tên đăng nhập hoặc mật khẩu không chính xác!',
+      }),
+    });
+
+    await expect(
+      authService.login({ username: 'user', password: 'wrong' })
+    ).rejects.toThrow(ApiError);
+
+    expect(localStorage.getItem('tlbm_access_token')).toBeNull();
+    expect(localStorage.getItem('tlbm_session')).toBeNull();
+    expect(authService.isAuthenticated()).toBe(false);
+  });
+
   it('clears all credentials and dispatches tlbm_auth_changed on logout', async () => {
     localStorage.setItem('tlbm_access_token', 'token-to-be-removed');
     localStorage.setItem('tlbm_refresh_token', 'refresh-to-be-removed');
@@ -64,5 +139,72 @@ describe('authService Unit Tests (Issue #8 Django Auth & Session Management)', (
     expect(localStorage.getItem('tlbm_session')).toBeNull();
     expect(authService.isAuthenticated()).toBe(false);
     expect(eventSpy).toHaveBeenCalled();
+  });
+
+  it('auto-refreshes token on 401 in apiClient and retries original request', async () => {
+    localStorage.setItem('tlbm_access_token', 'expired-token');
+    localStorage.setItem('tlbm_refresh_token', 'valid-refresh-token');
+
+    let requestCount = 0;
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      requestCount++;
+      if (url.includes('/api/auth/token/refresh/')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({ access: 'brand-new-access-token' }),
+        });
+      }
+
+      if (requestCount === 1) {
+        // Request đầu tiên bị 401
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({ error: 'Token expired' }),
+        });
+      }
+
+      // Request thứ 2 sau khi retry với token mới -> thành công
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ success: true, data: 'secure content' }),
+      });
+    });
+
+    const result = await apiClient<{ success: boolean; data: string }>('/api/protected-resource/');
+    expect(result.data).toBe('secure content');
+    expect(localStorage.getItem('tlbm_access_token')).toBe('brand-new-access-token');
+  });
+
+  it('clears session when refresh token fails on 401', async () => {
+    localStorage.setItem('tlbm_access_token', 'expired-token');
+    localStorage.setItem('tlbm_refresh_token', 'invalid-refresh-token');
+    localStorage.setItem('tlbm_session', JSON.stringify({ username: 'user' }));
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/auth/token/refresh/')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({ error: 'Refresh token blacklisted' }),
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 401,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: async () => ({ error: 'Unauthorized' }),
+      });
+    });
+
+    await expect(apiClient('/api/protected/')).rejects.toThrow(ApiError);
+    expect(localStorage.getItem('tlbm_access_token')).toBeNull();
+    expect(localStorage.getItem('tlbm_session')).toBeNull();
   });
 });
