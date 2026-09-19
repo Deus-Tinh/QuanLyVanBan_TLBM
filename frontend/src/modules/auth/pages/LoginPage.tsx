@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { ActivePageId } from '../../../shared/types/navigation';
 import { UserSession } from '../types';
-import { Logo } from '../../../shared/components/common/Logo';
 import '../styles/login-characters.css';
 
 interface LoginPageProps {
@@ -276,11 +275,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
                 Chuyển đổi số
               </div>
             </div>
-          </div>
-
-          {/* Logo Bảo Long đặt ở vùng trống, dịch sang trái và nâng lên trên theo yêu cầu */}
-          <div className="my-auto py-2 flex flex-col items-start pl-1 sm:pl-2 z-10 pointer-events-none -translate-y-11">
-            <Logo size="xl" className="h-12 md:h-13 opacity-95 drop-shadow-sm" />
           </div>
 
 
