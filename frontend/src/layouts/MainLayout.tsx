@@ -79,12 +79,8 @@ export default function MainLayout({
     });
   };
 
-  // Phong cách giao diện: 'classic' | 'modern' (Mặc định Hiện đại Glassmorphism)
-  const [, setInterfaceStyle] = useState<'classic' | 'modern'>(() => {
-    return (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'modern';
-  });
-
   // Trạng thái hover để mở rộng thanh Sidebar tự động khi rê chuột
+
   const [isSidebarHovered, setIsSidebarHovered] = useState<boolean>(false);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -162,9 +158,7 @@ export default function MainLayout({
     const handleSettingsUpdate = () => {
       const savedTouch = localStorage.getItem('tlbm_enable_assistive_touch');
       setIsAssistiveTouchEnabled(savedTouch === 'true');
-      const savedStyle = (localStorage.getItem('tlbm_interface_style') as 'classic' | 'modern') || 'modern';
-      setInterfaceStyle(savedStyle);
-      document.documentElement.setAttribute('data-ui-style', savedStyle);
+      document.documentElement.setAttribute('data-ui-style', 'modern');
     };
 
     handleSettingsUpdate();

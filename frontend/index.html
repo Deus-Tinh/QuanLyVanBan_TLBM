@@ -20,8 +20,7 @@
           if (t === 'dark' || t === 'light') {
             document.documentElement.setAttribute('data-theme', t);
           }
-          var s = localStorage.getItem('tlbm_interface_style') || 'modern';
-          document.documentElement.setAttribute('data-ui-style', s);
+          document.documentElement.setAttribute('data-ui-style', 'modern');
         } catch (e) {}
       })();
     </script>

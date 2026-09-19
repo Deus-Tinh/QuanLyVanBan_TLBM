@@ -1,73 +1,61 @@
-﻿import React from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from './DashboardPage';
 
-describe('DashboardPage Style Switching', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it('renders Modern UI by default when tlbm_interface_style is not set', () => {
+describe('DashboardPage Component', () => {
+  it('renders Modern Dashboard UI as standard layout', () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
     );
 
-    // Modern UI elements: 3 modern metric cards with 0 values (no mock data)
+    // Modern UI elements: 3 metric cards with 0 values (no mock data)
     expect(screen.getAllByText('0')).toHaveLength(3);
     expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Nhập số ký hiệu/i)).toBeInTheDocument();
   });
 
-  it('renders Classic UI when tlbm_interface_style is set to classic', () => {
-    localStorage.setItem('tlbm_interface_style', 'classic');
+  it('renders quick action button for meeting room booking', () => {
     render(
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
     );
 
-    // Classic UI elements: 3 navy stat cards and birthday marquee
-    expect(screen.getByText(/Văn bản đến \(2026\)/i)).toBeInTheDocument();
+    const bookingBtn = screen.getByRole('button', { name: /Đặt phòng họp/i });
+    expect(bookingBtn).toBeInTheDocument();
+  });
+
+  it('triggers onNavigate callback when meeting room button is clicked', () => {
+    const handleNavigate = vi.fn();
+    render(
+      <MemoryRouter>
+        <DashboardPage onNavigate={handleNavigate} />
+      </MemoryRouter>
+    );
+
+    const bookingBtn = screen.getByRole('button', { name: /Đặt phòng họp/i });
+    fireEvent.click(bookingBtn);
+
+    expect(handleNavigate).toHaveBeenCalledWith('meetings');
+  });
+
+  it('renders birthday marquee banner and document overview sections', () => {
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
+    );
+
     expect(screen.getByText(/Chúc mừng sinh nhật:/i)).toBeInTheDocument();
-  });
-
-  it('renders Modern UI when tlbm_interface_style is set to modern', () => {
-    localStorage.setItem('tlbm_interface_style', 'modern');
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>
-    );
-
-    // Modern UI elements: 3 modern metric cards with 0 values (no mock data)
-    expect(screen.getAllByText('0')).toHaveLength(3);
-    expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Nhập số ký hiệu/i)).toBeInTheDocument();
-  });
-
-  it('dynamically switches to Modern UI when tlbm_settings_updated event fires', () => {
-    localStorage.setItem('tlbm_interface_style', 'classic');
-    render(
-      <MemoryRouter>
-        <DashboardPage />
-      </MemoryRouter>
-    );
-
-    expect(screen.getByText(/Văn bản đến \(2026\)/i)).toBeInTheDocument();
-
-    // Change to modern and dispatch event
-    act(() => {
-      localStorage.setItem('tlbm_interface_style', 'modern');
-      window.dispatchEvent(new Event('tlbm_settings_updated'));
-    });
-
-    expect(screen.getAllByText('0')).toHaveLength(3);
-    expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Nhập số ký hiệu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Danh Sách Văn Bản Đến Mới Nhất/i)).toBeInTheDocument();
+    expect(screen.getByText(/Danh Sách Văn Bản Đi Nội Bộ Mới Nhất/i)).toBeInTheDocument();
   });
 });
+
+
+
 
