@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import NotificationStreams from './NotificationStreams';
 import ThemeSelector from './ThemeSelector';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -11,9 +11,7 @@ interface AppHeaderProps {
   onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
   onToggleSidebar: () => void;
-  onHoverSidebar?: () => void;
   isSidebarOpen?: boolean;
-  interfaceStyle?: 'classic' | 'modern';
   onNavigate?: (pageId: ActivePageId) => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
@@ -27,9 +25,7 @@ export default function AppHeader({
   onSelectTheme,
   onToggleTheme,
   onToggleSidebar,
-  onHoverSidebar,
   isSidebarOpen,
-  interfaceStyle = 'classic',
   onNavigate,
   preferredLightTheme,
   preferredDarkTheme,
@@ -44,9 +40,8 @@ export default function AppHeader({
           <>
             <button
               type="button"
-              className="header-menu-btn w-10 h-10 rounded-xl flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
+              className="header-menu-btn lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
               onClick={onToggleSidebar}
-              onMouseEnter={onHoverSidebar}
               title={t('header.menuTooltip')}
               aria-label={t('header.menuAria')}
             >
@@ -55,7 +50,6 @@ export default function AppHeader({
             <div
               className="flex items-center cursor-pointer transition-transform hover:scale-[1.03]"
               onClick={() => onNavigate?.('dashboard')}
-              onMouseEnter={interfaceStyle === 'modern' ? onHoverSidebar : undefined}
               title="Bảo Long Insurance - Về Trang Chủ"
             >
               <Logo size="xl" className="h-11 sm:h-12" />

@@ -18,7 +18,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [error, setError] = useState<string>('');
+  const [errorKey, setErrorKey] = useState<string>('');
+  const [customError, setCustomError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
@@ -39,7 +40,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   };
 
   const handleLoginSubmit = async ({ username, password }: { username: string; password: string }) => {
-    setError('');
+    setErrorKey('');
+    setCustomError('');
     setIsLoading(true);
 
     try {
@@ -78,9 +80,19 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           };
         } else {
           setIsLoading(false);
-          const errorMsg =
-            data.error || data.detail || data.message || t('auth.invalidCredentials');
-          setError(errorMsg);
+          // Chuẩn hóa lỗi theo i18n để tự động đổi ngôn ngữ khi người dùng chọn VI/EN
+          if (
+            response.status === 401 ||
+            response.status === 400 ||
+            data.error?.toLowerCase().includes('không chính xác') ||
+            data.detail?.toLowerCase().includes('credentials')
+          ) {
+            setErrorKey('auth.invalidCredentials');
+          } else if (data.error || data.detail || data.message) {
+            setCustomError(data.error || data.detail || data.message);
+          } else {
+            setErrorKey('auth.invalidCredentials');
+          }
           return;
         }
       }
@@ -168,9 +180,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
       }
 
       setIsLoading(false);
-      setError(t('auth.networkError'));
+      setErrorKey('auth.networkError');
     }
   };
+
+  const activeError = errorKey ? (t(errorKey) as string) : customError;
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-3 sm:p-4 md:p-6 bg-app bg-auth-backdrop relative overflow-y-auto font-sans">
@@ -200,14 +214,14 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           showPassword={showPassword}
           isTyping={isTyping}
           isSuccess={isSuccess}
-          isError={Boolean(error)}
+          isError={Boolean(activeError)}
         />
 
         {/* Nửa phải: Form đăng nhập */}
         <LoginForm
           isLoading={isLoading}
           isSuccess={isSuccess}
-          error={error}
+          error={activeError}
           onSubmit={handleLoginSubmit}
           onUsernameFocusChange={setIsUsernameFocused}
           onPasswordFocusChange={setIsPasswordFocused}
