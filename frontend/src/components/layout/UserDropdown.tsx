@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ActivePageId } from '@app-types/navigation';
 import { useTranslation } from '@i18n/translate';
 
@@ -17,12 +17,52 @@ interface SessionUser {
 export default function UserDropdown({ onNavigate }: UserDropdownProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const closeWithAnimation = useCallback(() => {
+    if (!isOpen || isClosing) return;
+    setIsClosing(true);
+    if (closingTimerRef.current) {
+      clearTimeout(closingTimerRef.current);
+    }
+    closingTimerRef.current = setTimeout(() => {
+      setIsOpen(false);
+      setIsClosing(false);
+      closingTimerRef.current = null;
+    }, 180);
+  }, [isOpen, isClosing]);
+
+  const openDropdown = () => {
+    if (closingTimerRef.current) {
+      clearTimeout(closingTimerRef.current);
+      closingTimerRef.current = null;
+    }
+    setIsClosing(false);
+    setIsOpen(true);
+  };
+
+  const toggleDropdown = () => {
+    if (isOpen) {
+      closeWithAnimation();
+    } else {
+      openDropdown();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (closingTimerRef.current) {
+        clearTimeout(closingTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        closeWithAnimation();
       }
     }
     document.addEventListener('pointerdown', handleClickOutside);
@@ -31,10 +71,10 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
       document.removeEventListener('pointerdown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, []);
+  }, [closeWithAnimation]);
 
   const handleItemClick = (pageId: ActivePageId) => {
-    setIsOpen(false);
+    closeWithAnimation();
     if (onNavigate) {
       onNavigate(pageId);
     }
@@ -74,7 +114,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
       <button
         type="button"
         className="flex items-center gap-2 p-1 sm:pr-2.5 rounded-full hover:bg-surface-hover border border-transparent hover:border-subtle transition-all duration-fast"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         title={session ? 'Hồ sơ người dùng' : 'Tài khoản khách (Chưa đăng nhập)'}
         aria-label={session ? 'Hồ sơ người dùng' : 'Tài khoản khách'}
       >
@@ -93,32 +133,32 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
         )}
 
         <div className="hidden md:flex flex-col text-left">
-          <span className="text-xs font-semibold text-text-main leading-tight">
+          <span className="text-sm font-semibold text-text-main leading-tight">
             {displayName || t('userMenu.guest') || 'Chưa đăng nhập'}
           </span>
         </div>
-        <i className={`fa-solid fa-chevron-down text-[10px] text-text-muted ml-0.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`} />
+        <i className={`fa-solid fa-chevron-down text-xs text-text-muted ml-0.5 transition-transform duration-200 ${isOpen && !isClosing ? 'rotate-180 text-primary' : ''}`} />
       </button>
 
-      {isOpen && (
-        <div className="dropdown-animate absolute right-0 top-full mt-2 w-64 rounded-xl bg-surface-elevated border border-border-subtle shadow-2xl p-1.5 z-[10001] flex flex-col backdrop-blur-none">
-            <div className="p-2.5 border-b border-subtle mb-1">
+      {(isOpen || isClosing) && (
+        <div className={`dropdown-animate absolute right-0 top-full mt-2 w-72 rounded-2xl bg-surface-elevated border border-border-subtle shadow-2xl p-2 z-[10001] flex flex-col backdrop-blur-none ${isClosing ? 'dropdown-exit' : ''}`}>
+            <div className="p-3 border-b border-subtle mb-1.5">
               {session ? (
                 <>
-                  <div className="font-semibold text-sm text-text-main">{displayName}</div>
+                  <div className="font-bold text-base text-text-main">{displayName}</div>
                   {displayRoleOrEmail && (
-                    <div className="text-xs text-text-muted truncate mt-0.5">
+                    <div className="text-sm text-text-muted truncate mt-0.5 font-medium">
                       {displayRoleOrEmail}
                     </div>
                   )}
                 </>
               ) : (
                 <>
-                  <div className="font-semibold text-sm text-text-muted flex items-center gap-1.5">
-                    <i className="fa-regular fa-circle-user text-xs" />
+                  <div className="font-bold text-base text-text-muted flex items-center gap-2">
+                    <i className="fa-regular fa-circle-user text-sm" />
                     <span>{t('userMenu.notLoggedIn') || 'Chưa đăng nhập'}</span>
                   </div>
-                  <div className="text-xs text-text-muted truncate mt-0.5">
+                  <div className="text-sm text-text-muted truncate mt-0.5 font-medium">
                     {t('userMenu.pleaseLogin') || 'Vui lòng đăng nhập để tiếp tục'}
                   </div>
                 </>
@@ -130,50 +170,51 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
                 <>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-text-secondary hover:text-text-main hover:bg-surface-hover font-medium transition-colors text-left cursor-pointer"
                     onClick={() => handleItemClick('profile')}
                   >
-                    <i className="w-4 text-center fa-regular fa-user text-xs" />
+                    <i className="w-5 text-center fa-regular fa-user text-sm text-text-muted" />
                     <span>{t('userMenu.profile')}</span>
                   </button>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-text-secondary hover:text-text-main hover:bg-surface-hover font-medium transition-colors text-left cursor-pointer"
                     onClick={() => handleItemClick('password_change')}
                   >
-                    <i className="w-4 text-center fa-solid fa-key text-xs" />
+                    <i className="w-5 text-center fa-solid fa-key text-sm text-text-muted" />
                     <span>{t('userMenu.passwordChange')}</span>
                   </button>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-text-secondary hover:text-text-main hover:bg-surface-hover font-medium transition-colors text-left cursor-pointer"
                     onClick={() => handleItemClick('settings')}
                   >
-                    <i className="w-4 text-center fa-solid fa-gear text-xs" />
+                    <i className="w-5 text-center fa-solid fa-gear text-sm text-text-muted" />
                     <span>{t('userMenu.settings')}</span>
                   </button>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-text-secondary hover:text-text-main hover:bg-surface-hover font-medium transition-colors text-left cursor-pointer"
                     onClick={() => handleItemClick('login')}
                   >
-                    <i className="w-4 text-center fa-solid fa-right-to-bracket text-xs" />
+                    <i className="w-5 text-center fa-solid fa-right-to-bracket text-sm text-text-muted" />
                     <span>{t('userMenu.loginDemo')}</span>
                   </button>
                   <hr className="my-1 border-0 border-t border-subtle" />
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-danger hover:bg-danger-subtle transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-danger hover:bg-danger-subtle font-semibold transition-colors text-left cursor-pointer"
                     onClick={() => {
                       if (confirm(t('userMenu.logoutConfirm'))) {
                         localStorage.removeItem('tlbm_session');
                         window.dispatchEvent(new Event('tlbm_auth_changed'));
                         handleItemClick('login');
+                      } else {
+                        closeWithAnimation();
                       }
-                      setIsOpen(false);
                     }}
                   >
-                    <i className="w-4 text-center fa-solid fa-arrow-right-from-bracket text-xs" />
+                    <i className="w-5 text-center fa-solid fa-arrow-right-from-bracket text-sm" />
                     <span>{t('userMenu.logout')}</span>
                   </button>
                 </>
@@ -181,26 +222,26 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
                 <>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-primary font-medium hover:bg-primary/10 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-primary font-semibold hover:bg-primary/10 transition-colors text-left cursor-pointer"
                     onClick={() => handleItemClick('login')}
                   >
-                    <i className="w-4 text-center fa-solid fa-right-to-bracket text-xs" />
+                    <i className="w-5 text-center fa-solid fa-right-to-bracket text-sm" />
                     <span>{t('userMenu.login') || 'Đăng nhập'}</span>
                   </button>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-text-secondary hover:text-text-main hover:bg-surface-hover font-medium transition-colors text-left cursor-pointer"
                     onClick={() => handleItemClick('login')}
                   >
-                    <i className="w-4 text-center fa-solid fa-user-shield text-xs" />
+                    <i className="w-5 text-center fa-solid fa-user-shield text-sm text-text-muted" />
                     <span>{t('userMenu.loginDemo')}</span>
                   </button>
                   <button
                     type="button"
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs rounded-lg text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm rounded-xl text-text-secondary hover:text-text-main hover:bg-surface-hover font-medium transition-colors text-left cursor-pointer"
                     onClick={() => handleItemClick('settings')}
                   >
-                    <i className="w-4 text-center fa-solid fa-gear text-xs" />
+                    <i className="w-5 text-center fa-solid fa-gear text-sm text-text-muted" />
                     <span>{t('userMenu.settings')}</span>
                   </button>
                 </>

@@ -187,13 +187,13 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
   const activeError = errorKey ? (t(errorKey) as string) : customError;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-3 sm:p-4 md:p-6 bg-app bg-auth-backdrop relative overflow-y-auto font-sans">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start md:justify-center pt-14 pb-8 px-3 sm:px-4 md:p-6 bg-app bg-auth-backdrop relative overflow-y-auto font-sans">
       {/* 1. Nút quay lại Dashboard nếu có onNavigate */}
       {onNavigate && (
         <button
           type="button"
           onClick={() => onNavigate('dashboard')}
-          className="absolute top-4 left-4 bg-surface-elevated/80 backdrop-blur-md border border-border-subtle px-4 py-2 rounded-full text-xs font-semibold text-main hover:bg-surface transition-fast flex items-center gap-2 z-20 shadow-sm"
+          className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-surface-elevated/80 backdrop-blur-md border border-border-subtle px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold text-main hover:bg-surface transition-fast flex items-center gap-2 z-20 shadow-sm"
         >
           <i className="fa-solid fa-arrow-left" />
           <span>{t('auth.backToDashboard')}</span>
@@ -201,12 +201,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
       )}
 
       {/* 2. Bộ chuyển đổi ngôn ngữ VN/EN ra ngoài trang Login */}
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20">
         <LanguageSwitcher />
       </div>
 
       {/* 3. Thẻ chứa Form và Nhân vật Hoạt hình (Container) */}
-      <div className="login-card-container w-full max-w-4xl bg-surface rounded-2xl overflow-hidden shadow-lg flex flex-col md:flex-row relative z-10 my-auto border border-border-subtle animate-fade-in">
+      <div className="login-card-container w-full max-w-4xl bg-surface rounded-2xl overflow-hidden shadow-lg flex flex-col md:flex-row relative z-10 md:my-auto border border-border-subtle animate-fade-in">
         {/* Nửa trái: Sân khấu 4 nhân vật hoạt họa */}
         <LoginCharacters
           isUsernameFocused={isUsernameFocused}

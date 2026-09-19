@@ -342,16 +342,18 @@ export default function AppSidebar({
                         title={subLabel}
                       >
                         <i
-                          className={`fa-solid ${sub.icon} text-xs w-4 text-center transition-colors ${
+                          className={`fa-solid ${sub.icon} text-sm w-5 text-center transition-colors ${
                             isSubActive
                               ? 'text-primary'
                               : 'text-text-secondary group-hover:text-primary'
                           }`}
                         />
-                        <span className="text-xs truncate flex-1">{subLabel}</span>
+                        <span className={`text-sm truncate flex-1 ${isSubActive ? 'font-bold text-primary' : 'font-semibold text-text-main group-hover:text-primary'}`}>
+                          {subLabel}
+                        </span>
                         {sub.badge !== undefined && (
                           <span
-                            className={`min-w-[18px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                            className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 ${
                               isSubActive
                                 ? 'bg-primary text-white'
                                 : 'bg-primary-subtle text-primary'
