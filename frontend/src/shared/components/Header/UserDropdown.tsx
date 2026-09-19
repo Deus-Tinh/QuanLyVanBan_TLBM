@@ -101,7 +101,7 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
       </button>
 
       {isOpen && (
-        <div className="dropdown-animate absolute right-0 top-full mt-2 w-64 rounded-xl bg-white dark:bg-[#171f2e] border border-subtle shadow-2xl p-1.5 z-[10001] flex flex-col backdrop-blur-none">
+        <div className="dropdown-animate absolute right-0 top-full mt-2 w-64 rounded-xl bg-surface-elevated border border-border-subtle shadow-2xl p-1.5 z-[10001] flex flex-col backdrop-blur-none">
             <div className="p-2.5 border-b border-subtle mb-1">
               {session ? (
                 <>

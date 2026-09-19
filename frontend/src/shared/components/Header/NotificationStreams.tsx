@@ -45,7 +45,7 @@ export default function NotificationStreams() {
       </button>
 
       {isOpen && (
-        <div className="dropdown-animate fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-[380px] max-h-[calc(100vh-80px)] sm:max-h-[520px] rounded-xl bg-white dark:bg-[#171f2e] border border-subtle shadow-2xl flex flex-col z-[10001] overflow-hidden">
+        <div className="dropdown-animate fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-[380px] max-h-[calc(100vh-80px)] sm:max-h-[520px] rounded-xl bg-surface-elevated border border-border-subtle shadow-2xl flex flex-col z-[10001] overflow-hidden">
             <div className="p-3.5 border-b border-subtle flex items-center justify-between bg-surface/40">
               <div>
                 <span className="font-bold text-sm text-text-main">{t('notifications.title')}</span>
