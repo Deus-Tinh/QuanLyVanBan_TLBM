@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '@i18n/translate';
 
 export interface LoginCharactersProps {
@@ -82,7 +82,7 @@ export const LoginCharacters: React.FC<LoginCharactersProps> = ({
   const isShocked = isPasswordFocused && showPassword;
 
   return (
-    <div className="w-full md:w-[45%] bg-surface-elevated !rounded-none !shadow-none !border-0 md:!border-r md:!border-solid md:!border-border-subtle relative flex flex-col justify-between p-5 md:p-6 select-none overflow-hidden min-h-[280px] md:min-h-[380px]">
+    <div className="w-full md:w-[45%] bg-surface-elevated !rounded-none !shadow-none !border-0 md:!border-r md:!border-solid md:!border-border-subtle relative flex flex-col justify-between p-4 sm:p-5 md:p-6 select-none overflow-hidden min-h-[230px] sm:min-h-[260px] md:min-h-[380px]">
       {/* Tiêu đề thương hiệu phân hệ */}
       <div className="flex items-center gap-2.5 z-10">
         <div className="w-10 h-10 rounded-lg bg-surface border border-subtle flex items-center justify-center shadow-sm p-1.5 shrink-0">
@@ -100,7 +100,7 @@ export const LoginCharacters: React.FC<LoginCharactersProps> = ({
 
       {/* CỤM 4 NHÂN VẬT HOẠT HỌA CÓ ANIMATION TƯƠNG TÁC */}
       <div
-        className={`character-cluster scale-[0.78] sm:scale-[0.84] md:scale-[0.88] origin-bottom-left ${
+        className={`character-cluster scale-[0.74] sm:scale-[0.82] md:scale-[0.88] origin-bottom-left ${
           isError ? 'is-error' : ''
         } ${isSuccess ? 'is-success' : ''}`}
       >

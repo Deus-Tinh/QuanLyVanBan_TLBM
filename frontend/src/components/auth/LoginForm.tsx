@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from '@i18n/translate';
 
 export interface LoginFormProps {
@@ -39,7 +39,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   };
 
   return (
-    <div className="w-full md:w-[55%] bg-surface !rounded-none !shadow-none !border-none relative flex flex-col justify-center p-5 md:p-8">
+    <div className="w-full md:w-[55%] bg-surface !rounded-none !shadow-none !border-none relative flex flex-col justify-center p-4 sm:p-6 md:p-8">
       <h2 className="text-2xl font-extrabold text-main tracking-tight mb-0.5">
         {t('auth.welcomeBack')}
       </h2>
