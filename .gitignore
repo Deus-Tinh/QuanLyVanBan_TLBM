@@ -1,33 +1,98 @@
-# Node & Frontend
+# ==========================================
+# 1. NODE & FRONTEND (React / Vite)
+# ==========================================
 node_modules/
-dist/
-dist-ssr/
-*.local
-.npm
-.eslintcache
 frontend/node_modules/
+dist/
 frontend/dist/
+dist-ssr/
+*.tsbuildinfo
+frontend/*.tsbuildinfo
+.eslintcache
+frontend/.eslintcache
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+frontend/coverage/
+.coverage
 skills/
 frontend/skills/
-*.tsbuildinfo
-.coverage
-coverage/
 
-# Python & Django
+# ==========================================
+# 2. PYTHON & DJANGO BACKEND
+# ==========================================
+# Bytecode & Cache
 __pycache__/
+backend/**/__pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+
+# Python Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Local Database & Uploaded Media Files
 *.sqlite3
 backend/db.sqlite3
-backend/**/__pycache__/
-*.pyc
+backend/media/
+media/
+backend/static_root/
+static_root/
 
-# Environment & Secrets
+# Unit Test & Linter Cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+logs/
+
+# ==========================================
+# 3. ENVIRONMENT & SECRETS (BẢO MẬT)
+# ==========================================
 .env
-*.env.local
+.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
 
-# Editors & OS
-.vscode/
-.idea/
-.DS_Store
+# ==========================================
+# 4. EDITORS & OPERATING SYSTEM
+# ==========================================
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary & Backup files
+*.bak
+*.tmp
+*~
+*.orig
