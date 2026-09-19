@@ -33,6 +33,28 @@ export function isoToDisplay(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
+/**
+ * Mốc thời gian API trả về (ví dụ "2026-09-19T14:03:05.123+07:00") thành "19/09/2026 14:03:05".
+ * Đọc thẳng từ chuỗi vì backend đã trả theo giờ Việt Nam; không đổi qua Date để máy
+ * đặt múi giờ khác vẫn hiện đúng.
+ */
+export function isoDateTimeToDisplay(value: string | null | undefined, withSeconds = true): string {
+  if (!value) return '';
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(value);
+  if (!match) return value;
+  const [, year, month, day, hour, minute, second] = match;
+  return `${day}/${month}/${year} ${hour}:${minute}${withSeconds ? `:${second}` : ''}`;
+}
+
+/** Số ngày từ hôm nay tới hạn: dương là còn hạn, âm là đã quá hạn, 0 là hạn hôm nay. */
+export function daysUntil(isoDate: string): number {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const [todayYear, todayMonth, todayDay] = todayIso().split('-').map(Number);
+  const target = Date.UTC(year, month - 1, day);
+  const today = Date.UTC(todayYear, todayMonth - 1, todayDay);
+  return Math.round((target - today) / 86400000);
+}
+
 /** Kiểm tra ngày có thật không: 31/02 hay 31/04 đều bị loại. */
 function isRealDate(day: number, month: number, year: number): boolean {
   if (year < 1900 || year > 2200 || month < 1 || month > 12 || day < 1) return false;

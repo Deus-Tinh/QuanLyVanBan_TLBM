@@ -36,6 +36,8 @@ export interface Attachment {
   commentId: number | null;
   downloadUrl: string;
   canDelete: boolean;
+  /** Người nộp chưa xóa được file này thì đây là lý do kèm cách xử lý; ngược lại là null. */
+  deleteBlockedReason: string | null;
 }
 
 export interface TaskComment {

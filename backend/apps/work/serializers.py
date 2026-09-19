@@ -11,6 +11,7 @@ from .models import (
     TaskAttachment,
     TaskComment,
     TaskParticipant,
+    TaskRuleError,
     TaskStatus,
     delete_stored_files_on_commit,
     validate_work_file,
@@ -63,6 +64,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
     commentId = serializers.IntegerField(source="comment_id", read_only=True)
     downloadUrl = serializers.SerializerMethodField()
     canDelete = serializers.SerializerMethodField()
+    deleteBlockedReason = serializers.SerializerMethodField()
 
     class Meta:
         model = TaskAttachment
@@ -76,6 +78,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
             "commentId",
             "downloadUrl",
             "canDelete",
+            "deleteBlockedReason",
         ]
 
     def get_downloadUrl(self, obj):
@@ -90,6 +93,20 @@ class AttachmentSerializer(serializers.ModelSerializer):
         if task is None or request is None or obj.kind != AttachmentKind.BANG_CHUNG:
             return False
         return task.can_delete_evidence(request.user, obj)
+
+    def get_deleteBlockedReason(self, obj):
+        """Người nộp file mà chưa xóa được (đã duyệt, file cuối sau hạn...) thì cho biết lý do và cách xử lý."""
+        task = self.context.get("task")
+        request = self.context.get("request")
+        if task is None or request is None or obj.kind != AttachmentKind.BANG_CHUNG:
+            return None
+        if obj.uploaded_by_id != request.user.id:
+            return None
+        try:
+            task.check_delete_evidence(request.user, obj)
+        except TaskRuleError as error:
+            return error.message
+        return None
 
 
 class LatestTaskSerializer(serializers.ModelSerializer):

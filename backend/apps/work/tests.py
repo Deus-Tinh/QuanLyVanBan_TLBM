@@ -636,6 +636,16 @@ class TaskEvidenceApiTests(WorkTestBase):
             "Công việc đã quá hạn, không thể xóa file bằng chứng cuối cùng. Hãy nộp file mới trước rồi xóa file cũ sau.",
         )
 
+    def test_file_cuoi_sau_han_tra_ve_ly_do_khong_xoa_duoc(self):
+        task = self.make_task(created_offset=-5, due_offset=-1, first_opened_at=timezone.now())
+        self.add_evidence(task, user=self.member)
+        self.login(self.member)
+        evidence = self.client.get(self.task_url(task)).data["evidences"][0]
+        self.assertFalse(evidence["canDelete"])
+        self.assertIn("Hãy nộp file mới trước rồi xóa file cũ sau", evidence["deleteBlockedReason"])
+        self.login(self.host)
+        self.assertIsNone(self.client.get(self.task_url(task)).data["evidences"][0]["deleteBlockedReason"])
+
     def test_qua_han_con_hai_file_thi_xoa_duoc_mot(self):
         task = self.make_task(created_offset=-5, due_offset=-1, first_opened_at=timezone.now())
         old = self.add_evidence(task, user=self.member, name="cu.pdf")

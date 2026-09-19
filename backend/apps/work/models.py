@@ -371,7 +371,7 @@ class Task(models.Model):
         if self.get_status() == TaskStatus.HOAN_THANH:
             raise TaskRuleError(
                 "Công việc đã được duyệt nên không thể xóa file bằng chứng. "
-                "Nếu cần thay file, hãy đề nghị người chủ trì hoặc người chỉ đạo hủy duyệt trước.",
+                "Nếu cần thay file, hãy đề nghị người có quyền duyệt (người tạo, chủ trì hoặc chỉ đạo) hủy duyệt trước.",
                 TaskRuleError.INVALID_STATE,
             )
         if self.is_overdue() and len(self.evidence_files()) <= 1:
