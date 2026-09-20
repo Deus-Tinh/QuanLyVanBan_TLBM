@@ -168,36 +168,36 @@ qlvbtl/
 │
 ├── frontend/
 │   ├── package.json
+│   ├── pnpm-lock.yaml
+│   ├── tsconfig.app.json
+│   ├── vite.config.ts
 │   │
 │   └── src/
 │       ├── app/
 │       │   ├── App.tsx
-│       │   └── router.tsx
+│       │   ├── router.tsx
+│       │   └── main.tsx
 │       │
-│       ├── modules/
+│       ├── pages/                          # Màn hình hoàn chỉnh chia theo luồng
 │       │   ├── auth/
 │       │   ├── dashboard/
-│       │   ├── documents/
-│       │   │   ├── incoming/
-│       │   │   ├── outgoing/
-│       │   │   └── confidential/
-│       │   ├── records/
-│       │   ├── resources/
-│       │   ├── approvals/
-│       │   ├── work/
-│       │   ├── meetings/
-│       │   ├── birthdays/
-│       │   ├── system/
-│       │   │   ├── organizations/
-│       │   │   ├── employees/
-│       │   │   └── authorization/
-│       │   └── ai-assistant/
+│       │   ├── profile/
+│       │   ├── settings/
+│       │   └── ai/
 │       │
-│       └── shared/
-│           ├── components/
-│           ├── api/
-│           ├── types/
-│           └── utils/
+│       ├── components/                     # Component theo phạm vi và chức năng
+│       │   ├── auth/
+│       │   ├── dashboard/
+│       │   ├── layout/
+│       │   ├── common/
+│       │   └── ai/
+│       │
+│       ├── layouts/                        # Base Layout tổng thể (MainLayout.tsx)
+│       ├── lib/                            # Hằng số (constants.ts) & Routes (routes.ts)
+│       ├── hooks/                          # Custom React Hooks
+│       ├── styles/                         # CSS Design Tokens, Theme & Animations
+│       ├── i18n/                           # Đa ngôn ngữ (translate.ts, vi.json, en.json)
+│       └── types/                          # Kiểu dữ liệu TypeScript (navigation, auth...)
 │
 ├── media/                                  # Thư mục lưu trữ tệp tin tải lên (MEDIA_ROOT)
 │   ├── 02_documents/                       # Tệp văn bản đến, đi, mật
@@ -341,7 +341,8 @@ QLVB&TL
 
 - Mã nguồn Backend đặt trong `backend/`; mã nguồn Frontend đặt trong `frontend/`.
 - Mỗi module nghiệp vụ đặt trong đúng domain tương ứng ở Backend và Frontend.
-- Thành phần dùng chung đặt trong `frontend/src/shared/`.
+- Các component giao diện phân theo chức năng đặt trong `frontend/src/components/`, các trang màn hình đặt trong `frontend/src/pages/`, khung sườn App Shell đặt trong `frontend/src/layouts/`.
+- Tiện ích dùng chung đặt tại `frontend/src/lib/` (constants, routes), `frontend/src/i18n/` (đa ngôn ngữ) và `frontend/src/styles/` (design tokens).
 - Khi cần thay đổi cấu trúc dự án, cập nhật tài liệu này cùng thay đổi liên quan.
 - Không tạo thư mục rỗng chỉ để mô phỏng cây thư mục. Thư mục được thêm khi có mã nguồn, file cấu hình hoặc file đánh dấu cần thiết.
 
