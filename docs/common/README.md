@@ -2,8 +2,20 @@
 
 Thư mục này lưu trữ các quy chuẩn kiến trúc, tài liệu tích hợp và hướng dẫn chung áp dụng cho toàn bộ 8 nhóm thuộc đồ án Quản Lý Văn Bản & Tài Liệu Mật (TLBM).
 
-## Cấu Trúc Tài Liệu
-- `docs/common/`: Quy chuẩn chung (Git workflow, quy ước API REST, chuẩn CORS, theme, token).
+## 📚 Danh Mục Tài Liệu Chung Cốt Lõi
+
+1. **[Tài Liệu Hướng Dẫn Frontend Baseline (`FRONTEND_BASELINE_GUIDE.md`)](./FRONTEND_BASELINE_GUIDE.md)**:
+   - Quy ước cấu trúc thư mục phẳng (`pages/`, `components/`, `lib/`, `types/`, `styles/`, `i18n/`), nghiêm cấm dùng `modules/`.
+   - Hướng dẫn 6 bước chi tiết cho các nhóm khi thêm màn hình mới vào `<Outlet />` bên trong `MainLayout`.
+   - Hướng dẫn kết nối API qua `apiClient` và xác thực JWT.
+2. **[Bộ Tiêu Chuẩn Quality Gate & Điều Kiện Lên Staging (`QUALITY_GATE_STAGING.md`)](./QUALITY_GATE_STAGING.md)**:
+   - Quy định bắt buộc vượt qua 5 lệnh kiểm thử (Backend test + check, Frontend test + lint + build).
+   - Quy trình đóng gói và nghiệm thu bàn giao từ nhánh nhóm lên nhánh `staging`.
+   - Checklist dành cho các nhóm khi fork code từ `staging`.
+3. **[Đặc Tả Dự Án Toàn Diện (`ITC - Django - QLVB&TL.md`)](./ITC%20-%20Django%20-%20QLVB&TL.md)**:
+   - Bảng phân công 8 nhóm, độ khó, cơ cấu tổ chức, danh sách lớp và báo cáo tiến độ.
+
+## 📂 Cấu Trúc Tài Liệu Theo Phân Hệ
 - `docs/modules/01_layout_dashboard/`: Bàn giao App Shell, Header, Sidebar, Footer, Router URL, Theme Nhóm 1.
 - `docs/modules/02_documents/`: Tài liệu Phân hệ Văn bản đến / đi / mật.
 - `docs/modules/03_dossiers_records/`: Tài liệu Phân hệ Hồ sơ tài liệu.
@@ -13,7 +25,7 @@ Thư mục này lưu trữ các quy chuẩn kiến trúc, tài liệu tích hợ
 - `docs/modules/07_system_admin_meetings/`: Tài liệu Phân hệ Quản trị tổ chức & Nhân sự.
 - `docs/modules/08_ai_assistant/`: Tài liệu Phân hệ Trợ lý AI.
 
-## Quy Định Tích Hợp Frontend
+## ⚙️ Quy Định Tích Hợp Frontend
 - Quản lý gói: **Sử dụng duy nhất `pnpm`** (Nghiêm cấm dùng npm/yarn để tránh xung đột lockfile).
 - Định tuyến: **Sử dụng `react-router-dom` qua `<Outlet />`**.
 - Khung giao diện: Toàn bộ module cắm vào `<Outlet />` bên trong `MainLayout`, kế thừa tự động Header, Sidebar, Footer.
