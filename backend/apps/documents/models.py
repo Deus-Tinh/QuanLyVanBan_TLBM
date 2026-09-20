@@ -185,6 +185,26 @@ class Document(models.Model):
         return self.hieu_luc != self.HieuLuc.CON_HIEU_LUC
 
 
+def document_attachment_path(instance, filename):
+    """
+    Xác định đường dẫn lưu file đính kèm theo từng phân hệ văn bản:
+    - Văn bản Đến:  02_documents/den/%Y/%m/<filename>
+    - Văn bản Đi:   02_documents/di/%Y/%m/<filename>
+    - Văn bản Mật:  02_documents/mat/%Y/%m/<filename>
+    """
+    loai_map = {
+        "DEN": "den",
+        "DI": "di",
+        "MAT": "mat",
+    }
+    subfolder = "den"
+    if hasattr(instance, "document") and instance.document:
+        subfolder = loai_map.get(instance.document.loai, "den")
+
+    now = timezone.now()
+    return f"02_documents/{subfolder}/{now.year}/{now.month:02d}/{filename}"
+
+
 class DocumentAttachment(models.Model):
     """File đính kèm cho văn bản."""
 
@@ -196,7 +216,7 @@ class DocumentAttachment(models.Model):
     )
     file = models.FileField(
         "File đính kèm",
-        upload_to="02_documents/%Y/%m/",
+        upload_to=document_attachment_path,
         help_text="Chấp nhận: PDF, DOC, DOCX, JPG, JPEG, PNG. Tối đa 20MB.",
     )
     file_name = models.CharField("Tên file gốc", max_length=255)

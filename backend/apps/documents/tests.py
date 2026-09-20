@@ -281,3 +281,41 @@ class DocumentAPITests(TestCase):
         )
         # Template mặc định chỉ có dòng ví dụ (bị bỏ qua) nên created = 0, phản hồi 400 đúng quy chuẩn
         self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
+
+    def test_attachment_upload_path_by_document_type(self):
+        """Kiểm tra file đính kèm được tự động phân vào folder tương ứng: den, di, mat."""
+        # 1. Văn bản Đến -> 02_documents/den/
+        file_den = SimpleUploadedFile("congvan_den.pdf", b"Test content den", content_type="application/pdf")
+        att_den = DocumentAttachment.objects.create(
+            document=self.doc,  # loai = "DEN"
+            file=file_den,
+            file_name="congvan_den.pdf",
+            file_size=16,
+        )
+        self.assertTrue(att_den.file.name.startswith("02_documents/den/"))
+
+        # 2. Văn bản Đi -> 02_documents/di/
+        doc_di = Document.objects.create(
+            loai="DI", nam=2026, so_hieu="10/TB-TLBM", trich_yeu="Thông báo đi", nguoi_tao=self.user
+        )
+        file_di = SimpleUploadedFile("thongbao_di.pdf", b"Test content di", content_type="application/pdf")
+        att_di = DocumentAttachment.objects.create(
+            document=doc_di,
+            file=file_di,
+            file_name="thongbao_di.pdf",
+            file_size=15,
+        )
+        self.assertTrue(att_di.file.name.startswith("02_documents/di/"))
+
+        # 3. Văn bản Mật -> 02_documents/mat/
+        doc_mat = Document.objects.create(
+            loai="MAT", nam=2026, so_hieu="01/CV-MAT", trich_yeu="Văn bản mật", nguoi_tao=self.user
+        )
+        file_mat = SimpleUploadedFile("mat.pdf", b"Test content mat", content_type="application/pdf")
+        att_mat = DocumentAttachment.objects.create(
+            document=doc_mat,
+            file=file_mat,
+            file_name="mat.pdf",
+            file_size=16,
+        )
+        self.assertTrue(att_mat.file.name.startswith("02_documents/mat/"))

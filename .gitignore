@@ -21,6 +21,8 @@ __pycache__/
 backend/db.sqlite3
 backend/**/__pycache__/
 *.pyc
+media/
+backend/media/
 
 # Environment & Secrets
 .env
