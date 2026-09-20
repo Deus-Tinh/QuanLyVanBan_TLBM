@@ -2,7 +2,7 @@
 
 - **Đơn vị phụ trách:** Nhóm 1 (Trưởng nhóm: Châu Tuấn Kiệt)
 - **Thư mục module:** `docs/modules/01_layout_dashboard/`
-- **Nhiệm vụ đồ án:** Xây dựng khung ứng dụng App Shell (Header, Sidebar, Footer, Navigation), Hệ thống Theme Clean Light / Sleek Dark, Router URL-based qua `<Outlet />`, Dashboard trung tâm và Giao diện Đăng nhập Mock Auth.
+- **Nhiệm vụ đồ án:** Xây dựng khung ứng dụng App Shell (Header, Sidebar, Footer, Navigation), Hệ thống Theme Clean Light / Sleek Dark, Router URL-based qua `<Outlet />`, Dashboard trung tâm kết nối dữ liệu thật và Giao diện Đăng nhập xác thực Django Auth + SimpleJWT.
 
 ## 1. Cấu Trúc App Shell Dùng Chung Cho 8 Nhóm
 
@@ -25,7 +25,7 @@ Các nhóm cắm màn hình nghiệp vụ vào `<Outlet />` bên trong `MainLayo
 
 ## 2. Hướng Dẫn Kế Thừa Theme & Token Màu Sắc
 
-Tất cả các thành phần UI nên dùng CSS Variables đã định nghĩa tại `frontend/src/shared/styles/variables.css`:
+Tất cả các thành phần UI nên dùng CSS Variables đã định nghĩa tại `frontend/src/styles/global.css` (hoặc import qua `@styles/global.css`):
 - Màu chính: `var(--color-primary)`
 - Nền bề mặt: `var(--bg-surface)`
 - Nền trang: `var(--bg-app)`

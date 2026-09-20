@@ -1,14 +1,14 @@
-import React from 'react';
+﻿import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeMode } from '../shared/types/theme';
-import MainLayout from '../shared/components/Layout/MainLayout';
-import DashboardPage from '../modules/dashboard/pages/DashboardPage';
-import LoginPage from '../modules/auth/pages/LoginPage';
-import AiAssistantPage from '../modules/ai/pages/AiAssistantPage';
-import ProfilePage from '../modules/profile/pages/ProfilePage';
-import PasswordChangePage from '../modules/profile/pages/PasswordChangePage';
-import SettingsPage from '../modules/settings/pages/SettingsPage';
-import SyllabusPreview from '../shared/components/Syllabus/SyllabusPreview';
+import { ThemeMode } from '@app-types/theme';
+import MainLayout from '@layouts/MainLayout';
+import DashboardPage from '@pages/dashboard/DashboardPage';
+import LoginPage from '@pages/auth/LoginPage';
+import AiAssistantPage from '@pages/ai/AiAssistantPage';
+import ProfilePage from '@pages/profile/ProfilePage';
+import PasswordChangePage from '@pages/profile/PasswordChangePage';
+import SettingsPage from '@pages/settings/SettingsPage';
+import SyllabusPreview from '@components/common/SyllabusPreview';
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -89,6 +89,7 @@ export default function AppRouter({
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
         <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
         <Route path="/employees" element={<SyllabusPreview activePage="employees" />} />
+        <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
         <Route path="/roles" element={<SyllabusPreview activePage="roles" />} />
 
         {/* Tiện ích Cá nhân & Trợ lý AI (Nhóm 1 phụ trách) */}
@@ -103,3 +104,5 @@ export default function AppRouter({
     </Routes>
   );
 }
+
+

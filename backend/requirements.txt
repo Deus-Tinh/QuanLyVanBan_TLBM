@@ -4,6 +4,9 @@ Django>=5.1.0,<6.2.0
 # Django REST Framework for API Endpoints
 djangorestframework>=3.15.0
 
+# JWT Authentication
+djangorestframework-simplejwt>=5.3.0
+
 # Django Filter for Advanced Querying
 django-filter>=24.1
 
