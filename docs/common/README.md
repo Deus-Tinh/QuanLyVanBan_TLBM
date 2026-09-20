@@ -2,16 +2,19 @@
 
 Thư mục này lưu trữ các quy chuẩn kiến trúc, tài liệu tích hợp và hướng dẫn chung áp dụng cho toàn bộ 8 nhóm thuộc đồ án Quản Lý Văn Bản & Tài Liệu Mật (TLBM).
 
+> [!NOTE]
+> **Trạng thái Baseline:** Nhánh `1_layout_home` hiện là **Baseline Candidate (Bản chuẩn tạm thời)**. Baseline chính thức của toàn bộ dự án sẽ được kích hoạt trên nhánh `staging` sau khi hoàn thành kiểm định Quality Gate, CI và Smoke Test.
+
 ## 📚 Danh Mục Tài Liệu Chung Cốt Lõi
 
 1. **[Tài Liệu Hướng Dẫn Frontend Baseline (`FRONTEND_BASELINE_GUIDE.md`)](./FRONTEND_BASELINE_GUIDE.md)**:
-   - Quy ước cấu trúc thư mục phẳng (`pages/`, `components/`, `lib/`, `types/`, `styles/`, `i18n/`), nghiêm cấm dùng `modules/`.
+   - Quy ước cấu trúc thư mục phẳng (`pages/`, `components/`, `lib/`, `types/`, `styles/`, `i18n/`), nghiêm cấm dùng `modules/` hay `shared/`.
    - Hướng dẫn 6 bước chi tiết cho các nhóm khi thêm màn hình mới vào `<Outlet />` bên trong `MainLayout`.
-   - Hướng dẫn kết nối API qua `apiClient` và xác thực JWT.
+   - Hướng dẫn kết nối API qua `apiClient` và xác thực Django Authentication + SimpleJWT.
 2. **[Bộ Tiêu Chuẩn Quality Gate & Điều Kiện Lên Staging (`QUALITY_GATE_STAGING.md`)](./QUALITY_GATE_STAGING.md)**:
-   - Quy định bắt buộc vượt qua 5 lệnh kiểm thử (Backend test + check, Frontend test + lint + build).
-   - Quy trình đóng gói và nghiệm thu bàn giao từ nhánh nhóm lên nhánh `staging`.
-   - Checklist dành cho các nhóm khi fork code từ `staging`.
+   - Quy định bắt buộc vượt qua 5 lệnh kiểm thử Quality Gate (Toàn bộ test suite Backend + Frontend phải pass 100%, lint sạch, build thành công).
+   - Quy trình đóng gói và nghiệm thu bàn giao từ nhánh `1_layout_home` (Baseline Candidate) lên nhánh `staging` (Baseline chính thức).
+   - Checklist dành cho các nhóm khi tạo branch từ `staging`.
 3. **[Đặc Tả Dự Án Toàn Diện (`ITC - Django - QLVB&TL.md`)](./ITC%20-%20Django%20-%20QLVB&TL.md)**:
    - Bảng phân công 8 nhóm, độ khó, cơ cấu tổ chức, danh sách lớp và báo cáo tiến độ.
 

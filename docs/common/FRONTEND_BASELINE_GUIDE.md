@@ -8,28 +8,31 @@
 
 ## 🎯 1. Mục tiêu của bản Frontend Baseline
 
-Bản Frontend Baseline là **mốc tham chiếu chuẩn mực** được đưa lên nhánh `staging`. Các nhóm khác khi nhận nhiệm vụ sẽ Fork hoặc tạo branch từ `staging` để bắt đầu phát triển module của nhóm mình mà không cần phải tự cấu hình lại giao diện, layout, định tuyến hay cơ chế gọi API.
+> [!IMPORTANT]
+> **Trạng thái Baseline:** Mã nguồn trên nhánh `1_layout_home` hiện là **Baseline Candidate (Bản chuẩn tạm thời / ứng viên)**. Chỉ sau khi được Reviewer / DevOps kiểm duyệt và hợp nhất chính thức vào nhánh `staging`, commit trên `staging` mới trở thành **Baseline chính thức** cho toàn bộ 8 nhóm.  
+> Việc đồng bộ tài liệu là bước chuẩn bị cuối cùng cho các nhóm đọc chuẩn chung; CI, cấu hình môi trường và smoke test là các bước kiểm thử độc lập tiếp theo.
+
+Bản Frontend Baseline là **mốc tham chiếu chuẩn mực** được đưa lên nhánh `staging`. Các nhóm khác khi nhận nhiệm vụ sẽ **tạo branch trực tiếp từ `staging`** (`git checkout staging && git pull origin staging && git checkout -b feat/<ten-chuc-nang>`) để bắt đầu phát triển module của nhóm mình mà không cần phải tự cấu hình lại giao diện, layout, định tuyến hay cơ chế gọi API.
 
 ---
 
 ## 🏗️ 2. Quyết định kỹ thuật bắt buộc (Technical Decisions)
 
-1. **Cấu trúc phẳng, không dùng `modules/`:**  
+1. **Cấu trúc phẳng, không dùng `modules/` hay `shared/`:**  
    Toàn bộ mã nguồn tổ chức theo các thư mục chức năng rõ ràng:
-   - `src/pages/`: Chứa các màn hình nghiệp vụ.
-   - `src/components/common/`: Chứa các component dùng chung (`Button`, `Card`, `Table`, `Badge`, `Logo`).
-   - `src/components/layout/`: Chứa `AppHeader`, `AppSidebar`, `AppFooter`, `UserDropdown`.
+   - `src/pages/`: Chứa các màn hình nghiệp vụ (auth, dashboard, settings, profile...).
+   - `src/components/`: Chứa component chia theo nhóm (`common/`, `layout/`, `auth/`, `dashboard/`).
    - `src/lib/`: Chứa `apiClient.ts`, `authService.ts`, `constants.ts`, `routes.ts`.
-   - `src/types/`: Khai báo kiểu dữ liệu TypeScript.
-   - `src/i18n/`: Quản lý song ngữ (`vi.json`, `en.json`).
-   - `src/styles/`: Design tokens và biến CSS tập trung.
+   - `src/types/`: Khai báo kiểu dữ liệu TypeScript (auth, navigation, theme...).
+   - `src/i18n/`: Quản lý song ngữ (`vi.json`, `en.json`, `translate.ts`).
+   - `src/styles/`: Design tokens và biến CSS tập trung (`global.css`, `animations.css`...).
 
 2. **Khung sườn App Shell dùng chung (`MainLayout` & `<Outlet />`):**  
    Mọi route nghiệp vụ mới **bắt buộc phải nằm bên trong `<MainLayout />`** trong file `src/app/router.tsx`. Khi chuyển trang, Header, Sidebar và Footer sẽ luôn cố định, chỉ có khu vực nội dung bên trong `<Outlet />` thay đổi.
 
 3. **Cơ chế gọi API & Xác thực tập trung (`apiClient`):**  
    - Tất cả request gọi Backend phải dùng `apiClient` (`import apiClient from '@lib/apiClient'`).
-   - `apiClient` tự động quản lý Bearer Token, tự động gọi API Refresh Token khi gặp lỗi HTTP 401, và xử lý lỗi tập trung.
+   - `apiClient` tự động quản lý Bearer Token (Django Authentication + SimpleJWT), tự động gọi API Refresh Token khi gặp lỗi HTTP 401, và xử lý lỗi tập trung.
    - **Zero Mock Data:** Không lưu trữ dữ liệu giả lập (mock data) trong bundle sản phẩm. Nếu backend chưa trả về dữ liệu, hiển thị giao diện rỗng (Empty State) sạch sẽ.
 
 4. **Phân quyền & Vai trò (Role/Permission):**  
@@ -78,4 +81,4 @@ graph TD
 - [x] Xác thực thật bằng Django Authentication + SimpleJWT (`authService` & `apiClient`).
 - [x] Xóa 100% dữ liệu giả lập (Zero Mock Data), xử lý Empty State tự nhiên.
 - [x] Hỗ trợ song ngữ Tiếng Việt và Tiếng Anh hoàn chỉnh.
-- [x] Đạt 100% Quality Gate: 40/40 Unit Tests PASS, 0 lỗi ESLint, build thành công không lỗi.
+- [x] Đạt 100% Quality Gate: Toàn bộ Unit Tests trong test suite phải pass 100% (0 failed), 0 lỗi ESLint, build production thành công.
