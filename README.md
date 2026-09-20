@@ -11,7 +11,7 @@ Hệ thống **Quản Lý Văn Bản và Tài Liệu (QLVB&TL)** là giải phá
 
 Hệ thống được phát triển theo mô hình **Full-Stack tách biệt**:
 - **Backend**: Django 5.x / 6.x (Python) cung cấp RESTful APIs, CORS Middleware và xác thực người dùng.
-- **Frontend**: React 19 + TypeScript + Vite, định tuyến URL bằng `react-router-dom` qua thẻ `<Outlet />`, quản lý gói thống nhất bằng **`pnpm`**, với 2 giao diện chuẩn mực (**Sleek Dark** & **Clean Light**) chuyển đổi tức thì 1-click.
+- **Frontend**: React 19 + TypeScript 6 + Vite 8, định tuyến URL bằng `react-router-dom` qua thẻ `<Outlet />`, quản lý gói thống nhất bằng **`pnpm`**, với 2 giao diện chuẩn mực (**Sleek Dark** & **Clean Light**) chuyển đổi tức thì 1-click.
 
 ---
 
@@ -48,18 +48,18 @@ Thư mục tài liệu `docs/` được tổ chức thành các phân vùng chu�
 DoAnCuoiKy/
 ├── backend/                  # Mã nguồn Backend Django (Python)
 │   ├── config/               # Thiết lập hệ thống (settings.py với CORS, urls, wsgi)
-│   ├── apps/                 # Các module nghiệp vụ Django (birthdays, documents,...)
-│   ├── requirements.txt      # Thư viện phụ thuộc Backend (Django, django-cors-headers, DRF)
+│   ├── apps/                 # Các module nghiệp vụ Django (birthdays, documents, accounts...)
+│   ├── requirements.txt      # Thư viện phụ thuộc Backend (Django, django-cors-headers, DRF, SimpleJWT)
 │   ├── db.sqlite3            # Cơ sở dữ liệu nội bộ SQLite
 │   └── manage.py             # Script quản trị Django
-├── frontend/                 # Mã nguồn Frontend React 19 + TypeScript + Vite
+├── frontend/                 # Mã nguồn Frontend React 19 + TypeScript 6 + Vite 8
 │   ├── src/
-│   │   ├── pages/            # Toàn bộ trang hoàn chỉnh chia theo luồng (auth, dashboard, profile, settings, ai)
-│   │   ├── components/       # Toàn bộ component chia theo luồng (auth, dashboard, layout, common, ai)
+│   │   ├── pages/            # Toàn bộ trang hoàn chỉnh chia theo luồng (auth, dashboard, profile, settings, ai...)
+│   │   ├── components/       # Toàn bộ component chia theo luồng (auth, dashboard, layout, common, ai...)
 │   │   ├── layouts/          # Base Layout tổng thể (MainLayout.tsx)
-│   │   ├── lib/              # Hằng số (constants.ts) và bản đồ route (routes.ts)
+│   │   ├── lib/              # Hằng số (constants.ts), API Client (apiClient.ts), authService.ts, routes.ts
 │   │   ├── hooks/            # Custom hooks tự động hóa
-│   │   ├── styles/           # CSS tokens & giao diện (global.css, animations.css...)
+│   │   ├── styles/           # CSS tokens & giao diện chuẩn (global.css, animations.css...)
 │   │   ├── i18n/             # Đa ngôn ngữ (translate.ts, vi.json, en.json)
 │   │   ├── types/            # Định nghĩa kiểu dữ liệu TypeScript (auth, navigation, theme...)
 │   │   └── app/              # Cấu hình gốc Router (router.tsx, App.tsx, main.tsx)
@@ -139,14 +139,15 @@ pnpm install
 pnpm dev
 ```
 - **Frontend App URL**: `http://localhost:5173/`
-- **Tài khoản đăng nhập kiểm thử nhanh**:
+- **Tài khoản đăng nhập kiểm thử (Chỉ dùng cho môi trường Localhost để dev/test, tuyệt đối không dùng trên Staging/Production)**:
   + **Quản trị viên**: `admin` / `Admin@123`
   + **Cán bộ chuyên viên**: `canbo` / `Canbo@123`
+  *(Lưu ý quan trọng: Thông tin tài khoản mẫu này được sinh tự động bởi script seed data của Backend phục vụ kiểm thử nội bộ trên Localhost; tài liệu tiêu chuẩn Staging không lưu trữ mật khẩu kiểm thử).*
 
 #### 3. Các lệnh kiểm tra chất lượng mã nguồn (Quality Assurance)
 Tại thư mục `frontend/`:
 ```bash
-# Chạy toàn bộ 36 Unit Tests
+# Chạy toàn bộ Unit Tests (Yêu cầu toàn bộ test suite phải pass 100%)
 pnpm test
 
 # Kiểm tra cú pháp và quy chuẩn mã nguồn (ESLint)
@@ -170,23 +171,33 @@ pnpm build
 
 3. **Hệ thống 2 Giao diện chuẩn mực (Clean Light & Sleek Dark)**:
    - Chuyển đổi nhanh 1-chạm qua biểu tượng Mặt trời / Mặt trăng trên Header.
-   - Nền tảng CSS Variables chuẩn design system tại `frontend/src/shared/styles/variables.css`.
+   - Nền tảng CSS Variables chuẩn design system tại `frontend/src/styles/global.css`.
 
-4. **Đăng nhập Mock Authentication minh bạch**:
-   - Banner cảnh báo chế độ Prototype trong thời gian chờ API xác thực JWT Backend.
-   - Nút đăng nhập nhanh 1-chạm theo quyền Quản trị viên (Admin) và Cán bộ chuyên viên.
+4. **Hệ thống xác thực thực tế (Django Authentication + SimpleJWT)**:
+   - Đăng nhập bảo mật qua REST API (`/api/auth/login/`), cấp phát cặp token Access Token & Refresh Token.
+   - Cơ chế `apiClient` tự động gắn Bearer Token và tự động refresh token khi gặp HTTP 401; quản lý phiên đăng nhập an toàn và hỗ trợ phân quyền vai trò (Admin / Cán bộ chuyên viên).
 
 ---
 
-## 📝 6. Quy chuẩn đóng góp mã nguồn (Git Workflow)
+## 📝 6. Quy chuẩn đóng góp mã nguồn (Git Flow & Baseline Staging)
 
-1. Mỗi nhóm làm việc trên branch riêng:
-   - `1_layout_home` (Nhóm 1 - Layout & Dashboard)
-   - `feature/nhom-2-van-ban`
-   - `feature/nhom-3-ho-so`
-   - ...
-2. Không commit trực tiếp vào `staging` hay `main`, mọi thay đổi phải thông qua Pull Request (PR).
-3. Sử dụng duy nhất **`pnpm`** cho frontend để bảo đảm tính toàn vẹn của `pnpm-lock.yaml`.
+> [!IMPORTANT]
+> **Trạng thái nhánh `1_layout_home`:** Hiện tại là **Baseline Candidate (Bản chuẩn tạm thời / ứng viên)**. Chỉ sau khi được Reviewer / DevOps kiểm duyệt và hợp nhất chính thức vào `staging`, commit trên `staging` mới trở thành **Baseline chính thức** cho toàn bộ 8 nhóm.  
+> Việc đồng bộ tài liệu là điều kiện tiên quyết nhưng chưa đồng nghĩa Staging đã sẵn sàng; CI, cấu hình môi trường và smoke test là các bước kiểm thử độc lập tiếp theo.
+
+1. **Quy trình tạo branch từ staging**:
+   - Các nhóm 2, 3, 4, 5, 6, 7, 8 khi bắt đầu phát triển tính năng không dùng quy trình Fork, mà **tạo branch trực tiếp từ `staging`** mới nhất:
+     ```bash
+     git checkout staging
+     git pull origin staging
+     git checkout -b feat/<ten-tinh-nang>
+     ```
+2. **Không commit trực tiếp vào `staging` hay `main`**:
+   - Mọi thay đổi đều phải thông qua Pull Request (PR) trỏ vào `staging`.
+   - PR phải vượt qua 100% Tiêu chuẩn Quality Gate (5 bài test Backend & Frontend) và được Reviewer phê duyệt.
+3. **Quản lý gói đồng nhất**:
+   - Sử dụng duy nhất **`pnpm`** cho frontend để bảo đảm tính toàn vẹn của `pnpm-lock.yaml` (nghiêm cấm dùng npm/yarn).
 
 ---
 *Bản quyền © 2026 Nhóm 1 — Dự án QLVB&TL — Khoa CNTT Trường Cao Đẳng Công Nghệ Thông Tin TP.HCM (ITC).*
+

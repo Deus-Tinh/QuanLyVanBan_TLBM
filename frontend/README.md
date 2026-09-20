@@ -1,27 +1,28 @@
 # TLBM SYSTEM — FRONTEND ARCHITECTURE & BASELINE GUIDE
-> **Phân hệ Giao diện Người dùng (React 18 + TypeScript + Vite)**  
+> **Phân hệ Giao diện Người dùng (React 19 + TypeScript 6 + Vite 8)**  
 > **Nhóm phụ trách kiến trúc**: Nhóm 1 (Kiến trúc App Shell, Xác thực & Dashboard)  
-> **Dự án**: Quản Lý Văn Bản và Tài Liệu (QLVB&TL) — Trường CĐ CNTT TP.HCM (ITC)
+> **Dự án**: Quản Lý Văn Bản và Tài Liệu (QLVB&TL) — Trường CĐ CNTT TP.HCM (ITC)  
+> **Trạng thái**: Nhánh `1_layout_home` hiện là **Baseline Candidate (Bản chuẩn tạm thời)**; baseline chính thức sẽ được kích hoạt trên nhánh `staging` sau khi hoàn tất kiểm duyệt.
 
 ---
 
 ## 🛠️ 1. Công nghệ sử dụng
 
-- **Core**: React 18 (Hooks, Context API)
-- **Language**: TypeScript 5.x (Strict Typing, Interface Definitions)
+- **Core**: React 19 (Hooks, Context API)
+- **Language**: TypeScript 6 (Strict Typing, Interface Definitions)
 - **Routing**: React Router v7 (`react-router-dom`)
-- **Build Tool**: Vite 8.x (HMR, tối ưu bundle)
-- **Styling**: Tailwind CSS + Design Tokens CSS Variables tập trung
+- **Build Tool**: Vite 8 (HMR, tối ưu bundle)
+- **Styling**: Tailwind CSS + Design Tokens CSS Variables tập trung (`src/styles/global.css`)
 - **Icons**: FontAwesome 6 Free Pro CDN + Custom SVGs
 - **i18n**: Song ngữ Tiếng Việt (`vi.json`) / Tiếng Anh (`en.json`) qua hook `useTranslation()`
-- **Testing**: Vitest + React Testing Library (100% test pass)
+- **Testing**: Vitest + React Testing Library (Yêu cầu toàn bộ test suite phải pass 100%)
 - **Quality Gate**: ESLint + TypeScript Typecheck + Production Build
 
 ---
 
 ## 📂 2. Cấu trúc thư mục mã nguồn chuẩn (`frontend/src/`)
 
-Dự án áp dụng cấu trúc thư mục phẳng, tập trung, **không sử dụng cấu trúc `modules/`**. Tất cả các nhóm dùng chung cấu trúc này làm bản tham chiếu:
+Dự án áp dụng cấu trúc thư mục phẳng, tập trung, **không sử dụng cấu trúc `modules/` hay `shared/`**. Tất cả các nhóm dùng chung cấu trúc này làm bản tham chiếu:
 
 ```text
 src/
