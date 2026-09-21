@@ -1,0 +1,445 @@
+﻿import React, { useState, useMemo } from 'react';
+import { ActivePageId } from '@app-types/navigation';
+import { useTranslation } from '@i18n/translate';
+import { Badge } from '@components/common';
+import BirthdaysWidget, { BirthdayEmployee } from './BirthdaysWidget';
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  due: string;
+  status: 'processing' | 'completed' | 'overdue' | 'pending';
+  statusLabel: string;
+  variant: 'success' | 'warning' | 'info' | 'danger';
+}
+
+export interface DocumentItem {
+  code: string;
+  title: string;
+  date: string;
+}
+
+export interface ResourceTemplateItem {
+  code: string;
+  title: string;
+  format: string;
+}
+
+export interface ModernDashboardViewProps {
+  onNavigate?: (page: ActivePageId) => void;
+  incomingCount?: number;
+  outgoingCount?: number;
+  tasksCount?: number;
+  incomingDocuments?: DocumentItem[];
+  outgoingDocuments?: DocumentItem[];
+  tasks?: TaskItem[];
+  resources?: ResourceTemplateItem[];
+  birthdays?: BirthdayEmployee[];
+}
+
+export default function ModernDashboardView({
+  onNavigate = () => {},
+  incomingCount = 0,
+  outgoingCount = 0,
+  tasksCount = 0,
+  incomingDocuments = [],
+  outgoingDocuments = [],
+  tasks = [],
+  resources = [],
+  birthdays,
+}: ModernDashboardViewProps) {
+  const { t } = useTranslation();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [taskFilter, setTaskFilter] = useState<'processing' | 'completed' | 'overdue' | 'pending'>('processing');
+
+  const filteredIncoming = useMemo(() => {
+    if (!searchTerm.trim()) return incomingDocuments;
+    const term = searchTerm.toLowerCase();
+    return incomingDocuments.filter(
+      (doc) => doc.code.toLowerCase().includes(term) || doc.title.toLowerCase().includes(term)
+    );
+  }, [incomingDocuments, searchTerm]);
+
+  const filteredOutgoing = useMemo(() => {
+    if (!searchTerm.trim()) return outgoingDocuments;
+    const term = searchTerm.toLowerCase();
+    return outgoingDocuments.filter(
+      (doc) => doc.code.toLowerCase().includes(term) || doc.title.toLowerCase().includes(term)
+    );
+  }, [outgoingDocuments, searchTerm]);
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => task.status === taskFilter);
+  }, [tasks, taskFilter]);
+
+  const filteredResources = useMemo(() => {
+    if (!searchTerm.trim()) return resources;
+    const term = searchTerm.toLowerCase();
+    return resources.filter(
+      (r) => r.code.toLowerCase().includes(term) || r.title.toLowerCase().includes(term)
+    );
+  }, [resources, searchTerm]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* 1. Thanh tìm kiếm nhanh & Nút Đặt phòng họp đặt ngang hàng */}
+      <div className="flex items-center gap-3 w-full">
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={t('dashboardDetails.searchPlaceholder')}
+            className="w-full pl-12 pr-10 py-3.5 rounded-xl border border-border-subtle bg-surface text-main text-base shadow-xs focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted"
+          />
+          <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-muted text-lg pointer-events-none" />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-main text-sm p-1.5 rounded-full hover:bg-surface-hover cursor-pointer transition-colors"
+              title="Xóa tìm kiếm"
+              aria-label="Xóa nội dung tìm kiếm"
+            >
+              <i className="fa-solid fa-xmark text-base" />
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="px-5 py-3.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold text-base flex items-center gap-2.5 shrink-0 border border-primary cursor-pointer shadow-xs transition-all hover:scale-[1.02]"
+          onClick={() => onNavigate('meetings')}
+          title="Chuyển tới phân hệ Đặt phòng họp"
+        >
+          <i className="fa-solid fa-calendar-plus text-white text-base" />
+          <span className="whitespace-nowrap">{t('dashboardDetails.bookMeetingRoomBtn') || 'Đặt phòng họp'}</span>
+        </button>
+      </div>
+
+      {/* 2. Modern KPI Deck (3 cards thẻ thống kê - Cỡ chữ to rõ ràng) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Card 1: VB Đến */}
+        <div
+          onClick={() => onNavigate('documents_incoming')}
+          className="bg-surface border border-border-subtle rounded-2xl p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-primary-border transition-colors"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-primary-subtle text-primary flex items-center justify-center text-2xl shrink-0 shadow-xs">
+            <i className="fa-solid fa-inbox" />
+          </div>
+          <div>
+            <div className="text-sm uppercase tracking-wider font-semibold text-muted">
+              {t('dashboardDetails.incomingCard')} ({new Date().getFullYear()})
+            </div>
+            <div className="text-3xl lg:text-4xl font-bold text-main mt-0.5">
+              {incomingCount.toLocaleString()}
+            </div>
+            <div className="text-sm text-secondary mt-1.5">
+              {incomingCount > 0 ? `+${incomingCount} ${t('dashboardDetails.newIncomingToday')}` : t('dashboardDetails.noIncomingToday')}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: VB Đi */}
+        <div
+          onClick={() => onNavigate('documents_outgoing')}
+          className="bg-surface border border-border-subtle rounded-2xl p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-success-border transition-colors"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-success-subtle text-success flex items-center justify-center text-2xl shrink-0 shadow-xs">
+            <i className="fa-solid fa-paper-plane" />
+          </div>
+          <div>
+            <div className="text-sm uppercase tracking-wider font-semibold text-muted">
+              {t('dashboardDetails.outgoingCard')}
+            </div>
+            <div className="text-3xl lg:text-4xl font-bold text-main mt-0.5">
+              {outgoingCount.toLocaleString()}
+            </div>
+            <div className="text-sm text-secondary mt-1.5">
+              {outgoingCount > 0 ? `+${outgoingCount} ${t('dashboardDetails.issuedToday')}` : t('dashboardDetails.noOutgoingToday')}
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Nhiệm vụ */}
+        <div
+          onClick={() => onNavigate('tasks')}
+          className="bg-surface border border-border-subtle rounded-2xl p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-purple-border transition-colors"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-purple-subtle text-purple flex items-center justify-center text-2xl shrink-0 shadow-xs">
+            <i className="fa-solid fa-list-check" />
+          </div>
+          <div>
+            <div className="text-sm uppercase tracking-wider font-semibold text-muted">
+              {t('dashboardDetails.tasksCard')}
+            </div>
+            <div className="text-3xl lg:text-4xl font-bold text-main mt-0.5">
+              {tasksCount.toLocaleString()}
+            </div>
+            <div className="text-sm text-secondary mt-1.5">
+              {tasksCount > 0 ? `${tasksCount} ${t('dashboardDetails.tasksToProcess')}` : t('dashboardDetails.noTasksPending')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Dải Marquee Chúc Mừng Sinh Nhật CBNV */}
+      <BirthdaysWidget birthdays={birthdays} />
+
+      {/* 4. Hai Bảng Song Song: Văn Bản Đến & Văn Bản Đi (Cỡ chữ to rõ ràng) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Top Văn Bản Đến */}
+        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-3">
+            <div className="font-bold text-base text-main flex items-center gap-2.5">
+              <i className="fa-solid fa-inbox text-primary text-lg" />
+              <span>{t('dashboardDetails.recentIncomingTitle')}</span>
+            </div>
+            <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
+          </div>
+
+          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+            {filteredIncoming.length === 0 ? (
+              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+                <i className="fa-solid fa-inbox text-3xl mb-2 opacity-30 text-primary" />
+                <span className="text-sm font-medium">{t('dashboardDetails.noIncomingData')}</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-muted text-left">
+                      <th className="p-2.5">{t('dashboardDetails.docNumber')}</th>
+                      <th className="p-2.5">{t('dashboardDetails.docSummary')}</th>
+                      <th className="p-2.5 w-28">{t('dashboardDetails.docDate')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredIncoming.map((row, idx) => (
+                      <tr key={idx} className="border-b border-border-subtle hover:bg-surface-hover transition-colors">
+                        <td className="p-2.5 font-semibold text-primary">{row.code}</td>
+                        <td className="p-2.5 text-main">{row.title}</td>
+                        <td className="p-2.5 text-muted">{row.date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+            <button
+              type="button"
+              onClick={() => onNavigate('documents_incoming')}
+              className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>{t('dashboardDetails.viewMoreIncoming')}</span>
+              <i className="fa-solid fa-arrow-right text-xs" />
+            </button>
+          </div>
+        </div>
+
+        {/* Top Văn Bản Đi */}
+        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-3">
+            <div className="font-bold text-base text-main flex items-center gap-2.5">
+              <i className="fa-solid fa-paper-plane text-success text-lg" />
+              <span>{t('dashboardDetails.recentOutgoingTitle')}</span>
+            </div>
+            <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
+          </div>
+
+          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+            {filteredOutgoing.length === 0 ? (
+              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+                <i className="fa-solid fa-paper-plane text-3xl mb-2 opacity-30 text-success" />
+                <span className="text-sm font-medium">{t('dashboardDetails.noOutgoingData')}</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-muted text-left">
+                      <th className="p-2.5">{t('dashboardDetails.docNumber')}</th>
+                      <th className="p-2.5">{t('dashboardDetails.docSummary')}</th>
+                      <th className="p-2.5 w-28">{t('dashboardDetails.docDate')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOutgoing.map((row, idx) => (
+                      <tr key={idx} className="border-b border-border-subtle hover:bg-surface-hover transition-colors">
+                        <td className="p-2.5 font-semibold text-success">{row.code}</td>
+                        <td className="p-2.5 text-main">{row.title}</td>
+                        <td className="p-2.5 text-muted">{row.date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+            <button
+              type="button"
+              onClick={() => onNavigate('documents_outgoing')}
+              className="text-sm font-semibold text-success hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>{t('dashboardDetails.viewMoreOutgoing')}</span>
+              <i className="fa-solid fa-arrow-right text-xs" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Hai Bảng Song Song: Nhiệm Vụ Được Giao & Tài Liệu Biểu Mẫu (Hàng dưới chia đôi - Chữ to rõ ràng) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Cột Trái: Danh Sách Nhiệm Vụ Được Giao (Top 5) */}
+        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-3">
+            <div className="font-bold text-base text-main flex items-center gap-2.5">
+              <i className="fa-solid fa-list-check text-purple text-lg" />
+              <span>{t('dashboardDetails.recentTasksTitle')}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('tasks')}
+              className="text-sm font-semibold text-purple hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <span>{t('dashboardDetails.viewMoreTasks')}</span>
+              <i className="fa-solid fa-arrow-right text-xs" />
+            </button>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex gap-2 mb-3 flex-wrap">
+            {(
+              [
+                { id: 'processing', label: t('dashboardDetails.filterProcessing') },
+                { id: 'completed', label: t('dashboardDetails.filterCompleted') },
+                { id: 'overdue', label: t('dashboardDetails.filterOverdue') },
+                { id: 'pending', label: t('dashboardDetails.filterPending') },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTaskFilter(item.id)}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border border-border-subtle transition-colors cursor-pointer ${
+                  taskFilter === item.id
+                    ? 'bg-purple text-white border-purple'
+                    : 'bg-surface-elevated text-secondary hover:text-main'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Task Rows or Clean Empty State */}
+          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+            {filteredTasks.length === 0 ? (
+              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+                <i className="fa-solid fa-list-check text-3xl mb-2 opacity-30 text-purple" />
+                <span className="text-sm font-medium">{t('dashboardDetails.noTasksData')}</span>
+              </div>
+            ) : (
+              <div className="divide-y divide-border-subtle">
+                {filteredTasks.slice(0, 5).map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => onNavigate('tasks')}
+                    className="py-3 flex items-center justify-between gap-3 hover:bg-surface-hover transition-colors cursor-pointer text-sm"
+                  >
+                    <div className="flex-1 min-w-0 pr-2">
+                      <span className="font-semibold text-main hover:text-primary transition-colors truncate block">
+                        {t.title}
+                      </span>
+                    </div>
+                    <span className="text-muted text-xs shrink-0">{t.due}</span>
+                    <div className="shrink-0 text-right">
+                      <Badge variant={t.variant} size="sm">
+                        {t.statusLabel}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+            <button
+              type="button"
+              onClick={() => onNavigate('tasks')}
+              className="text-sm font-semibold text-purple hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>{t('dashboardDetails.viewMoreTasks')}</span>
+              <i className="fa-solid fa-arrow-right text-xs" />
+            </button>
+          </div>
+        </div>
+
+        {/* Cột Phải: Danh Sách Tài Liệu & Biểu Mẫu Mới Nhất (Top 5) - Nhóm 4 */}
+        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-3">
+            <div className="font-bold text-base text-main flex items-center gap-2.5">
+              <i className="fa-solid fa-file-lines text-primary text-lg" />
+              <span>{t('dashboardDetails.recentResourcesTitle')}</span>
+            </div>
+            <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
+          </div>
+
+          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+            {filteredResources.length === 0 ? (
+              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+                <i className="fa-solid fa-file-lines text-3xl mb-2 opacity-30 text-primary" />
+                <span className="text-sm font-medium">{t('dashboardDetails.noResourcesData')}</span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border-subtle text-muted text-left">
+                      <th className="p-2.5">{t('dashboardDetails.resourceCode')}</th>
+                      <th className="p-2.5">{t('dashboardDetails.resourceName')}</th>
+                      <th className="p-2.5 w-24 text-center">{t('dashboardDetails.resourceFormat')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredResources.slice(0, 5).map((row, idx) => (
+                      <tr key={idx} className="border-b border-border-subtle hover:bg-surface-hover transition-colors">
+                        <td className="p-2.5 font-semibold text-primary">{row.code}</td>
+                        <td className="p-2.5 text-main">{row.title}</td>
+                        <td className="p-2.5 text-center">
+                          <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-primary-subtle text-primary uppercase">
+                            {row.format}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+            <button
+              type="button"
+              onClick={() => onNavigate('resources')}
+              className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>{t('dashboardDetails.viewMoreResources')}</span>
+              <i className="fa-solid fa-arrow-right text-xs" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
