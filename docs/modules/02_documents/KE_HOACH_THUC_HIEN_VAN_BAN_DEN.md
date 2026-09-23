@@ -16,9 +16,9 @@
 | **GĐ 2** | Xây dựng tiện ích format Datetime chuẩn `HH:mm:ss dd/MM/yyyy` & kích thước file | `frontend/src/lib/dateUtils.ts`<br>`frontend/src/lib/dateUtils.test.ts` | ✅ **Hoàn thành** |
 | **GĐ 3** | Xây dựng Thanh tìm kiếm & Bộ lọc đa tiêu chí | `frontend/src/components/documents/FilterBar.tsx`<br>`frontend/src/components/documents/FilterBar.test.tsx` | ✅ **Hoàn thành** |
 | **GĐ 4** | Xây dựng Bảng danh sách văn bản (đổi màu hết hiệu lực, menu ⋮, phân trang) | `frontend/src/components/documents/DocumentTable.tsx`<br>`frontend/src/components/documents/DocumentTable.test.tsx` | ✅ **Hoàn thành** |
-| **GĐ 5** | Xây dựng Modal Xem chi tiết & Modal Theo dõi người đã đọc | `frontend/src/components/documents/DocumentDetailModal.tsx`<br>`frontend/src/components/documents/DocumentViewersModal.tsx` | ⏳ Tiếp theo |
-| **GĐ 6** | Hoàn thiện Trang điều phối chính & Kết nối Route chính thức | `frontend/src/pages/InboundDocumentPage.tsx`<br>`frontend/src/app/router.tsx` | ⚡ Đã kết nối cơ bản |
-| **GĐ 7** | Kiểm thử giao diện trên trình duyệt (2 theme Dark/Light) & nghiệm thu | Toàn bộ phân hệ | ⏳ Chờ GĐ 5 & 6 |
+| **GĐ 5** | Xây dựng Modal Xem chi tiết & Modal Theo dõi người đã đọc | `frontend/src/components/documents/DocumentDetailModal.tsx`<br>`frontend/src/components/documents/DocumentViewersModal.tsx` | ✅ **Hoàn thành** |
+| **GĐ 6** | Hoàn thiện Trang điều phối chính & Kết nối Route chính thức | `frontend/src/pages/InboundDocumentPage.tsx`<br>`frontend/src/app/router.tsx` | ✅ **Hoàn thành** |
+| **GĐ 7** | Kiểm thử giao diện trên trình duyệt (2 theme Dark/Light) & nghiệm thu | Toàn bộ phân hệ (Build 4.76s, 63/63 tests PASS) | ✅ **Hoàn thành** |
 
 ---
 
