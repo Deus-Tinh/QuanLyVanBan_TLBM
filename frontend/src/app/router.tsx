@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
@@ -9,6 +9,7 @@ import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -84,7 +85,7 @@ export default function AppRouter({
         <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
         <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
         <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
-        <Route path="/birthdays" element={<SyllabusPreview activePage="birthdays" />} />
+        <Route path="/birthdays" element={<BirthdayPage />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
         <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
