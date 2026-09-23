@@ -9,6 +9,7 @@ import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -53,6 +54,7 @@ export default function AppRouter({
     <Routes>
       {/* Route Standalone: Màn hình Đăng Nhập */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/resources-demo" element={<ResourceManagementPage />} />
 
       {/* Routes có Layout chung (được bảo vệ bởi ProtectedRoute - yêu cầu đăng nhập trước) */}
       <Route
@@ -78,7 +80,7 @@ export default function AppRouter({
 
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
         <Route path="/records" element={<SyllabusPreview activePage="records" />} />
-        <Route path="/resources" element={<SyllabusPreview activePage="resources" />} />
+        <Route path="/resources" element={<ResourceManagementPage />} />
 
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}
         <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />

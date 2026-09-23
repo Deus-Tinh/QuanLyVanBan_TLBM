@@ -1,0 +1,119 @@
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { ResourceTable } from './ResourceTable';
+import { ResourceItem } from '@app-types/resource';
+
+const mockItems: ResourceItem[] = [
+  {
+    id: 1,
+    dm_tai_lieu: 1,
+    dm_tai_lieu_name: 'Tài liệu chung',
+    loai_tai_lieu: [1],
+    loai_tai_lieu_names: ['Quy chế'],
+    ky_hieu: '15/QĐ-BL',
+    tieu_de: 'Quy chế quản lý nội bộ 2026',
+    ngay_dang: '2026-01-15',
+    noi_ban_hanh: 'Ban Giám Đốc',
+    hieu_luc: 'CON_HIEU_LUC',
+    file_dinh_kem: '/media/documents/templates/qc2026.pdf',
+    hien_thi: 'TAT_CA',
+    nguoi_tao_name: 'Admin',
+  },
+  {
+    id: 2,
+    dm_tai_lieu: 1,
+    dm_tai_lieu_name: 'Tài liệu chung',
+    loai_tai_lieu: [2],
+    loai_tai_lieu_names: ['Biểu mẫu'],
+    ky_hieu: 'BM-01',
+    tieu_de: 'Biểu mẫu đề xuất nghỉ phép cũ',
+    ngay_dang: '2025-05-10',
+    noi_ban_hanh: 'Phòng Hành chính',
+    hieu_luc: 'HET_HIEU_LUC',
+    ngay_het_hieu_luc: '2026-01-01',
+    file_dinh_kem: '/media/documents/templates/bm01.docx',
+    hien_thi: 'TAT_CA',
+    nguoi_tao_name: 'Admin',
+  },
+];
+
+describe('ResourceTable Component', () => {
+  it('renders table headers and rows correctly', () => {
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={1}
+        pageSize={10}
+        totalCount={2}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Quy chế quản lý nội bộ 2026')).toBeInTheDocument();
+    expect(screen.getByText('Biểu mẫu đề xuất nghỉ phép cũ')).toBeInTheDocument();
+    expect(screen.getByText('15/QĐ-BL')).toBeInTheDocument();
+    expect(screen.getByText('BM-01')).toBeInTheDocument();
+    expect(screen.getByText('Còn hiệu lực')).toBeInTheDocument();
+    expect(screen.getByText('Hết hiệu lực')).toBeInTheDocument();
+  });
+
+  it('applies dimmed background class to expired rows as required by project spec', () => {
+    const { container } = render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={1}
+        pageSize={10}
+        totalCount={2}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    const rows = container.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(2);
+
+    // Dòng 1: Còn hiệu lực -> không chứa class tối màu
+    expect(rows[0].className).not.toContain('bg-slate-100/70');
+
+    // Dòng 2: Hết hiệu lực -> PHẢI chứa class đổi màu tối theo quy chuẩn
+    expect(rows[1].className).toContain('bg-slate-100/70');
+    expect(rows[1].className).toContain('dark:bg-slate-800/60');
+  });
+
+  it('calls onViewDetail when clicking on title or view button', () => {
+    const handleViewDetail = vi.fn();
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={1}
+        pageSize={10}
+        totalCount={2}
+        onPageChange={vi.fn()}
+        onViewDetail={handleViewDetail}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Quy chế quản lý nội bộ 2026'));
+    expect(handleViewDetail).toHaveBeenCalledWith(mockItems[0]);
+  });
+
+  it('renders empty state when items is empty', () => {
+    render(
+      <ResourceTable
+        items={[]}
+        currentPage={1}
+        totalPages={1}
+        pageSize={10}
+        totalCount={0}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Chưa có tài liệu nào')).toBeInTheDocument();
+  });
+});
