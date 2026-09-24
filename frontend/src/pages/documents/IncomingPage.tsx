@@ -172,9 +172,9 @@ export default function IncomingPage(){
         </table>
       </div>
 
-     <DocumentFormModal open={openForm} initial={initialDoc||undefined} onClose={()=>{ setOpenForm(false); setInitialDoc(null); }} onSaved={(savedData)=>{
-       setOpenForm(false); 
-        setInitialDoc(null); 
+      <DocumentFormModal open={openForm} initial={initialDoc||undefined} onClose={()=>{ setOpenForm(false); setInitialDoc(null); }} onSaved={(savedData)=>{
+        setOpenForm(false);
+        setInitialDoc(null);
         if (import.meta.env.DEV && !localStorage.getItem('tlbm_access_token') && savedData) {
           // Mock cập nhật list ở frontend
           setList(prev => {
