@@ -319,3 +319,104 @@ class DocumentAPITests(TestCase):
             file_size=16,
         )
         self.assertTrue(att_mat.file.name.startswith("02_documents/mat/"))
+
+
+class ConfidentialDocumentSecurityTests(TestCase):
+    """
+    Kiểm thử bảo mật Văn bản Mật:
+    1. Chỉ đối tượng được chỉ định (hoặc người tạo / admin) mới được đọc. Người ngoài hoàn toàn không thấy (404).
+    2. Đối tượng được chỉ định CHỈ CÓ QUYỀN ĐỌC (Read-Only) — không được sửa (403), không được xóa (403).
+    3. Chỉ Người tạo hoặc Quản trị viên (Admin) mới có quyền Sửa / Xóa.
+    """
+
+    def setUp(self):
+        self.creator = User.objects.create_user(username="creator", password="pwd")
+        self.recipient = User.objects.create_user(username="recipient", password="pwd")
+        self.stranger = User.objects.create_user(username="stranger", password="pwd")
+        self.admin = User.objects.create_superuser(username="admin_user", password="pwd", email="admin@test.com")
+
+        self.doc_mat = Document.objects.create(
+            loai="MAT",
+            nam=2026,
+            so_hieu="01/MAT-BGDDT",
+            trich_yeu="Văn bản mật về an ninh mạng",
+            hieu_luc="CON_HIEU_LUC",
+            nguoi_tao=self.creator,
+        )
+        self.doc_mat.nguoi_nhan.add(self.recipient)
+
+    def test_confidential_visible_to_creator_and_recipient(self):
+        """Người tạo và người nhận được chỉ định đích danh xem được văn bản mật."""
+        client = APIClient()
+
+        # 1. Người tạo
+        client.force_authenticate(user=self.creator)
+        res_creator_list = client.get("/api/documents/?loai=MAT")
+        self.assertEqual(res_creator_list.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_creator_list.data["count"], 1)
+
+        res_creator_detail = client.get(f"/api/documents/{self.doc_mat.id}/")
+        self.assertEqual(res_creator_detail.status_code, status.HTTP_200_OK)
+
+        # 2. Người nhận được chỉ định
+        client.force_authenticate(user=self.recipient)
+        res_recipient_list = client.get("/api/documents/?loai=MAT")
+        self.assertEqual(res_recipient_list.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_recipient_list.data["count"], 1)
+
+        res_recipient_detail = client.get(f"/api/documents/{self.doc_mat.id}/")
+        self.assertEqual(res_recipient_detail.status_code, status.HTTP_200_OK)
+
+    def test_confidential_hidden_from_unauthorized_user(self):
+        """Người không được chỉ định KHÔNG THẤY văn bản mật (kể cả list và detail = 404)."""
+        client = APIClient()
+        client.force_authenticate(user=self.stranger)
+
+        # List không thấy
+        res_list = client.get("/api/documents/?loai=MAT")
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_list.data["count"], 0)
+
+        # Detail trả về 404 Not Found
+        res_detail = client.get(f"/api/documents/{self.doc_mat.id}/")
+        self.assertEqual(res_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_confidential_recipient_is_read_only(self):
+        """Người nhận được chỉ định CHỈ CÓ QUYỀN ĐỌC — bị chặn 403 Forbidden khi Sửa hoặc Xóa."""
+        client = APIClient()
+        client.force_authenticate(user=self.recipient)
+
+        # Cố tình sửa -> 403 Forbidden
+        res_patch = client.patch(
+            f"/api/documents/{self.doc_mat.id}/",
+            {"trich_yeu": "Sửa lén văn bản mật"},
+            format="json",
+        )
+        self.assertEqual(res_patch.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("chỉ có quyền đọc", str(res_patch.data))
+
+        # Cố tình xóa -> 403 Forbidden
+        res_delete = client.delete(f"/api/documents/{self.doc_mat.id}/")
+        self.assertEqual(res_delete.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("chỉ có quyền đọc", str(res_delete.data))
+
+    def test_confidential_creator_and_admin_can_update_and_delete(self):
+        """Chỉ Người tạo hoặc Admin mới được phép Sửa hoặc Xóa văn bản mật."""
+        client = APIClient()
+
+        # Người tạo sửa thành công
+        client.force_authenticate(user=self.creator)
+        res_creator_patch = client.patch(
+            f"/api/documents/{self.doc_mat.id}/",
+            {"trich_yeu": "Cập nhật trích yếu hợp lệ bởi người tạo"},
+            format="json",
+        )
+        self.assertEqual(res_creator_patch.status_code, status.HTTP_200_OK)
+        self.doc_mat.refresh_from_db()
+        self.assertEqual(self.doc_mat.trich_yeu, "Cập nhật trích yếu hợp lệ bởi người tạo")
+
+        # Admin xóa thành công
+        client.force_authenticate(user=self.admin)
+        res_admin_delete = client.delete(f"/api/documents/{self.doc_mat.id}/")
+        self.assertEqual(res_admin_delete.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Document.objects.filter(id=self.doc_mat.id).exists())

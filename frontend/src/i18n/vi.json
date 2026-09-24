@@ -381,6 +381,27 @@
       "desc": "Hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh."
     }
   },
+  "documents_incoming_page": {
+    "pageTitle": "Danh mục văn bản đến",
+    "searchTitle": "Tiêu đề",
+    "year": "Năm",
+    "searchBtn": "Tìm kiếm",
+    "addBtn": "Thêm",
+    "importBtn": "Import file",
+    "exportBtn": "Xuất Excel",
+    "viewing": "Đang xem",
+    "colAction": "Tác vụ",
+    "colIncomingDate": "Ngày đến",
+    "colIncomingNum": "Số đến",
+    "colOfficer": "Cán bộ",
+    "colRefNum": "Số, ký hiệu",
+    "colDocDate": "Ngày văn bản",
+    "colTypeSummary": "Tên loại và trích yếu",
+    "colRecipient": "Đơn vị hoặc người nhận",
+    "colIssueDate": "Ngày ban hành",
+    "colNotes": "Ghi chú",
+    "noData": "Không có dữ liệu"
+  },
   "auth": {
     "backToDashboard": "Vào Bàn Làm Việc (Dashboard)",
     "brandTitle": "Quản lý văn bản & Tài liệu Bảo Long",

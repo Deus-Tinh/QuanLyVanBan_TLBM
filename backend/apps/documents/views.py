@@ -85,20 +85,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
             "attachments", "nguoi_nhan"
         )
 
-        # Phân quyền VB Mật: filter ở backend, không chỉ ẩn ở frontend
-        raw_loai = self.request.query_params.get("loai") or self.request.query_params.get("type", "")
-        loai = str(raw_loai).strip().upper()
         user = self.request.user
 
-        if loai == Document.LoaiVanBan.MAT and not user.is_staff:
+        # Phân quyền Văn bản Mật: CHỈ người tạo hoặc người nhận được chỉ định đích danh mới được xem
+        if not user.is_staff:
             from django.db.models import Q
 
+            # Áp dụng cho mọi query: VB Mật luôn được bảo vệ, người ngoài không thể thấy
             qs = qs.filter(
-                Q(nguoi_nhan=user)
+                ~Q(loai=Document.LoaiVanBan.MAT)
+                | Q(nguoi_nhan=user)
                 | Q(nguoi_tao=user)
-                # TODO: Khi có model Organization:
-                # | Q(don_vi_nhan=user.organization)
-            )
+            ).distinct()
 
         return qs
 
@@ -139,10 +137,32 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         """
-        Xử lý cập nhật: so_thu_tu không được sửa (read_only trong serializer).
+        Xử lý cập nhật:
+        1. VB Mật CHỈ CÓ QUYỀN ĐỌC đối với người nhận được chỉ định.
+           Chỉ người tạo (nguoi_tao) hoặc admin (is_staff) mới được sửa.
+        2. so_thu_tu không được sửa (read_only trong serializer).
         """
+        instance = self.get_object()
+        user = self.request.user
+        if instance.loai == Document.LoaiVanBan.MAT and not user.is_staff and instance.nguoi_tao != user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền chỉnh sửa văn bản này.")
+
         doc = serializer.save()
         self._handle_attachments(doc)
+
+    def perform_destroy(self, instance):
+        """
+        Xử lý xóa:
+        VB Mật CHỈ CÓ QUYỀN ĐỌC đối với người nhận được chỉ định.
+        Chỉ người tạo (nguoi_tao) hoặc admin (is_staff) mới được xóa.
+        """
+        user = self.request.user
+        if instance.loai == Document.LoaiVanBan.MAT and not user.is_staff and instance.nguoi_tao != user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền xóa văn bản này.")
+
+        instance.delete()
 
     def _handle_attachments(self, document):
         """Upload file đính kèm từ request.FILES."""

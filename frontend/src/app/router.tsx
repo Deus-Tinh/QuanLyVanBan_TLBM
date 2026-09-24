@@ -10,6 +10,7 @@ import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import InboundDocumentPage from '@pages/InboundDocumentPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import IncomingPage from '@pages/documents/IncomingPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;
