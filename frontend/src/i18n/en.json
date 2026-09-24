@@ -380,6 +380,27 @@
       "desc": "Intelligent procedural Q&A, incoming/outgoing document search, and deep system cross-linking."
     }
   },
+  "documents_incoming_page": {
+    "pageTitle": "Incoming Documents List",
+    "searchTitle": "Subject / Title",
+    "year": "Year",
+    "searchBtn": "Search",
+    "addBtn": "Add",
+    "importBtn": "Import file",
+    "exportBtn": "Export Excel",
+    "viewing": "Showing",
+    "colAction": "Actions",
+    "colIncomingDate": "Date Received",
+    "colIncomingNum": "In. No.",
+    "colOfficer": "Officer",
+    "colRefNum": "Ref Code",
+    "colDocDate": "Doc Date",
+    "colTypeSummary": "Type & Summary",
+    "colRecipient": "Recipient",
+    "colIssueDate": "Issue Date",
+    "colNotes": "Notes",
+    "noData": "No data available"
+  },
   "auth": {
     "backToDashboard": "Go to Dashboard",
     "brandTitle": "Bao Long Document & Records Management",

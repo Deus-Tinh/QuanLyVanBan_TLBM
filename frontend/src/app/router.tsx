@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
@@ -9,6 +9,7 @@ import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import IncomingPage from '@pages/documents/IncomingPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -72,7 +73,7 @@ export default function AppRouter({
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Phân hệ Văn bản (Nhóm 2 phụ trách theo đề cương) */}
-        <Route path="/documents/incoming" element={<SyllabusPreview activePage="documents_incoming" />} />
+        <Route path="/documents/incoming" element={<IncomingPage />} />
         <Route path="/documents/outgoing" element={<SyllabusPreview activePage="documents_outgoing" />} />
         <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
 
