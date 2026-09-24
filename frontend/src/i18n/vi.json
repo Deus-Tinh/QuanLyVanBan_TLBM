@@ -381,6 +381,43 @@
       "desc": "Hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh."
     }
   },
+  "birthdayPage": {
+    "title": "Lịch sinh nhật cán bộ nhân viên",
+    "description": "Xem lịch sinh nhật và danh sách cán bộ nhân viên theo ngày.",
+    "today": "Hôm nay",
+    "selected": "Đang chọn",
+    "hasBirthday": "Có sinh nhật",
+    "calendarLabel": "Lịch sinh nhật theo tháng",
+    "detailsLabel": "Danh sách sinh nhật theo ngày",
+    "previousMonth": "Tháng trước",
+    "nextMonth": "Tháng sau",
+    "monthYear": "Tháng {month} / {year}",
+    "total": "Tổng cộng: {count} sinh nhật",
+    "calendarLoading": "Đang tải lịch sinh nhật...",
+    "calendarError": "Không thể tải lịch sinh nhật.",
+    "dayLoading": "Đang tải danh sách sinh nhật...",
+    "dayError": "Không thể tải danh sách sinh nhật theo ngày.",
+    "retry": "Thử lại",
+    "selectDay": "Chọn ngày {day}/{month}/{year}",
+    "selectedDate": "Sinh nhật ngày {day}/{month}/{year}",
+    "staffCount": "Có {count} cán bộ nhân viên",
+    "birthdayCount": "{count} cán bộ nhân viên có sinh nhật",
+    "emptyDay": "Không có cán bộ nhân viên nào sinh vào ngày này.",
+    "birthDayMonth": "Ngày sinh nhật: {day}/{month}",
+    "paginationLabel": "Phân trang danh sách sinh nhật",
+    "previousPage": "Trang trước",
+    "nextPage": "Trang sau",
+    "pageCount": "Trang {page} / {total}",
+    "weekdays": {
+      "monday": "T2",
+      "tuesday": "T3",
+      "wednesday": "T4",
+      "thursday": "T5",
+      "friday": "T6",
+      "saturday": "T7",
+      "sunday": "CN"
+    }
+  },
   "auth": {
     "backToDashboard": "Vào Bàn Làm Việc (Dashboard)",
     "brandTitle": "Quản lý văn bản & Tài liệu Bảo Long",

@@ -10,12 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / ".env")
 
 # Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
 sys.path.insert(0, str(BASE_DIR / "apps"))
@@ -137,14 +140,22 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "qlvb-admin@itc.edu.vn"
+# Export these variables in the process environment before starting Django.
+# Console delivery is suitable for local development only; deployment must
+# explicitly select Django's SMTP backend and provide SMTP credentials.
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() in ("1", "true", "yes")
+EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() in ("1", "true", "yes")
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "30"))
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "qlvb-admin@itc.edu.vn")
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
-}
+# The agreed Gregorian rule celebrates 29 February birthdays on 28 February
+# in non-leap years. Calendar, dashboard, and email job share this setting.
+BIRTHDAY_LEAP_DAY_STRATEGY = os.getenv("BIRTHDAY_LEAP_DAY_STRATEGY", "FEB_28")
 
 # CORS Configuration (Cho phép Frontend kết nối API)
 CORS_ALLOW_ALL_ORIGINS = True

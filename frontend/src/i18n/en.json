@@ -380,6 +380,43 @@
       "desc": "Intelligent procedural Q&A, incoming/outgoing document search, and deep system cross-linking."
     }
   },
+  "birthdayPage": {
+    "title": "Staff birthday calendar",
+    "description": "View birthdays and staff lists by date.",
+    "today": "Today",
+    "selected": "Selected",
+    "hasBirthday": "Birthday",
+    "calendarLabel": "Monthly birthday calendar",
+    "detailsLabel": "Birthdays on selected date",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "monthYear": "Month {month} / {year}",
+    "total": "Total: {count} birthdays",
+    "calendarLoading": "Loading birthday calendar...",
+    "calendarError": "Could not load the birthday calendar.",
+    "dayLoading": "Loading birthdays...",
+    "dayError": "Could not load birthdays for this date.",
+    "retry": "Retry",
+    "selectDay": "Select {day}/{month}/{year}",
+    "selectedDate": "Birthdays on {day}/{month}/{year}",
+    "staffCount": "{count} staff members",
+    "birthdayCount": "{count} staff birthdays",
+    "emptyDay": "No staff birthdays on this date.",
+    "birthDayMonth": "Birthday: {day}/{month}",
+    "paginationLabel": "Birthday list pages",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "pageCount": "Page {page} / {total}",
+    "weekdays": {
+      "monday": "Mon",
+      "tuesday": "Tue",
+      "wednesday": "Wed",
+      "thursday": "Thu",
+      "friday": "Fri",
+      "saturday": "Sat",
+      "sunday": "Sun"
+    }
+  },
   "auth": {
     "backToDashboard": "Go to Dashboard",
     "brandTitle": "Bao Long Document & Records Management",
