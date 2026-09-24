@@ -4,6 +4,10 @@ import FilterBar from '@components/documents/FilterBar';
 import DocumentTable from '@components/documents/DocumentTable';
 import DocumentDetailModal from '@components/documents/DocumentDetailModal';
 import DocumentViewersModal from '@components/documents/DocumentViewersModal';
+import DocumentFormModal from '@components/documents/DocumentFormModal';
+import ImportExcelModal from '@components/documents/ImportExcelModal';
+import ConfirmModal from '@components/common/ConfirmModal';
+import AlertModal from '@components/common/AlertModal';
 import { Button } from '@components/common/Button';
 import apiClient from '@lib/apiClient';
 
@@ -29,6 +33,14 @@ export const InboundDocumentPage: React.FC = () => {
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
   const [isViewersOpen, setIsViewersOpen] = useState<boolean>(false);
+
+  // Quản lý modal Thêm/Sửa & Import Excel (từ PR #34 của Tân)
+  const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
+  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; soHieu: string } | null>(null);
+  const [alertMsg, setAlertMsg] = useState<string>('');
+  const [isAlertOpen, setIsAlertOpen] = useState<boolean>(false);
 
   // Gọi API lấy danh sách văn bản đến
   const fetchDocuments = useCallback(async () => {
@@ -111,18 +123,41 @@ export const InboundDocumentPage: React.FC = () => {
     setIsViewersOpen(true);
   };
 
-  // Xử lý xóa văn bản (có xác nhận an toàn)
-  const handleDelete = async (id: number, soHieu: string) => {
-    const isConfirm = window.confirm(`Bạn có chắc chắn muốn xóa văn bản đến "${soHieu}" không? Hành động này không thể hoàn tác.`);
-    if (!isConfirm) return;
-
+  // Thực hiện xóa sau khi xác nhận ConfirmModal
+  const doDelete = async () => {
+    if (!pendingDelete) return;
     try {
-      await apiClient.delete(`/api/documents/${id}/`);
-      alert(`Đã xóa văn bản "${soHieu}" thành công.`);
+      await apiClient.delete(`/api/documents/${pendingDelete.id}/`);
+      setPendingDelete(null);
+      setAlertMsg(`Đã xóa văn bản "${pendingDelete.soHieu}" thành công.`);
+      setIsAlertOpen(true);
       fetchDocuments();
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Xóa văn bản thất bại.';
-      alert(`Lỗi: ${errMsg}`);
+      setPendingDelete(null);
+      setAlertMsg(`Lỗi xóa văn bản: ${errMsg}`);
+      setIsAlertOpen(true);
+    }
+  };
+
+  // Xuất file Excel văn bản đến
+  const handleExportExcel = async () => {
+    try {
+      const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
+      const res = await fetch('/api/documents/export/?loai=DEN', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Quá trình xuất Excel thất bại. Vui lòng kiểm tra lại kết nối!');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Danh_Sach_Van_Ban_Den_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setAlertMsg(e.message || String(e));
+      setIsAlertOpen(true);
     }
   };
 
@@ -146,8 +181,44 @@ export const InboundDocumentPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Các nút hành động chính */}
-        <div className="flex items-center gap-2">
+        {/* Các nút hành động chính (Thêm mới, Nhập Excel, Xuất Excel, Làm mới) */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            icon="fa-plus"
+            onClick={() => {
+              setEditingDoc(null);
+              setIsFormOpen(true);
+            }}
+            title="Thêm văn bản đến mới"
+          >
+            Thêm mới
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            icon="fa-file-excel"
+            onClick={() => setIsImportOpen(true)}
+            title="Nhập danh sách từ tệp Excel"
+          >
+            Nhập Excel
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            icon="fa-file-export"
+            onClick={handleExportExcel}
+            title="Xuất dữ liệu ra file Excel"
+          >
+            Xuất Excel
+          </Button>
+
           <Button
             type="button"
             variant="secondary"
@@ -195,7 +266,7 @@ export const InboundDocumentPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Thanh Tìm Kiếm & Bộ Lọc (Giai đoạn 3) */}
+      {/* 3. Thanh Tìm Kiếm & Bộ Lọc Đa Tiêu Chí */}
       <FilterBar
         filters={filters}
         onFilterChange={setFilters}
@@ -221,7 +292,7 @@ export const InboundDocumentPage: React.FC = () => {
         </div>
       )}
 
-      {/* 4. Bảng Danh Sách Văn Bản (Giai đoạn 4) */}
+      {/* 4. Bảng Danh Sách Văn Bản với Phân Trang & Menu Thao Tác */}
       <DocumentTable
         documents={documents}
         totalCount={totalCount}
@@ -232,10 +303,16 @@ export const InboundDocumentPage: React.FC = () => {
         isLoading={isLoading}
         onViewDetail={handleViewDetail}
         onViewHistory={handleViewHistory}
-        onDelete={handleDelete}
+        onEdit={(doc) => {
+          setEditingDoc(doc);
+          setIsFormOpen(true);
+        }}
+        onDelete={(id, soHieu) => {
+          setPendingDelete({ id, soHieu });
+        }}
       />
 
-      {/* 5. Modals (sẵn sàng cho Giai đoạn 5) */}
+      {/* 5. Modals Nghiệp Vụ */}
       <DocumentDetailModal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
@@ -246,6 +323,45 @@ export const InboundDocumentPage: React.FC = () => {
         isOpen={isViewersOpen}
         onClose={() => setIsViewersOpen(false)}
         documentId={selectedDocId}
+      />
+
+      <DocumentFormModal
+        open={isFormOpen}
+        initial={editingDoc}
+        onClose={() => {
+          setIsFormOpen(false);
+          setEditingDoc(null);
+        }}
+        onSaved={() => {
+          setIsFormOpen(false);
+          setEditingDoc(null);
+          fetchDocuments();
+        }}
+      />
+
+      <ImportExcelModal
+        open={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        onImported={() => {
+          setIsImportOpen(false);
+          fetchDocuments();
+        }}
+      />
+
+      <ConfirmModal
+        open={!!pendingDelete}
+        title="Xác nhận xóa văn bản đến"
+        message={`Bạn có chắc chắn muốn xóa văn bản "${pendingDelete?.soHieu}" không? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa văn bản"
+        cancelText="Hủy bỏ"
+        onConfirm={doDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <AlertModal
+        open={isAlertOpen}
+        onClose={() => setIsAlertOpen(false)}
+        message={alertMsg}
       />
     </div>
   );

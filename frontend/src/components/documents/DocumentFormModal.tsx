@@ -163,13 +163,21 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
     try {
       const payload = new FormData();
       Object.keys(form).forEach(k => {
-        if (form[k] !== undefined && form[k] !== null) payload.append(k, String(form[k]));
+        if (form[k] !== undefined && form[k] !== null) {
+          if (Array.isArray(form[k])) {
+            form[k].forEach((val: any) => payload.append(k, String(val)));
+          } else {
+            payload.append(k, String(form[k]));
+          }
+        }
       });
-      files.forEach(f=>payload.append('files', f));
+      files.forEach(f => payload.append('files', f));
+
+      const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
 
       // --- MOCK ĐỂ TEST FRONTEND KHI KHÔNG CÓ BACKEND ---
       // Trong môi trường dev, nếu không có access token thật, ta giả lập thành công luôn
-      if (import.meta.env.DEV && !localStorage.getItem('tlbm_access_token')) {
+      if (import.meta.env.DEV && !token) {
         setTimeout(() => {
           const fakeData = {
             id: initial?.id || Date.now(),
@@ -185,9 +193,17 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
 
       let res;
       if (initial && initial.id) {
-        res = await fetch(`/api/documents/${initial.id}/`, { method: 'PUT', body: payload, headers: { Authorization: `Bearer ${localStorage.getItem('tlbm_access_token') || ''}` } });
+        res = await fetch(`/api/documents/${initial.id}/`, {
+          method: 'PUT',
+          body: payload,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
       } else {
-        res = await fetch('/api/documents/', { method: 'POST', body: payload, headers: { Authorization: `Bearer ${localStorage.getItem('tlbm_access_token') || ''}` } });
+        res = await fetch('/api/documents/', {
+          method: 'POST',
+          body: payload,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
       }
 
       if (res.ok) {
