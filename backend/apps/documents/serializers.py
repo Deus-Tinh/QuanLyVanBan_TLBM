@@ -91,6 +91,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
     attachments = DocumentAttachmentSerializer(many=True, read_only=True)
     nguoi_tao_name = serializers.SerializerMethodField()
+    nguoi_tao_username = serializers.CharField(source="nguoi_tao.username", read_only=True, default=None)
     nguoi_nhan_list = serializers.SerializerMethodField()
 
     class Meta:
@@ -118,6 +119,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             "gui_mail_toan_he_thong",
             "attachments",
             "nguoi_tao_name",
+            "nguoi_tao_username",
             "nguoi_nhan_list",
             "created_at",
             "updated_at",

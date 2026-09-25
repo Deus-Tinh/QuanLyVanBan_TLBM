@@ -3,6 +3,7 @@ import { DocumentItem } from '@app-types/document';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { formatDateTime, formatDate } from '@lib/dateUtils';
+import authService from '@lib/authService';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -151,6 +152,21 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 const isReplaced = doc.hieu_luc === 'HET_VA_THAY_THE';
                 const isActiveRow = activeMenuId === doc.id;
                 const isNearBottom = index >= documents.length - 2 && documents.length > 2;
+
+                const session = authService.getSession();
+                const isAdmin = authService.isAdmin();
+                const currentUsername = session?.username;
+
+                // Quyền sửa: Chỉ Quản trị viên (Admin) hoặc Người tạo văn bản mới được sửa
+                const isCreator = Boolean(
+                  currentUsername &&
+                  (doc.nguoi_tao_username === currentUsername ||
+                   (doc.nguoi_tao_name && doc.nguoi_tao_name.toLowerCase().includes(currentUsername.toLowerCase())))
+                );
+                const canEdit = !isConfidential && Boolean(onEdit) && (isAdmin || isCreator);
+
+                // Quyền xóa: Độc quyền của Quản trị viên (Admin)
+                const canDelete = !isConfidential && Boolean(onDelete) && isAdmin;
 
                 // Yêu cầu đặc tả: Dòng hết hiệu lực bôi màu tối (bỏ opacity để không sinh stacking context đè popup menu)
                 const rowHighlightClass = isExpired
@@ -319,8 +335,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               <span>Người đã xem</span>
                             </button>
 
-                            {/* Nút Sửa (ẩn nếu là văn bản mật) */}
-                            {!isConfidential && onEdit && (
+                            {/* Nút Sửa (chỉ hiển thị nếu có quyền: Admin hoặc Người tạo) */}
+                            {canEdit && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -334,8 +350,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               </button>
                             )}
 
-                            {/* Nút Xóa (ẩn nếu là văn bản mật) */}
-                            {!isConfidential && onDelete && (
+                            {/* Nút Xóa (chỉ Quản trị viên - Admin mới có quyền) */}
+                            {canDelete && (
                               <>
                                 <div className="border-t border-border-subtle/50 my-1" />
                                 <button

@@ -153,18 +153,70 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if str(auto_update).lower() in ("true", "1") and doc.link_thay_the:
             self._sync_replacement_document(doc)
 
+    def _is_admin_user(self, user):
+        """
+        Kiểm tra người dùng có quyền Quản trị viên (Admin) hay không:
+        - Là superuser hoặc staff của Django
+        - Hoặc có StaffProfile với role='admin'
+        """
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        profile = getattr(user, "profile", None)
+        if profile and profile.role == "admin":
+            return True
+        return False
+
+    def _can_edit_document(self, user, instance):
+        """
+        Kiểm tra quyền chỉnh sửa văn bản (Lựa chọn 2 + Mở rộng tương lai):
+        - Quản trị viên (Admin)
+        - Người trực tiếp tạo văn bản (nguoi_tao == user)
+        - Hoặc Cán bộ đặc biệt được admin cấp quyền/duyệt (qua Django permission documents.change_document)
+        """
+        if not user or not user.is_authenticated:
+            return False
+        if self._is_admin_user(user):
+            return True
+        if instance.nguoi_tao == user:
+            return True
+        if user.has_perm("documents.change_document"):
+            return True
+        return False
+
+    def _can_delete_document(self, user, instance):
+        """
+        Kiểm tra quyền xóa văn bản (Lựa chọn 2 + Mở rộng tương lai):
+        - Quản trị viên (Admin)
+        - Hoặc Cán bộ đặc biệt được admin cấp quyền/duyệt (qua Django permission documents.delete_document)
+        """
+        if not user or not user.is_authenticated:
+            return False
+        if self._is_admin_user(user):
+            return True
+        if user.has_perm("documents.delete_document"):
+            return True
+        return False
+
     def perform_update(self, serializer):
         """
         Xử lý cập nhật:
-        1. VB Mật CHỈ CÓ QUYỀN ĐỌC đối với người nhận được chỉ định.
-           Chỉ người tạo (nguoi_tao) hoặc admin (is_staff) mới được sửa.
+        1. Phân quyền: Quản trị viên, Người tạo, hoặc Cán bộ được phân quyền mới được phép sửa.
+           Nếu là Văn bản Mật: Người nhận chỉ có quyền đọc.
         2. so_thu_tu không được sửa (read_only trong serializer).
         """
         instance = self.get_object()
         user = self.request.user
-        if instance.loai == Document.LoaiVanBan.MAT and not user.is_staff and instance.nguoi_tao != user:
+        is_admin = self._is_admin_user(user)
+
+        if instance.loai == Document.LoaiVanBan.MAT and not is_admin and instance.nguoi_tao != user:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền chỉnh sửa văn bản này.")
+
+        if not self._can_edit_document(user, instance):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản này. Chỉ Quản trị viên, Người tạo hoặc Cán bộ được cấp quyền mới được phép chỉnh sửa.")
 
         doc = serializer.save()
         self._handle_attachments(doc)
@@ -186,13 +238,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         """
         Xử lý xóa:
-        VB Mật CHỈ CÓ QUYỀN ĐỌC đối với người nhận được chỉ định.
-        Chỉ người tạo (nguoi_tao) hoặc admin (is_staff) mới được xóa.
+        Chỉ Quản trị viên (Admin) hoặc Cán bộ được duyệt quyền mới có quyền xóa văn bản để đảm bảo an toàn dữ liệu công văn.
         """
         user = self.request.user
-        if instance.loai == Document.LoaiVanBan.MAT and not user.is_staff and instance.nguoi_tao != user:
+        is_admin = self._is_admin_user(user)
+
+        if instance.loai == Document.LoaiVanBan.MAT and not is_admin and instance.nguoi_tao != user:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền xóa văn bản này.")
+
+        if not self._can_delete_document(user, instance):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Bạn không có quyền xóa văn bản này. Quyền xóa chỉ dành cho Quản trị viên (Admin) hoặc Cán bộ được phân quyền.")
 
         instance.delete()
 

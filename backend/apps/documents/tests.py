@@ -487,3 +487,105 @@ class DocumentAutoExpireTests(TestCase):
         self.doc_expired.refresh_from_db()
         self.assertEqual(self.doc_expired.hieu_luc, Document.HieuLuc.HET_HIEU_LUC)
 
+
+class DocumentPermissionOption2Tests(TestCase):
+    """Test phân quyền Sửa/Xóa văn bản theo Phương án 2."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(username="admin_perm", password="password", is_staff=True)
+        self.staff1 = User.objects.create_user(username="staff1", password="password")
+        self.staff2 = User.objects.create_user(username="staff2", password="password")
+
+        # Văn bản do staff1 tạo
+        self.doc_staff1 = Document.objects.create(
+            loai="DEN", nam=2026, so_hieu="10/CV-STAFF1", so_thu_tu=1,
+            trich_yeu="Văn bản do staff1 tạo",
+            nguoi_tao=self.staff1,
+        )
+
+    def test_non_admin_cannot_delete_document(self):
+        """Cán bộ thông thường không được phép xóa văn bản -> 403 Forbidden."""
+        client = APIClient()
+        client.force_authenticate(user=self.staff1)
+
+        res = client.delete(f"/api/documents/{self.doc_staff1.id}/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("Quyền xóa chỉ dành cho Quản trị viên", str(res.data))
+        self.assertTrue(Document.objects.filter(id=self.doc_staff1.id).exists())
+
+    def test_admin_can_delete_document(self):
+        """Admin có quyền xóa văn bản -> 204 No Content."""
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+
+        res = client.delete(f"/api/documents/{self.doc_staff1.id}/")
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Document.objects.filter(id=self.doc_staff1.id).exists())
+
+    def test_non_creator_cannot_edit_document(self):
+        """Cán bộ không phải người tạo không được phép sửa văn bản -> 403 Forbidden."""
+        client = APIClient()
+        client.force_authenticate(user=self.staff2)
+
+        res = client.patch(
+            f"/api/documents/{self.doc_staff1.id}/",
+            {"trich_yeu": "Staff2 cố tình sửa văn bản của Staff1"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("Chỉ Quản trị viên, Người tạo", str(res.data))
+
+    def test_creator_can_edit_own_document(self):
+        """Người tạo văn bản được phép sửa văn bản của mình -> 200 OK."""
+        client = APIClient()
+        client.force_authenticate(user=self.staff1)
+
+        res = client.patch(
+            f"/api/documents/{self.doc_staff1.id}/",
+            {"trich_yeu": "Staff1 cập nhật trích yếu hợp lệ"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.doc_staff1.refresh_from_db()
+        self.assertEqual(self.doc_staff1.trich_yeu, "Staff1 cập nhật trích yếu hợp lệ")
+
+    def test_admin_can_edit_any_document(self):
+        """Admin có quyền sửa bất kỳ văn bản nào -> 200 OK."""
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+
+        res = client.patch(
+            f"/api/documents/{self.doc_staff1.id}/",
+            {"trich_yeu": "Admin chỉnh sửa trích yếu"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.doc_staff1.refresh_from_db()
+        self.assertEqual(self.doc_staff1.trich_yeu, "Admin chỉnh sửa trích yếu")
+
+    def test_delegated_staff_can_edit_and_delete(self):
+        """Cán bộ đặc biệt được cấp quyền (Django permissions) có thể sửa và xóa."""
+        from django.contrib.auth.models import Permission
+        perm_change = Permission.objects.get(codename="change_document")
+        perm_delete = Permission.objects.get(codename="delete_document")
+        self.staff2.user_permissions.add(perm_change, perm_delete)
+        # Clear cached permissions
+        self.staff2 = User.objects.get(pk=self.staff2.pk)
+
+        client = APIClient()
+        client.force_authenticate(user=self.staff2)
+
+        # Edit test
+        res_edit = client.patch(
+            f"/api/documents/{self.doc_staff1.id}/",
+            {"trich_yeu": "Staff2 được ủy quyền sửa văn bản"},
+            format="json",
+        )
+        self.assertEqual(res_edit.status_code, status.HTTP_200_OK)
+
+        # Delete test
+        res_delete = client.delete(f"/api/documents/{self.doc_staff1.id}/")
+        self.assertEqual(res_delete.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Document.objects.filter(id=self.doc_staff1.id).exists())
+
+

@@ -54,6 +54,7 @@ export interface DocumentItem {
   link_thay_the?: string;
   hien_thi: boolean;
   nguoi_tao_name?: string | null;
+  nguoi_tao_username?: string | null;
   attachment_count: number;
   created_at: string;
 }

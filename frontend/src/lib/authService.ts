@@ -137,6 +137,29 @@ export const authService = {
   getRefreshToken(): string | null {
     return localStorage.getItem('tlbm_refresh_token');
   },
+
+  /**
+   * Kiểm tra người dùng hiện tại có vai trò Quản trị viên (Admin) hay không
+   */
+  isAdmin(): boolean {
+    const session = this.getSession();
+    if (session?.role === 'admin' || session?.username === 'admin') {
+      return true;
+    }
+    const token = this.getAccessToken();
+    if (token) {
+      try {
+        const payloadBase64 = token.split('.')[1];
+        if (payloadBase64) {
+          const decoded = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+          return decoded.user_id === '1' || decoded.user_id === 1;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return false;
+  },
 };
 
 export default authService;
