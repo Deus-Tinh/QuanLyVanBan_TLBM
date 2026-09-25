@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 import DocumentDetailModal from './DocumentDetailModal';
 import DocumentViewersModal from './DocumentViewersModal';
+import DocumentFormModal from './DocumentFormModal';
 import apiClient from '@lib/apiClient';
 
 vi.mock('@lib/apiClient', () => ({
@@ -119,3 +120,56 @@ describe('DocumentViewersModal', () => {
     });
   });
 });
+
+describe('DocumentFormModal', () => {
+  it('không render gì khi open = false', () => {
+    const { container } = render(
+      <DocumentFormModal open={false} onClose={vi.fn()} />
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('render đầy đủ 4 phần và các trường bắt buộc khi open = true', async () => {
+    render(<DocumentFormModal open={true} onClose={vi.fn()} />);
+
+    // Header
+    expect(screen.getByText('Thêm Mới Văn Bản Đến')).toBeInTheDocument();
+
+    // 4 Enterprise Sections
+    expect(screen.getByText(/1\. Tiếp nhận & Vào sổ công văn/i)).toBeInTheDocument();
+    expect(screen.getByText(/2\. Nguồn ban hành & Nội dung văn bản/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Ký duyệt & Hiệu lực văn bản/i)).toBeInTheDocument();
+    expect(screen.getByText(/4\. Phân phối xử lý & Tệp đính kèm/i)).toBeInTheDocument();
+
+    // Core form labels
+    expect(screen.getByText(/Số, ký hiệu/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cơ quan \/ Đơn vị ban hành/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trích yếu nội dung văn bản/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trạng thái hiệu lực/i)).toBeInTheDocument();
+
+    // Toggles
+    expect(screen.getByText('Hiển thị trên hệ thống')).toBeInTheDocument();
+    expect(screen.getByText('Gửi email toàn trường')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('-- Chọn đơn vị nhận --')).toBeInTheDocument();
+    });
+  });
+
+  it('hiển thị trường nhập link văn bản thay thế khi chọn trạng thái HET_VA_THAY_THE', async () => {
+    render(<DocumentFormModal open={true} onClose={vi.fn()} />);
+
+    // Ban đầu không có ô nhập văn bản thay thế
+    expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản mới thay thế/i)).not.toBeInTheDocument();
+
+    // Chọn trạng thái "Hết hiệu lực và thay thế"
+    const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
+    fireEvent.change(hieuLucSelect, { target: { value: 'HET_VA_THAY_THE' } });
+
+    // Lúc này trường văn bản thay thế xuất hiện
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Nhập số hiệu văn bản mới thay thế/i)).toBeInTheDocument();
+    });
+  });
+});
+

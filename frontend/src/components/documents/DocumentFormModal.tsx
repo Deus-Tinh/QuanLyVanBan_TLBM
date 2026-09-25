@@ -3,7 +3,41 @@ import apiClient from '@lib/apiClient';
 import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
 
-interface UserOption { id: number; full_name: string; username: string }
+interface UserOption {
+  id: number;
+  full_name: string;
+  username: string;
+  department?: string;
+}
+
+interface ExistingAttachment {
+  id: number;
+  file: string;
+  file_name: string;
+  file_size?: number;
+}
+
+interface FormState {
+  loai: 'DEN';
+  nam: number;
+  so_hieu: string;
+  so_thu_tu?: number | null;
+  ngay_den: string;
+  ngay_van_ban: string;
+  noi_ban_hanh: string;
+  trich_yeu: string;
+  danh_muc_ho_so: string;
+  ten_loai_van_ban: string;
+  nguoi_ky: string;
+  chuc_vu: string;
+  hieu_luc: 'CON_HIEU_LUC' | 'HET_HIEU_LUC' | 'HET_VA_THAY_THE';
+  ngay_het_hieu_luc: string;
+  link_thay_the: string;
+  ghi_chu: string;
+  hien_thi: boolean;
+  gui_mail_toan_he_thong: boolean;
+  nguoi_nhan: (number | string)[];
+}
 
 interface Props {
   open: boolean;
@@ -12,30 +46,207 @@ interface Props {
   onSaved?: (doc: any) => void;
 }
 
+const DEFAULT_UNITS = [
+  'Ban Giám hiệu',
+  'Phòng Hành chính - Tổng hợp',
+  'Phòng Đào tạo',
+  'Phòng Công tác Sinh viên',
+  'Phòng Kế hoạch - Tài chính',
+  'Khoa Công nghệ Thông tin',
+  'Khoa Điện - Điện tử',
+  'Khoa Kinh tế',
+];
+
+const MOCK_STAFF_BY_UNIT: Record<string, UserOption[]> = {
+  'Ban Giám hiệu': [
+    { id: 101, full_name: 'GS.TS Nguyễn Văn A', username: 'nguyenvana', department: 'Ban Giám hiệu' },
+    { id: 102, full_name: 'PGS.TS Trần Thị B', username: 'tranthib', department: 'Ban Giám hiệu' },
+  ],
+  'Phòng Hành chính - Tổng hợp': [
+    { id: 103, full_name: 'ThS. Lê Hoàng Nam', username: 'lehoangnam', department: 'Phòng Hành chính - Tổng hợp' },
+    { id: 104, full_name: 'CN. Phạm Thị Thu', username: 'phamthithu', department: 'Phòng Hành chính - Tổng hợp' },
+  ],
+  'Phòng Đào tạo': [
+    { id: 105, full_name: 'TS. Vũ Minh Quân', username: 'vuminhquan', department: 'Phòng Đào tạo' },
+  ],
+  'Khoa Công nghệ Thông tin': [
+    { id: 106, full_name: 'ThS. Đặng Hải Yến', username: 'danghaiyen', department: 'Khoa Công nghệ Thông tin' },
+  ],
+};
+
+function toLocalDatetimeString(dateInput?: string | Date | null): string {
+  if (!dateInput) return '';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function toLocalDateString(dateInput?: string | Date | null): string {
+  if (!dateInput) return '';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function getFileIcon(fileName: string) {
+  if (/\.pdf$/i.test(fileName)) return 'fa-solid fa-file-pdf text-rose-500';
+  if (/\.docx?$/i.test(fileName)) return 'fa-solid fa-file-word text-blue-500';
+  if (/\.(png|jpe?g)$/i.test(fileName)) return 'fa-solid fa-file-image text-emerald-500';
+  return 'fa-solid fa-file text-slate-400';
+}
+
 export default function DocumentFormModal({ open, onClose, initial, onSaved }: Props) {
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<any>({ loai: 'DEN', nam: new Date().getFullYear() });
-  const [units, setUnits] = useState<string[]>([]);
+  const [form, setForm] = useState<FormState>(() => buildInitialForm(null));
+  const [units, setUnits] = useState<string[]>(DEFAULT_UNITS);
   const [staff, setStaff] = useState<UserOption[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<string>('');
-  const [soHieuManual, setSoHieuManual] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [existingAttachments, setExistingAttachments] = useState<ExistingAttachment[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState('');
 
   const filePattern = /\.(pdf|docx?|png|jpe?g)$/i;
   const maxFiles = 10;
 
-  function buildInitialForm() {
-    const { co_quan_ban_hanh, ...restInitial } = initial || {};
+  function buildInitialForm(initDoc?: any): FormState {
+    const now = new Date();
+    const defaultDatetime = toLocalDatetimeString(now);
+    const defaultDate = toLocalDateString(now);
+
+    if (!initDoc) {
+      return {
+        loai: 'DEN',
+        nam: now.getFullYear(),
+        so_hieu: '',
+        so_thu_tu: undefined,
+        ngay_den: defaultDatetime,
+        ngay_van_ban: defaultDate,
+        noi_ban_hanh: '',
+        trich_yeu: '',
+        danh_muc_ho_so: '',
+        ten_loai_van_ban: 'Công văn',
+        nguoi_ky: '',
+        chuc_vu: '',
+        hieu_luc: 'CON_HIEU_LUC',
+        ngay_het_hieu_luc: '',
+        link_thay_the: '',
+        ghi_chu: '',
+        hien_thi: true,
+        gui_mail_toan_he_thong: false,
+        nguoi_nhan: [],
+      };
+    }
+
+    const recipients: (number | string)[] = [];
+    if (Array.isArray(initDoc.nguoi_nhan)) {
+      initDoc.nguoi_nhan.forEach((u: any) => recipients.push(typeof u === 'object' ? u.id : u));
+    } else if (Array.isArray(initDoc.nguoi_nhan_list)) {
+      initDoc.nguoi_nhan_list.forEach((u: any) => recipients.push(u.id));
+    }
+
     return {
       loai: 'DEN',
-      nam: new Date().getFullYear(),
-      ngay_den: new Date().toISOString(),
-      ...restInitial,
-      noi_ban_hanh: initial?.noi_ban_hanh ?? co_quan_ban_hanh ?? '',
+      nam: initDoc.nam ?? now.getFullYear(),
+      so_hieu: initDoc.so_hieu ?? initDoc.soHieu ?? '',
+      so_thu_tu: initDoc.so_thu_tu ?? initDoc.soDen ?? undefined,
+      ngay_den: toLocalDatetimeString(initDoc.ngay_den ?? initDoc.ngayDen) || defaultDatetime,
+      ngay_van_ban: toLocalDateString(initDoc.ngay_van_ban ?? initDoc.ngayVanBan ?? initDoc.ngay_thang_van_ban) || defaultDate,
+      noi_ban_hanh: initDoc.noi_ban_hanh ?? initDoc.coQuanBanHanh ?? initDoc.co_quan_ban_hanh ?? '',
+      trich_yeu: initDoc.trich_yeu ?? initDoc.trichYeu ?? '',
+      danh_muc_ho_so: initDoc.danh_muc_ho_so ?? initDoc.danhMucHoSo ?? '',
+      ten_loai_van_ban: initDoc.ten_loai_van_ban ?? initDoc.loaiVanBan ?? 'Công văn',
+      nguoi_ky: initDoc.nguoi_ky ?? initDoc.nguoiKy ?? '',
+      chuc_vu: initDoc.chuc_vu ?? initDoc.chucVu ?? '',
+      hieu_luc: initDoc.hieu_luc ?? initDoc.hieuLuc ?? 'CON_HIEU_LUC',
+      ngay_het_hieu_luc: toLocalDateString(initDoc.ngay_het_hieu_luc ?? initDoc.ngayHetHieuLuc),
+      link_thay_the: initDoc.link_thay_the ?? initDoc.linkThayThe ?? '',
+      ghi_chu: initDoc.ghi_chu ?? initDoc.ghiChu ?? '',
+      hien_thi: initDoc.hien_thi !== undefined ? Boolean(initDoc.hien_thi) : true,
+      gui_mail_toan_he_thong: Boolean(initDoc.gui_mail_toan_he_thong ?? initDoc.guiMailToanHeThong),
+      nguoi_nhan: recipients,
     };
+  }
+
+  useEffect(() => {
+    if (open) {
+      const initialForm = buildInitialForm(initial);
+      setForm(initialForm);
+      setFiles([]);
+      setIsDragging(false);
+
+      if (initial?.attachments && Array.isArray(initial.attachments)) {
+        setExistingAttachments(initial.attachments);
+      } else {
+        setExistingAttachments([]);
+      }
+
+      const initialUnit = initial?.don_vi_nhan || '';
+      setSelectedUnit(initialUnit);
+      fetchUnits();
+
+      if (initialUnit) {
+        fetchStaffByUnit(initialUnit);
+      } else {
+        setStaff([]);
+      }
+    }
+  }, [open, initial]);
+
+  async function fetchUnits() {
+    try {
+      const listRes = await fetch('/api/accounts/staffs/');
+      if (listRes.ok) {
+        const data = await listRes.json();
+        const items = Array.isArray(data) ? data : data.results || [];
+        const depts = Array.from(new Set(items.map((u: any) => u.department).filter(Boolean))) as string[];
+        if (depts.length > 0) {
+          const merged = Array.from(new Set([...depts, ...DEFAULT_UNITS]));
+          setUnits(merged);
+          return;
+        }
+      }
+    } catch {
+      // Fallback to default units
+    }
+    setUnits(DEFAULT_UNITS);
+  }
+
+  async function fetchStaffByUnit(unit: string) {
+    if (!unit) {
+      setStaff([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/accounts/staffs/?department=${encodeURIComponent(unit)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data.results || [];
+        if (list.length > 0) {
+          setStaff(list);
+          return;
+        }
+      }
+    } catch {
+      // Use fallback
+    }
+    setStaff(MOCK_STAFF_BY_UNIT[unit] || []);
+  }
+
+  function handleUnitChange(unit: string) {
+    setSelectedUnit(unit);
+    fetchStaffByUnit(unit);
   }
 
   function pushFiles(list: File[]) {
@@ -63,135 +274,119 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
     setFiles(prev => [...prev, ...acceptedFiles].slice(0, maxFiles));
   }
 
-  useEffect(() => {
-    if (open) {
-      const initialUnit = initial?.don_vi_nhan || '';
-      setForm(buildInitialForm());
-      setSelectedUnit('');
-      setStaff([]);
-      setFiles([]);
-      setSoHieuManual(false);
-      fetchUnits();
-
-      if (initialUnit) {
-        setSelectedUnit(initialUnit);
-        fetchStaffByUnit(initialUnit);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  async function fetchUnits() {
-    // Build units from backend users' departments (simple heuristic)
-    try {
-      const res = await apiClient.get('/api/auth/profile/');
-      // no explicit units endpoint; attempt to list common departments via accounts list if exists
-      // fallback: collect departments from a small users endpoint if available
-      // Try /api/accounts/staffs/ (may not exist)
-      const listRes = await fetch('/api/accounts/staffs/');
-      if (listRes.ok) {
-        const data = await listRes.json();
-        const items = Array.isArray(data) ? data : data.results || [];
-        const depts = Array.from(new Set(items.map((u:any)=>u.department).filter(Boolean)));
-        setUnits(depts as string[]);
-      } else {
-        setUnits([]);
-      }
-    } catch (e) {
-      setUnits([]);
-    }
-  }
-
-  async function fetchStaffByUnit(unit: string) {
-    try {
-      // Try backend endpoint to search users by department
-      const res = await fetch(`/api/accounts/staffs/?department=${encodeURIComponent(unit)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setStaff(data.results || data);
-      } else {
-        setStaff([]);
-      }
-    } catch (e) {
-      setStaff([]);
-    }
-  }
-
-  function handleUnitChange(unit: string) {
-    setSelectedUnit(unit);
-    setStaff([]);
-    setForm((prev: any) => ({
-      ...prev,
-      nguoi_nhan: [],
-    }));
-
-    if (unit) {
-      fetchStaffByUnit(unit);
-    }
-  }
-
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault();
-    const dt = e.dataTransfer;
-    if (!dt) return;
-    pushFiles(Array.from(dt.files));
-  }
-  function onDragOver(e: React.DragEvent) { e.preventDefault(); }
-
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const list = e.target.files ? Array.from(e.target.files) : [];
     pushFiles(list);
-  }
-
-  async function suggestSoHieu() {
-    if (initial && initial.id) return; // Không gợi ý nếu đang sửa
-    const year = form.nam || new Date().getFullYear();
-    const prefix = form.noi_ban_hanh ? ` - ${form.noi_ban_hanh}` : '';
-    setForm((s:any)=>({ ...s, so_hieu: `AUTO/${year}${prefix}` }));
-  }
-
-  // Tự động gọi hàm gợi ý mỗi khi form.nam hoặc form.co_quan_ban_hanh thay đổi
-  useEffect(() => {
-    if (!initial && !soHieuManual) {
-      suggestSoHieu();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
-  }, [form.nam, form.noi_ban_hanh, initial, soHieuManual]);
+  }
+
+  function handleRemoveFile(index: number) {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function handleSuggestSoHieu() {
+    const year = form.nam || new Date().getFullYear();
+    let code = 'CV';
+    if (form.noi_ban_hanh) {
+      const words = form.noi_ban_hanh.trim().split(/\s+/);
+      if (words.length > 1) {
+        code = words.map(w => w[0].toUpperCase()).join('').replace(/[^A-Z0-9]/g, '');
+      } else {
+        code = form.noi_ban_hanh.slice(0, 4).toUpperCase();
+      }
+    }
+    const randomNum = Math.floor(Math.random() * 899 + 100);
+    setForm(prev => ({ ...prev, so_hieu: `${randomNum}/${code || 'CV'}-${year}` }));
+  }
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
+
+    if (!form.so_hieu?.trim()) {
+      setAlertMsg('Vui lòng nhập Số, ký hiệu văn bản (*)');
+      setAlertOpen(true);
+      return;
+    }
+    if (!form.noi_ban_hanh?.trim()) {
+      setAlertMsg('Vui lòng nhập Cơ quan / Đơn vị ban hành văn bản (*)');
+      setAlertOpen(true);
+      return;
+    }
+    if (!form.trich_yeu?.trim()) {
+      setAlertMsg('Vui lòng nhập Trích yếu nội dung văn bản (*)');
+      setAlertOpen(true);
+      return;
+    }
+    if (form.hieu_luc === 'HET_VA_THAY_THE' && !form.link_thay_the?.trim()) {
+      setAlertMsg('Vui lòng nhập Số hiệu hoặc liên kết văn bản thay thế khi chọn trạng thái "Hết hiệu lực và thay thế" (*)');
+      setAlertOpen(true);
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = new FormData();
-      Object.keys(form).forEach(k => {
-        if (form[k] !== undefined && form[k] !== null) {
-          if (Array.isArray(form[k])) {
-            form[k].forEach((val: any) => payload.append(k, String(val)));
-          } else {
-            payload.append(k, String(form[k]));
-          }
-        }
-      });
+      payload.append('loai', 'DEN');
+      payload.append('nam', String(form.nam));
+      payload.append('so_hieu', form.so_hieu.trim());
+      payload.append('noi_ban_hanh', form.noi_ban_hanh.trim());
+      payload.append('trich_yeu', form.trich_yeu.trim());
+      payload.append('hieu_luc', form.hieu_luc);
+      payload.append('hien_thi', form.hien_thi ? 'true' : 'false');
+      payload.append('gui_mail_toan_he_thong', form.gui_mail_toan_he_thong ? 'true' : 'false');
+
+      if (form.ngay_den) {
+        payload.append('ngay_den', new Date(form.ngay_den).toISOString());
+      }
+      if (form.ngay_van_ban) {
+        payload.append('ngay_van_ban', new Date(form.ngay_van_ban).toISOString());
+      }
+      if (form.nguoi_ky?.trim()) {
+        payload.append('nguoi_ky', form.nguoi_ky.trim());
+      }
+      if (form.chuc_vu?.trim()) {
+        payload.append('chuc_vu', form.chuc_vu.trim());
+      }
+      if (form.ghi_chu?.trim()) {
+        payload.append('ghi_chu', form.ghi_chu.trim());
+      }
+      if (form.hieu_luc === 'HET_VA_THAY_THE' && form.link_thay_the?.trim()) {
+        payload.append('link_thay_the', form.link_thay_the.trim());
+      }
+      if (form.ngay_het_hieu_luc) {
+        payload.append('ngay_het_hieu_luc', new Date(form.ngay_het_hieu_luc).toISOString());
+      }
+
+      if (Array.isArray(form.nguoi_nhan)) {
+        form.nguoi_nhan.forEach(userId => {
+          if (userId) payload.append('nguoi_nhan', String(userId));
+        });
+      }
+
       files.forEach(f => payload.append('files', f));
 
       const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
 
-      // --- MOCK ĐỂ TEST FRONTEND KHI KHÔNG CÓ BACKEND ---
-      // Trong môi trường dev, nếu không có access token thật, ta giả lập thành công luôn
+      // Mock giả lập khi chạy offline ở chế độ Dev
       if (import.meta.env.DEV && !token) {
         setTimeout(() => {
           const fakeData = {
             id: initial?.id || Date.now(),
             ...form,
-            ngay_den: form.ngay_den || new Date().toISOString(),
+            so_thu_tu: initial?.so_thu_tu || Math.floor(Math.random() * 50 + 1),
+            ngay_den: form.ngay_den ? new Date(form.ngay_den).toISOString() : new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            attachment_count: files.length + existingAttachments.length,
           };
           onSaved && onSaved(fakeData);
           onClose();
         }, 500);
         return;
       }
-      // --- END MOCK ---
 
-      let res;
+      let res: Response;
       if (initial && initial.id) {
         res = await fetch(`/api/documents/${initial.id}/`, {
           method: 'PUT',
@@ -211,12 +406,12 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         onSaved && onSaved(data);
         onClose();
       } else {
-        const err = await res.json().catch(()=>({ error: 'Unknown' }));
-        setAlertMsg('Lỗi: '+(err.error||err.detail||JSON.stringify(err)));
+        const err = await res.json().catch(() => ({ error: 'Không thể xử lý yêu cầu' }));
+        setAlertMsg('Lỗi máy chủ: ' + (err.error || err.detail || JSON.stringify(err)));
         setAlertOpen(true);
       }
-    } catch (err:any) {
-      setAlertMsg('Lỗi kết nối: '+err.message);
+    } catch (err: any) {
+      setAlertMsg('Lỗi kết nối máy chủ: ' + err.message);
       setAlertOpen(true);
     } finally {
       setLoading(false);
@@ -226,139 +421,604 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <form className="bg-white rounded-lg shadow-lg w-[900px] max-w-full p-6 z-10 document-modal" onSubmit={handleSubmit} onDragOver={onDragOver} onDrop={onDrop}>
-        <h3 className="text-lg font-semibold mb-4">{initial ? 'Sửa văn bản' : 'Thêm văn bản đến'}</h3>
-        <div className="grid grid-cols-12 gap-3">
-          <div className="col-span-6">
-            <label className="text-sm block">Danh mục hồ sơ</label>
-            <input value={form.danh_muc_ho_so||''} onChange={e=>setForm({...form, danh_muc_ho_so: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
-          <div className="col-span-1">
-            <label className="text-sm block">Năm</label>
-            <input type="number" value={form.nam} onChange={e=>setForm({...form, nam: Number(e.target.value)})} className="mt-1 p-2 border rounded w-full text-center text-sm box-border" />
+      {/* Modal Dialog Card */}
+      <form
+        className="bg-surface border border-border-subtle rounded-2xl shadow-2xl z-10 w-[940px] max-w-full flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
+        onSubmit={handleSubmit}
+      >
+        {/* Sticky Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-lg">
+              <i className={initial?.id ? 'fa-solid fa-file-pen' : 'fa-solid fa-file-circle-plus'} />
+            </span>
+            <div>
+              <h3 className="text-base font-bold text-main m-0">
+                {initial?.id ? 'Cập Nhật Văn Bản Đến' : 'Thêm Mới Văn Bản Đến'}
+              </h3>
+              <p className="text-xs text-muted m-0">
+                {initial?.id
+                  ? `Chỉnh sửa thông tin hồ sơ văn bản ${form.so_hieu || ''}`
+                  : 'Tiếp nhận, vào sổ công văn đến và phân phối xử lý nội bộ'}
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg text-muted hover:text-main hover:bg-hover flex items-center justify-center transition-fast"
+            title="Đóng cửa sổ"
+          >
+            <i className="fa-solid fa-xmark text-sm" />
+          </button>
+        </div>
 
-          <div className="col-span-1">
-            <label className="text-sm block">Số đến</label>
-            <input readOnly placeholder="Tự động tạo" value={form.so_thu_tu ?? ''} className="mt-1 p-2 border rounded w-full bg-slate-50 text-sm box-border" />
-          </div>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          {/* PHẦN 1: TIẾP NHẬN & VÀO SỔ */}
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-bold">
+                  <i className="fa-solid fa-inbox" />
+                </span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                  1. Tiếp nhận & Vào sổ công văn
+                </h4>
+              </div>
+              <span className="text-[11px] text-muted">Thông tin định danh văn bản</span>
+            </div>
 
-          <div className="col-span-2">
-            <label className="text-sm block">Ngày đến</label>
-            <input type="datetime-local" value={form.ngay_den ? new Date(form.ngay_den).toISOString().slice(0,16) : ''} onChange={e=>setForm({...form, ngay_den: new Date(e.target.value).toISOString()})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
+            <div className="grid grid-cols-12 gap-3.5">
+              {/* Năm */}
+              <div className="col-span-12 sm:col-span-2">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">Năm</label>
+                <input
+                  type="number"
+                  value={form.nam}
+                  onChange={e => setForm({ ...form, nam: Number(e.target.value) })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main text-center focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+              </div>
 
-          <div className="col-span-2">
-            <label className="text-sm block">Số, ký hiệu</label>
-            <input
-              value={form.so_hieu||''}
-              onChange={e=>{
-                setSoHieuManual(true);
-                setForm({...form, so_hieu:e.target.value});
-              }}
-              className="mt-1 p-2 border rounded w-full text-sm box-border"
-            />
-          </div>
+              {/* Số đến */}
+              <div className="col-span-12 sm:col-span-3">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Số đến <span className="text-muted font-normal text-[11px]">(Tự động)</span>
+                </label>
+                <input
+                  readOnly
+                  value={form.so_thu_tu ? `#${form.so_thu_tu}` : 'Tự động cấp tăng dần'}
+                  className="w-full text-sm bg-hover/70 border border-border-subtle rounded-xl px-3 py-2 text-muted font-medium cursor-not-allowed select-none"
+                  title="Số thứ tự được hệ thống tự động sinh tăng dần theo năm"
+                />
+              </div>
 
-          <div className="col-span-3">
-            <label className="text-sm block">Ngày tháng văn bản</label>
-            <input type="date" value={form.ngay_thang_van_ban ? new Date(form.ngay_thang_van_ban).toISOString().slice(0,10) : ''} onChange={e=>setForm({...form, ngay_thang_van_ban: e.target.value ? new Date(e.target.value).toISOString() : ''})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
+              {/* Ngày đến */}
+              <div className="col-span-12 sm:col-span-4">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Ngày giờ đến <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={form.ngay_den}
+                  onChange={e => setForm({ ...form, ngay_den: e.target.value })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                  required
+                />
+              </div>
 
-          <div className="col-span-3">
-            <label className="text-sm block">Tên loại văn bản</label>
-            <input value={form.ten_loai_van_ban||''} onChange={e=>setForm({...form, ten_loai_van_ban: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
+              {/* Số, ký hiệu */}
+              <div className="col-span-12 sm:col-span-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-secondary">
+                    Số, ký hiệu <span className="text-danger">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSuggestSoHieu}
+                    className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Gợi ý số hiệu theo cơ quan và năm"
+                  >
+                    <i className="fa-solid fa-wand-magic-sparkles text-[10px]" />
+                    <span>Gợi ý</span>
+                  </button>
+                </div>
+                <input
+                  value={form.so_hieu}
+                  onChange={e => setForm({ ...form, so_hieu: e.target.value })}
+                  placeholder="VD: 125/BGDDT-VP"
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main font-medium placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                  required
+                />
+              </div>
 
-          <div className="col-span-6">
-            <label className="text-sm block">Cơ quan ban hành văn bản</label>
-            <input value={form.noi_ban_hanh||''} onChange={e=>setForm({...form, noi_ban_hanh: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
+              {/* Ngày văn bản */}
+              <div className="col-span-12 sm:col-span-4">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Ngày ban hành trên VB
+                </label>
+                <input
+                  type="date"
+                  value={form.ngay_van_ban}
+                  onChange={e => setForm({ ...form, ngay_van_ban: e.target.value })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+              </div>
 
-          <div className="col-span-12">
-            <label className="text-sm block">Trích yếu nội dung</label>
-            <textarea value={form.trich_yeu||''} onChange={e=>setForm({...form, trich_yeu:e.target.value})} className="mt-1 p-2 border rounded w-full h-28 text-sm box-border" />
-          </div>
+              {/* Loại văn bản */}
+              <div className="col-span-12 sm:col-span-4">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Loại văn bản
+                </label>
+                <input
+                  list="doc-types-list"
+                  value={form.ten_loai_van_ban}
+                  onChange={e => setForm({ ...form, ten_loai_van_ban: e.target.value })}
+                  placeholder="VD: Công văn, Quyết định..."
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+                <datalist id="doc-types-list">
+                  <option value="Công văn" />
+                  <option value="Quyết định" />
+                  <option value="Thông báo" />
+                  <option value="Tờ trình" />
+                  <option value="Kế hoạch" />
+                  <option value="Chỉ thị" />
+                  <option value="Nghị quyết" />
+                  <option value="Báo cáo" />
+                  <option value="Hướng dẫn" />
+                </datalist>
+              </div>
 
-          <div className="col-span-2">
-            <label className="text-sm block">Độ mật</label>
-            <select value={form.do_mat||''} onChange={e=>setForm({...form, do_mat: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border">
-              <option value="">Thường</option>
-              <option value="mat">Mật</option>
-            </select>
-          </div>
-
-          <div className="col-span-2">
-            <label className="text-sm block">Độ khẩn</label>
-            <select value={form.do_khan||''} onChange={e=>setForm({...form, do_khan: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border">
-              <option value="">Thường</option>
-              <option value="khac">Khác</option>
-            </select>
-          </div>
-
-          <div className="col-span-1">
-            <label className="text-sm block">Số tờ</label>
-            <input value={form.so_to||''} onChange={e=>setForm({...form, so_to: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
-
-          <div className="col-span-2">
-            <label className="text-sm block">Ngôn ngữ</label>
-            <input value={form.ngon_ngu||''} onChange={e=>setForm({...form, ngon_ngu: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
-
-          <div className="col-span-2">
-            <label className="text-sm block">Người ký</label>
-            <input value={form.nguoi_ky||''} onChange={e=>setForm({...form, nguoi_ky: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
-
-          <div className="col-span-2">
-            <label className="text-sm block">Chức vụ</label>
-            <input value={form.chuc_vu||''} onChange={e=>setForm({...form, chuc_vu: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
-
-          <div className="col-span-12">
-            <label className="text-sm block">Ghi chú</label>
-            <input value={form.ghi_chu||''} onChange={e=>setForm({...form, ghi_chu: e.target.value})} className="mt-1 p-2 border rounded w-full text-sm box-border" />
-          </div>
-
-          <div className="col-span-12">
-            <label className="text-sm block">Tệp đính kèm</label>
-            <div className="mt-1 p-4 border border-dashed rounded text-sm text-center bg-surface" onDrop={onDrop} onDragOver={onDragOver}>
-              <div>Thả tệp vào đây (PDF/DOC/DOCX/PNG/JPG). Hoặc <button type="button" onClick={()=>fileInputRef.current?.click()} className="text-primary underline">chọn tệp</button></div>
-              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
-              <div className="mt-2 text-xs text-muted">{files.length} tệp được chọn</div>
-              <ul className="text-left mt-2 text-sm max-h-36 overflow-auto">
-                {files.map((f,i)=> <li key={i}>{f.name} — {Math.round(f.size/1024)} KB</li>)}
-              </ul>
+              {/* Danh mục hồ sơ */}
+              <div className="col-span-12 sm:col-span-4">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Danh mục hồ sơ
+                </label>
+                <input
+                  list="folder-types-list"
+                  value={form.danh_muc_ho_so}
+                  onChange={e => setForm({ ...form, danh_muc_ho_so: e.target.value })}
+                  placeholder="VD: Hồ sơ công văn đến..."
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+                <datalist id="folder-types-list">
+                  <option value="Hồ sơ công văn đến năm 2026" />
+                  <option value="Hồ sơ chỉ đạo điều hành năm 2026" />
+                  <option value="Hồ sơ đào tạo & tuyển sinh năm 2026" />
+                  <option value="Hồ sơ tài chính kế hoạch" />
+                  <option value="Hồ sơ đề án khoa học công nghệ" />
+                </datalist>
+              </div>
             </div>
           </div>
 
-          <div className="col-span-6">
-            <label className="text-sm block">Đơn vị nhận</label>
-            <select value={selectedUnit} onChange={e=>handleUnitChange(e.target.value)} className="mt-1 p-2 border rounded w-full text-sm box-border">
-              <option value="">-- Chọn đơn vị --</option>
-              {units.map(u=> <option key={u} value={u}>{u}</option>)}
-            </select>
+          {/* PHẦN 2: NGUỒN BAN HÀNH & NỘI DUNG VĂN BẢN */}
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                  <i className="fa-solid fa-building-columns" />
+                </span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                  2. Nguồn ban hành & Nội dung văn bản
+                </h4>
+              </div>
+              <span className="text-[11px] text-muted">Cơ quan gửi & Trích yếu</span>
+            </div>
+
+            <div className="space-y-3.5">
+              {/* Cơ quan ban hành */}
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Cơ quan / Đơn vị ban hành <span className="text-danger">*</span>
+                </label>
+                <input
+                  value={form.noi_ban_hanh}
+                  onChange={e => setForm({ ...form, noi_ban_hanh: e.target.value })}
+                  placeholder="Ví dụ: Bộ Giáo dục và Đào tạo, UBND Thành phố Hồ Chí Minh, ..."
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                  required
+                />
+              </div>
+
+              {/* Trích yếu nội dung */}
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Trích yếu nội dung văn bản <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={form.trich_yeu}
+                  onChange={e => setForm({ ...form, trich_yeu: e.target.value })}
+                  placeholder="Nhập tóm tắt ngắn gọn mục đích và nội dung cốt lõi của văn bản đến..."
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl p-3 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast resize-y"
+                  required
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="col-span-6">
-            <label className="text-sm block">Người nhận (Cán bộ)</label>
-            <select multiple value={form.nguoi_nhan||[]} onChange={e=>setForm({...form, nguoi_nhan: Array.from(e.target.selectedOptions).map(o=>o.value)})} className="mt-1 p-2 border rounded w-full h-24 text-sm box-border">
-              {staff.map(s=> <option key={s.id} value={s.id}>{s.full_name || s.username}</option>)}
-            </select>
+          {/* PHẦN 3: KÝ DUYỆT & HIỆU LỰC VĂN BẢN */}
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                  <i className="fa-solid fa-stamp" />
+                </span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                  3. Ký duyệt & Hiệu lực văn bản
+                </h4>
+              </div>
+              <span className="text-[11px] text-muted">Thông tin người ký & Trạng thái pháp lý</span>
+            </div>
+
+            <div className="grid grid-cols-12 gap-3.5">
+              {/* Người ký */}
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Người ký văn bản
+                </label>
+                <input
+                  value={form.nguoi_ky}
+                  onChange={e => setForm({ ...form, nguoi_ky: e.target.value })}
+                  placeholder="Họ và tên người ký (VD: Nguyễn Văn A)"
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+              </div>
+
+              {/* Chức vụ */}
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Chức vụ người ký
+                </label>
+                <input
+                  value={form.chuc_vu}
+                  onChange={e => setForm({ ...form, chuc_vu: e.target.value })}
+                  placeholder="VD: Thứ trưởng, Giám đốc, Hiệu trưởng..."
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+              </div>
+
+              {/* Trạng thái hiệu lực */}
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Trạng thái hiệu lực
+                </label>
+                <select
+                  value={form.hieu_luc}
+                  onChange={e => setForm({ ...form, hieu_luc: e.target.value as any })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                >
+                  <option value="CON_HIEU_LUC">Còn hiệu lực</option>
+                  <option value="HET_HIEU_LUC">Hết hiệu lực</option>
+                  <option value="HET_VA_THAY_THE">Hết hiệu lực và thay thế</option>
+                </select>
+              </div>
+
+              {/* Ngày hết hiệu lực */}
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Ngày hết hiệu lực <span className="text-muted font-normal text-[11px]">(Tùy chọn)</span>
+                </label>
+                <input
+                  type="date"
+                  value={form.ngay_het_hieu_luc}
+                  onChange={e => setForm({ ...form, ngay_het_hieu_luc: e.target.value })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+              </div>
+
+              {/* Link văn bản thay thế (Hiển thị điều kiện) */}
+              {form.hieu_luc === 'HET_VA_THAY_THE' && (
+                <div className="col-span-12 animate-in fade-in duration-150">
+                  <label className="block text-xs font-semibold text-warning-text mb-1.5">
+                    <i className="fa-solid fa-link mr-1" />
+                    Văn bản thay thế (Số hiệu hoặc liên kết) <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    value={form.link_thay_the}
+                    onChange={e => setForm({ ...form, link_thay_the: e.target.value })}
+                    placeholder="Nhập số hiệu văn bản mới thay thế hoặc liên kết văn bản..."
+                    className="w-full text-sm bg-surface border border-warning-border rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-warning focus:ring-1 focus:ring-warning transition-fast"
+                    required
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* PHẦN 4: PHÂN PHỐI XỬ LÝ & TỆP ĐÍNH KÈM */}
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-4">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-amber-500/10 text-amber-600 flex items-center justify-center text-xs font-bold">
+                  <i className="fa-solid fa-share-nodes" />
+                </span>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                  4. Phân phối xử lý & Tệp đính kèm
+                </h4>
+              </div>
+              <span className="text-[11px] text-muted">Điều phối đơn vị & Tải lên tệp</span>
+            </div>
+
+            {/* Phân phối đơn vị & cán bộ */}
+            <div className="grid grid-cols-12 gap-3.5">
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Đơn vị nhận / chủ trì xử lý
+                </label>
+                <select
+                  value={selectedUnit}
+                  onChange={e => handleUnitChange(e.target.value)}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                >
+                  <option value="">-- Chọn đơn vị nhận --</option>
+                  {units.map(u => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Cán bộ nhận / xử lý
+                </label>
+                {staff.length === 0 ? (
+                  <div className="w-full text-xs text-muted border border-border-subtle rounded-xl p-2.5 bg-surface text-center">
+                    {selectedUnit ? 'Không có cán bộ trong danh sách' : 'Vui lòng chọn đơn vị để hiển thị cán bộ'}
+                  </div>
+                ) : (
+                  <div className="max-h-28 overflow-y-auto border border-border-subtle rounded-xl p-2 bg-surface space-y-1">
+                    {staff.map(s => {
+                      const isSelected = form.nguoi_nhan.includes(s.id);
+                      return (
+                        <label
+                          key={s.id}
+                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-hover cursor-pointer text-xs text-main"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={e => {
+                              const checked = e.target.checked;
+                              setForm(prev => ({
+                                ...prev,
+                                nguoi_nhan: checked
+                                  ? [...prev.nguoi_nhan, s.id]
+                                  : prev.nguoi_nhan.filter(id => id !== s.id),
+                              }));
+                            }}
+                            className="rounded border-border-subtle text-primary focus:ring-primary"
+                          />
+                          <span className="font-medium">{s.full_name || s.username}</span>
+                          <span className="text-[11px] text-muted">(@{s.username})</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Existing Attachments if editing */}
+            {existingAttachments.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Tệp đính kèm hiện có ({existingAttachments.length})
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {existingAttachments.map(att => (
+                    <div
+                      key={att.id}
+                      className="flex items-center justify-between p-2.5 bg-surface border border-border-subtle rounded-xl text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <i className={`${getFileIcon(att.file_name)} text-sm shrink-0`} />
+                        <span className="truncate text-main font-medium" title={att.file_name}>
+                          {att.file_name}
+                        </span>
+                        {att.file_size && (
+                          <span className="text-[10px] text-muted shrink-0">
+                            ({formatFileSize(att.file_size)})
+                          </span>
+                        )}
+                      </div>
+                      <a
+                        href={att.file}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline text-xs shrink-0 ml-2"
+                        title="Xem / Tải về"
+                      >
+                        <i className="fa-solid fa-download" />
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Drag & Drop Upload Zone */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-secondary">
+                  Tải lên tệp đính kèm mới
+                </label>
+                <span className="text-[11px] text-muted">
+                  Hỗ trợ PDF, DOC, DOCX, PNG, JPG (Tối đa 10 tệp)
+                </span>
+              </div>
+
+              <div
+                onDragOver={e => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  if (e.dataTransfer?.files) {
+                    pushFiles(Array.from(e.dataTransfer.files));
+                  }
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-fast ${
+                  isDragging
+                    ? 'border-primary bg-primary-subtle/30 scale-[1.005]'
+                    : 'border-border-subtle hover:border-primary/50 hover:bg-hover/60 bg-surface'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary mx-auto flex items-center justify-center text-lg mb-2">
+                  <i className="fa-solid fa-cloud-arrow-up" />
+                </div>
+                <p className="text-xs font-medium text-main m-0">
+                  Kéo thả tệp vào đây hoặc <span className="text-primary underline">chọn từ thiết bị</span>
+                </p>
+                <p className="text-[11px] text-muted m-0 mt-1">
+                  Tập tin đính kèm minh chứng, công văn scan hoặc bản mềm
+                </p>
+              </div>
+
+              {/* File List Selected */}
+              {files.length > 0 && (
+                <div className="mt-2.5 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-secondary">
+                    {files.length} tệp đã chọn sẵn sàng tải lên:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {files.map((file, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2 px-3 bg-surface border border-border-subtle rounded-xl text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <i className={`${getFileIcon(file.name)} text-sm shrink-0`} />
+                          <span className="truncate text-main font-medium" title={file.name}>
+                            {file.name}
+                          </span>
+                          <span className="text-[10px] text-muted shrink-0">
+                            ({formatFileSize(file.size)})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleRemoveFile(idx);
+                          }}
+                          className="w-5 h-5 rounded hover:bg-danger-subtle hover:text-danger text-muted flex items-center justify-center transition-fast ml-2 shrink-0 cursor-pointer"
+                          title="Xóa tệp này"
+                        >
+                          <i className="fa-solid fa-xmark text-xs" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Ghi chú & Cấu hình hệ thống */}
+            <div className="pt-2 border-t border-border-subtle/60 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Ghi chú nội bộ
+                </label>
+                <input
+                  value={form.ghi_chu}
+                  onChange={e => setForm({ ...form, ghi_chu: e.target.value })}
+                  placeholder="Ghi chú thêm về xử lý, lưu kho hoặc chỉ đạo..."
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+              </div>
+
+              {/* Toggle Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Hiển thị */}
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-border-subtle bg-surface hover:bg-hover/50 cursor-pointer transition-fast">
+                  <input
+                    type="checkbox"
+                    checked={form.hien_thi}
+                    onChange={e => setForm({ ...form, hien_thi: e.target.checked })}
+                    className="mt-0.5 rounded border-border-subtle text-primary focus:ring-primary"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-main block">Hiển thị trên hệ thống</span>
+                    <span className="text-[11px] text-muted block leading-snug">
+                      Cho phép cán bộ nhân viên tra cứu và xem văn bản này
+                    </span>
+                  </div>
+                </label>
+
+                {/* Gửi mail */}
+                <label className="flex items-start gap-3 p-3 rounded-xl border border-border-subtle bg-surface hover:bg-hover/50 cursor-pointer transition-fast">
+                  <input
+                    type="checkbox"
+                    checked={form.gui_mail_toan_he_thong}
+                    onChange={e => setForm({ ...form, gui_mail_toan_he_thong: e.target.checked })}
+                    className="mt-0.5 rounded border-border-subtle text-primary focus:ring-primary"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-main block">Gửi email toàn trường</span>
+                    <span className="text-[11px] text-muted block leading-snug">
+                      Tự động gửi thông báo văn bản mới tới hòm thư CBNV
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>Đóng</Button>
-          <Button variant="primary" type="submit" disabled={loading}>{loading? 'Đang lưu...':'Lưu'}</Button>
+        {/* Sticky Footer */}
+        <div className="flex items-center justify-between px-6 py-3.5 border-t border-border-subtle bg-surface shrink-0">
+          <div className="text-xs text-muted flex items-center gap-1.5">
+            <span className="text-danger font-bold">*</span>
+            <span>Các trường có dấu sao đỏ là bắt buộc nhập</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              icon={loading ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}
+              disabled={loading}
+            >
+              {loading ? 'Đang lưu...' : initial?.id ? 'Cập nhật' : 'Lưu văn bản'}
+            </Button>
+          </div>
         </div>
-        <AlertModal open={alertOpen} onClose={()=>setAlertOpen(false)} message={alertMsg} />
       </form>
+
+      <AlertModal
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        message={alertMsg}
+      />
     </div>
   );
 }
