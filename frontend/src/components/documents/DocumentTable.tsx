@@ -146,19 +146,26 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               </tr>
             ) : (
               /* Danh sách văn bản */
-              documents.map((doc) => {
+              documents.map((doc, index) => {
                 const isExpired = doc.hieu_luc === 'HET_HIEU_LUC';
                 const isReplaced = doc.hieu_luc === 'HET_VA_THAY_THE';
+                const isActiveRow = activeMenuId === doc.id;
+                const isNearBottom = index >= documents.length - 2 && documents.length > 2;
 
-                // Yêu cầu đặc tả: Dòng hết hiệu lực bôi màu tối
+                // Yêu cầu đặc tả: Dòng hết hiệu lực bôi màu tối (bỏ opacity để không sinh stacking context đè popup menu)
                 const rowHighlightClass = isExpired
-                  ? 'bg-slate-500/10 dark:bg-black/40 opacity-75 border-l-4 border-l-danger'
+                  ? 'bg-slate-500/10 dark:bg-black/40 border-l-4 border-l-danger'
                   : isReplaced
                   ? 'bg-amber-500/5 dark:bg-black/30 border-l-4 border-l-warning'
                   : 'hover:bg-surface-hover/80 transition-colors border-l-4 border-l-transparent';
 
                 return (
-                  <tr key={doc.id} className={`${rowHighlightClass} transition-colors group`}>
+                  <tr
+                    key={doc.id}
+                    className={`${rowHighlightClass} transition-colors group ${
+                      isActiveRow ? 'relative z-30' : ''
+                    }`}
+                  >
                     {/* 1. Số đến */}
                     <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap">
                       {doc.so_thu_tu ? `#${doc.so_thu_tu}` : '—'}
@@ -268,7 +275,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     </td>
 
                     {/* 7. Tác vụ: Menu 3 chấm ⋮ */}
-                    <td className="px-4 py-3.5 text-center relative">
+                    <td className={`px-4 py-3.5 text-center relative ${isActiveRow ? 'z-50' : ''}`}>
                       <div className="inline-block text-left" ref={activeMenuId === doc.id ? menuRef : null}>
                         <button
                           type="button"
@@ -281,7 +288,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                         {/* Dropdown Menu Popup */}
                         {activeMenuId === doc.id && (
-                          <div className="absolute right-3 mt-1 w-48 bg-surface-elevated border border-border-subtle rounded-xl shadow-lg z-50 py-1.5 backdrop-blur-md animate-in fade-in zoom-in-95 duration-100">
+                          <div
+                            className={`absolute right-3 ${
+                              isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                            } w-48 bg-surface-elevated border border-border-subtle rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100 select-none`}
+                          >
                             {/* Nút Xem chi tiết */}
                             <button
                               type="button"
