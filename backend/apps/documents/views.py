@@ -135,6 +135,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # Xử lý file đính kèm (nếu có)
         self._handle_attachments(doc)
 
+        # Tự động đồng bộ quan hệ văn bản thay thế 2 chiều
+        auto_update = self.request.data.get("auto_update_replaced_doc", "true")
+        if str(auto_update).lower() in ("true", "1") and doc.link_thay_the:
+            self._sync_replacement_document(doc)
+
     def perform_update(self, serializer):
         """
         Xử lý cập nhật:
@@ -151,6 +156,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         doc = serializer.save()
         self._handle_attachments(doc)
 
+        # Tự động đồng bộ quan hệ văn bản thay thế 2 chiều
+        auto_update = self.request.data.get("auto_update_replaced_doc", "true")
+        if str(auto_update).lower() in ("true", "1") and doc.link_thay_the:
+            self._sync_replacement_document(doc)
+
     def perform_destroy(self, instance):
         """
         Xử lý xóa:
@@ -163,6 +173,40 @@ class DocumentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền xóa văn bản này.")
 
         instance.delete()
+
+    def _sync_replacement_document(self, doc):
+        """
+        Đồng bộ quan hệ thay thế 2 chiều:
+        Nếu văn bản này có link_thay_the và auto_update_replaced_doc != False:
+        - Tìm văn bản đối ứng trong CSDL theo so_hieu.
+        - Nếu doc đang là CON_HIEU_LUC: doc là văn bản mới thay thế cho văn bản cũ
+          -> Cập nhật văn bản cũ: hieu_luc = HET_VA_THAY_THE, link_thay_the = doc.so_hieu,
+             ngay_het_hieu_luc = doc.ngay_van_ban hoặc doc.ngay_den hoặc timezone.now().
+        - Nếu doc đang là HET_VA_THAY_THE: doc là văn bản cũ bị thay thế bởi văn bản mới
+          -> Cập nhật văn bản mới: link_thay_the = doc.so_hieu (nếu chưa có).
+        """
+        raw_target = (doc.link_thay_the or "").strip()
+        if not raw_target:
+            return
+
+        other_doc = Document.objects.filter(so_hieu__iexact=raw_target).exclude(pk=doc.pk).first()
+        if not other_doc:
+            return
+
+        now = timezone.now()
+        effective_date = doc.ngay_van_ban or doc.ngay_den or doc.ngay_ban_hanh or now
+
+        if doc.hieu_luc == Document.HieuLuc.CON_HIEU_LUC:
+            other_doc.hieu_luc = Document.HieuLuc.HET_VA_THAY_THE
+            if not other_doc.link_thay_the:
+                other_doc.link_thay_the = doc.so_hieu
+            if not other_doc.ngay_het_hieu_luc:
+                other_doc.ngay_het_hieu_luc = effective_date
+            other_doc.save(update_fields=["hieu_luc", "link_thay_the", "ngay_het_hieu_luc"])
+        elif doc.hieu_luc == Document.HieuLuc.HET_VA_THAY_THE:
+            if not other_doc.link_thay_the:
+                other_doc.link_thay_the = doc.so_hieu
+                other_doc.save(update_fields=["link_thay_the"])
 
     def _handle_attachments(self, document):
         """Upload file đính kèm từ request.FILES."""

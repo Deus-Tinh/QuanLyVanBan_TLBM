@@ -137,6 +137,39 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
 
           {document && !isLoading && (
             <>
+              {/* Banner liên kết thay thế 2 chiều */}
+              {document.link_thay_the && document.hieu_luc === 'CON_HIEU_LUC' && (
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center text-sm shrink-0 mt-0.5">
+                    <i className="fa-solid fa-repeat" />
+                  </div>
+                  <div className="text-xs">
+                    <div className="font-bold text-primary mb-0.5">VĂN BẢN THAY THẾ</div>
+                    <p className="text-main m-0 leading-relaxed">
+                      Văn bản này được ban hành để thay thế cho văn bản: <strong className="font-mono text-primary">{document.link_thay_the}</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {document.hieu_luc === 'HET_VA_THAY_THE' && (
+                <div className="bg-warning/10 border border-warning/30 rounded-xl p-3.5 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-warning/20 text-warning-text flex items-center justify-center text-sm shrink-0 mt-0.5">
+                    <i className="fa-solid fa-triangle-exclamation" />
+                  </div>
+                  <div className="text-xs">
+                    <div className="font-bold text-warning-text mb-0.5">VĂN BẢN ĐÃ HẾT HIỆU LỰC</div>
+                    <p className="text-main m-0 leading-relaxed">
+                      {document.link_thay_the ? (
+                        <>Văn bản này không còn giá trị thi hành do đã được thay thế bởi văn bản: <strong className="font-mono text-warning-text">{document.link_thay_the}</strong>.</>
+                      ) : (
+                        <>Văn bản này đã hết hiệu lực và được thay thế bởi văn bản khác.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Trích yếu nội dung */}
               <div className="bg-surface-subtle border border-border-subtle rounded-xl p-4">
                 <span className="text-xs font-semibold text-secondary uppercase tracking-wider block mb-1.5">
@@ -231,15 +264,12 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
 
                   {document.link_thay_the && (
                     <div className="flex justify-between items-center text-xs py-1">
-                      <span className="text-secondary">VB thay thế:</span>
-                      <a
-                        href={document.link_thay_the}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline truncate max-w-[180px]"
-                      >
+                      <span className="text-secondary">
+                        {document.hieu_luc === 'CON_HIEU_LUC' ? 'Thay thế cho:' : 'Bị thay bởi:'}
+                      </span>
+                      <span className="font-semibold font-mono text-primary truncate max-w-[180px]">
                         {document.link_thay_the}
-                      </a>
+                      </span>
                     </div>
                   )}
                 </div>

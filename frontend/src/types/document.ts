@@ -50,6 +50,7 @@ export interface DocumentItem {
   nguoi_ky?: string;
   hieu_luc: DocumentStatus;
   hieu_luc_display: string;
+  link_thay_the?: string;
   hien_thi: boolean;
   nguoi_tao_name?: string | null;
   attachment_count: number;

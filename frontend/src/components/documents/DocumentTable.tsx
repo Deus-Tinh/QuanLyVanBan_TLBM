@@ -198,12 +198,32 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       >
                         {doc.trich_yeu}
                       </div>
-                      {doc.attachment_count > 0 && (
-                        <div className="inline-flex items-center gap-1 text-[0.68rem] text-secondary bg-surface-elevated px-2 py-0.5 rounded-md mt-1 border border-border-subtle">
-                          <i className="fa-solid fa-paperclip text-primary text-[0.65rem]" />
-                          <span>{doc.attachment_count} tệp đính kèm</span>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {doc.attachment_count > 0 && (
+                          <div className="inline-flex items-center gap-1 text-[0.68rem] text-secondary bg-surface-elevated px-2 py-0.5 rounded-md border border-border-subtle">
+                            <i className="fa-solid fa-paperclip text-primary text-[0.65rem]" />
+                            <span>{doc.attachment_count} tệp đính kèm</span>
+                          </div>
+                        )}
+                        {doc.link_thay_the && doc.hieu_luc === 'CON_HIEU_LUC' && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20"
+                            title={`Thay thế cho văn bản: ${doc.link_thay_the}`}
+                          >
+                            <i className="fa-solid fa-repeat text-primary text-[0.65rem]" />
+                            <span>Thay thế: <strong className="font-mono">{doc.link_thay_the}</strong></span>
+                          </div>
+                        )}
+                        {doc.link_thay_the && doc.hieu_luc === 'HET_VA_THAY_THE' && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
+                            title={`Bị thay thế bởi văn bản: ${doc.link_thay_the}`}
+                          >
+                            <i className="fa-solid fa-triangle-exclamation text-warning text-[0.65rem]" />
+                            <span>Bị thay bởi: <strong className="font-mono">{doc.link_thay_the}</strong></span>
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     {/* 5. Nơi ban hành */}

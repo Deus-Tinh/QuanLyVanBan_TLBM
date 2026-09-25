@@ -48,6 +48,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
             "nguoi_ky",
             "hieu_luc",
             "hieu_luc_display",
+            "link_thay_the",
             "hien_thi",
             "nguoi_tao_name",
             "attachment_count",

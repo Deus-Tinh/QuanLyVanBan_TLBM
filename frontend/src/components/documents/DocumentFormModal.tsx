@@ -133,6 +133,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
   const [isSearchingReplacement, setIsSearchingReplacement] = useState(false);
   const [showReplacementDropdown, setShowReplacementDropdown] = useState(false);
   const [selectedReplacementDoc, setSelectedReplacementDoc] = useState<SuggestedDoc | null>(null);
+  const [isReplacingOther, setIsReplacingOther] = useState(false);
+  const [autoUpdateReplaced, setAutoUpdateReplaced] = useState(true);
   const replacementDropdownRef = useRef<HTMLDivElement | null>(null);
   const searchTimeoutRef = useRef<any>(null);
 
@@ -207,13 +209,18 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       setReplacementSuggestions([]);
       setShowReplacementDropdown(false);
       setSelectedReplacementDoc(null);
+      setAutoUpdateReplaced(true);
+
+      const hasReplacement = Boolean(initial?.link_thay_the || initial?.linkThayThe);
+      setIsReplacingOther(hasReplacement && initial?.hieu_luc !== 'HET_VA_THAY_THE');
 
       // Nếu đang sửa văn bản đã có số hiệu thay thế, tìm thông tin để hiển thị thẻ xem trước
-      if (initial?.link_thay_the && initial?.hieu_luc === 'HET_VA_THAY_THE') {
-        apiClient.get<any>(`/api/documents/?q=${encodeURIComponent(initial.link_thay_the)}&page_size=3`)
+      const targetSoHieu = initial?.link_thay_the || initial?.linkThayThe;
+      if (targetSoHieu) {
+        apiClient.get<any>(`/api/documents/?q=${encodeURIComponent(targetSoHieu)}&page_size=3`)
           .then(res => {
             const items = Array.isArray(res) ? res : res?.results || [];
-            const found = items.find((d: any) => d.so_hieu === initial.link_thay_the);
+            const found = items.find((d: any) => d.so_hieu === targetSoHieu);
             if (found) setSelectedReplacementDoc(found);
           })
           .catch(() => {});
@@ -398,8 +405,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       setAlertOpen(true);
       return;
     }
-    if (form.hieu_luc === 'HET_VA_THAY_THE' && !form.link_thay_the?.trim()) {
-      setAlertMsg('Vui lòng nhập Số hiệu hoặc liên kết văn bản thay thế khi chọn trạng thái "Đã thay thế" (*)');
+    if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && !form.link_thay_the?.trim()) {
+      setAlertMsg('Vui lòng nhập hoặc chọn Số hiệu văn bản thay thế (*)');
       setAlertOpen(true);
       return;
     }
@@ -431,8 +438,11 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       if (form.ghi_chu?.trim()) {
         payload.append('ghi_chu', form.ghi_chu.trim());
       }
-      if (form.hieu_luc === 'HET_VA_THAY_THE' && form.link_thay_the?.trim()) {
+      if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && form.link_thay_the?.trim()) {
         payload.append('link_thay_the', form.link_thay_the.trim());
+        payload.append('auto_update_replaced_doc', autoUpdateReplaced ? 'true' : 'false');
+      } else {
+        payload.append('link_thay_the', '');
       }
       if (form.ngay_het_hieu_luc) {
         payload.append('ngay_het_hieu_luc', new Date(form.ngay_het_hieu_luc).toISOString());
@@ -782,16 +792,45 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
+              {/* Tùy chọn thay thế cho văn bản khác khi trạng thái Còn hiệu lực */}
+              {form.hieu_luc === 'CON_HIEU_LUC' && (
+                <div className="col-span-12 pt-1">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={isReplacingOther}
+                      onChange={e => {
+                        setIsReplacingOther(e.target.checked);
+                        if (!e.target.checked) {
+                          setForm(prev => ({ ...prev, link_thay_the: '' }));
+                          setSelectedReplacementDoc(null);
+                          setShowReplacementDropdown(false);
+                        }
+                      }}
+                      className="w-4 h-4 text-primary rounded border-border-subtle focus:ring-primary/20 transition-fast"
+                    />
+                    <span className="text-xs font-semibold text-main">
+                      <i className="fa-solid fa-repeat text-primary mr-1" />
+                      Văn bản này thay thế cho văn bản khác trong hệ thống
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {/* Link văn bản thay thế (Hiển thị linh hoạt kèm bộ gợi ý tìm kiếm văn bản tương ứng) */}
-              {form.hieu_luc === 'HET_VA_THAY_THE' && (
+              {(form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && (
                 <div className="col-span-12 animate-in fade-in duration-150" ref={replacementDropdownRef}>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-semibold text-warning-text m-0">
                       <i className="fa-solid fa-link mr-1.5" />
-                      Văn bản thay thế (Số hiệu hoặc liên kết) <span className="text-danger">*</span>
+                      {form.hieu_luc === 'CON_HIEU_LUC'
+                        ? 'Văn bản bị thay thế (Số hiệu hoặc liên kết) *'
+                        : 'Văn bản mới thay thế (Số hiệu hoặc liên kết) *'}
                     </label>
                     <span className="text-[11px] text-muted">
-                      Gõ số hiệu hoặc từ khóa để gợi ý
+                      {form.hieu_luc === 'CON_HIEU_LUC'
+                        ? 'Gõ số hiệu văn bản cũ để tìm nhanh'
+                        : 'Gõ số hiệu hoặc từ khóa để gợi ý'}
                     </span>
                   </div>
 
@@ -925,6 +964,26 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                       </button>
                     </div>
                   )}
+
+                  {/* Phương án 2: Checkbox xác nhận tự động cập nhật văn bản liên quan */}
+                  <div className="mt-2.5 p-2.5 bg-surface border border-border-subtle rounded-xl flex items-center justify-between gap-2 select-none">
+                    <label className="inline-flex items-center gap-2 cursor-pointer text-xs text-main m-0">
+                      <input
+                        type="checkbox"
+                        checked={autoUpdateReplaced}
+                        onChange={e => setAutoUpdateReplaced(e.target.checked)}
+                        className="w-4 h-4 text-primary rounded border-border-subtle focus:ring-primary/20 transition-fast"
+                      />
+                      <span>
+                        {form.hieu_luc === 'CON_HIEU_LUC' ? (
+                          <>Tự động cập nhật văn bản cũ sang trạng thái <strong className="text-warning-text">Đã thay thế</strong></>
+                        ) : (
+                          <>Tự động đồng bộ liên kết 2 chiều giữa hai văn bản</>
+                        )}
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-muted hidden sm:inline">(Tự động hóa)</span>
+                  </div>
                 </div>
               )}
             </div>
