@@ -306,7 +306,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       return;
     }
     if (form.hieu_luc === 'HET_VA_THAY_THE' && !form.link_thay_the?.trim()) {
-      setAlertMsg('Vui lòng nhập Số hiệu hoặc liên kết văn bản thay thế khi chọn trạng thái "Hết hiệu lực và thay thế" (*)');
+      setAlertMsg('Vui lòng nhập Số hiệu hoặc liên kết văn bản thay thế khi chọn trạng thái "Đã thay thế" (*)');
       setAlertOpen(true);
       return;
     }
@@ -672,7 +672,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 >
                   <option value="CON_HIEU_LUC">Còn hiệu lực</option>
                   <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-                  <option value="HET_VA_THAY_THE">Hết hiệu lực và thay thế</option>
+                  <option value="HET_VA_THAY_THE">Đã thay thế</option>
                 </select>
               </div>
 

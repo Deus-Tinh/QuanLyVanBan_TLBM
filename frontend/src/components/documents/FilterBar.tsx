@@ -128,7 +128,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <option value="">Tất cả trạng thái</option>
             <option value="CON_HIEU_LUC">Còn hiệu lực</option>
             <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-            <option value="HET_VA_THAY_THE">Hết hiệu lực & thay thế</option>
+            <option value="HET_VA_THAY_THE">Đã thay thế</option>
           </select>
         </div>
       </div>
