@@ -198,15 +198,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
         if doc.hieu_luc == Document.HieuLuc.CON_HIEU_LUC:
             other_doc.hieu_luc = Document.HieuLuc.HET_VA_THAY_THE
-            if not other_doc.link_thay_the:
-                other_doc.link_thay_the = doc.so_hieu
-            if not other_doc.ngay_het_hieu_luc:
-                other_doc.ngay_het_hieu_luc = effective_date
+            other_doc.link_thay_the = doc.so_hieu
+            other_doc.ngay_het_hieu_luc = effective_date
             other_doc.save(update_fields=["hieu_luc", "link_thay_the", "ngay_het_hieu_luc"])
         elif doc.hieu_luc == Document.HieuLuc.HET_VA_THAY_THE:
-            if not other_doc.link_thay_the:
-                other_doc.link_thay_the = doc.so_hieu
-                other_doc.save(update_fields=["link_thay_the"])
+            other_doc.link_thay_the = doc.so_hieu
+            other_doc.save(update_fields=["link_thay_the"])
 
     def _handle_attachments(self, document):
         """Upload file đính kèm từ request.FILES."""
