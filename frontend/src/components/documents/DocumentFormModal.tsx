@@ -784,9 +784,13 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                     }}
                     className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
                   >
+                    {form.hieu_luc === 'HET_VA_THAY_THE' && (
+                      <option value="HET_VA_THAY_THE" disabled>
+                        Đã bị thay thế (Hệ thống tự động)
+                      </option>
+                    )}
                     <option value="CON_HIEU_LUC">Còn hiệu lực</option>
                     <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-                    <option value="HET_VA_THAY_THE">Đã bị thay thế</option>
                   </select>
                 ) : (
                   <div className="w-full text-sm bg-surface/60 border border-border-subtle rounded-xl px-3 py-2 text-main flex items-center justify-between">

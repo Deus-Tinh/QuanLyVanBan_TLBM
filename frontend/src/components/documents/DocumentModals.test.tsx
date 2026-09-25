@@ -161,7 +161,7 @@ describe('DocumentFormModal', () => {
     });
   });
 
-  it('hiển thị đầy đủ cả 3 trạng thái khi SỬA và hiện link thay thế khi chọn HET_VA_THAY_THE', async () => {
+  it('chỉ hiển thị Còn hiệu lực và Hết hiệu lực khi SỬA (không có mục Đã bị thay thế thủ công)', async () => {
     const mockEditDoc = {
       id: 1,
       so_hieu: '15/CV-BGDDT',
@@ -189,21 +189,16 @@ describe('DocumentFormModal', () => {
     const noiBanHanhInput = screen.getByDisplayValue('Bộ GD&ĐT');
     expect(noiBanHanhInput).not.toHaveAttribute('readonly');
 
-    // Khi sửa thì có cả lựa chọn "Hết hiệu lực" và "Đã bị thay thế"
+    // Khi sửa văn bản: chỉ cho phép chọn "Còn hiệu lực" hoặc "Hết hiệu lực"
+    expect(screen.getByRole('option', { name: 'Còn hiệu lực' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Hết hiệu lực' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Đã bị thay thế' })).toBeInTheDocument();
+    // KHÔNG có mục chọn thủ công "Đã bị thay thế"
+    expect(screen.queryByRole('option', { name: 'Đã bị thay thế' })).not.toBeInTheDocument();
 
-    // Ban đầu không có ô nhập văn bản thay thế
-    expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản.*trích yếu/i)).not.toBeInTheDocument();
-
-    // Đổi trạng thái sang "Đã bị thay thế"
+    // Đổi trạng thái sang "Hết hiệu lực"
     const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
-    fireEvent.change(hieuLucSelect, { target: { value: 'HET_VA_THAY_THE' } });
-
-    // Lúc này trường văn bản thay thế xuất hiện
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Nhập số hiệu văn bản.*trích yếu/i)).toBeInTheDocument();
-    });
+    fireEvent.change(hieuLucSelect, { target: { value: 'HET_HIEU_LUC' } });
+    expect(hieuLucSelect).toHaveValue('HET_HIEU_LUC');
   });
 
   it('tìm kiếm và gợi ý văn bản thay thế khi tick chọn thay thế cho văn bản khác lúc thêm mới', async () => {
