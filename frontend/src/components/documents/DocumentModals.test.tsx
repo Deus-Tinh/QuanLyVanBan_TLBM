@@ -165,6 +165,7 @@ describe('DocumentFormModal', () => {
     const mockEditDoc = {
       id: 1,
       so_hieu: '15/CV-BGDDT',
+      so_thu_tu: 15,
       hieu_luc: 'CON_HIEU_LUC',
       noi_ban_hanh: 'Bộ GD&ĐT',
       trich_yeu: 'Văn bản hướng dẫn',
@@ -176,6 +177,17 @@ describe('DocumentFormModal', () => {
     expect(screen.getByText('Cập Nhật Văn Bản Đến')).toBeInTheDocument();
     expect(screen.getByText('3. Ký duyệt & Hiệu lực văn bản')).toBeInTheDocument();
     expect(screen.getByText('Trạng thái hiệu lực')).toBeInTheDocument();
+
+    // Trường "Số đến" phải ở chế độ CHỈ ĐỌC (readOnly) theo đúng yêu cầu spec itc.pdf
+    const soDenInput = screen.getByDisplayValue('#15');
+    expect(soDenInput).toBeInTheDocument();
+    expect(soDenInput).toHaveAttribute('readonly');
+
+    // Các trường khác như Số hiệu, Nơi ban hành, Trích yếu có thể chỉnh sửa bình thường
+    const soHieuInput = screen.getByDisplayValue('15/CV-BGDDT');
+    expect(soHieuInput).not.toHaveAttribute('readonly');
+    const noiBanHanhInput = screen.getByDisplayValue('Bộ GD&ĐT');
+    expect(noiBanHanhInput).not.toHaveAttribute('readonly');
 
     // Khi sửa thì có cả lựa chọn "Hết hiệu lực" và "Đã bị thay thế"
     expect(screen.getByRole('option', { name: 'Hết hiệu lực' })).toBeInTheDocument();
