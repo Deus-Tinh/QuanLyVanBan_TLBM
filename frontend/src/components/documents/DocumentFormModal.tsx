@@ -70,18 +70,13 @@ const DEFAULT_UNITS = [
 
 const MOCK_STAFF_BY_UNIT: Record<string, UserOption[]> = {
   'Ban Giám hiệu': [
-    { id: 101, full_name: 'GS.TS Nguyễn Văn A', username: 'nguyenvana', department: 'Ban Giám hiệu' },
-    { id: 102, full_name: 'PGS.TS Trần Thị B', username: 'tranthib', department: 'Ban Giám hiệu' },
+    { id: 1, full_name: 'Quản trị viên (Admin)', username: 'admin', department: 'Ban Giám hiệu' },
   ],
   'Phòng Hành chính - Tổng hợp': [
-    { id: 103, full_name: 'ThS. Lê Hoàng Nam', username: 'lehoangnam', department: 'Phòng Hành chính - Tổng hợp' },
-    { id: 104, full_name: 'CN. Phạm Thị Thu', username: 'phamthithu', department: 'Phòng Hành chính - Tổng hợp' },
+    { id: 2, full_name: 'Trần Cán Bộ', username: 'canbo', department: 'Phòng Hành chính - Tổng hợp' },
   ],
   'Phòng Đào tạo': [
-    { id: 105, full_name: 'TS. Vũ Minh Quân', username: 'vuminhquan', department: 'Phòng Đào tạo' },
-  ],
-  'Khoa Công nghệ Thông tin': [
-    { id: 106, full_name: 'ThS. Đặng Hải Yến', username: 'danghaiyen', department: 'Khoa Công nghệ Thông tin' },
+    { id: 3, full_name: 'Lê Cán Bộ 2', username: 'canbo2', department: 'Phòng Đào tạo' },
   ],
 };
 
@@ -496,7 +491,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         onClose();
       } else {
         const err = await res.json().catch(() => ({ error: 'Không thể xử lý yêu cầu' }));
-        setAlertMsg('Lỗi máy chủ: ' + (err.error || err.detail || JSON.stringify(err)));
+        let msg = err.error || err.detail;
+        if (!msg) {
+          const fieldErrors = Object.entries(err)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(', ') : errs}`)
+            .join('; ');
+          msg = fieldErrors || JSON.stringify(err);
+        }
+        setAlertMsg('Lỗi từ máy chủ: ' + msg);
         setAlertOpen(true);
       }
     } catch (err: any) {

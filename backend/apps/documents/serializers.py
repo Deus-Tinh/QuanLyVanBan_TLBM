@@ -6,9 +6,25 @@ Lưu ý quan trọng:
 - Khi loai='MAT': so_thu_tu = None (VB Mật không có số thứ tự).
 """
 
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from .models import Document, DocumentAttachment, DocumentViewLog
+
+User = get_user_model()
+
+
+class TolerantPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
+    """
+    Bỏ qua an toàn các ID người dùng không tồn tại trong DB,
+    tránh làm đứt gãy luồng thêm văn bản khi các nhóm khác chưa hoàn thiện dữ liệu CBNV.
+    """
+
+    def to_internal_value(self, data):
+        try:
+            return super().to_internal_value(data)
+        except serializers.ValidationError:
+            return None
 
 
 class DocumentAttachmentSerializer(serializers.ModelSerializer):
@@ -133,6 +149,12 @@ class DocumentCreateUpdateSerializer(serializers.ModelSerializer):
     - nguoi_tao tự lấy từ request.user.
     """
 
+    nguoi_nhan = TolerantPrimaryKeyRelatedField(
+        many=True,
+        queryset=User.objects.all(),
+        required=False,
+    )
+
     class Meta:
         model = Document
         fields = [
@@ -156,6 +178,9 @@ class DocumentCreateUpdateSerializer(serializers.ModelSerializer):
             "nguoi_nhan",
         ]
         read_only_fields = ["so_thu_tu"]
+
+    def validate_nguoi_nhan(self, value):
+        return [u for u in value if u is not None]
 
     def validate(self, attrs):
         """Validate logic nghiệp vụ theo loại văn bản."""
