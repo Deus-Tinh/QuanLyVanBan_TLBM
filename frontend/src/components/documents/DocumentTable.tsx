@@ -326,21 +326,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             <span className="font-semibold text-main">{endIdx}</span> trên tổng số{' '}
             <span className="font-semibold text-main">{totalCount}</span> văn bản
           </span>
-
-          {onPageSizeChange && (
-            <div className="flex items-center gap-1.5 ml-3">
-              <span>Số dòng:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                className="bg-surface text-main text-xs rounded px-2 py-1 border border-border-subtle focus:outline-none focus:border-primary cursor-pointer"
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-          )}
         </div>
 
         {/* Nút chuyển trang */}
