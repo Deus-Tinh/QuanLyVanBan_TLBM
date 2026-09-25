@@ -138,16 +138,19 @@ describe('DocumentFormModal', () => {
     // 4 Enterprise Sections
     expect(screen.getByText(/1\. Tiếp nhận & Vào sổ công văn/i)).toBeInTheDocument();
     expect(screen.getByText(/2\. Nguồn ban hành & Nội dung văn bản/i)).toBeInTheDocument();
-    expect(screen.getByText(/3\. Ký duyệt văn bản/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Ký duyệt & Hiệu lực văn bản/i)).toBeInTheDocument();
     expect(screen.getByText(/4\. Phân phối xử lý & Tệp đính kèm/i)).toBeInTheDocument();
 
     // Core form labels
     expect(screen.getByText(/Số, ký hiệu/i)).toBeInTheDocument();
     expect(screen.getByText(/Cơ quan \/ Đơn vị ban hành/i)).toBeInTheDocument();
     expect(screen.getByText(/Trích yếu nội dung văn bản/i)).toBeInTheDocument();
+    expect(screen.getByText(/Trạng thái hiệu lực/i)).toBeInTheDocument();
 
-    // Ở chế độ Thêm mới, không hiển thị ô Trạng thái hiệu lực (tự động mặc định là Còn hiệu lực)
-    expect(screen.queryByText(/Trạng thái hiệu lực/i)).not.toBeInTheDocument();
+    // Ở chế độ Thêm mới, không có lựa chọn "Hết hiệu lực" (chỉ có Còn hiệu lực & Đã thay thế)
+    expect(screen.queryByRole('option', { name: 'Hết hiệu lực' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Còn hiệu lực' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Đã thay thế' })).toBeInTheDocument();
 
     // Toggles
     expect(screen.getByText('Hiển thị trên hệ thống')).toBeInTheDocument();
@@ -158,7 +161,7 @@ describe('DocumentFormModal', () => {
     });
   });
 
-  it('hiển thị trường Trạng thái hiệu lực khi SỬA và hiện link thay thế khi chọn HET_VA_THAY_THE', async () => {
+  it('hiển thị đầy đủ cả 3 trạng thái khi SỬA và hiện link thay thế khi chọn HET_VA_THAY_THE', async () => {
     const mockEditDoc = {
       id: 1,
       so_hieu: '15/CV-BGDDT',
@@ -174,8 +177,11 @@ describe('DocumentFormModal', () => {
     expect(screen.getByText('3. Ký duyệt & Hiệu lực văn bản')).toBeInTheDocument();
     expect(screen.getByText('Trạng thái hiệu lực')).toBeInTheDocument();
 
+    // Khi sửa thì có cả lựa chọn "Hết hiệu lực"
+    expect(screen.getByRole('option', { name: 'Hết hiệu lực' })).toBeInTheDocument();
+
     // Ban đầu không có ô nhập văn bản thay thế
-    expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản mới thay thế/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản cũ bị thay thế/i)).not.toBeInTheDocument();
 
     // Đổi trạng thái sang "Đã thay thế"
     const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
@@ -183,7 +189,7 @@ describe('DocumentFormModal', () => {
 
     // Lúc này trường văn bản thay thế xuất hiện
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Nhập số hiệu văn bản mới thay thế/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Nhập số hiệu văn bản cũ bị thay thế/i)).toBeInTheDocument();
     });
   });
 });

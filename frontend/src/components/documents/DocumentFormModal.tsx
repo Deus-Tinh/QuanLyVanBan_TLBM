@@ -627,12 +627,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   <i className="fa-solid fa-stamp" />
                 </span>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
-                  {initial?.id ? '3. Ký duyệt & Hiệu lực văn bản' : '3. Ký duyệt văn bản'}
+                  3. Ký duyệt & Hiệu lực văn bản
                 </h4>
               </div>
-              <span className="text-[11px] text-muted">
-                {initial?.id ? 'Thông tin người ký & Trạng thái pháp lý' : 'Thông tin người ký văn bản'}
-              </span>
+              <span className="text-[11px] text-muted">Thông tin người ký & Trạng thái pháp lý</span>
             </div>
 
             <div className="grid grid-cols-12 gap-3.5">
@@ -662,53 +660,50 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Trạng thái hiệu lực & Ngày hết hiệu lực (Chỉ hiển thị khi SỬA văn bản đã có) */}
-              {initial?.id && (
-                <>
-                  <div className="col-span-12 sm:col-span-6">
-                    <label className="block text-xs font-semibold text-secondary mb-1.5">
-                      Trạng thái hiệu lực
-                    </label>
-                    <select
-                      value={form.hieu_luc}
-                      onChange={e => setForm({ ...form, hieu_luc: e.target.value as any })}
-                      className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                    >
-                      <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-                      <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-                      <option value="HET_VA_THAY_THE">Đã thay thế</option>
-                    </select>
-                  </div>
+              {/* Trạng thái hiệu lực (Khi Thêm mới: chỉ gồm Còn hiệu lực & Đã thay thế; Khi Sửa: đủ cả 3) */}
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Trạng thái hiệu lực
+                </label>
+                <select
+                  value={form.hieu_luc}
+                  onChange={e => setForm({ ...form, hieu_luc: e.target.value as any })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                >
+                  <option value="CON_HIEU_LUC">Còn hiệu lực</option>
+                  {initial?.id && <option value="HET_HIEU_LUC">Hết hiệu lực</option>}
+                  <option value="HET_VA_THAY_THE">Đã thay thế</option>
+                </select>
+              </div>
 
-                  <div className="col-span-12 sm:col-span-6">
-                    <label className="block text-xs font-semibold text-secondary mb-1.5">
-                      Ngày hết hiệu lực <span className="text-muted font-normal text-[11px]">(Tùy chọn)</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={form.ngay_het_hieu_luc}
-                      onChange={e => setForm({ ...form, ngay_het_hieu_luc: e.target.value })}
-                      className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                    />
-                  </div>
+              {/* Ngày hết hiệu lực */}
+              <div className="col-span-12 sm:col-span-6">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Ngày hết hiệu lực <span className="text-muted font-normal text-[11px]">(Tùy chọn)</span>
+                </label>
+                <input
+                  type="date"
+                  value={form.ngay_het_hieu_luc}
+                  onChange={e => setForm({ ...form, ngay_het_hieu_luc: e.target.value })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+              </div>
 
-                  {/* Link văn bản thay thế (Hiển thị điều kiện) */}
-                  {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                    <div className="col-span-12 animate-in fade-in duration-150">
-                      <label className="block text-xs font-semibold text-warning-text mb-1.5">
-                        <i className="fa-solid fa-link mr-1" />
-                        Văn bản thay thế (Số hiệu hoặc liên kết) <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        value={form.link_thay_the}
-                        onChange={e => setForm({ ...form, link_thay_the: e.target.value })}
-                        placeholder="Nhập số hiệu văn bản mới thay thế hoặc liên kết văn bản..."
-                        className="w-full text-sm bg-surface border border-warning-border rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-warning focus:ring-1 focus:ring-warning transition-fast"
-                        required
-                      />
-                    </div>
-                  )}
-                </>
+              {/* Link văn bản thay thế (Hiển thị linh hoạt khi chọn Đã thay thế) */}
+              {form.hieu_luc === 'HET_VA_THAY_THE' && (
+                <div className="col-span-12 animate-in fade-in duration-150">
+                  <label className="block text-xs font-semibold text-warning-text mb-1.5">
+                    <i className="fa-solid fa-link mr-1" />
+                    Văn bản thay thế (Số hiệu hoặc liên kết) <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    value={form.link_thay_the}
+                    onChange={e => setForm({ ...form, link_thay_the: e.target.value })}
+                    placeholder="Nhập số hiệu văn bản cũ bị thay thế hoặc liên kết văn bản..."
+                    className="w-full text-sm bg-surface border border-warning-border rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-warning focus:ring-1 focus:ring-warning transition-fast"
+                    required
+                  />
+                </div>
               )}
             </div>
           </div>
