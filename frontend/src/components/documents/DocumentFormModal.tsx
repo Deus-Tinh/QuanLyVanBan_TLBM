@@ -286,20 +286,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
     setFiles(prev => prev.filter((_, i) => i !== index));
   }
 
-  function handleSuggestSoHieu() {
-    const year = form.nam || new Date().getFullYear();
-    let code = 'CV';
-    if (form.noi_ban_hanh) {
-      const words = form.noi_ban_hanh.trim().split(/\s+/);
-      if (words.length > 1) {
-        code = words.map(w => w[0].toUpperCase()).join('').replace(/[^A-Z0-9]/g, '');
-      } else {
-        code = form.noi_ban_hanh.slice(0, 4).toUpperCase();
-      }
-    }
-    const randomNum = Math.floor(Math.random() * 899 + 100);
-    setForm(prev => ({ ...prev, so_hieu: `${randomNum}/${code || 'CV'}-${year}` }));
-  }
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -514,20 +500,9 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
 
               {/* Số, ký hiệu */}
               <div className="col-span-12 sm:col-span-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-secondary">
-                    Số, ký hiệu <span className="text-danger">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleSuggestSoHieu}
-                    className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                    title="Gợi ý số hiệu theo cơ quan và năm"
-                  >
-                    <i className="fa-solid fa-wand-magic-sparkles text-[10px]" />
-                    <span>Gợi ý</span>
-                  </button>
-                </div>
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Số, ký hiệu <span className="text-danger">*</span>
+                </label>
                 <input
                   value={form.so_hieu}
                   onChange={e => setForm({ ...form, so_hieu: e.target.value })}
