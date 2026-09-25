@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "accounts",
     "dashboard",
     "birthdays",
+    "records",
 ]
 
 MIDDLEWARE = [
