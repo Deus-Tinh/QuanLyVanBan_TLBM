@@ -466,6 +466,7 @@
       "phoneInvalid": "Invalid phone number format for Vietnam.",
       "priorityPositive": "Priority index must be a positive integer greater than 0.",
       "priorityExists": "Priority index is already in use. Please choose another one.",
+      "priorityConflict": "The priority index could not be allocated because of a concurrent operation. Please try again.",
       "regionNotFound": "Region not found.",
       "regionHasUnits": "Cannot delete region because it still contains active units.",
       "unitNotFound": "Unit/Department not found.",

@@ -467,6 +467,7 @@
       "phoneInvalid": "Số điện thoại không đúng định dạng Việt Nam hợp lệ.",
       "priorityPositive": "Số thứ tự ưu tiên phải là số nguyên dương lớn hơn 0.",
       "priorityExists": "Số thứ tự ưu tiên này đã được sử dụng. Vui lòng chọn số khác.",
+      "priorityConflict": "Không thể cấp số thứ tự ưu tiên do có thao tác đồng thời. Vui lòng thử lại.",
       "regionNotFound": "Không tìm thấy Khối/Khu vực yêu cầu.",
       "regionHasUnits": "Không thể xóa Khối/Khu vực này vì vẫn còn các Đơn vị trực thuộc.",
       "unitNotFound": "Không tìm thấy Đơn vị/Phòng ban yêu cầu.",

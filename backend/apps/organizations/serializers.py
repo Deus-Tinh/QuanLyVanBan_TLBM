@@ -1,4 +1,5 @@
 import re
+from django.db import IntegrityError, OperationalError, transaction
 from django.db.models import Max
 from rest_framework import serializers
 
@@ -125,10 +126,7 @@ class DonViSerializer(serializers.ModelSerializer):
         stt = attrs.get("stt_uu_tien")
         instance = self.instance
 
-        if stt is None and not instance:
-            max_stt = DonVi.objects.aggregate(max_val=Max("stt_uu_tien"))["max_val"]
-            attrs["stt_uu_tien"] = (max_stt or 0) + 1
-        elif stt is not None:
+        if stt is not None:
             qs = DonVi.objects.filter(stt_uu_tien=stt)
             if instance:
                 qs = qs.exclude(pk=instance.pk)
@@ -138,3 +136,37 @@ class DonViSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+    def create(self, validated_data):
+        if validated_data.get("stt_uu_tien") is not None:
+            try:
+                with transaction.atomic():
+                    return super().create(validated_data)
+            except IntegrityError as exc:
+                raise serializers.ValidationError(
+                    {"stt_uu_tien": "organizations.messages.priorityExists"}
+                ) from exc
+
+        for attempt in range(3):
+            try:
+                with transaction.atomic():
+                    # Lock the current highest row before reading MAX on databases
+                    # that support row-level locking. The retry also handles an
+                    # empty table and backends where select_for_update is a no-op.
+                    DonVi.objects.select_for_update().order_by(
+                        "-stt_uu_tien"
+                    ).first()
+                    max_stt = DonVi.objects.aggregate(max_val=Max("stt_uu_tien"))["max_val"]
+                    validated_data["stt_uu_tien"] = (max_stt or 0) + 1
+                    return super().create(validated_data)
+            except (IntegrityError, OperationalError) as exc:
+                if isinstance(exc, OperationalError) and "locked" not in str(exc).lower():
+                    raise
+                if attempt == 2:
+                    raise serializers.ValidationError(
+                        {"stt_uu_tien": "organizations.messages.priorityConflict"}
+                    ) from exc
+
+        raise serializers.ValidationError(
+            {"stt_uu_tien": "organizations.messages.priorityConflict"}
+        )

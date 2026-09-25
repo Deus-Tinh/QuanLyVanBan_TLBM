@@ -1,6 +1,8 @@
 import io
 import openpyxl
+from unittest.mock import patch
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
@@ -124,6 +126,33 @@ class OrganizationModelAndAPITest(TestCase):
         response = self.client.post("/api/organizations/units/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["stt_uu_tien"], 2)
+
+    def test_auto_priority_retries_after_integrity_error(self):
+        """Mô phỏng xung đột đồng thời và kiểm tra hệ thống tự thử lại việc cấp STT."""
+        data = {
+            "khoi": self.region.id,
+            "stt_uu_tien": "",
+            "ten": "Đơn Vị Retry STT",
+        }
+        original_create = DonVi.objects.create
+        attempts = {"count": 0}
+
+        def create_with_conflict(**kwargs):
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise IntegrityError("duplicate priority")
+            return original_create(**kwargs)
+
+        with patch.object(
+            DonVi.objects,
+            "create",
+            side_effect=create_with_conflict,
+        ):
+            response = self.client.post("/api/organizations/units/", data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["stt_uu_tien"], 2)
+        self.assertEqual(attempts["count"], 2)
 
     def test_export_requires_permission(self):
         """Kiểm tra người dùng đã đăng nhập nhưng thiếu quyền export bị từ chối."""
