@@ -420,3 +420,70 @@ class ConfidentialDocumentSecurityTests(TestCase):
         res_admin_delete = client.delete(f"/api/documents/{self.doc_mat.id}/")
         self.assertEqual(res_admin_delete.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Document.objects.filter(id=self.doc_mat.id).exists())
+
+
+class DocumentAutoExpireTests(TestCase):
+    """Test tính năng tự động chuyển trạng thái Hết hiệu lực khi tới hạn."""
+
+    def setUp(self):
+        from django.core.management import call_command
+        self.user = User.objects.create_user(username="expireuser", password="test123")
+        self.past_date = timezone.now() - timezone.timedelta(days=2)
+        self.future_date = timezone.now() + timezone.timedelta(days=30)
+
+        # 1. Văn bản còn hiệu lực nhưng đã quá hạn
+        self.doc_expired = Document.objects.create(
+            loai="DEN", nam=2026, so_hieu="99/CV-EXPIRED", so_thu_tu=1,
+            trich_yeu="Văn bản đã quá hạn",
+            hieu_luc=Document.HieuLuc.CON_HIEU_LUC,
+            ngay_het_hieu_luc=self.past_date,
+            nguoi_tao=self.user,
+        )
+
+        # 2. Văn bản còn hiệu lực và chưa tới hạn
+        self.doc_active = Document.objects.create(
+            loai="DEN", nam=2026, so_hieu="100/CV-ACTIVE", so_thu_tu=2,
+            trich_yeu="Văn bản còn hạn trong tương lai",
+            hieu_luc=Document.HieuLuc.CON_HIEU_LUC,
+            ngay_het_hieu_luc=self.future_date,
+            nguoi_tao=self.user,
+        )
+
+        # 3. Văn bản đã bị thay thế (HET_VA_THAY_THE)
+        self.doc_replaced = Document.objects.create(
+            loai="DEN", nam=2026, so_hieu="101/CV-REPLACED", so_thu_tu=3,
+            trich_yeu="Văn bản đã bị thay thế",
+            hieu_luc=Document.HieuLuc.HET_VA_THAY_THE,
+            link_thay_the="100/CV-ACTIVE",
+            ngay_het_hieu_luc=self.past_date,
+            nguoi_tao=self.user,
+        )
+
+    def test_auto_expire_on_get_api(self):
+        """Khi gọi API GET /api/documents/, văn bản quá hạn tự động chuyển sang HET_HIEU_LUC."""
+        client = APIClient()
+        client.force_authenticate(user=self.user)
+
+        res = client.get("/api/documents/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        self.doc_expired.refresh_from_db()
+        self.assertEqual(self.doc_expired.hieu_luc, Document.HieuLuc.HET_HIEU_LUC)
+
+        self.doc_active.refresh_from_db()
+        self.assertEqual(self.doc_active.hieu_luc, Document.HieuLuc.CON_HIEU_LUC)
+
+        self.doc_replaced.refresh_from_db()
+        self.assertEqual(self.doc_replaced.hieu_luc, Document.HieuLuc.HET_VA_THAY_THE)
+
+    def test_management_command_expire_documents(self):
+        """Management command expire_documents hoạt động chính xác."""
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        call_command("expire_documents", stdout=out)
+
+        self.doc_expired.refresh_from_db()
+        self.assertEqual(self.doc_expired.hieu_luc, Document.HieuLuc.HET_HIEU_LUC)
+

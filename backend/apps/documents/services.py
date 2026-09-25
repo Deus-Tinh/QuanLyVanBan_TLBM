@@ -56,7 +56,34 @@ def generate_so_thu_tu(loai: str, nam: int) -> int:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# 2. GHI LOG NGƯỜI XEM — Upsert (update_or_create)
+# 2. TỰ ĐỘNG CHUYỂN HẾT HIỆU LỰC KHI QUÁ HẠN
+# ═══════════════════════════════════════════════════════════════════
+
+def check_and_update_expired_documents() -> int:
+    """
+    Quét và tự động chuyển trạng thái các văn bản đã tới hoặc quá ngày hết hiệu lực
+    sang 'HET_HIEU_LUC'.
+
+    Quy tắc:
+    - Chỉ áp dụng cho các văn bản đang có hieu_luc = 'CON_HIEU_LUC'
+    - Có ngay_het_hieu_luc không rỗng
+    - ngay_het_hieu_luc <= timezone.now()
+    - KHÔNG ghi đè các văn bản đang là 'HET_VA_THAY_THE' (đã bị thay thế).
+
+    Returns:
+        Số lượng văn bản đã được cập nhật sang HET_HIEU_LUC.
+    """
+    now = timezone.now()
+    updated_count = Document.objects.filter(
+        hieu_luc=Document.HieuLuc.CON_HIEU_LUC,
+        ngay_het_hieu_luc__isnull=False,
+        ngay_het_hieu_luc__lte=now,
+    ).update(hieu_luc=Document.HieuLuc.HET_HIEU_LUC)
+    return updated_count
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 3. GHI LOG NGƯỜI XEM — Upsert (update_or_create)
 # ═══════════════════════════════════════════════════════════════════
 
 def log_document_view(document, user):

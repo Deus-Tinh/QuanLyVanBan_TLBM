@@ -158,12 +158,30 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                     <i className="fa-solid fa-triangle-exclamation" />
                   </div>
                   <div className="text-xs">
-                    <div className="font-bold text-warning-text mb-0.5">VĂN BẢN ĐÃ HẾT HIỆU LỰC</div>
+                    <div className="font-bold text-warning-text mb-0.5">VĂN BẢN ĐÃ HẾT HIỆU LỰC (ĐÃ THAY THẾ)</div>
                     <p className="text-main m-0 leading-relaxed">
                       {document.link_thay_the ? (
                         <>Văn bản này không còn giá trị thi hành do đã được thay thế bởi văn bản: <strong className="font-mono text-warning-text">{document.link_thay_the}</strong>.</>
                       ) : (
                         <>Văn bản này đã hết hiệu lực và được thay thế bởi văn bản khác.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {document.hieu_luc === 'HET_HIEU_LUC' && (
+                <div className="bg-danger/10 border border-danger/30 rounded-xl p-3.5 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-danger/20 text-danger flex items-center justify-center text-sm shrink-0 mt-0.5">
+                    <i className="fa-solid fa-calendar-xmark" />
+                  </div>
+                  <div className="text-xs">
+                    <div className="font-bold text-danger mb-0.5">VĂN BẢN ĐÃ HẾT HIỆU LỰC</div>
+                    <p className="text-main m-0 leading-relaxed">
+                      {document.ngay_het_hieu_luc ? (
+                        <>Văn bản này đã hết hiệu lực thi hành từ ngày <strong className="font-mono text-danger">{formatDate(document.ngay_het_hieu_luc)}</strong>.</>
+                      ) : (
+                        <>Văn bản này đã hết hiệu lực thi hành.</>
                       )}
                     </p>
                   </div>

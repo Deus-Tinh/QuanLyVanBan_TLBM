@@ -237,14 +237,28 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     {/* 6. Trạng thái Hiệu lực (Badge) */}
                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
                       {doc.hieu_luc === 'CON_HIEU_LUC' && (
-                        <Badge variant="success" size="sm" withDot>
-                          Còn hiệu lực
-                        </Badge>
+                        <div>
+                          <Badge variant="success" size="sm" withDot>
+                            Còn hiệu lực
+                          </Badge>
+                          {doc.ngay_het_hieu_luc && (
+                            <div className="text-[0.68rem] text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                              Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
+                            </div>
+                          )}
+                        </div>
                       )}
                       {doc.hieu_luc === 'HET_HIEU_LUC' && (
-                        <Badge variant="danger" size="sm" withDot>
-                          Hết hiệu lực
-                        </Badge>
+                        <div>
+                          <Badge variant="danger" size="sm" withDot>
+                            Hết hiệu lực
+                          </Badge>
+                          {doc.ngay_het_hieu_luc && (
+                            <div className="text-[0.68rem] text-danger/80 font-medium mt-0.5" title={`Đã hết hạn từ: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                              Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
+                            </div>
+                          )}
+                        </div>
                       )}
                       {doc.hieu_luc === 'HET_VA_THAY_THE' && (
                         <Badge variant="warning" size="sm" withDot>

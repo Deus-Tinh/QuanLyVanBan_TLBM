@@ -27,6 +27,7 @@ from .serializers import (
     DocumentViewLogSerializer,
 )
 from .services import (
+    check_and_update_expired_documents,
     export_to_excel,
     generate_excel_template,
     generate_so_thu_tu,
@@ -81,6 +82,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
         - VB Đến/Đi: Tất cả CBNV đều xem được.
         - VB Mật: Chỉ người tạo, người nhận, hoặc admin mới thấy.
         """
+        # Tự động quét và cập nhật các văn bản đã quá ngày hết hiệu lực
+        check_and_update_expired_documents()
+
         qs = Document.objects.select_related("nguoi_tao").prefetch_related(
             "attachments", "nguoi_nhan"
         )
@@ -135,6 +139,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # Xử lý file đính kèm (nếu có)
         self._handle_attachments(doc)
 
+        # Nếu có ngày hết hiệu lực trong quá khứ, tự động chuyển sang HET_HIEU_LUC
+        if (
+            doc.hieu_luc == Document.HieuLuc.CON_HIEU_LUC
+            and doc.ngay_het_hieu_luc
+            and doc.ngay_het_hieu_luc <= timezone.now()
+        ):
+            doc.hieu_luc = Document.HieuLuc.HET_HIEU_LUC
+            doc.save(update_fields=["hieu_luc"])
+
         # Tự động đồng bộ quan hệ văn bản thay thế 2 chiều
         auto_update = self.request.data.get("auto_update_replaced_doc", "true")
         if str(auto_update).lower() in ("true", "1") and doc.link_thay_the:
@@ -155,6 +168,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
         doc = serializer.save()
         self._handle_attachments(doc)
+
+        # Nếu có ngày hết hiệu lực trong quá khứ, tự động chuyển sang HET_HIEU_LUC
+        if (
+            doc.hieu_luc == Document.HieuLuc.CON_HIEU_LUC
+            and doc.ngay_het_hieu_luc
+            and doc.ngay_het_hieu_luc <= timezone.now()
+        ):
+            doc.hieu_luc = Document.HieuLuc.HET_HIEU_LUC
+            doc.save(update_fields=["hieu_luc"])
 
         # Tự động đồng bộ quan hệ văn bản thay thế 2 chiều
         auto_update = self.request.data.get("auto_update_replaced_doc", "true")
