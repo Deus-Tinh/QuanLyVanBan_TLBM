@@ -8,16 +8,10 @@ export interface FilterBarProps {
   onSearch: () => void;
   onReset: () => void;
   isLoading?: boolean;
+  availableYears?: number[];
 }
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = [
-  CURRENT_YEAR,
-  CURRENT_YEAR - 1,
-  CURRENT_YEAR - 2,
-  CURRENT_YEAR - 3,
-  CURRENT_YEAR - 4,
-];
 
 export const FilterBar: React.FC<FilterBarProps> = ({
   filters,
@@ -25,7 +19,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onSearch,
   onReset,
   isLoading = false,
+  availableYears,
 }) => {
+  // Chỉ hiển thị các năm thực tế có văn bản trong hệ thống
+  const yearOptions = (availableYears && availableYears.length > 0)
+    ? availableYears
+    : [CURRENT_YEAR];
   const handleInputChange = (field: keyof DocumentFilterParams, value: unknown) => {
     onFilterChange({
       ...filters,
@@ -85,7 +84,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             className="w-full bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
           >
             <option value="">Tất cả các năm</option>
-            {YEAR_OPTIONS.map((year) => (
+            {yearOptions.map((year) => (
               <option key={year} value={year}>
                 Năm {year}
               </option>

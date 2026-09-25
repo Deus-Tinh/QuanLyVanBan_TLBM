@@ -335,3 +335,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
+    @action(detail=False, methods=["get"], url_path="years")
+    def years(self, request):
+        """
+        GET /api/documents/years/?loai=DEN
+        Lấy danh sách các năm thực tế có văn bản trong cơ sở dữ liệu.
+        """
+        raw_loai = request.query_params.get("loai") or request.query_params.get("type")
+        qs = self.get_queryset()
+        if raw_loai:
+            qs = qs.filter(loai=str(raw_loai).strip().upper())
+        years = qs.values_list("nam", flat=True).distinct().order_by("-nam")
+        return Response(list(years))
+

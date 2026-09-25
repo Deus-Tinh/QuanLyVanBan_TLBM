@@ -41,6 +41,23 @@ export const InboundDocumentPage: React.FC = () => {
   const [pendingDelete, setPendingDelete] = useState<{ id: number; soHieu: string } | null>(null);
   const [alertMsg, setAlertMsg] = useState<string>('');
   const [isAlertOpen, setIsAlertOpen] = useState<boolean>(false);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+
+  // Lấy danh sách các năm thực tế có văn bản trong CSDL
+  const fetchYears = useCallback(async () => {
+    try {
+      const res = await apiClient.get<number[]>('/api/documents/years/?loai=DEN');
+      if (Array.isArray(res) && res.length > 0) {
+        setAvailableYears(res);
+      }
+    } catch {
+      // Giữ nguyên danh sách hiện tại nếu lỗi
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchYears();
+  }, [fetchYears]);
 
   // Gọi API lấy danh sách văn bản đến
   const fetchDocuments = useCallback(async () => {
@@ -64,6 +81,13 @@ export const InboundDocumentPage: React.FC = () => {
       if (response && Array.isArray(response.results)) {
         setDocuments(response.results);
         setTotalCount(response.count || 0);
+        if (response.results.length > 0) {
+          const docYears = Array.from(new Set(response.results.map((d: any) => d.nam).filter(Boolean))) as number[];
+          setAvailableYears(prev => {
+            const merged = Array.from(new Set([...prev, ...docYears])).sort((a, b) => b - a);
+            return merged;
+          });
+        }
       } else if (Array.isArray(response)) {
         // Fallback trường hợp API trả về mảng trực tiếp
         setDocuments(response as unknown as DocumentItem[]);
@@ -132,6 +156,7 @@ export const InboundDocumentPage: React.FC = () => {
       setAlertMsg(`Đã xóa văn bản "${pendingDelete.soHieu}" thành công.`);
       setIsAlertOpen(true);
       fetchDocuments();
+      fetchYears();
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Xóa văn bản thất bại.';
       setPendingDelete(null);
@@ -273,6 +298,7 @@ export const InboundDocumentPage: React.FC = () => {
         onSearch={fetchDocuments}
         onReset={handleResetFilters}
         isLoading={isLoading}
+        availableYears={availableYears}
       />
 
       {/* Thông báo lỗi nếu có */}
@@ -336,6 +362,7 @@ export const InboundDocumentPage: React.FC = () => {
           setIsFormOpen(false);
           setEditingDoc(null);
           fetchDocuments();
+          fetchYears();
         }}
       />
 
@@ -345,6 +372,7 @@ export const InboundDocumentPage: React.FC = () => {
         onImported={() => {
           setIsImportOpen(false);
           fetchDocuments();
+          fetchYears();
         }}
       />
 
