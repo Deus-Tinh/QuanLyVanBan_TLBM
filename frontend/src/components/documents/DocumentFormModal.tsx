@@ -765,20 +765,38 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Trạng thái hiệu lực (Khi Thêm mới: chỉ gồm Còn hiệu lực & Đã thay thế; Khi Sửa: đủ cả 3) */}
+              {/* Trạng thái hiệu lực (Khi Thêm mới: Khóa mặc định "Còn hiệu lực"; Khi Sửa: Có đủ 3 trạng thái) */}
               <div className="col-span-12 sm:col-span-6">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
                   Trạng thái hiệu lực
                 </label>
-                <select
-                  value={form.hieu_luc}
-                  onChange={e => setForm({ ...form, hieu_luc: e.target.value as any })}
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                >
-                  <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-                  {initial?.id && <option value="HET_HIEU_LUC">Hết hiệu lực</option>}
-                  <option value="HET_VA_THAY_THE">Đã thay thế</option>
-                </select>
+                {initial?.id ? (
+                  <select
+                    value={form.hieu_luc}
+                    onChange={e => {
+                      const newHieuLuc = e.target.value as any;
+                      setForm({ ...form, hieu_luc: newHieuLuc });
+                      if (newHieuLuc !== 'HET_VA_THAY_THE' && !isReplacingOther) {
+                        setForm(prev => ({ ...prev, link_thay_the: '' }));
+                        setSelectedReplacementDoc(null);
+                        setShowReplacementDropdown(false);
+                      }
+                    }}
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                  >
+                    <option value="CON_HIEU_LUC">Còn hiệu lực</option>
+                    <option value="HET_HIEU_LUC">Hết hiệu lực</option>
+                    <option value="HET_VA_THAY_THE">Đã bị thay thế</option>
+                  </select>
+                ) : (
+                  <div className="w-full text-sm bg-surface/60 border border-border-subtle rounded-xl px-3 py-2 text-main flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-emerald-600 font-semibold text-xs">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                      Còn hiệu lực
+                    </span>
+                    <span className="text-[11px] text-muted italic">Mặc định khi thêm mới</span>
+                  </div>
+                )}
               </div>
 
               {/* Ngày hết hiệu lực */}

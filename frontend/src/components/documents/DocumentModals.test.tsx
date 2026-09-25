@@ -147,10 +147,10 @@ describe('DocumentFormModal', () => {
     expect(screen.getByText(/Trích yếu nội dung văn bản/i)).toBeInTheDocument();
     expect(screen.getByText(/Trạng thái hiệu lực/i)).toBeInTheDocument();
 
-    // Ở chế độ Thêm mới, không có lựa chọn "Hết hiệu lực" (chỉ có Còn hiệu lực & Đã thay thế)
-    expect(screen.queryByRole('option', { name: 'Hết hiệu lực' })).not.toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Còn hiệu lực' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'Đã thay thế' })).toBeInTheDocument();
+    // Ở chế độ Thêm mới, trạng thái mặc định khóa là Còn hiệu lực, có checkbox thay thế cho văn bản khác
+    expect(screen.getByText('Còn hiệu lực')).toBeInTheDocument();
+    expect(screen.getByText('Mặc định khi thêm mới')).toBeInTheDocument();
+    expect(screen.getByText(/Văn bản này thay thế cho văn bản khác trong hệ thống/i)).toBeInTheDocument();
 
     // Toggles
     expect(screen.getByText('Hiển thị trên hệ thống')).toBeInTheDocument();
@@ -177,13 +177,14 @@ describe('DocumentFormModal', () => {
     expect(screen.getByText('3. Ký duyệt & Hiệu lực văn bản')).toBeInTheDocument();
     expect(screen.getByText('Trạng thái hiệu lực')).toBeInTheDocument();
 
-    // Khi sửa thì có cả lựa chọn "Hết hiệu lực"
+    // Khi sửa thì có cả lựa chọn "Hết hiệu lực" và "Đã bị thay thế"
     expect(screen.getByRole('option', { name: 'Hết hiệu lực' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Đã bị thay thế' })).toBeInTheDocument();
 
     // Ban đầu không có ô nhập văn bản thay thế
     expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản.*trích yếu/i)).not.toBeInTheDocument();
 
-    // Đổi trạng thái sang "Đã thay thế"
+    // Đổi trạng thái sang "Đã bị thay thế"
     const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
     fireEvent.change(hieuLucSelect, { target: { value: 'HET_VA_THAY_THE' } });
 
@@ -193,7 +194,7 @@ describe('DocumentFormModal', () => {
     });
   });
 
-  it('tìm kiếm và gợi ý văn bản thay thế khi nhập từ khóa', async () => {
+  it('tìm kiếm và gợi ý văn bản thay thế khi tick chọn thay thế cho văn bản khác lúc thêm mới', async () => {
     (apiClient.get as any).mockResolvedValueOnce({
       results: [
         {
@@ -208,9 +209,9 @@ describe('DocumentFormModal', () => {
 
     render(<DocumentFormModal open={true} onClose={vi.fn()} />);
 
-    // Đổi trạng thái sang "Đã thay thế"
-    const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
-    fireEvent.change(hieuLucSelect, { target: { value: 'HET_VA_THAY_THE' } });
+    // Tick chọn checkbox "Văn bản này thay thế cho văn bản khác trong hệ thống"
+    const replaceCheckbox = screen.getByLabelText(/Văn bản này thay thế cho văn bản khác trong hệ thống/i);
+    fireEvent.click(replaceCheckbox);
 
     const input = await screen.findByPlaceholderText(/Nhập số hiệu văn bản.*trích yếu/i);
     expect(input).toBeInTheDocument();
