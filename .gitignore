@@ -1,0 +1,13 @@
+.vene/
+.venv/
+__pycache__/
+*.py[cod]
+.env
+backend/.env
+data/chroma_db/
+data/docs/*
+!data/docs/.gitkeep
+data/django.sqlite3
+frontend/node_modules/
+frontend/dist/
+*.log
