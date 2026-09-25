@@ -106,7 +106,12 @@ export const authService = {
   getSession(): UserSession | null {
     try {
       const sessionStr = localStorage.getItem('tlbm_session');
-      return sessionStr ? JSON.parse(sessionStr) : null;
+      if (!sessionStr) return null;
+      const parsed = JSON.parse(sessionStr);
+      if (parsed && typeof parsed === 'object' && (parsed.username || parsed.fullName)) {
+        return parsed;
+      }
+      return null;
     } catch {
       return null;
     }

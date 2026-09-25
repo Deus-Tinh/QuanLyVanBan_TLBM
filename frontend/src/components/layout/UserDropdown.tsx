@@ -41,23 +41,42 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
     }
   };
 
-  const [session, setSession] = useState<SessionUser | null>(() => {
+  const parseSession = (raw: string | null): SessionUser | null => {
+    if (!raw) {
+      if (localStorage.getItem('tlbm_access_token')) {
+        return {
+          username: 'admin',
+          fullName: 'Quản Trị Viên (Admin)',
+          roleTitle: 'Quản trị viên tối cao',
+        };
+      }
+      return null;
+    }
     try {
-      const raw = localStorage.getItem('tlbm_session');
-      return raw ? JSON.parse(raw) : null;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && (parsed.fullName || parsed.username)) {
+        return parsed;
+      }
+      if (localStorage.getItem('tlbm_access_token')) {
+        return {
+          username: 'admin',
+          fullName: 'Quản Trị Viên (Admin)',
+          roleTitle: 'Quản trị viên tối cao',
+        };
+      }
+      return null;
     } catch {
       return null;
     }
+  };
+
+  const [session, setSession] = useState<SessionUser | null>(() => {
+    return parseSession(localStorage.getItem('tlbm_session'));
   });
 
   useEffect(() => {
     const handleAuth = () => {
-      try {
-        const raw = localStorage.getItem('tlbm_session');
-        setSession(raw ? JSON.parse(raw) : null);
-      } catch {
-        setSession(null);
-      }
+      setSession(parseSession(localStorage.getItem('tlbm_session')));
     };
     window.addEventListener('tlbm_auth_changed', handleAuth);
     window.addEventListener('storage', handleAuth);
