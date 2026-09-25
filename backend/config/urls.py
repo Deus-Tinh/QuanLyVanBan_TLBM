@@ -14,5 +14,9 @@ urlpatterns = [
 
     # API Tổng quan Dashboard: GET /api/dashboard/overview/
     path("api/dashboard/", include("dashboard.urls", namespace="dashboard")),
+
+    # ── Module Nhóm 7 — Quang ─────────────────────────────────────────────
+    # API Quản lý Khối & Đơn vị: /api/organizations/...
+    path("api/organizations/", include("organizations.urls", namespace="organizations")),
 ]
 

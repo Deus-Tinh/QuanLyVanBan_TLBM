@@ -14,7 +14,10 @@
     "group1Developing": "Group 1 Currently In Development",
     "group1Layout": "Group 1 Layout & Shell Architecture",
     "group1DescSelf": "Group 1 is actively developing and finalizing UI components with Django Backend integration.",
-    "group1DescOther": "Group 1 is developing the shell layout & preparing API integration endpoints with {team}."
+    "group1DescOther": "Group 1 is developing the shell layout & preparing API integration endpoints with {team}.",
+    "networkError": "Cannot connect to the Backend server. Please check your network connection!",
+    "apiError": "The server returned an API error (code {status}). Please try again later.",
+    "defaultDownloadFilename": "download.xlsx"
   },
   "header": {
     "searchPlaceholder": "Search document number, subject, tasks...",
@@ -380,6 +383,102 @@
       "desc": "Intelligent procedural Q&A, incoming/outgoing document search, and deep system cross-linking."
     }
   },
+  "organizations": {
+    "title": "Organizational Structure & Corporate Departments",
+    "desc": "Manage Tier-1 Regions/Blocks, Tier-2 Departments/Units, and priority sequence indices.",
+    "exportFilename": "departments_directory.xlsx",
+    "tabs": {
+      "regions": "Regions / Blocks (Tier 1)",
+      "units": "Units / Departments (Tier 2)"
+    },
+    "region": {
+      "addBtn": "Add Region/Block",
+      "createTitle": "Create New Region / Block",
+      "editTitle": "Edit Region / Block",
+      "nameLabel": "Region/Block Name",
+      "namePlaceholder": "Enter region or block name (e.g. Headquarters)",
+      "deleteConfirmTitle": "Confirm Delete Region/Block",
+      "deleteConfirmDesc": "Are you sure you want to delete region/block \"{name}\"? This action cannot be undone.",
+      "cannotDeleteNotice": "Cannot delete this region/block because it still contains active units."
+    },
+    "unit": {
+      "addBtn": "Add Unit/Department",
+      "createTitle": "Create New Unit / Department",
+      "editTitle": "Edit Unit / Department",
+      "priorityLabel": "Priority Index",
+      "priorityPlaceholder": "Leave blank to auto-assign the next index",
+      "nameLabel": "Unit/Department Name",
+      "namePlaceholder": "Enter unit or department name (e.g. Accounting Dept)",
+      "regionLabel": "Belongs to Region/Block",
+      "regionPlaceholder": "-- Select Parent Region / Block --",
+      "phoneLabel": "Phone Number",
+      "phonePlaceholder": "E.g. 02838123456",
+      "emailLabel": "Email Address",
+      "emailPlaceholder": "department@itc.edu.vn",
+      "addressLabel": "Address",
+      "addressPlaceholder": "Enter office address",
+      "isPublicLabel": "Public Information",
+      "isPublicHelp": "If unchecked, unit will only be visible internally to administrators.",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Enter additional notes (optional)",
+      "priorityHelp": "Positive integer for sorting, must be unique across the system.",
+      "exportPermission": "Can export unit list to Excel",
+      "deleteConfirmTitle": "Confirm Delete Unit",
+      "deleteConfirmDesc": "Are you sure you want to delete unit/department \"{name}\"?"
+    },
+    "table": {
+      "id": "ID",
+      "priority": "Index",
+      "regionName": "Region / Block Name",
+      "unitName": "Unit / Department Name",
+      "parentRegion": "Parent Region",
+      "phone": "Phone",
+      "email": "Email",
+      "address": "Address",
+      "status": "Status",
+      "public": "Public",
+      "internal": "Internal Only",
+      "actions": "Actions",
+      "empty": "No data available.",
+      "loading": "Loading data...",
+      "unitsCount": "Affiliated Units",
+      "unitCountLabel": "{count} units",
+      "paginationInfo": "Showing {from} - {to} of {total}",
+      "emptyValue": "—"
+    },
+    "actions": {
+      "searchPlaceholder": "Search by name, phone, email...",
+      "filterRegionAll": "All Regions / Blocks",
+      "exportExcel": "Export Excel",
+      "exporting": "Exporting...",
+      "save": "Save Changes",
+      "create": "Create",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "delete": "Delete",
+      "refresh": "Refresh"
+    },
+    "messages": {
+      "nameRequired": "Name cannot be empty or whitespace only.",
+      "nameExists": "This name already exists in the system.",
+      "regionRequired": "Please select a parent region/block.",
+      "emailInvalid": "Invalid email address format.",
+      "phoneInvalid": "Invalid phone number format for Vietnam.",
+      "priorityPositive": "Priority index must be a positive integer greater than 0.",
+      "priorityExists": "Priority index is already in use. Please choose another one.",
+      "regionNotFound": "Region not found.",
+      "regionHasUnits": "Cannot delete region because it still contains active units.",
+      "unitNotFound": "Unit/Department not found.",
+      "protectedError": "Cannot delete due to data protection rules.",
+      "createSuccess": "Created successfully!",
+      "updateSuccess": "Updated successfully!",
+      "deleteSuccess": "Deleted successfully!",
+      "exportSuccess": "Exported to Excel successfully!",
+      "exportError": "Failed to download Excel file. Please try again.",
+      "fetchError": "Failed to load data list. Please check your network connection.",
+      "exportPermissionDenied": "You do not have permission to export the unit list to Excel."
+    }
+  },
   "auth": {
     "backToDashboard": "Go to Dashboard",
     "brandTitle": "Bao Long Document & Records Management",
@@ -400,6 +499,7 @@
     "loginSuccess": "Login successful!",
     "invalidCredentials": "Incorrect username or password!",
     "networkError": "Cannot connect to authentication server. Please check Backend service!",
+    "sessionExpired": "Your login session has expired. Please sign in again!",
     "characters": {
       "purple": "Click to make me jump!",
       "black": "Click to make me bounce!",
