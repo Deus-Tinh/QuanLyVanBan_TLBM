@@ -181,7 +181,7 @@ describe('DocumentFormModal', () => {
     expect(screen.getByRole('option', { name: 'Hết hiệu lực' })).toBeInTheDocument();
 
     // Ban đầu không có ô nhập văn bản thay thế
-    expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản cũ bị thay thế/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản.*trích yếu/i)).not.toBeInTheDocument();
 
     // Đổi trạng thái sang "Đã thay thế"
     const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
@@ -189,7 +189,48 @@ describe('DocumentFormModal', () => {
 
     // Lúc này trường văn bản thay thế xuất hiện
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Nhập số hiệu văn bản cũ bị thay thế/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Nhập số hiệu văn bản.*trích yếu/i)).toBeInTheDocument();
+    });
+  });
+
+  it('tìm kiếm và gợi ý văn bản thay thế khi nhập từ khóa', async () => {
+    (apiClient.get as any).mockResolvedValueOnce({
+      results: [
+        {
+          id: 99,
+          so_hieu: '88/QD-SNN',
+          trich_yeu: 'Quyết định triển khai dự án',
+          noi_ban_hanh: 'Sở Nông Nghiệp',
+          loai_display: 'Văn bản Đến',
+        },
+      ],
+    });
+
+    render(<DocumentFormModal open={true} onClose={vi.fn()} />);
+
+    // Đổi trạng thái sang "Đã thay thế"
+    const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
+    fireEvent.change(hieuLucSelect, { target: { value: 'HET_VA_THAY_THE' } });
+
+    const input = await screen.findByPlaceholderText(/Nhập số hiệu văn bản.*trích yếu/i);
+    expect(input).toBeInTheDocument();
+
+    // Nhập từ khóa
+    fireEvent.change(input, { target: { value: '88' } });
+
+    // Hiển thị dropdown gợi ý
+    await waitFor(() => {
+      expect(screen.getByText('88/QD-SNN')).toBeInTheDocument();
+      expect(screen.getByText('Quyết định triển khai dự án')).toBeInTheDocument();
+    });
+
+    // Nhấp chọn văn bản gợi ý
+    fireEvent.click(screen.getByText('88/QD-SNN'));
+
+    // Input được điền số hiệu và thẻ liên kết xuất hiện
+    await waitFor(() => {
+      expect((input as HTMLInputElement).value).toBe('88/QD-SNN');
+      expect(screen.getByTitle('Hủy liên kết')).toBeInTheDocument();
     });
   });
 });
