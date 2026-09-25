@@ -138,14 +138,16 @@ describe('DocumentFormModal', () => {
     // 4 Enterprise Sections
     expect(screen.getByText(/1\. Tiếp nhận & Vào sổ công văn/i)).toBeInTheDocument();
     expect(screen.getByText(/2\. Nguồn ban hành & Nội dung văn bản/i)).toBeInTheDocument();
-    expect(screen.getByText(/3\. Ký duyệt & Hiệu lực văn bản/i)).toBeInTheDocument();
+    expect(screen.getByText(/3\. Ký duyệt văn bản/i)).toBeInTheDocument();
     expect(screen.getByText(/4\. Phân phối xử lý & Tệp đính kèm/i)).toBeInTheDocument();
 
     // Core form labels
     expect(screen.getByText(/Số, ký hiệu/i)).toBeInTheDocument();
     expect(screen.getByText(/Cơ quan \/ Đơn vị ban hành/i)).toBeInTheDocument();
     expect(screen.getByText(/Trích yếu nội dung văn bản/i)).toBeInTheDocument();
-    expect(screen.getByText(/Trạng thái hiệu lực/i)).toBeInTheDocument();
+
+    // Ở chế độ Thêm mới, không hiển thị ô Trạng thái hiệu lực (tự động mặc định là Còn hiệu lực)
+    expect(screen.queryByText(/Trạng thái hiệu lực/i)).not.toBeInTheDocument();
 
     // Toggles
     expect(screen.getByText('Hiển thị trên hệ thống')).toBeInTheDocument();
@@ -156,13 +158,26 @@ describe('DocumentFormModal', () => {
     });
   });
 
-  it('hiển thị trường nhập link văn bản thay thế khi chọn trạng thái HET_VA_THAY_THE', async () => {
-    render(<DocumentFormModal open={true} onClose={vi.fn()} />);
+  it('hiển thị trường Trạng thái hiệu lực khi SỬA và hiện link thay thế khi chọn HET_VA_THAY_THE', async () => {
+    const mockEditDoc = {
+      id: 1,
+      so_hieu: '15/CV-BGDDT',
+      hieu_luc: 'CON_HIEU_LUC',
+      noi_ban_hanh: 'Bộ GD&ĐT',
+      trich_yeu: 'Văn bản hướng dẫn',
+    };
+
+    render(<DocumentFormModal open={true} initial={mockEditDoc} onClose={vi.fn()} />);
+
+    // Header sửa
+    expect(screen.getByText('Cập Nhật Văn Bản Đến')).toBeInTheDocument();
+    expect(screen.getByText('3. Ký duyệt & Hiệu lực văn bản')).toBeInTheDocument();
+    expect(screen.getByText('Trạng thái hiệu lực')).toBeInTheDocument();
 
     // Ban đầu không có ô nhập văn bản thay thế
     expect(screen.queryByPlaceholderText(/Nhập số hiệu văn bản mới thay thế/i)).not.toBeInTheDocument();
 
-    // Chọn trạng thái "Hết hiệu lực và thay thế"
+    // Đổi trạng thái sang "Đã thay thế"
     const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
     fireEvent.change(hieuLucSelect, { target: { value: 'HET_VA_THAY_THE' } });
 
