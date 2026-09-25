@@ -26,15 +26,42 @@ if (rootElement) {
         isValidSession = false;
       }
 
-      if (!isValidSession && (DEV_ACCESS || localStorage.getItem('tlbm_access_token'))) {
-        const defaultAdminSession = {
+      const token = DEV_ACCESS || localStorage.getItem('tlbm_access_token');
+      if (!isValidSession && token) {
+        let matchedUser = {
           username: 'admin',
           fullName: 'Quản Trị Viên (Admin)',
           role: 'admin',
           roleTitle: 'Quản trị viên tối cao',
           email: 'admin@taphuan.gov.vn',
         };
-        localStorage.setItem('tlbm_session', JSON.stringify(defaultAdminSession));
+        try {
+          const payloadBase64 = token.split('.')[1];
+          if (payloadBase64) {
+            const decoded = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+            const uid = String(decoded.user_id || '');
+            if (uid === '2') {
+              matchedUser = {
+                username: 'canbo',
+                fullName: 'Tấn Lộc Khiêm Nguyễn',
+                role: 'staff',
+                roleTitle: 'Cán bộ nhân viên',
+                email: 'canbo@taphuan.gov.vn',
+              };
+            } else if (uid === '3') {
+              matchedUser = {
+                username: 'canbo2',
+                fullName: 'Lê Cán Bộ 2',
+                role: 'staff',
+                roleTitle: 'Cán bộ nhân viên',
+                email: 'canbo2@taphuan.gov.vn',
+              };
+            }
+          }
+        } catch {
+          // ignore
+        }
+        localStorage.setItem('tlbm_session', JSON.stringify(matchedUser));
       }
       window.dispatchEvent(new Event('tlbm_auth_changed'));
     } catch (e) {

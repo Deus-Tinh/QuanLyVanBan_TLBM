@@ -42,31 +42,50 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
   };
 
   const parseSession = (raw: string | null): SessionUser | null => {
-    if (!raw) {
-      if (localStorage.getItem('tlbm_access_token')) {
-        return {
-          username: 'admin',
-          fullName: 'Quản Trị Viên (Admin)',
-          roleTitle: 'Quản trị viên tối cao',
-        };
+    const getFallbackFromToken = (): SessionUser | null => {
+      const token = localStorage.getItem('tlbm_access_token');
+      if (!token) return null;
+      try {
+        const payloadBase64 = token.split('.')[1];
+        if (payloadBase64) {
+          const decoded = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+          const uid = String(decoded.user_id || '');
+          if (uid === '2') {
+            return {
+              username: 'canbo',
+              fullName: 'Tấn Lộc Khiêm Nguyễn',
+              roleTitle: 'Cán bộ nhân viên',
+              email: 'canbo@taphuan.gov.vn',
+            };
+          } else if (uid === '3') {
+            return {
+              username: 'canbo2',
+              fullName: 'Lê Cán Bộ 2',
+              roleTitle: 'Cán bộ nhân viên',
+              email: 'canbo2@taphuan.gov.vn',
+            };
+          }
+        }
+      } catch {
+        // ignore
       }
-      return null;
-    }
+      return {
+        username: 'admin',
+        fullName: 'Quản Trị Viên (Admin)',
+        roleTitle: 'Quản trị viên tối cao',
+        email: 'admin@taphuan.gov.vn',
+      };
+    };
+
+    if (!raw) return getFallbackFromToken();
     try {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object' && (parsed.fullName || parsed.username)) {
         return parsed;
       }
-      if (localStorage.getItem('tlbm_access_token')) {
-        return {
-          username: 'admin',
-          fullName: 'Quản Trị Viên (Admin)',
-          roleTitle: 'Quản trị viên tối cao',
-        };
-      }
-      return null;
+      return getFallbackFromToken();
     } catch {
-      return null;
+      return getFallbackFromToken();
     }
   };
 
