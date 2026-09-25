@@ -16,6 +16,7 @@ export interface ResourceTableProps {
   onDelete?: (item: ResourceItem) => void;
   onDownloadFile?: (item: ResourceItem) => void;
   onExportExcel?: () => void;
+  isExporting?: boolean;
   onPageSizeChange?: (size: number) => void;
 }
 
@@ -32,6 +33,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   onDelete,
   onDownloadFile,
   onExportExcel,
+  isExporting = false,
   onPageSizeChange,
 }) => {
   // Format ngày dd/mm/yyyy
@@ -145,11 +147,13 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
             <Button
               variant="outline"
               size="sm"
-              icon="fa-file-excel"
+              icon={isExporting ? 'fa-spinner fa-spin' : 'fa-file-excel'}
+              isLoading={isExporting}
+              disabled={isExporting}
               onClick={onExportExcel}
               className="text-emerald-600 dark:text-emerald-400 border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
             >
-              Xuất Excel
+              {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
             </Button>
           )}
 

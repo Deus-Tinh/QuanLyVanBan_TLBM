@@ -489,6 +489,7 @@ export default function ResourceManagementPage() {
         onDelete={handleDelete}
         onDownloadFile={handleDownloadFile}
         onExportExcel={handleExportExcel}
+        isExporting={isExporting}
       />
 
       {/* Modal Xem chi tiết */}
