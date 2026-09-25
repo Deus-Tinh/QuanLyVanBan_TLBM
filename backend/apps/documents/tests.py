@@ -588,4 +588,45 @@ class DocumentPermissionOption2Tests(TestCase):
         self.assertEqual(res_delete.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Document.objects.filter(id=self.doc_staff1.id).exists())
 
+    def test_delete_replacement_document_restores_counterpart(self):
+        """Khi xóa văn bản thay thế (A), văn bản cũ (B) tự động gỡ link và khôi phục CON_HIEU_LUC."""
+        doc_b = Document.objects.create(
+            loai="DEN", nam=2026, so_hieu="15/CV-OLD", so_thu_tu=10,
+            trich_yeu="Văn bản cũ B",
+            hieu_luc="CON_HIEU_LUC",
+            nguoi_tao=self.admin,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+        res_create = client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "125/CV-NEW",
+                "trich_yeu": "Văn bản mới A thay cho B",
+                "noi_ban_hanh": "Bộ GD&ĐT",
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "15/CV-OLD",
+            },
+            format="json",
+        )
+        self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
+        new_doc_id = res_create.data["id"]
+
+        # Kiểm tra văn bản B đã được tự động đồng bộ sang HET_VA_THAY_THE
+        doc_b.refresh_from_db()
+        self.assertEqual(doc_b.hieu_luc, "HET_VA_THAY_THE")
+        self.assertEqual(doc_b.link_thay_the, "125/CV-NEW")
+
+        # Xóa văn bản mới A
+        res_del = client.delete(f"/api/documents/{new_doc_id}/")
+        self.assertEqual(res_del.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Kiểm tra văn bản B tự động khôi phục CON_HIEU_LUC và xóa link_thay_the
+        doc_b.refresh_from_db()
+        self.assertEqual(doc_b.hieu_luc, "CON_HIEU_LUC")
+        self.assertEqual(doc_b.link_thay_the, "")
+
 

@@ -218,6 +218,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản này. Chỉ Quản trị viên, Người tạo hoặc Cán bộ được cấp quyền mới được phép chỉnh sửa.")
 
+        old_link = (instance.link_thay_the or "").strip()
+        old_so_hieu = (instance.so_hieu or "").strip()
+
         doc = serializer.save()
         self._handle_attachments(doc)
 
@@ -230,6 +233,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
             doc.hieu_luc = Document.HieuLuc.HET_HIEU_LUC
             doc.save(update_fields=["hieu_luc"])
 
+        # Nếu link_thay_the cũ bị xóa hoặc thay đổi, dọn dẹp văn bản cũ
+        new_link = (doc.link_thay_the or "").strip()
+        if old_link and old_link.lower() != new_link.lower():
+            self._cleanup_old_replacement_link(old_link, old_so_hieu)
+
         # Tự động đồng bộ quan hệ văn bản thay thế 2 chiều
         auto_update = self.request.data.get("auto_update_replaced_doc", "true")
         if str(auto_update).lower() in ("true", "1") and doc.link_thay_the:
@@ -238,7 +246,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         """
         Xử lý xóa:
-        Chỉ Quản trị viên (Admin) hoặc Cán bộ được duyệt quyền mới có quyền xóa văn bản để đảm bảo an toàn dữ liệu công văn.
+        1. Phân quyền: Chỉ Quản trị viên (Admin) hoặc Cán bộ được phân quyền mới có quyền xóa.
+        2. Tự động dọn dẹp quan hệ thay thế 2 chiều:
+           - Khôi phục trạng thái CON_HIEU_LUC cho văn bản từng bị instance thay thế.
+           - Xóa bỏ link_thay_the trỏ tới instance trên các văn bản liên quan.
         """
         user = self.request.user
         is_admin = self._is_admin_user(user)
@@ -251,7 +262,79 @@ class DocumentViewSet(viewsets.ModelViewSet):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Bạn không có quyền xóa văn bản này. Quyền xóa chỉ dành cho Quản trị viên (Admin) hoặc Cán bộ được phân quyền.")
 
+        # Tự động dọn dẹp và khôi phục văn bản liên quan trước khi xóa
+        self._cleanup_replacement_links_on_delete(instance)
+
         instance.delete()
+
+    def _cleanup_replacement_links_on_delete(self, instance):
+        """
+        Dọn dẹp và khôi phục văn bản liên quan khi văn bản bị xóa:
+        - Các văn bản có link_thay_the trỏ tới instance.so_hieu:
+          + Xóa link_thay_the
+          + Khôi phục trạng thái CON_HIEU_LUC nếu đang là HET_VA_THAY_THE
+        - Văn bản mà instance trỏ tới qua instance.link_thay_the:
+          + Nếu có link trỏ ngược lại instance thì cũng xóa link và khôi phục
+        """
+        from django.db.models import Q
+
+        so_hieu = (instance.so_hieu or "").strip()
+        link_target = (instance.link_thay_the or "").strip()
+
+        now = timezone.now()
+        query = Q()
+        if so_hieu:
+            query |= Q(link_thay_the__iexact=so_hieu)
+        if link_target:
+            query |= Q(so_hieu__iexact=link_target)
+
+        if not query:
+            return
+
+        related_docs = Document.objects.filter(query).exclude(pk=instance.pk)
+        for doc in related_docs:
+            updated_fields = []
+            if so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == so_hieu.lower():
+                doc.link_thay_the = ""
+                updated_fields.append("link_thay_the")
+
+            if doc.hieu_luc == Document.HieuLuc.HET_VA_THAY_THE:
+                doc.hieu_luc = Document.HieuLuc.CON_HIEU_LUC
+                doc.ngay_het_hieu_luc = None
+                if "ngay_het_hieu_luc" not in updated_fields:
+                    updated_fields.append("ngay_het_hieu_luc")
+                if "hieu_luc" not in updated_fields:
+                    updated_fields.append("hieu_luc")
+
+            if updated_fields:
+                doc.save(update_fields=updated_fields)
+
+    def _cleanup_old_replacement_link(self, old_target_so_hieu, current_so_hieu):
+        """
+        Dọn dẹp quan hệ thay thế cũ khi văn bản sửa đổi/xóa link_thay_the.
+        """
+        if not old_target_so_hieu:
+            return
+
+        from django.db.models import Q
+
+        old_docs = Document.objects.filter(
+            Q(so_hieu__iexact=old_target_so_hieu) | Q(link_thay_the__iexact=current_so_hieu)
+        )
+        for doc in old_docs:
+            updated_fields = []
+            if current_so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == current_so_hieu.lower():
+                doc.link_thay_the = ""
+                updated_fields.append("link_thay_the")
+            if doc.hieu_luc == Document.HieuLuc.HET_VA_THAY_THE:
+                doc.hieu_luc = Document.HieuLuc.CON_HIEU_LUC
+                doc.ngay_het_hieu_luc = None
+                if "ngay_het_hieu_luc" not in updated_fields:
+                    updated_fields.append("ngay_het_hieu_luc")
+                if "hieu_luc" not in updated_fields:
+                    updated_fields.append("hieu_luc")
+            if updated_fields:
+                doc.save(update_fields=updated_fields)
 
     def _sync_replacement_document(self, doc):
         """

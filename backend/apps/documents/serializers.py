@@ -160,6 +160,7 @@ class DocumentCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = [
+            "id",
             "loai",
             "nam",
             "so_hieu",
@@ -179,7 +180,7 @@ class DocumentCreateUpdateSerializer(serializers.ModelSerializer):
             "gui_mail_toan_he_thong",
             "nguoi_nhan",
         ]
-        read_only_fields = ["so_thu_tu"]
+        read_only_fields = ["id", "so_thu_tu"]
 
     def validate_nguoi_nhan(self, value):
         return [u for u in value if u is not None]
