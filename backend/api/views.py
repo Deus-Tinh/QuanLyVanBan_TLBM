@@ -21,6 +21,7 @@ from backend.services.document_service import (
     save_upload_file,
     update_category_in_registry,
 )
+from backend.services.sql_document_source import SqlDocumentAccessError, is_postgres_source
 _jobs = {}
 _jobs_lock = threading.Lock()
 
@@ -84,7 +85,6 @@ def chat(request):
     safe_history = [item for item in history[-8:] if isinstance(item, dict) and item.get("role") in {"user", "assistant"} and isinstance(item.get("content"), str)]
     try:
         from backend.services.rag_service import ask_document
-        from backend.services.sql_document_source import SqlDocumentAccessError, is_postgres_source
 
         employee_id = None
         if is_postgres_source():
