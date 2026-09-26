@@ -1,7 +1,9 @@
 import datetime
+import logging
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import get_connection, send_mass_mail
 from django.db import transaction
 from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import FileResponse, Http404
@@ -24,6 +26,7 @@ from rest_framework.views import APIView
 
 from .models import (
     AttachmentKind,
+    ParticipantRole,
     Task,
     TaskAttachment,
     TaskComment,
@@ -34,6 +37,7 @@ from .models import (
 )
 from .serializers import (
     CommentSerializer,
+    employee_full_name,
     EmployeeSerializer,
     LatestTaskSerializer,
     MeSerializer,
@@ -43,6 +47,7 @@ from .serializers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 TASK_NOT_FOUND_MESSAGE = (
     "Không tìm thấy công việc, hoặc bạn không có quyền xem công việc này. "
@@ -258,6 +263,8 @@ class TaskViewSet(
         serializer = TaskWriteSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         task = serializer.save()
+        # Chỉ gửi khi dữ liệu đã lưu chắc chắn; gửi lỗi cũng không làm hỏng việc tạo công việc.
+        transaction.on_commit(lambda: send_new_task_mail(task.pk))
         return self.detail_response(task.pk, status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
@@ -409,6 +416,75 @@ class TaskViewSet(
         fresh_task = self.get_queryset().get(pk=task.pk)
         data = CommentSerializer(comment, context={**context, "task": fresh_task}).data
         return Response(data, status=status.HTTP_201_CREATED)
+
+
+def work_mail_connection():
+    """
+    Kết nối gửi mail theo cấu hình MAILERS["default"] trong settings.py.
+
+    Dự án đang ghim Django 5.2, bản này chưa hiểu setting MAILERS (có từ Django 6.1) nên
+    mặc định dùng SMTP. Đọc backend trực tiếp từ MAILERS để đúng cấu hình đã khai báo
+    (console khi phát triển: thư được in ra cửa sổ chạy runserver).
+    """
+    mailers = getattr(settings, "MAILERS", None)
+    backend = None
+    if isinstance(mailers, dict):
+        backend = mailers.get("default", {}).get("BACKEND")
+    return get_connection(backend=backend)
+
+
+def send_new_task_mail(task_id):
+    """
+    Báo công việc mới cho người liên quan (chủ trì, chỉ đạo, cán bộ tham gia), trừ người tạo.
+    - Chỉ gửi lúc tạo mới, không gửi khi sửa.
+    - Công việc đang ẩn thì không gửi, vì người nhận chưa mở được công việc.
+    - Người chưa khai báo email thì bỏ qua.
+    Trả về số thư đã gửi.
+    """
+    task = (
+        Task.objects.select_related("created_by")
+        .prefetch_related(Prefetch("participants", queryset=TaskParticipant.objects.select_related("user")))
+        .filter(pk=task_id)
+        .first()
+    )
+    if task is None or not task.is_public:
+        return 0
+
+    creator_name = employee_full_name(task.created_by)
+    host = next((p.user for p in task.participants.all() if p.role == ParticipantRole.CHU_TRI), None)
+    subject = f"[Công việc] Bạn được giao công việc mới: {task.title[:80]}"
+
+    messages = []
+    notified = set()
+    for participant in task.participants.all():
+        user = participant.user
+        if user.pk == task.created_by_id or user.pk in notified or not user.email:
+            continue
+        notified.add(user.pk)
+        body = "\n".join([
+            f"Xin chào {employee_full_name(user)},",
+            "",
+            f"{creator_name} vừa giao một công việc mới. Vai trò của bạn: {participant.get_role_display()}.",
+            "",
+            f"Nội dung công việc: {task.title}",
+            f"Yêu cầu xử lý: {task.requirement}",
+            f"Ngày tạo: {task.created_date:%d/%m/%Y}",
+            f"Hạn xử lý: {task.due_date:%d/%m/%Y}",
+            f"Người chủ trì: {employee_full_name(host) if host else '—'}",
+            "",
+            'Hãy đăng nhập hệ thống, vào mục "Quản Lý Công Việc" để xem chi tiết và xử lý.',
+            "",
+            "Đây là thư tự động, vui lòng không trả lời thư này.",
+        ])
+        messages.append((subject, body, None, [user.email]))
+
+    if not messages:
+        return 0
+    try:
+        return send_mass_mail(messages, connection=work_mail_connection())
+    except Exception:
+        logger.exception("Không gửi được mail báo công việc mới #%s", task_id)
+        return 0
 
 
 class AttachmentViewSet(WorkApiMixin, viewsets.GenericViewSet):

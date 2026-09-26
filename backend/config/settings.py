@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import sys
 from pathlib import Path
+from datetime import timedelta
 
 from corsheaders.defaults import default_headers
 
@@ -43,10 +44,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # Thư viện bên thứ ba
+    # Third-party apps
     "rest_framework",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     # Các app nghiệp vụ
+    "accounts",
+    "dashboard",
     "birthdays",
     "work",
 ]
@@ -61,6 +66,15 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+try:
+    import corsheaders  # noqa: F401
+    if "corsheaders" not in INSTALLED_APPS:
+        INSTALLED_APPS.append("corsheaders")
+    if "corsheaders.middleware.CorsMiddleware" not in MIDDLEWARE:
+        MIDDLEWARE.insert(2, "corsheaders.middleware.CorsMiddleware")
+except ImportError:
+    pass
 
 ROOT_URLCONF = "config.urls"
 
@@ -85,12 +99,36 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Cấu hình Database: Ưu tiên PostgreSQL nếu môi trường có psycopg/psycopg2, ngược lại dùng SQLite nội bộ
+USE_POSTGRES = False
+try:
+    import psycopg2  # noqa: F401
+    USE_POSTGRES = True
+except ImportError:
+    try:
+        import psycopg  # noqa: F401
+        USE_POSTGRES = True
+    except ImportError:
+        USE_POSTGRES = False
+
+if USE_POSTGRES:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "quanlyvanban_db",  # Tên database trong pgAdmin
+            "USER": "postgres",
+            "PASSWORD": "MAT_KHAU_DA_XOA",
+            "HOST": "localhost",
+            "PORT": "5432",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -151,3 +189,47 @@ MAILERS = {
         "BACKEND": "django.core.mail.backends.console.EmailBackend",
     },
 }
+
+# CORS Configuration (Cho phép Frontend kết nối API)
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:\d+$",
+    r"^http://127\.0\.0\.1:\d+$",
+]
+
+# ─────────────────────────────────────────────────
+# Django REST Framework — Cấu hình mặc định
+# ─────────────────────────────────────────────────
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+    "DEFAULT_RENDERER_CLASSES": (
+        "rest_framework.renderers.JSONRenderer",
+    ),
+}
+
+# ─────────────────────────────────────────────────
+# SimpleJWT — Cấu hình token
+# ─────────────────────────────────────────────────
+SIMPLE_JWT = {
+    # Access token tồn tại 8 giờ làm việc (1 ngày)
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    # Refresh token tồn tại 7 ngày
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Cấp refresh token mới mỗi lần dùng
+    "ROTATE_REFRESH_TOKENS": True,
+    # Đưa refresh token cũ vào blacklist sau khi cấp mới
+    "BLACKLIST_AFTER_ROTATION": True,
+    # Header chuẩn: Authorization: Bearer <token>
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    # Claim fields
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+

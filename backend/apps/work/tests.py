@@ -3,6 +3,7 @@ import shutil
 import tempfile
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -22,7 +23,10 @@ def pdf_file(name="bang-chung.pdf"):
     return SimpleUploadedFile(name, b"%PDF-1.4 noi dung thu", content_type="application/pdf")
 
 
-@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+@override_settings(
+    MEDIA_ROOT=TEMP_MEDIA_ROOT,
+    MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
+)
 class WorkTestBase(APITestCase):
     """Dữ liệu dùng chung: người tạo, chủ trì, chỉ đạo, tham gia, người ngoài, quản trị viên."""
 
@@ -352,6 +356,83 @@ class TaskCreateApiTests(WorkTestBase):
         response = self.client.post("/api/work/tasks/", self.payload(attachments=[big]), format="multipart")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("dưới 20 MB", str(response.data["attachments"]))
+
+
+class NewTaskMailTests(WorkTestBase):
+    """Gửi mail khi tạo mới: cho chủ trì, chỉ đạo, tham gia; trừ người tạo; không gửi khi sửa."""
+
+    def setUp(self):
+        super().setUp()
+        for user in (self.creator, self.host, self.director, self.member):
+            user.email = f"{user.username}@example.com"
+            user.save(update_fields=["email"])
+
+    def payload(self, **overrides):
+        data = {
+            "title": "Chuẩn bị báo cáo quý",
+            "createdDate": self.today.isoformat(),
+            "dueDate": self.days(5).isoformat(),
+            "requirement": "Tổng hợp số liệu",
+            "hostId": self.host.pk,
+            "directorIds": [self.director.pk],
+            "participantIds": [self.member.pk],
+        }
+        data.update(overrides)
+        return data
+
+    def create(self, **overrides):
+        self.login(self.creator)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post("/api/work/tasks/", self.payload(**overrides), format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        return response
+
+    def test_gui_moi_nguoi_lien_quan_tru_nguoi_tao(self):
+        self.create()
+        recipients = sorted(message.to[0] for message in mail.outbox)
+        self.assertEqual(recipients, ["chidao@example.com", "chutri@example.com", "thamgia@example.com"])
+        host_mail = next(m for m in mail.outbox if m.to == ["chutri@example.com"])
+        self.assertIn("Chuẩn bị báo cáo quý", host_mail.subject)
+        self.assertIn("Vai trò của bạn: Chủ trì giải quyết công việc", host_mail.body)
+        self.assertIn(f"Hạn xử lý: {self.days(5):%d/%m/%Y}", host_mail.body)
+        self.assertIn("Trần Phương Duy vừa giao", host_mail.body)
+
+    def test_nguoi_tao_kiem_chu_tri_thi_khong_tu_gui_cho_minh(self):
+        self.create(hostId=self.creator.pk)
+        self.assertNotIn("nguoitao@example.com", [m.to[0] for m in mail.outbox])
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_bo_qua_nguoi_chua_co_email(self):
+        self.member.email = ""
+        self.member.save(update_fields=["email"])
+        self.create()
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_cong_viec_dang_an_thi_khong_gui(self):
+        self.create(isPublic="false")
+        self.assertEqual(mail.outbox, [])
+
+    def test_sua_cong_viec_khong_gui_mail(self):
+        response = self.create()
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.patch(f"/api/work/tasks/{response.data['id']}/", {"title": "Đổi tên"}, format="multipart")
+        self.assertEqual(mail.outbox, [])
+
+    def test_loi_gui_mail_khong_lam_hong_viec_tao(self):
+        with override_settings(MAILERS={"default": {"BACKEND": "work.tests.BrokenEmailBackend"}}):
+            response = self.create()
+        self.assertTrue(Task.objects.filter(pk=response.data["id"]).exists())
+
+
+class BrokenEmailBackend:
+    """Backend giả luôn lỗi, để kiểm tra việc tạo công việc không phụ thuộc vào mail."""
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def send_messages(self, messages):
+        raise ConnectionRefusedError("SMTP server không phản hồi")
 
 
 class TaskUpdateDeleteApiTests(WorkTestBase):
