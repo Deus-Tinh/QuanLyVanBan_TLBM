@@ -1,67 +1,107 @@
 import React from 'react';
-import { ActivePageId } from '../shared/types/navigation';
-import { ThemeMode } from '../shared/types/theme';
-
-import DashboardPage from '../modules/dashboard/pages/DashboardPage';
-import LoginPage from '../modules/auth/pages/LoginPage';
-import AiAssistantPage from '../modules/ai/pages/AiAssistantPage';
-import ProfilePage from '../modules/profile/pages/ProfilePage';
-import PasswordChangePage from '../modules/profile/pages/PasswordChangePage';
-import SettingsPage from '../modules/settings/pages/SettingsPage';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeMode } from '@app-types/theme';
+import MainLayout from '@layouts/MainLayout';
+import DashboardPage from '@pages/dashboard/DashboardPage';
+import LoginPage from '@pages/auth/LoginPage';
+import AiAssistantPage from '@pages/ai/AiAssistantPage';
+import ProfilePage from '@pages/profile/ProfilePage';
+import PasswordChangePage from '@pages/profile/PasswordChangePage';
+import SettingsPage from '@pages/settings/SettingsPage';
+import SyllabusPreview from '@components/common/SyllabusPreview';
 import TasksPage from '../modules/work/pages/TasksPage';
-import SyllabusPreview from '../shared/components/Syllabus/SyllabusPreview';
 
 interface RouterProps {
-  activePage: ActivePageId;
-  currentTheme?: ThemeMode;
-  onSelectTheme?: (theme: ThemeMode) => void;
+  currentTheme: ThemeMode;
+  onSelectTheme: (theme: ThemeMode) => void;
   onToggleTheme?: () => void;
   preferredLightTheme?: ThemeMode;
   preferredDarkTheme?: ThemeMode;
-  onSetPreferredLightTheme?: (theme: ThemeMode) => void;
-  onSetPreferredDarkTheme?: (theme: ThemeMode) => void;
-  onNavigate: (page: ActivePageId) => void;
+}
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(() => {
+    return Boolean(localStorage.getItem('tlbm_session'));
+  });
+
+  React.useEffect(() => {
+    const handleAuth = () => {
+      setIsAuthenticated(Boolean(localStorage.getItem('tlbm_session')));
+    };
+    window.addEventListener('tlbm_auth_changed', handleAuth);
+    window.addEventListener('storage', handleAuth);
+    return () => {
+      window.removeEventListener('tlbm_auth_changed', handleAuth);
+      window.removeEventListener('storage', handleAuth);
+    };
+  }, []);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 export default function AppRouter({
-  activePage,
-  currentTheme = 'dark',
+  currentTheme,
   onSelectTheme,
   onToggleTheme,
   preferredLightTheme = 'light',
   preferredDarkTheme = 'dark',
-  onSetPreferredLightTheme,
-  onSetPreferredDarkTheme,
-  onNavigate,
 }: RouterProps) {
-  switch (activePage) {
-    case 'dashboard':
-      return <DashboardPage onNavigate={onNavigate} />;
+  return (
+    <Routes>
+      {/* Route Standalone: Màn hình Đăng Nhập */}
+      <Route path="/login" element={<LoginPage />} />
 
-    case 'ai_assistant':
-      return <AiAssistantPage onNavigate={onNavigate} />;
+      {/* Routes có Layout chung (được bảo vệ bởi ProtectedRoute - yêu cầu đăng nhập trước) */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <MainLayout
+              currentTheme={currentTheme}
+              onSelectTheme={onSelectTheme}
+              onToggleTheme={onToggleTheme}
+              preferredLightTheme={preferredLightTheme}
+              preferredDarkTheme={preferredDarkTheme}
+            />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
 
-    case 'login':
-      return (
-        <LoginPage
-          onNavigate={onNavigate}
-          onLoginSuccess={() => onNavigate('dashboard')}
-        />
-      );
+        {/* Phân hệ Văn bản (Nhóm 2 phụ trách theo đề cương) */}
+        <Route path="/documents/incoming" element={<SyllabusPreview activePage="documents_incoming" />} />
+        <Route path="/documents/outgoing" element={<SyllabusPreview activePage="documents_outgoing" />} />
+        <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
 
-    case 'profile':
-      return <ProfilePage onNavigate={onNavigate} />;
+        {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
+        <Route path="/records" element={<SyllabusPreview activePage="records" />} />
+        <Route path="/resources" element={<SyllabusPreview activePage="resources" />} />
 
-    case 'password_change':
-      return <PasswordChangePage onNavigate={onNavigate} />;
+        {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}
+        <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
+        <Route path="/tasks" element={<TasksPage />} />
+        <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
+        <Route path="/birthdays" element={<SyllabusPreview activePage="birthdays" />} />
 
-    case 'settings':
-      return <SettingsPage onNavigate={onNavigate} />;
+        {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
+        <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
+        <Route path="/employees" element={<SyllabusPreview activePage="employees" />} />
+        <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
+        <Route path="/roles" element={<SyllabusPreview activePage="roles" />} />
 
-    case 'tasks':
-      return <TasksPage />;
+        {/* Tiện ích Cá nhân & Trợ lý AI (Nhóm 1 phụ trách) */}
+        <Route path="/ai-assistant" element={<AiAssistantPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/password-change" element={<PasswordChangePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
 
-    default:
-      return <SyllabusPreview activePage={activePage} onNavigate={onNavigate} />;
-  }
+        {/* Fallback cho các đường dẫn chưa đăng ký */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Route>
+    </Routes>
+  );
 }
