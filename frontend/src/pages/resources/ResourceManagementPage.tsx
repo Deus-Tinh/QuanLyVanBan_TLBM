@@ -468,7 +468,7 @@ export default function ResourceManagementPage() {
   };
 
   // Xuất Excel: Liên kết API Backend để tải file về máy (theo đặc tả phân hệ của Nguyễn Chí Tín)
-  const [, setIsExporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleExportExcel = async () => {
     try {
