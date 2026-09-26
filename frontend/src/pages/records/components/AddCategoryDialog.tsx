@@ -6,6 +6,7 @@ import {
   DialogActions,
   Button,
   TextField,
+  MenuItem,
   Box,
   Typography,
   IconButton,
@@ -19,6 +20,7 @@ import type { RecordItem } from '../types';
 interface FormData {
   code: string;
   title: string;
+  category: string;
   owner: string;
   created_at: string;
   description: string;
@@ -27,6 +29,7 @@ interface FormData {
 interface FormErrors {
   code?: string;
   title?: string;
+  category?: string;
   owner?: string;
   created_at?: string;
 }
@@ -37,11 +40,22 @@ interface AddCategoryDialogProps {
   onSubmit: (record: RecordItem) => void;
 }
 
-// ─── Defaults ─────────────────────────────────────────────────────────────────
+// ─── Defaults & Options ───────────────────────────────────────────────────────
+
+export const CATEGORY_OPTIONS = [
+  'Nhân sự',
+  'Hợp đồng',
+  'Tài chính',
+  'Dự án',
+  'Nghiệp vụ',
+  'Kiểm toán',
+  'Pháp lý',
+];
 
 const EMPTY_FORM: FormData = {
   code: '',
   title: '',
+  category: 'Nhân sự',
   owner: '',
   created_at: '',
   description: '',
@@ -55,6 +69,7 @@ function validate(data: FormData): FormErrors {
   const errors: FormErrors = {};
   if (!data.code.trim())       errors.code       = 'Số ký hiệu là bắt buộc.';
   if (!data.title.trim())      errors.title      = 'Tên tài liệu là bắt buộc.';
+  if (!data.category.trim())   errors.category   = 'Danh mục là bắt buộc.';
   if (!data.owner.trim())      errors.owner      = 'Người lập là bắt buộc.';
   if (!data.created_at.trim()) errors.created_at = 'Ngày lập là bắt buộc.';
   return errors;
@@ -86,10 +101,10 @@ export default function AddCategoryDialog({ open, onClose, onSubmit }: AddCatego
       id:          Date.now(),
       code:        form.code.trim(),
       title:       form.title.trim(),
+      category:    form.category.trim(),
       owner:       form.owner.trim(),
       created_at:  form.created_at,
       updated_at:  form.created_at,
-      category:    'Hồ Sơ',
       status:      'active',
       description: form.description.trim() || undefined,
     };
@@ -173,6 +188,26 @@ export default function AddCategoryDialog({ open, onClose, onSubmit }: AddCatego
             required
             slotProps={{ input: { sx: { borderRadius: 2 } } }}
           />
+
+          {/* Danh mục */}
+          <TextField
+            select
+            label="Danh mục"
+            value={form.category}
+            onChange={handleChange('category')}
+            error={!!errors.category}
+            helperText={errors.category}
+            size="small"
+            fullWidth
+            required
+            slotProps={{ input: { sx: { borderRadius: 2 } } }}
+          >
+            {CATEGORY_OPTIONS.map((cat) => (
+              <MenuItem key={cat} value={cat}>
+                {cat}
+              </MenuItem>
+            ))}
+          </TextField>
 
           {/* Người lập */}
           <TextField

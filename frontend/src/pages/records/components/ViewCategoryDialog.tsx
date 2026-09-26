@@ -100,6 +100,20 @@ export default function ViewCategoryDialog({
             }}
           />
 
+          {/* Danh mục */}
+          <TextField
+            label="Danh mục"
+            value={record.category || '—'}
+            size="small"
+            fullWidth
+            slotProps={{
+              input: {
+                readOnly: true,
+                sx: { borderRadius: 2, bgcolor: 'action.hover' },
+              },
+            }}
+          />
+
           {/* Người lập */}
           <TextField
             label="Người lập"
