@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
@@ -9,6 +9,7 @@ import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import RecordsPage from '@pages/records/RecordsPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -77,7 +78,7 @@ export default function AppRouter({
         <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
 
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
-        <Route path="/records" element={<SyllabusPreview activePage="records" />} />
+        <Route path="/records" element={<RecordsPage />} />
         <Route path="/resources" element={<SyllabusPreview activePage="resources" />} />
 
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}
