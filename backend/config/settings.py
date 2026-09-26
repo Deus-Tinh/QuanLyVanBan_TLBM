@@ -94,8 +94,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "QLVB_DB",  # Tên database bạn vừa tạo trong pgAdmin
+        "USER": "postgres",  # Tên đăng nhập mặc định của PostgreSQL
+        "PASSWORD": "123",  # ⚠️ THAY BẰNG MẬT KHẨU BẠN ĐẶT LÚC CÀI POSTGRESQL
+        "HOST": "localhost",  # Máy local của bạn
+        "PORT": "5432",  # Cổng mặc định của PostgreSQL
     }
 }
 
