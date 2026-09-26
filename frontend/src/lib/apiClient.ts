@@ -199,6 +199,13 @@ apiClient.put = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
     body: body ? JSON.stringify(body) : undefined,
   });
 
+apiClient.patch = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
+  apiClient<T>(endpoint, {
+    ...options,
+    method: 'PATCH',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
 apiClient.delete = <T>(endpoint: string, options?: RequestInit) =>
   apiClient<T>(endpoint, { ...options, method: 'DELETE' });
 
