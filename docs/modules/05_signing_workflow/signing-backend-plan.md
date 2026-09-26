@@ -69,10 +69,15 @@ Hệ thống phân tách rạch ròi 2 giai đoạn:
   - `INITIAL` (Ký nháy / Ký thứ cấp): Dành cho chuyên viên rà soát thể thức, số liệu, tính pháp lý.
   - `PRIMARY` (Ký chính / Quyết định): Dành cho Trưởng bộ phận hoặc người giữ thẩm quyền cao nhất của cấp đó.
 - **Quy tắc Gating tuần tự nội bộ cấp:** Nếu cấp có cả người ký nháy và người ký chính, người ký chính chỉ được mở khóa ký sau khi **100% người ký nháy trong cấp đã ký xong**.
-- **Định vị nơi ký và Tọa độ hóa (Signature Placement & Coordinates):**
+- **Định vị nơi ký, Tọa độ hóa và Cơ chế Lazy Stamping (Bảo toàn mã băm SHA-256):**
   - Tại khâu tạo hồ sơ trình ký, Người tạo thực hiện thao tác trực quan (kéo-thả trên bản xem trước tài liệu) để xác định vị trí ký cho từng người ký: Trang số (`page_number`), tọa độ (`coord_x`, `coord_y`), kích thước khung ký (`box_width`, `box_height`).
   - Hệ tọa độ được lưu trữ dưới dạng chuẩn hóa (tỷ lệ % `[0, 100]` hoặc điểm PDF chuẩn `Points`) để độc lập với độ phân giải hiển thị trên client.
-  - Khi người ký thực hiện ký duyệt bằng private key / xác thực, backend/hệ thống tự động áp ảnh chữ ký lưu tại Profile của người đó vào đúng tọa độ đã định vị sẵn trên trang tài liệu.
+  - **Nguyên tắc Lazy Stamping & UI Overlay (Giải quyết xung đột dán ảnh vs Bất biến mã băm):**
+    - Trong suốt toàn bộ quá trình ký duyệt nội bộ từ cấp 1 đến cấp cuối, **tuyệt đối không can thiệp sửa đổi raw bytes của file PDF gốc**. Mọi người ký đều ký mật mã trên cùng một mã SHA-256 raw bytes của file gốc được khóa lúc submit.
+    - Ảnh chữ ký PNG và tọa độ chỉ được lưu trữ dưới dạng metadata trong Database (`UserProfile` lưu ảnh, `signing_request_step_signer` lưu tọa độ).
+    - Trên giao diện Frontend (React PDF Viewer), ảnh chữ ký được render dưới dạng một lớp phủ trực quan (CSS/Canvas Overlay layer) đè lên bản xem trước của tài liệu dựa theo tọa độ `(page, x, y, width, height)`.
+    - **Phẳng hóa file PDF (Stamping & Flattening Worker):** Chỉ khi attempt đạt trạng thái `COMPLETED` (100% các cấp đã duyệt xong), Backend mới kích hoạt tác vụ nền đọc file PDF gốc, lấy tọa độ và ảnh chữ ký của toàn bộ người ký trong DB để thực hiện dán ảnh hàng loạt (Stamp & Flatten), tạo ra tệp PDF hoàn tất (`final_pdf`).
+    - Bản `final_pdf` này sau đó mới được chuyển sang Giai đoạn 2 để Người có thẩm quyền ký số CA cá nhân + Văn thư đóng con dấu số doanh nghiệp và Timestamp TSA theo chuẩn PAdES.
 - `TUAN_TU`: chỉ cấp hiện tại được mở; cấp kế tiếp chỉ mở sau khi tất cả người ký (cả ký nháy và ký chính) ở cấp hiện tại đã ký.
 - `SONG_SONG`: tất cả cấp và người ký được mở cùng lúc; yêu cầu chỉ hoàn tất sau khi tất cả người ký đã ký.
 - Người tạo không tự động trở thành người ký; chỉ là người ký nếu được cấu hình trong quy trình.
@@ -141,6 +146,7 @@ Hệ thống phân tách rạch ròi 2 giai đoạn:
 - `signing` app: model, domain service, state transition, permission, API.
 - `documents` contract: chỉ tham chiếu `document_id`, `document_version`, `storage_key`, `content_hash`; không phụ thuộc đường dẫn tuyệt đối.
 - `DocumentStorageAdapter`: interface đọc metadata/bytes theo storage key; MVP có adapter filesystem mount, cấu hình bằng biến môi trường. API/SFTP có thể thêm sau mà không đổi nghiệp vụ ký.
+- `PdfStampingService`: service/worker thực hiện phẳng hóa PDF (Flattening) sau khi attempt đạt `COMPLETED`, dán toàn bộ ảnh chữ ký và con dấu từ metadata vào các trang tài liệu trước khi phát hành pháp lý.
 - `LegalSignerAdapter` (Khâu phát hành cuối): interface chuẩn bị hash/digest và kết nối với dịch vụ Ký số từ xa (Cloud CA/HSM) hoặc dịch vụ cấp dấu doanh nghiệp và Timestamp TSA theo chuẩn PAdES.
 - PostgreSQL: dữ liệu nghiệp vụ, unique/check constraint, transaction và row lock.
 - Redis: broker/result backend cho Celery và lock ngắn hạn nếu cần.
@@ -323,6 +329,7 @@ Không dùng lẫn `created_by`, `updated_by` trong nhóm bảng Trình ký nế
 - `parent_attempt_id` chỉ được tham chiếu attempt cùng request.
 - Chỉ kích hoạt key sau proof-of-possession; một user tối đa một key `ACTIVE`, không phân biệt thuật toán.
 - Chỉ một action hợp lệ được xử lý khi có concurrent request nhờ row lock và idempotency.
+- **Bất biến file PDF trong luồng nội bộ:** Tuyệt đối không can thiệp sửa đổi raw bytes của file PDF trong quá trình duyệt nội bộ; mọi chữ ký nội bộ đều liên kết với SHA-256 hash của file gốc. Chỉ thực hiện dán ảnh chữ ký vật lý (PDF Flattening) khi attempt đạt `COMPLETED`.
 
 ## 6. State machine
 

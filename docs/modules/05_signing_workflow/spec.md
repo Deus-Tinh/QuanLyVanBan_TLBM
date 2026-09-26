@@ -23,10 +23,13 @@ Xây dựng phân hệ **Trình ký (Signing Workflow)** hoàn chỉnh hỗ tr�
    - Định nghĩa quy trình nhiều cấp, phạm vi `DEPARTMENT` hoặc `COMPANY`.
    - Hỗ trợ chế độ chạy `TUAN_TU` (tuần tự) và `SONG_SONG` (song song).
    - Hỗ trợ phân định vai trò trong cấp ký: **Ký nháy / Rà soát (`INITIAL`)** và **Ký chính / Quyết định (`PRIMARY`)** kèm cơ chế gating tuần tự nội bộ cấp (ký nháy xong mới mở ký chính).
-3. **Tạo trình ký & Định vị tọa độ nơi ký (Coordinate Placement):**
+3. **Tạo trình ký, Định vị nơi ký & Cơ chế Lazy Stamping:**
    - Khóa snapshot quy trình, chức vụ/người ký và mã hash SHA-256 của tài liệu tại thời điểm gửi.
    - **Tọa độ hóa nơi ký:** Người tạo văn bản thực hiện thao tác trực quan chọn trang và vị trí (tọa độ X, Y, chiều rộng W, chiều cao H) cho từng người ký trên bản xem trước tài liệu.
-   - Khi người ký duyệt bằng private key/xác thực hệ thống, ảnh chữ ký lưu ở Profile của người đó sẽ được tự động áp vào đúng tọa độ đã định vị sẵn.
+   - **Cơ chế Lazy Stamping & UI Overlay (Bảo toàn hash):**
+     - Trong suốt quá trình duyệt nội bộ, **file PDF gốc giữ nguyên bất biến (không sửa raw bytes)** để đảm bảo tất cả các cấp ký trên cùng một mã SHA-256 hash.
+     - Trên giao diện React, ảnh chữ ký từ Profile được render dạng lớp phủ (CSS/Canvas Overlay) đè lên bản xem trước của PDF theo tọa độ.
+     - Chỉ khi attempt đạt `COMPLETED`, backend mới chạy tác vụ phẳng hóa PDF (`PdfStampingService`) dán toàn bộ ảnh chữ ký vào file hoàn tất trước khi chuyển sang khâu ký số CA pháp lý.
    - Thiết lập hạn xử lý (`final_due_at`) và SLA từng cấp.
 4. **Danh sách văn bản trình ký (List & Filter):**
    - Tabs lọc: *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Toàn bộ hồ sơ*.
@@ -116,6 +119,7 @@ Chi tiết trường và constraint chuẩn hóa được định nghĩa tại [
 - **Design Tokens:** Dùng 100% biến từ `src/styles/global.css` (`var(--color-...)`, `var(--font-...)`). Tuyệt đối không hardcode mã hex/px.
 - **Tính toàn vẹn dữ liệu:** Không lưu private key trên backend. Verify chữ ký đồng bộ trước khi đổi trạng thái slot. Hash tài liệu và manifest là bất biến.
 - **Tọa độ hóa chữ ký:** Hệ tọa độ lưu trữ độc lập với độ phân giải màn hình (dùng chuẩn % hoặc PDF points).
+- **Bảo toàn mã băm (Lazy Stamping Invariant):** Không can thiệp sửa raw bytes của file PDF trong quá trình ký duyệt nội bộ để tránh làm thay đổi SHA-256 hash. Chỉ dán ảnh chữ ký một lần duy nhất khi attempt đạt `COMPLETED`.
 - **Ranh giới pháp lý:** Người ký phê duyệt phát hành pháp lý bắt buộc phải có Chứng thư số CA hợp pháp theo luật định.
 - **Technical Gates:**
   - `python backend/manage.py check` (Pass)
