@@ -2,6 +2,7 @@ uvicorn[standard]
 Django>=5.1,<6.0
 psycopg[binary]>=3.2,<4.0
 djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3.0
 django-cors-headers>=4.4
 python-multipart
 python-dotenv
