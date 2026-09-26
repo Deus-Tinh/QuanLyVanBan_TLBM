@@ -33,6 +33,7 @@ Xây dựng backend Django REST Framework cho nghiệp vụ trình ký văn bả
 ### Bổ sung cuối: Khâu phát hành pháp lý (Final Legal Issuance Phase)
 
 > **Lưu ý chi tiết:** Đây là bước bổ sung cuối cùng (Final Issuance Step) sau khi toàn bộ quy trình phê duyệt nội bộ hoàn tất.
+> **LƯU Ý PHÁP LÝ (BẮT BUỘC):** Người chịu trách nhiệm pháp lý cao nhất (Người đại diện pháp luật / Lãnh đạo có thẩm quyền ban hành văn bản) **BẮT BUỘC phải sở hữu Chứng thư số (Digital Certificate X.509)** do Tổ chức cung cấp dịch vụ chứng thực chữ ký số (CA) được Nhà nước cấp phép, để chữ ký trên văn bản phát hành có đầy đủ giá trị pháp lý trước pháp luật và đối tác bên ngoài.
 
 Hệ thống phân tách rạch ròi 2 giai đoạn:
 1. **Giai đoạn 1 (Duyệt nội bộ - Internal Workflow):** Sử dụng toàn bộ quy trình tuần tự/song song, Ed25519, snapshot và transactional audit log của hệ thống hiện tại. Mục tiêu: kiểm soát quy trình, chống tráo văn bản, chống chối bỏ nội bộ và tối ưu chi phí vận hành.
@@ -61,13 +62,17 @@ Hệ thống phân tách rạch ròi 2 giai đoạn:
 - Quy trình có `kieu_ky_mac_dinh`; khi tạo request, người tạo chọn `TUAN_TU` hoặc `SONG_SONG` theo lựa chọn được hệ thống cung cấp. Lựa chọn cuối được snapshot vào request và áp dụng cho toàn bộ request, không chọn chế độ riêng cho từng cấp trong MVP.
 - Người tạo không được thay đổi danh sách người ký đã cấu hình trong quy trình.
 
-### 3.2. Người ký và cấp ký
+### 3.2. Người ký, cấp ký và định vị tọa độ nơi ký
 
 - Một cấp có thể có nhiều người ký; mọi người ký được chọn đều bắt buộc ký trong MVP. Không hỗ trợ optional signer hoặc quorum.
 - **Phân loại vai trò trong cấp (Cấp lớn - Cấp nhỏ):** Trong cùng một cấp ký (đại diện cho một phòng ban/bộ phận), hỗ trợ 2 vai trò:
   - `INITIAL` (Ký nháy / Ký thứ cấp): Dành cho chuyên viên rà soát thể thức, số liệu, tính pháp lý.
   - `PRIMARY` (Ký chính / Quyết định): Dành cho Trưởng bộ phận hoặc người giữ thẩm quyền cao nhất của cấp đó.
 - **Quy tắc Gating tuần tự nội bộ cấp:** Nếu cấp có cả người ký nháy và người ký chính, người ký chính chỉ được mở khóa ký sau khi **100% người ký nháy trong cấp đã ký xong**.
+- **Định vị nơi ký và Tọa độ hóa (Signature Placement & Coordinates):**
+  - Tại khâu tạo hồ sơ trình ký, Người tạo thực hiện thao tác trực quan (kéo-thả trên bản xem trước tài liệu) để xác định vị trí ký cho từng người ký: Trang số (`page_number`), tọa độ (`coord_x`, `coord_y`), kích thước khung ký (`box_width`, `box_height`).
+  - Hệ tọa độ được lưu trữ dưới dạng chuẩn hóa (tỷ lệ % `[0, 100]` hoặc điểm PDF chuẩn `Points`) để độc lập với độ phân giải hiển thị trên client.
+  - Khi người ký thực hiện ký duyệt bằng private key / xác thực, backend/hệ thống tự động áp ảnh chữ ký lưu tại Profile của người đó vào đúng tọa độ đã định vị sẵn trên trang tài liệu.
 - `TUAN_TU`: chỉ cấp hiện tại được mở; cấp kế tiếp chỉ mở sau khi tất cả người ký (cả ký nháy và ký chính) ở cấp hiện tại đã ký.
 - `SONG_SONG`: tất cả cấp và người ký được mở cùng lúc; yêu cầu chỉ hoàn tất sau khi tất cả người ký đã ký.
 - Người tạo không tự động trở thành người ký; chỉ là người ký nếu được cấu hình trong quy trình.
@@ -95,9 +100,13 @@ Hệ thống phân tách rạch ròi 2 giai đoạn:
 - Từ chối (`reject`) bắt buộc có lý do, ghi chú là tùy chọn. Xem xét lại tạo attempt mới.
 - Người tạo được hủy trước khi hoàn tất; quản trị viên có thể hủy override nhưng bắt buộc lý do và audit.
 
-### 3.4. Chữ ký và khóa
+### 3.4. Chữ ký, khóa và ảnh chữ ký cá nhân (Profile Signature)
 
 - Backend không nhận, không lưu và không log private key.
+- **Ảnh chữ ký cá nhân trong Profile (Visual Signature Image):**
+  - Mỗi người dùng lưu sẵn một ảnh chữ ký cá nhân dạng scan/vẽ tay định dạng `.png` (nền trong suốt Transparent) trong trang thông tin cá nhân (Profile).
+  - `[CHƯA CHỐT]` Kích thước pixel chuẩn `pixel x pixel` sẽ được đo đạc và chốt quy chuẩn sau (ví dụ: `300 x 150 px` hoặc tỷ lệ `2:1`).
+  - Khi ký, ảnh chữ ký này được dùng để dán (stamp) vào đúng tọa độ văn bản đã định sẵn, đồng thời với việc tạo chữ ký mật mã (cryptographic signature).
 - Người dùng đăng ký public key Ed25519 qua challenge proof-of-possession; chỉ key đã verify challenge mới được chuyển sang `ACTIVE`.
 - Mỗi người dùng chỉ có một key `ACTIVE` tại một thời điểm, không phụ thuộc thuật toán; rotate key phải có audit. Key cũ giữ lại để xác thực lịch sử.
 - Không lưu `private_key` hoặc ciphertext chứa private key trong backend ở MVP. Đồng bộ/khôi phục khóa đa thiết bị chưa thuộc contract hiện tại.
@@ -232,6 +241,10 @@ Không dùng lẫn `created_by`, `updated_by` trong nhóm bảng Trình ký nế
 - `delegated_from_user_id`: FK tới `AUTH_USER_MODEL`, nullable (ghi nhận người ủy quyền khi chuyển quyền khẩn cấp).
 - `delegation_reason`: text, nullable.
 - `delegated_at`: DateTime UTC, nullable.
+- **Tọa độ hóa chữ ký trực quan (Visual Placement):**
+  - `page_number`: PositiveIntegerField nullable (trang hiển thị chữ ký trên PDF).
+  - `coord_x`, `coord_y`: FloatField nullable (tọa độ X, Y chuẩn hóa tỷ lệ % `[0, 100]` hoặc điểm PDF).
+  - `box_width`, `box_height`: FloatField nullable (kích thước khung chữ ký).
 - Snapshot tên hiển thị/chức vụ cần thiết cho lịch sử.
 - `trang_thai`: `PENDING | SIGNED | REJECTED | CHANGE_REQUESTED`.
 - `opened_at`, `signed_at`, `rejected_at`.
@@ -358,8 +371,8 @@ API dùng version prefix `/api/v1/`, serializer validation và permission riêng
 ### 7.2. Yêu cầu trình ký
 
 - `GET /signing/requests`: lọc theo creator/assignee/admin/auditor và department mặc định.
-- `POST /signing/requests`: tạo draft từ document contract và process.
-- `GET /signing/requests/{id}`: tổng quan, cấp, signer slot, deadline, lịch sử.
+- `POST /signing/requests`: tạo draft từ document contract và process kèm cấu hình tọa độ nơi ký (`page_number`, `coord_x`, `coord_y`, `box_width`, `box_height`).
+- `GET /signing/requests/{id}`: tổng quan, cấp, signer slot, deadline, lịch sử và tọa độ ký.
 - `POST /signing/requests/{id}/submit`: khóa document/process snapshot, tạo attempt.
 - `POST /signing/requests/{id}/cancel`: hủy theo quyền.
 - `POST /signing/requests/{id}/reconsider`: tạo attempt mới sau reject.
@@ -367,13 +380,18 @@ API dùng version prefix `/api/v1/`, serializer validation và permission riêng
 
 ### 7.3. Hành động người ký
 
-- `POST /signing/attempts/{id}/sign`: nhận `key_id`, digest/hash, signature và `sign_note` tùy chọn; verify server-side.
+- `POST /signing/attempts/{id}/sign`: nhận `key_id`, digest/hash, signature và `sign_note` tùy chọn; verify server-side và áp ảnh chữ ký lưu ở Profile vào đúng tọa độ đã định sẵn.
 - `POST /signing/attempts/{id}/reject`: reason bắt buộc, note tùy chọn.
 - `POST /signing/attempts/{id}/request-changes`: reason bắt buộc, mở thread giao tiếp.
 - `POST /signing/attempts/{id}/delegate`: chuyển quyền ký khẩn cấp (payload: `new_user_id`, `reason` bắt buộc).
 - `POST /signing/attempts/{id}/revoke`: chỉ cho parallel trước completion.
 
-### 7.4. Khóa và audit
+### 7.4. Hồ sơ chữ ký cá nhân (Profile Signature)
+
+- `GET /accounts/profile/signature`: xem metadata và URL ảnh chữ ký cá nhân hiện tại.
+- `PATCH /accounts/profile/signature`: tải lên/cập nhật ảnh chữ ký cá nhân dạng PNG (nền trong suốt).
+
+### 7.5. Khóa và audit
 
 - `POST /signing/keys/challenge`: tạo challenge.
 - `POST /signing/keys/verify`: verify proof-of-possession và activate key.
@@ -381,7 +399,7 @@ API dùng version prefix `/api/v1/`, serializer validation và permission riêng
 - `GET /signing/requests/{id}/audit`: xem audit theo quyền.
 - `GET /signing/attempts/{id}/manifest`: lấy manifest canonical và trạng thái verify.
 
-### 7.5. Quy tắc API chung
+### 7.6. Quy tắc API chung
 
 - Trả lỗi validation theo field và mã lỗi nghiệp vụ ổn định.
 - Hành động chuyển trạng thái yêu cầu `Idempotency-Key`.
@@ -488,6 +506,8 @@ API dùng version prefix `/api/v1/`, serializer validation và permission riêng
 ### Data integrity & Correction
 
 - Request giữ snapshot process/version/signer/document hash.
+- Lưu trữ và hiển thị tọa độ chữ ký (`page_number`, `coord_x`, `coord_y`, `box_width`, `box_height`) chính xác trên tài liệu PDF.
+- Khi ký duyệt, hệ thống tự động áp ảnh chữ ký lưu ở Profile của người ký vào đúng tọa độ đã định vị sẵn.
 - Duyệt kèm `sign_note` lưu vào chữ ký mà không chặn luồng ký.
 - Lỗi lớn chặn luồng bằng `request_changes`, mở thread giao tiếp hai chiều; sau khi chốt sửa thì attempt cũ đóng lại và tạo attempt mới ký lại từ đầu trên bản hash mới.
 - Attempt đã submit, chữ ký và manifest `FINAL` không bị cascade-delete; database/app role chặn xóa cứng hoặc dùng retention/soft-delete được định nghĩa.
@@ -504,6 +524,7 @@ API dùng version prefix `/api/v1/`, serializer validation và permission riêng
 - Manifest canonical có thể kiểm tra độc lập theo attempt.
 - Manifest `FINAL` bất biến; hash được tính từ canonical serialization có phiên bản.
 - Khâu bổ sung cuối: Cung cấp adapter interface sẵn sàng cắm dịch vụ ký số CA/CCCD và đóng dấu PAdES khi văn bản đạt trạng thái hoàn tất phê duyệt nội bộ.
+- **Ranh giới pháp lý bắt buộc:** Người chịu trách nhiệm pháp lý cao nhất khi ký ban hành văn bản phải có Chứng thư số CA được cấp phép hợp pháp.
 
 ### Deadline/notification
 
@@ -531,7 +552,8 @@ Nếu repo đã có chuẩn lint/type check, bổ sung đúng command của repo
 - `[ĐỀ XUẤT]` Giữ `create_by`, `created_at`, `update_by`, `update_at` đồng nhất với sheet Trình ký và các sheet liên quan.
 - `[ĐÃ CHỐT]` Xử lý phản hồi đa nhánh: Ghi chú không chặn (`sign_note`) cho phép qua và lưu audit; Yêu cầu chỉnh sửa (`request_changes`) tạm dừng attempt, mở thread trao đổi và resend toàn bộ bằng attempt mới.
 - `[ĐÃ CHỐT]` Quá hạn không đóng attempt; cho phép ký muộn kèm metadata trễ hạn; hỗ trợ chuyển quyền ký khẩn cấp.
-- `[ĐÃ CHỐT]` Khâu ký số pháp lý (CA/CCCD/dấu doanh nghiệp) là bước bổ sung cuối cùng (Final Issuance Phase) sau khi attempt duyệt nội bộ hoàn tất.
+- `[ĐÃ CHỐT]` Khâu ký số pháp lý (CA/CCCD/dấu doanh nghiệp) là bước bổ sung cuối cùng (Final Issuance Phase) sau khi attempt duyệt nội bộ hoàn tất; Người chịu trách nhiệm pháp lý bắt buộc phải có Chứng thư số CA hợp pháp.
+- `[CHƯA CHỐT]` Kích thước pixel chuẩn `pixel x pixel` của ảnh chữ ký PNG trong Profile người dùng (sẽ đo đạc và chốt quy chuẩn khi làm giao diện/PDF stamping).
 - `[CHƯA CHỐT]` Khôi phục khóa đa thiết bị. MVP không lưu private key hoặc encrypted private key ở backend; thay đổi ranh giới custody cần quyết định security riêng.
 - `[BỊ CHẶN nếu thiếu]` Không thể chạy migration/test tích hợp đầy đủ nếu branch chưa có Django project và cấu hình PostgreSQL/test database.
 
