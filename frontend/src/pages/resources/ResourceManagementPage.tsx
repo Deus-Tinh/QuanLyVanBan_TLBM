@@ -468,7 +468,7 @@ export default function ResourceManagementPage() {
   };
 
   // Xuất Excel: Liên kết API Backend để tải file về máy (theo đặc tả phân hệ của Nguyễn Chí Tín)
-  const [, setIsExporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleExportExcel = async () => {
     try {
@@ -848,6 +848,7 @@ export default function ResourceManagementPage() {
         onDelete={handleDelete}
         onDownloadFile={handleDownloadFile}
         onExportExcel={handleExportExcel}
+        isExporting={isExporting}
       />
 
       {/* MODAL XEM CHI TIẾT TÀI LIỆU (DẠNG POPUP THỂ HIỆN TOÀN BỘ CÁC TRƯỜNG) */}
