@@ -18,6 +18,8 @@ export interface ResourceTableProps {
   onExportExcel?: () => void;
   isExporting?: boolean;
   onPageSizeChange?: (size: number) => void;
+  currentCategoryName?: string;
+  currentTypeName?: string;
 }
 
 export const ResourceTable: React.FC<ResourceTableProps> = ({
@@ -35,6 +37,8 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   onExportExcel,
   isExporting = false,
   onPageSizeChange,
+  currentCategoryName,
+  currentTypeName,
 }) => {
   // Format ngày dd/mm/yyyy
   const formatDate = (dateStr?: string) => {
@@ -77,7 +81,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         );
       case 'HET_VA_THAY_THE':
         return (
-          <div className="inline-flex items-center gap-1.5 flex-wrap">
+          <div className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
             <Badge variant="warning" size="sm" withDot>
               Hết và thay thế
             </Badge>
@@ -86,7 +90,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 href={linkThayThe}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center text-xs text-primary hover:underline gap-1 font-medium"
+                className="w-5 h-5 inline-flex items-center justify-center text-xs text-primary hover:text-primary-hover hover:bg-primary/10 rounded transition-colors"
                 title="Xem văn bản thay thế"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -131,15 +135,27 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     <div className="w-full space-y-4">
       {/* Thanh công cụ phía trên bảng */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface p-3.5 rounded-xl border border-border-subtle shadow-xs">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-main">
-            Tổng số: <span className="text-primary font-bold">{totalCount}</span> tài liệu
-          </span>
-          {startItem > 0 && (
-            <span className="text-xs text-muted">
-              (Hiển thị {startItem} - {endItem})
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs sm:text-sm font-bold text-main flex items-center gap-1.5">
+              <i className="fa-solid fa-folder-open text-primary" />
+              <span>{currentCategoryName || 'Toàn bộ kho tài liệu'}</span>
             </span>
-          )}
+            {currentTypeName && (
+              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-primary-subtle text-primary font-semibold border border-primary/20">
+                <i className="fa-solid fa-chevron-right text-[8px] opacity-70" />
+                <span>{currentTypeName}</span>
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-secondary font-medium sm:border-l sm:border-border-subtle sm:pl-2">
+            Tổng số: <strong className="text-primary font-bold">{totalCount}</strong> tài liệu
+            {startItem > 0 && (
+              <span className="text-muted ml-1">
+                (Hiển thị {startItem} - {endItem})
+              </span>
+            )}
+          </span>
         </div>
 
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
@@ -181,14 +197,14 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         <table className="w-full text-left text-sm border-collapse">
           <thead className="bg-surface-elevated text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle select-none">
             <tr>
-              <th className="px-3.5 py-3.5 text-center w-14">STT</th>
-              <th className="px-4 py-3.5 w-32">Ký hiệu</th>
-              <th className="px-4 py-3.5 min-w-[240px]">Tiêu đề tài liệu</th>
-              <th className="px-4 py-3.5 w-44">Nơi ban hành</th>
-              <th className="px-4 py-3.5 w-28 text-center">Ngày đăng</th>
-              <th className="px-4 py-3.5 w-36 text-center">Hiệu lực</th>
-              <th className="px-4 py-3.5 w-36 text-center">Tệp đính kèm</th>
-              <th className="px-4 py-3.5 w-32 text-center">Thao tác</th>
+              <th className="px-3.5 py-3.5 text-center w-14 shrink-0">STT</th>
+              <th className="px-4 py-3.5 w-40 min-w-[150px] whitespace-nowrap">Ký hiệu</th>
+              <th className="px-4 py-3.5 min-w-[280px]">Tiêu đề tài liệu</th>
+              <th className="px-4 py-3.5 w-52 min-w-[200px]">Nơi ban hành</th>
+              <th className="px-3.5 py-3.5 w-32 min-w-[110px] text-center whitespace-nowrap">Ngày đăng</th>
+              <th className="px-4 py-3.5 w-44 min-w-[160px] text-center whitespace-nowrap">Hiệu lực</th>
+              <th className="px-3.5 py-3.5 w-32 min-w-[120px] text-center whitespace-nowrap">Tệp đính kèm</th>
+              <th className="px-3.5 py-3.5 w-32 min-w-[120px] text-center whitespace-nowrap">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -262,58 +278,73 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     className={`transition-colors duration-fast ${rowClass}`}
                   >
                     {/* STT */}
-                    <td className="px-3.5 py-3.5 text-center font-medium text-xs">
+                    <td className="px-3.5 py-4 text-center align-middle font-medium text-xs text-muted">
                       {stt}
                     </td>
 
                     {/* Ký hiệu */}
-                    <td className="px-4 py-3.5 font-mono text-xs font-semibold">
+                    <td className="px-4 py-4 align-middle whitespace-nowrap">
                       {item.ky_hieu ? (
-                        <span className="px-1.5 py-0.5 rounded bg-surface-elevated border border-border-subtle">
+                        <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-md bg-surface-elevated text-main font-mono text-xs font-semibold border border-border-subtle shadow-2xs tracking-tight">
                           {item.ky_hieu}
                         </span>
                       ) : (
-                        <span className="text-muted">-</span>
+                        <span className="text-muted text-xs">-</span>
                       )}
                     </td>
 
                     {/* Tiêu đề & Danh mục */}
-                    <td className="px-4 py-3.5">
-                      <div className="font-semibold text-sm leading-snug line-clamp-2 hover:text-primary transition-colors cursor-pointer"
-                           onClick={() => onViewDetail(item)}>
+                    <td className="px-4 py-4 align-middle">
+                      <div
+                        className="font-bold text-sm text-main hover:text-primary transition-colors cursor-pointer leading-snug line-clamp-2"
+                        onClick={() => onViewDetail(item)}
+                        title={item.tieu_de}
+                      >
                         {item.tieu_de}
                       </div>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                        {item.dm_tai_lieu_name && (
-                          <span className="text-[11px] px-1.5 py-0.5 rounded bg-surface-elevated text-secondary border border-border-subtle/60">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {(!currentCategoryName || currentCategoryName.includes('Toàn bộ')) && item.dm_tai_lieu_name && (
+                          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-primary-subtle text-primary font-medium border border-primary/20">
+                            <i className="fa-solid fa-folder text-[9px]" />
                             {item.dm_tai_lieu_name}
                           </span>
                         )}
-                        {item.loai_tai_lieu_names && item.loai_tai_lieu_names.length > 0 && (
-                          <span className="text-[11px] text-muted">
-                            • {item.loai_tai_lieu_names.join(', ')}
-                          </span>
-                        )}
+                        {item.loai_tai_lieu_names && item.loai_tai_lieu_names.length > 0 &&
+                          item.loai_tai_lieu_names.map((tName, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-medium border border-blue-200/80 dark:border-blue-800"
+                            >
+                              <i className="fa-solid fa-folder-tree text-[9px] text-blue-500" />
+                              {tName}
+                            </span>
+                          ))}
                       </div>
                     </td>
 
                     {/* Nơi ban hành */}
-                    <td className="px-4 py-3.5 text-xs text-secondary">
-                      {item.noi_ban_hanh || <span className="text-muted">-</span>}
+                    <td className="px-4 py-4 align-middle">
+                      <div className="text-xs font-medium text-main/90 flex items-center gap-1.5">
+                        <i className="fa-regular fa-building text-muted/70 text-[11px] shrink-0" />
+                        <span className="leading-snug">{item.noi_ban_hanh || <span className="text-muted">-</span>}</span>
+                      </div>
                     </td>
 
                     {/* Ngày đăng */}
-                    <td className="px-4 py-3.5 text-xs text-center whitespace-nowrap text-secondary font-mono">
-                      {formatDate(item.ngay_dang)}
+                    <td className="px-3.5 py-4 text-center align-middle whitespace-nowrap">
+                      <span className="text-xs text-secondary font-mono inline-flex items-center justify-center gap-1">
+                        <i className="fa-regular fa-calendar text-[10px] text-muted/80" />
+                        {formatDate(item.ngay_dang)}
+                      </span>
                     </td>
 
                     {/* Trạng thái hiệu lực */}
-                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                    <td className="px-4 py-4 text-center align-middle whitespace-nowrap">
                       {renderStatusBadge(item.hieu_luc, item.link_thay_the)}
                     </td>
 
                     {/* Tải tệp đính kèm */}
-                    <td className="px-4 py-3.5 text-center">
+                    <td className="px-3.5 py-4 text-center align-middle whitespace-nowrap">
                       {item.file_dinh_kem ? (
                         <button
                           type="button"
@@ -324,24 +355,24 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                               window.open(item.file_dinh_kem, '_blank');
                             }
                           }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg text-primary hover:bg-primary-subtle border border-primary/30 transition-all cursor-pointer shadow-xs active:scale-95"
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-primary hover:text-white hover:bg-primary bg-primary/10 border border-primary/20 transition-all cursor-pointer shadow-2xs active:scale-95"
                           title={`Tải: ${getFileName(item.file_dinh_kem)}`}
                         >
-                          <i className="fa-solid fa-download text-xs" />
-                          <span className="max-w-[80px] truncate">Tải về</span>
+                          <i className="fa-solid fa-download text-[11px]" />
+                          <span>Tải về</span>
                         </button>
                       ) : (
-                        <span className="text-xs text-muted">Không có</span>
+                        <span className="text-xs text-muted/60">-</span>
                       )}
                     </td>
 
                     {/* Thao tác */}
-                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1">
+                    <td className="px-3.5 py-4 text-center align-middle whitespace-nowrap">
+                      <div className="inline-flex items-center justify-center gap-1">
                         <button
                           type="button"
                           onClick={() => onViewDetail(item)}
-                          className="p-1.5 text-secondary hover:text-primary hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer"
+                          className="w-8 h-8 inline-flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
                           title="Xem chi tiết"
                         >
                           <i className="fa-solid fa-eye text-sm" />
@@ -351,7 +382,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onEdit(item)}
-                            className="p-1.5 text-secondary hover:text-warning-text hover:bg-surface-elevated rounded-lg transition-colors cursor-pointer"
+                            className="w-8 h-8 inline-flex items-center justify-center text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-amber-200 dark:hover:border-amber-800"
                             title="Chỉnh sửa tài liệu"
                           >
                             <i className="fa-solid fa-pen-to-square text-sm" />
@@ -362,10 +393,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                           <button
                             type="button"
                             onClick={() => onDelete(item)}
-                            className="p-1.5 text-secondary hover:text-danger hover:bg-danger-subtle rounded-lg transition-colors cursor-pointer"
+                            className="w-8 h-8 inline-flex items-center justify-center text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-rose-200 dark:hover:border-rose-800"
                             title="Xóa tài liệu"
                           >
-                            <i className="fa-solid fa-trash text-sm" />
+                            <i className="fa-solid fa-trash-can text-sm" />
                           </button>
                         )}
                       </div>
@@ -415,11 +446,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                   type="button"
                   disabled={isLoading}
                   onClick={() => onPageChange(pageNum)}
-                  className={`min-w-[32px] h-8 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                    isActive
+                  className={`min-w-[32px] h-8 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isActive
                       ? 'bg-primary text-white shadow-xs font-bold border border-primary'
                       : 'border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main'
-                  }`}
+                    }`}
                 >
                   {pageNum}
                 </button>

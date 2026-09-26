@@ -436,16 +436,44 @@ i {
   padding: 0;
 }
 
+/* Base Root Font-Size: Đặt chuẩn 16px web standard để tất cả rem units hiển thị cân đối, sắc nét */
+html {
+  font-size: 16px;
+}
+
+/* Tự động tăng nhẹ trên màn hình Desktop lớn (1080p Full HD với Windows scale 100%, 2K, 4K) để khung hình to, dễ đọc */
+@media (min-width: 1440px) {
+  html {
+    font-size: 16.5px;
+  }
+}
+
+@media (min-width: 1720px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+/* Hỗ trợ chế độ Phóng to Giao diện (Zoom Mode) tùy chọn cho người dùng */
+html[data-ui-scale='comfortable'] {
+  font-size: 17.5px !important;
+}
+
+html[data-ui-scale='large'] {
+  font-size: 19px !important;
+}
+
 html, body {
   width: 100%;
   height: 100%;
   font-family: var(--font-sans);
   background-color: var(--bg-canvas, #f1f4f9);
   color: var(--text-main);
-  font-size: 14px;
   line-height: 1.5;
   overflow: hidden;
   transition: background-color var(--transition-normal), color var(--transition-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 button {

@@ -10,12 +10,18 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Tự động nạp file cấu hình .env (ở thư mục backend hoặc thư mục gốc)
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 # Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
 sys.path.insert(0, str(BASE_DIR / "apps"))
@@ -30,7 +36,7 @@ SECRET_KEY = "django-insecure-gi-kkzr*^tx3ut+arcxs2i8=!3%es0clr2punmi*hg)nbg0)mr
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -94,12 +100,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "QLVB_DB",  # Tên database bạn vừa tạo trong pgAdmin
-        "USER": "postgres",  # Tên đăng nhập mặc định của PostgreSQL
-        "PASSWORD": "123",  # ⚠️ THAY BẰNG MẬT KHẨU BẠN ĐẶT LÚC CÀI POSTGRESQL
-        "HOST": "localhost",  # Máy local của bạn
-        "PORT": "5432",  # Cổng mặc định của PostgreSQL
+        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
+        "NAME": os.getenv("DB_NAME", "QLVB_DB"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 

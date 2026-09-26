@@ -286,278 +286,274 @@ const FormContent: React.FC<FormContentProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
         {/* Vùng cuộn riêng cho các trường Form */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        {/* Nhóm 1: Phân loại Cấp 1 & Cấp 2 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-surface-elevated/40 border border-border-subtle/70">
-          {/* Danh mục Cấp 1 */}
-          <div>
-            <label htmlFor="dm_tai_lieu" className="text-xs font-bold text-main block mb-1.5">
-              Danh mục Cấp 1 <span className="text-danger">*</span>
-            </label>
-            <select
-              id="dm_tai_lieu"
-              value={formData.dm_tai_lieu}
-              onChange={handleCategoryChange}
-              className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary transition-colors ${
-                errors.dm_tai_lieu ? 'border-danger' : 'border-border-subtle'
-              }`}
-            >
-              <option value="">-- Chọn danh mục Cấp 1 --</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.stt_uu_tien}. {c.ten_tai_lieu} {c.ky_hieu ? `(${c.ky_hieu})` : ''}
-                </option>
-              ))}
-            </select>
-            {errors.dm_tai_lieu && (
-              <p className="text-xs text-danger mt-1">{errors.dm_tai_lieu}</p>
-            )}
+          {/* Nhóm 1: Phân loại Cấp 1 & Cấp 2 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-surface-elevated/40 border border-border-subtle/70">
+            {/* Danh mục Cấp 1 */}
+            <div>
+              <label htmlFor="dm_tai_lieu" className="text-xs font-bold text-main block mb-1.5">
+                Danh mục Cấp 1 <span className="text-danger">*</span>
+              </label>
+              <select
+                id="dm_tai_lieu"
+                value={formData.dm_tai_lieu}
+                onChange={handleCategoryChange}
+                className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary transition-colors ${errors.dm_tai_lieu ? 'border-danger' : 'border-border-subtle'
+                  }`}
+              >
+                <option value="">-- Chọn danh mục Cấp 1 --</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.ten_tai_lieu} {c.ky_hieu ? `(${c.ky_hieu})` : ''}
+                  </option>
+                ))}
+              </select>
+              {errors.dm_tai_lieu && (
+                <p className="text-xs text-danger mt-1">{errors.dm_tai_lieu}</p>
+              )}
+            </div>
+
+            {/* Loại Cấp 2 (Tự động lọc theo Cấp 1) */}
+            <div>
+              <label className="text-xs font-bold text-main block mb-1.5">
+                Loại tài liệu Cấp 2 <span className="text-danger">*</span>
+                <span className="text-xs text-muted font-normal ml-1">
+                  ({availableTypes.length} loại tương ứng)
+                </span>
+              </label>
+              {availableTypes.length === 0 ? (
+                <div className="text-xs text-muted italic py-2 px-3 bg-surface rounded-lg border border-border-subtle">
+                  {formData.dm_tai_lieu
+                    ? 'Danh mục này chưa có Loại Cấp 2 nào.'
+                    : 'Vui lòng chọn Danh mục Cấp 1 trước.'}
+                </div>
+              ) : (
+                <div className="max-h-28 overflow-y-auto p-2 bg-surface rounded-lg border border-border-subtle space-y-1.5">
+                  {availableTypes.map((type) => {
+                    const checked = formData.loai_tai_lieu.includes(type.id);
+                    return (
+                      <label
+                        key={type.id}
+                        className="flex items-center gap-2 text-xs text-main cursor-pointer hover:bg-surface-elevated p-1 rounded transition-colors select-none"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleToggleType(type.id)}
+                          className="rounded text-primary focus:ring-0 cursor-pointer"
+                        />
+                        <span>{type.ten_loai}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {errors.loai_tai_lieu && (
+                <p className="text-xs text-danger mt-1">{errors.loai_tai_lieu}</p>
+              )}
+            </div>
           </div>
 
-          {/* Loại Cấp 2 (Tự động lọc theo Cấp 1) */}
-          <div>
-            <label className="text-xs font-bold text-main block mb-1.5">
-              Loại tài liệu Cấp 2 <span className="text-danger">*</span>
-              <span className="text-xs text-muted font-normal ml-1">
-                ({availableTypes.length} loại tương ứng)
-              </span>
-            </label>
-            {availableTypes.length === 0 ? (
-              <div className="text-xs text-muted italic py-2 px-3 bg-surface rounded-lg border border-border-subtle">
-                {formData.dm_tai_lieu
-                  ? 'Danh mục này chưa có Loại Cấp 2 nào.'
-                  : 'Vui lòng chọn Danh mục Cấp 1 trước.'}
-              </div>
-            ) : (
-              <div className="max-h-28 overflow-y-auto p-2 bg-surface rounded-lg border border-border-subtle space-y-1.5">
-                {availableTypes.map((type) => {
-                  const checked = formData.loai_tai_lieu.includes(type.id);
-                  return (
-                    <label
-                      key={type.id}
-                      className="flex items-center gap-2 text-xs text-main cursor-pointer hover:bg-surface-elevated p-1 rounded transition-colors select-none"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => handleToggleType(type.id)}
-                        className="rounded text-primary focus:ring-0 cursor-pointer"
-                      />
-                      <span>{type.ten_loai}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-            {errors.loai_tai_lieu && (
-              <p className="text-xs text-danger mt-1">{errors.loai_tai_lieu}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Nhóm 2: Thông tin cơ bản */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Ký hiệu */}
-          <div>
-            <label htmlFor="ky_hieu" className="text-xs font-bold text-main block mb-1.5">
-              Số / Ký hiệu tài liệu
-            </label>
-            <input
-              id="ky_hieu"
-              type="text"
-              value={formData.ky_hieu}
-              onChange={(e) => setFormData({ ...formData, ky_hieu: e.target.value })}
-              placeholder="VD: 15/QĐ-BL, BM-01..."
-              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary font-mono"
-            />
-          </div>
-
-          {/* Nơi ban hành */}
-          <div>
-            <label htmlFor="noi_ban_hanh" className="text-xs font-bold text-main block mb-1.5">
-              Nơi ban hành
-            </label>
-            <input
-              id="noi_ban_hanh"
-              type="text"
-              value={formData.noi_ban_hanh}
-              onChange={(e) => setFormData({ ...formData, noi_ban_hanh: e.target.value })}
-              placeholder="VD: Ban Giám Đốc, Phòng Nhân sự..."
-              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary"
-            />
-          </div>
-
-          {/* Ngày đăng */}
-          <div>
-            <label htmlFor="ngay_dang" className="text-xs font-bold text-main block mb-1.5">
-              Ngày đăng / Ban hành <span className="text-danger">*</span>
-            </label>
-            <input
-              id="ngay_dang"
-              type="date"
-              value={formData.ngay_dang}
-              onChange={(e) => setFormData({ ...formData, ngay_dang: e.target.value })}
-              className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary font-mono ${
-                errors.ngay_dang ? 'border-danger' : 'border-border-subtle'
-              }`}
-            />
-            {errors.ngay_dang && (
-              <p className="text-xs text-danger mt-1">{errors.ngay_dang}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Tiêu đề tài liệu */}
-        <div>
-          <label htmlFor="tieu_de" className="text-xs font-bold text-main block mb-1.5">
-            Tiêu đề tài liệu <span className="text-danger">*</span>
-          </label>
-          <input
-            id="tieu_de"
-            type="text"
-            value={formData.tieu_de}
-            onChange={(e) => setFormData({ ...formData, tieu_de: e.target.value })}
-            placeholder="Nhập tên hoặc trích yếu đầy đủ của tài liệu, biểu mẫu..."
-            className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary ${
-              errors.tieu_de ? 'border-danger' : 'border-border-subtle'
-            }`}
-          />
-          {errors.tieu_de && <p className="text-xs text-danger mt-1">{errors.tieu_de}</p>}
-        </div>
-
-        {/* Nhóm 3: Hiệu lực và Pháp lý */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-surface-elevated/40 border border-border-subtle/70">
-          {/* Trạng thái hiệu lực */}
-          <div>
-            <label htmlFor="hieu_luc" className="text-xs font-bold text-main block mb-1.5">
-              Trạng thái hiệu lực <span className="text-danger">*</span>
-            </label>
-            <select
-              id="hieu_luc"
-              value={formData.hieu_luc}
-              onChange={(e) =>
-                setFormData({ ...formData, hieu_luc: e.target.value as HieuLucType })
-              }
-              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer"
-            >
-              <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-              <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-              <option value="HET_VA_THAY_THE">Hết hiệu lực và thay thế</option>
-            </select>
-          </div>
-
-          {/* Ngày hết hiệu lực (chỉ hiện khi hết hiệu lực) */}
-          <div>
-            <label htmlFor="ngay_het_hieu_luc" className="text-xs font-bold text-main block mb-1.5">
-              Ngày hết hiệu lực{' '}
-              {formData.hieu_luc !== 'CON_HIEU_LUC' && <span className="text-danger">*</span>}
-            </label>
-            <input
-              id="ngay_het_hieu_luc"
-              type="date"
-              disabled={formData.hieu_luc === 'CON_HIEU_LUC'}
-              value={formData.ngay_het_hieu_luc}
-              onChange={(e) => setFormData({ ...formData, ngay_het_hieu_luc: e.target.value })}
-              className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary font-mono disabled:opacity-50 disabled:bg-surface-elevated ${
-                errors.ngay_het_hieu_luc ? 'border-danger' : 'border-border-subtle'
-              }`}
-            />
-            {errors.ngay_het_hieu_luc && (
-              <p className="text-xs text-danger mt-1">{errors.ngay_het_hieu_luc}</p>
-            )}
-          </div>
-
-          {/* Phạm vi hiển thị */}
-          <div>
-            <label htmlFor="hien_thi" className="text-xs font-bold text-main block mb-1.5">
-              Phạm vi hiển thị <span className="text-danger">*</span>
-            </label>
-            <select
-              id="hien_thi"
-              value={formData.hien_thi}
-              onChange={(e) =>
-                setFormData({ ...formData, hien_thi: e.target.value as HienThiType })
-              }
-              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer"
-            >
-              <option value="TAT_CA">Tất cả cán bộ nhân viên</option>
-              <option value="NOI_BO_PHONG_BAN">Nội bộ phòng ban</option>
-            </select>
-          </div>
-
-          {/* Link thay thế (khi chọn Hết và thay thế) */}
-          {formData.hieu_luc === 'HET_VA_THAY_THE' && (
-            <div className="md:col-span-3">
-              <label htmlFor="link_thay_the" className="text-xs font-bold text-warning-text block mb-1.5">
-                <i className="fa-solid fa-link mr-1" /> Link văn bản thay thế
+          {/* Nhóm 2: Thông tin cơ bản */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Ký hiệu */}
+            <div>
+              <label htmlFor="ky_hieu" className="text-xs font-bold text-main block mb-1.5">
+                Số / Ký hiệu tài liệu
               </label>
               <input
-                id="link_thay_the"
-                type="url"
-                value={formData.link_thay_the}
-                onChange={(e) => setFormData({ ...formData, link_thay_the: e.target.value })}
-                placeholder="https://... hoặc đường dẫn văn bản thay thế mới"
+                id="ky_hieu"
+                type="text"
+                value={formData.ky_hieu}
+                onChange={(e) => setFormData({ ...formData, ky_hieu: e.target.value })}
+                placeholder="VD: 15/QĐ-BL, BM-01..."
+                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary font-mono"
+              />
+            </div>
+
+            {/* Nơi ban hành */}
+            <div>
+              <label htmlFor="noi_ban_hanh" className="text-xs font-bold text-main block mb-1.5">
+                Nơi ban hành
+              </label>
+              <input
+                id="noi_ban_hanh"
+                type="text"
+                value={formData.noi_ban_hanh}
+                onChange={(e) => setFormData({ ...formData, noi_ban_hanh: e.target.value })}
+                placeholder="VD: Ban Giám Đốc, Phòng Nhân sự..."
                 className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary"
               />
             </div>
-          )}
-        </div>
 
-        {/* Nhóm 4: Tải tệp đính kèm & Validation kích thước */}
-        <div>
-          <label htmlFor="file_dinh_kem" className="text-xs font-bold text-main block mb-1.5">
-            Tệp tài liệu đính kèm {!isEditMode && <span className="text-danger">*</span>}
-            <span className="text-xs text-muted font-normal ml-2">
-              (Tối đa {MAX_FILE_SIZE_MB}MB; chấp nhận PDF, DOC, DOCX, JPG, PNG, ZIP, RAR)
-            </span>
-          </label>
+            {/* Ngày đăng */}
+            <div>
+              <label htmlFor="ngay_dang" className="text-xs font-bold text-main block mb-1.5">
+                Ngày đăng / Ban hành <span className="text-danger">*</span>
+              </label>
+              <input
+                id="ngay_dang"
+                type="date"
+                value={formData.ngay_dang}
+                onChange={(e) => setFormData({ ...formData, ngay_dang: e.target.value })}
+                className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary font-mono ${errors.ngay_dang ? 'border-danger' : 'border-border-subtle'
+                  }`}
+              />
+              {errors.ngay_dang && (
+                <p className="text-xs text-danger mt-1">{errors.ngay_dang}</p>
+              )}
+            </div>
+          </div>
 
-          <div className="flex flex-col gap-2">
+          {/* Tiêu đề tài liệu */}
+          <div>
+            <label htmlFor="tieu_de" className="text-xs font-bold text-main block mb-1.5">
+              Tiêu đề tài liệu <span className="text-danger">*</span>
+            </label>
             <input
-              id="file_dinh_kem"
-              type="file"
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
-              onChange={handleFileChange}
-              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover file:cursor-pointer cursor-pointer"
+              id="tieu_de"
+              type="text"
+              value={formData.tieu_de}
+              onChange={(e) => setFormData({ ...formData, tieu_de: e.target.value })}
+              placeholder="Nhập tên hoặc trích yếu đầy đủ của tài liệu, biểu mẫu..."
+              className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary ${errors.tieu_de ? 'border-danger' : 'border-border-subtle'
+                }`}
             />
+            {errors.tieu_de && <p className="text-xs text-danger mt-1">{errors.tieu_de}</p>}
+          </div>
 
-            {/* Thông báo file cũ đang có khi ở chế độ Edit */}
-            {isEditMode && !formData.file && initialData?.file_dinh_kem && (
-              <div className="text-xs text-secondary flex items-center gap-1.5">
-                <i className="fa-solid fa-file-check text-emerald-500" />
-                <span>Tệp hiện tại: <strong>{initialData.file_dinh_kem.split('/').pop()}</strong></span>
-                <span className="text-muted">(Nếu không muốn đổi tệp thì để trống trường này)</span>
-              </div>
-            )}
+          {/* Nhóm 3: Hiệu lực và Pháp lý */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-surface-elevated/40 border border-border-subtle/70">
+            {/* Trạng thái hiệu lực */}
+            <div>
+              <label htmlFor="hieu_luc" className="text-xs font-bold text-main block mb-1.5">
+                Trạng thái hiệu lực <span className="text-danger">*</span>
+              </label>
+              <select
+                id="hieu_luc"
+                value={formData.hieu_luc}
+                onChange={(e) =>
+                  setFormData({ ...formData, hieu_luc: e.target.value as HieuLucType })
+                }
+                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="CON_HIEU_LUC">Còn hiệu lực</option>
+                <option value="HET_HIEU_LUC">Hết hiệu lực</option>
+                <option value="HET_VA_THAY_THE">Hết hiệu lực và thay thế</option>
+              </select>
+            </div>
 
-            {/* Cảnh báo lỗi File kích thước hoặc định dạng */}
-            {(fileError || errors.file) && (
-              <div className="p-2.5 rounded-lg bg-danger-subtle border border-danger-border flex items-start gap-2">
-                <i className="fa-solid fa-circle-exclamation text-danger mt-0.5 text-xs" />
-                <p className="text-xs text-danger font-medium">
-                  {fileError || errors.file}
-                </p>
+            {/* Ngày hết hiệu lực (chỉ hiện khi hết hiệu lực) */}
+            <div>
+              <label htmlFor="ngay_het_hieu_luc" className="text-xs font-bold text-main block mb-1.5">
+                Ngày hết hiệu lực{' '}
+                {formData.hieu_luc !== 'CON_HIEU_LUC' && <span className="text-danger">*</span>}
+              </label>
+              <input
+                id="ngay_het_hieu_luc"
+                type="date"
+                disabled={formData.hieu_luc === 'CON_HIEU_LUC'}
+                value={formData.ngay_het_hieu_luc}
+                onChange={(e) => setFormData({ ...formData, ngay_het_hieu_luc: e.target.value })}
+                className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary font-mono disabled:opacity-50 disabled:bg-surface-elevated ${errors.ngay_het_hieu_luc ? 'border-danger' : 'border-border-subtle'
+                  }`}
+              />
+              {errors.ngay_het_hieu_luc && (
+                <p className="text-xs text-danger mt-1">{errors.ngay_het_hieu_luc}</p>
+              )}
+            </div>
+
+            {/* Phạm vi hiển thị */}
+            <div>
+              <label htmlFor="hien_thi" className="text-xs font-bold text-main block mb-1.5">
+                Phạm vi hiển thị <span className="text-danger">*</span>
+              </label>
+              <select
+                id="hien_thi"
+                value={formData.hien_thi}
+                onChange={(e) =>
+                  setFormData({ ...formData, hien_thi: e.target.value as HienThiType })
+                }
+                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="TAT_CA">Tất cả cán bộ nhân viên</option>
+                <option value="NOI_BO_PHONG_BAN">Nội bộ phòng ban</option>
+              </select>
+            </div>
+
+            {/* Link thay thế (khi chọn Hết và thay thế) */}
+            {formData.hieu_luc === 'HET_VA_THAY_THE' && (
+              <div className="md:col-span-3">
+                <label htmlFor="link_thay_the" className="text-xs font-bold text-warning-text block mb-1.5">
+                  <i className="fa-solid fa-link mr-1" /> Link văn bản thay thế
+                </label>
+                <input
+                  id="link_thay_the"
+                  type="url"
+                  value={formData.link_thay_the}
+                  onChange={(e) => setFormData({ ...formData, link_thay_the: e.target.value })}
+                  placeholder="https://... hoặc đường dẫn văn bản thay thế mới"
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary"
+                />
               </div>
             )}
           </div>
+
+          {/* Nhóm 4: Tải tệp đính kèm & Validation kích thước */}
+          <div>
+            <label htmlFor="file_dinh_kem" className="text-xs font-bold text-main block mb-1.5">
+              Tệp tài liệu đính kèm {!isEditMode && <span className="text-danger">*</span>}
+              <span className="text-xs text-muted font-normal ml-2">
+                (Tối đa {MAX_FILE_SIZE_MB}MB; chấp nhận PDF, DOC, DOCX, JPG, PNG, ZIP, RAR)
+              </span>
+            </label>
+
+            <div className="flex flex-col gap-2">
+              <input
+                id="file_dinh_kem"
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
+                onChange={handleFileChange}
+                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover file:cursor-pointer cursor-pointer"
+              />
+
+              {/* Thông báo file cũ đang có khi ở chế độ Edit */}
+              {isEditMode && !formData.file && initialData?.file_dinh_kem && (
+                <div className="text-xs text-secondary flex items-center gap-1.5">
+                  <i className="fa-solid fa-file-check text-emerald-500" />
+                  <span>Tệp hiện tại: <strong>{initialData.file_dinh_kem.split('/').pop()}</strong></span>
+                  <span className="text-muted">(Nếu không muốn đổi tệp thì để trống trường này)</span>
+                </div>
+              )}
+
+              {/* Cảnh báo lỗi File kích thước hoặc định dạng */}
+              {(fileError || errors.file) && (
+                <div className="p-2.5 rounded-lg bg-danger-subtle border border-danger-border flex items-start gap-2">
+                  <i className="fa-solid fa-circle-exclamation text-danger mt-0.5 text-xs" />
+                  <p className="text-xs text-danger font-medium">
+                    {fileError || errors.file}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Nhóm 5: Ghi chú */}
+          <div>
+            <label htmlFor="ghi_chu" className="text-xs font-bold text-main block mb-1.5">
+              Ghi chú thêm
+            </label>
+            <textarea
+              id="ghi_chu"
+              rows={3}
+              value={formData.ghi_chu}
+              onChange={(e) => setFormData({ ...formData, ghi_chu: e.target.value })}
+              placeholder="Ghi chú nội dung ban hành, lưu ý khi áp dụng..."
+              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary resize-none"
+            />
+          </div>
         </div>
 
-        {/* Nhóm 5: Ghi chú */}
-        <div>
-          <label htmlFor="ghi_chu" className="text-xs font-bold text-main block mb-1.5">
-            Ghi chú thêm
-          </label>
-          <textarea
-            id="ghi_chu"
-            rows={3}
-            value={formData.ghi_chu}
-            onChange={(e) => setFormData({ ...formData, ghi_chu: e.target.value })}
-            placeholder="Ghi chú nội dung ban hành, lưu ý khi áp dụng..."
-            className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary resize-none"
-          />
-        </div>
-      </div>
-
-      {/* Footer nút hành động - Cố định ở đáy modal */}
+        {/* Footer nút hành động - Cố định ở đáy modal */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle bg-surface-elevated/40 shrink-0 z-10">
           <Button variant="secondary" size="md" onClick={onClose} disabled={isLoading}>
             Hủy bỏ
