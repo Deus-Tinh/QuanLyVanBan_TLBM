@@ -8,6 +8,7 @@ import AiAssistantPage from '@pages/ai/AiAssistantPage';
 import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
+import OrganizationsPage from '@pages/organizations/OrganizationsPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
 import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
@@ -88,7 +89,7 @@ export default function AppRouter({
         <Route path="/birthdays" element={<BirthdayPage />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
-        <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
+        <Route path="/organizations" element={<OrganizationsPage />} />
         <Route path="/employees" element={<SyllabusPreview activePage="employees" />} />
         <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
         <Route path="/roles" element={<SyllabusPreview activePage="roles" />} />

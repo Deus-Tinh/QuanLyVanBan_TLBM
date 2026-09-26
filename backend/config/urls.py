@@ -18,5 +18,9 @@ urlpatterns = [
     # ── Module Nhóm 7 — Tình (Issue #23) ──────────────────────────────────
     # API Sinh nhật: GET /api/birthdays/calendar/, /api/birthdays/day/, ...
     path("api/birthdays/", include("birthdays.urls", namespace="birthdays")),
+
+    # ── Module Nhóm 7 — Quang ─────────────────────────────────────────────
+    # API Quản lý Khối & Đơn vị: /api/organizations/...
+    path("api/organizations/", include("organizations.urls", namespace="organizations")),
 ]
 
