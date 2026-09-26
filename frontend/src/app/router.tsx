@@ -9,6 +9,7 @@ import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import OrganizationsPage from '@pages/organizations/OrganizationsPage';
+import MeetingsPage from '@pages/meetings/MeetingsPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
 
 interface RouterProps {
@@ -84,7 +85,7 @@ export default function AppRouter({
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}
         <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
         <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
-        <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
+        <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/birthdays" element={<SyllabusPreview activePage="birthdays" />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
