@@ -1,11 +1,16 @@
-﻿# Project Rules & Safety Invariants (QuanLyVanBan_TLBM)
+# Project Rules & Safety Invariants (QuanLyVanBan_TLBM)
 
-## 1. QUY CHUẨN VĂN PHONG TRÊN GIT (COMMITS, ISSUES, PRS)
+## 1. QUY CHUẨN VĂN PHONG TRÊN GIT (COMMITS, ISSUES, PRS, REVIEWS)
 
-- **Văn phong Trung tính & Khách quan (Technical Report Style)**:
-  - Tuyệt đối **KHÔNG dùng bất kỳ từ ngữ xưng hô cá nhân nào** (không "tôi", "em", "thầy", "bạn", không "t - m").
-  - Trình bày dạng báo cáo kỹ thuật khách quan, câu cú súc tích, mạch lạc.
-  - Tuyệt đối không dùng tên dữ liệu thử nghiệm, tài khoản cá nhân, mock/seed ID cụ thể; quy chuẩn hóa về danh từ chung (`tài khoản người dùng`, `văn bản đến`, `bản ghi sự kiện`, `/api/:endpoint`).
+- **Văn phong Thực dụng & Trung tính (Technical Report Style)**:
+  - Tuyệt đối không dùng từ ngữ xưng hô cá nhân (không "tôi", "em", "thầy", "bạn", không "t - m").
+  - Thể hiện thái độ thực dụng, định hướng kỹ thuật và giải pháp; hạn chế tối đa yếu tố cảm xúc (không biểu cảm, không hoa mỹ, không khen ngợi hình thức).
+  - Loại bỏ các đại từ và cách diễn đạt mang tính trải nghiệm cá nhân (ví dụ: "mình thấy", "tôi nhận thấy", "cảm giác").
+  - Không dùng các từ ngữ cường điệu, phóng đại hoặc mang tính tuyệt đối hóa (ví dụ: "hoàn hảo", "thảm họa", "chắc chắn 100%", "cốt tử").
+  - Quy chuẩn hóa dữ liệu: không dùng tên dữ liệu thử nghiệm, tài khoản cá nhân, mock/seed ID cụ thể; dùng danh từ chung (`tài khoản người dùng`, `văn bản đến`, `bản ghi sự kiện`, `/api/:endpoint`).
+- **Quy trình Duyệt Review / Request Changes**:
+  - Mọi nội dung phản hồi, nhận xét (PR Comments), yêu cầu điều chỉnh (Request Changes) hoặc phê duyệt (Approve) bắt buộc phải soạn thảo bản nháp nội bộ trước để người phụ trách kiểm duyệt.
+  - Tuyệt đối không tự ý submit review trực tiếp lên GitHub khi chưa có sự xác nhận của người phụ trách.
 - **Commit Message**: Tuân thủ chuẩn Conventional Commits (`feat(scope): ...`, `fix(scope): ...`, `docs: ...`, `refactor: ...`), viết bằng tiếng Việt hành chính chuẩn mực hoặc tiếng Anh kỹ thuật.
 
 ---
