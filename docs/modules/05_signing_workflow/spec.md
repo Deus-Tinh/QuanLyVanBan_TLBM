@@ -9,118 +9,135 @@
 
 ---
 
-## 1. MỤC TIÊU & PHẠM VI NGHIỆP VỤ (OBJECTIVE & SCOPE)
+## 1. MỤC TIÊU & PHẠM VI NGHIỆP VỤ
 
 ### 1.1. Mục tiêu
-Xây dựng phân hệ **Trình ký (Signing Workflow)** hoàn chỉnh hỗ trợ tạo văn bản trình ký, luân chuyển hồ sơ theo quy trình phê duyệt nhiều cấp (tuần tự hoặc song song), trực quan hóa tiến trình (Visual Stepper/Timeline), thực hiện ký duyệt bằng chữ ký điện tử nội bộ kèm kiểm tra tính toàn vẹn (SHA-256 raw digest), xử lý phản hồi đa nhánh, xử lý quá hạn linh hoạt, hỗ trợ chuyển quyền khẩn cấp, và sẵn sàng khâu phát hành pháp lý ở bước cuối.
+Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân chuyển theo quy trình nhiều cấp (tuần tự hoặc song song); hiển thị tiến trình trực quan (stepper/timeline); ký duyệt bằng chữ ký điện tử nội bộ Ed25519 kèm kiểm tra toàn vẹn (SHA-256 raw digest); xử lý phản hồi hai nhánh; xử lý quá hạn không chặn luồng; ủy quyền ký khẩn cấp; và sẵn sàng khâu phát hành pháp lý ở bước cuối.
 
-### 1.2. Phạm vi chức năng (In-Scope)
-1. **Quản lý Chữ ký cá nhân trong Hồ sơ (Profile Signature Image):**
-   - Người dùng tải lên ảnh chữ ký cá nhân dạng scan/vẽ tay định dạng `.png` nền trong suốt (transparent).
-   - Lưu trữ tại `media/05_signing/signatures/` phục vụ việc hiển thị trực quan (Visual Signature Appearance).
-   - *Ghi chú kích thước:* Kích thước chuẩn `pixel x pixel` sẽ được xác định và chuẩn hóa sau.
-2. **Quản lý Mẫu quy trình trình ký (Workflow Templates):**
-   - Định nghĩa quy trình nhiều cấp, phạm vi `DEPARTMENT` hoặc `COMPANY`.
-   - Hỗ trợ chế độ chạy `TUAN_TU` (tuần tự) và `SONG_SONG` (song song).
-   - Hỗ trợ phân định vai trò trong cấp ký: **Ký nháy / Rà soát (`INITIAL`)** và **Ký chính / Quyết định (`PRIMARY`)** kèm cơ chế gating tuần tự nội bộ cấp (ký nháy xong mới mở ký chính).
-3. **Tạo trình ký, Định vị nơi ký & Cơ chế Lazy Stamping:**
-   - Khóa snapshot quy trình, chức vụ/người ký và mã hash SHA-256 của tài liệu tại thời điểm gửi.
-   - **Tọa độ hóa nơi ký:** Người tạo văn bản thực hiện thao tác trực quan chọn trang và vị trí (tọa độ X, Y, chiều rộng W, chiều cao H) cho từng người ký trên bản xem trước tài liệu.
-   - **Cơ chế Lazy Stamping & UI Overlay (Bảo toàn hash):**
-     - Trong suốt quá trình duyệt nội bộ, **file PDF gốc giữ nguyên bất biến (không sửa raw bytes)** để đảm bảo tất cả các cấp ký trên cùng một mã SHA-256 hash.
-     - Trên giao diện React, ảnh chữ ký từ Profile được render dạng lớp phủ (CSS/Canvas Overlay) đè lên bản xem trước của PDF theo tọa độ.
-     - Chỉ khi attempt đạt `COMPLETED`, backend mới chạy tác vụ phẳng hóa PDF (`PdfStampingService`) dán toàn bộ ảnh chữ ký vào file hoàn tất trước khi chuyển sang khâu ký số CA pháp lý.
-   - Thiết lập hạn xử lý (`final_due_at`) và SLA từng cấp.
-4. **Danh sách văn bản trình ký (List & Filter):**
-   - Tabs lọc: *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Toàn bộ hồ sơ*.
-   - Bộ lọc chi tiết: Theo phòng ban, trạng thái xử lý, độ khẩn, khoảng thời gian.
-5. **Chi tiết văn bản & Sơ đồ luồng ký (Detail & Visual Flow Graph):**
-   - Split view: Cột trái hiển thị Stepper trực quan tiến độ ký; cột phải hiển thị PDF viewer.
-6. **Thao tác ký duyệt & Xử lý phản hồi đa nhánh:**
-   - **Nhánh 1 (Lỗi nhỏ / Góp ý - Non-blocking):** Duyệt kèm ghi chú bảo lưu (`sign_note`). Ký duyệt bình thường, không chặn luồng, lưu vết audit log cho người tạo và cấp sau.
-   - **Nhánh 2 (Lỗi lớn / Chỉnh sửa - Blocking):** Kích hoạt `request_changes` tạm dừng luồng, mở thread trao đổi 2 chiều (`signing_change_thread`). Sau khi chốt phương án, hủy/đóng attempt cũ và gửi lại toàn bộ bằng attempt mới trên bản hash mới.
-7. **Xử lý quá hạn & Chuyển quyền khẩn cấp:**
-   - Quá hạn không tự hủy/tự reject; người ký vẫn được phép ký muộn và ghi nhận metadata `is_late: true`, `late_duration_seconds`.
-   - Chuyển quyền ký khẩn cấp (`delegate`): Cho phép chuyển slot ký sang nhân sự có thẩm quyền tương đương khi có sự cố/vắng mặt kèm lý do bắt buộc và audit log.
-8. **Bổ sung cuối — Khâu phát hành pháp lý (Final Legal Issuance Phase):**
-   - Sau khi hoàn tất phê duyệt nội bộ (`COMPLETED`), kích hoạt `LegalSignerAdapter` để ký số cá nhân lãnh đạo (Cloud CA / VNeID CCCD qua Smart Card/NFC) + Đóng con dấu số pháp nhân Doanh nghiệp và Timestamp TSA theo chuẩn PAdES lên file PDF.
-   - **LƯU Ý PHÁP LÝ (BẮT BUỘC):** Người chịu trách nhiệm pháp lý cao nhất (Người đại diện pháp luật / Lãnh đạo có thẩm quyền ban hành) BẮT BUỘC phải sở hữu Chứng thư số (Digital Certificate) được cấp bởi Tổ chức cung cấp dịch vụ chứng thực chữ ký số (CA) có giá trị pháp lý theo quy định của pháp luật.
-
----
-
-## 2. KIẾN TRÚC MÔ HÌNH DỮ LIỆU (DATABASE SCHEMA)
-
-Chi tiết trường và constraint chuẩn hóa được định nghĩa tại [`signing-backend-plan.md`](signing-backend-plan.md#5-thiết-kế-dữ-liệu):
-
-- `UserProfile` (app `accounts`): Bổ sung `signature_image` (ImageField, PNG trong suốt, max 2MB).
-- `signing_process`: Định nghĩa quy trình mẫu và phiên bản (`DRAFT | ACTIVE | INACTIVE`).
-- `signing_process_step`: Cấp ký trong quy trình, SLA giờ.
-- `signing_process_step_signer`: Người ký mẫu, `signer_role` (`INITIAL | PRIMARY`), `is_blocking`.
-- `signing_request`: Hồ sơ trình ký, lifecycle tổng thể, liên kết văn bản, hash snapshot.
-- `signing_attempt`: Lần trình ký bất biến (`WAITING_SIGN | CHANGE_REQUESTED | COMPLETED | REJECTED | CANCELLED`).
-- `signing_request_step`: Snapshot cấp ký của attempt (`LOCKED | PENDING | COMPLETED | BLOCKED`).
-- `signing_request_step_signer`: Snapshot người ký, trạng thái slot, hỗ trợ ủy quyền khẩn cấp (`delegated_from_user_id`, `delegation_reason`, `delegated_at`), và **tọa độ chữ ký trực quan**:
-  - `page_number`: PositiveIntegerField (trang đặt chữ ký).
-  - `coord_x`, `coord_y`: FloatField (tọa độ X, Y tính theo tỷ lệ % hoặc PDF points).
-  - `box_width`, `box_height`: FloatField (kích thước khung chữ ký).
-- `signing_key`: Khóa công khai Ed25519 nội bộ của người dùng (không lưu private key ở backend).
-- `signing_signature`: Bản ghi chữ ký bất biến, chứa `signature_bytes`, `sign_note`, `is_late`, `late_duration_seconds`.
-- `signing_manifest`: Bản kê pháp lý canonical JSON và `manifest_hash` khóa trạng thái `FINAL`.
-- `signing_change_thread` & `signing_change_message`: Thread thảo luận hai chiều giải quyết yêu cầu sửa đổi.
-- `signing_audit_log`: Nhật ký kiểm toán append-only ghi nhận mọi hành vi ký, từ chối, ủy quyền, hủy.
+### 1.2. Phạm vi chức năng
+1. **Ảnh chữ ký cá nhân (phụ thuộc Nhóm 7):**
+   - Người dùng tải lên ảnh chữ ký PNG nền trong suốt, tối đa 2MB, trong hồ sơ cá nhân (field `anh_chu_ky`, sheet CBNV).
+   - Phân hệ Trình ký chỉ đọc ảnh qua contract do Nhóm 7 cung cấp.
+   - *Kích thước pixel chuẩn:* chưa chốt, xác định khi làm stamping.
+2. **Mẫu quy trình trình ký:**
+   - Quy trình nhiều cấp, trạng thái `NHAP -> HOAT_DONG -> NGUNG`, phạm vi `PHONG_BAN` hoặc `CONG_TY`.
+   - Cách thức ký `TUAN_TU` hoặc `SONG_SONG`, áp dụng cho toàn yêu cầu.
+   - Vai trò trong cấp (`vai_tro_ky`): **Ký nháy (`KY_NHAY`)** và **Ký chính (`KY_CHINH`)**. Nếu có ký nháy chặn (`chan_ky_chinh`), ký chính chỉ mở khi mọi ký nháy trong cấp đã ký.
+   - Quy trình đã kích hoạt không sửa trực tiếp; thay đổi bằng nhân bản phiên bản mới.
+3. **Tạo trình ký, định vị nơi ký và Lazy Stamping:**
+   - Khi gửi, khóa snapshot quy trình, người ký (tài khoản, tên, chức vụ) và mã băm SHA-256 của tài liệu vào lượt trình (`signing_attempt`).
+   - **Định vị nơi ký:** người tạo kéo-thả khung ký cho từng người ký trên bản xem trước: `trang_ky`, `toa_do_x`, `toa_do_y`, `chieu_rong_khung`, `chieu_cao_khung`.
+   - **Lazy Stamping và lớp phủ giao diện:**
+     - Trong suốt luồng duyệt nội bộ, **tệp PDF gốc không bị sửa raw bytes**; mọi người ký ký trên cùng một mã băm.
+     - Giao diện React hiển thị ảnh chữ ký như lớp phủ CSS/Canvas trên bản xem trước theo tọa độ.
+     - Khi ký, backend chỉ lưu snapshot ảnh chữ ký vào bản ghi chữ ký, không sửa tệp.
+     - Chỉ khi lượt trình `HOAN_THANH`, `PdfStampingService` dán toàn bộ ảnh chữ ký một lần và sinh tệp hoàn tất (`vi_tri_tep_hoan_tat`), làm đầu vào cho khâu phát hành pháp lý.
+   - Thiết lập hạn chót (`han_chot`) và số giờ xử lý từng cấp (`so_gio_xu_ly`).
+4. **Danh sách hồ sơ trình ký:**
+   - Tabs: *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Toàn bộ hồ sơ*.
+   - Bộ lọc: phòng ban, trạng thái, mức độ, khoảng thời gian.
+5. **Chi tiết hồ sơ và sơ đồ luồng ký:**
+   - Split view: cột trái là stepper tiến độ ký; cột phải là PDF viewer có lớp phủ khung ký.
+6. **Ký duyệt và xử lý phản hồi hai nhánh:**
+   - **Nhánh 1 — Lỗi nhỏ, không chặn luồng:** ký duyệt kèm `ghi_chu_ky`; luồng tiếp tục; ghi chú hiển thị cho người tạo và các cấp sau.
+   - **Nhánh 2 — Lỗi lớn, chặn luồng:** `yeu_cau_sua` kèm lý do; lượt trình chuyển `YEU_CAU_SUA`, các cấp đang mở `TAM_DUNG`; mở thread trao đổi hai chiều (`signing_change_thread`). Khi thống nhất, người tạo tải bản mới, thread `DA_GIAI_QUYET`, hệ thống tạo lượt trình mới để ký lại toàn bộ. Lượt cũ giữ nguyên `YEU_CAU_SUA` làm lịch sử.
+   - Từ chối (`tu_choi`) bắt buộc lý do; xem xét lại (`xem_xet_lai`) tạo lượt trình mới.
+   - Thu hồi chữ ký (`thu_hoi`) chỉ trong `SONG_SONG` và trước khi lượt trình hoàn thành; chữ ký cũ giữ nguyên làm bằng chứng.
+7. **Quá hạn và ủy quyền khẩn cấp:**
+   - Quá hạn không tự hủy, không tự từ chối; người ký vẫn ký muộn được và hệ thống ghi `ky_tre_han = true`, `so_giay_tre`.
+   - Ủy quyền khẩn cấp (`uy_quyen`): chuyển người ký đang `CHO_KY` sang nhân sự có thẩm quyền tương đương, lý do bắt buộc (`ly_do_uy_quyen`), có nhật ký; không ủy quyền cho người đã có trong cùng cấp.
+8. **Khâu phát hành pháp lý (bước bổ sung cuối):**
+   - Sau khi lượt trình `HOAN_THANH` và đã có tệp hoàn tất, `LegalSignerAdapter` thực hiện ký số cá nhân lãnh đạo (Cloud CA / HSM / VNeID CCCD qua NFC/đầu đọc) và đóng con dấu số doanh nghiệp kèm dấu thời gian TSA theo chuẩn PAdES.
+   - **LƯU Ý PHÁP LÝ (BẮT BUỘC):** Người chịu trách nhiệm pháp lý cao nhất (người đại diện theo pháp luật / lãnh đạo có thẩm quyền ban hành) bắt buộc phải có Chứng thư số X.509 do tổ chức cung cấp dịch vụ chứng thực chữ ký số (CA) được cấp phép.
 
 ---
 
-## 3. THIẾT KẾ RESTFUL API
+## 2. MÔ HÌNH DỮ LIỆU
+
+Chi tiết field, kiểu dữ liệu và ràng buộc tại [`signing-backend-plan.md` mục 5](signing-backend-plan.md#5-thiết-kế-dữ-liệu). Tên field dùng tiếng Việt, trừ `id`, `create_by`, `created_at`, `update_by`, `update_at`.
+
+| Bảng | Vai trò | Trạng thái |
+| :--- | :--- | :--- |
+| `signing_process` | Quy trình mẫu có phiên bản | `NHAP`, `HOAT_DONG`, `NGUNG` |
+| `signing_process_step` | Cấp ký trong quy trình, số giờ xử lý | — |
+| `signing_process_step_signer` | Người ký cấu hình sẵn (người ký hoặc chức vụ), `vai_tro_ky`, `chan_ky_chinh` | — |
+| `signing_request` | Hồ sơ trình ký, vòng đời tổng | `NHAP`, `CHO_KY`, `HOAN_THANH`, `TU_CHOI`, `HUY` |
+| `signing_attempt` | Lượt trình bất biến, nguồn sự thật của mã băm, tệp hoàn tất | `NHAP`, `CHO_KY`, `YEU_CAU_SUA`, `HOAN_THANH`, `TU_CHOI`, `HUY` |
+| `signing_request_step` | Snapshot cấp ký của lượt trình | `CHUA_MO`, `DANG_KY`, `HOAN_THANH`, `TAM_DUNG` |
+| `signing_request_step_signer` | Snapshot người ký, tọa độ ký, ủy quyền, `chu_ky_hien_hanh` | `CHO_KY`, `DA_KY`, `TU_CHOI`, `YEU_CAU_SUA` |
+| `signing_key` | Khóa công khai Ed25519 (không lưu private key) | `CHO_KICH_HOAT`, `HOAT_DONG`, `DA_XOAY_VONG`, `THU_HOI`, `HET_HAN` |
+| `signing_signature` | Chữ ký bất biến: `chu_ky_so`, `ghi_chu_ky`, `ky_tre_han`, snapshot ảnh chữ ký | `CHUA_XAC_MINH`, `HOP_LE`, `KHONG_HOP_LE` |
+| `signing_manifest` | Bằng chứng tổng hợp chuẩn hóa, `ma_bam_bang_chung` | `NHAP`, `DA_CHOT` |
+| `signing_change_thread` / `signing_change_message` | Trao đổi hai chiều khi yêu cầu sửa | `DANG_MO`, `DA_GIAI_QUYET` |
+| `signing_audit_log` | Nhật ký chỉ ghi thêm, gồm cả sự kiện quy trình và khóa ký | — |
+| `signing_notification` | Thông báo in-app/email, kiêm outbox | `CHO_GUI`, `DA_GUI`, `THAT_BAI` |
+
+---
+
+## 3. RESTFUL API
+
+Prefix `/api/v1/`. Payload dùng đúng tên field CSDL. Hành động chuyển trạng thái bắt buộc header `Idempotency-Key`.
 
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 | :--- | :--- | :--- | :--- |
-| `GET/PATCH` | `/api/v1/accounts/profile/signature/` | Xem / Cập nhật ảnh chữ ký cá nhân (.png) | Chính chủ |
-| `GET` | `/api/v1/signing/processes/` | Danh sách quy trình khả dụng | Authenticated |
-| `POST` | `/api/v1/signing/processes/` | Tạo quy trình mới (Draft) | Quản trị / Lãnh đạo |
-| `POST` | `/api/v1/signing/processes/{id}/activate/` | Kích hoạt quy trình | Quản trị / Lãnh đạo |
-| `GET` | `/api/v1/signing/requests/` | Danh sách hồ sơ trình ký (phân trang, lọc tab) | Authenticated |
-| `POST` | `/api/v1/signing/requests/` | Tạo hồ sơ trình ký mới kèm tọa độ chữ ký | Authenticated |
-| `GET` | `/api/v1/signing/requests/{id}/` | Chi tiết hồ sơ, tiến trình và quyền xử lý | Người liên quan / Admin |
-| `POST` | `/api/v1/signing/requests/{id}/submit/` | Khóa snapshot và gửi trình ký (tạo attempt 1) | Người tạo hồ sơ |
-| `POST` | `/api/v1/signing/requests/{id}/cancel/` | Hủy hồ sơ trình ký | Người tạo / Admin |
-| `POST` | `/api/v1/signing/attempts/{id}/sign/` | Ký duyệt (áp ảnh profile vào tọa độ, verify Ed25519) | Người được chỉ định tại bước |
-| `POST` | `/api/v1/signing/attempts/{id}/reject/` | Từ chối hồ sơ (lý do bắt buộc) | Người được chỉ định tại bước |
-| `POST` | `/api/v1/signing/attempts/{id}/request-changes/` | Yêu cầu sửa đổi, mở thread thảo luận | Người được chỉ định tại bước |
-| `POST` | `/api/v1/signing/attempts/{id}/delegate/` | Chuyển quyền ký khẩn cấp (lý do bắt buộc) | Signer hiện tại / Admin |
-| `POST` | `/api/v1/signing/requests/{id}/dispatch-legal/` | Bổ sung cuối: Ký số CA/CCCD và đóng dấu PAdES | Lãnh đạo / Văn thư |
-| `GET` | `/api/v1/signing/attempts/{id}/manifest/` | Lấy manifest canonical và kiểm tra tính toàn vẹn | Authenticated |
+| `GET` | `/signing/processes/` | Danh sách quy trình theo phạm vi/quyền | `xem_trinh_ky` |
+| `POST` | `/signing/processes/` | Tạo quy trình `NHAP` | `quan_ly_quy_trinh_ky` |
+| `GET` | `/signing/processes/{id}/` | Chi tiết quy trình, cấp, người ký | `xem_trinh_ky` |
+| `PATCH` | `/signing/processes/{id}/` | Sửa quy trình (chỉ khi `NHAP`) | `quan_ly_quy_trinh_ky` |
+| `POST` | `/signing/processes/{id}/kich-hoat/` | Kích hoạt quy trình | `quan_ly_quy_trinh_ky` |
+| `POST` | `/signing/processes/{id}/ngung/` | Ngừng quy trình | `quan_ly_quy_trinh_ky` |
+| `POST` | `/signing/processes/{id}/nhan-ban/` | Nhân bản thành phiên bản mới | `quan_ly_quy_trinh_ky` |
+| `GET` | `/signing/requests/` | Danh sách hồ sơ (phân trang, lọc tab) | `xem_trinh_ky` |
+| `POST` | `/signing/requests/` | Tạo hồ sơ `NHAP` kèm vị trí ký | `tao_trinh_ky` |
+| `GET` | `/signing/requests/{id}/` | Chi tiết hồ sơ, tiến trình, quyền xử lý | Người liên quan / Quản trị |
+| `POST` | `/signing/requests/{id}/gui/` | Khóa snapshot, tạo lượt trình | `gui_trinh_ky` (người tạo) |
+| `POST` | `/signing/requests/{id}/huy/` | Hủy hồ sơ | `huy_trinh_ky` (người tạo / quản trị) |
+| `POST` | `/signing/requests/{id}/xem-xet-lai/` | Tạo lượt trình mới sau từ chối | `gui_trinh_ky` |
+| `POST` | `/signing/requests/{id}/phat-hanh/` | Phát hành pháp lý: ký số CA/CCCD, đóng dấu PAdES | Lãnh đạo / Văn thư |
+| `POST` | `/signing/attempts/{id}/ky/` | Ký duyệt: verify Ed25519, snapshot ảnh chữ ký, không sửa tệp | `ky_trinh_ky` (người được chỉ định) |
+| `POST` | `/signing/attempts/{id}/tu-choi/` | Từ chối (lý do bắt buộc) | `ky_trinh_ky` |
+| `POST` | `/signing/attempts/{id}/yeu-cau-sua/` | Yêu cầu sửa, mở thread | `ky_trinh_ky` |
+| `POST` | `/signing/attempts/{id}/uy-quyen/` | Ủy quyền ký khẩn cấp (lý do bắt buộc) | `uy_quyen_trinh_ky` (người ký / quản trị) |
+| `POST` | `/signing/attempts/{id}/thu-hoi/` | Thu hồi chữ ký (chỉ `SONG_SONG`) | Chính người đã ký |
+| `GET/POST` | `/signing/change-threads/{id}/messages/` | Trao đổi trong thread | Người tạo / người yêu cầu sửa |
+| `POST` | `/signing/change-threads/{id}/giai-quyet/` | Tải bản mới, đóng thread, tạo lượt trình mới | Người tạo hồ sơ |
+| `POST` | `/signing/keys/challenge/` | Sinh challenge đăng ký khóa | Authenticated |
+| `POST` | `/signing/keys/verify/` | Verify proof-of-possession, kích hoạt khóa | Authenticated |
+| `POST` | `/signing/keys/{id}/xoay-vong/` | Xoay vòng khóa | Chủ khóa |
+| `POST` | `/signing/keys/{id}/thu-hoi/` | Thu hồi khóa | Chủ khóa / Quản trị |
+| `GET` | `/signing/requests/{id}/audit/` | Nhật ký hồ sơ | `xem_nhat_ky_trinh_ky` |
+| `GET` | `/signing/attempts/{id}/manifest/` | Bằng chứng tổng hợp và trạng thái xác minh | `xem_trinh_ky` |
+
+API ảnh chữ ký cá nhân thuộc Nhóm 7, không nằm trong phân hệ này.
 
 ---
 
-## 4. QUY CHUẨN GIAO DIỆN (UI/UX SPECIFICATION)
+## 4. QUY CHUẨN GIAO DIỆN (UI/UX)
 
-1. **Trang Profile Cá nhân (`ProfileSignatureSection`):**
-   - Khu vực tải lên ảnh chữ ký cá nhân dạng PNG (nền trong suốt).
-   - Trình xem trước ảnh chữ ký trên nền tài liệu mô phỏng.
-2. **Trang Danh sách (`SigningListPage`):**
-   - KPI Summary Cards: 3 thẻ đếm (*Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Đã hoàn tất*).
-   - Bộ lọc: Phòng ban, độ khẩn, trạng thái; ô tìm kiếm trích yếu / mã hồ sơ.
-   - Bảng dữ liệu: Mã, trích yếu, người gửi, ngày gửi, bước hiện tại, trạng thái (badge token CSS), cảnh báo quá hạn.
-3. **Trang Tạo mới (`SigningCreatePage`):**
-   - Chọn mẫu quy trình, chọn chế độ ký (`TUAN_TU` / `SONG_SONG`).
-   - Đính kèm tệp tài liệu, kiểm tra client-side và tính trước hash SHA-256.
-   - **Trình định vị chữ ký trực quan (Visual Placement Tool):** Cho phép kéo-thả khung chữ ký của từng người ký (Ký nháy / Ký chính) vào đúng trang và vị trí mong muốn trên tài liệu PDF.
-4. **Trang Chi tiết & Sơ đồ Ký (`SigningDetailPage`):**
-   - **Split View:** Cột trái hiển thị Visual Stepper (Xanh lá = Đã ký, Vàng = Đang chờ, Đỏ = Trả về, Cam = Quá hạn). Cột phải hiển thị inline PDF viewer có hiển thị sẵn các khung chữ ký đã được định vị.
-   - **Khung hành động:** Nút *Ký duyệt* (khi ký, hệ thống tự động gắn ảnh chữ ký profile vào tọa độ đã định sẵn), nút *Yêu cầu chỉnh sửa*, nút *Ủy quyền khẩn cấp*, nút *Từ chối*.
-   - Khung phát hành pháp lý: Nút *Phát hành văn bản* hiển thị cho Lãnh đạo/Văn thư khi hồ sơ đạt trạng thái đã duyệt nội bộ hoàn tất.
+1. **Khu vực ảnh chữ ký trong hồ sơ cá nhân:** thuộc Nhóm 7. Phân hệ Trình ký chỉ hiển thị cảnh báo và liên kết tới hồ sơ khi người ký chưa có ảnh chữ ký.
+2. **Trang danh sách (`SigningListPage`):**
+   - 3 thẻ đếm: *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Đã hoàn tất*.
+   - Bộ lọc: phòng ban, mức độ, trạng thái; ô tìm kiếm trích yếu / mã hồ sơ.
+   - Bảng dữ liệu: mã, trích yếu, người gửi, ngày gửi, cấp hiện tại, trạng thái (badge dùng token CSS), cảnh báo quá hạn.
+3. **Trang tạo mới (`SigningCreatePage`):**
+   - Chọn quy trình, chọn cách thức ký (`TUAN_TU` / `SONG_SONG`), nhập hạn chót.
+   - Đính kèm tài liệu, kiểm tra phía client và tính trước mã băm SHA-256.
+   - **Công cụ định vị chữ ký:** kéo-thả khung ký của từng người ký (ký nháy / ký chính) vào đúng trang và vị trí trên PDF.
+4. **Trang chi tiết (`SigningDetailPage`):**
+   - **Split view:** cột trái là stepper (xanh lá = đã ký, vàng = đang chờ, đỏ = trả về, cam = quá hạn); cột phải là PDF viewer hiển thị lớp phủ khung ký và ảnh chữ ký của người đã ký.
+   - **Khung hành động:** *Ký duyệt* (kèm ô ghi chú tùy chọn), *Yêu cầu chỉnh sửa*, *Ủy quyền khẩn cấp*, *Từ chối*; *Thu hồi chữ ký* khi `SONG_SONG`.
+   - **Phát hành pháp lý:** nút *Phát hành văn bản* chỉ hiển thị cho lãnh đạo/văn thư khi lượt trình `HOAN_THANH` và đã có tệp hoàn tất.
 
 ---
 
 ## 5. TIÊU CHUẨN KỸ THUẬT & INVARIANTS
 
-- **i18n:** 100% text UI sử dụng `t('signing.xxx')`, khai báo đầy đủ cả 2 nhánh `vi` và `en` trong `frontend/src/i18n/translations.js`.
-- **Design Tokens:** Dùng 100% biến từ `src/styles/global.css` (`var(--color-...)`, `var(--font-...)`). Tuyệt đối không hardcode mã hex/px.
-- **Tính toàn vẹn dữ liệu:** Không lưu private key trên backend. Verify chữ ký đồng bộ trước khi đổi trạng thái slot. Hash tài liệu và manifest là bất biến.
-- **Tọa độ hóa chữ ký:** Hệ tọa độ lưu trữ độc lập với độ phân giải màn hình (dùng chuẩn % hoặc PDF points).
-- **Bảo toàn mã băm (Lazy Stamping Invariant):** Không can thiệp sửa raw bytes của file PDF trong quá trình ký duyệt nội bộ để tránh làm thay đổi SHA-256 hash. Chỉ dán ảnh chữ ký một lần duy nhất khi attempt đạt `COMPLETED`.
-- **Ranh giới pháp lý:** Người ký phê duyệt phát hành pháp lý bắt buộc phải có Chứng thư số CA hợp pháp theo luật định.
+- **i18n:** 100% text UI dùng `t('signing.xxx')`, khai báo đủ hai nhánh `vi` và `en` trong `frontend/src/i18n/translations.js`.
+- **Design Tokens:** chỉ dùng biến từ `src/styles/global.css` (`var(--color-...)`, `var(--font-...)`); không hardcode mã hex/px.
+- **Toàn vẹn dữ liệu:** không lưu private key trên backend; verify chữ ký đồng bộ trước khi đổi trạng thái người ký; mã băm của lượt trình, chữ ký và bằng chứng `DA_CHOT` là bất biến; không cascade xóa lịch sử.
+- **Tọa độ chữ ký:** lưu dạng chuẩn hóa (tỷ lệ % hoặc điểm PDF), độc lập độ phân giải màn hình.
+- **Lazy Stamping:** không sửa raw bytes tệp PDF trong luồng nội bộ; chỉ dán ảnh chữ ký một lần khi lượt trình `HOAN_THANH`, dùng snapshot ảnh tại thời điểm ký.
+- **Ranh giới pháp lý:** người ký phát hành pháp lý bắt buộc có Chứng thư số CA hợp pháp.
 - **Technical Gates:**
   - `python backend/manage.py check` (Pass)
   - `pytest` hoặc unit test phân hệ signing (Pass 100%)

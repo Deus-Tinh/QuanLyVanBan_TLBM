@@ -2,547 +2,744 @@
 
 ## 1. Mục tiêu và ranh giới
 
-### Mục tiêu
+### 1.1. Mục tiêu
 
-Xây dựng backend Django REST Framework cho nghiệp vụ trình ký văn bản, trong đó người tạo chọn một quy trình đã được kích hoạt; quy trình có thể chạy theo cấp tuần tự hoặc song song; mỗi người ký được chọn rõ ràng và mọi người ký được chỉ định đều phải hoàn tất chữ ký.
+Xây dựng backend Django REST Framework cho nghiệp vụ trình ký văn bản:
 
-### Phạm vi MVP
+- Người tạo chọn một quy trình đang `HOAT_DONG` để trình ký.
+- Yêu cầu chạy theo một trong hai cách thức: `TUAN_TU` (mở từng cấp) hoặc `SONG_SONG` (mở tất cả cấp cùng lúc).
+- Người ký được xác định cụ thể; mọi người ký được chỉ định đều phải ký thì yêu cầu mới hoàn thành.
 
-- Quản lý quy trình trình ký và phiên bản quy trình.
+### 1.2. Phạm vi MVP
+
+- Quản lý quy trình trình ký có phiên bản.
 - Chọn quy trình khi tạo yêu cầu trình ký.
-- Chạy hai chế độ `TUAN_TU` và `SONG_SONG`.
-- Chọn người ký theo tài khoản và/hoặc chức vụ; lưu snapshot tại thời điểm gửi.
-- Hỗ trợ phân định vai trò trong cấp ký: ký nháy/rà soát (`INITIAL`) và ký chính/phê duyệt (`PRIMARY`) kèm gating tuần tự nội bộ cấp.
-- Chữ ký số nội bộ bằng Ed25519, không nhận hoặc lưu private key trên backend.
-- Khóa nội dung văn bản bằng `version` và SHA-256 tại thời điểm gửi.
-- Xử lý phản hồi đa nhánh: duyệt kèm ghi chú bảo lưu không chặn luồng (`sign_note`) cho lỗi nhỏ; yêu cầu chỉnh sửa (`request_changes`) có thread giao tiếp hai chiều cho lỗi lớn, hủy/đóng attempt cũ và gửi lại toàn bộ bằng attempt mới sau khi chốt thay đổi.
-- Xử lý quá hạn linh hoạt: deadline không đóng attempt, quá hạn vẫn được phép ký và ghi nhận metadata trễ hạn.
-- Cơ chế chuyển quyền ký khẩn cấp (emergency transfer / delegation) khi có sự cố hoặc quá hạn nghiêm trọng.
-- Audit log, thông báo in-app/email qua transactional outbox và Celery.
-- Tích hợp lưu trữ qua adapter, ưu tiên filesystem được mount và cấu hình bằng biến môi trường.
+- Hai cách thức ký `TUAN_TU` và `SONG_SONG`, áp dụng cho toàn yêu cầu.
+- Người ký cấu hình theo tài khoản hoặc theo chức vụ; chốt snapshot người ký tại thời điểm gửi.
+- Hai vai trò trong một cấp: ký nháy (`KY_NHAY`) và ký chính (`KY_CHINH`), có cơ chế chặn tuần tự trong cấp.
+- Chữ ký số nội bộ Ed25519; backend không nhận và không lưu private key.
+- Khóa nội dung văn bản bằng phiên bản và mã băm SHA-256 tại thời điểm gửi.
+- Phản hồi hai nhánh:
+  - Lỗi nhỏ: ký duyệt kèm ghi chú (`ghi_chu_ky`), không chặn luồng.
+  - Lỗi lớn: yêu cầu chỉnh sửa, mở luồng trao đổi hai chiều, sau khi chốt thì gửi lại toàn bộ bằng một lượt trình mới.
+- Quá hạn không đóng luồng: vẫn cho ký muộn và ghi nhận thông tin trễ hạn.
+- Ủy quyền ký khẩn cấp khi người ký vắng mặt hoặc quá hạn nghiêm trọng.
+- Nhật ký trình ký; thông báo in-app/email qua Celery, bảng thông báo đóng vai trò outbox.
+- Lưu trữ tệp qua adapter; MVP dùng thư mục filesystem được mount, cấu hình bằng biến môi trường.
+- Phẳng hóa PDF (dán ảnh chữ ký) một lần duy nhất khi lượt trình `HOAN_THANH`.
 
-### Không thuộc MVP
+### 1.3. Ngoài phạm vi MVP
 
-- Triển khai production, Docker/Compose và cấu hình hạ tầng cụ thể.
-- Ký quorum hoặc quy tắc “một trong nhiều người ký”.
+- Triển khai production, Docker/Compose, cấu hình hạ tầng.
+- Ký theo quorum hoặc "một trong nhiều người ký".
 - Tự động từ chối hoặc tự động hủy khi quá hạn.
-- Chế độ hybrid chọn TUAN_TU/SONG_SONG riêng cho từng cấp; MVP chọn một chế độ cho toàn bộ request.
-- Lưu bản private key đã mã hóa trên backend để đồng bộ đa thiết bị; cần một thiết kế custody/recovery riêng được duyệt.
-- Rollback runtime về cấp trước trong cùng một attempt.
+- Chọn cách thức ký riêng cho từng cấp (hybrid).
+- Lưu private key (kể cả dạng mã hóa) trên backend để đồng bộ đa thiết bị; cần thiết kế custody/recovery riêng.
+- Quay lui về cấp trước trong cùng một lượt trình.
 
-### Bổ sung cuối: Khâu phát hành pháp lý (Final Legal Issuance Phase)
+### 1.4. Khâu phát hành pháp lý (bước bổ sung cuối)
 
-> **Lưu ý chi tiết:** Đây là bước bổ sung cuối cùng (Final Issuance Step) sau khi toàn bộ quy trình phê duyệt nội bộ hoàn tất.
-> **LƯU Ý PHÁP LÝ (BẮT BUỘC):** Người chịu trách nhiệm pháp lý cao nhất (Người đại diện pháp luật / Lãnh đạo có thẩm quyền ban hành văn bản) **BẮT BUỘC phải sở hữu Chứng thư số (Digital Certificate X.509)** do Tổ chức cung cấp dịch vụ chứng thực chữ ký số (CA) được Nhà nước cấp phép, để chữ ký trên văn bản phát hành có đầy đủ giá trị pháp lý trước pháp luật và đối tác bên ngoài.
+Đây là bước sau khi toàn bộ luồng duyệt nội bộ đã hoàn thành.
 
-Hệ thống phân tách rạch ròi 2 giai đoạn:
-1. **Giai đoạn 1 (Duyệt nội bộ - Internal Workflow):** Sử dụng toàn bộ quy trình tuần tự/song song, Ed25519, snapshot và transactional audit log của hệ thống hiện tại. Mục tiêu: kiểm soát quy trình, chống tráo văn bản, chống chối bỏ nội bộ và tối ưu chi phí vận hành.
-2. **Giai đoạn 2 (Phát hành pháp lý - Legal Issuance):** Sau khi attempt đạt `COMPLETED` ở khâu duyệt nội bộ, hệ thống mở bước phát hành (Dispatch):
-   - **Ký số cá nhân lãnh đạo:** Tích hợp `LegalSignerAdapter` kết nối với dịch vụ Ký số từ xa (Cloud CA / HSM / VNeID Remote Signing) hoặc đọc thẻ CCCD gắn chip (qua NFC/đầu đọc) để nhúng Chứng thư số X.509 của Người đại diện pháp luật / Lãnh đạo có thẩm quyền.
-   - **Đóng dấu số pháp nhân:** Bộ phận Văn thư (hoặc hệ thống tự động) cấp số công văn, đóng Con dấu số Doanh nghiệp (Corporate Digital Seal) kèm Dấu thời gian (Timestamp TSA) từ cơ quan có thẩm quyền trực tiếp lên file PDF theo chuẩn PAdES. Văn bản đầu ra đạt đầy đủ giá trị pháp lý tương đương văn bản giấy đóng dấu mộc đỏ.
+> **LƯU Ý PHÁP LÝ (BẮT BUỘC):** Người chịu trách nhiệm pháp lý cao nhất (người đại diện theo pháp luật hoặc lãnh đạo có thẩm quyền ban hành) **bắt buộc phải có Chứng thư số X.509** do tổ chức cung cấp dịch vụ chứng thực chữ ký số (CA) được Nhà nước cấp phép. Chữ ký Ed25519 nội bộ không thay thế được chữ ký số có giá trị pháp lý với bên ngoài.
+
+Hệ thống tách hai giai đoạn:
+
+1. **Giai đoạn 1 — Duyệt nội bộ:** toàn bộ luồng tuần tự/song song, Ed25519, snapshot và nhật ký của module này. Mục đích: kiểm soát quy trình, chống tráo văn bản, chống chối bỏ trong nội bộ, giảm chi phí vận hành.
+2. **Giai đoạn 2 — Phát hành pháp lý:** chỉ mở khi lượt trình đã `HOAN_THANH` và đã có tệp PDF hoàn tất (mục 3.2):
+   - **Ký số cá nhân lãnh đạo:** `LegalSignerAdapter` kết nối dịch vụ ký số từ xa (Cloud CA / HSM / VNeID Remote Signing) hoặc đọc CCCD gắn chip (NFC/đầu đọc) để nhúng chứng thư số X.509.
+   - **Đóng dấu số pháp nhân:** Văn thư (hoặc hệ thống) cấp số văn bản, đóng con dấu số doanh nghiệp kèm dấu thời gian TSA lên PDF theo chuẩn PAdES.
+   - MVP chỉ định nghĩa interface adapter; tích hợp nhà cung cấp cụ thể làm sau.
 
 ## 2. Bằng chứng và giả định
 
 - `[FACT]` Nhánh triển khai của Nhóm 5 là `5_signing_workflow`.
-- `[FACT]` Workbook hiện có mô tả mức nghiệp vụ cao cho các bảng `signing_request`, `signing_process` và các bảng cấp ký; chưa có backend Django hoàn chỉnh để làm nguồn sự thật triển khai.
-- `[ĐỀ XUẤT]` Backend dùng Django REST Framework, PostgreSQL, Celery và Redis.
-- `[ĐỀ XUẤT]` Dùng Django `AUTH_USER_MODEL`; các khóa ngoại người dùng không tự tạo bảng người dùng mới.
-- `[CHƯA XÁC MINH]` Tên/model của bảng văn bản hiện có và API lưu trữ tài liệu cần được chốt khi backend tài liệu được cung cấp.
+- `[FACT]` Chưa có backend Django hoàn chỉnh trên nhánh để làm nguồn sự thật triển khai.
+- `[ĐỀ XUẤT]` Stack: Django REST Framework, PostgreSQL, Celery, Redis.
+- `[ĐỀ XUẤT]` Mọi FK người dùng trỏ tới `AUTH_USER_MODEL`; không tạo bảng người dùng mới.
+- `[CHƯA XÁC MINH]` Bảng văn bản là một bảng `documents_vanban` hay ba bảng đến/đi/mật (đang nhờ Nhóm 2 thống nhất).
+- `[CHƯA XÁC MINH]` Tên model đơn vị/phòng ban, chức vụ và API lưu trữ tài liệu hiện có.
 
-## 3. Quyết định nghiệp vụ và bất biến
+## 3. Quy tắc nghiệp vụ và bất biến
 
 ### 3.1. Quy trình
 
-- Quy trình có trạng thái `DRAFT -> ACTIVE -> INACTIVE`.
-- Chỉ quy trình `ACTIVE` mới được chọn khi tạo yêu cầu.
-- Người tạo quy trình hoặc tài khoản quản trị/ban/phòng ký có thể kích hoạt quy trình theo quyền được cấp.
-- Quy trình đang có yêu cầu active không được sửa trực tiếp.
-- Khi cần thay đổi quy trình đã có lịch sử, clone thành phiên bản mới; phiên bản cũ giữ nguyên để tra cứu.
-- Phạm vi hiển thị quy trình là `DEPARTMENT` hoặc `COMPANY`.
-- Quy trình có `kieu_ky_mac_dinh`; khi tạo request, người tạo chọn `TUAN_TU` hoặc `SONG_SONG` theo lựa chọn được hệ thống cung cấp. Lựa chọn cuối được snapshot vào request và áp dụng cho toàn bộ request, không chọn chế độ riêng cho từng cấp trong MVP.
-- Người tạo không được thay đổi danh sách người ký đã cấu hình trong quy trình.
+- Vòng đời: `NHAP -> HOAT_DONG -> NGUNG`.
+- Chỉ quy trình `HOAT_DONG` được chọn khi tạo yêu cầu.
+- Người tạo quy trình, hoặc tài khoản quản trị / ban / phòng có quyền `quan_ly_quy_trinh_ky`, được kích hoạt quy trình.
+- Chỉ sửa trực tiếp quy trình ở trạng thái `NHAP`. Muốn thay đổi quy trình đã kích hoạt thì nhân bản thành phiên bản mới (`phien_ban` + 1, cùng `ma_quy_trinh`); phiên bản cũ giữ nguyên để tra cứu.
+- Phạm vi hiển thị: `pham_vi` = `PHONG_BAN` hoặc `CONG_TY`.
+- Quy trình có `kieu_ky_mac_dinh`. Khi tạo yêu cầu, người tạo chọn `TUAN_TU` hoặc `SONG_SONG`; giá trị được chốt vào `signing_request.kieu_ky` và áp dụng cho toàn yêu cầu.
+- Người tạo yêu cầu không được sửa danh sách người ký đã cấu hình trong quy trình.
 
-### 3.2. Người ký, cấp ký và định vị tọa độ nơi ký
+### 3.2. Người ký, cấp ký và vị trí đặt chữ ký
 
-- Một cấp có thể có nhiều người ký; mọi người ký được chọn đều bắt buộc ký trong MVP. Không hỗ trợ optional signer hoặc quorum.
-- **Phân loại vai trò trong cấp (Cấp lớn - Cấp nhỏ):** Trong cùng một cấp ký (đại diện cho một phòng ban/bộ phận), hỗ trợ 2 vai trò:
-  - `INITIAL` (Ký nháy / Ký thứ cấp): Dành cho chuyên viên rà soát thể thức, số liệu, tính pháp lý.
-  - `PRIMARY` (Ký chính / Quyết định): Dành cho Trưởng bộ phận hoặc người giữ thẩm quyền cao nhất của cấp đó.
-- **Quy tắc Gating tuần tự nội bộ cấp:** Nếu cấp có cả người ký nháy và người ký chính, người ký chính chỉ được mở khóa ký sau khi **100% người ký nháy trong cấp đã ký xong**.
-- **Định vị nơi ký, Tọa độ hóa và Cơ chế Lazy Stamping (Bảo toàn mã băm SHA-256):**
-  - Tại khâu tạo hồ sơ trình ký, Người tạo thực hiện thao tác trực quan (kéo-thả trên bản xem trước tài liệu) để xác định vị trí ký cho từng người ký: Trang số (`page_number`), tọa độ (`coord_x`, `coord_y`), kích thước khung ký (`box_width`, `box_height`).
-  - Hệ tọa độ được lưu trữ dưới dạng chuẩn hóa (tỷ lệ % `[0, 100]` hoặc điểm PDF chuẩn `Points`) để độc lập với độ phân giải hiển thị trên client.
-  - **Nguyên tắc Lazy Stamping & UI Overlay (Giải quyết xung đột dán ảnh vs Bất biến mã băm):**
-    - Trong suốt toàn bộ quá trình ký duyệt nội bộ từ cấp 1 đến cấp cuối, **tuyệt đối không can thiệp sửa đổi raw bytes của file PDF gốc**. Mọi người ký đều ký mật mã trên cùng một mã SHA-256 raw bytes của file gốc được khóa lúc submit.
-    - Ảnh chữ ký PNG và tọa độ chỉ được lưu trữ dưới dạng metadata trong Database (`UserProfile` lưu ảnh, `signing_request_step_signer` lưu tọa độ).
-    - Trên giao diện Frontend (React PDF Viewer), ảnh chữ ký được render dưới dạng một lớp phủ trực quan (CSS/Canvas Overlay layer) đè lên bản xem trước của tài liệu dựa theo tọa độ `(page, x, y, width, height)`.
-    - **Phẳng hóa file PDF (Stamping & Flattening Worker):** Chỉ khi attempt đạt trạng thái `COMPLETED` (100% các cấp đã duyệt xong), Backend mới kích hoạt tác vụ nền đọc file PDF gốc, lấy tọa độ và ảnh chữ ký của toàn bộ người ký trong DB để thực hiện dán ảnh hàng loạt (Stamp & Flatten), tạo ra tệp PDF hoàn tất (`final_pdf`).
-    - Bản `final_pdf` này sau đó mới được chuyển sang Giai đoạn 2 để Người có thẩm quyền ký số CA cá nhân + Văn thư đóng con dấu số doanh nghiệp và Timestamp TSA theo chuẩn PAdES.
-- `TUAN_TU`: chỉ cấp hiện tại được mở; cấp kế tiếp chỉ mở sau khi tất cả người ký (cả ký nháy và ký chính) ở cấp hiện tại đã ký.
-- `SONG_SONG`: tất cả cấp và người ký được mở cùng lúc; yêu cầu chỉ hoàn tất sau khi tất cả người ký đã ký.
-- Người tạo không tự động trở thành người ký; chỉ là người ký nếu được cấu hình trong quy trình.
-- Nếu vị trí được cấu hình đang trống tại thời điểm gửi, không cho submit.
-- Quy trình lưu rule; yêu cầu lưu snapshot tài khoản/chức vụ để lịch sử không đổi khi cơ cấu tổ chức thay đổi.
-- Không dùng `so_nguoi_ky` làm nguồn sự thật; số người ký được tính từ các dòng signer snapshot.
+**Cấp ký và vai trò**
 
-### 3.3. Yêu cầu, attempt và nội dung văn bản
+- Một cấp có thể có nhiều người ký; mọi người ký đều bắt buộc. Không có người ký tùy chọn, không có quorum.
+- Hai vai trò trong cùng một cấp (`vai_tro_ky`):
+  - `KY_NHAY`: chuyên viên rà soát thể thức, số liệu, tính pháp lý.
+  - `KY_CHINH`: trưởng bộ phận hoặc người có thẩm quyền cao nhất của cấp.
+- **Chặn trong cấp:** nếu cấp có người `KY_NHAY` với `chan_ky_chinh = true`, người `KY_CHINH` của cấp đó chỉ được mở ký (`thoi_diem_mo` được gán) khi toàn bộ người ký nháy chặn đã `DA_KY`. Quy tắc này áp dụng cho cả `TUAN_TU` và `SONG_SONG`.
+- `thu_tu` của cấp quyết định thứ tự mở cấp khi `TUAN_TU`; `cap_ky` chỉ là số hiệu hiển thị.
+- `TUAN_TU`: chỉ cấp có `thu_tu` nhỏ nhất chưa hoàn thành được mở; cấp sau chỉ mở khi mọi người ký (ký nháy và ký chính) của cấp trước đã ký.
+- `SONG_SONG`: mọi cấp mở cùng lúc; yêu cầu hoàn thành khi mọi người ký đã ký.
+- Người tạo không mặc nhiên là người ký; chỉ là người ký nếu có trong cấu hình quy trình.
+- Người ký cấu hình theo chức vụ mà tại thời điểm gửi không resolve được tài khoản đang hoạt động thì không cho gửi.
+- Quy trình lưu quy tắc; yêu cầu lưu snapshot tài khoản, tên hiển thị và tên chức vụ để lịch sử không đổi khi cơ cấu tổ chức thay đổi.
+- Không có field số người ký; số người ký đếm từ các dòng người ký snapshot.
 
-- Một `signing_request` ổn định có thể có nhiều `signing_attempt` bất biến.
-- Lần gửi hoặc gửi lại tạo attempt mới; không ghi đè attempt cũ.
-- Hash, version và storage key của văn bản được khóa tại thời điểm submit.
-- Tất cả cấp ký trên cùng một attempt ký chung một bản nội dung/hash.
-- Nếu nội dung thay đổi, toàn bộ chữ ký cũ chỉ còn là bằng chứng của attempt cũ; attempt mới phải ký lại từ đầu.
-- **Xử lý phản hồi và lỗi trong luồng ký (2 nhánh rõ rệt):**
-  - **Nhánh 1 — Lỗi nhỏ / Góp ý (Non-blocking / Approve with notes):**
-    - Người ký vẫn đồng ý thông qua văn bản nhưng đính kèm `sign_note` (ghi chú bảo lưu / lưu ý cho các cấp sau).
-    - Thao tác: Ký duyệt bình thường, signer slot chuyển sang `SIGNED`, **luồng ký không bị chặn** và tiếp tục chuyển tiếp.
-    - Ghi chú được lưu vào bản ghi chữ ký và hiển thị cảnh báo cho Người tạo và các cấp ký kế tiếp.
-  - **Nhánh 2 — Lỗi lớn / Chỉnh sửa nội dung (Blocking / Request Changes):**
-    - Người ký bấm `request_changes` kèm lý do bắt buộc để chặn luồng.
-    - Signer slot và attempt chuyển trạng thái tạm dừng `CHANGE_REQUESTED`.
-    - **Giao tiếp hai chiều:** Hệ thống mở một `signing_change_thread` riêng. Người tạo và Người yêu cầu chỉnh sửa trao đổi, giải trình qua các tin nhắn `signing_change_message`.
-    - **Chốt thay đổi và ký lại:** Sau khi thống nhất phương án sửa, Người tạo cập nhật bản nháp văn bản mới (version mới, hash mới), thread chuyển sang `RESOLVED`. Attempt cũ được đóng/hủy và hệ thống tạo một `signing_attempt` mới từ đầu để toàn bộ các cấp ký lại trên bản nội dung mới.
-- Từ chối (`reject`) bắt buộc có lý do, ghi chú là tùy chọn. Xem xét lại tạo attempt mới.
-- Người tạo được hủy trước khi hoàn tất; quản trị viên có thể hủy override nhưng bắt buộc lý do và audit.
+**Vị trí đặt chữ ký và Lazy Stamping**
 
-### 3.4. Chữ ký, khóa và ảnh chữ ký cá nhân (Profile Signature)
+- Khi tạo hồ sơ, người tạo kéo-thả trên bản xem trước để xác định vị trí ký cho từng người ký: `trang_ky`, `toa_do_x`, `toa_do_y`, `chieu_rong_khung`, `chieu_cao_khung`.
+- Tọa độ lưu dạng chuẩn hóa (tỷ lệ % trong `[0, 100]` hoặc điểm PDF) để không phụ thuộc độ phân giải hiển thị. `[CHƯA CHỐT]` chọn một trong hai hệ, chốt khi làm PDF viewer.
+- **Bất biến tệp gốc:** trong suốt luồng duyệt nội bộ, không sửa raw bytes của tệp PDF gốc. Mọi người ký của một lượt trình đều ký trên cùng một mã băm SHA-256 của tệp gốc đã khóa lúc gửi.
+- Ảnh chữ ký và tọa độ chỉ là metadata trong CSDL:
+  - Ảnh chữ ký gốc nằm ở hồ sơ cá nhân (do Nhóm 7 cung cấp, mục 3.4).
+  - Tọa độ nằm ở `signing_request_step_signer`.
+  - Tại thời điểm ký, backend chốt snapshot ảnh chữ ký vào bản ghi chữ ký (`vi_tri_anh_chu_ky`, `ma_bam_anh_chu_ky`). Nếu người dùng đổi ảnh trong hồ sơ trước khi lượt trình hoàn thành, tệp hoàn tất vẫn dùng đúng ảnh tại lúc ký.
+- Giao diện (React PDF viewer) hiển thị ảnh chữ ký như một lớp phủ CSS/Canvas đè lên bản xem trước theo tọa độ; không tạo tệp trung gian.
+- **Phẳng hóa (Stamping & Flattening):** chỉ khi lượt trình chuyển `HOAN_THANH`, tác vụ nền đọc tệp gốc, lấy snapshot ảnh và tọa độ của toàn bộ chữ ký hiện hành, dán một lần và sinh tệp PDF hoàn tất. Vị trí và mã băm tệp này lưu tại `signing_attempt.vi_tri_tep_hoan_tat`, `signing_attempt.ma_bam_tep_hoan_tat`.
+- Không sinh tệp theo từng người ký.
+- Tệp hoàn tất là đầu vào của giai đoạn phát hành pháp lý (mục 1.4).
 
-- Backend không nhận, không lưu và không log private key.
-- **Ảnh chữ ký cá nhân trong Profile (Visual Signature Image):**
-  - Mỗi người dùng lưu sẵn một ảnh chữ ký cá nhân dạng scan/vẽ tay định dạng `.png` (nền trong suốt Transparent) trong trang thông tin cá nhân (Profile).
-  - `[CHƯA CHỐT]` Kích thước pixel chuẩn `pixel x pixel` sẽ được đo đạc và chốt quy chuẩn sau (ví dụ: `300 x 150 px` hoặc tỷ lệ `2:1`).
-  - Khi ký, ảnh chữ ký này được dùng để dán (stamp) vào đúng tọa độ văn bản đã định sẵn, đồng thời với việc tạo chữ ký mật mã (cryptographic signature).
-- Người dùng đăng ký public key Ed25519 qua challenge proof-of-possession; chỉ key đã verify challenge mới được chuyển sang `ACTIVE`.
-- Mỗi người dùng chỉ có một key `ACTIVE` tại một thời điểm, không phụ thuộc thuật toán; rotate key phải có audit. Key cũ giữ lại để xác thực lịch sử.
-- Không lưu `private_key` hoặc ciphertext chứa private key trong backend ở MVP. Đồng bộ/khôi phục khóa đa thiết bị chưa thuộc contract hiện tại.
-- Ký trên `SHA-256 digest bytes` dạng raw bytes, không ký chuỗi hex.
-- Backend xác thực chữ ký đồng bộ trước khi chuyển signer slot sang `SIGNED`. Khi ký có thể đính kèm `sign_note` tùy chọn.
-- Bản ghi chữ ký đã tạo là bằng chứng bất biến. Thu hồi được ghi thành audit event tham chiếu chữ ký; trạng thái signer slot/current-signature pointer được cập nhật trong transaction để cho phép ký lại cùng hash mà không sửa/xóa chữ ký cũ.
-- Chữ ký song song có thể bị chính người ký thu hồi trước khi attempt hoàn tất; chỉ signer slot đó quay về `PENDING` và được ký lại. Mỗi signer slot chỉ có tối đa một chữ ký hiện hành.
-- Với tuần tự, không cho thu hồi sau khi chuỗi đã chuyển sang cấp sau; correction đi qua yêu cầu chỉnh sửa và attempt mới.
+### 3.3. Yêu cầu, lượt trình và nội dung văn bản
 
-### 3.5. Hạn xử lý và chuyển quyền khẩn cấp
+- Một `signing_request` có thể có nhiều `signing_attempt`. Mỗi lần gửi hoặc gửi lại tạo một lượt trình mới; không ghi đè lượt cũ.
+- `phien_ban_van_ban`, `vi_tri_luu_tep`, `ma_bam_tai_lieu` được khóa trên lượt trình tại thời điểm gửi. Mọi cấp ký trong một lượt trình ký chung một bản nội dung.
+- **Nguồn sự thật của mã băm:** `signing_attempt.ma_bam_tai_lieu`. Ba field tương ứng trên `signing_request` là bản sao của lượt trình hiện hành (phục vụ danh sách/lọc), chỉ được cập nhật trong cùng transaction tạo lượt trình mới; không có API nào sửa trực tiếp.
+- Lượt trình hiện hành là lượt có `so_luot` lớn nhất của yêu cầu; không cần thêm con trỏ.
+- Nội dung thay đổi thì mọi chữ ký cũ chỉ còn là bằng chứng của lượt cũ; lượt mới ký lại từ đầu.
 
-- Người tạo nhập hạn cuối chung cho toàn bộ yêu cầu (`final_due_at`).
-- Có thể cấu hình SLA theo cấp trong quy trình.
-- Nếu không có SLA cấp:
-  - `TUAN_TU`: chia thời gian theo các cấp bằng giờ lịch.
-  - `SONG_SONG`: tất cả cấp dùng cùng `final_due_at`.
-- Lưu thời gian ở UTC; hiển thị theo `Asia/Ho_Chi_Minh`.
-- Sau submit không cho đổi deadline; override của admin phải có audit.
-- **Xử lý quá hạn (Overdue Policy):**
-  - Chạm deadline không tự đổi trạng thái request/attempt sang `EXPIRED`/`QUA_HAN`, không tự hủy và không tự từ chối.
-  - Người ký **vẫn được phép ký muộn** nếu các điều kiện khác còn hợp lệ. Chữ ký ký muộn được hệ thống tự động gắn cờ `is_late: true` và ghi nhận `late_duration_seconds` để phục vụ kiểm toán SLA và đánh giá KPI.
-- **Chuyển quyền ký khẩn cấp (Emergency Transfer / Delegation):**
-  - Khi một cấp bị tắc do người ký vắng mặt, ốm đau hoặc quá hạn nghiêm trọng, cho phép Người ký hiện tại (hoặc Quản trị viên/Lãnh đạo phụ trách) thực hiện chuyển quyền ký khẩn cấp sang một nhân sự khác có thẩm quyền tương đương.
-  - Thao tác chuyển quyền yêu cầu nhập lý do bắt buộc (`delegation_reason`), ghi audit log chi tiết.
-  - Signer slot được cập nhật sang user mới, lưu vết `delegated_from_user_id` và `delegated_at` mà không làm thay đổi tính toàn vẹn của attempt hay hash văn bản.
-- Lịch nhắc mặc định: trước hạn 24 giờ và tại thời điểm đến hạn; quy trình có thể override.
+**Xử lý phản hồi (hai nhánh)**
 
-## 4. Kiến trúc backend đề xuất
+- **Nhánh 1 — Lỗi nhỏ, không chặn luồng:**
+  - Người ký vẫn ký duyệt và đính kèm `ghi_chu_ky`.
+  - Người ký chuyển `DA_KY`, luồng tiếp tục bình thường.
+  - Ghi chú lưu trên bản ghi chữ ký và hiển thị cảnh báo cho người tạo và các cấp sau.
+- **Nhánh 2 — Lỗi lớn, chặn luồng:**
+  - Người ký thực hiện `yeu_cau_sua` kèm lý do bắt buộc.
+  - Người ký đó và lượt trình chuyển `YEU_CAU_SUA`; các cấp đang mở chuyển `TAM_DUNG`; không ai ký tiếp được trên lượt này.
+  - Hệ thống mở một `signing_change_thread` (`DANG_MO`); người tạo và người yêu cầu trao đổi qua `signing_change_message`.
+  - Khi đã thống nhất: người tạo tải bản văn bản mới (phiên bản mới, mã băm mới), thread chuyển `DA_GIAI_QUYET`, hệ thống tạo lượt trình mới (`luot_truoc` trỏ về lượt cũ) để toàn bộ các cấp ký lại.
+  - Lượt cũ giữ nguyên trạng thái `YEU_CAU_SUA` làm lịch sử; không chuyển sang `HUY` để không mất ngữ cảnh lý do.
+- `tu_choi` bắt buộc lý do, ghi chú tùy chọn. `xem_xet_lai` sau từ chối tạo lượt trình mới.
+- Người tạo được hủy trước khi hoàn thành; quản trị viên được hủy thay (override) nhưng bắt buộc lý do và ghi nhật ký.
+
+### 3.4. Khóa ký, chữ ký và ảnh chữ ký cá nhân
+
+**Ảnh chữ ký cá nhân**
+
+- Mỗi người dùng có một ảnh chữ ký PNG nền trong suốt, tối đa 2MB, lưu trong hồ sơ cá nhân.
+- Hồ sơ cá nhân thuộc Nhóm 7 (sheet CBNV, field `anh_chu_ky`). Module Trình ký chỉ đọc ảnh qua contract do Nhóm 7 cung cấp, không tự định nghĩa API hồ sơ.
+- `[CHƯA CHỐT]` Kích thước pixel chuẩn (ví dụ `300 x 150 px`, tỷ lệ 2:1), chốt khi làm stamping.
+
+**Khóa ký**
+
+- Backend không nhận, không lưu, không log private key hoặc ciphertext chứa private key.
+- Đăng ký khóa công khai Ed25519 qua proof-of-possession:
+  - Server sinh challenge ngẫu nhiên, lưu Redis với TTL 5 phút, dùng một lần (đọc và xóa nguyên tử).
+  - Client ký challenge bằng private key; server verify rồi mới gán `thoi_diem_xac_minh_so_huu` và chuyển khóa từ `CHO_KICH_HOAT` sang `HOAT_DONG`.
+- Mỗi người dùng tối đa một khóa `HOAT_DONG` tại một thời điểm, không phân biệt thuật toán.
+- Xoay vòng khóa: khóa cũ chuyển `DA_XOAY_VONG`, `khoa_thay_the` trỏ khóa mới, có ghi nhật ký. Khóa cũ được giữ để xác minh chữ ký lịch sử.
+- `HET_HAN`: áp dụng khi khóa có `ngay_het_han` và thời điểm hiện tại đã qua; `ngay_het_han` rỗng nghĩa là không hết hạn. Tác vụ định kỳ chuyển trạng thái và ghi nhật ký.
+- `THU_HOI`: thu hồi thủ công, gán `ngay_thu_hoi`, có ghi nhật ký.
+
+**Chữ ký**
+
+- Ký trên raw bytes của SHA-256 digest, không ký chuỗi hex.
+- Backend verify chữ ký đồng bộ trước khi chuyển người ký sang `DA_KY`. Chữ ký không hợp lệ bị từ chối ở API và không tạo bản ghi.
+- `trang_thai_xac_minh`: bản ghi được tạo với `HOP_LE` và `thoi_diem_xac_minh`. `CHUA_XAC_MINH` và `KHONG_HOP_LE` chỉ dùng cho tác vụ xác minh lại về sau (ví dụ kiểm toán lại toàn bộ lượt trình).
+- Bản ghi chữ ký là bằng chứng bất biến: không `UPDATE` nội dung, không `DELETE`.
+- Mỗi người ký tối đa một chữ ký hiện hành, xác định qua `signing_request_step_signer.chu_ky_hien_hanh`.
+- **Thu hồi:**
+  - Chỉ trong `SONG_SONG` và khi lượt trình chưa hoàn thành.
+  - Thu hồi ghi thành sự kiện nhật ký tham chiếu chữ ký bị thu hồi; `chu_ky_hien_hanh` về rỗng, người ký về `CHO_KY`; ký lại tạo bản ghi chữ ký mới. Chữ ký cũ giữ nguyên.
+  - Người `KY_NHAY` chặn không được thu hồi khi đã có người `KY_CHINH` cùng cấp ký, vì sẽ phá quy tắc chặn trong cấp.
+- Với `TUAN_TU`, không cho thu hồi sau khi luồng đã sang cấp sau; muốn sửa thì đi qua yêu cầu chỉnh sửa và lượt trình mới.
+
+### 3.5. Hạn xử lý và ủy quyền khẩn cấp
+
+**Hạn xử lý**
+
+- Người tạo nhập hạn chót chung `han_chot`.
+- Quy trình có thể cấu hình `so_gio_xu_ly` theo cấp. Nếu cấp không có:
+  - `TUAN_TU`: chia đều thời gian còn lại đến `han_chot` cho các cấp theo giờ lịch.
+  - `SONG_SONG`: mọi cấp dùng `han_chot`.
+- Lưu thời gian UTC, hiển thị theo `Asia/Ho_Chi_Minh`.
+- Sau khi gửi không cho đổi hạn; quản trị viên đổi thay phải ghi nhật ký.
+
+**Quá hạn**
+
+- Không có trạng thái quá hạn; chạm hạn không tự hủy, không tự từ chối, không tự đổi người ký.
+- Người ký vẫn ký được nếu các điều kiện khác hợp lệ. Chữ ký muộn được gắn `ky_tre_han = true` và `so_giay_tre` (so với `han_xu_ly` của cấp) phục vụ kiểm toán SLA/KPI.
+- Lịch nhắc mặc định: trước hạn 24 giờ và tại hạn; quy trình có thể thay bằng `cau_hinh_nhac_han`.
+
+**Ủy quyền khẩn cấp**
+
+- Khi một cấp bị tắc (vắng mặt, ốm, quá hạn nghiêm trọng), người ký hiện tại hoặc quản trị viên/lãnh đạo phụ trách được chuyển quyền ký sang nhân sự khác có thẩm quyền tương đương.
+- Lý do bắt buộc (`ly_do_uy_quyen`), ghi nhật ký chi tiết.
+- Người ký cập nhật sang tài khoản mới; lưu `uy_quyen_tu` và `ngay_uy_quyen`; lượt trình và mã băm không đổi.
+- Chỉ ủy quyền cho người ký đang `CHO_KY`.
+- Không ủy quyền cho người đã có mặt trong cùng cấp (ràng buộc duy nhất `(buoc_ky, nguoi_ky)`); nếu cần gộp người ký thì đi qua yêu cầu chỉnh sửa.
+
+## 4. Kiến trúc backend
 
 ### 4.1. Thành phần
 
-- `signing` app: model, domain service, state transition, permission, API.
-- `documents` contract: chỉ tham chiếu `document_id`, `document_version`, `storage_key`, `content_hash`; không phụ thuộc đường dẫn tuyệt đối.
-- `DocumentStorageAdapter`: interface đọc metadata/bytes theo storage key; MVP có adapter filesystem mount, cấu hình bằng biến môi trường. API/SFTP có thể thêm sau mà không đổi nghiệp vụ ký.
-- `PdfStampingService`: service/worker thực hiện phẳng hóa PDF (Flattening) sau khi attempt đạt `COMPLETED`, dán toàn bộ ảnh chữ ký và con dấu từ metadata vào các trang tài liệu trước khi phát hành pháp lý.
-- `LegalSignerAdapter` (Khâu phát hành cuối): interface chuẩn bị hash/digest và kết nối với dịch vụ Ký số từ xa (Cloud CA/HSM) hoặc dịch vụ cấp dấu doanh nghiệp và Timestamp TSA theo chuẩn PAdES.
-- PostgreSQL: dữ liệu nghiệp vụ, unique/check constraint, transaction và row lock.
-- Redis: broker/result backend cho Celery và lock ngắn hạn nếu cần.
-- Celery worker: thông báo, nhắc hạn, escalation và tác vụ xác nhận manifest; task chỉ truyền ID, có retry backoff/jitter và idempotency.
-- Transactional outbox: ghi event và dữ liệu nghiệp vụ trong cùng transaction, worker xử lý outbox sau commit.
+- **App `signing`:** model, domain service, chuyển trạng thái, phân quyền, API.
+- **Contract văn bản:** chỉ tham chiếu `van_ban`, `phien_ban_van_ban`, `vi_tri_luu_tep`, `ma_bam_tai_lieu`; không phụ thuộc đường dẫn tuyệt đối.
+- **`DocumentStorageAdapter`:** interface đọc metadata/bytes theo vị trí lưu. MVP dùng filesystem mount cấu hình qua biến môi trường; có thể thêm API/SFTP mà không đổi nghiệp vụ ký.
+- **`PdfStampingService`:** tác vụ nền phẳng hóa PDF khi lượt trình `HOAN_THANH` (mục 3.2).
+- **`LegalSignerAdapter`:** interface cho khâu phát hành pháp lý (CA/HSM/CCCD, dấu doanh nghiệp, TSA, PAdES).
+- **PostgreSQL:** dữ liệu nghiệp vụ, ràng buộc unique/check, transaction, khóa dòng.
+- **Redis:** broker Celery, challenge khóa ký, khóa ngắn hạn nếu cần.
+- **Celery worker:** gửi thông báo, nhắc hạn, escalation, phẳng hóa PDF, chốt bằng chứng tổng hợp. Task chỉ nhận ID, retry có backoff và jitter, idempotent.
+- **Outbox:** dùng chính bảng `signing_notification`. Bản ghi `CHO_GUI` được tạo trong cùng transaction nghiệp vụ; sau commit (`transaction.on_commit`) mới đẩy task gửi; một tác vụ định kỳ quét các bản ghi `CHO_GUI` bị sót. Không tạo bảng outbox riêng trong MVP.
 
-### 4.2. Nguyên tắc transaction và cạnh tranh
+### 4.2. Transaction và xử lý đồng thời
 
-- Các action `submit`, `sign`, `reject`, `request_changes`, `revoke`, `cancel` chạy trong `transaction.atomic()`.
-- Khóa attempt/request bằng `select_for_update()` trước khi kiểm tra trạng thái và cập nhật signer slot.
-- Mỗi action có idempotency key; request lặp lại không tạo thêm chữ ký, attempt hoặc notification.
-- Không phát thông báo trực tiếp trong transaction nghiệp vụ; chỉ tạo outbox event.
-- Không để client quyết định trạng thái kế tiếp; server xác định transition từ state hiện tại, mode và các signer slot.
+- Các hành động `gui`, `ky`, `tu_choi`, `yeu_cau_sua`, `uy_quyen`, `thu_hoi`, `huy`, `xem_xet_lai` chạy trong `transaction.atomic()`.
+- Khóa dòng lượt trình (và yêu cầu khi cần) bằng `select_for_update()` trước khi kiểm tra trạng thái và cập nhật người ký.
+- Mọi hành động chuyển trạng thái nhận header `Idempotency-Key`; gửi lặp không tạo thêm chữ ký, lượt trình hay thông báo.
+  - Gửi / gửi lại: lưu tại `signing_attempt.khoa_chong_trung`.
+  - Hành động của người ký: lưu tại `signing_request_step_signer.khoa_chong_trung_thao_tac`.
+- Không gửi thông báo trực tiếp trong transaction; chỉ tạo bản ghi thông báo.
+- Client không quyết định trạng thái kế tiếp; server tính dựa trên trạng thái hiện tại, cách thức ký và các người ký.
 
 ## 5. Thiết kế dữ liệu
 
-### 5.1. Quy ước trường dùng chung
+### 5.1. Quy ước chung
 
-Các bảng nghiệp vụ mới dùng thống nhất:
+- Tên field dùng tiếng Việt không dấu, trừ nhóm cột kỹ thuật: `id`, `create_by`, `created_at`, `update_by`, `update_at`.
+- Bảng gốc (`signing_process`, `signing_request`, `signing_attempt`) có đủ `create_by`, `created_at`, `update_by`, `update_at`.
+- Bảng con và bảng bằng chứng chỉ có `created_at`; mọi thay đổi của chúng được truy vết qua `signing_audit_log`.
+- FK khai báo không kèm hậu tố `_id` (Django tự sinh cột `_id`).
+- Thời gian lưu UTC.
+- Xóa: mọi FK trỏ tới bảng lịch sử/bằng chứng dùng `on_delete=PROTECT`. Không xóa cứng yêu cầu/lượt trình đã gửi.
 
-| Ý nghĩa | Field | Kiểu/ghi chú |
+### 5.2. Các bảng
+
+#### `signing_process` — Quy trình trình ký
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Mã quy trình | `ma_quy_trinh` | Text (50) | X | |
+| Tên quy trình | `ten_quy_trinh` | Text (255) | X | |
+| Mô tả | `mo_ta` | Text | | |
+| Phiên bản | `phien_ban` | Number (SmallInt) | X | Unique cùng `ma_quy_trinh` |
+| Trạng thái | `trang_thai` | Text (20) [NHAP, HOAT_DONG, NGUNG] | X | Mặc định NHAP |
+| Phạm vi áp dụng | `pham_vi` | Text (20) [PHONG_BAN, CONG_TY] | X | |
+| Cách thức ký mặc định | `kieu_ky_mac_dinh` | Text (20) [TUAN_TU, SONG_SONG] | X | |
+| Cấu hình nhắc hạn | `cau_hinh_nhac_han` | JSON | | Mặc định: trước hạn 24h và đúng hạn |
+| Người tạo | `create_by` | ForeignKey (auth_user) | X | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+| Người cập nhật | `update_by` | ForeignKey (auth_user) | | |
+| Ngày cập nhật | `update_at` | DateTime (auto) | | |
+
+Ràng buộc: unique `(ma_quy_trinh, phien_ban)`.
+
+#### `signing_process_step` — Cấp ký trong quy trình
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Quy trình | `quy_trinh` | ForeignKey (signing_process) | X | |
+| Cấp ký | `cap_ky` | Number (SmallInt) | X | Số hiệu hiển thị |
+| Tên cấp ký | `ten_cap_ky` | Text (255) | X | |
+| Thứ tự ký | `thu_tu` | Number (SmallInt) | X | Quyết định thứ tự mở cấp |
+| Đơn vị ký | `don_vi` | ForeignKey (Đơn vị/phòng ban) | | |
+| Số giờ xử lý của cấp | `so_gio_xu_ly` | Number | | Rỗng: dùng quy tắc chia hạn mục 3.5 |
+| Đang áp dụng | `dang_ap_dung` | Boolean | X | Mặc định True |
+| Ghi chú | `ghi_chu` | Text | | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+Ràng buộc: unique `(quy_trinh, thu_tu)`.
+
+#### `signing_process_step_signer` — Người ký cấu hình sẵn
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Cấp ký trong quy trình | `buoc_quy_trinh` | ForeignKey (signing_process_step) | X | |
+| Người ký | `nguoi_ky` | ForeignKey (auth_user) | | Nhập người ký HOẶC chức vụ |
+| Chức vụ ký | `chuc_vu` | ForeignKey (Chức vụ) | | Nhập người ký HOẶC chức vụ |
+| Vai trò ký | `vai_tro_ky` | Text (20) [KY_NHAY, KY_CHINH] | X | Mặc định KY_CHINH |
+| Chặn ký chính | `chan_ky_chinh` | Boolean | X | Mặc định True; ký nháy xong mới mở ký chính |
+| Thứ tự trong cấp | `thu_tu` | Number (SmallInt) | X | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+Ràng buộc: CHECK có đúng một trong `nguoi_ky`, `chuc_vu`. Mọi người ký đều bắt buộc, không có field bắt buộc/tùy chọn.
+
+#### `signing_request` — Trình ký
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Văn bản liên quan | `van_ban` | ForeignKey (documents_vanban) | X | |
+| Phiên bản văn bản | `phien_ban_van_ban` | Text (50) | | Bản sao từ lượt trình hiện hành |
+| Vị trí lưu tệp | `vi_tri_luu_tep` | Text (500) | | Bản sao từ lượt trình hiện hành |
+| Mã băm tài liệu | `ma_bam_tai_lieu` | Text (64) - SHA-256 | | Bản sao từ lượt trình hiện hành |
+| Quy trình trình ký | `quy_trinh` | ForeignKey (signing_process) | X | Không đổi sau khi gửi |
+| Phiên bản quy trình | `phien_ban_quy_trinh` | Number (SmallInt) | X | Không đổi sau khi gửi |
+| Mức độ | `muc_do` | Text (20) | X | Theo danh mục mức độ chung |
+| Cách thức ký | `kieu_ky` | Text (20) [TUAN_TU, SONG_SONG] | X | Không đổi sau khi gửi |
+| Trạng thái | `trang_thai` | Text (20) [NHAP, CHO_KY, HOAN_THANH, TU_CHOI, HUY] | X | Mặc định NHAP |
+| Hạn chót trình ký | `han_chot` | DateTime | | Chỉ quản trị viên đổi sau khi gửi, có nhật ký |
+| Ngày gửi trình ký | `ngay_gui` | DateTime | | |
+| Ngày hoàn thành | `ngay_hoan_thanh` | DateTime | | |
+| Ngày từ chối | `ngay_tu_choi` | DateTime | | |
+| Lý do từ chối | `ly_do_tu_choi` | Text | | |
+| Ngày hủy | `ngay_huy` | DateTime | | |
+| Lý do hủy | `ly_do_huy` | Text | | |
+| Ghi chú | `ghi_chu` | Text | | |
+| Người tạo | `create_by` | ForeignKey (auth_user) | X | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+| Người cập nhật | `update_by` | ForeignKey (auth_user) | | |
+| Ngày cập nhật | `update_at` | DateTime (auto) | | |
+
+#### `signing_attempt` — Lượt trình ký
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Trình ký | `trinh_ky` | ForeignKey (signing_request) | X | |
+| Số thứ tự lượt trình | `so_luot` | Number (SmallInt) | X | Unique cùng `trinh_ky` |
+| Lượt trình trước | `luot_truoc` | ForeignKey (signing_attempt) | | Phải cùng `trinh_ky` |
+| Phiên bản văn bản | `phien_ban_van_ban` | Text (50) | | |
+| Vị trí lưu tệp | `vi_tri_luu_tep` | Text (500) | X | Khóa tại thời điểm gửi |
+| Mã băm tài liệu | `ma_bam_tai_lieu` | Text (64) - SHA-256 | X | Nguồn sự thật của mã băm |
+| Trạng thái | `trang_thai` | Text (20) [NHAP, CHO_KY, YEU_CAU_SUA, HOAN_THANH, TU_CHOI, HUY] | X | Mặc định NHAP |
+| Lý do gửi lại | `ly_do` | Text | | |
+| Khóa chống gửi trùng | `khoa_chong_trung` | Text (255) | | Unique |
+| Thời điểm gửi | `thoi_diem_gui` | DateTime | | |
+| Thời điểm hoàn thành | `thoi_diem_hoan_thanh` | DateTime | | |
+| Thời điểm từ chối | `thoi_diem_tu_choi` | DateTime | | |
+| Thời điểm hủy | `thoi_diem_huy` | DateTime | | |
+| Vị trí tệp hoàn tất | `vi_tri_tep_hoan_tat` | Text (500) | | Gán khi phẳng hóa xong |
+| Mã băm tệp hoàn tất | `ma_bam_tep_hoan_tat` | Text (64) - SHA-256 | | |
+| Người tạo | `create_by` | ForeignKey (auth_user) | X | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+| Người cập nhật | `update_by` | ForeignKey (auth_user) | | |
+| Ngày cập nhật | `update_at` | DateTime (auto) | | |
+
+Ràng buộc: unique `(trinh_ky, so_luot)`. Lượt đã gửi không xóa cứng, không ghi đè.
+
+#### `signing_request_step` — Cấp ký của lượt trình
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Lượt trình ký | `luot_trinh` | ForeignKey (signing_attempt) | X | |
+| Cấp theo quy trình | `buoc_quy_trinh` | ForeignKey (signing_process_step) | X | |
+| Cấp ký | `cap_ky` | Number (SmallInt) | X | Snapshot |
+| Tên cấp ký | `ten_cap_ky` | Text (255) | X | Snapshot |
+| Thứ tự ký | `thu_tu` | Number (SmallInt) | X | Unique trong lượt trình |
+| Trạng thái cấp | `trang_thai` | Text (20) [CHUA_MO, DANG_KY, HOAN_THANH, TAM_DUNG] | X | Mặc định CHUA_MO |
+| Hạn xử lý cấp | `han_xu_ly` | DateTime | | |
+| Thời điểm mở cấp | `thoi_diem_mo` | DateTime | | |
+| Thời điểm hoàn tất cấp | `thoi_diem_hoan_thanh` | DateTime | | |
+| Ghi chú | `ghi_chu` | Text | | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+Ràng buộc: unique `(luot_trinh, thu_tu)`.
+
+#### `signing_request_step_signer` — Người ký của lượt trình
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Cấp ký | `buoc_ky` | ForeignKey (signing_request_step) | X | |
+| Người ký | `nguoi_ky` | ForeignKey (auth_user) | X | Unique trong cấp |
+| Chức vụ lúc trình | `chuc_vu` | ForeignKey (Chức vụ) | | |
+| Tên người ký | `ten_nguoi_ky` | Text (255) | X | Snapshot tại lúc gửi |
+| Tên chức vụ | `ten_chuc_vu` | Text (255) | | Snapshot tại lúc gửi |
+| Vai trò ký | `vai_tro_ky` | Text (20) [KY_NHAY, KY_CHINH] | X | |
+| Chặn ký chính | `chan_ky_chinh` | Boolean | X | Mặc định True |
+| Trạng thái | `trang_thai` | Text (20) [CHO_KY, DA_KY, TU_CHOI, YEU_CAU_SUA] | X | Mặc định CHO_KY |
+| Thời điểm mở lượt ký | `thoi_diem_mo` | DateTime | | Rỗng: chưa được phép ký |
+| Ngày ký | `ngay_ky` | DateTime | | |
+| Ngày từ chối | `ngay_tu_choi` | DateTime | | |
+| Lý do từ chối | `ly_do_tu_choi` | Text | | |
+| Chữ ký hiện hành | `chu_ky_hien_hanh` | ForeignKey (signing_signature) | | Phải thuộc đúng người ký này |
+| Ủy quyền từ người | `uy_quyen_tu` | ForeignKey (auth_user) | | |
+| Lý do ủy quyền | `ly_do_uy_quyen` | Text | | Bắt buộc khi ủy quyền |
+| Ngày ủy quyền | `ngay_uy_quyen` | DateTime | | |
+| Trang đặt chữ ký | `trang_ky` | Number | | |
+| Tọa độ X | `toa_do_x` | Number (thập phân) | | |
+| Tọa độ Y | `toa_do_y` | Number (thập phân) | | |
+| Chiều rộng khung ký | `chieu_rong_khung` | Number (thập phân) | | |
+| Chiều cao khung ký | `chieu_cao_khung` | Number (thập phân) | | |
+| Khóa chống thao tác trùng | `khoa_chong_trung_thao_tac` | Text (255) | | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+Ràng buộc: unique `(buoc_ky, nguoi_ky)`. Thu hồi là sự kiện nhật ký, không có trạng thái "đã thu hồi".
+
+#### `signing_key` — Khóa ký
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Người sở hữu | `nguoi_so_huu` | ForeignKey (auth_user) | X | |
+| Mã khóa | `ma_khoa` | Text (100) | X | Unique |
+| Dấu vân tay khóa | `dau_van_tay` | Text (64) | X | Unique |
+| Thuật toán | `thuat_toan` | Text (50) | X | Mặc định Ed25519 |
+| Khóa công khai | `khoa_cong_khai` | Text | X | |
+| Trạng thái | `trang_thai` | Text (20) [CHO_KICH_HOAT, HOAT_DONG, DA_XOAY_VONG, THU_HOI, HET_HAN] | X | Mặc định CHO_KICH_HOAT |
+| Thời điểm xác minh sở hữu khóa | `thoi_diem_xac_minh_so_huu` | DateTime | | Bắt buộc có trước khi HOAT_DONG |
+| Thời điểm kích hoạt | `thoi_diem_kich_hoat` | DateTime | | |
+| Ngày hiệu lực | `ngay_hieu_luc` | DateTime | X | |
+| Ngày hết hạn | `ngay_het_han` | DateTime | | Rỗng: không hết hạn |
+| Ngày thu hồi | `ngay_thu_hoi` | DateTime | | |
+| Khóa thay thế | `khoa_thay_the` | ForeignKey (signing_key) | | |
+| Ghi chú | `ghi_chu` | Text | | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+Ràng buộc: partial unique index một `nguoi_so_huu` tối đa một khóa `HOAT_DONG`; CHECK `trang_thai = HOAT_DONG` thì `thoi_diem_xac_minh_so_huu` không rỗng. Không có field private key.
+
+#### `signing_signature` — Chữ ký số
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Lượt trình ký | `luot_trinh` | ForeignKey (signing_attempt) | X | |
+| Người ký (lượt ký) | `buoc_ky` | ForeignKey (signing_request_step_signer) | X | Không unique |
+| Khóa ký | `khoa_ky` | ForeignKey (signing_key) | X | |
+| Hash tài liệu | `hash_tai_lieu` | Text (64) - SHA-256 | X | Phải bằng `luot_trinh.ma_bam_tai_lieu` |
+| Thuật toán | `thuat_toan` | Text (50) | X | |
+| Giá trị chữ ký | `chu_ky_so` | Text (Base64) | X | |
+| Ghi chú khi ký | `ghi_chu_ky` | Text | | Góp ý nhỏ, không chặn luồng |
+| Ký trễ hạn | `ky_tre_han` | Boolean | X | Mặc định False |
+| Số giây trễ hạn | `so_giay_tre` | Number | | |
+| Ngày ký | `ngay_ky` | DateTime | X | |
+| Trạng thái xác minh | `trang_thai_xac_minh` | Text (20) [CHUA_XAC_MINH, HOP_LE, KHONG_HOP_LE] | X | Tạo mới luôn là HOP_LE |
+| Thời điểm xác minh | `thoi_diem_xac_minh` | DateTime | | |
+| Vị trí ảnh chữ ký | `vi_tri_anh_chu_ky` | Text (500) | | Snapshot ảnh tại lúc ký |
+| Mã băm ảnh chữ ký | `ma_bam_anh_chu_ky` | Text (64) - SHA-256 | | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+Ràng buộc: bản ghi bất biến, không UPDATE nội dung, không DELETE. Không lưu tệp theo từng người ký.
+
+#### `signing_manifest` — Bằng chứng tổng hợp
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Lượt trình ký | `luot_trinh` | ForeignKey (signing_attempt) | X | |
+| Phiên bản bằng chứng | `phien_ban_bang_chung` | Number (SmallInt) | X | Mặc định 1 |
+| Nội dung chuẩn hóa | `noi_dung_chuan_hoa` | JSON | X | Mã băm tài liệu, người ký, dấu vân tay khóa, chữ ký, thời điểm, cấp, trạng thái |
+| Mã băm bằng chứng | `ma_bam_bang_chung` | Text (64) - SHA-256 | X | Tính trên bytes serialize chuẩn hóa có phiên bản |
+| Vị trí lưu | `vi_tri_luu` | Text (500) | | |
+| Trạng thái | `trang_thai` | Text (20) [NHAP, DA_CHOT] | X | DA_CHOT thì không sửa/xóa |
+| Thời điểm chốt | `thoi_diem_chot` | DateTime | | |
+| Người tạo | `create_by` | ForeignKey (auth_user) | X | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+#### `signing_change_thread` — Yêu cầu chỉnh sửa
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Lượt trình ký | `luot_trinh` | ForeignKey (signing_attempt) | X | |
+| Người yêu cầu | `nguoi_yeu_cau` | ForeignKey (auth_user) | X | |
+| Tiêu đề | `tieu_de` | Text (255) | X | |
+| Lý do | `ly_do` | Text | X | |
+| Trạng thái | `trang_thai` | Text (20) [DANG_MO, DA_GIAI_QUYET] | X | Mặc định DANG_MO |
+| Thời điểm giải quyết | `thoi_diem_giai_quyet` | DateTime | | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+| Ngày cập nhật | `update_at` | DateTime (auto) | | |
+
+#### `signing_change_message` — Tin nhắn trao đổi
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Yêu cầu chỉnh sửa | `yeu_cau_sua` | ForeignKey (signing_change_thread) | X | |
+| Người viết | `nguoi_viet` | ForeignKey (auth_user) | X | |
+| Nội dung | `noi_dung` | Text | X | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+Thread và message không xóa cứng, không cascade khi xóa yêu cầu/lượt trình.
+
+#### `signing_audit_log` — Nhật ký trình ký
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Trình ký | `trinh_ky` | ForeignKey (signing_request) | | Bắt buộc với sự kiện luồng ký |
+| Lượt trình ký | `luot_trinh` | ForeignKey (signing_attempt) | | |
+| Người ký (lượt ký) | `buoc_ky` | ForeignKey (signing_request_step_signer) | | |
+| Loại đối tượng | `loai_doi_tuong` | Text (50) | X | Ví dụ signing_process, signing_key, signing_signature |
+| Mã đối tượng | `ma_doi_tuong` | Number | X | |
+| Người thực hiện | `nguoi_thuc_hien` | ForeignKey (auth_user) | X | |
+| Hành động | `hanh_dong` | Text (50) | X | |
+| Trạng thái trước | `trang_thai_truoc` | Text (20) | | |
+| Trạng thái sau | `trang_thai_sau` | Text (20) | | |
+| Nội dung chi tiết | `chi_tiet` | Text | | |
+| Dữ liệu kèm theo | `du_lieu_kem_theo` | JSON | | |
+| Địa chỉ IP | `dia_chi_ip` | Text (45) | | |
+| Thời điểm | `created_at` | DateTime (auto) | | |
+
+Ràng buộc: CHECK `loai_doi_tuong` thuộc luồng ký (request/attempt/signer/signature) thì `trinh_ky` không rỗng. Chỉ ghi thêm; role ứng dụng không có quyền UPDATE/DELETE. Sự kiện thu hồi chữ ký: `loai_doi_tuong = signing_signature`, `ma_doi_tuong` = id chữ ký bị thu hồi.
+
+#### `signing_notification` — Thông báo trình ký (kiêm outbox)
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Trình ký | `trinh_ky` | ForeignKey (signing_request) | X | |
+| Người ký (lượt ký) | `buoc_ky` | ForeignKey (signing_request_step_signer) | | |
+| Người nhận | `nguoi_nhan` | ForeignKey (auth_user) | X | |
+| Kênh | `kenh` | Text (20) [IN_APP, EMAIL] | X | |
+| Loại thông báo | `loai_thong_bao` | Text (50) | X | |
+| Trạng thái | `trang_thai` | Text (20) [CHO_GUI, DA_GUI, THAT_BAI] | X | Mặc định CHO_GUI |
+| Hẹn giờ gửi | `hen_gio_gui` | DateTime | | Dùng cho nhắc trước hạn |
+| Khóa chống gửi trùng | `khoa_chong_gui_trung` | Text (255) | X | Unique |
+| Số lần gửi lại | `so_lan_gui_lai` | Number | X | Mặc định 0 |
+| Thời điểm gửi | `thoi_diem_gui` | DateTime | | |
+| Lỗi gửi | `loi_gui` | Text | | |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+
+#### Phụ thuộc nhóm khác
+
+| Nhóm / Sheet | Field | Nội dung |
 |---|---|---|
-| Người tạo | `create_by` | FK tới `AUTH_USER_MODEL` |
-| Thời điểm tạo | `created_at` | DateTime UTC, tự động |
-| Người cập nhật cuối | `update_by` | FK tới `AUTH_USER_MODEL`, nullable |
-| Thời điểm cập nhật | `update_at` | DateTime UTC, tự động |
+| Nhóm 7 — CBNV | `anh_chu_ky` | Image (PNG nền trong suốt, tối đa 2MB); ảnh chữ ký cá nhân trong hồ sơ |
+| Nhóm 2 — Văn bản | `van_ban` | Thống nhất một bảng `documents_vanban` hay ba bảng đến/đi/mật |
 
-Không dùng lẫn `created_by`, `updated_by` trong nhóm bảng Trình ký nếu không có lý do tương thích được chốt riêng.
+### 5.3. Ràng buộc tổng hợp
 
-### 5.2. Các bảng chính
+- Không gửi nếu quy trình không có cấp hoặc có cấp không có người ký.
+- Không gửi nếu người ký theo chức vụ không resolve được tài khoản đang hoạt động.
+- Không ký nếu:
+  - lượt trình không ở `CHO_KY`;
+  - người ký không ở `CHO_KY` hoặc `thoi_diem_mo` rỗng;
+  - mã băm client ký khác `luot_trinh.ma_bam_tai_lieu`;
+  - khóa không `HOAT_DONG`;
+  - chữ ký không verify được.
+- Cách thức ký là một giá trị chốt cho toàn yêu cầu.
+- Không hoàn thành `TUAN_TU` khi còn cấp chưa `HOAN_THANH`; không hoàn thành `SONG_SONG` khi còn người ký chưa `DA_KY`.
+- Ký lại sau thu hồi tạo dòng chữ ký mới; không sửa/xóa chữ ký cũ; không có hai chữ ký hiện hành trên một người ký.
+- Không có trạng thái quá hạn trong máy trạng thái ký.
+- Không xóa lượt trình đã gửi; không cascade xóa chữ ký, bằng chứng tổng hợp, thread/message, nhật ký.
+- `luot_truoc` chỉ trỏ lượt trình cùng yêu cầu.
+- Chỉ kích hoạt khóa sau proof-of-possession; một người dùng tối đa một khóa `HOAT_DONG`.
+- Hành động đồng thời chỉ một hành động hợp lệ được xử lý (khóa dòng + chống trùng).
+- Không sửa raw bytes của tệp gốc trong luồng nội bộ; chỉ phẳng hóa khi lượt trình `HOAN_THANH`.
 
-#### `signing_process`
+## 6. Máy trạng thái
 
-- `id`, `ma_quy_trinh`, `ten_quy_trinh`, `mo_ta`.
-- `phien_ban`, `trang_thai`: `DRAFT | ACTIVE | INACTIVE`.
-- `pham_vi`: `DEPARTMENT | COMPANY`.
-- `kieu_ky_mac_dinh`: `TUAN_TU | SONG_SONG`.
-- `reminder_policy` hoặc JSON cấu hình nhắc hạn.
-- `create_by`, `created_at`, `update_by`, `update_at`.
-- Unique: `(ma_quy_trinh, phien_ban)`.
-
-#### `signing_process_step`
-
-- `id`, `signing_process_id`, `cap_so`, `ten_cap`, `mo_ta`.
-- `sla_hours` nullable; `is_active`.
-- `create_by`, `created_at`, `update_by`, `update_at`.
-- Unique: `(signing_process_id, cap_so)`.
-
-#### `signing_process_step_signer`
-
-- `id`, `signing_process_step_id`.
-- `user_id` nullable, `position_id` nullable; bắt buộc có đúng một loại target.
-- `signer_role`: `INITIAL` (Ký nháy / Rà soát) | `PRIMARY` (Ký chính / Quyết định); default `PRIMARY`.
-- `is_blocking`: boolean; default `true` (nếu là `INITIAL`, bắt buộc ký xong mới mở khóa cho `PRIMARY`).
-- Không cần field `required`/`bat_buoc` trong MVP vì mọi signer target đều bắt buộc; nếu phải giữ để tương thích schema thì DB phải cưỡng chế giá trị luôn là true.
-- `sort_order`, `create_by`, `created_at`, `update_by`, `update_at`.
-- Không lưu `so_nguoi_ky` ở process step.
-
-#### `signing_request`
-
-- `id`, `document_id`, `document_version`, `document_storage_key`, `document_hash`.
-- `signing_process_id`, `process_version`.
-- `muc_do` theo nghiệp vụ hiện có nếu cần; không dùng để suy ra state machine.
-- `kieu_ky`: `TUAN_TU | SONG_SONG`.
-- `trang_thai`: `DRAFT | IN_PROGRESS | COMPLETED | REJECTED | CANCELLED`; quá hạn không phải trạng thái request.
-- `final_due_at`, `ngay_gui`, `ngay_hoan_thanh`, `ngay_tu_choi`, `ngay_huy`.
-- `ly_do_tu_choi`, `ly_do_huy`, `ghi_chu`.
-- `create_by`, `created_at`, `update_by`, `update_at`.
-- Không sửa document hash/process/mode/signer snapshot sau submit.
-- Request giữ lifecycle tổng thể; attempt hiện hành giữ tiến độ ký chi tiết.
-
-#### `signing_attempt`
-
-- `id`, `signing_request_id`, `attempt_no`, `parent_attempt_id` nullable; attempt cha nếu có phải thuộc cùng request.
-- Attempt hiện hành là attempt có `attempt_no` lớn nhất của request; không cần thêm current-attempt pointer nếu không có yêu cầu truy vấn chứng minh cần thiết.
-- `document_version`, `document_storage_key`, `document_hash`.
-- `trang_thai`: `DRAFT | WAITING_SIGN | CHANGE_REQUESTED | COMPLETED | REJECTED | CANCELLED`.
-- `submitted_at`, `completed_at`, `rejected_at`, `cancelled_at`; không có `expired_at` vì deadline không đóng attempt.
-- `idempotency_key` unique theo request.
-- `create_by`, `created_at`, `update_by`, `update_at`.
-- Unique: `(signing_request_id, attempt_no)`.
-- Attempt đã submit là lịch sử bất biến; không xóa cứng và không ghi đè khi resend/reconsider.
-
-#### `signing_request_step`
-
-- Snapshot từ process step: `signing_attempt_id`, `process_step_id`, `cap_so`, `ten_cap`.
-- `trang_thai`: `LOCKED | PENDING | COMPLETED | BLOCKED`.
-- Dùng state set riêng cho cấp ký; không dùng chung enum với signer slot.
-- `due_at`, `opened_at`, `completed_at`.
-- `create_by`, `created_at`, `update_by`, `update_at`.
-- Unique: `(signing_attempt_id, cap_so)`.
-
-#### `signing_request_step_signer`
-
-- `signing_request_step_id`, `user_id`, `position_id` nullable.
-- `signer_role`: `INITIAL | PRIMARY`.
-- `is_blocking`: boolean.
-- `delegated_from_user_id`: FK tới `AUTH_USER_MODEL`, nullable (ghi nhận người ủy quyền khi chuyển quyền khẩn cấp).
-- `delegation_reason`: text, nullable.
-- `delegated_at`: DateTime UTC, nullable.
-- **Tọa độ hóa chữ ký trực quan (Visual Placement):**
-  - `page_number`: PositiveIntegerField nullable (trang hiển thị chữ ký trên PDF).
-  - `coord_x`, `coord_y`: FloatField nullable (tọa độ X, Y chuẩn hóa tỷ lệ % `[0, 100]` hoặc điểm PDF).
-  - `box_width`, `box_height`: FloatField nullable (kích thước khung chữ ký).
-- Snapshot tên hiển thị/chức vụ cần thiết cho lịch sử.
-- `trang_thai`: `PENDING | SIGNED | REJECTED | CHANGE_REQUESTED`.
-- `opened_at`, `signed_at`, `rejected_at`.
-- Revoke là audit event; sau revoke, projection của slot về `PENDING`, không giữ `REVOKED` như trạng thái hiện tại.
-- `current_signature_id` nullable hoặc quan hệ tương đương trỏ tới chữ ký hiện hành; chỉ signer slot là projection trạng thái có thể cập nhật.
-- `last_action_idempotency_key`.
-- `create_by`, `created_at`, `update_by`, `update_at`.
-- Unique: `(signing_request_step_id, user_id)`.
-
-#### `signing_key`
-
-- `id`, `user_id`, `key_id`, `algorithm` (`Ed25519`), `public_key`.
-- `fingerprint`, `status`: `PENDING | ACTIVE | ROTATED | REVOKED`; default `PENDING`.
-- `challenge_verified_at`, `activated_at`, `revoked_at`, `replaced_by_id` nullable.
-- Không có field private key.
-- DB chỉ cho chuyển sang `ACTIVE` khi challenge proof đã verify; unique tối đa một key `ACTIVE` cho mỗi user, không phân biệt algorithm; fingerprint unique.
-- `create_by`, `created_at`, `update_by`, `update_at`.
-
-#### `signing_signature`
-
-- `id`, `signing_attempt_id`, `signing_request_step_signer_id`.
-- `document_hash`, `key_id`, `key_fingerprint`, `signature_bytes`.
-- `algorithm`, `signed_at`, `verified_at`.
-- `sign_note`: text nullable (ghi chú bảo lưu / lưu ý khi duyệt cho phép qua).
-- `is_late`: boolean default `false` (đánh dấu ký sau deadline).
-- `late_duration_seconds`: integer nullable (số giây trễ so với deadline cấp/yêu cầu).
-- `verification_status`: `VALID | INVALID`; revocation là audit event riêng, không cập nhật trạng thái/bằng chứng của dòng chữ ký.
-- Lưu metadata cần cho verify lịch sử; không tạo file riêng cho từng signer.
-- Cho phép nhiều dòng lịch sử cho cùng signer slot/hash khi ký lại sau thu hồi; không đặt `UNIQUE` trên slot.
-- Đảm bảo tối đa một chữ ký hiện hành cho mỗi slot qua `current_signature_id`/quan hệ hiện hành được cập nhật nguyên tử cùng signer slot; ràng buộc phải bảo đảm chữ ký được trỏ tới thuộc đúng slot và attempt. Chữ ký cũ vẫn còn nguyên để kiểm toán.
-
-#### `signing_manifest`
-
-- `id`, `signing_attempt_id`, `manifest_version`.
-- `canonical_json`, `manifest_hash`, `storage_key`.
-- `status`: `DRAFT | FINAL`.
-- `finalized_at`, `create_by`, `created_at`, `update_by`, `update_at`.
-- Manifest chứa document hash, signer, key fingerprint, chữ ký, thời điểm, cấp và trạng thái.
-- `manifest_hash` được tính từ bytes của quy tắc canonical serialization có phiên bản; không giả định JSONB tự nó là byte representation canonical.
-- Khi `FINAL`, manifest không được `UPDATE`/`DELETE`; xóa attempt không được cascade xóa manifest đã chốt.
-
-#### `signing_change_thread` và `signing_change_message`
-
-- Thread: `signing_attempt_id`, `requested_by`, `status` (`OPEN | RELEASED | RESOLVED`), `released_at`, `resolved_at`.
-- Message: `thread_id`, `author_id`, `message`, `created_at`.
-- Mỗi thread có audit; không hard-delete.
-- Xóa request/attempt không được cascade xóa thread/message đã phát sinh; áp dụng cùng chính sách retention/soft-delete với attempt history.
-
-#### `signing_audit_log`
-
-- `actor_id`, `action`, `entity_type`, `entity_id`, `attempt_id` nullable.
-- `from_status`, `to_status`, `reason`, `metadata_json`, `occurred_at`, `request_id`.
-- Append-only ở tầng service và DB: role ứng dụng không có quyền `UPDATE`/`DELETE`; sự kiện thu hồi tham chiếu chữ ký bị thu hồi.
-- Không cascade xóa attempt, audit, signature evidence, thread/message hoặc finalized manifest khi xóa request/attempt; dùng `RESTRICT` hoặc retention/soft-delete được chốt rõ.
-
-#### `signing_notification`
-
-- `recipient_id`, `event_type`, `entity_type`, `entity_id`.
-- `channel`: `IN_APP | EMAIL`.
-- `dedupe_key` unique, `status`: `PENDING | SENT | FAILED`.
-- `scheduled_at`, `sent_at`, `attempt_count`, `last_error`.
-- Có thể triển khai cùng transactional outbox hoặc tách `outbox_event` riêng nếu hạ tầng hiện có yêu cầu.
-
-### 5.3. Constraint quan trọng
-
-- Không submit process không có step hoặc step không có signer.
-- Không submit nếu signer target là position nhưng không resolve được user active.
-- Không sign nếu request/attempt không ở trạng thái cho phép, hash request không khớp hash client ký, key không active hoặc chữ ký không verify.
-- Request mode là một giá trị snapshot áp dụng toàn request; không có mode override theo từng cấp trong MVP.
-- Không complete `TUAN_TU` khi còn signer slot/cấp chưa hoàn tất.
-- Không complete `SONG_SONG` khi còn bất kỳ signer slot nào chưa `SIGNED`.
-- Re-sign sau revoke tạo thêm signature evidence; không cập nhật/xóa chữ ký lịch sử và không để hai chữ ký hiện hành trên cùng slot.
-- Không đổi request/attempt sang trạng thái `EXPIRED`/`QUA_HAN`; trạng thái quá hạn được xác định riêng khỏi state machine ký.
-- Không xóa attempt đã submit hoặc cascade xóa chữ ký/manifest/audit evidence.
-- Không xóa request có attempt/audit history theo cách cascade làm mất attempt, signature, thread/message, manifest hoặc audit.
-- `parent_attempt_id` chỉ được tham chiếu attempt cùng request.
-- Chỉ kích hoạt key sau proof-of-possession; một user tối đa một key `ACTIVE`, không phân biệt thuật toán.
-- Chỉ một action hợp lệ được xử lý khi có concurrent request nhờ row lock và idempotency.
-- **Bất biến file PDF trong luồng nội bộ:** Tuyệt đối không can thiệp sửa đổi raw bytes của file PDF trong quá trình duyệt nội bộ; mọi chữ ký nội bộ đều liên kết với SHA-256 hash của file gốc. Chỉ thực hiện dán ảnh chữ ký vật lý (PDF Flattening) khi attempt đạt `COMPLETED`.
-
-## 6. State machine
-
-### 6.1. Request và attempt
-
-Request giữ lifecycle tổng thể; mỗi lần trình ký/gửi lại là một attempt riêng:
+### 6.1. Yêu cầu và lượt trình
 
 ```text
-Request:
-DRAFT -> IN_PROGRESS   (submit attempt đầu tiên)
-DRAFT -> CANCELLED     (creator/admin cancel trước submit)
-IN_PROGRESS -> COMPLETED | REJECTED | CANCELLED
-REJECTED -> IN_PROGRESS (reconsider có quyền; tạo attempt mới)
+Yêu cầu (signing_request.trang_thai):
+NHAP     -> CHO_KY     (gui: tạo lượt trình đầu tiên)
+NHAP     -> HUY        (người tạo/quản trị hủy trước khi gửi)
+CHO_KY   -> HOAN_THANH | TU_CHOI | HUY
+TU_CHOI  -> CHO_KY     (xem_xet_lai có quyền: tạo lượt trình mới)
 
-Attempt:
-DRAFT -> WAITING_SIGN  (submit)
-WAITING_SIGN -> CHANGE_REQUESTED | REJECTED | COMPLETED | CANCELLED
-CHANGE_REQUESTED -> (giữ nguyên lịch sử; resolve thread + resend tạo attempt mới)
-REJECTED -> (giữ nguyên lịch sử; reconsider tạo attempt mới)
+Lượt trình (signing_attempt.trang_thai):
+NHAP        -> CHO_KY      (gui)
+CHO_KY      -> YEU_CAU_SUA | TU_CHOI | HOAN_THANH | HUY
+YEU_CAU_SUA -> (kết thúc; thread DA_GIAI_QUYET thì tạo lượt trình mới)
+TU_CHOI     -> (kết thúc; xem_xet_lai thì tạo lượt trình mới)
 ```
 
-Khi attempt nhận `request_changes`, parent request vẫn `IN_PROGRESS` nhưng không cho ký tiếp trên attempt đang tạm dừng. Attempt cũ không quay về `WAITING_SIGN` và không bị ghi đè; khi người tạo giải quyết thread, request trỏ tới attempt mới. Không có transition `EXPIRED`/`QUA_HAN`: deadline chỉ kích hoạt nhắc/escalation, không ngăn ký muộn.
+- Khi lượt trình `YEU_CAU_SUA`, yêu cầu vẫn `CHO_KY` nhưng không ai ký được trên lượt đó.
+- Lượt cũ không quay lại `CHO_KY` và không bị ghi đè.
+- Không có chuyển trạng thái quá hạn; hạn xử lý chỉ kích hoạt nhắc/escalation.
 
-### 6.2. Signer action
+### 6.2. Hành động của người ký
 
-- `sign`: `PENDING -> SIGNED` sau khi verify Ed25519; nhận thêm `sign_note` tùy chọn (ghi chú bảo lưu / không chặn luồng). Nếu ký sau hạn, gắn `is_late: true` và tính `late_duration_seconds`.
-- `reject`: signer slot và attempt chuyển rejected; lý do bắt buộc.
-- `request_changes`: signer slot và attempt chuyển change requested; lý do bắt buộc. Kích hoạt thread giao tiếp hai chiều; chốt giải pháp thì đóng attempt cũ và tạo attempt mới để ký lại toàn bộ.
-- `delegate`: chuyển quyền ký khẩn cấp; yêu cầu lý do bắt buộc, ghi audit log chi tiết, cập nhật signer slot sang user mới và lưu vết `delegated_from_user_id`.
-- `revoke`: chỉ signer đã ký trong `SONG_SONG` và attempt chưa hoàn tất; ghi audit event, bỏ current-signature pointer và đưa signer slot về `PENDING`. Dòng chữ ký cũ không bị sửa/xóa; ký lại tạo dòng chữ ký mới cho cùng slot/hash.
+| Hành động | Điều kiện | Kết quả |
+|---|---|---|
+| `ky` | Người ký `CHO_KY`, `thoi_diem_mo` có giá trị, khóa `HOAT_DONG`, verify Ed25519 thành công | Người ký `DA_KY`; tạo chữ ký `HOP_LE` kèm snapshot ảnh; gán `chu_ky_hien_hanh`; tính `ky_tre_han`. Kiểm tra mở `KY_CHINH`, mở cấp sau, hoàn thành lượt trình. |
+| `tu_choi` | Lý do bắt buộc | Người ký và lượt trình `TU_CHOI`; yêu cầu `TU_CHOI` |
+| `yeu_cau_sua` | Lý do bắt buộc | Người ký và lượt trình `YEU_CAU_SUA`; cấp đang mở `TAM_DUNG`; mở thread |
+| `uy_quyen` | Người ký `CHO_KY`, lý do bắt buộc, người nhận chưa có trong cấp | Đổi `nguoi_ky`; gán `uy_quyen_tu`, `ngay_uy_quyen`, `ly_do_uy_quyen` |
+| `thu_hoi` | `SONG_SONG`, lượt trình chưa hoàn thành, người ký `DA_KY`, không phá quy tắc chặn ký nháy | Ghi nhật ký; `chu_ky_hien_hanh` rỗng; người ký về `CHO_KY` |
 
-## 7. API contract dự kiến
+## 7. API dự kiến
 
-API dùng version prefix `/api/v1/`, serializer validation và permission riêng. Tên endpoint là contract dự kiến, cần đối chiếu với convention backend trước khi code.
+Prefix `/api/v1/`. Tên endpoint là contract dự kiến, cần đối chiếu convention backend trước khi code. Tên field trong payload trùng tên field CSDL.
 
 ### 7.1. Quy trình
 
-- `GET /signing/processes`: danh sách theo scope/quyền.
-- `POST /signing/processes`: tạo draft.
-- `GET /signing/processes/{id}`: chi tiết cùng steps/signers (kèm `signer_role` và `is_blocking`).
-- `PATCH /signing/processes/{id}`: chỉ draft.
-- `POST /signing/processes/{id}/activate`: kích hoạt.
-- `POST /signing/processes/{id}/deactivate`: ngừng dùng.
-- `POST /signing/processes/{id}/clone`: tạo phiên bản mới từ quy trình cũ.
+- `GET /signing/processes`: danh sách theo phạm vi/quyền.
+- `POST /signing/processes`: tạo quy trình `NHAP`.
+- `GET /signing/processes/{id}`: chi tiết kèm cấp và người ký (`vai_tro_ky`, `chan_ky_chinh`).
+- `PATCH /signing/processes/{id}`: chỉ khi `NHAP`.
+- `POST /signing/processes/{id}/kich-hoat`
+- `POST /signing/processes/{id}/ngung`
+- `POST /signing/processes/{id}/nhan-ban`: tạo phiên bản mới.
 
 ### 7.2. Yêu cầu trình ký
 
-- `GET /signing/requests`: lọc theo creator/assignee/admin/auditor và department mặc định.
-- `POST /signing/requests`: tạo draft từ document contract và process kèm cấu hình tọa độ nơi ký (`page_number`, `coord_x`, `coord_y`, `box_width`, `box_height`).
-- `GET /signing/requests/{id}`: tổng quan, cấp, signer slot, deadline, lịch sử và tọa độ ký.
-- `POST /signing/requests/{id}/submit`: khóa document/process snapshot, tạo attempt.
-- `POST /signing/requests/{id}/cancel`: hủy theo quyền.
-- `POST /signing/requests/{id}/reconsider`: tạo attempt mới sau reject.
-- `POST /signing/requests/{id}/dispatch-legal`: khâu bổ sung cuối — phát hành pháp lý sau khi attempt hoàn tất (kết nối CA/HSM/CCCD ký số PAdES và đóng dấu số doanh nghiệp).
+- `GET /signing/requests`: lọc theo người tạo, người được giao ký, quản trị, kiểm toán; mặc định theo phòng ban người tạo.
+- `POST /signing/requests`: tạo `NHAP` từ văn bản và quy trình, kèm vị trí ký của từng người ký.
+- `GET /signing/requests/{id}`: tổng quan, cấp, người ký, hạn, lịch sử, vị trí ký.
+- `POST /signing/requests/{id}/gui`: khóa snapshot văn bản/quy trình, tạo lượt trình.
+- `POST /signing/requests/{id}/huy`
+- `POST /signing/requests/{id}/xem-xet-lai`: tạo lượt trình mới sau từ chối.
+- `POST /signing/requests/{id}/phat-hanh`: khâu phát hành pháp lý; chỉ khi lượt trình hiện hành `HOAN_THANH` và đã có tệp hoàn tất.
 
 ### 7.3. Hành động người ký
 
-- `POST /signing/attempts/{id}/sign`: nhận `key_id`, digest/hash, signature và `sign_note` tùy chọn; verify server-side và áp ảnh chữ ký lưu ở Profile vào đúng tọa độ đã định sẵn.
-- `POST /signing/attempts/{id}/reject`: reason bắt buộc, note tùy chọn.
-- `POST /signing/attempts/{id}/request-changes`: reason bắt buộc, mở thread giao tiếp.
-- `POST /signing/attempts/{id}/delegate`: chuyển quyền ký khẩn cấp (payload: `new_user_id`, `reason` bắt buộc).
-- `POST /signing/attempts/{id}/revoke`: chỉ cho parallel trước completion.
+- `POST /signing/attempts/{id}/ky`: nhận `khoa_ky`, `hash_tai_lieu`, `chu_ky_so`, `ghi_chu_ky` (tùy chọn). Server verify, snapshot ảnh chữ ký, không sửa tệp.
+- `POST /signing/attempts/{id}/tu-choi`: `ly_do_tu_choi` bắt buộc.
+- `POST /signing/attempts/{id}/yeu-cau-sua`: `tieu_de`, `ly_do` bắt buộc; mở thread.
+- `POST /signing/attempts/{id}/uy-quyen`: `nguoi_ky` mới, `ly_do_uy_quyen` bắt buộc.
+- `POST /signing/attempts/{id}/thu-hoi`: chỉ `SONG_SONG`, trước khi hoàn thành.
+- `GET|POST /signing/change-threads/{id}/messages`: trao đổi trong thread.
+- `POST /signing/change-threads/{id}/giai-quyet`: tải bản mới, đóng thread, tạo lượt trình mới.
 
-### 7.4. Hồ sơ chữ ký cá nhân (Profile Signature)
+### 7.4. Khóa, nhật ký, bằng chứng tổng hợp
 
-- `GET /accounts/profile/signature`: xem metadata và URL ảnh chữ ký cá nhân hiện tại.
-- `PATCH /accounts/profile/signature`: tải lên/cập nhật ảnh chữ ký cá nhân dạng PNG (nền trong suốt).
+- `POST /signing/keys/challenge`: sinh challenge (Redis, TTL 5 phút).
+- `POST /signing/keys/verify`: verify proof-of-possession, kích hoạt khóa.
+- `POST /signing/keys/{id}/xoay-vong`
+- `POST /signing/keys/{id}/thu-hoi`
+- `GET /signing/requests/{id}/audit`
+- `GET /signing/attempts/{id}/manifest`: bằng chứng chuẩn hóa và trạng thái xác minh.
 
-### 7.5. Khóa và audit
+### 7.5. Quy tắc chung
 
-- `POST /signing/keys/challenge`: tạo challenge.
-- `POST /signing/keys/verify`: verify proof-of-possession và activate key.
-- `POST /signing/keys/{id}/rotate`: rotate có audit.
-- `GET /signing/requests/{id}/audit`: xem audit theo quyền.
-- `GET /signing/attempts/{id}/manifest`: lấy manifest canonical và trạng thái verify.
+- Lỗi validation trả theo field, kèm mã lỗi nghiệp vụ ổn định.
+- Hành động chuyển trạng thái bắt buộc header `Idempotency-Key`.
+- Không trả dữ liệu nhạy cảm ngoài contract; không log chữ ký/khóa ở dạng không kiểm soát.
+- Phân trang và lọc giới hạn theo quyền sở hữu, phân công, phạm vi ở server, không chỉ ẩn ở UI.
+- Ảnh chữ ký cá nhân đọc qua contract của Nhóm 7; module này không định nghĩa API hồ sơ.
 
-### 7.6. Quy tắc API chung
+## 8. Phân quyền
 
-- Trả lỗi validation theo field và mã lỗi nghiệp vụ ổn định.
-- Hành động chuyển trạng thái yêu cầu `Idempotency-Key`.
-- Không trả public key/private dữ liệu nhạy cảm ngoài contract cần thiết; không log signature/private material dưới dạng không kiểm soát.
-- Pagination và filter phải giới hạn theo ownership/assignment/scope, không chỉ ẩn ở UI.
+- Nhân viên đã xác thực được tạo yêu cầu nếu có quyền truy cập văn bản và thấy quy trình `HOAT_DONG`.
+- Danh sách yêu cầu mặc định gồm: người tạo, người được giao ký, quản trị, kiểm toán; lọc mặc định theo phòng ban người tạo.
+- Permission tối thiểu:
+  - `xem_trinh_ky`
+  - `tao_trinh_ky`
+  - `quan_ly_quy_trinh_ky`
+  - `gui_trinh_ky`
+  - `ky_trinh_ky`
+  - `uy_quyen_trinh_ky`
+  - `huy_trinh_ky`
+  - `xem_nhat_ky_trinh_ky`
+- Quyền kiểm tra ở API/service; frontend chỉ hỗ trợ UX.
 
-## 8. Quyền và phạm vi nhìn thấy
+## 9. Hạn xử lý, thông báo và Celery
 
-- Nhân viên đã xác thực được tạo yêu cầu nếu có quyền truy cập văn bản và nhìn thấy process active.
-- Request list mặc định gồm creator, assigned signer, admin và auditor; filter mặc định theo phòng ban người tạo.
-- Permission tách riêng tối thiểu:
-  - `view_signing`
-  - `create_signing_request`
-  - `manage_signing_process`
-  - `submit_signing_request`
-  - `sign_signing_request`
-  - `delegate_signing_request`
-  - `cancel_signing_request`
-  - `view_signing_audit`
-- Quyền phải kiểm tra ở API/service; frontend chỉ là lớp hỗ trợ UX.
+### 9.1. Tác vụ định kỳ
 
-## 9. Deadline, notification và Celery
+- Quét theo lô các yêu cầu có `han_chot` và các cấp có `han_xu_ly` sắp đến hạn.
+- Tạo thông báo với `khoa_chong_gui_trung`; worker retry không gửi trùng.
+- Mốc mặc định `han_xu_ly - 24h` và `han_xu_ly`; `cau_hinh_nhac_han` của quy trình được ưu tiên.
+- Escalation chỉ tạo thông báo và nhật ký; không đổi trạng thái, không chặn ký muộn, không tự đổi người ký, không tự từ chối.
+- Quét bản ghi thông báo `CHO_GUI` bị sót (outbox, mục 4.1).
+- Chuyển khóa quá `ngay_het_han` sang `HET_HAN`.
 
-### 9.1. Job định kỳ
+### 9.2. Quy tắc Celery
 
-- Job quét deadline theo batch, chọn request có `final_due_at` hoặc cấp ký có `due_at` gần đến hạn.
-- Tạo notification bằng `dedupe_key`, không gửi trùng khi worker retry.
-- Mốc mặc định: `due_at - 24h` và `due_at`; process policy được ưu tiên nếu có.
-- Job escalation chỉ tạo event/audit; không đổi request/attempt sang `EXPIRED`, không chặn ký muộn, không tự đổi signer và không tự reject.
+- Task nhận ID, đọc dữ liệu mới nhất trong service/transaction.
+- Retry có exponential backoff, jitter, giới hạn số lần.
+- Task idempotent; lỗi cuối lưu vào `loi_gui` để quan sát và retry thủ công.
+- Không đặt logic chuyển trạng thái quan trọng chỉ trong task nền; hành động đồng bộ phải tự bảo toàn bất biến.
 
-### 9.2. Celery rules
-
-- Task nhận ID và đọc dữ liệu mới nhất trong transaction/service.
-- Retry có exponential backoff, jitter và giới hạn số lần.
-- Task idempotent; lỗi cuối cùng lưu vào notification/outbox để quan sát và retry thủ công.
-- Không đặt logic state transition quan trọng chỉ trong task nền; action đồng bộ phải bảo toàn invariant trước.
-
-## 10. Kế hoạch triển khai theo pha
+## 10. Kế hoạch theo pha
 
 ### Pha 0 — Chốt contract và khung app
 
-- Kiểm tra cấu trúc Django thực tế trên branch nhóm 5.
-- Chốt tên model/field tích hợp document, user, department, position.
-- Tạo app/config, URL versioning, base permission, timezone và error format.
-- Chốt migration convention và test database.
+- Kiểm tra cấu trúc Django thực tế trên nhánh Nhóm 5.
+- Chốt model văn bản (Nhóm 2), đơn vị, chức vụ, hồ sơ và ảnh chữ ký (Nhóm 7).
+- Tạo app, URL versioning, base permission, timezone, định dạng lỗi.
+- Chốt convention migration và database test.
 
-### Pha 1 — Schema và process management
+### Pha 1 — Schema và quản lý quy trình
 
-- Tạo migration cho process, step, process signer (kèm role `INITIAL`/`PRIMARY` và `is_blocking`) và audit dùng chung.
-- Implement draft/activate/deactivate/clone, scope department/company.
-- Thêm constraint không sửa active process có request đang chạy.
-- Test uniqueness, empty step, empty signer, position trống và quyền.
+- Migration cho quy trình, cấp, người ký cấu hình (`vai_tro_ky`, `chan_ky_chinh`), nhật ký.
+- Tạo/kích hoạt/ngừng/nhân bản quy trình; phạm vi `PHONG_BAN`/`CONG_TY`.
+- Chặn sửa quy trình đã kích hoạt.
+- Test: unique, quy trình không có cấp, cấp không có người ký, chức vụ trống, CHECK người ký XOR chức vụ, phân quyền.
 
-### Pha 2 — Request/attempt và signer snapshot
+### Pha 2 — Yêu cầu, lượt trình, snapshot người ký
 
-- Implement create draft, submit, snapshot process/document/signer.
-- Implement sequential/parallel opening và completion; gating tuần tự nội bộ cấp giữa ký nháy và ký chính.
-- Thêm transaction lock/idempotency.
-- Test race condition: hai signer ký đồng thời, submit lặp, sign lặp.
+- Tạo nháp, gửi, snapshot quy trình/văn bản/người ký/vị trí ký.
+- Mở cấp tuần tự/song song, hoàn thành; chặn ký chính theo ký nháy.
+- Khóa dòng và chống trùng.
+- Test đồng thời: hai người ký cùng lúc, gửi lặp, ký lặp.
 
-### Pha 3 — Crypto và manifest
+### Pha 3 — Khóa ký, chữ ký, bằng chứng tổng hợp
 
-- Implement challenge/proof-of-possession, key rotation và revoke.
-- Verify Ed25519 trên digest raw bytes.
-- Lưu signature evidence bất biến (hỗ trợ `sign_note` và metadata `is_late`) và canonical manifest; thu hồi ghi thành event riêng, re-sign giữ lại bằng chứng cũ.
-- Test hash mismatch, key inactive, signature invalid, key cũ verify lịch sử, parallel revoke/re-sign và không mất signature/manifest khi xóa attempt bị chặn.
+- Challenge/proof-of-possession (Redis TTL), xoay vòng, thu hồi, hết hạn.
+- Verify Ed25519 trên raw digest.
+- Lưu chữ ký bất biến (`ghi_chu_ky`, `ky_tre_han`, snapshot ảnh), con trỏ `chu_ky_hien_hanh`, bằng chứng chuẩn hóa.
+- Test: lệch mã băm, khóa không hoạt động, chữ ký sai, khóa cũ verify lịch sử, thu hồi/ký lại song song, ký nháy không thu hồi được sau khi ký chính đã ký, không xóa được chữ ký/bằng chứng.
 
-### Pha 4 — Correction, delegation, reject, cancel và deadline
+### Pha 4 — Chỉnh sửa, ủy quyền, từ chối, hủy, hạn xử lý
 
-- Implement change thread/message, giao tiếp hai chiều giữa creator và reviewer, pause toàn bộ attempt, resolve và resend toàn bộ bằng attempt mới.
-- Implement chuyển quyền ký khẩn cấp (`delegate`) có audit log và lưu vết người ủy quyền.
-- Implement reject/reconsider/cancel/admin override.
-- Implement UTC deadline, reminder schedule và escalation; không tự chuyển state sang expired hoặc tự đóng attempt; cho phép ký muộn kèm gắn cờ trễ hạn.
-- Test nhiều signer cùng request changes và không còn thao tác resend một phần.
-- Test request/attempt quá hạn vẫn ở trạng thái chờ ký và ký muộn được nếu các điều kiện ký còn hợp lệ.
+- Thread/message, tạm dừng lượt trình, giải quyết và gửi lại toàn bộ bằng lượt mới.
+- Ủy quyền khẩn cấp có nhật ký; chặn ủy quyền cho người đã có trong cấp.
+- Từ chối/xem xét lại/hủy/quản trị hủy thay.
+- Hạn UTC, lịch nhắc, escalation; ký muộn có gắn cờ trễ hạn.
+- Test: nhiều người cùng yêu cầu sửa; không có gửi lại một phần; quá hạn vẫn `CHO_KY` và ký muộn được.
 
-### Pha 5 — Outbox, notification và tích hợp storage / legal adapter
+### Pha 5 — Thông báo, lưu trữ, phẳng hóa PDF, adapter pháp lý
 
-- Implement outbox/notification và Celery task có dedupe/retry.
-- Implement filesystem adapter qua env-configured mount.
-- Bổ sung interface `LegalSignerAdapter` cho khâu bổ sung cuối: ký số CA/CCCD và đóng dấu pháp nhân PAdES.
-- Bổ sung contract test để thay adapter bằng API/SFTP sau này không đổi domain service.
+- Thông báo kiêm outbox, task Celery có chống trùng/retry, quét bản ghi sót.
+- Adapter filesystem qua mount cấu hình bằng biến môi trường.
+- `PdfStampingService`: phẳng hóa khi `HOAN_THANH`, lưu `vi_tri_tep_hoan_tat`, `ma_bam_tep_hoan_tat`; test tệp gốc không đổi mã băm trong suốt luồng nội bộ.
+- Interface `LegalSignerAdapter` cho khâu phát hành.
+- Contract test để thay adapter lưu trữ bằng API/SFTP không đổi domain service.
 
-### Pha 6 — API hardening và bàn giao
+### Pha 6 — Hoàn thiện API và bàn giao
 
-- Hoàn thiện OpenAPI/schema lỗi/idempotency documentation.
-- Chạy migration, check, test, lint/type check phù hợp repo.
-- Review quyền, audit, log và dữ liệu nhạy cảm.
-- Chỉ sau khi kiểm tra branch/status mới stage đúng các file thuộc task.
+- OpenAPI, schema lỗi, tài liệu chống trùng (`Idempotency-Key`).
+- Chạy migration, check, test, lint/type check theo repo.
+- Rà soát quyền, nhật ký, log, dữ liệu nhạy cảm.
+- Kiểm tra nhánh/status trước khi stage đúng file thuộc task.
 
-## 11. Acceptance criteria
+## 11. Tiêu chí nghiệm thu
 
-### Workflow
+### Luồng ký
 
-- Có thể tạo process nhiều cấp, mỗi cấp nhiều signer target; phân định rõ vai trò `INITIAL` (ký nháy) và `PRIMARY` (ký chính).
-- Người ký chính chỉ mở khóa ký khi toàn bộ người ký nháy trong cấp đã ký xong (`is_blocking: true`).
-- Người tạo chọn `TUAN_TU` hoặc `SONG_SONG` khi tạo request; lựa chọn áp dụng toàn request, không cấu hình riêng từng cấp.
-- Parallel yêu cầu toàn bộ signer đã chọn đều ký.
-- Sequential không mở cấp sau trước khi cấp hiện tại hoàn tất.
-- Cho phép chuyển quyền ký khẩn cấp (`delegate`) khi có lý do chính đáng mà không hủy attempt.
-- Process active immutable; thay đổi lịch sử thực hiện bằng clone version.
-- Position trống chặn submit.
+- Tạo được quy trình nhiều cấp, mỗi cấp nhiều người ký, phân biệt `KY_NHAY` và `KY_CHINH`.
+- `KY_CHINH` chỉ mở khi mọi `KY_NHAY` chặn trong cấp đã ký.
+- Người tạo chọn `TUAN_TU` hoặc `SONG_SONG`, áp dụng toàn yêu cầu.
+- `SONG_SONG` yêu cầu mọi người ký đều ký; `TUAN_TU` không mở cấp sau khi cấp hiện tại chưa hoàn thành.
+- Ủy quyền khẩn cấp không hủy lượt trình.
+- Quy trình đã kích hoạt không sửa được; thay đổi đi qua nhân bản phiên bản.
+- Chức vụ trống chặn gửi.
 
-### Data integrity & Correction
+### Toàn vẹn dữ liệu và chỉnh sửa
 
-- Request giữ snapshot process/version/signer/document hash.
-- Lưu trữ và hiển thị tọa độ chữ ký (`page_number`, `coord_x`, `coord_y`, `box_width`, `box_height`) chính xác trên tài liệu PDF.
-- Khi ký duyệt, hệ thống tự động áp ảnh chữ ký lưu ở Profile của người ký vào đúng tọa độ đã định vị sẵn.
-- Duyệt kèm `sign_note` lưu vào chữ ký mà không chặn luồng ký.
-- Lỗi lớn chặn luồng bằng `request_changes`, mở thread giao tiếp hai chiều; sau khi chốt sửa thì attempt cũ đóng lại và tạo attempt mới ký lại từ đầu trên bản hash mới.
-- Attempt đã submit, chữ ký và manifest `FINAL` không bị cascade-delete; database/app role chặn xóa cứng hoặc dùng retention/soft-delete được định nghĩa.
-- Attempt cha chỉ thuộc cùng request; re-sign không ghi đè signature evidence cũ và mỗi signer slot có tối đa một chữ ký hiện hành.
-- Không có chữ ký được tính là hợp lệ nếu hash hoặc public key không khớp.
-- Các action concurrent và retry không tạo bản ghi/trạng thái trùng.
+- Lượt trình giữ snapshot quy trình/phiên bản/người ký/mã băm; bản sao trên yêu cầu luôn khớp lượt hiện hành.
+- Vị trí ký lưu và hiển thị đúng trên PDF dưới dạng lớp phủ.
+- Tệp gốc không đổi mã băm trong luồng nội bộ; tệp hoàn tất sinh một lần khi `HOAN_THANH`, dùng snapshot ảnh tại thời điểm ký.
+- `ghi_chu_ky` lưu vào chữ ký, không chặn luồng.
+- `yeu_cau_sua` chặn luồng, mở thread; giải quyết xong thì tạo lượt mới ký lại từ đầu trên mã băm mới.
+- Lượt trình đã gửi, chữ ký, bằng chứng `DA_CHOT` không bị xóa cứng hay cascade.
+- Mỗi người ký tối đa một chữ ký hiện hành; ký lại không ghi đè chữ ký cũ.
+- Không chữ ký nào được chấp nhận nếu mã băm hoặc khóa công khai không khớp.
+- Hành động đồng thời và retry không tạo bản ghi/trạng thái trùng.
 
-### Crypto/audit & Legal Adapter
+### Mật mã, nhật ký, pháp lý
 
-- Private key không xuất hiện trong request, database, log hoặc manifest.
-- Signature verify được từ public key và raw SHA-256 digest.
-- Key rotation, revoke parallel, reject, request changes, delegation, cancel và admin override đều có audit.
-- Revoke không sửa/xóa chữ ký lịch sử; event audit tham chiếu chữ ký bị thu hồi.
-- Manifest canonical có thể kiểm tra độc lập theo attempt.
-- Manifest `FINAL` bất biến; hash được tính từ canonical serialization có phiên bản.
-- Khâu bổ sung cuối: Cung cấp adapter interface sẵn sàng cắm dịch vụ ký số CA/CCCD và đóng dấu PAdES khi văn bản đạt trạng thái hoàn tất phê duyệt nội bộ.
-- **Ranh giới pháp lý bắt buộc:** Người chịu trách nhiệm pháp lý cao nhất khi ký ban hành văn bản phải có Chứng thư số CA được cấp phép hợp pháp.
+- Private key không xuất hiện trong request, CSDL, log hoặc bằng chứng tổng hợp.
+- Chữ ký verify được từ khóa công khai và raw SHA-256 digest.
+- Xoay vòng/thu hồi khóa, thu hồi chữ ký, từ chối, yêu cầu sửa, ủy quyền, hủy, quản trị hủy thay đều có nhật ký, kể cả sự kiện không gắn yêu cầu.
+- Bằng chứng chuẩn hóa kiểm tra độc lập được theo lượt trình; `DA_CHOT` bất biến.
+- Có interface adapter sẵn sàng cắm dịch vụ ký số CA/CCCD và đóng dấu PAdES sau khi duyệt nội bộ hoàn thành.
+- Người chịu trách nhiệm pháp lý cao nhất ký ban hành phải có Chứng thư số CA hợp pháp.
 
-### Deadline/notification
+### Hạn xử lý và thông báo
 
-- Deadline lưu UTC, hiển thị đúng giờ Việt Nam.
-- Nhắc 24 giờ trước và tại hạn, không gửi trùng khi worker retry.
-- Quá hạn không tự reject/đổi người ký/hủy luồng.
-- Request/attempt quá hạn vẫn ở trạng thái đang xử lý/chờ ký; người ký ký muộn được ghi nhận `is_late: true` và `late_duration_seconds`.
+- Hạn lưu UTC, hiển thị giờ Việt Nam.
+- Nhắc trước hạn 24 giờ và tại hạn; retry không gửi trùng.
+- Quá hạn không tự từ chối, không đổi người ký, không hủy luồng.
+- Yêu cầu/lượt trình quá hạn vẫn `CHO_KY`; chữ ký muộn có `ky_tre_han = true` và `so_giay_tre`.
 
-### Verification commands dự kiến
+### Lệnh kiểm tra dự kiến
 
-Các lệnh dưới đây chỉ chạy sau khi xác nhận cấu trúc backend thực tế:
+Chỉ chạy sau khi xác nhận cấu trúc backend thực tế:
 
 ```powershell
 python backend/manage.py check
@@ -550,27 +747,25 @@ python backend/manage.py makemigrations --check --dry-run
 pytest
 ```
 
-Nếu repo đã có chuẩn lint/type check, bổ sung đúng command của repo trước khi báo hoàn tất.
+Nếu repo có chuẩn lint/type check thì bổ sung đúng lệnh của repo trước khi báo hoàn tất.
 
-## 12. Rủi ro và điểm cần chốt khi bắt đầu code
+## 12. Điểm còn mở và rủi ro
 
-- `[CHƯA XÁC MINH]` Tên bảng/model document, department, position và storage API hiện có.
-- `[CHƯA XÁC MINH]` Permission backend hiện tại có thể map trực tiếp với các permission đề xuất hay cần adapter.
-- `[ĐỀ XUẤT]` Giữ `create_by`, `created_at`, `update_by`, `update_at` đồng nhất với sheet Trình ký và các sheet liên quan.
-- `[ĐÃ CHỐT]` Xử lý phản hồi đa nhánh: Ghi chú không chặn (`sign_note`) cho phép qua và lưu audit; Yêu cầu chỉnh sửa (`request_changes`) tạm dừng attempt, mở thread trao đổi và resend toàn bộ bằng attempt mới.
-- `[ĐÃ CHỐT]` Quá hạn không đóng attempt; cho phép ký muộn kèm metadata trễ hạn; hỗ trợ chuyển quyền ký khẩn cấp.
-- `[ĐÃ CHỐT]` Khâu ký số pháp lý (CA/CCCD/dấu doanh nghiệp) là bước bổ sung cuối cùng (Final Issuance Phase) sau khi attempt duyệt nội bộ hoàn tất; Người chịu trách nhiệm pháp lý bắt buộc phải có Chứng thư số CA hợp pháp.
-- `[CHƯA CHỐT]` Kích thước pixel chuẩn `pixel x pixel` của ảnh chữ ký PNG trong Profile người dùng (sẽ đo đạc và chốt quy chuẩn khi làm giao diện/PDF stamping).
-- `[CHƯA CHỐT]` Khôi phục khóa đa thiết bị. MVP không lưu private key hoặc encrypted private key ở backend; thay đổi ranh giới custody cần quyết định security riêng.
-- `[BỊ CHẶN nếu thiếu]` Không thể chạy migration/test tích hợp đầy đủ nếu branch chưa có Django project và cấu hình PostgreSQL/test database.
+- `[CHƯA XÁC MINH]` Model văn bản (một hay ba bảng), đơn vị, chức vụ, API lưu trữ — phụ thuộc Nhóm 2 và nhóm quản lý tổ chức.
+- `[CHƯA XÁC MINH]` Hệ thống permission hiện tại có map trực tiếp với các permission ở mục 8 hay cần adapter.
+- `[PHỤ THUỘC NHÓM 7]` Field `anh_chu_ky` và contract đọc ảnh chữ ký trong hồ sơ cá nhân.
+- `[CHƯA CHỐT]` Kích thước pixel chuẩn của ảnh chữ ký.
+- `[CHƯA CHỐT]` Hệ tọa độ vị trí ký: tỷ lệ % hay điểm PDF.
+- `[CHƯA CHỐT]` Khôi phục khóa đa thiết bị; MVP không lưu private key trên backend.
+- `[BỊ CHẶN nếu thiếu]` Không chạy được migration/test tích hợp nếu nhánh chưa có Django project và cấu hình PostgreSQL test.
 
 ## 13. Definition of Done
 
 - Migration áp dụng được trên database test sạch.
-- Ràng buộc FK/retention ngăn xóa request/attempt đã có lịch sử và cascade xóa signature evidence, thread/message, audit hoặc manifest `FINAL`.
-- API/service đã kiểm tra state transition, permission, ownership, delegation và idempotency.
-- Unit/integration tests bao phủ tuần tự, song song, ký nháy - ký chính gating, reject, request changes, resend toàn bộ, delegate khẩn cấp, revoke/re-sign giữ lịch sử, late sign sau deadline và concurrent sign.
-- Crypto test xác nhận hash mismatch/private key boundary/key rotation.
-- Outbox/Celery test xác nhận retry không gửi trùng.
-- Không sửa hoặc stage các file ngoài phạm vi backend Trình ký.
-- Branch/status/diff được review trước khi commit và push.
+- FK/retention chặn xóa yêu cầu/lượt trình đã có lịch sử và chặn cascade xóa chữ ký, thread/message, nhật ký, bằng chứng `DA_CHOT`.
+- API/service đã kiểm tra chuyển trạng thái, quyền, quyền sở hữu, ủy quyền, chống trùng.
+- Unit/integration test bao phủ: tuần tự, song song, chặn ký nháy - ký chính, từ chối, yêu cầu sửa, gửi lại toàn bộ, ủy quyền, thu hồi/ký lại giữ lịch sử, ký muộn, ký đồng thời, phẳng hóa không đổi tệp gốc.
+- Test mật mã: lệch mã băm, ranh giới private key, xoay vòng khóa, challenge dùng một lần.
+- Test outbox/Celery: retry không gửi trùng.
+- Không sửa hoặc stage file ngoài phạm vi backend Trình ký.
+- Review nhánh/status/diff trước khi commit và push.
