@@ -2,12 +2,14 @@
 
 - Tiền tố: `/api/work/` (khai báo trong `backend/config/urls.py`)
 - Mã nguồn: `backend/apps/work/views.py`, `serializers.py`, `urls.py`
+- Tên bảng/cột trong CSDL theo bản PM chốt (xem `schema.md`); tên trường JSON của API giữ camelCase tiếng Anh
 - Dữ liệu: JSON, tên trường dạng **camelCase**. Riêng các API có tải file dùng `multipart/form-data`.
 - Ngày thuần (`createdDate`, `dueDate`): `YYYY-MM-DD`. Mốc thời gian: ISO 8601 theo giờ Việt Nam, ví dụ `2026-09-19T11:17:27.839821+07:00`. Giao diện hiển thị `dd/mm/yyyy` và `dd/mm/yyyy HH:mm:ss`.
 
-## 1. Xác thực (tạm thời)
+## 1. Xác thực
 
-Chưa có JWT của nhóm 7 nên module dùng **người dùng giả lập**, chỉ hoạt động khi `DEBUG=True`:
+Module nhận **JWT của nhóm 7** trước; nếu request không có JWT thì mới dùng **người dùng giả lập**
+(chỉ hoạt động khi `DEBUG=True`) để nhóm còn thử được các vai trò khi phát triển:
 
 | Header | Ý nghĩa |
 |---|---|
@@ -16,7 +18,7 @@ Chưa có JWT của nhóm 7 nên module dùng **người dùng giả lập**, ch
 
 - Id sai hoặc tài khoản không tồn tại: `401` kèm hướng dẫn chọn lại người dùng.
 - `DEBUG=False`: header bị bỏ qua, mọi request trả `401`.
-- Khi có JWT: gỡ lớp `MockHeaderAuthentication` trong `views.py` và hàm `authHeaders()` trong `frontend/src/modules/work/api/client.ts`.
+- Khi hệ thống đăng nhập chạy đủ: gỡ lớp `MockHeaderAuthentication` trong `views.py` và hàm `authHeaders()` trong `frontend/src/modules/work/api/client.ts`.
 
 ## 2. Định dạng lỗi
 
@@ -28,6 +30,19 @@ Mọi thông báo lỗi đều nói rõ **vì sao** và **cách khắc phục**.
 | `401` | Chưa xác định được người dùng | `{"detail": "..."}` |
 | `403` | Sai vai trò | `{"detail": "Chỉ người tạo, người chủ trì hoặc người chỉ đạo mới được duyệt công việc. Hãy báo một trong những người này vào duyệt."}` |
 | `404` | Không có công việc, **hoặc không có quyền xem** (không để lộ công việc đang ẩn) | `{"detail": "..."}` |
+
+## 2b. Quyền xem — 3 lớp
+
+Danh sách và chi tiết chỉ trả về công việc người gọi được xem, theo **một trong ba** điều kiện:
+
+1. **Người liên quan**: người tạo, hoặc có tên trong `task_participant`.
+2. Có quyền **`view_all_congviec`**: xem toàn bộ công việc (kể cả công việc đang ẩn).
+3. Có quyền **`view_dept_congviec`**: xem công việc gắn với đơn vị của chính mình
+   (lấy từ `accounts_employee.don_vi_id`, không cần chọn phòng ban khi cấp quyền).
+
+Không đủ điều kiện thì API trả `404` (không để lộ công việc đang ẩn).
+Mã quyền hiện kiểm tra bằng permission có sẵn của Django — `TODO: noi he thong phan quyen nhom 7`
+(hàm `user_has_task_permission` trong `models.py`).
 
 ## 3. Danh sách API
 
@@ -112,6 +127,9 @@ Chỉ trả về công việc người gọi được xem, mới nhất trước
 | `directorIds` | ✔ | Id người chỉ đạo, ít nhất 1 (gửi lặp lại trường cho nhiều người) |
 | `participantIds` | ✔ | Id cán bộ tham gia, ít nhất 1 |
 | `isPublic` | | `true` / `false`, mặc định `true` |
+| `donViIds` | | Id các phòng/ban gắn với công việc, gửi lặp lại trường cho nhiều phòng |
+| `documentType` | | Văn bản liên quan: `vanbanden`, `vanbandi`, `vanbanmat` |
+| `documentId` | | Id văn bản của nhóm 2. Phải gửi kèm `documentType`, thiếu một trong hai sẽ bị từ chối |
 | `attachments` | | Nhiều file giao việc, không bắt buộc |
 
 - Mỗi cán bộ chỉ giữ một vai trò; người tạo được kiêm vai trò.
@@ -152,7 +170,10 @@ Gồm toàn bộ trường của danh sách, cộng thêm:
       "canDelete": true, "deleteBlockedReason": null
     }
   ],
-  "commentCount": 1
+  "commentCount": 1,
+  "donViIds": [3, 5],
+  "documentType": null,
+  "documentId": null
 }
 ```
 
@@ -166,6 +187,7 @@ Gồm toàn bộ trường của danh sách, cộng thêm:
 - Gửi trường nào sửa trường đó (cùng tên trường như khi thêm). Riêng người liên quan: muốn đổi thì gửi **đủ cả** `hostId`, `directorIds`, `participantIds`.
 - `createdDate` được giữ ngày cũ (không bắt buộc ≥ hôm nay); `dueDate` khi sửa phải ≥ hôm nay.
 - `attachments`: thêm file giao việc mới. `removeAttachmentIds`: id file giao việc muốn bỏ.
+- `donViIds`: gửi lên là thay toàn bộ danh sách phòng/ban; gửi danh sách rỗng là bỏ hết.
 - Trả về `200` với dữ liệu chi tiết. **Không gửi mail.**
 
 ### 4.5. `DELETE /api/work/tasks/{id}/` — Xóa
@@ -221,6 +243,9 @@ Mọi người xem được công việc đều đọc được. Sắp xếp cũ
 - Trả về `201` với ý kiến vừa ghi (dạng như 5.1). Ý kiến không sửa, không xóa được.
 
 ### 5.3. `DELETE /api/work/tasks/{id}/evidences/{fileId}/`
+
+**Xóa mềm**: bản ghi và file vật lý vẫn giữ, chỉ bật cờ `is_deleted`. File đã xóa không hiện
+trong danh sách, không tải xuống được và không tính vào trạng thái công việc.
 
 - Chỉ người đã tải file, khi công việc chưa duyệt.
 - Sau hạn **không xóa được file kết quả cuối cùng**: `400` — "Công việc đã quá hạn, không thể xóa file bằng chứng cuối cùng. Hãy nộp file mới trước rồi xóa file cũ sau."
