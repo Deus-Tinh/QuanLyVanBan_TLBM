@@ -4,6 +4,8 @@ import tempfile
 
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.signals import request_finished
+from django.db import close_old_connections
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -878,7 +880,13 @@ class AttachmentDownloadApiTests(WorkTestBase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(b"".join(response.streaming_content), b"%PDF-1.4 noi dung thu")
         self.assertIn("attachment", response["Content-Disposition"])
-        response.close()
+        # response.close() phát tín hiệu request_finished làm Django đóng luôn kết nối DB,
+        # khiến test chạy sau đó lỗi trên PostgreSQL. Ngắt tạm tín hiệu khi đóng file.
+        request_finished.disconnect(close_old_connections)
+        try:
+            response.close()
+        finally:
+            request_finished.connect(close_old_connections)
 
     def test_nguoi_ngoai_khong_tai_duoc(self):
         task = self.make_task()
