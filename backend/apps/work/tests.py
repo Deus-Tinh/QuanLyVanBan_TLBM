@@ -14,7 +14,16 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import AttachmentKind, ParticipantRole, Task, TaskAttachment, TaskComment, TaskParticipant, TaskStatus
+from .models import (
+    AttachmentKind,
+    ParticipantRole,
+    Task,
+    TaskAttachment,
+    TaskComment,
+    TaskDonVi,
+    TaskParticipant,
+    TaskStatus,
+)
 
 User = get_user_model()
 
@@ -172,6 +181,155 @@ class TaskVisibilityTests(WorkTestBase):
         response = self.client.get(self.task_url(task))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertIn("Hãy quay lại danh sách", response.data["detail"])
+
+
+class TaskDepartmentVisibilityTests(WorkTestBase):
+    """
+    Quyền xem 3 lớp: người liên quan / view_all_congviec / view_dept_congviec.
+    Quyền theo phòng ban lấy đơn vị từ chính người dùng (accounts_employee.don_vi_id).
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.task = self.make_task()
+        TaskDonVi.objects.create(task=self.task, don_vi_id=7)
+
+    def grant(self, user, *codenames):
+        from django.contrib.auth.models import Permission
+
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        # Django cache quyền trên từng instance, phải lấy lại bản mới.
+        return User.objects.get(pk=user.pk)
+
+    def visible_ids(self, user):
+        return set(Task.objects.visible_to(user).values_list("id", flat=True))
+
+    def test_nguoi_ngoai_khong_co_quyen_thi_khong_thay(self):
+        self.assertNotIn(self.task.pk, self.visible_ids(self.outsider))
+
+    def test_quyen_xem_toan_he_thong_thay_het_ke_ca_viec_dang_an(self):
+        hidden = self.make_task(is_public=False, title="Việc ẩn")
+        user = self.grant(self.outsider, "view_all_congviec")
+        self.assertEqual(self.visible_ids(user), {self.task.pk, hidden.pk})
+
+    def test_quyen_xem_theo_phong_ban_chi_thay_viec_cua_don_vi_minh(self):
+        khac = self.make_task(title="Việc phòng khác")
+        TaskDonVi.objects.create(task=khac, don_vi_id=9)
+        user = self.grant(self.outsider, "view_dept_congviec")
+        user.don_vi_id = 7  # TODO: bo dong nay khi AUTH_USER_MODEL la accounts.Employee
+        self.assertEqual(self.visible_ids(user), {self.task.pk})
+
+    def test_co_don_vi_nhung_khong_co_quyen_thi_khong_thay(self):
+        user = self.grant(self.outsider, "view_congviec")
+        user.don_vi_id = 7
+        self.assertNotIn(self.task.pk, self.visible_ids(user))
+
+    def test_quyen_phong_ban_khong_thay_cong_viec_dang_an(self):
+        hidden = self.make_task(is_public=False, title="Việc ẩn của phòng")
+        TaskDonVi.objects.create(task=hidden, don_vi_id=7)
+        user = self.grant(self.outsider, "view_dept_congviec")
+        user.don_vi_id = 7
+        self.assertEqual(self.visible_ids(user), {self.task.pk})
+
+    def test_api_danh_sach_dung_quyen_phong_ban(self):
+        user = self.grant(self.outsider, "view_dept_congviec")
+        user.don_vi_id = 7
+        self.login(user)
+        response = self.client.get("/api/work/tasks/")
+        self.assertEqual([item["id"] for item in response.data["results"]], [self.task.pk])
+
+
+class TaskDepartmentAndDocumentApiTests(WorkTestBase):
+    """Gắn công việc với nhiều phòng/ban và với văn bản của nhóm 2."""
+
+    def payload(self, **overrides):
+        data = {
+            "title": "Việc có phòng ban",
+            "createdDate": self.today.isoformat(),
+            "dueDate": self.days(3).isoformat(),
+            "requirement": "Yêu cầu",
+            "hostId": self.host.pk,
+            "directorIds": [self.director.pk],
+            "participantIds": [self.member.pk],
+        }
+        data.update(overrides)
+        return data
+
+    def test_tao_cong_viec_gan_nhieu_phong_ban(self):
+        self.login(self.creator)
+        response = self.client.post("/api/work/tasks/", self.payload(donViIds=[3, 5]), format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["donViIds"], [3, 5])
+        self.assertEqual(TaskDonVi.objects.filter(task_id=response.data["id"]).count(), 2)
+
+    def test_sua_danh_sach_phong_ban(self):
+        task = self.make_task()
+        TaskDonVi.objects.create(task=task, don_vi_id=3)
+        self.login(self.creator)
+        response = self.client.patch(self.task_url(task), {"donViIds": [5, 8]}, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["donViIds"], [5, 8])
+
+    def test_gan_cong_viec_voi_van_ban(self):
+        self.login(self.creator)
+        response = self.client.post(
+            "/api/work/tasks/",
+            self.payload(documentType="vanbanden", documentId=12),
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["documentType"], "vanbanden")
+        self.assertEqual(response.data["documentId"], 12)
+
+    def test_thieu_mot_nua_thong_tin_van_ban_bi_chan(self):
+        self.login(self.creator)
+        response = self.client.post("/api/work/tasks/", self.payload(documentType="vanbandi"), format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("đủ cả loại văn bản và mã văn bản", response.data["documentType"][0])
+
+    def test_loai_van_ban_khong_hop_le(self):
+        self.login(self.creator)
+        response = self.client.post(
+            "/api/work/tasks/",
+            self.payload(documentType="linh tinh", documentId=1),
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TaskTableMappingTests(WorkTestBase):
+    """Model phải trỏ đúng tên bảng và tên cột trong CSDL PM đã chốt."""
+
+    def test_ten_bang_dung_chuan_pm(self):
+        self.assertEqual(Task._meta.db_table, "task_congviec")
+        self.assertEqual(TaskParticipant._meta.db_table, "task_participant")
+        self.assertEqual(TaskComment._meta.db_table, "task_comment")
+        self.assertEqual(TaskAttachment._meta.db_table, "task_attachment")
+        self.assertEqual(TaskDonVi._meta.db_table, "task_congviec_donvi")
+
+    def test_ten_cot_dung_chuan_pm(self):
+        cot_task = {f.name: f.column for f in Task._meta.fields}
+        self.assertEqual(cot_task["title"], "noi_dung")
+        self.assertEqual(cot_task["created_date"], "ngay_tao_cv")
+        self.assertEqual(cot_task["due_date"], "ngay_xu_ly")
+        self.assertEqual(cot_task["requirement"], "yeu_cau_xu_ly")
+        self.assertEqual(cot_task["created_by"], "nguoi_tao")
+        self.assertEqual(cot_task["is_public"], "hien_thi")
+        self.assertEqual(cot_task["first_opened_at"], "opened_at")
+        self.assertEqual(cot_task["first_opened_by"], "opened_by")
+
+        cot_file = {f.name: f.column for f in TaskAttachment._meta.fields}
+        self.assertEqual(cot_file["original_name"], "name")
+        self.assertEqual(cot_file["file"], "path")
+        self.assertEqual(cot_file["task"], "cong_viec_id")
+        self.assertEqual(cot_file["comment"], "y_kien_id")
+        self.assertEqual(cot_file["kind"], "loai")
+        self.assertEqual(cot_file["uploaded_by"], "created_user_id")
+        self.assertEqual(cot_file["uploaded_at"], "created_time")
+        self.assertEqual(
+            sorted(cot_file.values()),
+            ["cong_viec_id", "created_time", "created_user_id", "id", "is_deleted", "loai", "name", "path", "y_kien_id"],
+        )
 
 
 class LatestTasksApiTests(WorkTestBase):
@@ -701,12 +859,23 @@ class TaskEvidenceApiTests(WorkTestBase):
         file_name = evidence.file.name
         self.login(self.member)
 
-        with self.captureOnCommitCallbacks(execute=True):
-            response = self.client.delete(self.task_url(task, f"evidences/{evidence.pk}/"))
+        response = self.client.delete(self.task_url(task, f"evidences/{evidence.pk}/"))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertEqual(response.data["status"], "DANG_XU_LY")
-        self.assertFalse(default_storage.exists(file_name))
+        self.assertEqual(response.data["evidences"], [])
+        # Xóa mềm: bản ghi và file vẫn còn, chỉ thôi hiển thị và thôi tính vào trạng thái.
+        evidence.refresh_from_db()
+        self.assertTrue(evidence.is_deleted)
+        self.assertTrue(default_storage.exists(file_name))
+
+    def test_file_da_xoa_mem_thi_khong_tai_xuong_duoc(self):
+        task = self.make_task(first_opened_at=timezone.now())
+        evidence = self.add_evidence(task, user=self.member)
+        self.login(self.member)
+        self.client.delete(self.task_url(task, f"evidences/{evidence.pk}/"))
+        response = self.client.get(reverse("work:attachment-download", kwargs={"pk": evidence.pk}))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_qua_han_khong_xoa_duoc_file_bang_chung_cuoi_cung(self):
         task = self.make_task(created_offset=-5, due_offset=-1, first_opened_at=timezone.now())

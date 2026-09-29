@@ -144,6 +144,38 @@ class AttachmentKind(models.TextChoices):
     BANG_CHUNG = "BANG_CHUNG", "Bằng chứng hoàn thành"
 
 
+class DocumentKind(models.TextChoices):
+    """Loại văn bản của nhóm 2 mà công việc phát sinh từ đó (enum document_kind)."""
+
+    VAN_BAN_DEN = "vanbanden", "Văn bản đến"
+    VAN_BAN_DI = "vanbandi", "Văn bản đi"
+    VAN_BAN_MAT = "vanbanmat", "Văn bản mật"
+
+
+# Mã quyền do nhóm 7 cấp; gom một chỗ để đổi nhanh khi hệ thống phân quyền xong.
+PERM_VIEW_ALL_TASK = "view_all_congviec"
+PERM_VIEW_DEPT_TASK = "view_dept_congviec"
+
+
+def user_has_task_permission(user, permission_code):
+    """
+    Kiểm tra người dùng có mã quyền của module Công việc hay không.
+    TODO: Noi vao he thong phan quyen cua nhom 7 khi san sang.
+    Hiện tạm dùng permission có sẵn của Django, chấp nhận cả dạng có và không có tiền tố app.
+    """
+    if user is None or not user.is_authenticated:
+        return False
+    return user.has_perm(permission_code) or user.has_perm(f"work.{permission_code}")
+
+
+def user_don_vi_id(user):
+    """
+    Đơn vị của người dùng (accounts_employee.don_vi_id). Mỗi người thuộc đúng 1 đơn vị.
+    TODO: Bo getattr khi AUTH_USER_MODEL doi sang accounts.Employee cua nhom 7.
+    """
+    return getattr(user, "don_vi_id", None)
+
+
 # ==========================================================================
 # QUERYSET
 # ==========================================================================
@@ -158,6 +190,7 @@ class TaskQuerySet(models.QuerySet):
         evidences = TaskAttachment.objects.filter(
             task=OuterRef("pk"),
             kind=AttachmentKind.BANG_CHUNG,
+            is_deleted=False,
         )
         return self.annotate(has_evidence=Exists(evidences)).annotate(
             status=Case(
@@ -178,22 +211,33 @@ class TaskQuerySet(models.QuerySet):
 
     def visible_to(self, user):
         """
-        Công việc người dùng được xem:
-        - Quản trị viên (is_superuser): tất cả, kể cả công việc đang ẩn.
-        - Người tạo: luôn thấy công việc của mình.
-        - Chủ trì / chỉ đạo / tham gia: chỉ thấy khi công việc đang hiển thị (is_public).
+        Quyền xem 3 lớp:
+        1. Người liên quan: người tạo, hoặc có tên trong task_participant.
+        2. Quyền `view_all_congviec`: xem toàn bộ công việc.
+        3. Quyền `view_dept_congviec`: xem công việc gắn với đơn vị của chính mình.
+
+        Công việc đang ẩn (hien_thi = false) chỉ người tạo, quản trị viên và người có
+        quyền xem toàn hệ thống mới thấy.
         """
         if user is None or not user.is_authenticated:
             return self.none()
-        if user.is_superuser:
+        if user.is_superuser or user_has_task_permission(user, PERM_VIEW_ALL_TASK):
             return self
 
         is_participant = Exists(
             TaskParticipant.objects.filter(task=OuterRef("pk"), user=user)
         )
-        return self.alias(is_participant=is_participant).filter(
-            Q(created_by=user) | Q(is_public=True, is_participant=True)
-        )
+        condition = Q(created_by=user) | Q(is_public=True, is_participant=True)
+
+        don_vi_id = user_don_vi_id(user)
+        if don_vi_id and user_has_task_permission(user, PERM_VIEW_DEPT_TASK):
+            in_my_don_vi = Exists(
+                TaskDonVi.objects.filter(task=OuterRef("pk"), don_vi_id=don_vi_id)
+            )
+            condition |= Q(is_public=True) & Q(in_my_don_vi=True)
+            return self.alias(is_participant=is_participant, in_my_don_vi=in_my_don_vi).filter(condition)
+
+        return self.alias(is_participant=is_participant).filter(condition)
 
 
 # ==========================================================================
@@ -201,24 +245,39 @@ class TaskQuerySet(models.QuerySet):
 # ==========================================================================
 
 class Task(models.Model):
-    title = models.TextField("Nội dung công việc")
-    created_date = models.DateField("Ngày tạo", default=timezone.localdate)
-    due_date = models.DateField("Ngày xử lý")
-    requirement = models.TextField("Yêu cầu xử lý")
+    """
+    Bảng `task_congviec` theo CSDL PM chốt. Tên trường trong Python giữ tiếng Anh cho khớp
+    API camelCase và code frontend; tên cột trong DB dùng đúng tên PM (db_column).
+    """
+
+    title = models.TextField("Nội dung công việc", db_column="noi_dung")
+    created_date = models.DateField("Ngày tạo", default=timezone.localdate, db_column="ngay_tao_cv")
+    due_date = models.DateField("Ngày xử lý", db_column="ngay_xu_ly")
+    requirement = models.TextField("Yêu cầu xử lý", db_column="yeu_cau_xu_ly")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Người tạo",
         on_delete=models.PROTECT,
         related_name="work_created_tasks",
+        db_column="nguoi_tao",
     )
-    is_public = models.BooleanField("Trạng thái hiển thị", default=True)
-    # TODO: FK toi van ban cua nhom 2 - cho ten model
-    # Công việc có thể phát sinh từ Văn bản đến / Văn bản đi. Khi nhóm 2 chốt tên model, thêm:
-    # van_ban = models.ForeignKey("<app>.<Model>", verbose_name="Văn bản liên quan",
-    #                             on_delete=models.SET_NULL, null=True, blank=True, related_name="work_tasks")
+    is_public = models.BooleanField("Trạng thái hiển thị", default=True, db_column="hien_thi")
+
+    # Văn bản liên quan (công việc phát sinh từ Văn bản đến / đi của nhóm 2).
+    # TODO: doi document_id thanh FK that khi nhom 2 chot ten model van ban.
+    document_type = models.CharField(
+        "Loại văn bản liên quan",
+        max_length=20,
+        choices=DocumentKind.choices,
+        null=True,
+        blank=True,
+    )
+    document_id = models.BigIntegerField("Id văn bản liên quan", null=True, blank=True)
 
     # Mốc hệ thống phục vụ tính trạng thái (đầy đủ giờ - phút - giây).
-    first_opened_at = models.DateTimeField("Thời điểm mở lần đầu", null=True, blank=True)
+    first_opened_at = models.DateTimeField(
+        "Thời điểm mở lần đầu", null=True, blank=True, db_column="opened_at"
+    )
     first_opened_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Người mở lần đầu",
@@ -226,6 +285,7 @@ class Task(models.Model):
         null=True,
         blank=True,
         related_name="+",
+        db_column="opened_by",
     )
     approved_at = models.DateTimeField("Thời điểm duyệt", null=True, blank=True)
     approved_by = models.ForeignKey(
@@ -235,6 +295,7 @@ class Task(models.Model):
         null=True,
         blank=True,
         related_name="+",
+        db_column="approved_by",
     )
 
     created_at = models.DateTimeField("Tạo lúc", auto_now_add=True)
@@ -243,12 +304,21 @@ class Task(models.Model):
     objects = TaskQuerySet.as_manager()
 
     class Meta:
+        db_table = "task_congviec"
         verbose_name = "Công việc"
         verbose_name_plural = "Công việc"
         ordering = ["-created_date", "-created_at"]
         indexes = [
             models.Index(fields=["created_date"], name="work_task_created_date_idx"),
             models.Index(fields=["due_date"], name="work_task_due_date_idx"),
+        ]
+        # Quyền riêng của module; nhóm quyền chung do nhóm 7 cấp theo các mã này.
+        # Lưu ý: approve_congviec KHÔNG dùng làm điều kiện chặn duyệt — quyền duyệt xét theo
+        # vai trò trong task_participant (người tạo / chủ trì / chỉ đạo), theo chốt của thầy.
+        permissions = [
+            ("view_all_congviec", "Xem tất cả công việc (toàn hệ thống)"),
+            ("view_dept_congviec", "Xem công việc theo phòng ban"),
+            ("approve_congviec", "Duyệt / Hủy duyệt công việc"),
         ]
         constraints = [
             models.CheckConstraint(
@@ -257,6 +327,17 @@ class Task(models.Model):
                 violation_error_message=(
                     "Ngày xử lý đang trước ngày tạo. "
                     "Hãy chọn ngày xử lý bằng hoặc sau ngày tạo."
+                ),
+            ),
+            models.CheckConstraint(
+                condition=(
+                    Q(document_type__isnull=True, document_id__isnull=True)
+                    | Q(document_type__isnull=False, document_id__isnull=False)
+                ),
+                name="chk_task_document",
+                violation_error_message=(
+                    "Văn bản liên quan phải có đủ cả loại văn bản và mã văn bản. "
+                    "Hãy chọn lại văn bản, hoặc bỏ trống cả hai nếu công việc không phát sinh từ văn bản."
                 ),
             ),
         ]
@@ -287,7 +368,11 @@ class Task(models.Model):
 
     def evidence_files(self):
         # Dùng .all() rồi lọc bằng Python để tận dụng prefetch_related khi có.
-        return [item for item in self.attachments.all() if item.kind == AttachmentKind.BANG_CHUNG]
+        return [
+            item
+            for item in self.attachments.all()
+            if item.kind == AttachmentKind.BANG_CHUNG and not item.is_deleted
+        ]
 
     def is_overdue(self):
         return self.due_date < timezone.localdate()
@@ -361,6 +446,11 @@ class Task(models.Model):
             raise TaskRuleError(
                 "File này không phải file bằng chứng của công việc. "
                 "File đính kèm lúc giao việc chỉ xóa được trong màn hình sửa công việc.",
+                TaskRuleError.INVALID_STATE,
+            )
+        if attachment.is_deleted:
+            raise TaskRuleError(
+                "File này đã được xóa trước đó. Hãy tải lại trang để xem danh sách mới nhất.",
                 TaskRuleError.INVALID_STATE,
             )
         if user is None or attachment.uploaded_by_id != user.id:
@@ -459,16 +549,19 @@ class TaskParticipant(models.Model):
         verbose_name="Công việc",
         on_delete=models.CASCADE,
         related_name="participants",
+        db_column="cong_viec",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Cán bộ",
         on_delete=models.PROTECT,
         related_name="work_participations",
+        db_column="can_bo",
     )
-    role = models.CharField("Vai trò", max_length=20, choices=ParticipantRole.choices)
+    role = models.CharField("Vai trò", max_length=20, choices=ParticipantRole.choices, db_column="vai_tro")
 
     class Meta:
+        db_table = "task_participant"
         verbose_name = "Người liên quan"
         verbose_name_plural = "Người liên quan"
         indexes = [
@@ -477,7 +570,7 @@ class TaskParticipant(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["task", "user"],
-                name="work_participant_one_role_per_user",
+                name="uq_task_participant",
                 violation_error_message=(
                     "Một cán bộ chỉ được giữ một vai trò trong cùng công việc. "
                     "Hãy bỏ cán bộ này khỏi các vai trò còn lại."
@@ -504,17 +597,20 @@ class TaskComment(models.Model):
         verbose_name="Công việc",
         on_delete=models.CASCADE,
         related_name="comments",
+        db_column="cong_viec",
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Người ghi",
         on_delete=models.PROTECT,
         related_name="+",
+        db_column="nguoi_ghi",
     )
-    content = models.TextField("Nội dung ý kiến")
+    content = models.TextField("Nội dung ý kiến", db_column="noi_dung")
     created_at = models.DateTimeField("Ghi lúc", auto_now_add=True)
 
     class Meta:
+        db_table = "task_comment"
         verbose_name = "Ý kiến"
         verbose_name_plural = "Ý kiến"
         ordering = ["created_at", "id"]
@@ -526,14 +622,59 @@ class TaskComment(models.Model):
         return self.content[:80]
 
 
+class TaskDonVi(models.Model):
+    """
+    Bảng `task_congviec_donvi`: một công việc gắn được nhiều phòng/ban.
+    TODO: doi don_vi_id thanh FK toi organizations.DonVi khi app organizations ve nhanh 6_tasks
+    (hien app nay moi co o nhanh nhom 7 va feat/issue-19-organizations).
+    """
+
+    task = models.ForeignKey(
+        Task,
+        verbose_name="Công việc",
+        on_delete=models.CASCADE,
+        related_name="don_vi_links",
+        db_column="cong_viec",
+    )
+    don_vi_id = models.BigIntegerField("Đơn vị (organizations_donvi.id)", db_column="don_vi")
+    created_at = models.DateTimeField("Gắn lúc", auto_now_add=True)
+
+    class Meta:
+        db_table = "task_congviec_donvi"
+        verbose_name = "Phòng ban của công việc"
+        verbose_name_plural = "Phòng ban của công việc"
+        indexes = [
+            models.Index(fields=["don_vi_id"], name="work_task_donvi_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["task", "don_vi_id"],
+                name="uq_task_congviec_donvi",
+                violation_error_message=(
+                    "Phòng ban này đã được gắn cho công việc. Hãy bỏ bớt phòng ban trùng."
+                ),
+            ),
+        ]
+
+    def __str__(self):
+        return f"Công việc #{self.task_id} - đơn vị #{self.don_vi_id}"
+
+
 class TaskAttachment(models.Model):
+    """
+    Bảng `task_attachment` bản 9 cột PM chốt: name, path, cong_viec_id, y_kien_id, loai,
+    is_deleted, created_time, created_user_id (cộng khóa chính id).
+    Dung lượng file không lưu cột riêng, đọc trực tiếp từ kho lưu trữ khi cần.
+    """
+
     task = models.ForeignKey(
         Task,
         verbose_name="Công việc",
         on_delete=models.CASCADE,
         related_name="attachments",
+        db_column="cong_viec_id",
     )
-    kind = models.CharField("Loại file", max_length=20, choices=AttachmentKind.choices)
+    kind = models.CharField("Loại file", max_length=20, choices=AttachmentKind.choices, db_column="loai")
     # File bằng chứng luôn nằm trong một ý kiến: nộp kết quả = ghi ý kiến kèm file.
     comment = models.ForeignKey(
         TaskComment,
@@ -542,24 +683,28 @@ class TaskAttachment(models.Model):
         null=True,
         blank=True,
         related_name="attachments",
+        db_column="y_kien_id",
     )
     file = models.FileField(
         "File",
         upload_to=attachment_upload_to,
-        max_length=255,
+        max_length=500,
         validators=[validate_work_file],
+        db_column="path",
     )
-    original_name = models.CharField("Tên file gốc", max_length=255, blank=True)
-    size = models.PositiveBigIntegerField("Dung lượng (byte)", default=0)
+    original_name = models.CharField("Tên file gốc", max_length=255, blank=True, db_column="name")
+    is_deleted = models.BooleanField("Đã xóa", default=False)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Người tải lên",
         on_delete=models.PROTECT,
         related_name="+",
+        db_column="created_user_id",
     )
-    uploaded_at = models.DateTimeField("Tải lên lúc", auto_now_add=True)
+    uploaded_at = models.DateTimeField("Tải lên lúc", auto_now_add=True, db_column="created_time")
 
     class Meta:
+        db_table = "task_attachment"
         verbose_name = "File đính kèm"
         verbose_name_plural = "File đính kèm"
         ordering = ["uploaded_at", "id"]
@@ -584,9 +729,15 @@ class TaskAttachment(models.Model):
         return self.original_name or Path(self.file.name).name
 
     def save(self, *args, **kwargs):
-        # Ghi lại tên gốc và dung lượng TRƯỚC khi upload_to đổi tên file.
-        if self.file and not self.file._committed:
-            if not self.original_name:
-                self.original_name = Path(self.file.name).name[:255]
-            self.size = self.file.size
+        # Ghi lại tên gốc TRƯỚC khi upload_to đổi tên file trên đĩa.
+        if self.file and not self.file._committed and not self.original_name:
+            self.original_name = Path(self.file.name).name[:255]
         super().save(*args, **kwargs)
+
+    @property
+    def size(self):
+        """Dung lượng đọc từ kho lưu trữ (CSDL không có cột dung lượng)."""
+        try:
+            return self.file.size
+        except (OSError, ValueError):
+            return 0

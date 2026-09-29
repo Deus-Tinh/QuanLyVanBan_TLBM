@@ -6,10 +6,12 @@ from rest_framework import serializers
 
 from .models import (
     AttachmentKind,
+    DocumentKind,
     ParticipantRole,
     Task,
     TaskAttachment,
     TaskComment,
+    TaskDonVi,
     TaskParticipant,
     TaskRuleError,
     TaskStatus,
@@ -59,6 +61,8 @@ class EmployeeBriefSerializer(serializers.Serializer):
 
 class AttachmentSerializer(serializers.ModelSerializer):
     fileName = serializers.CharField(source="original_name", read_only=True)
+    # CSDL không có cột dung lượng: đọc từ kho lưu trữ qua property của model.
+    size = serializers.IntegerField(read_only=True)
     uploadedBy = EmployeeBriefSerializer(source="uploaded_by", read_only=True)
     uploadedAt = serializers.DateTimeField(source="uploaded_at", read_only=True)
     commentId = serializers.IntegerField(source="comment_id", read_only=True)
@@ -207,6 +211,9 @@ class TaskDetailSerializer(TaskListSerializer):
     attachments = serializers.SerializerMethodField()
     evidences = serializers.SerializerMethodField()
     commentCount = serializers.SerializerMethodField()
+    donViIds = serializers.SerializerMethodField()
+    documentType = serializers.CharField(source="document_type", read_only=True)
+    documentId = serializers.IntegerField(source="document_id", read_only=True)
 
     class Meta(TaskListSerializer.Meta):
         fields = TaskListSerializer.Meta.fields + [
@@ -218,10 +225,13 @@ class TaskDetailSerializer(TaskListSerializer):
             "attachments",
             "evidences",
             "commentCount",
+            "donViIds",
+            "documentType",
+            "documentId",
         ]
 
     def _files(self, obj, kind):
-        files = [item for item in obj.attachments.all() if item.kind == kind]
+        files = [item for item in obj.attachments.all() if item.kind == kind and not item.is_deleted]
         context = {**self.context, "task": obj}
         return AttachmentSerializer(files, many=True, context=context).data
 
@@ -237,6 +247,10 @@ class TaskDetailSerializer(TaskListSerializer):
             return None
         first = min(evidences, key=lambda item: item.uploaded_at)
         return serializers.DateTimeField().to_representation(first.uploaded_at)
+
+    def get_donViIds(self, obj):
+        """Id các phòng/ban được gắn. TODO: tra ve ca ten don vi khi co app organizations."""
+        return sorted(link.don_vi_id for link in obj.don_vi_links.all())
 
     def get_commentCount(self, obj):
         return obj.comments.count()
@@ -311,6 +325,22 @@ class TaskWriteSerializer(serializers.Serializer):
         },
     )
     isPublic = serializers.BooleanField(source="is_public", required=False, default=True)
+    donViIds = serializers.ListField(
+        source="don_vi_ids",
+        child=serializers.IntegerField(),
+        required=False,
+        error_messages={"invalid": "Danh sách phòng ban không hợp lệ. Hãy chọn lại phòng ban."},
+    )
+    documentType = serializers.ChoiceField(
+        source="document_type",
+        choices=DocumentKind.choices,
+        required=False,
+        allow_null=True,
+        error_messages={
+            "invalid_choice": "Loại văn bản không hợp lệ. Hãy chọn Văn bản đến, Văn bản đi hoặc Văn bản mật."
+        },
+    )
+    documentId = serializers.IntegerField(source="document_id", required=False, allow_null=True)
     attachments = serializers.ListField(child=work_file_field(), required=False)
     removeAttachmentIds = serializers.ListField(
         source="remove_attachment_ids",
@@ -339,6 +369,7 @@ class TaskWriteSerializer(serializers.Serializer):
             "directorIds": [p.user_id for p in people if p.role == ParticipantRole.CHI_DAO],
             "participantIds": [p.user_id for p in people if p.role == ParticipantRole.THAM_GIA],
             "isPublic": instance.is_public,
+            "donViIds": sorted(link.don_vi_id for link in instance.don_vi_links.all()),
         }
 
     def validate(self, attrs):
@@ -372,6 +403,14 @@ class TaskWriteSerializer(serializers.Serializer):
             ]
         elif people_sent:
             errors.update(self._validate_one_role_per_person(attrs))
+
+        document_type = attrs.get("document_type", getattr(instance, "document_type", None))
+        document_id = attrs.get("document_id", getattr(instance, "document_id", None))
+        if bool(document_type) != bool(document_id):
+            errors["documentType"] = (
+                "Văn bản liên quan phải chọn đủ cả loại văn bản và mã văn bản, "
+                "hoặc bỏ trống cả hai nếu công việc không phát sinh từ văn bản."
+            )
 
         remove_ids = attrs.get("remove_attachment_ids") or []
         if remove_ids:
@@ -432,15 +471,26 @@ class TaskWriteSerializer(serializers.Serializer):
                 uploaded_by=user,
             )
 
+    def _save_don_vi(self, task, don_vi_ids):
+        """Gắn lại danh sách phòng/ban cho công việc (gửi danh sách rỗng là bỏ hết)."""
+        if don_vi_ids is None:
+            return
+        task.don_vi_links.all().delete()
+        TaskDonVi.objects.bulk_create(
+            [TaskDonVi(task=task, don_vi_id=don_vi_id) for don_vi_id in dict.fromkeys(don_vi_ids)]
+        )
+
     @transaction.atomic
     def create(self, validated_data):
         user = self.context["request"].user
         files = validated_data.pop("attachments", [])
         people = {name: validated_data.pop(name) for name in self.PEOPLE_FIELDS}
+        don_vi_ids = validated_data.pop("don_vi_ids", None)
         validated_data.pop("remove_attachment_ids", None)
 
         task = Task.objects.create(created_by=user, **validated_data)
         self._save_people(task, people)
+        self._save_don_vi(task, don_vi_ids)
         self._save_files(task, files, user)
         return task
 
@@ -449,6 +499,7 @@ class TaskWriteSerializer(serializers.Serializer):
         user = self.context["request"].user
         files = validated_data.pop("attachments", [])
         people = {name: validated_data.pop(name) for name in self.PEOPLE_FIELDS if name in validated_data}
+        don_vi_ids = validated_data.pop("don_vi_ids", None)
         remove_ids = validated_data.pop("remove_attachment_ids", [])
 
         for field_name, value in validated_data.items():
@@ -456,6 +507,7 @@ class TaskWriteSerializer(serializers.Serializer):
         instance.save()
 
         self._save_people(instance, people)
+        self._save_don_vi(instance, don_vi_ids)
 
         if remove_ids:
             removed = instance.attachments.filter(kind=AttachmentKind.GIAO_VIEC, id__in=remove_ids)
@@ -495,7 +547,8 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ["id", "content", "files", "author", "createdAt", "attachments"]
 
     def get_attachments(self, obj):
-        return AttachmentSerializer(list(obj.attachments.all()), many=True, context=self.context).data
+        files = [item for item in obj.attachments.all() if not item.is_deleted]
+        return AttachmentSerializer(files, many=True, context=self.context).data
 
     def validate(self, attrs):
         attrs["content"] = attrs.get("content", "").strip()

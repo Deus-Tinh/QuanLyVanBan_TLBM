@@ -23,12 +23,14 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import (
     AttachmentKind,
     ParticipantRole,
     Task,
     TaskAttachment,
+    TaskDonVi,
     TaskComment,
     TaskParticipant,
     TaskRuleError,
@@ -121,7 +123,8 @@ class TaskPagination(PageNumberPagination):
 class WorkApiMixin:
     """Cấu hình chung cho mọi API của module Công việc."""
 
-    authentication_classes = [MockHeaderAuthentication]
+    # Ưu tiên JWT thật của nhóm 7; không có JWT thì mới dùng header giả lập (chỉ khi DEBUG).
+    authentication_classes = [JWTAuthentication, MockHeaderAuthentication]
     permission_classes = [IsAuthenticated]
 
     def permission_denied(self, request, message=None, code=None):
@@ -183,9 +186,11 @@ class TaskViewSet(
         if self.action != "list":
             attachments = Prefetch(
                 "attachments",
-                queryset=TaskAttachment.objects.select_related("uploaded_by").order_by("uploaded_at", "id"),
+                queryset=TaskAttachment.objects.filter(is_deleted=False)
+                .select_related("uploaded_by")
+                .order_by("uploaded_at", "id"),
             )
-            queryset = queryset.prefetch_related(attachments)
+            queryset = queryset.prefetch_related(attachments, "don_vi_links")
         return queryset
 
     def get_object(self):
@@ -327,9 +332,9 @@ class TaskViewSet(
         except TaskRuleError as error:
             raise_rule_error(error)
 
-        with transaction.atomic():
-            delete_stored_files_on_commit([attachment.file.name])
-            attachment.delete()
+        # Xóa mềm theo chuẩn CSDL (cột is_deleted): giữ bản ghi và file, chỉ thôi hiển thị.
+        attachment.is_deleted = True
+        attachment.save(update_fields=["is_deleted"])
         return self.detail_response(task.pk)
 
     @action(detail=True, methods=["post"])
@@ -386,7 +391,9 @@ class TaskViewSet(
         if request.method == "GET":
             attachments = Prefetch(
                 "attachments",
-                queryset=TaskAttachment.objects.select_related("uploaded_by").order_by("uploaded_at", "id"),
+                queryset=TaskAttachment.objects.filter(is_deleted=False)
+                .select_related("uploaded_by")
+                .order_by("uploaded_at", "id"),
             )
             items = (
                 TaskComment.objects.filter(task=task)
@@ -494,7 +501,7 @@ class AttachmentViewSet(WorkApiMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         visible_tasks = Task.objects.visible_to(self.request.user)
-        return TaskAttachment.objects.filter(task__in=visible_tasks)
+        return TaskAttachment.objects.filter(task__in=visible_tasks, is_deleted=False)
 
     @action(detail=True, methods=["get"])
     def download(self, request, pk=None):
