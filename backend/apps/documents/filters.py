@@ -1,37 +1,31 @@
 """
-Bộ lọc nâng cao cho API Văn bản — Nguyễn Anh Đô (Backend Service).
+Bộ lọc nâng cao cho API Văn bản — Kiến trúc 3 Model.
 
 Hỗ trợ:
 - Tìm kiếm từ khóa (q / keyword): theo số hiệu, trích yếu, nơi ban hành
 - Lọc theo loại văn bản (loai / type): hỗ trợ hoa/thường (DEN, den, DI, di, MAT, mat)
 - Lọc theo năm (nam / year)
-- Lọc theo khoảng ngày (tu_ngay / from_date, den_ngay / to_date) — theo ngay_den cho VB Đến
+- Lọc theo khoảng ngày (tu_ngay / from_date, den_ngay / to_date)
 - Lọc theo hiệu lực (hieu_luc / status): hỗ trợ hoa/thường
 - Lọc theo trạng thái hiển thị (hien_thi / is_public)
-- Phân trang chuẩn: 10, 20, 50 bản ghi/trang
+- Lọc danh sách người xem văn bản (ViewerFilter)
 """
 
 import django_filters
 from django.db.models import Q
 
-from .models import Document
+from .models import (
+    HieuLuc,
+    LoaiVanBan,
+    VanBanDen,
+    VanBanDi,
+    VanBanMat,
+    DocumentViewLog,
+)
 
 
-class DocumentFilter(django_filters.FilterSet):
-    """
-    Bộ lọc đa tiêu chí cho danh sách văn bản.
-    Hỗ trợ cả tên tham số Tiếng Việt và Tiếng Anh (alias),
-    và không phân biệt chữ hoa/thường cho các tham số enum.
-
-    Query params:
-        ?loai=DEN hoặc ?type=den
-        ?q=thông báo hoặc ?keyword=thông báo
-        ?nam=2026 hoặc ?year=2026
-        ?tu_ngay=2026-09-01 hoặc ?from_date=2026-09-01
-        ?den_ngay=2026-09-30 hoặc ?to_date=2026-09-30
-        ?hieu_luc=CON_HIEU_LUC hoặc ?status=con_hieu_luc
-        ?hien_thi=true hoặc ?is_public=true
-    """
+class BaseDocumentFilter(django_filters.FilterSet):
+    """Bộ lọc cơ sở chứa toàn bộ các logic tìm kiếm và lọc dùng chung."""
 
     # ── Từ khóa tìm kiếm ──────────────────────────────────────────
     q = django_filters.CharFilter(
@@ -68,7 +62,7 @@ class DocumentFilter(django_filters.FilterSet):
     tu_ngay = django_filters.DateTimeFilter(
         method="filter_tu_ngay",
         label="Từ ngày",
-        help_text="Lọc từ ngày (theo ngay_den cho VB Đến, ngay_ban_hanh cho VB Đi/Mật)",
+        help_text="Lọc từ ngày",
     )
     from_date = django_filters.DateTimeFilter(
         method="filter_tu_ngay",
@@ -104,9 +98,19 @@ class DocumentFilter(django_filters.FilterSet):
         label="Is public (English alias)",
     )
 
-    class Meta:
-        model = Document
-        fields = ["loai", "type", "nam", "year", "hieu_luc", "status", "hien_thi", "is_public"]
+    # ── Chỉ văn bản còn hiệu lực / Ẩn văn bản hết hiệu lực ───────
+    chi_con_hieu_luc = django_filters.BooleanFilter(
+        method="filter_chi_con_hieu_luc",
+        label="Chỉ văn bản còn hiệu lực",
+    )
+    only_active = django_filters.BooleanFilter(
+        method="filter_chi_con_hieu_luc",
+        label="Only active (English alias)",
+    )
+    include_expired = django_filters.BooleanFilter(
+        method="filter_noop",
+        label="Bao gồm văn bản hết hiệu lực",
+    )
 
     def filter_search(self, queryset, name, value):
         """Tìm kiếm từ khóa trên nhiều trường (icontains)."""
@@ -122,54 +126,104 @@ class DocumentFilter(django_filters.FilterSet):
         """Lọc loại văn bản, không phân biệt hoa/thường."""
         if not value:
             return queryset
-        return queryset.filter(loai__iexact=value.strip())
+        val = value.strip().upper()
+        current_loai = getattr(queryset.model, "loai", "DEN")
+        if val != current_loai and val != queryset.model._meta.model_name.upper():
+            return queryset.none()
+
+        include_expired = str(self.data.get("include_expired", "")).lower() in ("true", "1")
+        hieu_luc_param = self.data.get("hieu_luc") or self.data.get("status")
+        if current_loai == "DEN" and not include_expired and not hieu_luc_param:
+            return queryset.exclude(hieu_luc=HieuLuc.HET_HIEU_LUC)
+
+        return queryset
+
+    def filter_chi_con_hieu_luc(self, queryset, name, value):
+        if value:
+            return queryset.exclude(hieu_luc=HieuLuc.HET_HIEU_LUC)
+        return queryset
+
+    def filter_noop(self, queryset, name, value):
+        return queryset
 
     def filter_hieu_luc(self, queryset, name, value):
         """Lọc hiệu lực, không phân biệt hoa/thường."""
         if not value:
             return queryset
+        val = value.strip().upper()
+        if val in ("HIEU_LUC", "CON_HIEU_LUC_ALL", "ACTIVE_ALL"):
+            return queryset.filter(hieu_luc__in=[HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN])
         return queryset.filter(hieu_luc__iexact=value.strip())
 
-    def _get_loai_value(self):
-        val = self.data.get("loai") or self.data.get("type", "")
-        return str(val).strip().upper()
-
     def filter_tu_ngay(self, queryset, name, value):
-        """Lọc từ ngày: VB Đến dùng ngay_den, VB Đi/Mật dùng ngay_ban_hanh."""
         if not value:
             return queryset
-        loai = self._get_loai_value()
-        if loai == Document.LoaiVanBan.DEN:
+        fields = [f.name for f in queryset.model._meta.fields]
+        if "ngay_den" in fields:
             return queryset.filter(ngay_den__gte=value)
-        else:
+        elif "ngay_ban_hanh" in fields:
             return queryset.filter(ngay_ban_hanh__gte=value)
+        elif "ngay_van_ban" in fields:
+            return queryset.filter(ngay_van_ban__gte=value)
+        return queryset
 
     def filter_den_ngay(self, queryset, name, value):
-        """Lọc đến ngày: VB Đến dùng ngay_den, VB Đi/Mật dùng ngay_ban_hanh."""
         if not value:
             return queryset
-        loai = self._get_loai_value()
-        if loai == Document.LoaiVanBan.DEN:
+        fields = [f.name for f in queryset.model._meta.fields]
+        if "ngay_den" in fields:
             return queryset.filter(ngay_den__lte=value)
-        else:
+        elif "ngay_ban_hanh" in fields:
             return queryset.filter(ngay_ban_hanh__lte=value)
+        elif "ngay_van_ban" in fields:
+            return queryset.filter(ngay_van_ban__lte=value)
+        return queryset
+
+
+class VanBanDenFilter(BaseDocumentFilter):
+    class Meta:
+        model = VanBanDen
+        fields = [
+            "nam", "year", "hien_thi", "is_public"
+        ]
+
+
+class VanBanDiFilter(BaseDocumentFilter):
+    class Meta:
+        model = VanBanDi
+        fields = [
+            "nam", "year", "hien_thi", "is_public"
+        ]
+
+
+class VanBanMatFilter(BaseDocumentFilter):
+    class Meta:
+        model = VanBanMat
+        fields = [
+            "nam", "year", "hien_thi", "is_public"
+        ]
+
+
+DocumentFilter = VanBanDenFilter
+
+
+def get_filter_class_for_model(model):
+    if model == VanBanDi:
+        return VanBanDiFilter
+    elif model == VanBanMat:
+        return VanBanMatFilter
+    return VanBanDenFilter
 
 
 class ViewerFilter(django_filters.FilterSet):
-    """
-    Bộ lọc cho danh sách người đã xem văn bản.
-
-    Query params:
-        ?search=Nguyễn hoặc ?name=Nguyễn     → Tìm theo tên người xem
-        ?don_vi=CNTT hoặc ?department=CNTT  → Tìm theo đơn vị / phòng ban
-    """
+    """Bộ lọc cho danh sách người xem văn bản."""
 
     search = django_filters.CharFilter(
-        method="filter_search_viewer",
-        label="Tìm kiếm tên",
+        method="filter_search",
+        label="Tìm theo tên",
     )
     name = django_filters.CharFilter(
-        method="filter_search_viewer",
+        method="filter_search",
         label="Name (English alias)",
     )
     don_vi = django_filters.CharFilter(
@@ -181,28 +235,20 @@ class ViewerFilter(django_filters.FilterSet):
         label="Department (English alias)",
     )
 
-    def filter_search_viewer(self, queryset, name, value):
-        """Tìm kiếm theo tên người xem."""
+    class Meta:
+        model = DocumentViewLog
+        fields = ["search", "name", "don_vi", "department"]
+
+    def filter_search(self, queryset, name, value):
         if not value:
             return queryset
-
-        return queryset.filter(
-            Q(user__first_name__icontains=value)
-            | Q(user__last_name__icontains=value)
-            | Q(user__username__icontains=value)
-        )
-
-    def filter_don_vi(self, queryset, name, value):
-        """
-        Tìm kiếm theo đơn vị / phòng ban.
-        Hiện tại dùng tạm text search trên user fields.
-        Sẽ cập nhật khi Nhóm 7 có model Organization.
-        """
-        if not value:
-            return queryset
-
         return queryset.filter(
             Q(user__username__icontains=value)
             | Q(user__first_name__icontains=value)
             | Q(user__last_name__icontains=value)
         )
+
+    def filter_don_vi(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(user__profile__department__icontains=value)

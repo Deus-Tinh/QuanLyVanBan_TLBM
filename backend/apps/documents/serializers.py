@@ -1,15 +1,27 @@
 """
-Serializers cho Module Văn Bản.
+Serializers cho Module Văn Bản (Đến / Đi / Mật) — Kiến trúc 3 Model.
 
-Lưu ý quan trọng:
-- so_thu_tu là read_only → Frontend không gửi lên, backend tự sinh.
-- Khi loai='MAT': so_thu_tu = None (VB Mật không có số thứ tự).
+Hỗ trợ:
+- Serializer riêng biệt cho từng phân hệ: VanBanDen, VanBanDi, VanBanMat
+- Serializer hợp nhất cho API facade (DocumentListSerializer, DocumentDetailSerializer, DocumentCreateUpdateSerializer)
+- Serializer tệp đính kèm và lịch sử người xem
 """
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Document, DocumentAttachment, DocumentViewLog
+from .models import (
+    HieuLuc,
+    LoaiVanBan,
+    VanBanDen,
+    VanBanDenAttachment,
+    VanBanDi,
+    VanBanDiAttachment,
+    VanBanMat,
+    VanBanMatAttachment,
+    DocumentViewLog,
+    get_document_model,
+)
 
 User = get_user_model()
 
@@ -27,177 +39,195 @@ class TolerantPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
             return None
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Attachment Serializers
+# ═══════════════════════════════════════════════════════════════════
+
 class DocumentAttachmentSerializer(serializers.ModelSerializer):
-    """Serializer cho file đính kèm."""
+    """Serializer dùng chung cho file đính kèm của cả 3 loại văn bản."""
+
+    file_name = serializers.CharField(source="name", read_only=True)
+    uploaded_at = serializers.DateTimeField(source="created_time", read_only=True)
 
     class Meta:
-        model = DocumentAttachment
-        fields = ["id", "file", "file_name", "file_size", "uploaded_at"]
-        read_only_fields = ["id", "file_name", "file_size", "uploaded_at"]
+        model = VanBanDenAttachment
+        fields = ["id", "file", "name", "file_name", "path", "file_size", "is_deleted", "uploaded_at", "created_time"]
+        read_only_fields = ["id", "name", "file_name", "path", "file_size", "uploaded_at", "created_time"]
 
 
-class DocumentListSerializer(serializers.ModelSerializer):
+class VanBanDenAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VanBanDenAttachment
+        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_time"]
+        read_only_fields = ["id", "name", "path", "file_size", "created_time"]
+
+
+class VanBanDiAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VanBanDiAttachment
+        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_time"]
+        read_only_fields = ["id", "name", "path", "file_size", "created_time"]
+
+
+class VanBanMatAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VanBanMatAttachment
+        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_time"]
+        read_only_fields = ["id", "name", "path", "file_size", "created_time"]
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Unified Document Serializers (GET list, GET detail, POST/PUT)
+# ═══════════════════════════════════════════════════════════════════
+
+class DocumentListSerializer(serializers.Serializer):
     """
     Serializer cho danh sách văn bản (GET list).
-    Nhẹ hơn — chỉ trả các trường hiển thị trên bảng.
+    Trả về định dạng chuẩn cho bảng hiển thị trên frontend.
+    Hỗ trợ đồng nhất dữ liệu từ VanBanDen, VanBanDi, VanBanMat.
     """
 
-    loai_display = serializers.CharField(source="get_loai_display", read_only=True)
+    id = serializers.IntegerField(read_only=True)
+    loai = serializers.CharField(read_only=True)
+    loai_display = serializers.SerializerMethodField()
+    nam = serializers.IntegerField(read_only=True)
+    so_hieu = serializers.CharField(read_only=True)
+    so_thu_tu = serializers.IntegerField(read_only=True, default=None)
+    ngay_den = serializers.DateTimeField(read_only=True, default=None)
+    ngay_ban_hanh = serializers.DateTimeField(read_only=True, default=None)
+    ngay_van_ban = serializers.DateTimeField(read_only=True, default=None)
+    trich_yeu = serializers.CharField(read_only=True)
+    noi_ban_hanh = serializers.CharField(read_only=True, default="")
+    nguoi_ky = serializers.CharField(read_only=True, default="")
+    hieu_luc = serializers.CharField(read_only=True)
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
+    link_thay_the = serializers.CharField(read_only=True, default="")
+    hien_thi = serializers.BooleanField(read_only=True)
     nguoi_tao_name = serializers.SerializerMethodField()
     attachment_count = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
 
-    class Meta:
-        model = Document
-        fields = [
-            "id",
-            "loai",
-            "loai_display",
-            "nam",
-            "so_hieu",
-            "so_thu_tu",
-            "ngay_den",
-            "ngay_ban_hanh",
-            "ngay_van_ban",
-            "trich_yeu",
-            "noi_ban_hanh",
-            "nguoi_ky",
-            "hieu_luc",
-            "hieu_luc_display",
-            "link_thay_the",
-            "hien_thi",
-            "nguoi_tao_name",
-            "attachment_count",
-            "created_at",
-        ]
+    def get_loai_display(self, obj):
+        if hasattr(obj, "get_loai_display"):
+            return obj.get_loai_display()
+        loai = getattr(obj, "loai", "DEN")
+        return dict(LoaiVanBan.choices).get(loai, loai)
 
     def get_nguoi_tao_name(self, obj):
-        if obj.nguoi_tao:
+        if hasattr(obj, "nguoi_tao") and obj.nguoi_tao:
             full_name = obj.nguoi_tao.get_full_name()
             return full_name if full_name else obj.nguoi_tao.username
         return None
 
     def get_attachment_count(self, obj):
-        return obj.attachments.count()
+        if hasattr(obj, "attachments"):
+            return obj.attachments.count()
+        return 0
 
 
-class DocumentDetailSerializer(serializers.ModelSerializer):
+class DocumentDetailSerializer(serializers.Serializer):
     """
     Serializer cho chi tiết văn bản (GET detail).
     Đầy đủ mọi trường + danh sách file đính kèm.
     """
 
-    loai_display = serializers.CharField(source="get_loai_display", read_only=True)
+    id = serializers.IntegerField(read_only=True)
+    loai = serializers.CharField(read_only=True)
+    loai_display = serializers.SerializerMethodField()
+    nam = serializers.IntegerField(read_only=True)
+    so_hieu = serializers.CharField(read_only=True)
+    so_thu_tu = serializers.IntegerField(read_only=True, default=None)
+    ngay_den = serializers.DateTimeField(read_only=True, default=None)
+    ngay_ban_hanh = serializers.DateTimeField(read_only=True, default=None)
+    ngay_van_ban = serializers.DateTimeField(read_only=True, default=None)
+    trich_yeu = serializers.CharField(read_only=True)
+    noi_ban_hanh = serializers.CharField(read_only=True, default="")
+    nguoi_ky = serializers.CharField(read_only=True, default="")
+    chuc_vu = serializers.CharField(read_only=True, default="")
+    hieu_luc = serializers.CharField(read_only=True)
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
-    attachments = DocumentAttachmentSerializer(many=True, read_only=True)
+    ngay_het_hieu_luc = serializers.DateTimeField(read_only=True, default=None)
+    link_thay_the = serializers.CharField(read_only=True, default="")
+    ghi_chu = serializers.CharField(read_only=True, default="")
+    hien_thi = serializers.BooleanField(read_only=True)
+    gui_mail_toan_he_thong = serializers.BooleanField(read_only=True)
+    attachments = serializers.SerializerMethodField()
     nguoi_tao_name = serializers.SerializerMethodField()
     nguoi_tao_username = serializers.CharField(source="nguoi_tao.username", read_only=True, default=None)
     nguoi_nhan_list = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
-    class Meta:
-        model = Document
-        fields = [
-            "id",
-            "loai",
-            "loai_display",
-            "nam",
-            "so_hieu",
-            "so_thu_tu",
-            "ngay_den",
-            "ngay_ban_hanh",
-            "ngay_van_ban",
-            "trich_yeu",
-            "noi_ban_hanh",
-            "nguoi_ky",
-            "chuc_vu",
-            "hieu_luc",
-            "hieu_luc_display",
-            "ngay_het_hieu_luc",
-            "link_thay_the",
-            "ghi_chu",
-            "hien_thi",
-            "gui_mail_toan_he_thong",
-            "attachments",
-            "nguoi_tao_name",
-            "nguoi_tao_username",
-            "nguoi_nhan_list",
-            "created_at",
-            "updated_at",
-        ]
+    def get_loai_display(self, obj):
+        if hasattr(obj, "get_loai_display"):
+            return obj.get_loai_display()
+        loai = getattr(obj, "loai", "DEN")
+        return dict(LoaiVanBan.choices).get(loai, loai)
+
+    def get_attachments(self, obj):
+        if hasattr(obj, "attachments"):
+            return DocumentAttachmentSerializer(obj.attachments.filter(is_deleted=False), many=True).data
+        return []
 
     def get_nguoi_tao_name(self, obj):
-        if obj.nguoi_tao:
+        if hasattr(obj, "nguoi_tao") and obj.nguoi_tao:
             full_name = obj.nguoi_tao.get_full_name()
             return full_name if full_name else obj.nguoi_tao.username
         return None
 
     def get_nguoi_nhan_list(self, obj):
-        return [
-            {
-                "id": u.pk,
-                "username": u.username,
-                "full_name": u.get_full_name() or u.username,
-            }
-            for u in obj.nguoi_nhan.all()
-        ]
+        if hasattr(obj, "nguoi_nhan"):
+            return [
+                {
+                    "id": u.pk,
+                    "username": u.username,
+                    "full_name": u.get_full_name() or u.username,
+                }
+                for u in obj.nguoi_nhan.all()
+            ]
+        return []
 
 
-class DocumentCreateUpdateSerializer(serializers.ModelSerializer):
+class DocumentCreateUpdateSerializer(serializers.Serializer):
     """
     Serializer cho tạo mới / cập nhật văn bản (POST, PUT, PATCH).
-
-    Lưu ý:
-    - so_thu_tu là read_only → backend tự sinh trong view/service.
-    - nguoi_tao tự lấy từ request.user.
+    Nhận dữ liệu từ request, validate nghiệp vụ, và lưu vào đúng model tương ứng
+    (VanBanDen, VanBanDi, hoặc VanBanMat).
     """
 
+    id = serializers.IntegerField(read_only=True)
+    loai = serializers.ChoiceField(choices=LoaiVanBan.choices, default=LoaiVanBan.DEN)
+    nam = serializers.IntegerField(required=False)
+    so_hieu = serializers.CharField(max_length=255)
+    so_thu_tu = serializers.IntegerField(read_only=True)
+    ngay_den = serializers.DateTimeField(required=False, allow_null=True)
+    ngay_ban_hanh = serializers.DateTimeField(required=False, allow_null=True)
+    ngay_van_ban = serializers.DateTimeField(required=False, allow_null=True)
+    trich_yeu = serializers.CharField()
+    noi_ban_hanh = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+    nguoi_ky = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    chuc_vu = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    hieu_luc = serializers.ChoiceField(choices=HieuLuc.choices, default=HieuLuc.CON_HIEU_LUC)
+    ngay_het_hieu_luc = serializers.DateTimeField(required=False, allow_null=True)
+    link_thay_the = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
+    ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
+    hien_thi = serializers.BooleanField(default=True)
+    gui_mail_toan_he_thong = serializers.BooleanField(default=False)
     nguoi_nhan = TolerantPrimaryKeyRelatedField(
         many=True,
         queryset=User.objects.all(),
         required=False,
     )
 
-    class Meta:
-        model = Document
-        fields = [
-            "id",
-            "loai",
-            "nam",
-            "so_hieu",
-            "so_thu_tu",
-            "ngay_den",
-            "ngay_ban_hanh",
-            "ngay_van_ban",
-            "trich_yeu",
-            "noi_ban_hanh",
-            "nguoi_ky",
-            "chuc_vu",
-            "hieu_luc",
-            "ngay_het_hieu_luc",
-            "link_thay_the",
-            "ghi_chu",
-            "hien_thi",
-            "gui_mail_toan_he_thong",
-            "nguoi_nhan",
-        ]
-        read_only_fields = ["id", "so_thu_tu"]
-
     def validate_nguoi_nhan(self, value):
         return [u for u in value if u is not None]
 
     def validate(self, attrs):
-        """Validate logic nghiệp vụ theo loại văn bản."""
-        loai = attrs.get("loai") or (self.instance.loai if self.instance else None)
+        loai = attrs.get("loai") or (getattr(self.instance, "loai", None) if self.instance else LoaiVanBan.DEN)
 
-        # VB Đến bắt buộc có ngay_den
-        if loai == Document.LoaiVanBan.DEN:
-            # Khi tạo mới, ngay_den sẽ được tự set nếu không truyền
-            pass
-
-        # VB Đi bắt buộc có ngay_ban_hanh
-        if loai == Document.LoaiVanBan.DI:
+        if loai == LoaiVanBan.DI:
             if not attrs.get("ngay_ban_hanh") and not (
-                self.instance and self.instance.ngay_ban_hanh
+                self.instance and getattr(self.instance, "ngay_ban_hanh", None)
             ):
                 raise serializers.ValidationError(
                     {"ngay_ban_hanh": "Ngày ban hành là bắt buộc với Văn bản Đi."}
@@ -205,14 +235,81 @@ class DocumentCreateUpdateSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    def create(self, validated_data):
+        nguoi_nhan = validated_data.pop("nguoi_nhan", [])
+        loai = validated_data.pop("loai", LoaiVanBan.DEN)
+        model = get_document_model(loai)
+
+        # VB Mật không có so_thu_tu
+        if str(loai).upper() in ("MAT", "VANBANMAT"):
+            validated_data.pop("so_thu_tu", None)
+
+        instance = model.objects.create(**validated_data)
+        if nguoi_nhan:
+            instance.nguoi_nhan.set(nguoi_nhan)
+        return instance
+
+    def update(self, instance, validated_data):
+        nguoi_nhan = validated_data.pop("nguoi_nhan", None)
+        validated_data.pop("loai", None)
+        validated_data.pop("so_thu_tu", None)  # Read-only!
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if nguoi_nhan is not None:
+            instance.nguoi_nhan.set(nguoi_nhan)
+        return instance
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Dedicated Model Serializers
+# ═══════════════════════════════════════════════════════════════════
+
+class VanBanDenSerializer(serializers.ModelSerializer):
+    loai_display = serializers.CharField(source="get_loai_display", read_only=True)
+    hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
+    attachments = VanBanDenAttachmentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = VanBanDen
+        fields = "__all__"
+        read_only_fields = ["id", "so_thu_tu", "created_at", "updated_at"]
+
+
+class VanBanDiSerializer(serializers.ModelSerializer):
+    loai_display = serializers.CharField(source="get_loai_display", read_only=True)
+    hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
+    attachments = VanBanDiAttachmentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = VanBanDi
+        fields = "__all__"
+        read_only_fields = ["id", "so_thu_tu", "created_at", "updated_at"]
+
+
+class VanBanMatSerializer(serializers.ModelSerializer):
+    loai_display = serializers.CharField(source="get_loai_display", read_only=True)
+    hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
+    attachments = VanBanMatAttachmentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = VanBanMat
+        fields = "__all__"
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+# ═══════════════════════════════════════════════════════════════════
+# DocumentViewLog Serializer
+# ═══════════════════════════════════════════════════════════════════
 
 class DocumentViewLogSerializer(serializers.ModelSerializer):
-    """Serializer cho lịch sử xem văn bản — Đô (API viewers)."""
+    """Serializer cho lịch sử xem văn bản (API viewers)."""
 
     user_id = serializers.IntegerField(source="user.id", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
     full_name = serializers.SerializerMethodField()
-    # TODO: Thêm chuc_danh và don_vi khi Nhóm 7 có model tương ứng
     chuc_danh = serializers.SerializerMethodField()
     don_vi = serializers.SerializerMethodField()
 
@@ -233,17 +330,9 @@ class DocumentViewLogSerializer(serializers.ModelSerializer):
         return full_name if full_name else obj.user.username
 
     def get_chuc_danh(self, obj):
-        """
-        Chức danh người xem.
-        TODO: Khi Nhóm 7 có model CBNV với trường chuc_danh,
-        thay bằng: return obj.user.profile.chuc_danh
-        """
-        return ""
+        profile = getattr(obj.user, "profile", None)
+        return getattr(profile, "position", "") if profile else ""
 
     def get_don_vi(self, obj):
-        """
-        Đơn vị / phòng ban người xem.
-        TODO: Khi Nhóm 7 có model Organization liên kết User,
-        thay bằng: return obj.user.organization.name
-        """
-        return ""
+        profile = getattr(obj.user, "profile", None)
+        return getattr(profile, "department", "") if profile else ""
