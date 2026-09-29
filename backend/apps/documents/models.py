@@ -127,6 +127,7 @@ class BaseVanBan(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        db_column="nguoi_tao",
         related_name="%(class)s_created",
     )
     created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
@@ -237,12 +238,6 @@ class VanBanDi(BaseVanBan):
         default=timezone.now,
         help_text="Ngày ban hành cho Văn bản Đi.",
     )
-    noi_ban_hanh = models.CharField(
-        "Nơi ban hành",
-        max_length=500,
-        blank=True,
-        default="",
-    )
     nguoi_nhan = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         verbose_name="Người nhận",
@@ -251,6 +246,19 @@ class VanBanDi(BaseVanBan):
         db_table="documents_vanbandi_nguoinhan",
         help_text="Cán bộ nhân viên nhận văn bản đi.",
     )
+
+    @property
+    def noi_ban_hanh(self):
+        return getattr(self, "_noi_ban_hanh", "") or "Trường Cao đẳng Công nghệ Thông tin TP.HCM (ITC)"
+
+    @noi_ban_hanh.setter
+    def noi_ban_hanh(self, val):
+        self._noi_ban_hanh = val
+
+    def save(self, *args, **kwargs):
+        if not self.ngay_van_ban:
+            self.ngay_van_ban = self.ngay_ban_hanh or timezone.now()
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = "documents_vanbandi"
@@ -294,12 +302,6 @@ class VanBanMat(BaseVanBan):
         blank=True,
         help_text="Ngày ban hành cho Văn bản Mật (tuỳ chọn).",
     )
-    noi_ban_hanh = models.CharField(
-        "Nơi ban hành",
-        max_length=500,
-        blank=True,
-        default="",
-    )
     nguoi_nhan = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         verbose_name="Người nhận",
@@ -308,6 +310,14 @@ class VanBanMat(BaseVanBan):
         db_table="documents_vanbanmat_nguoinhan",
         help_text="VB Mật: Quyết định ai được xem (Access Control List).",
     )
+
+    @property
+    def noi_ban_hanh(self):
+        return getattr(self, "_noi_ban_hanh", "") or ""
+
+    @noi_ban_hanh.setter
+    def noi_ban_hanh(self, val):
+        self._noi_ban_hanh = val
 
     class Meta:
         db_table = "documents_vanbanmat"
@@ -359,15 +369,15 @@ class BaseDocumentAttachment(models.Model):
     """Abstract model chứa 7 trường chuẩn Hướng A cho tệp đính kèm."""
 
     name = models.CharField("Tên gốc file", max_length=255)
-    path = models.CharField("Đường dẫn lưu file", max_length=500, blank=True, default="")
     file = models.FileField(
         "File đính kèm",
         upload_to=document_attachment_path,
+        db_column="path",
+        max_length=500,
         null=True,
         blank=True,
         help_text="Chấp nhận: PDF, DOC, DOCX, JPG, JPEG, PNG. Tối đa 20MB.",
     )
-    file_size = models.PositiveIntegerField("Kích thước (bytes)", default=0)
     is_deleted = models.BooleanField("Cờ xóa mềm", default=False)
     created_time = models.DateTimeField("Ngày upload", default=timezone.now)
     created_user = models.ForeignKey(
@@ -376,12 +386,44 @@ class BaseDocumentAttachment(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        db_column="created_user_id",
         related_name="%(class)s_uploaded",
     )
 
     class Meta:
         abstract = True
         ordering = ["created_time"]
+
+    def __init__(self, *args, **kwargs):
+        path_val = kwargs.pop("path", None)
+        file_size_val = kwargs.pop("file_size", None)
+        file_name_val = kwargs.pop("file_name", None)
+        super().__init__(*args, **kwargs)
+        if path_val and not self.file:
+            self.file = path_val
+        if file_size_val:
+            self._file_size = file_size_val
+        if file_name_val and not self.name:
+            self.name = file_name_val
+
+    @property
+    def path(self):
+        return self.file.name if self.file else ""
+
+    @path.setter
+    def path(self, val):
+        self.file = val
+
+    @property
+    def file_size(self):
+        try:
+            return self.file.size if self.file else (getattr(self, "_file_size", 0) or 0)
+        except Exception:
+            return getattr(self, "_file_size", 0) or 0
+
+    @file_size.setter
+    def file_size(self, val):
+        self._file_size = val
 
     @property
     def file_name(self):
@@ -392,16 +434,8 @@ class BaseDocumentAttachment(models.Model):
         return self.created_time
 
     def save(self, *args, **kwargs):
-        if self.file:
-            if not self.name:
-                self.name = os.path.basename(self.file.name)
-            if not self.path:
-                self.path = self.file.name
-            if not self.file_size:
-                try:
-                    self.file_size = self.file.size
-                except Exception:
-                    pass
+        if self.file and not self.name:
+            self.name = os.path.basename(self.file.name)
         super().save(*args, **kwargs)
 
     def __str__(self):
