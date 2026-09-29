@@ -30,6 +30,7 @@ function buildTaskFormData(values: TaskFormValues, isEdit: boolean): FormData {
   values.directorIds.forEach((id) => data.append('directorIds', String(id)));
   values.participantIds.forEach((id) => data.append('participantIds', String(id)));
   data.append('isPublic', values.isPublic ? 'true' : 'false');
+  values.donViIds.forEach((id) => data.append('donViIds', String(id)));
   values.attachments.forEach((file) => data.append('attachments', file));
   if (isEdit) {
     values.removeAttachmentIds.forEach((id) => data.append('removeAttachmentIds', String(id)));

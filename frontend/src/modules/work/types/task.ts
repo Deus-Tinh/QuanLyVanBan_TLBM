@@ -76,6 +76,9 @@ export interface TaskListItem {
   permissions: TaskPermissions;
 }
 
+/** Loại văn bản của nhóm 2 mà công việc phát sinh từ đó. */
+export type DocumentKind = 'vanbanden' | 'vanbandi' | 'vanbanmat';
+
 export interface TaskDetail extends TaskListItem {
   firstOpenedAt: string | null;
   firstOpenedBy: Employee | null;
@@ -85,6 +88,10 @@ export interface TaskDetail extends TaskListItem {
   attachments: Attachment[];
   evidences: Attachment[];
   commentCount: number;
+  /** Id các phòng/ban được gắn (organizations_donvi.id). */
+  donViIds: number[];
+  documentType: DocumentKind | null;
+  documentId: number | null;
 }
 
 export interface LatestTask {
@@ -123,6 +130,7 @@ export interface TaskFormValues {
   directorIds: number[];
   participantIds: number[];
   isPublic: boolean;
+  donViIds: number[];
   attachments: File[];
   removeAttachmentIds: number[];
 }

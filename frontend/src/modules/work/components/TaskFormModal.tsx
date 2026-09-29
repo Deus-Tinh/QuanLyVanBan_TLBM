@@ -46,6 +46,16 @@ interface TaskFormModalProps {
   onSaved: (task: TaskDetail, mode: 'create' | 'edit') => void;
 }
 
+// TODO: Goi API phong/ban that khi app organizations ve nhanh 6_tasks (hien chua co endpoint).
+// Id phải khớp organizations_donvi.id trong CSDL chung.
+const DON_VI_TAM = [
+  { id: 1, ten: 'Ban Giám đốc' },
+  { id: 2, ten: 'Phòng Hành chính - Tổng hợp' },
+  { id: 3, ten: 'Phòng Kế hoạch - Tài chính' },
+  { id: 4, ten: 'Phòng Công nghệ thông tin' },
+  { id: 5, ten: 'Phòng Đào tạo' },
+];
+
 function emptyValues(): TaskFormValues {
   return {
     title: '',
@@ -56,6 +66,7 @@ function emptyValues(): TaskFormValues {
     directorIds: [],
     participantIds: [],
     isPublic: true,
+    donViIds: [],
     attachments: [],
     removeAttachmentIds: [],
   };
@@ -110,6 +121,7 @@ function toFormValues(task: TaskDetail): TaskFormValues {
     directorIds: task.directors.map((person) => person.id),
     participantIds: task.participants.map((person) => person.id),
     isPublic: task.isPublic,
+    donViIds: task.donViIds,
     attachments: [],
     removeAttachmentIds: [],
   };
@@ -514,6 +526,57 @@ export default function TaskFormModal({ open, taskId, onClose, onSaved }: TaskFo
                   invalid={Boolean(errors.directorIds)}
                   placeholder="Chọn người chỉ đạo"
                 />
+              </Field>
+
+              <Field
+                label="Phòng ban phối hợp"
+                hint="Chọn nhiều phòng/ban; người có quyền xem theo phòng ban sẽ thấy công việc này"
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-surface)',
+                    maxHeight: '160px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  {DON_VI_TAM.map((donVi) => {
+                    const checked = values.donViIds.includes(donVi.id);
+                    return (
+                      <label
+                        key={donVi.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-main)',
+                          cursor: disabled ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={disabled}
+                          onChange={(event) =>
+                            update(
+                              'donViIds',
+                              event.target.checked
+                                ? [...values.donViIds, donVi.id]
+                                : values.donViIds.filter((id) => id !== donVi.id),
+                            )
+                          }
+                        />
+                        {donVi.ten}
+                      </label>
+                    );
+                  })}
+                </div>
               </Field>
 
               <Field label="Cán bộ tham gia giải quyết công việc" required error={errors.participantIds}>
