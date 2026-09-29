@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 import sys
 from pathlib import Path
 from datetime import timedelta
@@ -99,6 +100,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+# Đọc file .env ở thư mục gốc dự án (nếu có) để lấy thông tin kết nối, khóa bí mật...
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(BASE_DIR.parent / ".env")
+except ImportError:
+    pass
+
+
 # Cấu hình Database: Ưu tiên PostgreSQL nếu môi trường có psycopg/psycopg2, ngược lại dùng SQLite nội bộ
 USE_POSTGRES = False
 try:
@@ -112,14 +122,16 @@ except ImportError:
         USE_POSTGRES = False
 
 if USE_POSTGRES:
+    # Thông tin kết nối đọc từ biến môi trường / file .env (xem .env.example).
+    # KHÔNG ghi mật khẩu thẳng vào file này vì settings.py được đẩy lên GitHub chung.
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": "quanlyvanban_db",  # Tên database trong pgAdmin
-            "USER": "postgres",
-            "PASSWORD": "MAT_KHAU_DA_XOA",
-            "HOST": "localhost",
-            "PORT": "5432",
+            "NAME": os.environ.get("POSTGRES_DB", "quanlyvanban_db"),
+            "USER": os.environ.get("POSTGRES_USER", "postgres"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
+            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         }
     }
 else:
