@@ -1,5 +1,6 @@
 from datetime import date, timedelta, time
-from django.test import TestCase
+from unittest.mock import patch
+from django.test import TestCase, override_settings
 from django.contrib.auth.models import User
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -138,3 +139,25 @@ class DashboardAPITests(TestCase):
         self.assertEqual(response.data["recentIncoming"], [])
         self.assertEqual(response.data["recentOutgoing"], [])
         self.assertEqual(response.data["meetingRooms"], [])
+
+    @override_settings(BIRTHDAY_LEAP_DAY_STRATEGY="FEB_28")
+    @patch("dashboard.views.timezone.localdate", return_value=date(2025, 2, 28))
+    def test_birthday_widget_excludes_inactive_and_follows_leap_policy(self, _localdate):
+        self.admin_profile.birthday = date(1990, 2, 28)
+        self.admin_profile.save(update_fields=["birthday"])
+        self.admin_user.is_active = False
+        self.admin_user.save(update_fields=["is_active"])
+        leap_user = User.objects.create_user(username="leap_staff", password="password123")
+        StaffProfile.objects.create(
+            user=leap_user,
+            full_name="CBNV sinh 29/02",
+            birthday=date(1996, 2, 29),
+        )
+
+        self.client.force_authenticate(user=self.staff_user)
+        response = self.client.get("/api/dashboard/overview/")
+        names = [staff["name"] for staff in response.data["birthdays"]]
+        self.assertIn("CBNV sinh 29/02", names)
+        self.assertNotIn(self.admin_profile.full_name, names)
+        leap_birthday = next(staff for staff in response.data["birthdays"] if staff["name"] == "CBNV sinh 29/02")
+        self.assertEqual(leap_birthday["birthdate"], "29/02 (Hôm nay)")

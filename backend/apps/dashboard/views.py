@@ -1,4 +1,7 @@
+import calendar
 from datetime import timedelta
+from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -6,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounts.models import StaffProfile
+from birthdays.services import is_birthday_on_date
 from .models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
@@ -145,15 +149,27 @@ def overview_view(request):
     ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
-    today_profiles = StaffProfile.objects.filter(
-        birthday__month=today.month,
-        birthday__day=today.day,
-    ).select_related("user")
+    leap_strategy = getattr(settings, "BIRTHDAY_LEAP_DAY_STRATEGY", "FEB_28")
 
-    tomorrow_profiles = StaffProfile.objects.filter(
-        birthday__month=tomorrow.month,
-        birthday__day=tomorrow.day,
-    ).select_related("user")
+    def birthday_profiles_on(target_date):
+        birthday_filter = Q(birthday__month=target_date.month, birthday__day=target_date.day)
+        if not calendar.isleap(target_date.year) and (
+            (leap_strategy == "FEB_28" and target_date.month == 2 and target_date.day == 28)
+            or (leap_strategy == "MAR_01" and target_date.month == 3 and target_date.day == 1)
+        ):
+            birthday_filter |= Q(birthday__month=2, birthday__day=29)
+        candidates = (
+            StaffProfile.objects.filter(user__is_active=True)
+            .filter(birthday_filter)
+            .order_by("department", "position", "full_name", "id")
+        )
+        return [
+            profile for profile in candidates
+            if is_birthday_on_date(profile.birthday, target_date, leap_year_strategy=leap_strategy)
+        ]
+
+    today_profiles = birthday_profiles_on(today)
+    tomorrow_profiles = birthday_profiles_on(tomorrow)
 
     # Mảng phẳng birthdays chuẩn BirthdayEmployee của React
     birthdays_list = []
@@ -163,7 +179,7 @@ def overview_view(request):
             "name": p.full_name,
             "fullName": p.full_name,
             "full_name": p.full_name,
-            "birthdate": f"{today.strftime('%d/%m')} (Hôm nay)",
+            "birthdate": f"{p.birthday.strftime('%d/%m')} (Hôm nay)",
             "position": p.position or "Chuyên viên",
             "roleTitle": p.position or "Chuyên viên",
             "department": p.department or "Ban Quản lý",
@@ -177,7 +193,7 @@ def overview_view(request):
             "name": p.full_name,
             "fullName": p.full_name,
             "full_name": p.full_name,
-            "birthdate": f"{tomorrow.strftime('%d/%m')} (Ngày mai)",
+            "birthdate": f"{p.birthday.strftime('%d/%m')} (Ngày mai)",
             "position": p.position or "Chuyên viên",
             "roleTitle": p.position or "Chuyên viên",
             "department": p.department or "Ban Quản lý",
