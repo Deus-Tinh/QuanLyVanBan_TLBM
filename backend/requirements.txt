@@ -13,3 +13,6 @@ djangorestframework-simplejwt>=5.3.0
 # Utilities
 python-dotenv>=1.0.1
 pytz>=2024.1
+
+# Signing: Ed25519 verify
+cryptography>=43.0.0

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 import sys
 from pathlib import Path
 from datetime import timedelta
@@ -169,6 +170,11 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ),
 }
+
+# ─────────────────────────────────────────────────
+# Trình ký — thư mục gốc chứa tệp văn bản (adapter filesystem)
+# ─────────────────────────────────────────────────
+SIGNING_DOCUMENT_ROOT = os.environ.get("SIGNING_DOCUMENT_ROOT", "")
 
 # ─────────────────────────────────────────────────
 # SimpleJWT — Cấu hình token
