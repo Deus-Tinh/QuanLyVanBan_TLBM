@@ -10,7 +10,7 @@
 Hệ thống **Quản Lý Văn Bản và Tài Liệu (QLVB&TL)** là giải pháp phần mềm nội bộ số hóa toàn bộ quy trình hành chính, xử lý công văn, tờ trình, biểu mẫu và luồng văn bản (đến, đi, mật) trong tổ chức/doanh nghiệp.
 
 Hệ thống được phát triển theo mô hình **Full-Stack tách biệt**:
-- **Backend**: Django 5.x / 6.x (Python) cung cấp RESTful APIs, CORS Middleware và xác thực người dùng.
+- **Backend**: Django 6.1 (Python 3.12+) cung cấp RESTful APIs, CORS Middleware và xác thực người dùng.
 - **Frontend**: React 19 + TypeScript 6 + Vite 8, định tuyến URL bằng `react-router-dom` qua thẻ `<Outlet />`, quản lý gói thống nhất bằng **`pnpm`**, với 2 giao diện chuẩn mực (**Sleek Dark** & **Clean Light**) chuyển đổi tức thì 1-click.
 
 ---
@@ -79,9 +79,9 @@ DoAnCuoiKy/
 ## 🚀 4. Hướng dẫn cài đặt & Khởi chạy Local
 
 ### Yêu cầu môi trường tiên quyết
-- **Node.js**: Phiên bản 18.x hoặc 20.x trở lên
-- **pnpm**: Trình quản lý gói chuẩn (`npm install -g pnpm`)
-- **Python**: Phiên bản 3.10 trở lên
+- **Node.js**: Phiên bản 22.22.2 trở lên (hoặc 24.15.0 trở lên). Node 18/20 không chạy được `pnpm test` (`vitest 5`, `jsdom 30`)
+- **pnpm**: Trình quản lý gói chuẩn (`npm install -g pnpm`), dùng bản 10.x
+- **Python**: Phiên bản 3.12 trở lên (Django 6.1 không hỗ trợ Python thấp hơn)
 
 ---
 
