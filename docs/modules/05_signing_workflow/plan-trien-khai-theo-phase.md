@@ -16,10 +16,10 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | Phase | Nội dung | Điều kiện phụ thuộc | Trạng thái |
 |---|---|---|---|
 | 1 | Enums, crypto (SHA-256, Ed25519), storage adapter, định dạng lỗi | Không | Hoàn thành (`bfcb562`) |
-| 2 | Model `SigningKey`, `SigningProcess`, `SigningProcessStep` + migration | `AUTH_USER_MODEL` | Sẵn sàng |
-| 3 | 11 model còn lại + bất biến ở tầng model | Phase 2 | Sẵn sàng |
-| 4 | Service quy trình và khóa ký, ghi nhật ký | Phase 3 | Sẵn sàng |
-| 5 | API quy trình và khóa ký, giới hạn theo quyền sở hữu | Phase 4 | Sẵn sàng |
+| 2 | Model `SigningKey`, `SigningProcess`, `SigningProcessStep` + migration | `AUTH_USER_MODEL` | Hoàn thành (`469d499`) |
+| 3 | 11 model còn lại + bất biến ở tầng model | Phase 2 | Hoàn thành (`e51cfda`) |
+| 4 | Service quy trình và khóa ký, ghi nhật ký | Phase 3 | Hoàn thành (`97e5950`) |
+| 5 | API quy trình và khóa ký, giới hạn theo quyền sở hữu | Phase 4 | Hoàn thành (`64ea1cd`) |
 | 6 | Phân quyền theo 8 quyền của phân hệ | Chốt model người dùng và cách gán quyền | Chờ quyết định |
 | 7 | Yêu cầu trình ký, lượt trình, snapshot người ký | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) | Chờ nhóm liên quan |
 | 8 | Hành động ký, từ chối, thu hồi; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
