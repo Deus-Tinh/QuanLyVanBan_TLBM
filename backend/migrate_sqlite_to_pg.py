@@ -273,8 +273,43 @@ if has_vl_table:
             )
     print(f"  -> Da dong bo {DocumentViewLog.objects.count()} nhat ky xem van ban.")
 
-# 6. Reset toan bo PostgreSQL sequences
-print("[6] Reset sequences PostgreSQL...")
+# 6. Dong bo cot nguoi_nhan M2M (employee_id <-> user_id)
+print("[6] Dong bo cot user_id cho cac bang M2M nguoi nhan...")
+with connection.cursor() as cur:
+    for tbl in ['documents_vanbanden_nguoinhan', 'documents_vanbandi_nguoinhan', 'documents_vanbanmat_nguoinhan']:
+        cur.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS user_id BIGINT;")
+        cur.execute(f"UPDATE {tbl} SET user_id = employee_id WHERE user_id IS NULL AND employee_id IS NOT NULL;")
+        cur.execute(f"UPDATE {tbl} SET employee_id = user_id WHERE employee_id IS NULL AND user_id IS NOT NULL;")
+
+    cur.execute("""
+        CREATE OR REPLACE FUNCTION sync_m2m_nguoinhan_cols()
+        RETURNS TRIGGER AS $func$
+        BEGIN
+            IF NEW.user_id IS NOT NULL AND NEW.employee_id IS NULL THEN
+                NEW.employee_id := NEW.user_id;
+            END IF;
+            IF NEW.employee_id IS NOT NULL AND NEW.user_id IS NULL THEN
+                NEW.user_id := NEW.employee_id;
+            END IF;
+            RETURN NEW;
+        END;
+        $func$ LANGUAGE plpgsql;
+    """)
+
+    for tbl, trg in [
+        ('documents_vanbanden_nguoinhan', 'trg_sync_vbden_nguoinhan'),
+        ('documents_vanbandi_nguoinhan', 'trg_sync_vbdi_nguoinhan'),
+        ('documents_vanbanmat_nguoinhan', 'trg_sync_vbmat_nguoinhan')
+    ]:
+        cur.execute(f"DROP TRIGGER IF EXISTS {trg} ON {tbl};")
+        cur.execute(f"""
+            CREATE TRIGGER {trg}
+            BEFORE INSERT OR UPDATE ON {tbl}
+            FOR EACH ROW EXECUTE FUNCTION sync_m2m_nguoinhan_cols();
+        """)
+
+# 7. Reset toan bo PostgreSQL sequences
+print("[7] Reset sequences PostgreSQL...")
 with connection.cursor() as cur:
     for tbl, seq in [
         ('auth_user', 'auth_user_id_seq'),
