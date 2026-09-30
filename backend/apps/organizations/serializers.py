@@ -23,7 +23,7 @@ class KhoiKhuVucSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = KhoiKhuVuc
-        fields = ["id", "ten", "don_vi_count", "created_at", "updated_at"]
+        fields = ["id", "ten", "thu_tu_hien_thi", "don_vi_count", "created_at", "updated_at"]
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def validate_ten(self, value):

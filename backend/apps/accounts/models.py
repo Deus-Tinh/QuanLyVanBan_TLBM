@@ -66,6 +66,8 @@ class StaffProfile(models.Model):
     STATUS_CHOICES = [
         ("dang_lam_viec", "Đang làm việc"),
         ("nghi_viec", "Nghỉ việc"),
+        ("LAM_VIEC", "Đang làm việc"),
+        ("NGHI_VIEC", "Nghỉ việc"),
     ]
 
     user = models.OneToOneField(
@@ -192,12 +194,15 @@ class StaffProfile(models.Model):
       if self.chuc_vu:
         self.position = self.chuc_vu.name
 
-      # Nghiệp vụ: Khi trạng thái là 'nghi_viec' -> tự động vô hiệu hóa tài khoản đăng nhập (is_active = False)
-      if self.trang_thai == "nghi_viec" and self.user.is_active:
-        self.user.is_active = False
-        self.user.save(update_fields=["is_active"])
-      elif self.trang_thai == "dang_lam_viec" and not self.user.is_active:
-        self.user.is_active = True
-        self.user.save(update_fields=["is_active"])
+      if self.trang_thai in ("nghi_viec", "NGHI_VIEC"):
+        self.trang_thai = "nghi_viec"
+        if self.user.is_active:
+          self.user.is_active = False
+          self.user.save(update_fields=["is_active"])
+      elif self.trang_thai in ("dang_lam_viec", "LAM_VIEC"):
+        self.trang_thai = "dang_lam_viec"
+        if not self.user.is_active:
+          self.user.is_active = True
+          self.user.save(update_fields=["is_active"])
 
       super().save(*args, **kwargs)
