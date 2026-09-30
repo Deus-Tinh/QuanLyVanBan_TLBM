@@ -46,6 +46,11 @@ def exception_handler(exc, context):
     return response
 
 
+class ImmutableEvidenceError(ConflictError):
+    default_code = "bang_chung_bat_bien"
+    default_detail = "Bằng chứng đã ghi nhận không được sửa hoặc xóa."
+
+
 class SigningAPIView(APIView):
     """Base view của module: chỉ áp dụng định dạng lỗi này cho /api/v1/signing/, không đổi module khác."""
 
