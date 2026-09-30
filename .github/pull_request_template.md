@@ -14,5 +14,7 @@
 - [ ] Backend Check: `python backend/manage.py check` (Pass)
 - [ ] Backend Migrations: `python backend/manage.py makemigrations --check --dry-run` (No changes detected)
 - [ ] Backend Test: `python backend/manage.py test` (Pass)
-- [ ] Tuân thủ i18n: Đồng bộ cả 2 nhánh `vi` và `en` trong `frontend/src/i18n/vi.json` và `frontend/src/i18n/en.json`
-- [ ] Tuân thủ Design Tokens: 100% sử dụng biến CSS từ `frontend/src/styles/global.css`
+- [ ] i18n Key Parity: `pnpm --dir frontend run check:i18n` (Pass)
+- [ ] CSS Design Tokens: `pnpm --dir frontend run check:tokens` (Pass)
+- [ ] Tuân thủ i18n (kiểm tra thủ công): 100% text UI dùng `t('namespace.key')`, không hardcode chuỗi trong component
+- [ ] Tuân thủ Design Tokens (kiểm tra thủ công): 100% sử dụng biến CSS từ `frontend/src/styles/global.css`
