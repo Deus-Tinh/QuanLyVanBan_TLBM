@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from '@i18n/translate';
-import { Employee, Position, GroupSimple, EmployeeCreatePayload, EmployeeUpdatePayload } from '@app-types/employee';
+import { Employee, Position, GroupSimple, EmployeeCreatePayload, EmployeeUpdatePayload, EmployeeStatus } from '@app-types/employee';
 import { Unit } from '@app-types/organization';
 import { Button } from '@components/common/Button';
+import { Badge } from '@components/common/Badge';
+import { Select } from '@components/common/Select';
 
 interface EmployeeModalProps {
   isOpen: boolean;
@@ -334,42 +336,44 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
 
               {/* Đơn vị / Phòng ban */}
               <div>
-                <label className="block text-sm font-semibold text-secondary mb-1.5">
-                  {t('employees.fields.unit')}
-                </label>
-                <select
+                <Select
+                  label={t('employees.fields.unit')}
                   name="don_vi_id"
                   value={formData.don_vi_id}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                >
-                  <option value="">{t('employees.placeholders.selectUnit')}</option>
-                  {units.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.ten} {u.khoi_ten ? `(${u.khoi_ten})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => {
+                    setFormData((prev) => ({ ...prev, don_vi_id: val }));
+                    if (errorKey) setErrorKey(null);
+                  }}
+                  placeholder={t('employees.placeholders.selectUnit')}
+                  leftIcon="fa-building"
+                  clearable
+                  searchable
+                  options={units.map((u) => ({
+                    value: String(u.id),
+                    label: u.ten,
+                    group: u.khoi_ten || undefined,
+                  }))}
+                />
               </div>
 
               {/* Chức vụ */}
               <div>
-                <label className="block text-sm font-semibold text-secondary mb-1.5">
-                  {t('employees.fields.position')}
-                </label>
-                <select
+                <Select
+                  label={t('employees.fields.position')}
                   name="chuc_vu_id"
                   value={formData.chuc_vu_id}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                >
-                  <option value="">{t('employees.placeholders.selectPosition')}</option>
-                  {positions.map((pos) => (
-                    <option key={pos.id} value={pos.id}>
-                      {pos.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => {
+                    setFormData((prev) => ({ ...prev, chuc_vu_id: val }));
+                    if (errorKey) setErrorKey(null);
+                  }}
+                  placeholder={t('employees.placeholders.selectPosition')}
+                  leftIcon="fa-id-badge"
+                  clearable
+                  options={positions.map((pos) => ({
+                    value: String(pos.id),
+                    label: pos.name,
+                  }))}
+                />
               </div>
 
               {/* Chức danh tự do */}
@@ -389,18 +393,30 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
 
               {/* Trạng thái làm việc */}
               <div>
-                <label className="block text-sm font-semibold text-secondary mb-1.5">
-                  {t('employees.fields.status')}
-                </label>
-                <select
+                <Select
+                  label={t('employees.fields.status')}
                   name="trang_thai"
                   value={formData.trang_thai}
-                  onChange={handleChange}
-                  className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                >
-                  <option value="dang_lam_viec">{t('employees.status.working')}</option>
-                  <option value="nghi_viec">{t('employees.status.resigned')}</option>
-                </select>
+                  onChange={(val) => {
+                    setFormData((prev) => ({ ...prev, trang_thai: val as EmployeeStatus }));
+                    if (errorKey) setErrorKey(null);
+                  }}
+                  leftIcon="fa-circle-dot"
+                  options={[
+                    {
+                      value: 'dang_lam_viec',
+                      label: t('employees.status.working'),
+                      icon: 'fa-circle-check',
+                      badge: <Badge variant="success" size="sm">{t('employees.status.working')}</Badge>,
+                    },
+                    {
+                      value: 'nghi_viec',
+                      label: t('employees.status.resigned'),
+                      icon: 'fa-circle-xmark',
+                      badge: <Badge variant="secondary" size="sm">{t('employees.status.resigned')}</Badge>,
+                    },
+                  ]}
+                />
                 <span className="text-xs text-muted block mt-1">
                   {t('employees.hints.statusNotice')}
                 </span>

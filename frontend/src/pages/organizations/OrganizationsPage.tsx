@@ -4,6 +4,7 @@ import { ApiError, apiClient, downloadBlob } from '@lib/apiClient';
 import { Region, Unit, PaginatedResponse, RegionFormData, UnitFormData } from '@app-types/organization';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
+import { Select } from '@components/common/Select';
 import { RegionModal } from './components/RegionModal';
 import { UnitModal } from './components/UnitModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
@@ -382,21 +383,24 @@ export default function OrganizationsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Lọc theo Khối */}
             <div>
-              <select
+              <Select
                 value={selectedRegionId}
-                onChange={(e) => {
-                  setSelectedRegionId(e.target.value);
+                onChange={(val) => {
+                  setSelectedRegionId(val);
                   setCurrentPage(1);
                 }}
-                className="w-full px-3.5 py-2 text-sm bg-surface border border-border rounded-lg text-main focus:outline-none focus:border-primary"
-              >
-                <option value="">{t('organizations.actions.filterRegionAll')}</option>
-                {dropdownRegions.map((reg) => (
-                  <option key={reg.id} value={reg.id}>
-                    {reg.ten}
-                  </option>
-                ))}
-              </select>
+                placeholder={t('organizations.actions.filterRegionAll')}
+                leftIcon="fa-layer-group"
+                clearable
+                searchable={dropdownRegions.length > 7}
+                options={[
+                  { value: '', label: t('organizations.actions.filterRegionAll') },
+                  ...dropdownRegions.map((reg) => ({
+                    value: String(reg.id),
+                    label: reg.ten,
+                  })),
+                ]}
+              />
             </div>
 
             {/* Tìm kiếm */}

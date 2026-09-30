@@ -11,6 +11,7 @@ import {
 import { Unit, PaginatedResponse } from '@app-types/organization';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
+import { Select } from '@components/common/Select';
 import { EmployeeModal } from './components/EmployeeModal';
 import { EmployeeDetailModal } from './components/EmployeeDetailModal';
 import { EmployeeImportModal } from './components/EmployeeImportModal';
@@ -283,52 +284,71 @@ export default function EmployeesPage() {
           </div>
 
           {/* Lọc theo Đơn vị */}
-          <select
+          <Select
             value={selectedUnitId}
-            onChange={(e) => {
-              setSelectedUnitId(e.target.value);
+            onChange={(val) => {
+              setSelectedUnitId(val);
               setCurrentPage(1);
             }}
-            className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-          >
-            <option value="">{t('employees.filters.allUnits')}</option>
-            {units.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.ten} {u.khoi_ten ? `(${u.khoi_ten})` : ''}
-              </option>
-            ))}
-          </select>
+            placeholder={t('employees.filters.allUnits')}
+            leftIcon="fa-building"
+            clearable
+            searchable
+            options={[
+              { value: '', label: t('employees.filters.allUnits') },
+              ...units.map((u) => ({
+                value: String(u.id),
+                label: u.ten,
+                group: u.khoi_ten || undefined,
+              })),
+            ]}
+          />
 
           {/* Lọc theo Chức vụ */}
-          <select
+          <Select
             value={selectedPositionId}
-            onChange={(e) => {
-              setSelectedPositionId(e.target.value);
+            onChange={(val) => {
+              setSelectedPositionId(val);
               setCurrentPage(1);
             }}
-            className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-          >
-            <option value="">{t('employees.filters.allPositions')}</option>
-            {positions.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            placeholder={t('employees.filters.allPositions')}
+            leftIcon="fa-id-badge"
+            clearable
+            options={[
+              { value: '', label: t('employees.filters.allPositions') },
+              ...positions.map((p) => ({
+                value: String(p.id),
+                label: p.name,
+              })),
+            ]}
+          />
 
           {/* Lọc theo Trạng thái */}
-          <select
+          <Select
             value={selectedStatus}
-            onChange={(e) => {
-              setSelectedStatus(e.target.value);
+            onChange={(val) => {
+              setSelectedStatus(val);
               setCurrentPage(1);
             }}
-            className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-          >
-            <option value="">{t('employees.filters.allStatuses')}</option>
-            <option value="dang_lam_viec">{t('employees.status.working')}</option>
-            <option value="nghi_viec">{t('employees.status.resigned')}</option>
-          </select>
+            placeholder={t('employees.filters.allStatuses')}
+            leftIcon="fa-circle-dot"
+            clearable
+            options={[
+              { value: '', label: t('employees.filters.allStatuses') },
+              {
+                value: 'dang_lam_viec',
+                label: t('employees.status.working'),
+                icon: 'fa-circle-check',
+                badge: <Badge variant="success" size="sm">{t('employees.status.working')}</Badge>,
+              },
+              {
+                value: 'nghi_viec',
+                label: t('employees.status.resigned'),
+                icon: 'fa-circle-xmark',
+                badge: <Badge variant="secondary" size="sm">{t('employees.status.resigned')}</Badge>,
+              },
+            ]}
+          />
         </div>
 
         {/* Nút xóa nhanh bộ lọc */}
