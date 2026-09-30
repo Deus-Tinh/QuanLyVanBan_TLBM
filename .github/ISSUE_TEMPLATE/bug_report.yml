@@ -1,4 +1,4 @@
-﻿name: Báo cáo sự cố (Bug Report)
+name: Báo cáo sự cố (Bug Report)
 description: Báo cáo lỗi kỹ thuật hoặc sự cố giao diện hệ thống theo chuẩn bắt buộc
 title: "[BUG]: "
 labels: ["bug"]
@@ -13,7 +13,7 @@ body:
     attributes:
       label: 1. Tóm tắt Issue (Summary)
       description: Mô tả ngắn gọn, súc tích bản chất của sự cố trong 1 - 2 câu.
-      placeholder: Ví dụ: Khi người dùng gửi form tạo văn bản mới, hệ thống phản hồi lỗi 500 do thiếu validation trường ngày ban hành.
+      placeholder: "Ví dụ: Khi người dùng gửi form tạo văn bản mới, hệ thống phản hồi lỗi 500 do thiếu validation trường ngày ban hành."
     validations:
       required: true
 
@@ -52,7 +52,7 @@ body:
     attributes:
       label: 4. Hậu quả về Kỹ thuật (Technical Impact)
       description: Tác động đến cơ sở dữ liệu, rò rỉ bộ nhớ, race condition, crash server, tính toàn vẹn dữ liệu...
-      placeholder: Ví dụ: Gây khóa bảng database kéo dài, phát sinh N+1 query làm quá tải bộ nhớ đệm...
+      placeholder: "Ví dụ: Gây khóa bảng database kéo dài, phát sinh N+1 query làm quá tải bộ nhớ đệm..."
     validations:
       required: true
 
@@ -61,7 +61,7 @@ body:
     attributes:
       label: 5. Hậu quả đến Người dùng (User Impact)
       description: Người dùng bị chặn thao tác nào, dữ liệu hiển thị sai lệch ra sao, trải nghiệm bị gián đoạn thế nào...
-      placeholder: Ví dụ: Người dùng không thể nộp biểu mẫu, màn hình bị trắng, mất toàn bộ dữ liệu vừa nhập...
+      placeholder: "Ví dụ: Người dùng không thể nộp biểu mẫu, màn hình bị trắng, mất toàn bộ dữ liệu vừa nhập..."
     validations:
       required: true
 
@@ -79,7 +79,7 @@ body:
     attributes:
       label: 6.2. Nguyên nhân trong Code
       description: Phân tích nguyên nhân logic bị sai, hàm nào, file:dòng nào, unhandled exception nào...
-      placeholder: Ví dụ: Tại frontend/src/services/api.js dòng 42, chưa xử lý ngoại lệ khi response trả về mã lỗi 401...
+      placeholder: "Ví dụ: Tại frontend/src/services/api.js dòng 42, chưa xử lý ngoại lệ khi response trả về mã lỗi 401..."
     validations:
       required: true
 

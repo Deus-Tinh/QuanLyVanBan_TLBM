@@ -1,4 +1,4 @@
-﻿name: Yêu cầu tính năng mới (Feature Request)
+name: Yêu cầu tính năng mới (Feature Request)
 description: Đề xuất tính năng mới hoặc nâng cấp phân hệ hệ thống theo chuẩn bắt buộc
 title: "[FEAT]: "
 labels: ["enhancement"]
@@ -13,7 +13,7 @@ body:
     attributes:
       label: 1. Tóm tắt tính năng (Summary - 1 dòng trên đầu)
       description: Tóm tắt ngắn gọn mục tiêu cốt lõi của tính năng trong đúng 1 câu duy nhất.
-      placeholder: Ví dụ: Bổ sung chức năng xuất danh sách văn bản đến ra file Excel theo mẫu báo cáo hành chính.
+      placeholder: "Ví dụ: Bổ sung chức năng xuất danh sách văn bản đến ra file Excel theo mẫu báo cáo hành chính."
     validations:
       required: true
 
@@ -37,7 +37,7 @@ body:
     attributes:
       label: 3. Nhóm phụ trách (Team)
       description: Ghi rõ nhóm thành viên hoặc nhóm nghiệp vụ đảm nhiệm tính năng này.
-      placeholder: Ví dụ: Nhóm 1 (Layout & Core), Nhóm 2 (Văn bản đến), v.v.
+      placeholder: "Ví dụ: Nhóm 1 (Layout & Core), Nhóm 2 (Văn bản đến), v.v."
     validations:
       required: true
 
@@ -87,7 +87,7 @@ body:
     attributes:
       label: 8. Phạm vi không làm (Out of Scope / Non-Goals)
       description: Liệt kê rõ những việc TUYỆT ĐỐI KHÔNG làm trong task này để chặn overengineering (KISS/YAGNI).
-      placeholder: Ví dụ: Chưa tích hợp chữ ký số; Chưa hỗ trợ định dạng PDF trong lần cập nhật này...
+      placeholder: "Ví dụ: Chưa tích hợp chữ ký số; Chưa hỗ trợ định dạng PDF trong lần cập nhật này..."
     validations:
       required: false
 
@@ -97,8 +97,8 @@ body:
       label: 9. Tiêu chuẩn nghiệm thu kỹ thuật (Definition of Done)
       description: Các tiêu chí bắt buộc phải pass trước khi mở PR hoặc nộp bài.
       options:
-        - label: Frontend Build: Chạy `pnpm --dir frontend run build` (hoặc `npm run build`) đạt 100% không lỗi cú pháp/warning.
-        - label: Backend Check: Chạy `python backend/manage.py check` pass toàn bộ.
-        - label: Tuân thủ i18n (Trụ cột 1): Toàn bộ text giao diện dùng `t(...)`, đã cập nhật song ngữ cả `vi` và `en` trong `translations.js`.
-        - label: Tuân thủ Design Tokens (Trụ cột 3): Sử dụng biến CSS `var(--color-...)` và `var(--font-...)` từ `global.css`, không hardcode mã màu/pixel.
-        - label: Tối ưu truy vấn: Chống N+1 queries trong Django ORM bằng `select_related` / `prefetch_related`.
+        - label: "Frontend Build: Chạy `pnpm --dir frontend run build` (hoặc `npm run build`) đạt 100% không lỗi cú pháp/warning."
+        - label: "Backend Check: Chạy `python backend/manage.py check` pass toàn bộ."
+        - label: "Tuân thủ i18n (Trụ cột 1): Toàn bộ text giao diện dùng `t(...)`, đã cập nhật song ngữ cả `vi` và `en` trong `translations.js`."
+        - label: "Tuân thủ Design Tokens (Trụ cột 3): Sử dụng biến CSS `var(--color-...)` và `var(--font-...)` từ `global.css`, không hardcode mã màu/pixel."
+        - label: "Tối ưu truy vấn: Chống N+1 queries trong Django ORM bằng `select_related` / `prefetch_related`."
