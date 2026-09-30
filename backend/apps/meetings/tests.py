@@ -6,15 +6,17 @@ Kiểm thử toàn diện:
 2. API PhongHopViewSet: CRUD, validation, search, filter, pagination, permission
 """
 
+from datetime import timedelta, datetime
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from meetings.models import PhongHop
+from meetings.models import PhongHop, DatPhongHop
 
 User = get_user_model()
 
@@ -246,3 +248,213 @@ class PhongHopAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.regular_user)
         response = self.client.delete(f"/api/meeting-rooms/{self.room1.id}/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class DatPhongHopModelTestCase(TestCase):
+    """Kiểm thử cấp Model cho DatPhongHop."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="test_booker",
+            email="booker@tlbm.vn",
+            password="Password123!",
+        )
+        self.room = PhongHop.objects.create(
+            ten_phong="Phòng Hội Thảo Model Test",
+            suc_chua=20,
+        )
+
+    def test_create_dat_phong_hop_success(self):
+        now = timezone.now()
+        booking = DatPhongHop.objects.create(
+            phong_hop=self.room,
+            nguoi_dat=self.user,
+            tieu_de="Họp Bàn Giao",
+            thoi_gian_bat_dau=now + timedelta(hours=1),
+            thoi_gian_ket_thuc=now + timedelta(hours=2),
+            so_nguoi_tham_gia=10,
+        )
+        self.assertEqual(booking.trang_thai, DatPhongHop.STATUS_DA_DAT)
+        self.assertIn("Họp Bàn Giao", str(booking))
+
+    def test_clean_end_time_before_start_time(self):
+        now = timezone.now()
+        booking = DatPhongHop(
+            phong_hop=self.room,
+            nguoi_dat=self.user,
+            tieu_de="Họp Lỗi Giờ",
+            thoi_gian_bat_dau=now + timedelta(hours=2),
+            thoi_gian_ket_thuc=now + timedelta(hours=1),
+            so_nguoi_tham_gia=5,
+        )
+        with self.assertRaises(ValidationError):
+            booking.clean()
+
+    def test_clean_capacity_exceeded(self):
+        now = timezone.now()
+        booking = DatPhongHop(
+            phong_hop=self.room,
+            nguoi_dat=self.user,
+            tieu_de="Họp Quá Tải",
+            thoi_gian_bat_dau=now + timedelta(hours=1),
+            thoi_gian_ket_thuc=now + timedelta(hours=2),
+            so_nguoi_tham_gia=25,  # sức chứa phòng là 20
+        )
+        with self.assertRaises(ValidationError):
+            booking.clean()
+
+
+class DatPhongHopAPITestCase(APITestCase):
+    """Kiểm thử API endpoints cho /api/meeting-bookings/."""
+
+    def setUp(self):
+        self.admin_user = User.objects.create_superuser(
+            username="booking_admin",
+            email="admin@tlbm.vn",
+            password="AdminPassword123!",
+        )
+        self.user1 = User.objects.create_user(
+            username="user_one",
+            email="user1@tlbm.vn",
+            password="UserOnePass123!",
+        )
+        self.user2 = User.objects.create_user(
+            username="user_two",
+            email="user2@tlbm.vn",
+            password="UserTwoPass123!",
+        )
+
+        self.room1 = PhongHop.objects.create(
+            ten_phong="Phòng Họp VIP 1",
+            suc_chua=15,
+            is_public=True,
+        )
+        self.room2 = PhongHop.objects.create(
+            ten_phong="Phòng Họp VIP 2",
+            suc_chua=10,
+            is_public=True,
+        )
+
+        self.base_time = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(days=1)
+        self.booking1 = DatPhongHop.objects.create(
+            phong_hop=self.room1,
+            nguoi_dat=self.user1,
+            don_vi_to_chuc="Ban Kế Hoạch",
+            tieu_de="Cuộc họp sáng của User 1",
+            thoi_gian_bat_dau=self.base_time + timedelta(hours=9),
+            thoi_gian_ket_thuc=self.base_time + timedelta(hours=10, minutes=30),
+            so_nguoi_tham_gia=8,
+            trang_thai=DatPhongHop.STATUS_DA_DAT,
+        )
+
+    def test_list_bookings_authenticated(self):
+        """User đã xác thực có thể xem danh sách lịch đặt."""
+        self.client.force_authenticate(user=self.user2)
+        res = self.client.get("/api/meeting-bookings/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        # response phân trang có results
+        count = res.data.get("count", len(res.data.get("results", [])))
+        self.assertGreaterEqual(count, 1)
+
+    def test_filter_bookings_by_room(self):
+        """Lọc lịch đặt theo phòng họp."""
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.get(f"/api/meeting-bookings/?room_id={self.room1.id}")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        results = res.data.get("results", [])
+        for item in results:
+            self.assertEqual(item["phong_hop"], self.room1.id)
+
+    def test_create_booking_success(self):
+        """Tạo lịch đặt phòng mới thành công và tự gán nguoi_dat."""
+        self.client.force_authenticate(user=self.user2)
+        payload = {
+            "phong_hop": self.room1.id,
+            "tieu_de": "Họp Triển Khai Chiều",
+            "don_vi_to_chuc": "Ban Kỹ Thuật",
+            "thoi_gian_bat_dau": (self.base_time + timedelta(hours=14)).isoformat(),
+            "thoi_gian_ket_thuc": (self.base_time + timedelta(hours=16)).isoformat(),
+            "so_nguoi_tham_gia": 10,
+            "ghi_chu": "Yêu cầu máy chiếu",
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["nguoi_dat"], self.user2.id)
+        self.assertEqual(res.data["tieu_de"], "Họp Triển Khai Chiều")
+
+    def test_create_booking_conflict_error(self):
+        """Chặn đặt trùng khung giờ trong cùng phòng họp."""
+        self.client.force_authenticate(user=self.user2)
+        # Booking1 diễn ra từ 09:00 đến 10:30 phòng 1
+        # Thử đặt từ 10:00 đến 11:30 phòng 1 -> Bị từ chối
+        payload = {
+            "phong_hop": self.room1.id,
+            "tieu_de": "Họp Cố Tình Trùng Lịch",
+            "thoi_gian_bat_dau": (self.base_time + timedelta(hours=10)).isoformat(),
+            "thoi_gian_ket_thuc": (self.base_time + timedelta(hours=11, minutes=30)).isoformat(),
+            "so_nguoi_tham_gia": 5,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_booking_capacity_error(self):
+        """Chặn đặt số người vượt quá sức chứa phòng."""
+        self.client.force_authenticate(user=self.user2)
+        payload = {
+            "phong_hop": self.room2.id,  # sức chứa 10
+            "tieu_de": "Họp Quá Đông",
+            "thoi_gian_bat_dau": (self.base_time + timedelta(hours=14)).isoformat(),
+            "thoi_gian_ket_thuc": (self.base_time + timedelta(hours=15)).isoformat(),
+            "so_nguoi_tham_gia": 50,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("so_nguoi_tham_gia", res.data)
+
+    def test_cancel_booking_action(self):
+        """Hủy lịch đặt phòng giải phóng khung giờ."""
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.post(
+            f"/api/meeting-bookings/{self.booking1.id}/cancel/",
+            {"ly_do_huy": "Hoãn họp sang tuần sau"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.booking1.refresh_from_db()
+        self.assertEqual(self.booking1.trang_thai, DatPhongHop.STATUS_DA_HUY)
+        self.assertIn("Hoãn họp sang tuần sau", self.booking1.ghi_chu)
+
+    def test_rebook_after_cancellation(self):
+        """Sau khi lịch cũ bị hủy, người khác có thể đặt vào cùng khung giờ đó."""
+        # 1. User 1 hủy lịch
+        self.client.force_authenticate(user=self.user1)
+        self.client.post(f"/api/meeting-bookings/{self.booking1.id}/cancel/")
+
+        # 2. User 2 đặt vào chính khung giờ đó -> Thành công!
+        self.client.force_authenticate(user=self.user2)
+        payload = {
+            "phong_hop": self.room1.id,
+            "tieu_de": "Họp Khẩn Cấp Chiếm Slot Đã Hủy",
+            "thoi_gian_bat_dau": (self.base_time + timedelta(hours=9)).isoformat(),
+            "thoi_gian_ket_thuc": (self.base_time + timedelta(hours=10, minutes=30)).isoformat(),
+            "so_nguoi_tham_gia": 6,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+    def test_regular_user_cannot_cancel_other_user_booking(self):
+        """User thường không thể hủy lịch của người khác."""
+        self.client.force_authenticate(user=self.user2)
+        res = self.client.post(f"/api/meeting-bookings/{self.booking1.id}/cancel/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_cancel_any_booking(self):
+        """Admin có quyền hủy bất kỳ lịch đặt phòng nào."""
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.post(
+            f"/api/meeting-bookings/{self.booking1.id}/cancel/",
+            {"ly_do_huy": "Admin điều phối phòng"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.booking1.refresh_from_db()
+        self.assertEqual(self.booking1.trang_thai, DatPhongHop.STATUS_DA_HUY)
+

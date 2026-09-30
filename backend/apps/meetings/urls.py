@@ -3,11 +3,12 @@ URL Configuration cho app meetings (Issue #22 - Nhóm 7).
 """
 
 from rest_framework.routers import DefaultRouter
-from meetings.views import PhongHopViewSet
+from meetings.views import PhongHopViewSet, DatPhongHopViewSet
 
 app_name = "meetings"
 
 router = DefaultRouter()
 router.register(r"meeting-rooms", PhongHopViewSet, basename="meeting-room")
+router.register(r"meeting-bookings", DatPhongHopViewSet, basename="meeting-booking")
 
 urlpatterns = router.urls

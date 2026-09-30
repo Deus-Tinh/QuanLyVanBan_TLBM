@@ -3,7 +3,7 @@ Django Admin cho app meetings (Issue #22 - Nhóm 7).
 """
 
 from django.contrib import admin
-from meetings.models import PhongHop
+from meetings.models import PhongHop, DatPhongHop
 
 
 @admin.register(PhongHop)
@@ -12,3 +12,27 @@ class PhongHopAdmin(admin.ModelAdmin):
     list_filter = ("is_public", "created_at")
     search_fields = ("ten_phong", "vi_tri", "thiet_bi", "ghi_chu")
     ordering = ("ten_phong",)
+
+
+@admin.register(DatPhongHop)
+class DatPhongHopAdmin(admin.ModelAdmin):
+    list_display = (
+        "tieu_de",
+        "phong_hop",
+        "nguoi_dat",
+        "don_vi_to_chuc",
+        "thoi_gian_bat_dau",
+        "thoi_gian_ket_thuc",
+        "so_nguoi_tham_gia",
+        "trang_thai",
+        "created_at",
+    )
+    list_filter = ("trang_thai", "phong_hop", "thoi_gian_bat_dau")
+    search_fields = (
+        "tieu_de",
+        "don_vi_to_chuc",
+        "nguoi_dat__username",
+        "nguoi_dat__first_name",
+        "nguoi_dat__last_name",
+    )
+    ordering = ("-thoi_gian_bat_dau",)

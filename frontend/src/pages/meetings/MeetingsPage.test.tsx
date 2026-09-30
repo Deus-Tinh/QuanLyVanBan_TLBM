@@ -47,7 +47,7 @@ describe('MeetingsPage Component (Issue #22)', () => {
       suc_chua: 30,
       thiet_bi: 'Máy chiếu 4K, 2 Micro không dây',
       is_public: true,
-      ghi_chu: 'Dành cho hội thảo lớn',
+      ghi_chu: '',
       created_at: '2026-09-20T08:00:00Z',
       updated_at: '2026-09-20T08:00:00Z',
     },
@@ -58,39 +58,94 @@ describe('MeetingsPage Component (Issue #22)', () => {
       suc_chua: 10,
       thiet_bi: 'Bảng trắng',
       is_public: false,
-      ghi_chu: 'Đang bảo trì',
+      ghi_chu: 'Bảo trì',
       created_at: '2026-09-20T08:00:00Z',
       updated_at: '2026-09-20T08:00:00Z',
     },
   ];
 
+  const mockBookings = [
+    {
+      id: 101,
+      phong_hop: 1,
+      phong_hop_detail: mockRooms[0],
+      nguoi_dat: 1,
+      nguoi_dat_detail: {
+        id: 1,
+        username: 'hieu_staff',
+        full_name: 'Nguyễn Phan Minh Hiệu',
+        department: 'Phòng Hành chính - Tổng hợp',
+        role: 'staff',
+      },
+      don_vi_to_chuc: 'Phòng Hành chính - Tổng hợp',
+      tieu_de: 'Họp giao ban tuần 40',
+      thoi_gian_bat_dau: '2026-09-23T09:00:00Z',
+      thoi_gian_ket_thuc: '2026-09-23T10:30:00Z',
+      so_nguoi_tham_gia: 15,
+      trang_thai: 'da_dat',
+      ghi_chu: 'Chuẩn bị micro và trà nước',
+      created_at: '2026-09-22T08:00:00Z',
+      updated_at: '2026-09-22T08:00:00Z',
+    },
+  ];
+
+  const mockProfile = {
+    id: 1,
+    username: 'hieu_staff',
+    full_name: 'Nguyễn Phan Minh Hiệu',
+    department: 'Phòng Hành chính - Tổng hợp',
+    role: 'admin',
+  };
+
   const getMockFn = () => apiClient.get as unknown as ReturnType<typeof vi.fn>;
   const postMockFn = () => apiClient.post as unknown as ReturnType<typeof vi.fn>;
-  const deleteMockFn = () => apiClient.delete as unknown as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
     getMockFn().mockImplementation((url: string) => {
-      if (url.includes('/api/meeting-rooms/')) {
-        return Promise.resolve(mockRooms);
+      if (url.includes('/api/auth/profile/')) {
+        return Promise.resolve(mockProfile);
       }
-      return Promise.resolve([]);
+      if (url.includes('/api/meeting-rooms/')) {
+        return Promise.resolve({ results: mockRooms, count: 2 });
+      }
+      if (url.includes('/api/meeting-bookings/')) {
+        return Promise.resolve({ results: mockBookings, count: 1 });
+      }
+      return Promise.resolve({});
     });
-
-    postMockFn().mockResolvedValue({ id: 3, ten_phong: 'Phòng Mới' });
-    deleteMockFn().mockResolvedValue({});
   });
 
-  it('renders page header and add room button', async () => {
+  it('renders page header and schedule tab by default', async () => {
     render(
       <MemoryRouter>
         <MeetingsPage />
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Quản lý Phòng họp')).toBeInTheDocument();
-    expect(screen.getByText('Thêm phòng họp')).toBeInTheDocument();
+    expect(screen.getByText('Phân hệ Quản lý Phòng họp')).toBeInTheDocument();
+    expect(screen.getByText('Đặt phòng họp mới')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Họp giao ban tuần 40')).toBeInTheDocument();
+      expect(screen.getByText('Phòng Hội thảo A (Tầng 2, Tòa A)')).toBeInTheDocument();
+    });
+  });
+
+  it('switches between Schedule tab and Rooms tab', async () => {
+    render(
+      <MemoryRouter>
+        <MeetingsPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Họp giao ban tuần 40')).toBeInTheDocument();
+    });
+
+    // Switch to Danh mục phòng họp
+    const roomsTabBtn = screen.getByText('Danh mục phòng họp');
+    fireEvent.click(roomsTabBtn);
 
     await waitFor(() => {
       expect(screen.getByText('Phòng Hội thảo A')).toBeInTheDocument();
@@ -98,59 +153,38 @@ describe('MeetingsPage Component (Issue #22)', () => {
     });
   });
 
-  it('filters room list by search keyword', async () => {
+  it('opens and closes booking modal when clicking "Đặt phòng họp mới"', async () => {
     render(
       <MemoryRouter>
         <MeetingsPage />
       </MemoryRouter>
     );
 
+    const openBtn = screen.getByText('Đặt phòng họp mới');
+    fireEvent.click(openBtn);
+
     await waitFor(() => {
-      expect(screen.getByText('Phòng Hội thảo A')).toBeInTheDocument();
+      expect(screen.getByText('Điền thông tin khung giờ và nội dung cuộc họp để khóa phòng')).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(/Tìm kiếm theo tên phòng/i);
-    fireEvent.change(searchInput, { target: { value: 'Hội thảo' } });
-
-    expect(screen.getByText('Phòng Hội thảo A')).toBeInTheDocument();
-    expect(screen.queryByText('Phòng Họp B')).not.toBeInTheDocument();
-  });
-
-  it('filters room list by status', async () => {
-    render(
-      <MemoryRouter>
-        <MeetingsPage />
-      </MemoryRouter>
-    );
+    const closeBtn = screen.getByText('Hủy bỏ');
+    fireEvent.click(closeBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Phòng Hội thảo A')).toBeInTheDocument();
-    });
-
-    const select = screen.getByDisplayValue('Tất cả trạng thái');
-    fireEvent.change(select, { target: { value: 'hidden' } });
-
-    expect(screen.queryByText('Phòng Hội thảo A')).not.toBeInTheDocument();
-    expect(screen.getByText('Phòng Họp B')).toBeInTheDocument();
-  });
-
-  it('opens add room modal when clicking Thêm phòng họp button', async () => {
-    render(
-      <MemoryRouter>
-        <MeetingsPage />
-      </MemoryRouter>
-    );
-
-    const addButton = screen.getByText('Thêm phòng họp');
-    fireEvent.click(addButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Thêm phòng họp mới')).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/Phòng Hội thảo A, Phòng Họp Ban Giám Đốc/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText('Điền thông tin khung giờ và nội dung cuộc họp để khóa phòng')
+      ).not.toBeInTheDocument();
     });
   });
 
-  it('opens delete confirmation modal when clicking Xóa', async () => {
+  it('displays empty state when there are no bookings on the selected date', async () => {
+    getMockFn().mockImplementation((url: string) => {
+      if (url.includes('/api/auth/profile/')) return Promise.resolve(mockProfile);
+      if (url.includes('/api/meeting-rooms/')) return Promise.resolve({ results: mockRooms, count: 2 });
+      if (url.includes('/api/meeting-bookings/')) return Promise.resolve({ results: [], count: 0 });
+      return Promise.resolve({});
+    });
+
     render(
       <MemoryRouter>
         <MeetingsPage />
@@ -158,21 +192,39 @@ describe('MeetingsPage Component (Issue #22)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Phòng Hội thảo A')).toBeInTheDocument();
+      expect(screen.getByText('Không có lịch đặt phòng họp')).toBeInTheDocument();
+      expect(screen.getByText('Đặt phòng ngay')).toBeInTheDocument();
     });
+  });
 
-    const deleteButtons = screen.getAllByText('Xóa');
-    fireEvent.click(deleteButtons[0]);
+  it('allows opening cancel confirmation modal and calls cancel API', async () => {
+    postMockFn().mockResolvedValueOnce({ detail: 'Hủy thành công' });
+
+    render(
+      <MemoryRouter>
+        <MeetingsPage />
+      </MemoryRouter>
+    );
 
     await waitFor(() => {
-      expect(screen.getByText('Xác nhận xóa phòng họp?')).toBeInTheDocument();
-      expect(screen.getByText('Xác nhận xóa')).toBeInTheDocument();
+      expect(screen.getByText('Họp giao ban tuần 40')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Xác nhận xóa'));
+    const cancelBtn = screen.getByText('Hủy lịch');
+    fireEvent.click(cancelBtn);
 
     await waitFor(() => {
-      expect(deleteMockFn()).toHaveBeenCalledWith('/api/meeting-rooms/1/');
+      expect(screen.getByText('Xác nhận hủy lịch họp')).toBeInTheDocument();
+    });
+
+    const confirmCancelBtn = screen.getByText('Xác nhận hủy');
+    fireEvent.click(confirmCancelBtn);
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/api/meeting-bookings/101/cancel/',
+        expect.objectContaining({ ly_do_huy: '' })
+      );
     });
   });
 });

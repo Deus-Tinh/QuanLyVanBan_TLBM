@@ -2,13 +2,17 @@
 Views cho phân hệ Phòng họp (Issue #22 - Nhóm 7).
 """
 
+from datetime import datetime
+from django.db import transaction
 from django.db.models import Q, ProtectedError
+from django.utils import timezone
 from rest_framework import status, viewsets, permissions
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from meetings.models import PhongHop
-from meetings.serializers import PhongHopSerializer
+from meetings.models import PhongHop, DatPhongHop
+from meetings.serializers import PhongHopSerializer, DatPhongHopSerializer
 
 
 class StandardPagination(PageNumberPagination):
@@ -132,3 +136,209 @@ class PhongHopViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class IsOwnerOrAdminForBooking(permissions.BasePermission):
+    """
+    Quyền truy cập đặt lịch phòng họp:
+    - Xem danh sách / chi tiết: Bất kỳ user đã xác thực (IsAuthenticated).
+    - Tạo mới (POST): Bất kỳ user đã xác thực.
+    - Sửa / Hủy / Xóa: Chỉ người tạo (nguoi_dat) hoặc admin/staff.
+    """
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.is_superuser or request.user.is_staff:
+            return True
+        return obj.nguoi_dat == request.user
+
+
+class DatPhongHopViewSet(viewsets.ModelViewSet):
+    """
+    API ViewSet quản lý Đặt lịch phòng họp:
+    - GET /api/meeting-bookings/ : Danh sách lịch đặt (hỗ trợ lọc theo date, room_id, status)
+    - POST /api/meeting-bookings/ : Tạo lịch đặt mới (Database Lock chống race condition)
+    - GET /api/meeting-bookings/{id}/ : Chi tiết lịch đặt
+    - PUT/PATCH /api/meeting-bookings/{id}/ : Cập nhật lịch đặt (Database Lock)
+    - DELETE /api/meeting-bookings/{id}/ : Xóa lịch đặt
+    - POST /api/meeting-bookings/{id}/cancel/ : Hủy lịch giải phóng khung giờ
+    """
+
+    queryset = DatPhongHop.objects.select_related("phong_hop", "nguoi_dat", "nguoi_dat__profile").all()
+    serializer_class = DatPhongHopSerializer
+    permission_classes = [IsOwnerOrAdminForBooking]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        # Tự động cập nhật các cuộc họp đã qua giờ kết thúc sang trạng thái 'hoan_thanh'
+        now = timezone.now()
+        DatPhongHop.objects.filter(
+            trang_thai=DatPhongHop.STATUS_DA_DAT,
+            thoi_gian_ket_thuc__lte=now,
+        ).update(trang_thai=DatPhongHop.STATUS_HOAN_THANH)
+
+        qs = super().get_queryset().order_by("-thoi_gian_bat_dau")
+
+        # Lọc theo phòng họp
+        phong_id = self.request.query_params.get("room_id") or self.request.query_params.get("phong_hop")
+        if phong_id:
+            qs = qs.filter(phong_hop_id=phong_id)
+
+        # Lọc theo trạng thái
+        trang_thai = self.request.query_params.get("status") or self.request.query_params.get("trang_thai")
+        if trang_thai:
+            qs = qs.filter(trang_thai=trang_thai)
+
+        # Lọc theo ngày cụ thể (YYYY-MM-DD)
+        date_str = self.request.query_params.get("date")
+        if date_str:
+            try:
+                target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                tz = timezone.get_current_timezone()
+                start_of_day = timezone.make_aware(
+                    datetime.combine(target_date, datetime.min.time()), tz
+                )
+                end_of_day = timezone.make_aware(
+                    datetime.combine(target_date, datetime.max.time()), tz
+                )
+                qs = qs.filter(
+                    thoi_gian_bat_dau__lt=end_of_day,
+                    thoi_gian_ket_thuc__gt=start_of_day,
+                ).order_by("thoi_gian_bat_dau")
+            except ValueError:
+                pass
+
+        # Lọc theo khoảng ngày (start_date, end_date)
+        start_date = self.request.query_params.get("start_date")
+        end_date = self.request.query_params.get("end_date")
+        tz = timezone.get_current_timezone()
+        if start_date:
+            try:
+                sd = datetime.strptime(start_date, "%Y-%m-%d").date()
+                qs = qs.filter(thoi_gian_ket_thuc__gte=timezone.make_aware(datetime.combine(sd, datetime.min.time()), tz))
+            except ValueError:
+                pass
+        if end_date:
+            try:
+                ed = datetime.strptime(end_date, "%Y-%m-%d").date()
+                qs = qs.filter(thoi_gian_bat_dau__lte=timezone.make_aware(datetime.combine(ed, datetime.max.time()), tz))
+            except ValueError:
+                pass
+
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        """
+        Tạo lịch đặt phòng với Database Lock (select_for_update) chống race condition.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        phong_hop = serializer.validated_data["phong_hop"]
+        start = serializer.validated_data["thoi_gian_bat_dau"]
+        end = serializer.validated_data["thoi_gian_ket_thuc"]
+
+        with transaction.atomic():
+            # Khóa bản ghi phòng họp để các request đồng thời phải tuần tự kiểm tra
+            locked_room = PhongHop.objects.select_for_update().get(id=phong_hop.id)
+
+            conflicts = DatPhongHop.objects.filter(
+                phong_hop=locked_room,
+                thoi_gian_bat_dau__lt=end,
+                thoi_gian_ket_thuc__gt=start,
+            ).exclude(trang_thai=DatPhongHop.STATUS_DA_HUY)
+
+            if conflicts.exists():
+                conflict = conflicts.first()
+                host = conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
+                if hasattr(conflict.nguoi_dat, "profile") and conflict.nguoi_dat.profile.full_name:
+                    host = conflict.nguoi_dat.profile.full_name
+                tz = timezone.get_current_timezone()
+                c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")
+                c_end = timezone.localtime(conflict.thoi_gian_ket_thuc, tz).strftime("%H:%M ngày %d/%m/%Y")
+                return Response(
+                    {
+                        "error": f"Phòng '{locked_room.ten_phong}' vừa được đặt trùng khung giờ: '{conflict.tieu_de}' ({c_start} - {c_end}) bởi {host}. Vui lòng chọn khung giờ khác!"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            self.perform_create(serializer)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Cập nhật lịch đặt phòng với Database Lock và chống race condition.
+        """
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        phong_hop = serializer.validated_data.get("phong_hop", instance.phong_hop)
+        start = serializer.validated_data.get("thoi_gian_bat_dau", instance.thoi_gian_bat_dau)
+        end = serializer.validated_data.get("thoi_gian_ket_thuc", instance.thoi_gian_ket_thuc)
+        new_status = serializer.validated_data.get("trang_thai", instance.trang_thai)
+
+        with transaction.atomic():
+            locked_room = PhongHop.objects.select_for_update().get(id=phong_hop.id)
+
+            if new_status != DatPhongHop.STATUS_DA_HUY:
+                conflicts = DatPhongHop.objects.filter(
+                    phong_hop=locked_room,
+                    thoi_gian_bat_dau__lt=end,
+                    thoi_gian_ket_thuc__gt=start,
+                ).exclude(trang_thai=DatPhongHop.STATUS_DA_HUY).exclude(pk=instance.pk)
+
+                if conflicts.exists():
+                    conflict = conflicts.first()
+                    host = conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
+                    if hasattr(conflict.nguoi_dat, "profile") and conflict.nguoi_dat.profile.full_name:
+                        host = conflict.nguoi_dat.profile.full_name
+                    tz = timezone.get_current_timezone()
+                    c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")
+                    c_end = timezone.localtime(conflict.thoi_gian_ket_thuc, tz).strftime("%H:%M ngày %d/%m/%Y")
+                    return Response(
+                        {
+                            "error": f"Không thể đổi sang khung giờ này vì bị trùng với cuộc họp '{conflict.tieu_de}' ({c_start} - {c_end}) bởi {host}!"
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            self.perform_update(serializer)
+
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        """
+        Hủy lịch đặt phòng họp: giải phóng khung giờ nhưng vẫn giữ lại bản ghi lịch sử.
+        """
+        booking = self.get_object()
+        if booking.trang_thai == DatPhongHop.STATUS_DA_HUY:
+            return Response(
+                {"detail": "Lịch đặt phòng này đã được hủy trước đó."},
+                status=status.HTTP_200_OK,
+            )
+
+        booking.trang_thai = DatPhongHop.STATUS_DA_HUY
+        reason = request.data.get("ly_do_huy", "").strip()
+        if reason:
+            booking.ghi_chu = (booking.ghi_chu + f"\n[Lý do hủy]: {reason}").strip()
+        booking.save()
+
+        serializer = self.get_serializer(booking)
+        return Response(
+            {
+                "detail": "Đã hủy lịch đặt phòng thành công. Khung giờ đã được giải phóng.",
+                "booking": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
