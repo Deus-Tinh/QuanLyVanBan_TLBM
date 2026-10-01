@@ -14,6 +14,8 @@
 - [ ] Backend Check: `python backend/manage.py check` (Pass)
 - [ ] Backend Migrations: `python backend/manage.py makemigrations --check --dry-run` (No changes detected)
 - [ ] Backend Test: `python backend/manage.py test` (Pass)
+- [ ] Đồng bộ nhánh đích: đã cập nhật nhánh `staging` mới nhất vào nhánh PR (rebase hoặc merge) và job `migrate-postgres` chạy lại xanh sau lần cập nhật cuối
+- [ ] Phạm vi migration: chỉ tạo/sửa migration của app thuộc nhóm; thay đổi bảng của nhóm khác đã có issue được nhóm đó xác nhận
 - [ ] i18n Key Parity: `pnpm --dir frontend run check:i18n` (Pass)
 - [ ] CSS Design Tokens: `pnpm --dir frontend run check:tokens` (Pass)
 - [ ] Tuân thủ i18n (kiểm tra thủ công): 100% text UI dùng `t('namespace.key')`, không hardcode chuỗi trong component
