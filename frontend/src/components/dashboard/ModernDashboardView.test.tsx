@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -106,6 +106,32 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     fireEvent.click(bookBtn);
 
     expect(mockNavigate).toHaveBeenCalledWith('meetings');
+  });
+
+  it('opens DocumentPreviewModal when clicking an incoming document row', () => {
+    const mockIncoming: DocumentItem[] = [
+      { code: '128/QĐ-UBND', title: 'Phê duyệt chuyển đổi số', date: '01/10/2026' },
+    ];
+
+    render(
+      <MemoryRouter>
+        <ModernDashboardView incomingDocuments={mockIncoming} />
+      </MemoryRouter>
+    );
+
+    // Click on document code or row
+    const docRow = screen.getByText('128/QĐ-UBND');
+    fireEvent.click(docRow);
+
+    // Modal opens with document preview
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('128/QĐ-UBND.pdf')).toBeInTheDocument();
+    expect(screen.getByText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM')).toBeInTheDocument();
+
+    // Close modal
+    const closeBtn = screen.getByLabelText('Đóng (ESC)');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
 

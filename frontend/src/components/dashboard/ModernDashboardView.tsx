@@ -1,8 +1,9 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ActivePageId } from '@app-types/navigation';
 import { useTranslation } from '@i18n/translate';
 import { Badge } from '@components/common';
 import BirthdaysWidget, { BirthdayEmployee } from './BirthdaysWidget';
+import DocumentPreviewModal from './DocumentPreviewModal';
 
 export interface TaskItem {
   id: string;
@@ -17,6 +18,9 @@ export interface DocumentItem {
   code: string;
   title: string;
   date: string;
+  id?: string | number;
+  sender?: string;
+  recipient?: string;
 }
 
 export interface ResourceTemplateItem {
@@ -51,6 +55,36 @@ export default function ModernDashboardView({
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [taskFilter, setTaskFilter] = useState<'processing' | 'completed' | 'overdue' | 'pending'>('processing');
+
+  // Trạng thái modal xem trước tài liệu (PDF Preview)
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [previewType, setPreviewType] = useState<'incoming' | 'outgoing' | 'resource'>('incoming');
+  const [previewList, setPreviewList] = useState<DocumentItem[]>([]);
+  const [previewIndex, setPreviewIndex] = useState<number>(0);
+
+  const handleOpenPreview = (doc: DocumentItem, type: 'incoming' | 'outgoing' | 'resource', list: DocumentItem[]) => {
+    setPreviewDoc(doc);
+    setPreviewType(type);
+    setPreviewList(list);
+    const idx = list.findIndex((item) => item.code === doc.code);
+    setPreviewIndex(idx >= 0 ? idx : 0);
+  };
+
+  const handleNextPreview = () => {
+    if (previewIndex < previewList.length - 1) {
+      const nextIdx = previewIndex + 1;
+      setPreviewIndex(nextIdx);
+      setPreviewDoc(previewList[nextIdx]);
+    }
+  };
+
+  const handlePrevPreview = () => {
+    if (previewIndex > 0) {
+      const prevIdx = previewIndex - 1;
+      setPreviewIndex(prevIdx);
+      setPreviewDoc(previewList[prevIdx]);
+    }
+  };
 
   const filteredIncoming = useMemo(() => {
     if (!searchTerm.trim()) return incomingDocuments;
@@ -216,10 +250,36 @@ export default function ModernDashboardView({
                   </thead>
                   <tbody>
                     {filteredIncoming.map((row, idx) => (
-                      <tr key={idx} className="border-b border-border-subtle hover:bg-surface-hover transition-colors">
-                        <td className="p-2.5 font-semibold text-primary">{row.code}</td>
-                        <td className="p-2.5 text-main">{row.title}</td>
-                        <td className="p-2.5 text-muted">{row.date}</td>
+                      <tr
+                        key={idx}
+                        onClick={() => handleOpenPreview(row, 'incoming', filteredIncoming)}
+                        className="border-b border-border-subtle hover:bg-primary-subtle/30 transition-colors cursor-pointer group"
+                        title={t('documentPreview.clickToPreview') || 'Bấm để xem trước văn bản (PDF)'}
+                      >
+                        <td className="p-2.5 font-semibold text-primary group-hover:underline">
+                          <div className="flex items-center gap-1.5">
+                            <i className="fa-solid fa-file-pdf text-red-500 text-xs opacity-70 group-hover:opacity-100" />
+                            <span>{row.code}</span>
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-main group-hover:text-primary transition-colors">{row.title}</td>
+                        <td className="p-2.5 text-muted">
+                          <div className="flex items-center justify-between gap-1">
+                            <span>{row.date}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenPreview(row, 'incoming', filteredIncoming);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-primary-subtle text-primary transition-all text-xs cursor-pointer"
+                              title={t('documentPreview.clickToPreview') || 'Xem trước văn bản'}
+                              aria-label={`Xem trước văn bản ${row.code}`}
+                            >
+                              <i className="fa-solid fa-eye" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -268,10 +328,36 @@ export default function ModernDashboardView({
                   </thead>
                   <tbody>
                     {filteredOutgoing.map((row, idx) => (
-                      <tr key={idx} className="border-b border-border-subtle hover:bg-surface-hover transition-colors">
-                        <td className="p-2.5 font-semibold text-success">{row.code}</td>
-                        <td className="p-2.5 text-main">{row.title}</td>
-                        <td className="p-2.5 text-muted">{row.date}</td>
+                      <tr
+                        key={idx}
+                        onClick={() => handleOpenPreview(row, 'outgoing', filteredOutgoing)}
+                        className="border-b border-border-subtle hover:bg-success-subtle/30 transition-colors cursor-pointer group"
+                        title={t('documentPreview.clickToPreview') || 'Bấm để xem trước văn bản (PDF)'}
+                      >
+                        <td className="p-2.5 font-semibold text-success group-hover:underline">
+                          <div className="flex items-center gap-1.5">
+                            <i className="fa-solid fa-file-pdf text-red-500 text-xs opacity-70 group-hover:opacity-100" />
+                            <span>{row.code}</span>
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-main group-hover:text-success transition-colors">{row.title}</td>
+                        <td className="p-2.5 text-muted">
+                          <div className="flex items-center justify-between gap-1">
+                            <span>{row.date}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenPreview(row, 'outgoing', filteredOutgoing);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-success-subtle text-success transition-all text-xs cursor-pointer"
+                              title={t('documentPreview.clickToPreview') || 'Xem trước văn bản'}
+                              aria-label={`Xem trước văn bản ${row.code}`}
+                            >
+                              <i className="fa-solid fa-eye" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -408,17 +494,39 @@ export default function ModernDashboardView({
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredResources.slice(0, 5).map((row, idx) => (
-                      <tr key={idx} className="border-b border-border-subtle hover:bg-surface-hover transition-colors">
-                        <td className="p-2.5 font-semibold text-primary">{row.code}</td>
-                        <td className="p-2.5 text-main">{row.title}</td>
-                        <td className="p-2.5 text-center">
-                          <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-primary-subtle text-primary uppercase">
-                            {row.format}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredResources.slice(0, 5).map((row, idx) => {
+                      const resourceAsDoc: DocumentItem = {
+                        code: row.code,
+                        title: row.title,
+                        date: '01/10/2026',
+                      };
+                      const resourceDocsList: DocumentItem[] = filteredResources.slice(0, 5).map((r) => ({
+                        code: r.code,
+                        title: r.title,
+                        date: '01/10/2026',
+                      }));
+                      return (
+                        <tr
+                          key={idx}
+                          onClick={() => handleOpenPreview(resourceAsDoc, 'resource', resourceDocsList)}
+                          className="border-b border-border-subtle hover:bg-purple-subtle/30 transition-colors cursor-pointer group"
+                          title={t('documentPreview.clickToPreview') || 'Bấm để xem trước biểu mẫu (PDF)'}
+                        >
+                          <td className="p-2.5 font-semibold text-primary group-hover:underline">
+                            <div className="flex items-center gap-1.5">
+                              <i className="fa-solid fa-file-lines text-purple text-xs opacity-70 group-hover:opacity-100" />
+                              <span>{row.code}</span>
+                            </div>
+                          </td>
+                          <td className="p-2.5 text-main group-hover:text-primary transition-colors">{row.title}</td>
+                          <td className="p-2.5 text-center">
+                            <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-primary-subtle text-primary uppercase">
+                              {row.format}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -437,6 +545,21 @@ export default function ModernDashboardView({
           </div>
         </div>
       </div>
+
+      {/* Modal Xem Trước Văn Bản Số Hóa (PDF Reader) */}
+      <DocumentPreviewModal
+        key={previewDoc?.code || 'empty'}
+        isOpen={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+        document={previewDoc}
+        docType={previewType}
+        onNext={handleNextPreview}
+        onPrev={handlePrevPreview}
+        hasNext={previewIndex < previewList.length - 1}
+        hasPrev={previewIndex > 0}
+        currentIndex={previewIndex}
+        totalDocs={previewList.length}
+      />
     </div>
   );
 }

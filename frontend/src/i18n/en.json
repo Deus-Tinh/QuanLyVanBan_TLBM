@@ -74,7 +74,8 @@
   "footer": {
     "group1Notice": "Group 1 currently in active development",
     "advisorPrefix": "Advisor",
-    "layoutLead": "Layout & Workplace Lead"
+    "layoutLead": "Layout & Workplace Lead",
+    "copyright": "Version v2.0 • Copyright © {year} Bao Long Insurance"
   },
   "dashboardDetails": {
     "greeting": "Welcome, Staff Member",
@@ -408,7 +409,61 @@
       "yellow": "Click to make me sway!"
     }
   },
-  "footer": {
-    "copyright": "Version v2.0 • Copyright © {year} Bao Long Insurance"
+  "documentPreview": {
+    "modalTitle": "Digitized Document Preview (PDF)",
+    "badgeIncoming": "Incoming Document",
+    "badgeOutgoing": "Outgoing Document",
+    "badgeResource": "Template / Resource",
+    "pageIndicator": "Page",
+    "pageOf": "of",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "fitWidth": "Fit Width",
+    "fitPage": "Fit Page",
+    "rotate": "Rotate",
+    "print": "Print Document",
+    "download": "Download",
+    "close": "Close (ESC)",
+    "prevDoc": "Previous Document",
+    "nextDoc": "Next Document",
+    "docCounter": "Document",
+    "nationalRepublic": "SOCIALIST REPUBLIC OF VIETNAM",
+    "nationalMotto": "Independence - Freedom - Happiness",
+    "companyName": "BAO LONG INSURANCE JOINT STOCK CORPORATION",
+    "docNumberLabel": "Ref No:",
+    "locationDate": "Hanoi, date",
+    "recipients": "Recipients:",
+    "recipientsBgd": "Board of Directors (for reporting);",
+    "recipientsDepts": "Relevant departments & divisions (for execution);",
+    "recipientsArchive": "Archives: Office, Digital Records.",
+    "signerTitle": "FOR THE GENERAL DIRECTOR",
+    "signerRole": "DEPUTY GENERAL DIRECTOR",
+    "digitalSignature": "DIGITALLY SIGNED",
+    "signedBy": "Signed by: BAO LONG INSURANCE",
+    "signDate": "Signed at:",
+    "signatureValid": "Valid digital certificate (SHA-256)",
+    "article1": "Article 1. Approve and issue the document content:",
+    "article2": "Article 2. This document takes effect from the date of issuance. Relevant departments, units, and individuals are responsible for execution.",
+    "colPart": "Part / No.",
+    "colContent": "Specification / Detailed Content",
+    "colObjective": "Business Objective / Legal Basis",
+    "colStandard": "Criteria / Standard",
+    "row1Content": "Document format & Ingestion into digital records",
+    "row1Objective": "Verify compliance with formatting, numbering, and digital signature",
+    "row1Standard": "100% compliant",
+    "row2Content": "Three-option multiple choice sentences - Infrastructure criteria",
+    "row2Objective": "Reading and identifying appropriate vocabulary - Data audit",
+    "row2Standard": "5 criteria",
+    "row3Content": "Three-option multiple choice & Matching - Task delegation",
+    "row3Objective": "Understanding functional language - Proper authority mapping",
+    "row3Standard": "10 tasks",
+    "row4Content": "Right/Wrong/Doesn't Say - Periodic progress evaluation",
+    "row4Objective": "Reading for detailed understanding - Public service SLA control",
+    "row4Standard": "7 days",
+    "row5Content": "Multiple choice cloze - Archive & Document distribution policy",
+    "row5Objective": "Reading and identifying appropriate structural rules - ACL security",
+    "row5Standard": "8 clauses",
+    "clickToPreview": "Click to preview document (PDF)",
+    "downloadSuccess": "Started downloading document file:"
   }
 }

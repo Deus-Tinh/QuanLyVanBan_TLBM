@@ -74,7 +74,8 @@
   "footer": {
     "group1Notice": "Nhóm 1 đang trong quá trình phát triển",
     "advisorPrefix": "GVHD",
-    "layoutLead": "Phụ trách Layout & Trang chủ"
+    "layoutLead": "Phụ trách Layout & Trang chủ",
+    "copyright": "Phiên bản v2.0 • Bản quyền © {year} Bảo Long Insurance"
   },
   "dashboardDetails": {
     "greeting": "Xin chào, Cán bộ nhân viên",
@@ -408,7 +409,61 @@
       "yellow": "Click để tớ lắc lư!"
     }
   },
-  "footer": {
-    "copyright": "Phiên bản v2.0 • Bản quyền © {year} Bảo Long Insurance"
+  "documentPreview": {
+    "modalTitle": "Xem Trước Văn Bản Số Hóa (PDF)",
+    "badgeIncoming": "Văn bản đến",
+    "badgeOutgoing": "Văn bản đi",
+    "badgeResource": "Tài liệu biểu mẫu",
+    "pageIndicator": "Trang",
+    "pageOf": "trên",
+    "zoomIn": "Phóng to",
+    "zoomOut": "Thu nhỏ",
+    "fitWidth": "Vừa chiều rộng",
+    "fitPage": "Toàn trang",
+    "rotate": "Xoay trang",
+    "print": "In văn bản",
+    "download": "Tải xuống",
+    "close": "Đóng (ESC)",
+    "prevDoc": "Văn bản trước",
+    "nextDoc": "Văn bản tiếp theo",
+    "docCounter": "Văn bản",
+    "nationalRepublic": "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+    "nationalMotto": "Độc lập - Tự do - Hạnh phúc",
+    "companyName": "TỔNG CÔNG TY CỔ PHẦN BẢO HIỂM BẢO LONG",
+    "docNumberLabel": "Số:",
+    "locationDate": "Hà Nội, ngày",
+    "recipients": "Nơi nhận:",
+    "recipientsBgd": "Ban Giám đốc (để chỉ đạo);",
+    "recipientsDepts": "Các phòng, ban chuyên môn (để thực hiện);",
+    "recipientsArchive": "Lưu: VT, Hồ sơ điện tử.",
+    "signerTitle": "TM. TỔNG GIÁM ĐỐC",
+    "signerRole": "PHÓ TỔNG GIÁM ĐỐC",
+    "digitalSignature": "ĐÃ KÝ SỐ ĐIỆN TỬ",
+    "signedBy": "Ký bởi: BẢO HIỂM BẢO LONG",
+    "signDate": "Ngày ký:",
+    "signatureValid": "Chứng thư số hợp lệ (SHA-256)",
+    "article1": "Điều 1. Phê duyệt ban hành nội dung trích yếu:",
+    "article2": "Điều 2. Quyết định có hiệu lực kể từ ngày ban hành. Các phòng ban, đơn vị trực thuộc và cán bộ liên quan chịu trách nhiệm thi hành.",
+    "colPart": "Phần / STT",
+    "colContent": "Nội dung quy định & Trích dẫn nghiệp vụ",
+    "colObjective": "Yêu cầu nghiệp vụ / Căn cứ pháp lý",
+    "colStandard": "Chỉ tiêu / Định mức",
+    "row1Content": "Quy cách văn bản & Tiếp nhận vào hệ thống hồ sơ số",
+    "row1Objective": "Kiểm tra tính hợp lệ về thể thức, số ký hiệu và chữ ký số",
+    "row1Standard": "100% chuẩn hóa",
+    "row2Content": "Three-option multiple choice sentences - Tiêu chí đánh giá hạ tầng",
+    "row2Objective": "Reading and identifying appropriate vocabulary - Rà soát dữ liệu",
+    "row2Standard": "5 chỉ tiêu",
+    "row3Content": "Three-option multiple choice & Matching - Phân công nhiệm vụ xử lý",
+    "row3Objective": "Understanding functional language - Đúng chức danh thẩm quyền",
+    "row3Standard": "10 nhiệm vụ",
+    "row4Content": "Right/Wrong/Doesn't Say - Đánh giá tiến độ thực hiện định kỳ",
+    "row4Objective": "Reading for detailed understanding - Kiểm soát SLA công vụ",
+    "row4Standard": "7 ngày",
+    "row5Content": "Multiple choice cloze - Chế độ lưu trữ và phân phối tài liệu",
+    "row5Objective": "Reading and identifying appropriate structural rules - Bảo mật ACL",
+    "row5Standard": "8 điều khoản",
+    "clickToPreview": "Bấm để xem trước văn bản (PDF)",
+    "downloadSuccess": "Đã bắt đầu tải tệp văn bản:"
   }
 }
