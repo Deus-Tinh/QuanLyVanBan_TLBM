@@ -146,7 +146,72 @@ Ví dụ gọi chat:
 - `backend/services/rag_service.py`: lập chỉ mục, truy xuất nguồn và tạo câu trả lời.
 - `backend/services/sql_document_source.py`: truy vấn PostgreSQL và áp dụng quyền truy cập.
 - `backend/services/business_knowledge.py`: thẻ mô tả chức năng nhánh 1–7.
+- `backend/docs/sql_document_source.md`: tài liệu chi tiết về DDL bảng/cột, tài khoản chỉ đọc và cơ chế phân quyền.
 - `frontend/src/`: giao diện chat React.
+
+## Tích hợp Cơ sở dữ liệu QLVB (Truy vấn SQL thô & Phân quyền bảo mật)
+
+Module AI Chatbox tích hợp trực tiếp với cơ sở dữ liệu PostgreSQL của hệ thống Quản lý Văn bản TLBM.
+
+### 1. Lý do sử dụng truy vấn SQL thô (Không định nghĩa Django Models)
+Hệ thống QLVB đã có sẵn cấu trúc DDL được quản lý độc lập bởi các nhánh nghiệp vụ 1–7. Module AI Chatbox sử dụng **truy vấn SQL thô (Raw SQL qua cursor)** để:
+- Tránh xung đột migrations hoặc trùng lặp models với hệ thống core QLVB.
+- Dễ dàng cắm vào (plug-and-play) cơ sở dữ liệu PostgreSQL hiện có.
+- Tối ưu hóa các truy vấn lọc phân quyền phức tạp (phân quyền văn bản mật, nội bộ phòng ban) trong một câu lệnh đơn.
+
+> ⚠️ **Lưu ý rủi ro DDL**: *"Truy vấn thô phụ thuộc trực tiếp tên bảng của DDL nên đổi cấu trúc sẽ vỡ ngầm."*  
+> Nếu hệ thống core đổi tên bảng hoặc tên cột trong DDL, câu truy vấn sẽ lỗi runtime. Để khắc phục:
+> - Danh sách bảng và cột bắt buộc phải được ghi chép và kiểm soát tập trung tại `SQL_SCHEMA_REGISTRY` trong `backend/services/sql_document_source.py`.
+> - Module cung cấp hàm `verify_sql_schema()` để tự động kiểm tra đối chiếu schema thực tế trong PostgreSQL, cảnh báo sớm bất kỳ sai lệch nào.
+
+### 2. Danh mục Bảng và Cột CSDL truy vấn thô
+
+| Bảng CSDL | Các cột truy vấn | Mục đích & Nghiệp vụ |
+|---|---|---|
+| `accounts_employee` | `id`, `don_vi_id`, `is_active`, `trang_thai`, `is_superuser` | Xác thực nhân viên, đơn vị công tác; bắt buộc `is_active=TRUE` và `trang_thai='LAM_VIEC'`. |
+| `accounts_employee_groups` | `employee_id`, `group_id` | Liên kết nhân viên với nhóm quyền. |
+| `auth_group_permissions` | `group_id`, `permission_id` | Liên kết nhóm quyền với quyền hạn. |
+| `auth_permission` | `id`, `codename` | Kiểm tra mã quyền: `use_aiassistant`, `view_vanbanden`, `view_vanbandi`, `view_vanbanmat`, `view_tailieu`. |
+| `documents_vanbanden` | `id`, `so_hieu`, `so_thu_tu`, `nam`, `ngay_den`, `trich_yeu`, `noi_ban_hanh`, `ngay_van_ban`, `nguoi_ky`, `chuc_vu`, `hieu_luc`, `ngay_het_hieu_luc`, `ghi_chu`, `file_dinh_kem`, `updated_at`, `hien_thi` | Văn bản đến (yêu cầu quyền `view_vanbanden` và `hien_thi=TRUE`). |
+| `documents_vanbandi` | `id`, `so_hieu`, `so`, `nam`, `ngay_ban_hanh`, `trich_yeu`, `noi_ban_hanh`, `ngay_van_ban`, `nguoi_ky`, `chuc_vu`, `hieu_luc`, `ngay_het_hieu_luc`, `ghi_chu`, `file_dinh_kem`, `updated_at`, `hien_thi` | Văn bản đi (yêu cầu quyền `view_vanbandi` và `hien_thi=TRUE`). |
+| `documents_vanbanmat` | `id`, `so_hieu`, `nam`, `ngay_ban_hanh`, `trich_yeu`, `noi_ban_hanh`, `ngay_van_ban`, `nguoi_ky`, `chuc_vu`, `hieu_luc`, `ngay_het_hieu_luc`, `ghi_chu`, `file_dinh_kem`, `updated_at`, `hien_thi` | Văn bản mật (yêu cầu quyền `view_vanbanmat` và kiểm tra ACL nghiêm ngặt). |
+| `documents_vanbanmat_nguoinhan` | `vanbanmat_id`, `employee_id` | Danh sách cán bộ nhận đích danh của văn bản mật. |
+| `documents_vanbanmat_donvinhan` | `vanbanmat_id`, `donvi_id` | Danh sách đơn vị/phòng ban nhận của văn bản mật. |
+| `records_chitiettailieu` | `id`, `ky_hieu`, `tieu_de`, `noi_ban_hanh`, `hieu_luc`, `ngay_dang`, `ngay_het_hieu_luc`, `ghi_chu`, `file_dinh_kem`, `updated_at`, `hien_thi`, `nguoi_tao` | Hồ sơ tài liệu chuyên môn nội bộ (yêu cầu quyền `view_tailieu`). |
+
+*Chi tiết thông số kỹ thuật từng trường xem tại [backend/docs/sql_document_source.md](file:///d:/QuanLyVanBan_TLBM-8_ai_chatbox/backend/docs/sql_document_source.md).*
+
+### 3. Dùng tài khoản CSDL chỉ đọc (Read-Only Database Account)
+Để bảo vệ toàn vẹn dữ liệu và loại bỏ nguy cơ sửa đổi hay xóa nhầm dữ liệu hệ thống:
+- **Tạo user chỉ đọc trong PostgreSQL**:
+  ```sql
+  CREATE USER qlvb_readonly WITH PASSWORD 'mat_khau_chi_doc_an_toan';
+  GRANT CONNECT ON DATABASE qlvb_tlbm TO qlvb_readonly;
+  GRANT USAGE ON SCHEMA public TO qlvb_readonly;
+  GRANT SELECT ON accounts_employee, accounts_employee_groups,
+                  auth_group_permissions, auth_permission,
+                  documents_vanbanden, documents_vanbandi, documents_vanbanmat,
+                  documents_vanbanmat_nguoinhan, documents_vanbanmat_donvinhan,
+                  records_chitiettailieu TO qlvb_readonly;
+  ```
+- **Khai báo trong `backend/.env`**:
+  ```bash
+  DB_ENGINE=postgresql
+  DB_NAME=qlvb_tlbm
+  DB_READONLY_USER=qlvb_readonly
+  DB_READONLY_PASSWORD=mat_khau_chi_doc_an_toan
+  DB_READONLY_HOST=127.0.0.1
+  DB_READONLY_PORT=5432
+  ```
+- **Bảo vệ cấp phiên**: Backend tự động cấu hình `options: "-c default_transaction_read_only=on"`, chặn mọi câu lệnh ghi ở cấp độ engine PostgreSQL.
+
+### 4. Lọc dữ liệu theo quyền của người hỏi (Giảm rủi ro lộ văn bản mật)
+- **Xác thực danh tính**: Nhận `employee_id` từ phiên đăng nhập backend (JWT/Session), tuyệt đối không nhận từ JSON client để ngăn ngừa IDOR.
+- **Quyền AI**: Chỉ nhân viên đang làm việc (`is_active=TRUE`, `trang_thai='LAM_VIEC'`) và có quyền `use_aiassistant` (hoặc `is_superuser`) mới được phép gửi câu hỏi.
+- **Văn bản mật**: Chỉ hiển thị nếu cán bộ có quyền `view_vanbanmat` **VÀ** thuộc danh sách người nhận đích danh (`rp.employee_id = %s`) hoặc đơn vị nhận (`ru.donvi_id = %s`).
+- **Hồ sơ nội bộ**: Tài liệu có phạm vi `NOI_BO_PHONG_BAN` chỉ người tạo hoặc cán bộ cùng phòng ban mới có thể tra cứu.
+- **Cơ chế Fail-Closed**: Nếu người hỏi không có quyền truy cập văn bản nào, retrieval trả về rỗng và không sử dụng kho tài liệu chung để trả lời, giảm tối đa rủi ro lộ văn bản mật.
+
 
 ## OCR cho PDF và hình ảnh
 
