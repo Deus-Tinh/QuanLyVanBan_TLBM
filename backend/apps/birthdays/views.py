@@ -8,6 +8,11 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+try:
+    from authorization.permissions import require_permission
+except ImportError:
+    from apps.authorization.permissions import require_permission
+
 from accounts.models import StaffProfile
 from .models import BirthdayEmailLog
 from .services import is_birthday_on_date, serialize_staff_birthday
@@ -178,16 +183,12 @@ def day_birthdays_api(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, require_permission("birthdays.view_birthdayemaillog")])
 def birthday_email_logs_api(request):
     """
     API xem nhật ký gửi email chúc mừng sinh nhật tự động.
+    Yêu cầu quyền: birthdays.view_birthdayemaillog.
     """
-    if not (request.user.is_staff or request.user.is_superuser):
-        user_role = getattr(getattr(request.user, "profile", None), "role", "")
-        if user_role != "admin":
-            return Response({"success": False, "error": "Chỉ Quản trị viên được xem nhật ký email."}, status=403)
-
     logs = BirthdayEmailLog.objects.all().select_related("staff")
 
     month_raw = request.GET.get("month")

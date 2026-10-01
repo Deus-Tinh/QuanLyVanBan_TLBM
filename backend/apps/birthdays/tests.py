@@ -8,7 +8,8 @@ from unittest.mock import patch
 
 from django import forms
 from django.contrib import admin
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
+from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
@@ -17,6 +18,7 @@ from django.db import connection, transaction
 from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.test import APIClient
 
 from accounts.models import StaffProfile
@@ -1357,3 +1359,103 @@ class BirthdayEmailConcurrencyTests(TransactionTestCase):
         self.assertEqual(log.status, BirthdayEmailStatus.PROCESSING)
         self.assertEqual(log.attempt_id, worker_attempt)
         mock_send.assert_not_called()
+
+
+class BirthdayEmailLogsPermissionTests(TestCase):
+    """
+    Test suite proving permission enforcement for birthday_email_logs_api (PR #30).
+    Requires 'birthdays.view_birthdayemaillog' permission.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.logs_url = reverse("birthdays:logs")
+
+        # 1. Staff profile and user for birthday log data
+        self.staff_user = User.objects.create_user(
+            username="staff_recipient",
+            email="recipient@itc.edu.vn",
+            password="pass",
+        )
+        self.staff_profile = StaffProfile.objects.create(
+            user=self.staff_user,
+            full_name="Nguyễn Văn Test",
+            department="Khoa CNTT",
+            position="Chuyên viên",
+            role="staff",
+            birthday=date(1995, 10, 15),
+        )
+
+        # 2. Create sample email log
+        self.sample_log = BirthdayEmailLog.objects.create(
+            staff=self.staff_profile,
+            sent_date=date(2026, 10, 15),
+            birthday_year=2026,
+            recipient_email=self.staff_user.email,
+            subject="Chúc mừng sinh nhật Nguyễn Văn Test",
+            status=BirthdayEmailStatus.SUCCESS,
+        )
+
+        # 3. Regular user without permission
+        self.user_without_perm = User.objects.create_user(
+            username="user_no_perm",
+            email="no_perm@itc.edu.vn",
+            password="password123",
+        )
+
+        # 4. User with birthdays.view_birthdayemaillog permission
+        self.user_with_perm = User.objects.create_user(
+            username="user_with_perm",
+            email="with_perm@itc.edu.vn",
+            password="password123",
+        )
+        content_type = ContentType.objects.get_for_model(BirthdayEmailLog)
+        self.view_perm = Permission.objects.get(
+            content_type=content_type,
+            codename="view_birthdayemaillog",
+        )
+        self.user_with_perm.user_permissions.add(self.view_perm)
+
+    def test_anonymous_user_authentication_or_permission_denied(self):
+        """Anonymous user -> authentication/permission denied (401 or 403)."""
+        response = self.client.get(self.logs_url)
+        self.assertIn(
+            response.status_code,
+            [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN],
+        )
+
+    def test_authenticated_user_without_permission_returns_403(self):
+        """Authenticated user WITHOUT birthdays.view_birthdayemaillog -> 403 Forbidden."""
+        self.client.force_authenticate(user=self.user_without_perm)
+        response = self.client.get(self.logs_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_authenticated_user_with_permission_allowed(self):
+        """User WITH birthdays.view_birthdayemaillog -> allowed (200 OK)."""
+        self.client.force_authenticate(user=self.user_with_perm)
+        response = self.client.get(self.logs_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get("success"))
+        self.assertEqual(response.data.get("total"), 1)
+        self.assertEqual(len(response.data.get("logs", [])), 1)
+        self.assertEqual(response.data["logs"][0]["staff_name"], "Nguyễn Văn Test")
+
+    def test_staff_role_without_permission_is_blocked_proving_old_check_removed(self):
+        """Staff user without the explicit permission is blocked (403), proving old role check is removed."""
+        staff_role_user = User.objects.create_user(
+            username="staff_role_user",
+            email="staff_role@itc.edu.vn",
+            password="password123",
+            is_staff=True,
+        )
+        StaffProfile.objects.create(
+            user=staff_role_user,
+            full_name="Staff Role",
+            role="admin",
+        )
+        # In old code: is_staff or role=="admin" would allow access.
+        # Now: without birthdays.view_birthdayemaillog, it must return 403.
+        self.client.force_authenticate(user=staff_role_user)
+        response = self.client.get(self.logs_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
