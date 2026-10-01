@@ -13,7 +13,6 @@ from datetime import date
 import openpyxl
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
-from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -56,8 +55,9 @@ class EmployeeBaseTestCase(APITestCase):
         )
 
         # 3. Tạo Nhóm quyền
-        self.group_van_thu = Group.objects.create(name="Văn thư")
-        self.group_lanh_dao = Group.objects.create(name="Lãnh đạo đơn vị")
+        # "Văn thư" là nhóm chuẩn đã được authorization seed sẵn (SQL_Fix4)
+        self.group_van_thu, _ = Group.objects.get_or_create(name="Văn thư")
+        self.group_lanh_dao, _ = Group.objects.get_or_create(name="Lãnh đạo đơn vị")
 
         # 4. Tạo Users (Employee là Custom User Model)
         # Superuser
@@ -93,13 +93,8 @@ class EmployeeBaseTestCase(APITestCase):
             chuc_vu=self.cv_truong_phong,
             sdt="0987654321",
         )
-        content_type = ContentType.objects.get_for_model(Employee)
-        self.perm_sensitive = Permission.objects.get(
-            content_type=content_type, codename="view_full_cbnv"
-        )
-        self.perm_import = Permission.objects.get(
-            content_type=content_type, codename="import_cbnv"
-        )
+        self.perm_sensitive = Permission.objects.get(codename="view_full_cbnv")
+        self.perm_import = Permission.objects.get(codename="import_cbnv")
         self.sensitive_user.user_permissions.add(self.perm_sensitive, self.perm_import)
 
         # URLs
