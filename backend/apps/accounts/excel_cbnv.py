@@ -9,10 +9,10 @@ from datetime import datetime, date
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from django.db import transaction
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from organizations.models import DonVi
-from .models import Position, StaffProfile, vietnam_phone_regex
+from .models import Employee, Position, vietnam_phone_regex
 
 
 def generate_cbnv_template() -> BytesIO:
@@ -218,7 +218,7 @@ def import_cbnv_from_excel(file_obj) -> dict:
             errors.append({"row": idx, "message": f"Email '{raw_email}' không đúng định dạng."})
         elif raw_email in seen_emails_in_file:
             errors.append({"row": idx, "message": f"Email '{raw_email}' bị trùng lặp trong chính tệp Excel tải lên."})
-        elif User.objects.filter(email__iexact=raw_email).exists():
+        elif get_user_model().objects.filter(email__iexact=raw_email).exists():
             errors.append({"row": idx, "message": f"Email '{raw_email}' đã tồn tại trên hệ thống."})
         else:
             seen_emails_in_file.add(raw_email)
@@ -252,13 +252,13 @@ def import_cbnv_from_excel(file_obj) -> dict:
                 chuc_vu_instance = Position.objects.create(name=chuc_vu_name, display_order=next_order)
 
         # 7. Validate Trạng thái
-        trang_thai = "dang_lam_viec"
+        trang_thai = Employee.Status.LAM_VIEC
         if "nghỉ" in raw_trang_thai.lower() or "nghi" in raw_trang_thai.lower():
-            trang_thai = "nghi_viec"
+            trang_thai = Employee.Status.NGHI_VIEC
 
         valid_records.append({
             "ho_ten": ho_ten,
-            "birthday": birthday,
+            "ngay_sinh": birthday,
             "email": raw_email,
             "sdt": sdt_clean,
             "don_vi": don_vi_instance,
@@ -277,36 +277,31 @@ def import_cbnv_from_excel(file_obj) -> dict:
 
     # Nếu toàn bộ dữ liệu hợp lệ, tiến hành lưu nguyên tử (atomic) vào CSDL
     created_count = 0
+    UserModel = get_user_model()
     with transaction.atomic():
         for item in valid_records:
             email = item["email"]
-            ho_ten = item["ho_ten"]
             local_part = email.split("@")[0]
             candidate = local_part
             idx = 1
-            while User.objects.filter(username__iexact=candidate).exists():
+            while UserModel.objects.filter(username__iexact=candidate).exists():
                 candidate = f"{local_part}{idx}"
                 idx += 1
 
-            user = User.objects.create_user(
+            UserModel.objects.create_user(
                 username=candidate,
-                email=email,
                 password=f"ITC@{secrets.token_hex(4)}",
-                first_name=ho_ten.split(" ")[-1] if " " in ho_ten else ho_ten,
-                last_name=" ".join(ho_ten.split(" ")[:-1]) if " " in ho_ten else "",
-                is_active=(item["trang_thai"] != "nghi_viec"),
+                email=email,
+                ho_ten=item["ho_ten"],
+                ngay_sinh=item["ngay_sinh"],
+                don_vi=item["don_vi"],
+                chuc_vu=item["chuc_vu"],
+                chuc_danh=item["chuc_danh"],
+                sdt=item["sdt"],
+                trang_thai=item["trang_thai"],
+                is_active=(item["trang_thai"] != Employee.Status.NGHI_VIEC),
+                ghi_chu=item["ghi_chu"],
             )
-
-            profile, _ = StaffProfile.objects.get_or_create(user=user)
-            profile.full_name = ho_ten
-            profile.birthday = item["birthday"]
-            profile.don_vi = item["don_vi"]
-            profile.chuc_vu = item["chuc_vu"]
-            profile.chuc_danh = item["chuc_danh"]
-            profile.phone = item["sdt"]
-            profile.trang_thai = item["trang_thai"]
-            profile.ghi_chu = item["ghi_chu"]
-            profile.save()
             created_count += 1
 
     return {

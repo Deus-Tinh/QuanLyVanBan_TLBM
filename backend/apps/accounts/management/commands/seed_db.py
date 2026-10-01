@@ -1,9 +1,10 @@
+import datetime
 import sys
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from organizations.models import KhoiKhuVuc, DonVi
-from accounts.models import Position, StaffProfile
+from accounts.models import Employee, Position
 
 KHOI_DATA = [
     ("HỘI ĐỒNG QUẢN TRỊ", 1),
@@ -143,10 +144,11 @@ class Command(BaseCommand):
                 khoi = khoi_map.get(khoi_ten)
                 if not khoi:
                     continue
+                # Khóa theo (khối, tên): tên đơn vị không duy nhất (vd "Lãnh đạo khối" có ở 2 khối)
                 DonVi.objects.get_or_create(
+                    khoi=khoi,
                     ten=donvi_ten,
                     defaults={
-                        "khoi": khoi,
                         "stt_uu_tien": idx,
                         "is_public": True,
                     }
@@ -165,34 +167,31 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f" [OK] Seeded {len(pos_map)} Chuc vu."))
 
             # 4. Seed Admin account
+            UserModel = get_user_model()
             admin_donvi = DonVi.objects.filter(ten="Ban công nghệ thông tin").first() or DonVi.objects.first()
             admin_chucvu = pos_map.get("Quản trị viên")
 
-            admin_user, created = User.objects.get_or_create(
-                username="admin",
-                defaults={
-                    "email": "admin@baolong.vn",
-                    "is_staff": True,
-                    "is_superuser": True,
-                    "is_active": True,
-                }
-            )
-            admin_user.set_password("Admin@123")
-            admin_user.is_staff = True
-            admin_user.is_superuser = True
-            admin_user.is_active = True
-            admin_user.save()
+            def upsert_employee(username, ho_ten, chuc_vu, don_vi, sdt, **flags):
+                employee = UserModel.objects.filter(username=username).first()
+                if employee is None:
+                    employee = UserModel(username=username, email=f"{username}@baolong.vn")
+                employee.ho_ten = ho_ten
+                employee.ngay_sinh = employee.ngay_sinh or datetime.date(1990, 1, 1)
+                employee.chuc_vu = chuc_vu
+                employee.don_vi = don_vi
+                employee.sdt = sdt
+                employee.trang_thai = Employee.Status.LAM_VIEC
+                employee.is_public = True
+                employee.is_active = True
+                employee.is_staff = flags.get("is_staff", False)
+                employee.is_superuser = flags.get("is_superuser", False)
+                employee.set_password("Admin@123")
+                employee.save()
+                return employee
 
-            StaffProfile.objects.update_or_create(
-                user=admin_user,
-                defaults={
-                    "full_name": "Quản trị hệ thống",
-                    "chuc_vu": admin_chucvu,
-                    "don_vi": admin_donvi,
-                    "phone": "0901234567",
-                    "trang_thai": "dang_lam_viec",
-                    "is_public": True,
-                }
+            upsert_employee(
+                "admin", "Quản trị hệ thống", admin_chucvu, admin_donvi, "0901234567",
+                is_staff=True, is_superuser=True,
             )
             self.stdout.write(self.style.SUCCESS(" [OK] Seeded admin user: admin / Admin@123"))
 
@@ -203,25 +202,7 @@ class Command(BaseCommand):
                 ("vanthu_cntt", "Văn Thư Lưu Trữ", "Văn thư", admin_donvi, "0903333444"),
             ]
             for uname, hoten, pos_name, dvi, phone in demo_users:
-                u, _ = User.objects.get_or_create(
-                    username=uname,
-                    defaults={"email": f"{uname}@baolong.vn", "is_active": True, "is_staff": False}
-                )
-                u.set_password("Admin@123")
-                u.is_active = True
-                u.save()
-
-                StaffProfile.objects.update_or_create(
-                    user=u,
-                    defaults={
-                        "full_name": hoten,
-                        "chuc_vu": pos_map.get(pos_name),
-                        "don_vi": dvi,
-                        "phone": phone,
-                        "trang_thai": "dang_lam_viec",
-                        "is_public": True,
-                    }
-                )
+                upsert_employee(uname, hoten, pos_map.get(pos_name), dvi, phone)
             self.stdout.write(self.style.SUCCESS(" [OK] Seeded demo users for Issue #24 testing (Admin@123)."))
 
         self.stdout.write(self.style.SUCCESS("==> Database seeding completed successfully 100%!"))

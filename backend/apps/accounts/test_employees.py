@@ -3,7 +3,7 @@ Bộ kiểm thử toàn diện cho phân hệ Quản lý Cán bộ Nhân viên (
 Tác giả: Lê Duy Khánh (leduykhanhdevs).
 Bao gồm:
 1. CRUD nhân viên (tạo, đọc, sửa, xóa, tìm kiếm, lọc, sắp xếp theo STT Đơn vị -> Chức vụ).
-2. Kiểm tra tính bảo mật & quyền riêng tư (che năm sinh DD/MM/---- và ẩn nhóm quyền nếu thiếu quyền view_sensitive_cbnv).
+2. Kiểm tra tính bảo mật & quyền riêng tư (che năm sinh DD/MM/---- và ẩn nhóm quyền nếu thiếu quyền view_full_cbnv).
 3. Kiểm tra logic nghiệp vụ: trạng thái 'nghi_viec' tự động vô hiệu hóa user.is_active = False.
 4. Kiểm tra danh mục Chức vụ (Position) và Nhóm quyền (Group).
 5. Kiểm tra Tải tệp mẫu Excel và Nhập Excel validate từng dòng dữ liệu.
@@ -11,14 +11,17 @@ Bao gồm:
 from io import BytesIO
 from datetime import date
 import openpyxl
-from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from organizations.models import KhoiKhuVuc, DonVi
-from accounts.models import Position, StaffProfile
+from accounts.models import Employee, Position
+
+User = get_user_model()
 
 
 class EmployeeBaseTestCase(APITestCase):
@@ -56,33 +59,27 @@ class EmployeeBaseTestCase(APITestCase):
         self.group_van_thu = Group.objects.create(name="Văn thư")
         self.group_lanh_dao = Group.objects.create(name="Lãnh đạo đơn vị")
 
-        # 4. Tạo Users
+        # 4. Tạo Users (Employee là Custom User Model)
         # Superuser
         self.admin_user = User.objects.create_superuser(
             username="admin_user",
             email="admin@donvi.gov.vn",
             password="SuperPassword123",
-        )
-        self.admin_profile, _ = StaffProfile.objects.get_or_create(
-            user=self.admin_user,
-            defaults={"full_name": "Quản trị viên", "don_vi": self.don_vi_1, "chuc_vu": self.cv_truong_phong},
+            ho_ten="Quản trị viên",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_truong_phong,
         )
 
-        # User thường (không có quyền view_sensitive_cbnv)
+        # User thường (không có quyền view_full_cbnv)
         self.normal_user = User.objects.create_user(
             username="normal_user",
             email="normal@donvi.gov.vn",
             password="NormalPassword123",
-            first_name="Bình",
-            last_name="Nguyễn Văn",
-        )
-        self.normal_profile = StaffProfile.objects.create(
-            user=self.normal_user,
-            full_name="Nguyễn Văn Bình",
-            birthday=date(1995, 5, 20),
+            ho_ten="Nguyễn Văn Bình",
+            ngay_sinh=date(1995, 5, 20),
             don_vi=self.don_vi_1,
             chuc_vu=self.cv_chuyen_vien,
-            phone="0912345678",
+            sdt="0912345678",
         )
 
         # User có quyền xem thông tin nhạy cảm
@@ -90,20 +87,15 @@ class EmployeeBaseTestCase(APITestCase):
             username="sensitive_user",
             email="sensitive@donvi.gov.vn",
             password="SensitivePassword123",
-            first_name="Hùng",
-            last_name="Trần Văn",
-        )
-        self.sensitive_profile = StaffProfile.objects.create(
-            user=self.sensitive_user,
-            full_name="Trần Văn Hùng",
-            birthday=date(1988, 10, 15),
+            ho_ten="Trần Văn Hùng",
+            ngay_sinh=date(1988, 10, 15),
             don_vi=self.don_vi_2,
             chuc_vu=self.cv_truong_phong,
-            phone="0987654321",
+            sdt="0987654321",
         )
-        content_type = ContentType.objects.get_for_model(StaffProfile)
+        content_type = ContentType.objects.get_for_model(Employee)
         self.perm_sensitive = Permission.objects.get(
-            content_type=content_type, codename="view_sensitive_cbnv"
+            content_type=content_type, codename="view_full_cbnv"
         )
         self.perm_import = Permission.objects.get(
             content_type=content_type, codename="import_cbnv"
@@ -221,7 +213,7 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
     def test_update_employee(self):
         """Cập nhật thông tin CBNV."""
         self.client.force_authenticate(user=self.admin_user)
-        detail_url = f"{self.employee_list_url}{self.normal_profile.id}/"
+        detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
         payload = {
             "ho_ten": "Nguyễn Văn Bình (Cập nhật)",
             "chuc_danh": "Phó phòng phụ trách",
@@ -235,42 +227,68 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
         self.assertEqual(data["sdt"], "0933333333")
 
     def test_delete_employee(self):
-        """Xóa CBNV đồng thời xóa User liên kết."""
+        """Xóa CBNV (chính là tài khoản đăng nhập)."""
         self.client.force_authenticate(user=self.admin_user)
         target_user_id = self.normal_user.id
-        target_profile_id = self.normal_profile.id
-        detail_url = f"{self.employee_list_url}{target_profile_id}/"
+        detail_url = f"{self.employee_list_url}{target_user_id}/"
 
         res = self.client.delete(detail_url)
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(StaffProfile.objects.filter(id=target_profile_id).exists())
         self.assertFalse(User.objects.filter(id=target_user_id).exists())
+
+
+    def test_create_employee_requires_unit_and_position(self):
+        """SQL_Fix4: don_vi_id và chuc_vu_id NOT NULL -> thiếu là 400."""
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {"ho_ten": "Thiếu Đơn Vị", "email": "thieu@donvi.gov.vn", "ngay_sinh": "1990-01-01"}
+        response = self.client.post(self.employee_list_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        body = response.json()
+        self.assertIn("don_vi_id", body)
+        self.assertIn("chuc_vu_id", body)
+
+    def test_status_is_stored_with_ddl_enum_values(self):
+        """API nhận 'nghi_viec' nhưng CSDL lưu 'NGHI_VIEC' (ENUM employee_work_status), API vẫn trả dạng cũ."""
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.patch(f"{self.employee_list_url}{self.normal_user.id}/", {"trang_thai": "nghi_viec"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.json()["trang_thai"], "nghi_viec")
+        self.normal_user.refresh_from_db()
+        self.assertEqual(self.normal_user.trang_thai, "NGHI_VIEC")
+
+    def test_filter_by_status_uses_api_value(self):
+        self.client.force_authenticate(user=self.admin_user)
+        self.normal_user.trang_thai = Employee.Status.NGHI_VIEC
+        self.normal_user.save()
+        res = self.client.get(f"{self.employee_list_url}?trang_thai=nghi_viec")
+        self.assertEqual([item["username"] for item in res.json()["results"]], ["normal_user"])
 
 
 class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
     """Kiểm tra các quy tắc bảo mật & quyền riêng tư trường dữ liệu nhạy cảm."""
 
     def test_birthday_masked_for_user_without_sensitive_perm(self):
-        """User thường không có quyền view_sensitive_cbnv: ngày sinh bị che thành DD/MM/---- và nhóm quyền rỗng."""
+        """User thường không có quyền view_full_cbnv: ngày sinh bị che thành DD/MM/---- và nhóm quyền rỗng."""
         self.client.force_authenticate(user=self.normal_user)
-        detail_url = f"{self.employee_list_url}{self.sensitive_profile.id}/"
+        detail_url = f"{self.employee_list_url}{self.sensitive_user.id}/"
         res = self.client.get(detail_url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = res.json()
 
         # Ngày sinh gốc là 1988-10-15 -> phải được format thành 15/10/----
         self.assertEqual(data["ngay_sinh"], "15/10/----")
+        self.assertIsNone(data["birthday"])  # không được lộ ngày sinh đầy đủ qua trường birthday
         self.assertTrue(data["is_birthday_masked"])
         self.assertFalse(data["has_sensitive_permission"])
         self.assertEqual(data["nhom_quyen"], [])
 
     def test_birthday_full_for_user_with_sensitive_perm(self):
-        """User có quyền view_sensitive_cbnv: xem được ngày sinh đầy đủ YYYY-MM-DD và nhóm quyền."""
+        """User có quyền view_full_cbnv: xem được ngày sinh đầy đủ YYYY-MM-DD và nhóm quyền."""
         self.client.force_authenticate(user=self.sensitive_user)
         # Gán nhóm quyền cho normal_profile
-        self.normal_profile.nhom_quyen.add(self.group_van_thu)
+        self.normal_user.groups.add(self.group_van_thu)
 
-        detail_url = f"{self.employee_list_url}{self.normal_profile.id}/"
+        detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
         res = self.client.get(detail_url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = res.json()
@@ -285,7 +303,7 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
     def test_superuser_has_sensitive_perm_by_default(self):
         """Superuser luôn có toàn quyền xem ngày sinh đầy đủ."""
         self.client.force_authenticate(user=self.admin_user)
-        detail_url = f"{self.employee_list_url}{self.normal_profile.id}/"
+        detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
         res = self.client.get(detail_url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = res.json()
@@ -295,7 +313,7 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
     def test_status_nghi_viec_deactivates_user(self):
         """Khi cập nhật trạng thái 'nghi_viec', user.is_active tự động chuyển thành False."""
         self.client.force_authenticate(user=self.admin_user)
-        detail_url = f"{self.employee_list_url}{self.normal_profile.id}/"
+        detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
         res = self.client.patch(detail_url, {"trang_thai": "nghi_viec"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
@@ -320,6 +338,12 @@ class PositionAndGroupAPITests(EmployeeBaseTestCase):
         self.assertEqual(len(data), 2)
         self.assertEqual(data[0]["name"], "Trưởng phòng")
         self.assertEqual(data[1]["name"], "Chuyên viên")
+
+    def test_position_duplicate_name_rejected(self):
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.post(self.position_list_url, {"name": "trưởng phòng", "display_order": 99}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", res.json())
 
     def test_list_groups(self):
         self.client.force_authenticate(user=self.normal_user)
@@ -406,4 +430,21 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
 
         # Kiểm tra bản ghi trong DB
         self.assertTrue(User.objects.filter(email="doanvanhau@donvi.gov.vn").exists())
-        self.assertTrue(StaffProfile.objects.filter(full_name="Đoàn Văn Hậu").exists())
+        self.assertTrue(User.objects.filter(ho_ten="Đoàn Văn Hậu", don_vi=self.don_vi_1).exists())
+
+
+class SeedDbCommandTests(APITestCase):
+    """Lệnh seed_db: đủ 82 đơn vị (tên không duy nhất: "Lãnh đạo khối" có ở 2 khối) và chạy lặp không tạo trùng."""
+
+    def test_seed_db_is_complete_and_idempotent(self):
+        from django.core.management import call_command
+
+        call_command("seed_db", verbosity=0)
+        self.assertEqual(KhoiKhuVuc.objects.count(), 16)
+        self.assertEqual(DonVi.objects.count(), 82)
+        self.assertEqual(DonVi.objects.filter(ten="Lãnh đạo khối").count(), 2)
+        self.assertTrue(User.objects.filter(username="admin", is_superuser=True).exists())
+
+        call_command("seed_db", verbosity=0)
+        self.assertEqual(DonVi.objects.count(), 82)
+        self.assertEqual(Position.objects.count(), 7)

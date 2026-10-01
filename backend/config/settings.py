@@ -59,6 +59,9 @@ INSTALLED_APPS = [
     "organizations",
 ]
 
+# Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

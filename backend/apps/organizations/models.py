@@ -13,14 +13,6 @@ class KhoiKhuVuc(models.Model):
         unique=True,
         verbose_name="organizations.region.nameLabel",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="common.createdAt",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="common.updatedAt",
-    )
 
     thu_tu_hien_thi = models.PositiveIntegerField(
         default=0,
@@ -93,14 +85,6 @@ class DonVi(models.Model):
         blank=True,
         default="",
         verbose_name="organizations.unit.notesLabel",
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="common.createdAt",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="common.updatedAt",
     )
 
     class Meta:

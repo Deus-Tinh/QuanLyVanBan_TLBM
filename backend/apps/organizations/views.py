@@ -166,7 +166,13 @@ def unit_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == "DELETE":
-        unit.delete()
+        try:
+            unit.delete()
+        except ProtectedError:
+            return Response(
+                {"detail": "organizations.messages.unitHasEmployees", "key": "organizations.messages.unitHasEmployees"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(
             {"detail": "organizations.messages.deleteSuccess", "key": "organizations.messages.deleteSuccess"},
             status=status.HTTP_204_NO_CONTENT,

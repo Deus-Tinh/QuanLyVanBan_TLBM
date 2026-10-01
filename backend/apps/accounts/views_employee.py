@@ -13,8 +13,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Position, StaffProfile
+from .models import Employee, Position
 from .serializers import (
+    STATUS_API_TO_DB,
     PositionSerializer,
     GroupSimpleSerializer,
     EmployeeSerializer,
@@ -72,18 +73,18 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = (
-            StaffProfile.objects.select_related("user", "don_vi__khoi", "chuc_vu")
-            .prefetch_related("nhom_quyen")
+            Employee.objects.select_related("don_vi__khoi", "chuc_vu")
+            .prefetch_related("groups")
             .all()
         )
 
         search = self.request.query_params.get("search", "").strip()
         if search:
             queryset = queryset.filter(
-                Q(full_name__icontains=search)
-                | Q(user__username__icontains=search)
-                | Q(user__email__icontains=search)
-                | Q(phone__icontains=search)
+                Q(ho_ten__icontains=search)
+                | Q(username__icontains=search)
+                | Q(email__icontains=search)
+                | Q(sdt__icontains=search)
             )
 
         don_vi_id = self.request.query_params.get("don_vi_id")
@@ -100,7 +101,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         trang_thai = self.request.query_params.get("trang_thai")
         if trang_thai:
-            queryset = queryset.filter(trang_thai=trang_thai)
+            queryset = queryset.filter(trang_thai=STATUS_API_TO_DB.get(trang_thai, trang_thai))
 
         is_public = self.request.query_params.get("is_public")
         if is_public is not None and is_public != "":
@@ -111,7 +112,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by(ordering)
         else:
             queryset = queryset.order_by(
-                "don_vi__stt_uu_tien", "chuc_vu__display_order", "full_name", "id"
+                "don_vi__stt_uu_tien", "chuc_vu__display_order", "ho_ten", "id"
             )
 
         return queryset
@@ -138,8 +139,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = EmployeeCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        profile = serializer.save()
-        output_serializer = EmployeeSerializer(profile, context={"request": request})
+        employee = serializer.save()
+        output_serializer = EmployeeSerializer(employee, context={"request": request})
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
@@ -149,8 +150,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             instance, data=request.data, partial=partial, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
-        updated_profile = serializer.save()
-        output_serializer = EmployeeSerializer(updated_profile, context={"request": request})
+        updated_employee = serializer.save()
+        output_serializer = EmployeeSerializer(updated_employee, context={"request": request})
         return Response(output_serializer.data, status=status.HTTP_200_OK)
 
     def partial_update(self, request, *args, **kwargs):
@@ -159,12 +160,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        user = instance.user
         try:
             with transaction.atomic():
                 instance.delete()
-                if user:
-                    user.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ProtectedError:
             return Response(

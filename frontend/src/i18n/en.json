@@ -468,6 +468,7 @@
       "priorityExists": "Priority index is already in use. Please choose another one.",
       "priorityConflict": "The priority index could not be allocated because of a concurrent operation. Please try again.",
       "regionNotFound": "Region not found.",
+      "unitHasEmployees": "Cannot delete this unit because it still has employees assigned.",
       "regionHasUnits": "Cannot delete region because it still contains active units.",
       "unitNotFound": "Unit/Department not found.",
       "protectedError": "Cannot delete due to data protection rules.",
