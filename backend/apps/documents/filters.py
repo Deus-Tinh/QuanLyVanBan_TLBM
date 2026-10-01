@@ -131,11 +131,6 @@ class BaseDocumentFilter(django_filters.FilterSet):
         if val != current_loai and val != queryset.model._meta.model_name.upper():
             return queryset.none()
 
-        include_expired = str(self.data.get("include_expired", "")).lower() in ("true", "1")
-        hieu_luc_param = self.data.get("hieu_luc") or self.data.get("status")
-        if current_loai == "DEN" and not include_expired and not hieu_luc_param:
-            return queryset.exclude(hieu_luc=HieuLuc.HET_HIEU_LUC)
-
         return queryset
 
     def filter_chi_con_hieu_luc(self, queryset, name, value):

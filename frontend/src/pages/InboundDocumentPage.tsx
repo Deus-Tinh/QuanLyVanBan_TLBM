@@ -42,6 +42,17 @@ export const InboundDocumentPage: React.FC = () => {
   const [alertMsg, setAlertMsg] = useState<string>('');
   const [isAlertOpen, setIsAlertOpen] = useState<boolean>(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [stats, setStats] = useState<{
+    total: number;
+    active: number;
+    partial: number;
+    replaced: number;
+  }>({
+    total: 0,
+    active: 0,
+    partial: 0,
+    replaced: 0,
+  });
 
   // Lấy danh sách các năm thực tế có văn bản trong CSDL
   const fetchYears = useCallback(async () => {
@@ -55,9 +66,29 @@ export const InboundDocumentPage: React.FC = () => {
     }
   }, []);
 
+  // Lấy thống kê số lượng văn bản theo trạng thái (loại bỏ các văn bản hết hiệu lực)
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DEN&page_size=1000');
+      const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
+      const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
+      const partial = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
+      const replaced = items.filter((d) => d.hieu_luc === 'HET_VA_THAY_THE').length;
+      setStats({
+        total: items.length,
+        active,
+        partial,
+        replaced,
+      });
+    } catch {
+      // Giữ nguyên trạng thái hiện tại nếu lỗi
+    }
+  }, []);
+
   useEffect(() => {
     fetchYears();
-  }, [fetchYears]);
+    fetchStats();
+  }, [fetchYears, fetchStats]);
 
   // Gọi API lấy danh sách văn bản đến
   const fetchDocuments = useCallback(async () => {
@@ -157,6 +188,7 @@ export const InboundDocumentPage: React.FC = () => {
       setIsAlertOpen(true);
       fetchDocuments();
       fetchYears();
+      fetchStats();
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Xóa văn bản thất bại.';
       setPendingDelete(null);
@@ -165,7 +197,7 @@ export const InboundDocumentPage: React.FC = () => {
     }
   };
 
-  // Xuất file Excel văn bản đến
+  // Xuất file Excel văn bản đến (Ẩn văn bản hết hiệu lực theo yêu cầu)
   const handleExportExcel = async () => {
     try {
       const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
@@ -186,14 +218,16 @@ export const InboundDocumentPage: React.FC = () => {
     }
   };
 
-  // Thống kê nhanh số lượng
-  const countActive = documents.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
-  const countExpired = documents.filter((d) => d.hieu_luc !== 'CON_HIEU_LUC').length;
+
+  // Thống kê số lượng: Mục tổng văn bản đến và top card gộp cả Còn hiệu lực và Còn hiệu lực 1 phần
+  const countActive = stats.total > 0
+    ? (stats.active + stats.partial)
+    : documents.filter((d) => d.hieu_luc === 'CON_HIEU_LUC' || d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto animate-in fade-in duration-150">
-      {/* 1. Header Trang & Thống Kê Nhanh */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div className="w-full p-2 sm:p-4 md:p-6 animate-in fade-in duration-150">
+      {/* 1. Header Trang & Thao tác */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div>
           <div className="flex items-center gap-2.5 mb-1">
             <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold text-sm">
@@ -249,7 +283,10 @@ export const InboundDocumentPage: React.FC = () => {
             variant="secondary"
             size="sm"
             icon="fa-rotate"
-            onClick={fetchDocuments}
+            onClick={() => {
+              fetchDocuments();
+              fetchStats();
+            }}
             isLoading={isLoading}
             title="Làm mới danh sách"
           >
@@ -258,35 +295,53 @@ export const InboundDocumentPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Thẻ Thống Kê Nhanh (KPI Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-        <div className="bg-surface border border-border-subtle rounded-xl p-3.5 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-xs text-muted block mb-0.5">Tổng số văn bản đến</span>
-            <span className="text-xl font-bold text-main">{totalCount}</span>
+      {/* 2. Thẻ Thống Kê Tổng Hợp (Hiển thị trạng thái Còn hiệu lực gộp cả hiệu lực 1 phần) */}
+      <div className="bg-surface border border-border-subtle rounded-2xl p-4 sm:p-5 mb-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {/* Cột Trái: Mục Tổng số văn bản đến hiển thị số lượng văn bản còn hiệu lực */}
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-xl shrink-0 shadow-2xs">
+              <i className="fa-solid fa-file-circle-check" />
+            </div>
+            <div>
+              <span className="text-xs text-muted block mb-0.5 font-medium">Tổng số văn bản đến</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-main">{countActive}</span>
+                <span className="text-xs text-muted font-medium">văn bản còn hiệu lực</span>
+              </div>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-lg">
-            <i className="fa-solid fa-file-lines" />
-          </div>
-        </div>
 
-        <div className="bg-surface border border-border-subtle rounded-xl p-3.5 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-xs text-muted block mb-0.5">Đang còn hiệu lực</span>
-            <span className="text-xl font-bold text-success">{countActive}</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-success-subtle text-success flex items-center justify-center text-lg">
-            <i className="fa-solid fa-circle-check" />
-          </div>
-        </div>
-
-        <div className="bg-surface border border-border-subtle rounded-xl p-3.5 flex items-center justify-between shadow-xs">
-          <div>
-            <span className="text-xs text-muted block mb-0.5">Hết hiệu lực / Thay thế</span>
-            <span className="text-xl font-bold text-warning-text">{countExpired}</span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-warning-subtle text-warning-text flex items-center justify-center text-lg">
-            <i className="fa-solid fa-triangle-exclamation" />
+          {/* Cột Phải: Nút lọc trạng thái Còn hiệu lực (gộp cả hiệu lực 1 phần) */}
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={() =>
+                setFilters((prev) => ({
+                  ...prev,
+                  hieu_luc: prev.hieu_luc === 'HIEU_LUC' ? '' : 'HIEU_LUC',
+                  page: 1,
+                }))
+              }
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                filters.hieu_luc === 'HIEU_LUC'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-600/30'
+                  : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+              }`}
+              title="Lọc danh sách theo văn bản còn hiệu lực (bao gồm cả hiệu lực 1 phần)"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Còn hiệu lực</span>
+              <span
+                className={`ml-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                  filters.hieu_luc === 'HIEU_LUC'
+                    ? 'bg-white/20 text-white'
+                    : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                }`}
+              >
+                {countActive}
+              </span>
+            </button>
           </div>
         </div>
       </div>
@@ -363,6 +418,7 @@ export const InboundDocumentPage: React.FC = () => {
           setEditingDoc(null);
           fetchDocuments();
           fetchYears();
+          fetchStats();
         }}
       />
 
@@ -373,6 +429,7 @@ export const InboundDocumentPage: React.FC = () => {
           setIsImportOpen(false);
           fetchDocuments();
           fetchYears();
+          fetchStats();
         }}
       />
 

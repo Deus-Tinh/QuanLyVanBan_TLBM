@@ -202,15 +202,17 @@ class DocumentFilterTests(TestCase):
 
     def test_filter_loai_case_insensitive(self):
         f_upper = DocumentFilter({"loai": "DEN"}, queryset=VanBanDen.objects.all())
-        self.assertEqual(f_upper.qs.count(), 1)
-        self.assertEqual(f_upper.qs.first().id, self.doc1.id)
+        self.assertEqual(f_upper.qs.count(), 2)
 
         f_lower = DocumentFilter({"loai": "den"}, queryset=VanBanDen.objects.all())
-        self.assertEqual(f_lower.qs.count(), 1)
-        self.assertEqual(f_lower.qs.first().id, self.doc1.id)
+        self.assertEqual(f_lower.qs.count(), 2)
 
     def test_filter_type_english_alias(self):
         f = DocumentFilter({"type": "den"}, queryset=VanBanDen.objects.all())
+        self.assertEqual(f.qs.count(), 2)
+
+    def test_filter_chi_con_hieu_luc(self):
+        f = DocumentFilter({"chi_con_hieu_luc": True}, queryset=VanBanDen.objects.all())
         self.assertEqual(f.qs.count(), 1)
         self.assertEqual(f.qs.first().id, self.doc1.id)
 

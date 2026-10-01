@@ -122,13 +122,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </label>
           <select
             value={filters.hieu_luc || ''}
-            onChange={(e) => handleInputChange('hieu_luc', e.target.value as DocumentStatus | '')}
+            onChange={(e) => handleInputChange('hieu_luc', e.target.value as DocumentStatus | 'HIEU_LUC' | '')}
             className="w-full bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
           >
             <option value="">Tất cả trạng thái</option>
-            <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-            <option value="HET_HIEU_LUC">Hết hiệu lực</option>
+            <option value="HIEU_LUC">Còn hiệu lực (gồm cả hiệu lực 1 phần)</option>
+            <option value="CON_HIEU_LUC">Còn toàn bộ hiệu lực</option>
+            <option value="CON_HIEU_LUC_1_PHAN">Còn hiệu lực 1 phần</option>
             <option value="HET_VA_THAY_THE">Đã thay thế</option>
+            <option value="HET_HIEU_LUC">Hết hiệu lực</option>
           </select>
         </div>
       </div>
