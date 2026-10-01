@@ -319,7 +319,7 @@ export default function MainLayout({
 
       {/* 3. Khung nội dung chính & Thanh Header đỉnh */}
       <div
-        className={`main-container flex-1 min-w-0 flex flex-col h-full overflow-hidden w-full ${
+        className={`main-container flex-1 min-w-0 max-w-full flex flex-col h-full overflow-hidden w-full ${
           isSidebarPinned && isEffectiveSidebarOpen ? 'lg:pl-[290px]' : 'lg:pl-[72px] pl-0'
         }`}
         style={{
@@ -350,10 +350,10 @@ export default function MainLayout({
         {(() => {
           const isAiPage = currentActivePage === 'ai_assistant' || location.pathname === '/ai-assistant';
           return (
-            <main className={`page-viewport flex-1 flex flex-col bg-app ${
+            <main className={`page-viewport flex-1 min-w-0 max-w-full flex flex-col bg-app ${
               isAiPage ? 'overflow-hidden h-full' : 'overflow-y-auto overflow-x-hidden'
             }`}>
-              <div className={`page-content-wrapper flex-1 w-full mx-auto ${
+              <div className={`page-content-wrapper flex-1 w-full min-w-0 max-w-full mx-auto ${
                 isAiPage ? 'p-0 max-w-none h-full flex flex-col overflow-hidden' : 'p-4 sm:p-6 max-w-[1600px]'
               }`}>
                 {children || <Outlet />}

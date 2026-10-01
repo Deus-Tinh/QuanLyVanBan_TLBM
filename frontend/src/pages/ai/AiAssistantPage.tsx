@@ -1189,7 +1189,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               title="Cài đặt mô hình & API Key"
             >
               <i className="fa-solid fa-gear" />
-              <span className="hidden sm:inline">Cài đặt AI</span>
+              <span className="hidden xl:inline">Cài đặt AI</span>
             </button>
 
             {/* Nút Xuất file */}
@@ -1200,7 +1200,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               title="Xuất nội dung chat ra tệp Markdown"
             >
               <i className="fa-solid fa-download" />
-              <span className="hidden sm:inline">Xuất</span>
+              <span className="hidden xl:inline">Xuất</span>
             </button>
 
             {/* Nút Làm mới */}
@@ -1419,7 +1419,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             {/* Khung gõ câu hỏi */}
             <textarea
               className="chat-textarea"
-              placeholder="Nhập câu hỏi tra cứu quy trình, số hiệu văn bản, tài liệu mật... (Nhấn Enter để gửi)"
+              placeholder="Nhập câu hỏi tra cứu văn bản, quy trình nghiệp vụ... (Enter để gửi)"
               rows={1}
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
