@@ -178,21 +178,12 @@ def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu):
 
 
 def sync_replacement_document(doc):
-    """Đồng bộ quan hệ thay thế 2 chiều giữa các văn bản."""
+    """Đồng bộ quan hệ thay thế 2 chiều giữa các văn bản (hỗ trợ nhiều văn bản phân tách bằng dấu phẩy)."""
     raw_target = (doc.link_thay_the or "").strip()
     if not raw_target:
         return
 
-    other_doc = None
-    for model in (VanBanDen, VanBanDi, VanBanMat):
-        found = model.objects.filter(so_hieu__iexact=raw_target).exclude(pk=doc.pk).first()
-        if found:
-            other_doc = found
-            break
-
-    if not other_doc:
-        return
-
+    targets = [t.strip() for t in raw_target.split(",") if t.strip()]
     now = timezone.now()
     effective_date = (
         getattr(doc, "ngay_van_ban", None)
@@ -201,14 +192,31 @@ def sync_replacement_document(doc):
         or now
     )
 
-    if doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
-        other_doc.hieu_luc = HieuLuc.HET_VA_THAY_THE
-        other_doc.link_thay_the = doc.so_hieu
-        other_doc.ngay_het_hieu_luc = effective_date
-        other_doc.save(update_fields=["hieu_luc", "link_thay_the", "ngay_het_hieu_luc"])
-    elif doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
-        other_doc.link_thay_the = doc.so_hieu
-        other_doc.save(update_fields=["link_thay_the"])
+    for target in targets:
+        other_doc = None
+        for model in (VanBanDen, VanBanDi, VanBanMat):
+            found = model.objects.filter(so_hieu__iexact=target).exclude(pk=doc.pk).first()
+            if found:
+                other_doc = found
+                break
+
+        if not other_doc:
+            continue
+
+        if doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
+            other_doc.hieu_luc = HieuLuc.HET_VA_THAY_THE
+            existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
+            if doc.so_hieu and doc.so_hieu not in existing_links:
+                existing_links.append(doc.so_hieu)
+            other_doc.link_thay_the = ", ".join(existing_links)
+            other_doc.ngay_het_hieu_luc = effective_date
+            other_doc.save(update_fields=["hieu_luc", "link_thay_the", "ngay_het_hieu_luc"])
+        elif doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
+            existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
+            if doc.so_hieu and doc.so_hieu not in existing_links:
+                existing_links.append(doc.so_hieu)
+            other_doc.link_thay_the = ", ".join(existing_links)
+            other_doc.save(update_fields=["link_thay_the"])
 
 
 def handle_attachments(document, request):

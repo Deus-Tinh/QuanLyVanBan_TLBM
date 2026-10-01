@@ -101,11 +101,21 @@ class DocumentListSerializer(serializers.Serializer):
     nguoi_ky = serializers.CharField(read_only=True, default="")
     hieu_luc = serializers.CharField(read_only=True)
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
-    link_thay_the = serializers.CharField(read_only=True, default="")
+    link_thay_the = serializers.SerializerMethodField()
+    danh_sach_thay_the = serializers.SerializerMethodField()
     hien_thi = serializers.BooleanField(read_only=True)
     nguoi_tao_name = serializers.SerializerMethodField()
     attachment_count = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
+
+    def get_danh_sach_thay_the(self, obj):
+        from .services import get_dynamic_replacements
+        return get_dynamic_replacements(obj)
+
+    def get_link_thay_the(self, obj):
+        from .services import get_dynamic_replacements
+        reps = get_dynamic_replacements(obj)
+        return ", ".join(reps) if reps else (getattr(obj, "link_thay_the", "") or "")
 
     def get_loai_display(self, obj):
         if hasattr(obj, "get_loai_display"):
@@ -147,7 +157,8 @@ class DocumentDetailSerializer(serializers.Serializer):
     hieu_luc = serializers.CharField(read_only=True)
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
     ngay_het_hieu_luc = serializers.DateTimeField(read_only=True, default=None)
-    link_thay_the = serializers.CharField(read_only=True, default="")
+    link_thay_the = serializers.SerializerMethodField()
+    danh_sach_thay_the = serializers.SerializerMethodField()
     ghi_chu = serializers.CharField(read_only=True, default="")
     hien_thi = serializers.BooleanField(read_only=True)
     gui_mail_toan_he_thong = serializers.BooleanField(read_only=True)
@@ -157,6 +168,15 @@ class DocumentDetailSerializer(serializers.Serializer):
     nguoi_nhan_list = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
+
+    def get_danh_sach_thay_the(self, obj):
+        from .services import get_dynamic_replacements
+        return get_dynamic_replacements(obj)
+
+    def get_link_thay_the(self, obj):
+        from .services import get_dynamic_replacements
+        reps = get_dynamic_replacements(obj)
+        return ", ".join(reps) if reps else (getattr(obj, "link_thay_the", "") or "")
 
     def get_loai_display(self, obj):
         if hasattr(obj, "get_loai_display"):

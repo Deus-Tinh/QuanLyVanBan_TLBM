@@ -90,7 +90,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             <tr className="bg-surface-elevated/70 text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
               <th className="px-4 py-3 text-center w-16">Số đến</th>
               <th className="px-4 py-3 w-40">Số, ký hiệu</th>
-              <th className="px-4 py-3 w-48">Mốc thời gian</th>
+              <th className="px-4 py-3 w-40">Ngày văn bản</th>
               <th className="px-4 py-3 min-w-[280px]">Trích yếu nội dung</th>
               <th className="px-4 py-3 w-48">Nơi ban hành</th>
               <th className="px-4 py-3 w-40 text-center">Hiệu lực</th>
@@ -150,6 +150,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               documents.map((doc, index) => {
                 const isExpired = doc.hieu_luc === 'HET_HIEU_LUC';
                 const isReplaced = doc.hieu_luc === 'HET_VA_THAY_THE';
+                const isPartial = doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN';
+                const isActive = doc.hieu_luc === 'CON_HIEU_LUC';
                 const isActiveRow = activeMenuId === doc.id;
                 const isNearBottom = index >= documents.length - 2 && documents.length > 2;
 
@@ -157,30 +159,30 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 const isAdmin = authService.isAdmin();
                 const currentUsername = session?.username;
 
-                // Quyền sửa: Chỉ Quản trị viên (Admin) hoặc Người tạo văn bản mới được sửa
-                const isCreator = Boolean(
-                  currentUsername &&
-                  (doc.nguoi_tao_username === currentUsername ||
-                   (doc.nguoi_tao_name && doc.nguoi_tao_name.toLowerCase().includes(currentUsername.toLowerCase())))
-                );
-                const canEdit = !isConfidential && Boolean(onEdit) && (isAdmin || isCreator);
+                // Quyền sửa & xóa: Cán bộ có thể thao tác khi có hàm xử lý
+                const canEdit = !isConfidential && Boolean(onEdit);
+                const canDelete = !isConfidential && Boolean(onDelete);
 
-                // Quyền xóa: Độc quyền của Quản trị viên (Admin)
-                const canDelete = !isConfidential && Boolean(onDelete) && isAdmin;
-
-                // Yêu cầu đặc tả: Dòng hết hiệu lực bôi màu tối (bỏ opacity để không sinh stacking context đè popup menu)
+                // Tông màu hàng theo trạng thái hiệu lực:
+                // - Văn bản có hiệu lực: tông xanh lá nhẹ + viền trái xanh lá
+                // - Văn bản còn hiệu lực 1 phần: tông tím nhẹ + viền trái tím
+                // - Văn bản đã thay thế: tông cam/hổ phách nhẹ + viền trái cam
+                // - Văn bản hết hiệu lực: tông tối/đỏ nhẹ + viền trái đỏ
                 const rowHighlightClass = isExpired
-                  ? 'bg-slate-500/10 dark:bg-black/40 border-l-4 border-l-danger'
+                  ? 'bg-slate-500/10 dark:bg-black/40 border-l-4 border-l-danger hover:bg-slate-500/15'
                   : isReplaced
-                  ? 'bg-amber-500/5 dark:bg-black/30 border-l-4 border-l-warning'
-                  : 'hover:bg-surface-hover/80 transition-colors border-l-4 border-l-transparent';
+                    ? 'bg-amber-500/5 dark:bg-amber-950/20 border-l-4 border-l-warning hover:bg-amber-500/10'
+                    : isPartial
+                      ? 'bg-purple-500/5 dark:bg-purple-950/20 border-l-4 border-l-purple-500 hover:bg-purple-500/10'
+                      : isActive
+                        ? 'bg-emerald-500/5 dark:bg-emerald-950/20 border-l-4 border-l-emerald-500 hover:bg-emerald-500/10'
+                        : 'hover:bg-surface-hover/80 transition-colors border-l-4 border-l-transparent';
 
                 return (
                   <tr
                     key={doc.id}
-                    className={`${rowHighlightClass} transition-colors group ${
-                      isActiveRow ? 'relative z-30' : ''
-                    }`}
+                    className={`${rowHighlightClass} transition-colors group ${isActiveRow ? 'relative z-30' : ''
+                      }`}
                   >
                     {/* 1. Số đến */}
                     <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap">
@@ -200,16 +202,18 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       </button>
                     </td>
 
-                    {/* 3. Mốc thời gian (Ngày đến & Ngày văn bản) */}
+                    {/* 3. Ngày văn bản (đồng bộ với VB Đi và VB Mật, kèm ngày tiếp nhận đến) */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
                       <div className="text-xs font-semibold text-main flex items-center gap-1.5">
-                        <i className="fa-regular fa-clock text-primary text-[0.7rem]" />
-                        <span>Đến: {formatDateTime(doc.ngay_den)}</span>
+                        <i className="fa-regular fa-calendar text-primary text-[0.7rem]" />
+                        <span>{formatDate(doc.ngay_van_ban || doc.ngay_ban_hanh)}</span>
                       </div>
-                      <div className="text-[0.7rem] text-muted flex items-center gap-1.5 mt-0.5">
-                        <i className="fa-regular fa-calendar text-muted text-[0.7rem]" />
-                        <span>Ký ngày: {formatDate(doc.ngay_van_ban)}</span>
-                      </div>
+                      {doc.ngay_den && (
+                        <div className="text-[0.7rem] text-muted flex items-center gap-1.5 mt-0.5" title={`Ngày tiếp nhận đến: ${formatDate(doc.ngay_den)}`}>
+                          <i className="fa-regular fa-calendar-check text-muted text-[0.7rem]" />
+                          <span>Đến: {formatDate(doc.ngay_den)}</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* 4. Trích yếu nội dung */}
@@ -228,24 +232,53 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             <span>{doc.attachment_count} tệp đính kèm</span>
                           </div>
                         )}
-                        {doc.link_thay_the && doc.hieu_luc === 'CON_HIEU_LUC' && (
-                          <div
-                            className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20"
-                            title={`Thay thế cho văn bản: ${doc.link_thay_the}`}
-                          >
-                            <i className="fa-solid fa-repeat text-primary text-[0.65rem]" />
-                            <span>Thay thế: <strong className="font-mono">{doc.link_thay_the}</strong></span>
-                          </div>
-                        )}
-                        {doc.link_thay_the && doc.hieu_luc === 'HET_VA_THAY_THE' && (
-                          <div
-                            className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
-                            title={`Bị thay thế bởi văn bản: ${doc.link_thay_the}`}
-                          >
-                            <i className="fa-solid fa-triangle-exclamation text-warning text-[0.65rem]" />
-                            <span>Bị thay bởi: <strong className="font-mono">{doc.link_thay_the}</strong></span>
-                          </div>
-                        )}
+                        {(() => {
+                          const repList: string[] = (doc.danh_sach_thay_the && doc.danh_sach_thay_the.length > 0)
+                            ? doc.danh_sach_thay_the
+                            : (doc.link_thay_the ? doc.link_thay_the.split(',').map((s) => s.trim()).filter(Boolean) : []);
+
+                          if (repList.length === 0) return null;
+
+                          return repList.map((targetSoHieu, idx) => {
+                            if (doc.hieu_luc === 'CON_HIEU_LUC') {
+                              return (
+                                <div
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
+                                  title={`Thay thế cho văn bản: ${targetSoHieu}`}
+                                >
+                                  <i className="fa-solid fa-repeat text-emerald-600 dark:text-emerald-400 text-[0.65rem]" />
+                                  <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
+                                </div>
+                              );
+                            }
+                            if (doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN') {
+                              return (
+                                <div
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-purple-700 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20"
+                                  title={`Thay thế cho văn bản: ${targetSoHieu}`}
+                                >
+                                  <i className="fa-solid fa-repeat text-purple-600 dark:text-purple-400 text-[0.65rem]" />
+                                  <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
+                                </div>
+                              );
+                            }
+                            if (doc.hieu_luc === 'HET_VA_THAY_THE') {
+                              return (
+                                <div
+                                  key={idx}
+                                  className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
+                                  title={`Bị thay thế bởi văn bản: ${targetSoHieu}`}
+                                >
+                                  <i className="fa-solid fa-triangle-exclamation text-warning text-[0.65rem]" />
+                                  <span>Bị thay bởi: <strong className="font-mono">{targetSoHieu}</strong></span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          });
+                        })()}
                       </div>
                     </td>
 
@@ -263,6 +296,18 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <div>
                           <Badge variant="success" size="sm" withDot>
                             Còn hiệu lực
+                          </Badge>
+                          {doc.ngay_het_hieu_luc && (
+                            <div className="text-[0.68rem] text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                              Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
+                        <div>
+                          <Badge variant="purple" size="sm" withDot>
+                            Hiệu lực 1 phần
                           </Badge>
                           {doc.ngay_het_hieu_luc && (
                             <div className="text-[0.68rem] text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
@@ -305,52 +350,51 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         {/* Dropdown Menu Popup */}
                         {activeMenuId === doc.id && (
                           <div
-                            className={`absolute right-3 ${
-                              isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
-                            } w-48 bg-surface-elevated border border-border-subtle rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100 select-none`}
+                            className={`absolute right-3 ${isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                              } w-52 bg-surface-elevated border border-border-subtle rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100 select-none`}
                           >
-                            {/* Nút Xem chi tiết */}
+                            {/* 1. Nút Xem chi tiết */}
                             <button
                               type="button"
                               onClick={() => {
                                 setActiveMenuId(null);
                                 onViewDetail(doc.id);
                               }}
-                              className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-primary-subtle hover:text-primary flex items-center gap-2.5 transition-colors"
+                              className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-primary-subtle hover:text-primary flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
                               <i className="fa-solid fa-eye text-primary w-4" />
                               <span>Xem chi tiết</span>
                             </button>
 
-                            {/* Nút Người đã xem */}
+                            {/* 2. Nút Lịch sử xem */}
                             <button
                               type="button"
                               onClick={() => {
                                 setActiveMenuId(null);
                                 onViewHistory(doc.id);
                               }}
-                              className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-info-subtle hover:text-info flex items-center gap-2.5 transition-colors"
+                              className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-info-subtle hover:text-info flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
-                              <i className="fa-solid fa-user-check text-info w-4" />
-                              <span>Người đã xem</span>
+                              <i className="fa-solid fa-clock-rotate-left text-info w-4" />
+                              <span>Lịch sử xem</span>
                             </button>
 
-                            {/* Nút Sửa (chỉ hiển thị nếu có quyền: Admin hoặc Người tạo) */}
+                            {/* 3. Nút Chỉnh sửa */}
                             {canEdit && (
                               <button
                                 type="button"
                                 onClick={() => {
                                   setActiveMenuId(null);
-                                  onEdit(doc);
+                                  onEdit!(doc);
                                 }}
-                                className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-warning-subtle hover:text-warning-text flex items-center gap-2.5 transition-colors"
+                                className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-warning-subtle hover:text-warning-text flex items-center gap-2.5 transition-colors cursor-pointer"
                               >
                                 <i className="fa-solid fa-pen-to-square text-warning-text w-4" />
                                 <span>Chỉnh sửa</span>
                               </button>
                             )}
 
-                            {/* Nút Xóa (chỉ Quản trị viên - Admin mới có quyền) */}
+                            {/* 5. Nút Xóa văn bản */}
                             {canDelete && (
                               <>
                                 <div className="border-t border-border-subtle/50 my-1" />
@@ -358,9 +402,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                   type="button"
                                   onClick={() => {
                                     setActiveMenuId(null);
-                                    onDelete(doc.id, doc.so_hieu);
+                                    onDelete!(doc.id, doc.so_hieu);
                                   }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-danger hover:bg-danger-subtle flex items-center gap-2.5 transition-colors"
+                                  className="w-full text-left px-3.5 py-2 text-xs text-danger hover:bg-danger-subtle flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
                                   <i className="fa-solid fa-trash-can w-4" />
                                   <span>Xóa văn bản</span>
@@ -410,11 +454,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 type="button"
                 onClick={() => onPageChange(p)}
                 disabled={isLoading}
-                className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-all ${
-                  page === p
+                className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-all ${page === p
                     ? 'bg-primary text-white shadow-sm'
                     : 'text-secondary hover:text-main hover:bg-surface-elevated'
-                }`}
+                  }`}
               >
                 {p}
               </button>

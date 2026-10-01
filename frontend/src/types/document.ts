@@ -9,7 +9,7 @@
 
 export type DocumentType = 'DEN' | 'DI' | 'MAT';
 
-export type DocumentStatus = 'CON_HIEU_LUC' | 'HET_HIEU_LUC' | 'HET_VA_THAY_THE';
+export type DocumentStatus = 'CON_HIEU_LUC' | 'CON_HIEU_LUC_1_PHAN' | 'HET_HIEU_LUC' | 'HET_VA_THAY_THE';
 
 /**
  * File đính kèm văn bản (PDF, Word, Ảnh).
@@ -52,6 +52,7 @@ export interface DocumentItem {
   hieu_luc_display: string;
   ngay_het_hieu_luc?: string | null;
   link_thay_the?: string;
+  danh_sach_thay_the?: string[];
   hien_thi: boolean;
   nguoi_tao_name?: string | null;
   nguoi_tao_username?: string | null;
@@ -97,7 +98,7 @@ export interface DocumentFilterParams {
   nam?: number | string;
   tu_ngay?: string;
   den_ngay?: string;
-  hieu_luc?: DocumentStatus | '';
+  hieu_luc?: DocumentStatus | 'HIEU_LUC' | '';
   page?: number;
   page_size?: number;
   loai?: DocumentType;

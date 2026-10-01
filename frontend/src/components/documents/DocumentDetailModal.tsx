@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { DocumentDetail } from '@app-types/document';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
@@ -67,9 +68,9 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
     return 'fa-solid fa-file text-secondary';
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 animate-in fade-in duration-150"
+      className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
@@ -138,7 +139,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
           {document && !isLoading && (
             <>
               {/* Banner liên kết thay thế 2 chiều */}
-              {document.link_thay_the && document.hieu_luc === 'CON_HIEU_LUC' && (
+              {document.link_thay_the && (document.hieu_luc === 'CON_HIEU_LUC' || document.hieu_luc === 'CON_HIEU_LUC_1_PHAN') && (
                 <div className="bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center text-sm shrink-0 mt-0.5">
                     <i className="fa-solid fa-repeat" />
@@ -146,7 +147,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   <div className="text-xs">
                     <div className="font-bold text-primary mb-0.5">VĂN BẢN THAY THẾ</div>
                     <p className="text-main m-0 leading-relaxed">
-                      Văn bản này được ban hành để thay thế cho văn bản: <strong className="font-mono text-primary">{document.link_thay_the}</strong>.
+                      Văn bản này được ban hành để thay thế cho: <strong className="font-mono text-primary">{document.link_thay_the}</strong>.
                     </p>
                   </div>
                 </div>
@@ -223,7 +224,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
                     <span className="text-secondary">Ngày đến:</span>
                     <span className="font-semibold text-main font-mono">
-                      {document.ngay_den ? formatDateTime(document.ngay_den) : '—'}
+                      {document.ngay_den ? formatDate(document.ngay_den) : '—'}
                     </span>
                   </div>
 
@@ -261,9 +262,11 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                       variant={
                         document.hieu_luc === 'CON_HIEU_LUC'
                           ? 'success'
+                          : document.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
+                          ? 'purple'
                           : document.hieu_luc === 'HET_HIEU_LUC'
                           ? 'danger'
-                          : 'warning'
+                          : 'secondary'
                       }
                       size="sm"
                     >
@@ -281,13 +284,17 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   )}
 
                   {document.link_thay_the && (
-                    <div className="flex justify-between items-center text-xs py-1">
-                      <span className="text-secondary">
-                        {document.hieu_luc === 'CON_HIEU_LUC' ? 'Thay thế cho:' : 'Bị thay bởi:'}
+                    <div className="flex justify-between items-start text-xs py-1">
+                      <span className="text-secondary shrink-0 pt-0.5">
+                        {document.hieu_luc === 'CON_HIEU_LUC' || document.hieu_luc === 'CON_HIEU_LUC_1_PHAN' ? 'Thay thế cho:' : 'Bị thay bởi:'}
                       </span>
-                      <span className="font-semibold font-mono text-primary truncate max-w-[180px]">
-                        {document.link_thay_the}
-                      </span>
+                      <div className="flex flex-wrap justify-end gap-1 max-w-[220px]">
+                        {document.link_thay_the.split(',').map((s: string, idx: number) => (
+                          <span key={idx} className="font-semibold font-mono text-[0.7rem] px-1.5 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20">
+                            {s.trim()}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -367,7 +374,8 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    window.document.body
   );
 };
 

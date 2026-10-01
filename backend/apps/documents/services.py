@@ -94,6 +94,49 @@ def check_and_update_expired_documents() -> int:
 
 
 # ═══════════════════════════════════════════════════════════════════
+# 2.1 TRUY VẤN ĐỘNG QUAN HỆ THAY THẾ 2 CHIỀU (Dynamic Replacements)
+# ═══════════════════════════════════════════════════════════════════
+
+def get_dynamic_replacements(doc) -> list[str]:
+    """
+    Truy vấn động quan hệ thay thế 2 chiều:
+    1. Lấy danh sách số hiệu trong doc.link_thay_the (hỗ trợ phân tách bằng dấu phẩy).
+    2. Quét ngược trong DB: Tìm các văn bản (Đến, Đi, Mật) có link_thay_the chứa doc.so_hieu.
+    3. Hợp nhất danh sách và loại bỏ trùng lặp.
+    """
+    results: list[str] = []
+    own_link = getattr(doc, "link_thay_the", "") or ""
+    so_hieu = getattr(doc, "so_hieu", "") or ""
+    so_hieu_clean = so_hieu.strip().lower()
+
+    if own_link:
+        for item in own_link.split(","):
+            s = item.strip()
+            if s and s.lower() != so_hieu_clean and s not in results:
+                results.append(s)
+
+    if so_hieu:
+        from .models import VanBanDen, VanBanDi, VanBanMat
+        for model in (VanBanDen, VanBanDi, VanBanMat):
+            try:
+                pk_val = getattr(doc, "pk", None)
+                qs = model.objects.filter(link_thay_the__icontains=so_hieu)
+                if pk_val and isinstance(doc, model):
+                    qs = qs.exclude(pk=pk_val)
+                for other in qs:
+                    other_link = getattr(other, "link_thay_the", "") or ""
+                    tokens = [t.strip().lower() for t in other_link.split(",") if t.strip()]
+                    if so_hieu_clean in tokens and other.so_hieu:
+                        target = other.so_hieu.strip()
+                        if target and target.lower() != so_hieu_clean and target not in results:
+                            results.append(target)
+            except Exception:
+                pass
+
+    return results
+
+
+# ═══════════════════════════════════════════════════════════════════
 # 3. GHI LOG NGƯỜI XEM — Upsert vào documents_view_log
 # ═══════════════════════════════════════════════════════════════════
 
