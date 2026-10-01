@@ -35,6 +35,8 @@ Xây dựng backend Django REST Framework cho nghiệp vụ trình ký văn bả
 - Tự động từ chối hoặc tự động hủy khi quá hạn.
 - Chọn cách thức ký riêng cho từng cấp (hybrid).
 - Lưu private key (kể cả dạng mã hóa) trên backend để đồng bộ đa thiết bị; cần thiết kế custody/recovery riêng.
+- Nhiều tệp đính kèm/phụ lục trong một lượt trình (MVP: một lượt trình ứng với một tệp).
+- Vai trò xem/góp ý không ký; thu hồi hoặc ban hành bản thay thế sau khi lượt trình `HOAN_THANH`.
 - Quay lui về cấp trước trong cùng một lượt trình.
 
 ### 1.4. Khâu phát hành pháp lý (bước bổ sung cuối)
@@ -54,11 +56,13 @@ Hệ thống tách hai giai đoạn:
 ## 2. Bằng chứng và giả định
 
 - `[FACT]` Nhánh triển khai của Nhóm 5 là `5_signing_workflow`.
-- `[FACT]` Chưa có backend Django hoàn chỉnh trên nhánh để làm nguồn sự thật triển khai.
-- `[ĐỀ XUẤT]` Stack: Django REST Framework, PostgreSQL, Celery, Redis.
+- `[FACT]` Nhánh triển khai của Nhóm 5 là `5_signing_workflow`; đã có Django project (`backend/config`) và app `signing` (Phase 1–5 của `plan-trien-khai-theo-phase.md`).
+- `[FACT]` Cấu hình hiện tại: SQLite, `AUTH_USER_MODEL` mặc định (`auth.User`); app `accounts` chỉ có `StaffProfile` (OneToOne tới tài khoản). `requirements.txt` chưa có `psycopg`, `celery`, `redis`.
+- `[ĐỀ XUẤT]` Stack đích: Django REST Framework, PostgreSQL, Celery, Redis.
 - `[ĐỀ XUẤT]` Mọi FK người dùng trỏ tới `AUTH_USER_MODEL`; không tạo bảng người dùng mới.
-- `[CHƯA XÁC MINH]` Bảng văn bản là một bảng `documents_vanban` hay ba bảng đến/đi/mật (đang nhờ Nhóm 2 thống nhất).
-- `[CHƯA XÁC MINH]` Tên model đơn vị/phòng ban, chức vụ và API lưu trữ tài liệu hiện có.
+- `[FACT]` CSDL chung (`csdl_qlvbtl_schema_final.sql`) dùng 3 bảng văn bản đến/đi/mật và kiểu enum `document_kind`; do đó Trình ký tham chiếu văn bản bằng `document_type` + `van_ban_id`, không FK.
+- `[CHƯA XÁC MINH]` CSDL chung trỏ FK người dùng tới `accounts_employee`, trong khi Django hiện dùng `auth.User`; chờ chốt model người dùng (Phase 6).
+- `[CHƯA XÁC MINH]` Tên model đơn vị/phòng ban, chức vụ và API lưu trữ tài liệu hiện có (Nhóm 7).
 
 ## 3. Quy tắc nghiệp vụ và bất biến
 
@@ -101,6 +105,7 @@ Hệ thống tách hai giai đoạn:
 - Giao diện (React PDF viewer) hiển thị ảnh chữ ký như một lớp phủ CSS/Canvas đè lên bản xem trước theo tọa độ; không tạo tệp trung gian.
 - **Phẳng hóa (Stamping & Flattening):** chỉ khi lượt trình chuyển `HOAN_THANH`, tác vụ nền đọc tệp gốc, lấy snapshot ảnh và tọa độ của toàn bộ chữ ký hiện hành, dán một lần và sinh tệp PDF hoàn tất. Vị trí và mã băm tệp này lưu tại `signing_attempt.vi_tri_tep_hoan_tat`, `signing_attempt.ma_bam_tep_hoan_tat`.
 - Không sinh tệp theo từng người ký.
+- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành" cho tới khi hoàn tất phát hành pháp lý (mục 1.4). `[ĐỀ XUẤT]`, chốt ở Phase 10.
 - Tệp hoàn tất là đầu vào của giai đoạn phát hành pháp lý (mục 1.4).
 
 ### 3.3. Yêu cầu, lượt trình và nội dung văn bản
@@ -125,6 +130,7 @@ Hệ thống tách hai giai đoạn:
   - Lượt cũ giữ nguyên trạng thái `YEU_CAU_SUA` làm lịch sử; không chuyển sang `HUY` để không mất ngữ cảnh lý do.
 - `tu_choi` bắt buộc lý do, ghi chú tùy chọn. `xem_xet_lai` sau từ chối tạo lượt trình mới.
 - Người tạo được hủy trước khi hoàn thành; quản trị viên được hủy thay (override) nhưng bắt buộc lý do và ghi nhật ký.
+- `[CHƯA CHỐT]` Xử lý khi phát hiện sai sau khi lượt trình `HOAN_THANH` (hủy, thu hồi, ban hành bản thay thế): MVP chưa hỗ trợ, xem mục 12.
 
 ### 3.4. Khóa ký, chữ ký và ảnh chữ ký cá nhân
 
@@ -138,12 +144,27 @@ Hệ thống tách hai giai đoạn:
 
 - Backend không nhận, không lưu, không log private key hoặc ciphertext chứa private key.
 - Đăng ký khóa công khai Ed25519 qua proof-of-possession:
-  - Server sinh challenge ngẫu nhiên, lưu Redis với TTL 5 phút, dùng một lần (đọc và xóa nguyên tử).
-  - Client ký challenge bằng private key; server verify rồi mới gán `thoi_diem_xac_minh_so_huu` và chuyển khóa từ `CHO_KICH_HOAT` sang `HOAT_DONG`.
+  - Client ký challenge bằng private key; server verify rồi gán `thoi_diem_xac_minh_so_huu` (`xac-minh`). Chuyển khóa từ `CHO_KICH_HOAT` sang `HOAT_DONG` là bước riêng (`kich-hoat`), chỉ cho khóa đã xác minh sở hữu.
+  - `[FACT]` Triển khai hiện tại (MVP): challenge là chuỗi cố định gắn dấu vân tay khóa (`signing-key-ownership:<dau_van_tay>`), không TTL, không dùng một lần, chưa dùng Redis. Giới hạn: không chống phát lại chữ ký chứng minh. Mức chấp nhận cho MVP: `dau_van_tay` là unique và `xac-minh` chỉ do chủ khóa đã xác thực thực hiện.
+  - `[ĐỀ XUẤT]` Khi có Redis: server sinh challenge ngẫu nhiên, TTL 5 phút, dùng một lần (đọc và xóa nguyên tử).
 - Mỗi người dùng tối đa một khóa `HOAT_DONG` tại một thời điểm, không phân biệt thuật toán.
 - Xoay vòng khóa: khóa cũ chuyển `DA_XOAY_VONG`, `khoa_thay_the` trỏ khóa mới, có ghi nhật ký. Khóa cũ được giữ để xác minh chữ ký lịch sử.
 - `HET_HAN`: áp dụng khi khóa có `ngay_het_han` và thời điểm hiện tại đã qua; `ngay_het_han` rỗng nghĩa là không hết hạn. Tác vụ định kỳ chuyển trạng thái và ghi nhật ký.
 - `THU_HOI`: thu hồi thủ công, gán `ngay_thu_hoi`, có ghi nhật ký.
+
+**Bảo vệ khóa bằng PIN (thiết kế đề xuất, triển khai ở Phase 6)**
+
+- Mục tiêu: chặn việc ký trên thiết bị đã đăng nhập mà không có chủ khóa, và chống đoán PIN offline khi bản sao private key bị lấy.
+- Private key Ed25519 sinh ở trình duyệt, được bọc bằng khóa `HKDF(master_pin, k_srv, "wrap")`. `master_pin = Argon2id(PIN, salt, tham số)`. Bản bọc chỉ nằm ở thiết bị (IndexedDB), **không bao giờ gửi lên server**.
+- Server giữ `k_srv` (mảnh bí mật theo từng khóa, mã hóa khi lưu) và hash của `verifier = HKDF(master_pin, "verify")`. Hai nhãn `verify` và `wrap` phải tách biệt để lộ DB server không suy ra được khóa bọc.
+- Mở khóa ký: client gửi `verifier` kèm phiên đăng nhập; server so khớp, đếm số lần sai rồi mới trả `k_srv`. Sai 5 lần khóa 15 phút; sai 10 lần khóa cứng, quản trị mở lại sau khi xác minh danh tính. Bộ đếm lưu ở CSDL và cập nhật dưới `select_for_update`.
+- Sự kiện nhật ký: `DAT_PIN`, `DOI_PIN`, `MO_KHOA_KY`, `PIN_SAI`, `PIN_KHOA`.
+- Tham số Argon2id: `m=64 MiB, t=3, p=1` làm mức sàn, đo trên thiết bị yếu nhất được hỗ trợ (mục tiêu 300–500 ms); lưu tham số và phiên bản cùng bản bọc để nâng cấp. Dùng Argon2id (RFC 9106), không dùng PBKDF2/bcrypt.
+- Chính sách PIN: 8 chữ số; chặn dãy tăng/giảm, lặp một chữ số, dạng ngày `ddmmyyyy`, PIN phổ biến.
+- Mất PIN: không khôi phục. Thu hồi khóa cũ, cấp khóa mới sau khi quản trị xác minh danh tính; khóa cũ giữ để xác minh chữ ký lịch sử. Đổi PIN: bọc lại private key (cần PIN cũ), không sinh khóa mới.
+- MVP: một khóa `HOAT_DONG` trên một thiết bị. Đổi thiết bị là đăng ký khóa mới qua `xoay-vong`. Quy tắc cứng: bản bọc private key không lưu và không đồng bộ lên server; nếu sau này đồng bộ đa thiết bị thì thiết kế này mất tác dụng.
+- Giới hạn (`[FACT]` về phạm vi bảo vệ): PIN không chống XSS/malware ghi phím lúc nhập; không nâng giá trị pháp lý của chữ ký nội bộ. Giảm XSS bằng CSP chặt, không script bên thứ ba, màn hình ký hiển thị tên tệp và mã băm để người ký xác nhận.
+- Ước tính (`[ĐỀ XUẤT]`, chưa đo): với 8 chữ số (~26,6 bit) nếu chỉ bọc bằng PIN thì bản bọc bị đoán offline trong vài giờ với vài trăm core; vì vậy cần `k_srv` và khóa theo số lần sai.
 
 **Chữ ký**
 
@@ -182,18 +203,19 @@ Hệ thống tách hai giai đoạn:
 - Người ký cập nhật sang tài khoản mới; lưu `uy_quyen_tu` và `ngay_uy_quyen`; lượt trình và mã băm không đổi.
 - Chỉ ủy quyền cho người ký đang `CHO_KY`.
 - Không ủy quyền cho người đã có mặt trong cùng cấp (ràng buộc duy nhất `(buoc_ky, nguoi_ky)`); nếu cần gộp người ký thì đi qua yêu cầu chỉnh sửa.
+- `[CHƯA CHỐT]` Hình thức ký thay theo thể thức văn bản (KT., TL., TUQ.) và thời hạn ủy quyền chưa có field; chờ xác nhận pháp chế (mục 12).
 
 ## 4. Kiến trúc backend
 
 ### 4.1. Thành phần
 
 - **App `signing`:** model, domain service, chuyển trạng thái, phân quyền, API.
-- **Contract văn bản:** chỉ tham chiếu `van_ban`, `phien_ban_van_ban`, `vi_tri_luu_tep`, `ma_bam_tai_lieu`; không phụ thuộc đường dẫn tuyệt đối.
+- **Contract văn bản:** chỉ tham chiếu `document_type` + `van_ban_id`, `phien_ban_van_ban`, `vi_tri_luu_tep`, `ma_bam_tai_lieu`; không phụ thuộc đường dẫn tuyệt đối.
 - **`DocumentStorageAdapter`:** interface đọc metadata/bytes theo vị trí lưu. MVP dùng filesystem mount cấu hình qua biến môi trường; có thể thêm API/SFTP mà không đổi nghiệp vụ ký.
 - **`PdfStampingService`:** tác vụ nền phẳng hóa PDF khi lượt trình `HOAN_THANH` (mục 3.2).
 - **`LegalSignerAdapter`:** interface cho khâu phát hành pháp lý (CA/HSM/CCCD, dấu doanh nghiệp, TSA, PAdES).
 - **PostgreSQL:** dữ liệu nghiệp vụ, ràng buộc unique/check, transaction, khóa dòng.
-- **Redis:** broker Celery, challenge khóa ký, khóa ngắn hạn nếu cần.
+- **Redis:** broker Celery, khóa ngắn hạn nếu cần; challenge khóa ký chỉ dùng Redis khi chuyển sang challenge ngẫu nhiên (mục 3.4).
 - **Celery worker:** gửi thông báo, nhắc hạn, escalation, phẳng hóa PDF, chốt bằng chứng tổng hợp. Task chỉ nhận ID, retry có backoff và jitter, idempotent.
 - **Outbox:** dùng chính bảng `signing_notification`. Bản ghi `CHO_GUI` được tạo trong cùng transaction nghiệp vụ; sau commit (`transaction.on_commit`) mới đẩy task gửi; một tác vụ định kỳ quét các bản ghi `CHO_GUI` bị sót. Không tạo bảng outbox riêng trong MVP.
 
@@ -249,7 +271,7 @@ Ràng buộc: unique `(ma_quy_trinh, phien_ban)`.
 | Cấp ký | `cap_ky` | Number (SmallInt) | X | Số hiệu hiển thị |
 | Tên cấp ký | `ten_cap_ky` | Text (255) | X | |
 | Thứ tự ký | `thu_tu` | Number (SmallInt) | X | Quyết định thứ tự mở cấp |
-| Đơn vị ký | `don_vi` | ForeignKey (Đơn vị/phòng ban) | | |
+| Đơn vị ký | `don_vi_id` | Number (BigInt) | | Tạm là số nguyên; đổi sang ForeignKey (Đơn vị/phòng ban) khi Nhóm 7 chốt (Phase 7) |
 | Số giờ xử lý của cấp | `so_gio_xu_ly` | Number | | Rỗng: dùng quy tắc chia hạn mục 3.5 |
 | Đang áp dụng | `dang_ap_dung` | Boolean | X | Mặc định True |
 | Ghi chú | `ghi_chu` | Text | | |
@@ -264,7 +286,7 @@ Ràng buộc: unique `(quy_trinh, thu_tu)`.
 | ID | `id` | Number (auto) | | |
 | Cấp ký trong quy trình | `buoc_quy_trinh` | ForeignKey (signing_process_step) | X | |
 | Người ký | `nguoi_ky` | ForeignKey (auth_user) | | Nhập người ký HOẶC chức vụ |
-| Chức vụ ký | `chuc_vu` | ForeignKey (Chức vụ) | | Nhập người ký HOẶC chức vụ |
+| Chức vụ ký | `chuc_vu_id` | Number (BigInt) | | Nhập người ký HOẶC chức vụ; tạm là số nguyên, đổi sang ForeignKey (Chức vụ) ở Phase 7 |
 | Vai trò ký | `vai_tro_ky` | Text (20) [KY_NHAY, KY_CHINH] | X | Mặc định KY_CHINH |
 | Chặn ký chính | `chan_ky_chinh` | Boolean | X | Mặc định True; ký nháy xong mới mở ký chính |
 | Thứ tự trong cấp | `thu_tu` | Number (SmallInt) | X | |
@@ -277,7 +299,8 @@ Ràng buộc: CHECK có đúng một trong `nguoi_ky`, `chuc_vu`. Mọi người
 | Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
 |---|---|---|---|---|
 | ID | `id` | Number (auto) | | |
-| Văn bản liên quan | `van_ban` | ForeignKey (documents_vanban) | X | |
+| Loại văn bản | `document_type` | Text (20) [vanbanden, vanbandi, vanbanmat] | X | Truyền tường minh, không có giá trị mặc định |
+| Văn bản liên quan | `van_ban_id` | Number (BigInt) | X | Không FK (3 bảng văn bản); index `(document_type, van_ban_id)` |
 | Phiên bản văn bản | `phien_ban_van_ban` | Text (50) | | Bản sao từ lượt trình hiện hành |
 | Vị trí lưu tệp | `vi_tri_luu_tep` | Text (500) | | Bản sao từ lượt trình hiện hành |
 | Mã băm tài liệu | `ma_bam_tai_lieu` | Text (64) - SHA-256 | | Bản sao từ lượt trình hiện hành |
@@ -352,7 +375,7 @@ Ràng buộc: unique `(luot_trinh, thu_tu)`.
 | ID | `id` | Number (auto) | | |
 | Cấp ký | `buoc_ky` | ForeignKey (signing_request_step) | X | |
 | Người ký | `nguoi_ky` | ForeignKey (auth_user) | X | Unique trong cấp |
-| Chức vụ lúc trình | `chuc_vu` | ForeignKey (Chức vụ) | | |
+| Chức vụ lúc trình | `chuc_vu_id` | Number (BigInt) | | Tạm là số nguyên, đổi sang ForeignKey (Chức vụ) ở Phase 7 |
 | Tên người ký | `ten_nguoi_ky` | Text (255) | X | Snapshot tại lúc gửi |
 | Tên chức vụ | `ten_chuc_vu` | Text (255) | | Snapshot tại lúc gửi |
 | Vai trò ký | `vai_tro_ky` | Text (20) [KY_NHAY, KY_CHINH] | X | |
@@ -419,7 +442,7 @@ Ràng buộc: partial unique index một `nguoi_so_huu` tối đa một khóa `H
 | Mã băm ảnh chữ ký | `ma_bam_anh_chu_ky` | Text (64) - SHA-256 | | |
 | Ngày tạo | `created_at` | DateTime (auto) | | |
 
-Ràng buộc: bản ghi bất biến, không UPDATE nội dung, không DELETE. Không lưu tệp theo từng người ký.
+Ràng buộc: bản ghi bất biến, không UPDATE nội dung, không DELETE; chỉ được cập nhật `trang_thai_xac_minh` và `thoi_diem_xac_minh`. Bảo đảm ở hai tầng: model và trigger PostgreSQL (CSDL chung); cả hai phải chặn cùng tập cột. Không lưu tệp theo từng người ký.
 
 #### `signing_manifest` — Bằng chứng tổng hợp
 
@@ -481,7 +504,7 @@ Thread và message không xóa cứng, không cascade khi xóa yêu cầu/lượ
 | Địa chỉ IP | `dia_chi_ip` | Text (45) | | |
 | Thời điểm | `created_at` | DateTime (auto) | | |
 
-Ràng buộc: CHECK `loai_doi_tuong` thuộc luồng ký (request/attempt/signer/signature) thì `trinh_ky` không rỗng. Chỉ ghi thêm; role ứng dụng không có quyền UPDATE/DELETE. Sự kiện thu hồi chữ ký: `loai_doi_tuong = signing_signature`, `ma_doi_tuong` = id chữ ký bị thu hồi.
+Ràng buộc: CHECK `loai_doi_tuong` thuộc luồng ký (request/attempt/signer/signature) thì `trinh_ky` không rỗng. Chỉ ghi thêm: chặn ở tầng model và bằng trigger PostgreSQL chặn UPDATE/DELETE (CSDL chung); có thể bổ sung giới hạn quyền role ứng dụng khi triển khai. Sự kiện thu hồi chữ ký: `loai_doi_tuong = signing_signature`, `ma_doi_tuong` = id chữ ký bị thu hồi.
 
 #### `signing_notification` — Thông báo trình ký (kiêm outbox)
 
@@ -501,12 +524,28 @@ Ràng buộc: CHECK `loai_doi_tuong` thuộc luồng ký (request/attempt/signer
 | Lỗi gửi | `loi_gui` | Text | | |
 | Ngày tạo | `created_at` | DateTime (auto) | | |
 
+#### `signing_key_unlock` — Mở khóa ký bằng PIN (dự kiến, Phase 6)
+
+| Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
+|---|---|---|---|---|
+| ID | `id` | Number (auto) | | |
+| Khóa ký | `khoa` | OneToOne (signing_key) | X | |
+| Hash verifier PIN | `ma_bam_xac_minh_pin` | Text | X | Hash của `verifier`; không lưu PIN |
+| Mảnh bí mật máy chủ | `manh_bi_mat_ma_hoa` | Text | X | `k_srv` mã hóa khi lưu; không log |
+| Tham số KDF | `tham_so_kdf` | JSON | X | Thuật toán, `m`, `t`, `p`, phiên bản |
+| Số lần sai | `so_lan_sai` | Number | X | Mặc định 0 |
+| Khóa đến | `khoa_den` | DateTime | | Rỗng: không bị khóa |
+| Ngày tạo | `created_at` | DateTime (auto) | | |
+| Ngày cập nhật | `update_at` | DateTime (auto) | | |
+
+Bảng trạng thái, không phải bảng bằng chứng: được cập nhật. Mọi sự kiện đặt/đổi/mở khóa/sai/khóa PIN ghi vào `signing_audit_log` (loại đối tượng `signing_key`).
+
 #### Phụ thuộc nhóm khác
 
 | Nhóm / Sheet | Field | Nội dung |
 |---|---|---|
 | Nhóm 7 — CBNV | `anh_chu_ky` | Image (PNG nền trong suốt, tối đa 2MB); ảnh chữ ký cá nhân trong hồ sơ |
-| Nhóm 2 — Văn bản | `van_ban` | Thống nhất một bảng `documents_vanban` hay ba bảng đến/đi/mật |
+| Nhóm 2 — Văn bản | `document_type`, `van_ban_id` | CSDL chung có 3 bảng đến/đi/mật; Trình ký tham chiếu bằng cặp này, không FK. Cần Nhóm 2 xác nhận khóa chính từng bảng |
 
 ### 5.3. Ràng buộc tổng hợp
 
@@ -562,17 +601,17 @@ TU_CHOI     -> (kết thúc; xem_xet_lai thì tạo lượt trình mới)
 
 ## 7. API dự kiến
 
-Prefix `/api/v1/`. Tên endpoint là contract dự kiến, cần đối chiếu convention backend trước khi code. Tên field trong payload trùng tên field CSDL.
+Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt đã dùng trong code (`quy-trinh`, `khoa`). Mục 7.1 và phần khóa của 7.4 đã triển khai ở Phase 5, dùng đúng route trong `backend/apps/signing/urls.py`; mục 7.2, 7.3 còn là contract dự kiến cho Phase 7–9, tên đoạn đường dẫn theo cùng convention khi triển khai. Tên field trong payload trùng tên field CSDL.
 
 ### 7.1. Quy trình
 
-- `GET /signing/processes`: danh sách theo phạm vi/quyền.
-- `POST /signing/processes`: tạo quy trình `NHAP`.
-- `GET /signing/processes/{id}`: chi tiết kèm cấp và người ký (`vai_tro_ky`, `chan_ky_chinh`).
-- `PATCH /signing/processes/{id}`: chỉ khi `NHAP`.
-- `POST /signing/processes/{id}/kich-hoat`
-- `POST /signing/processes/{id}/ngung`
-- `POST /signing/processes/{id}/nhan-ban`: tạo phiên bản mới.
+- `GET /signing/quy-trinh/`: danh sách theo phạm vi/quyền.
+- `POST /signing/quy-trinh/`: tạo quy trình `NHAP`.
+- `GET /signing/quy-trinh/{id}/`: chi tiết kèm cấp và người ký (`vai_tro_ky`, `chan_ky_chinh`).
+- `PATCH /signing/quy-trinh/{id}/`: chỉ khi `NHAP`.
+- `POST /signing/quy-trinh/{id}/kich-hoat/`
+- `POST /signing/quy-trinh/{id}/ngung/`
+- `POST /signing/quy-trinh/{id}/nhan-ban/`: tạo phiên bản mới.
 
 ### 7.2. Yêu cầu trình ký
 
@@ -596,17 +635,20 @@ Prefix `/api/v1/`. Tên endpoint là contract dự kiến, cần đối chiếu 
 
 ### 7.4. Khóa, nhật ký, bằng chứng tổng hợp
 
-- `POST /signing/keys/challenge`: sinh challenge (Redis, TTL 5 phút).
-- `POST /signing/keys/verify`: verify proof-of-possession, kích hoạt khóa.
-- `POST /signing/keys/{id}/xoay-vong`
-- `POST /signing/keys/{id}/thu-hoi`
+- `GET|POST /signing/khoa/`: danh sách khóa của người dùng hiện tại; đăng ký khóa công khai.
+- `GET /signing/khoa/{id}/thach-thuc/`: challenge chứng minh sở hữu (mục 3.4).
+- `POST /signing/khoa/{id}/xac-minh/`: verify proof-of-possession, gán `thoi_diem_xac_minh_so_huu`.
+- `POST /signing/khoa/{id}/kich-hoat/`: chuyển `HOAT_DONG` (khóa đã xác minh).
+- `POST /signing/khoa/{id}/xoay-vong/`
+- `POST /signing/khoa/{id}/thu-hoi/`
+- Dự kiến Phase 6 (bảo vệ khóa bằng PIN, mục 3.4): `POST /signing/khoa/{id}/dat-pin/`, `POST /signing/khoa/{id}/mo-khoa-ky/` (trả mảnh bí mật máy chủ sau khi xác minh PIN), `POST /signing/khoa/{id}/doi-pin/`.
 - `GET /signing/requests/{id}/audit`
 - `GET /signing/attempts/{id}/manifest`: bằng chứng chuẩn hóa và trạng thái xác minh.
 
 ### 7.5. Quy tắc chung
 
 - Lỗi validation trả theo field, kèm mã lỗi nghiệp vụ ổn định.
-- Hành động chuyển trạng thái bắt buộc header `Idempotency-Key`.
+- Hành động chuyển trạng thái của yêu cầu/lượt trình (`gui`, `ky`, `tu-choi`, `yeu-cau-sua`, `uy-quyen`, `thu-hoi`, `huy`, `xem-xet-lai`) bắt buộc header `Idempotency-Key`, áp dụng từ Phase 8. Endpoint quy trình và khóa (Phase 5) chưa áp dụng.
 - Không trả dữ liệu nhạy cảm ngoài contract; không log chữ ký/khóa ở dạng không kiểm soát.
 - Phân trang và lọc giới hạn theo quyền sở hữu, phân công, phạm vi ở server, không chỉ ẩn ở UI.
 - Ảnh chữ ký cá nhân đọc qua contract của Nhóm 7; module này không định nghĩa API hồ sơ.
@@ -615,15 +657,16 @@ Prefix `/api/v1/`. Tên endpoint là contract dự kiến, cần đối chiếu 
 
 - Nhân viên đã xác thực được tạo yêu cầu nếu có quyền truy cập văn bản và thấy quy trình `HOAT_DONG`.
 - Danh sách yêu cầu mặc định gồm: người tạo, người được giao ký, quản trị, kiểm toán; lọc mặc định theo phòng ban người tạo.
-- Permission tối thiểu:
-  - `xem_trinh_ky`
-  - `tao_trinh_ky`
-  - `quan_ly_quy_trinh_ky`
-  - `gui_trinh_ky`
-  - `ky_trinh_ky`
-  - `uy_quyen_trinh_ky`
-  - `huy_trinh_ky`
-  - `xem_nhat_ky_trinh_ky`
+- Permission tối thiểu, tên theo CSDL chung (`auth_permission`):
+  - `view_trinhky`
+  - `add_trinhky`
+  - `manage_signing_process`
+  - `send_trinhky`
+  - `sign_trinhky`
+  - `delegate_trinhky`
+  - `cancel_trinhky`
+  - `view_signing_audit`
+- Ánh xạ từ tên trong bản nháp cũ: `xem_trinh_ky` → `view_trinhky`, `tao_trinh_ky` → `add_trinhky`, `quan_ly_quy_trinh_ky` → `manage_signing_process`, `gui_trinh_ky` → `send_trinhky`, `ky_trinh_ky` → `sign_trinhky`, `uy_quyen_trinh_ky` → `delegate_trinhky`, `huy_trinh_ky` → `cancel_trinhky`, `xem_nhat_ky_trinh_ky` → `view_signing_audit`.
 - Quyền kiểm tra ở API/service; frontend chỉ hỗ trợ UX.
 
 ## 9. Hạn xử lý, thông báo và Celery
@@ -645,6 +688,8 @@ Prefix `/api/v1/`. Tên endpoint là contract dự kiến, cần đối chiếu 
 - Không đặt logic chuyển trạng thái quan trọng chỉ trong task nền; hành động đồng bộ phải tự bảo toàn bất biến.
 
 ## 10. Kế hoạch theo pha
+
+> Mục này là kế hoạch ban đầu và đã được thay bằng `plan-trien-khai-theo-phase.md` (Phase 1–10, đánh số khác). Khi trích dẫn tiến độ hoặc phase, dùng tài liệu `plan-trien-khai-theo-phase.md`.
 
 ### Pha 0 — Chốt contract và khung app
 
@@ -669,7 +714,7 @@ Prefix `/api/v1/`. Tên endpoint là contract dự kiến, cần đối chiếu 
 
 ### Pha 3 — Khóa ký, chữ ký, bằng chứng tổng hợp
 
-- Challenge/proof-of-possession (Redis TTL), xoay vòng, thu hồi, hết hạn.
+- Challenge/proof-of-possession (hiện tại chuỗi cố định; Redis TTL khi chuyển sang challenge ngẫu nhiên, mục 3.4), xoay vòng, thu hồi, hết hạn.
 - Verify Ed25519 trên raw digest.
 - Lưu chữ ký bất biến (`ghi_chu_ky`, `ky_tre_han`, snapshot ảnh), con trỏ `chu_ky_hien_hanh`, bằng chứng chuẩn hóa.
 - Test: lệch mã băm, khóa không hoạt động, chữ ký sai, khóa cũ verify lịch sử, thu hồi/ký lại song song, ký nháy không thu hồi được sau khi ký chính đã ký, không xóa được chữ ký/bằng chứng.
@@ -724,6 +769,7 @@ Prefix `/api/v1/`. Tên endpoint là contract dự kiến, cần đối chiếu 
 ### Mật mã, nhật ký, pháp lý
 
 - Private key không xuất hiện trong request, CSDL, log hoặc bằng chứng tổng hợp.
+- Bản bọc private key không lên server; `k_srv` chỉ trả sau khi xác minh PIN; sai PIN quá ngưỡng thì khóa và có nhật ký; sai PIN không lộ thông tin về PIN.
 - Chữ ký verify được từ khóa công khai và raw SHA-256 digest.
 - Xoay vòng/thu hồi khóa, thu hồi chữ ký, từ chối, yêu cầu sửa, ủy quyền, hủy, quản trị hủy thay đều có nhật ký, kể cả sự kiện không gắn yêu cầu.
 - Bằng chứng chuẩn hóa kiểm tra độc lập được theo lượt trình; `DA_CHOT` bất biến.
@@ -751,13 +797,19 @@ Nếu repo có chuẩn lint/type check thì bổ sung đúng lệnh của repo t
 
 ## 12. Điểm còn mở và rủi ro
 
-- `[CHƯA XÁC MINH]` Model văn bản (một hay ba bảng), đơn vị, chức vụ, API lưu trữ — phụ thuộc Nhóm 2 và nhóm quản lý tổ chức.
-- `[CHƯA XÁC MINH]` Hệ thống permission hiện tại có map trực tiếp với các permission ở mục 8 hay cần adapter.
+- `[CHƯA XÁC MINH]` Model đơn vị, chức vụ, API lưu trữ — phụ thuộc Nhóm 7 (Phase 7).
+- `[CHƯA CHỐT]` Model người dùng của hệ thống (`accounts_employee` ở CSDL chung hay `auth.User` ở Django) và cách gán 8 quyền ở mục 8 (Phase 6).
+- `[CHƯA CHỐT]` Challenge chứng minh sở hữu khóa: chuỗi cố định (hiện tại) hay ngẫu nhiên + TTL + dùng một lần (cần Redis), mục 3.4.
 - `[PHỤ THUỘC NHÓM 7]` Field `anh_chu_ky` và contract đọc ảnh chữ ký trong hồ sơ cá nhân.
 - `[CHƯA CHỐT]` Kích thước pixel chuẩn của ảnh chữ ký.
 - `[CHƯA CHỐT]` Hệ tọa độ vị trí ký: tỷ lệ % hay điểm PDF.
-- `[CHƯA CHỐT]` Khôi phục khóa đa thiết bị; MVP không lưu private key trên backend.
-- `[BỊ CHẶN nếu thiếu]` Không chạy được migration/test tích hợp nếu nhánh chưa có Django project và cấu hình PostgreSQL test.
+- `[CHƯA CHỐT]` Khôi phục khóa đa thiết bị; MVP không lưu private key trên backend. MVP: một khóa trên một thiết bị, mất PIN thì thu hồi và cấp khóa mới sau khi xác minh danh tính (mục 3.4).
+- `[RỦI RO]` Xác thực khi ký phụ thuộc thiết kế PIN ở mục 3.4; chưa triển khai. Hiện tại ký chỉ dựa vào phiên đăng nhập và khóa phía client.
+- `[RỦI RO]` Chống chối bỏ nội bộ chỉ đáng tin ở mức tin cậy vào CSDL (khóa công khai và chữ ký đều lưu trong CSDL). Giảm bằng chuỗi hash nhật ký hoặc dấu thời gian bên thứ ba; chưa thuộc MVP.
+- `[CHƯA XÁC MINH]` Hình thức ký thay (KT., TL., TUQ.), thời hạn ủy quyền; cần pháp chế hoặc Ban chuyên môn xác nhận.
+- `[CHƯA XÁC MINH]` Văn bản mật (`vanbanmat`) có được ký trên hệ thống này hay phải tách môi trường theo quy định bảo vệ bí mật nhà nước; cần pháp chế xác nhận trước Phase 7.
+- `[CHƯA CHỐT]` Thu hồi hoặc thay thế sau khi lượt trình `HOAN_THANH`; nhiều tệp đính kèm; vai trò xem/góp ý không ký.
+- `[RỦI RO]` Test đồng thời (Phase 8) cần PostgreSQL; cấu hình mặc định là SQLite và `requirements.txt` chưa có `psycopg`.
 
 ## 13. Definition of Done
 
@@ -765,7 +817,7 @@ Nếu repo có chuẩn lint/type check thì bổ sung đúng lệnh của repo t
 - FK/retention chặn xóa yêu cầu/lượt trình đã có lịch sử và chặn cascade xóa chữ ký, thread/message, nhật ký, bằng chứng `DA_CHOT`.
 - API/service đã kiểm tra chuyển trạng thái, quyền, quyền sở hữu, ủy quyền, chống trùng.
 - Unit/integration test bao phủ: tuần tự, song song, chặn ký nháy - ký chính, từ chối, yêu cầu sửa, gửi lại toàn bộ, ủy quyền, thu hồi/ký lại giữ lịch sử, ký muộn, ký đồng thời, phẳng hóa không đổi tệp gốc.
-- Test mật mã: lệch mã băm, ranh giới private key, xoay vòng khóa, challenge dùng một lần.
+- Test mật mã: lệch mã băm, ranh giới private key, xoay vòng khóa, challenge dùng một lần (khi áp dụng challenge ngẫu nhiên), PIN và khóa theo số lần sai (Phase 6).
 - Test outbox/Celery: retry không gửi trùng.
 - Không sửa hoặc stage file ngoài phạm vi backend Trình ký.
 - Review nhánh/status/diff trước khi commit và push.

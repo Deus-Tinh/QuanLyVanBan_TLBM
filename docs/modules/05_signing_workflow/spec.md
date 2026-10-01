@@ -76,37 +76,42 @@ Chi tiết field, kiểu dữ liệu và ràng buộc tại [`signing-backend-pl
 
 ## 3. RESTFUL API
 
-Prefix `/api/v1/`. Payload dùng đúng tên field CSDL. Hành động chuyển trạng thái bắt buộc header `Idempotency-Key`.
+Prefix `/api/v1/`. Payload dùng đúng tên field CSDL. Tên đoạn đường dẫn theo convention tiếng Việt của code: endpoint quy trình và khóa đã triển khai (Phase 5); endpoint hồ sơ/lượt trình là dự kiến (Phase 7–9). Hành động chuyển trạng thái của hồ sơ/lượt trình bắt buộc header `Idempotency-Key` (áp dụng từ Phase 8).
 
 | Phương thức | Endpoint | Chức năng | Phân quyền |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/signing/processes/` | Danh sách quy trình theo phạm vi/quyền | `xem_trinh_ky` |
-| `POST` | `/signing/processes/` | Tạo quy trình `NHAP` | `quan_ly_quy_trinh_ky` |
-| `GET` | `/signing/processes/{id}/` | Chi tiết quy trình, cấp, người ký | `xem_trinh_ky` |
-| `PATCH` | `/signing/processes/{id}/` | Sửa quy trình (chỉ khi `NHAP`) | `quan_ly_quy_trinh_ky` |
-| `POST` | `/signing/processes/{id}/kich-hoat/` | Kích hoạt quy trình | `quan_ly_quy_trinh_ky` |
-| `POST` | `/signing/processes/{id}/ngung/` | Ngừng quy trình | `quan_ly_quy_trinh_ky` |
-| `POST` | `/signing/processes/{id}/nhan-ban/` | Nhân bản thành phiên bản mới | `quan_ly_quy_trinh_ky` |
-| `GET` | `/signing/requests/` | Danh sách hồ sơ (phân trang, lọc tab) | `xem_trinh_ky` |
-| `POST` | `/signing/requests/` | Tạo hồ sơ `NHAP` kèm vị trí ký | `tao_trinh_ky` |
+| `GET` | `/signing/quy-trinh/` | Danh sách quy trình theo phạm vi/quyền | `view_trinhky` |
+| `POST` | `/signing/quy-trinh/` | Tạo quy trình `NHAP` | `manage_signing_process` |
+| `GET` | `/signing/quy-trinh/{id}/` | Chi tiết quy trình, cấp, người ký | `view_trinhky` |
+| `PATCH` | `/signing/quy-trinh/{id}/` | Sửa quy trình (chỉ khi `NHAP`) | `manage_signing_process` |
+| `POST` | `/signing/quy-trinh/{id}/kich-hoat/` | Kích hoạt quy trình | `manage_signing_process` |
+| `POST` | `/signing/quy-trinh/{id}/ngung/` | Ngừng quy trình | `manage_signing_process` |
+| `POST` | `/signing/quy-trinh/{id}/nhan-ban/` | Nhân bản thành phiên bản mới | `manage_signing_process` |
+| `GET` | `/signing/requests/` | Danh sách hồ sơ (phân trang, lọc tab) | `view_trinhky` |
+| `POST` | `/signing/requests/` | Tạo hồ sơ `NHAP` kèm vị trí ký | `add_trinhky` |
 | `GET` | `/signing/requests/{id}/` | Chi tiết hồ sơ, tiến trình, quyền xử lý | Người liên quan / Quản trị |
-| `POST` | `/signing/requests/{id}/gui/` | Khóa snapshot, tạo lượt trình | `gui_trinh_ky` (người tạo) |
-| `POST` | `/signing/requests/{id}/huy/` | Hủy hồ sơ | `huy_trinh_ky` (người tạo / quản trị) |
-| `POST` | `/signing/requests/{id}/xem-xet-lai/` | Tạo lượt trình mới sau từ chối | `gui_trinh_ky` |
+| `POST` | `/signing/requests/{id}/gui/` | Khóa snapshot, tạo lượt trình | `send_trinhky` (người tạo) |
+| `POST` | `/signing/requests/{id}/huy/` | Hủy hồ sơ | `cancel_trinhky` (người tạo / quản trị) |
+| `POST` | `/signing/requests/{id}/xem-xet-lai/` | Tạo lượt trình mới sau từ chối | `send_trinhky` |
 | `POST` | `/signing/requests/{id}/phat-hanh/` | Phát hành pháp lý: ký số CA/CCCD, đóng dấu PAdES | Lãnh đạo / Văn thư |
-| `POST` | `/signing/attempts/{id}/ky/` | Ký duyệt: verify Ed25519, snapshot ảnh chữ ký, không sửa tệp | `ky_trinh_ky` (người được chỉ định) |
-| `POST` | `/signing/attempts/{id}/tu-choi/` | Từ chối (lý do bắt buộc) | `ky_trinh_ky` |
-| `POST` | `/signing/attempts/{id}/yeu-cau-sua/` | Yêu cầu sửa, mở thread | `ky_trinh_ky` |
-| `POST` | `/signing/attempts/{id}/uy-quyen/` | Ủy quyền ký khẩn cấp (lý do bắt buộc) | `uy_quyen_trinh_ky` (người ký / quản trị) |
+| `POST` | `/signing/attempts/{id}/ky/` | Ký duyệt: verify Ed25519, snapshot ảnh chữ ký, không sửa tệp | `sign_trinhky` (người được chỉ định) |
+| `POST` | `/signing/attempts/{id}/tu-choi/` | Từ chối (lý do bắt buộc) | `sign_trinhky` |
+| `POST` | `/signing/attempts/{id}/yeu-cau-sua/` | Yêu cầu sửa, mở thread | `sign_trinhky` |
+| `POST` | `/signing/attempts/{id}/uy-quyen/` | Ủy quyền ký khẩn cấp (lý do bắt buộc) | `delegate_trinhky` (người ký / quản trị) |
 | `POST` | `/signing/attempts/{id}/thu-hoi/` | Thu hồi chữ ký (chỉ `SONG_SONG`) | Chính người đã ký |
 | `GET/POST` | `/signing/change-threads/{id}/messages/` | Trao đổi trong thread | Người tạo / người yêu cầu sửa |
 | `POST` | `/signing/change-threads/{id}/giai-quyet/` | Tải bản mới, đóng thread, tạo lượt trình mới | Người tạo hồ sơ |
-| `POST` | `/signing/keys/challenge/` | Sinh challenge đăng ký khóa | Authenticated |
-| `POST` | `/signing/keys/verify/` | Verify proof-of-possession, kích hoạt khóa | Authenticated |
-| `POST` | `/signing/keys/{id}/xoay-vong/` | Xoay vòng khóa | Chủ khóa |
-| `POST` | `/signing/keys/{id}/thu-hoi/` | Thu hồi khóa | Chủ khóa / Quản trị |
-| `GET` | `/signing/requests/{id}/audit/` | Nhật ký hồ sơ | `xem_nhat_ky_trinh_ky` |
-| `GET` | `/signing/attempts/{id}/manifest/` | Bằng chứng tổng hợp và trạng thái xác minh | `xem_trinh_ky` |
+| `GET/POST` | `/signing/khoa/` | Danh sách khóa của người dùng hiện tại; đăng ký khóa công khai | Authenticated |
+| `GET` | `/signing/khoa/{id}/thach-thuc/` | Challenge chứng minh sở hữu khóa | Chủ khóa |
+| `POST` | `/signing/khoa/{id}/xac-minh/` | Verify proof-of-possession | Chủ khóa |
+| `POST` | `/signing/khoa/{id}/kich-hoat/` | Kích hoạt khóa đã xác minh | Chủ khóa |
+| `POST` | `/signing/khoa/{id}/xoay-vong/` | Xoay vòng khóa | Chủ khóa |
+| `POST` | `/signing/khoa/{id}/thu-hoi/` | Thu hồi khóa | Chủ khóa / Quản trị |
+| `POST` | `/signing/khoa/{id}/dat-pin/` | Đặt PIN bảo vệ khóa ký (dự kiến, Phase 6) | Chủ khóa |
+| `POST` | `/signing/khoa/{id}/mo-khoa-ky/` | Xác minh PIN, trả mảnh bí mật máy chủ (dự kiến, Phase 6) | Chủ khóa |
+| `POST` | `/signing/khoa/{id}/doi-pin/` | Đổi PIN (dự kiến, Phase 6) | Chủ khóa |
+| `GET` | `/signing/requests/{id}/audit/` | Nhật ký hồ sơ | `view_signing_audit` |
+| `GET` | `/signing/attempts/{id}/manifest/` | Bằng chứng tổng hợp và trạng thái xác minh | `view_trinhky` |
 
 API ảnh chữ ký cá nhân thuộc Nhóm 7, không nằm trong phân hệ này.
 
@@ -137,6 +142,7 @@ API ảnh chữ ký cá nhân thuộc Nhóm 7, không nằm trong phân hệ nà
 - **Toàn vẹn dữ liệu:** không lưu private key trên backend; verify chữ ký đồng bộ trước khi đổi trạng thái người ký; mã băm của lượt trình, chữ ký và bằng chứng `DA_CHOT` là bất biến; không cascade xóa lịch sử.
 - **Tọa độ chữ ký:** lưu dạng chuẩn hóa (tỷ lệ % hoặc điểm PDF), độc lập độ phân giải màn hình.
 - **Lazy Stamping:** không sửa raw bytes tệp PDF trong luồng nội bộ; chỉ dán ảnh chữ ký một lần khi lượt trình `HOAN_THANH`, dùng snapshot ảnh tại thời điểm ký.
+- **Bảo vệ khóa ký bằng PIN (Phase 6):** PIN 8 chữ số, Argon2id ở client; bản bọc private key chỉ ở thiết bị, server giữ mảnh bí mật `k_srv` và hash verifier, khóa theo số lần sai, có nhật ký. Chi tiết tại `signing-backend-plan.md` mục 3.4.
 - **Ranh giới pháp lý:** người ký phát hành pháp lý bắt buộc có Chứng thư số CA hợp pháp.
 - **Technical Gates:**
   - `python backend/manage.py check` (Pass)

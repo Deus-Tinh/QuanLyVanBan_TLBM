@@ -20,7 +20,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 3 | 11 model còn lại + bất biến ở tầng model | Phase 2 | Hoàn thành (`e51cfda`) |
 | 4 | Service quy trình và khóa ký, ghi nhật ký | Phase 3 | Hoàn thành (`97e5950`) |
 | 5 | API quy trình và khóa ký, giới hạn theo quyền sở hữu | Phase 4 | Hoàn thành (`64ea1cd`) |
-| 6 | Phân quyền theo 8 quyền của phân hệ | Chốt model người dùng và cách gán quyền | Chờ quyết định |
+| 6 | Phân quyền theo 8 quyền của phân hệ; bảo vệ khóa ký bằng PIN (Argon2id + `k_srv`) | Chốt model người dùng và cách gán quyền | Chờ quyết định |
 | 7 | Yêu cầu trình ký, lượt trình, snapshot người ký | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) | Chờ nhóm liên quan |
 | 8 | Hành động ký, từ chối, thu hồi; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
 | 9 | Yêu cầu chỉnh sửa, ủy quyền, hạn xử lý, thông báo | Phase 8 | Chờ Phase 8 |
@@ -52,18 +52,22 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 - `audit.py`: ghi nhật ký dùng chung cho mọi hành động.
 
 ### Phase 5 — API
-- `/api/v1/signing/quy-trinh/` (danh sách, tạo, kích hoạt, ngừng, nhân bản) và `/api/v1/signing/khoa/` (đăng ký, xác minh, kích hoạt, thu hồi).
+- `/api/v1/signing/quy-trinh/` (danh sách, tạo, kích hoạt, ngừng, nhân bản) và `/api/v1/signing/khoa/` (đăng ký, thách thức, xác minh, kích hoạt, xoay vòng, thu hồi).
+- Challenge chứng minh sở hữu khóa là chuỗi cố định gắn dấu vân tay khóa, chưa có TTL/dùng một lần (xem `signing-backend-plan.md` mục 3.4).
 - Xác thực bắt buộc; giới hạn theo người sở hữu/người tạo ở server. Phân quyền chi tiết để Phase 6.
 
 ### Phase 6 — Phân quyền (chờ quyết định)
 - 8 quyền theo CSDL chung: `view_trinhky`, `add_trinhky`, `sign_trinhky`, `manage_signing_process`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit`.
 - Cần chốt: model người dùng của hệ thống (`accounts_employee` hay `auth.User`) và cách kiểm tra quyền ở tầng API.
+- Bảo vệ khóa ký bằng PIN theo `signing-backend-plan.md` mục 3.4: bảng `signing_key_unlock`, endpoint `dat-pin`, `mo-khoa-ky`, `doi-pin`, khóa theo số lần sai (5 lần: 15 phút; 10 lần: khóa cứng), nhật ký sự kiện PIN. Service và model nằm ở backend; phần Argon2id WASM nằm ở frontend (Phase 10).
+- Test: sai PIN quá ngưỡng bị khóa; bộ đếm đúng khi gọi đồng thời; `k_srv` chỉ trả sau khi xác minh; không có endpoint nào trả bản bọc hoặc PIN.
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
+- Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không; hình thức ký thay (KT., TL., TUQ.) và thời hạn ủy quyền.
 - Phase 7: cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
 - Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL.
 - Phase 9: nhắc hạn cần cấu hình tác vụ định kỳ.
-- Phase 10: cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF).
+- Phase 10: cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF); dòng nhận diện "bản duyệt nội bộ, chưa phát hành" trên tệp hoàn tất; màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
 
 ## 4. Đối chiếu CSDL chung sau issue #47
 
@@ -73,4 +77,7 @@ Các điểm lệch còn lại cần xác nhận:
 
 1. `signing_request.document_type` có `DEFAULT 'vanbanden'`. Khi dữ liệu thiếu, văn bản đi hoặc mật bị ghi nhầm thành văn bản đến. Đề xuất bỏ giá trị mặc định.
 2. Kiểu enum `signing_key_status` (`PENDING`, `ROTATED`...) không khớp trạng thái khóa dùng ở phân hệ (`CHO_KICH_HOAT`, `DA_XOAY_VONG`...), và cột `signing_key.trang_thai` không dùng kiểu này. Đề xuất bỏ kiểu enum thừa hoặc đồng bộ giá trị.
-3. Tổng số lượt phân quyền: tiêu đề file ghi 178, phản hồi issue ghi 198. Danh sách quyền `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` xuất hiện lặp hai lần trong danh sách quyền của nhóm `BGD` ở phần seed (không gây lỗi do `ON CONFLICT DO NOTHING`, nhưng làm sai lệch cách đếm).
+3. Tổng số lượt phân quyền: tiêu đề file ghi 178, phản hồi issue ghi 198. Header file ghi 73 quyền nhưng tiêu đề mục seed ghi 66. Danh sách quyền `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` xuất hiện lặp hai lần trong danh sách quyền của nhóm `BGD` ở phần seed (không gây lỗi do `ON CONFLICT DO NOTHING`, nhưng làm sai lệch cách đếm).
+4. Trigger `prevent_delete_or_tamper_signing_signature` chỉ so 9 cột; `ghi_chu_ky`, `ky_tre_han`, `so_giay_tre`, `created_at` vẫn sửa được ở DB, trong khi model chỉ cho đổi `trang_thai_xac_minh` và `thoi_diem_xac_minh`. Đề xuất chặn mọi cột trừ hai cột xác minh.
+5. `ON DELETE` của DDL lệch model (PROTECT) ở `signing_attempt.trinh_ky_id` (CASCADE), `signing_attempt.luot_truoc_id` (SET NULL), `signing_request_step.luot_trinh_id` (CASCADE), `signing_request_step_signer.buoc_ky_id` (CASCADE), `signing_request_step_signer.uy_quyen_tu_id` (SET NULL), `signing_key.khoa_thay_the_id` (SET NULL). Đề xuất đổi sang `RESTRICT`.
+6. DDL trỏ FK người dùng tới `accounts_employee`, còn migration nhánh 5 trỏ `auth_user`; DDL thêm FK cho `don_vi_id`, `chuc_vu_id` trong khi model là số nguyên. Chốt cùng Phase 6–7.
