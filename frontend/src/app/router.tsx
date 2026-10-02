@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
@@ -20,19 +20,7 @@ interface RouterProps {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(() => {
-    let session = localStorage.getItem('tlbm_session');
-    if (!session) {
-      const defaultUser = {
-        username: 'thanhnha',
-        fullName: 'Huỳnh Vương Thanh Nhã',
-        role: 'staff',
-        roleTitle: 'Cán bộ chuyên môn (Nhóm 8 · AI Chatbox)',
-        token: 'session-token-tlbm',
-      };
-      localStorage.setItem('tlbm_session', JSON.stringify(defaultUser));
-      session = JSON.stringify(defaultUser);
-    }
-    return Boolean(session);
+    return Boolean(localStorage.getItem('tlbm_session'));
   });
 
   React.useEffect(() => {
@@ -80,7 +68,7 @@ export default function AppRouter({
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Navigate to="/ai-assistant" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Phân hệ Văn bản (Nhóm 2 phụ trách theo đề cương) */}
