@@ -508,6 +508,24 @@ class DocumentAutoExpireTests(TestCase):
             nguoi_tao=self.user,
         )
 
+        # 4. Văn bản còn hiệu lực 1 phần nhưng đã quá hạn (phải chuyển sang HET_HIEU_LUC)
+        self.doc_partial_expired = VanBanDen.objects.create(
+            nam=2026, so_hieu="102/CV-PARTIAL-EXP", so_thu_tu=4,
+            trich_yeu="Văn bản còn hiệu lực 1 phần nhưng quá hạn",
+            hieu_luc=HieuLuc.CON_HIEU_LUC_1_PHAN,
+            ngay_het_hieu_luc=self.past_date,
+            nguoi_tao=self.user,
+        )
+
+        # 5. Văn bản còn hiệu lực 1 phần còn hạn trong tương lai (giữ nguyên CON_HIEU_LUC_1_PHAN)
+        self.doc_partial_active = VanBanDen.objects.create(
+            nam=2026, so_hieu="103/CV-PARTIAL-ACT", so_thu_tu=5,
+            trich_yeu="Văn bản còn hiệu lực 1 phần trong tương lai",
+            hieu_luc=HieuLuc.CON_HIEU_LUC_1_PHAN,
+            ngay_het_hieu_luc=self.future_date,
+            nguoi_tao=self.user,
+        )
+
     def test_auto_expire_on_get_api(self):
         """Khi gọi API GET /api/documents/, văn bản quá hạn tự động chuyển sang HET_HIEU_LUC."""
         client = APIClient()
@@ -525,6 +543,14 @@ class DocumentAutoExpireTests(TestCase):
         self.doc_replaced.refresh_from_db()
         self.assertEqual(self.doc_replaced.hieu_luc, HieuLuc.HET_VA_THAY_THE)
 
+        # Kiểm tra văn bản còn hiệu lực 1 phần quá hạn tự chuyển thành HET_HIEU_LUC
+        self.doc_partial_expired.refresh_from_db()
+        self.assertEqual(self.doc_partial_expired.hieu_luc, HieuLuc.HET_HIEU_LUC)
+
+        # Văn bản còn hiệu lực 1 phần chưa quá hạn giữ nguyên CON_HIEU_LUC_1_PHAN
+        self.doc_partial_active.refresh_from_db()
+        self.assertEqual(self.doc_partial_active.hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+
     def test_management_command_expire_documents(self):
         """Management command expire_documents hoạt động chính xác."""
         from django.core.management import call_command
@@ -535,6 +561,9 @@ class DocumentAutoExpireTests(TestCase):
 
         self.doc_expired.refresh_from_db()
         self.assertEqual(self.doc_expired.hieu_luc, HieuLuc.HET_HIEU_LUC)
+
+        self.doc_partial_expired.refresh_from_db()
+        self.assertEqual(self.doc_partial_expired.hieu_luc, HieuLuc.HET_HIEU_LUC)
 
 
 class DocumentPermissionOption2Tests(TestCase):

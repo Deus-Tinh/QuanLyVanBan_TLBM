@@ -70,22 +70,25 @@ def check_and_update_expired_documents() -> int:
     """
     Quét và tự động chuyển trạng thái các văn bản đã tới hoặc quá ngày hết hiệu lực
     sang 'HET_HIEU_LUC' trên cả 3 model: Đến, Đi, Mật.
+    Áp dụng cho cả CON_HIEU_LUC và CON_HIEU_LUC_1_PHAN.
     """
     now = timezone.now()
+    active_statuses = [HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN]
+
     count_den = VanBanDen.objects.filter(
-        hieu_luc=HieuLuc.CON_HIEU_LUC,
+        hieu_luc__in=active_statuses,
         ngay_het_hieu_luc__isnull=False,
         ngay_het_hieu_luc__lte=now,
     ).update(hieu_luc=HieuLuc.HET_HIEU_LUC)
 
     count_di = VanBanDi.objects.filter(
-        hieu_luc=HieuLuc.CON_HIEU_LUC,
+        hieu_luc__in=active_statuses,
         ngay_het_hieu_luc__isnull=False,
         ngay_het_hieu_luc__lte=now,
     ).update(hieu_luc=HieuLuc.HET_HIEU_LUC)
 
     count_mat = VanBanMat.objects.filter(
-        hieu_luc=HieuLuc.CON_HIEU_LUC,
+        hieu_luc__in=active_statuses,
         ngay_het_hieu_luc__isnull=False,
         ngay_het_hieu_luc__lte=now,
     ).update(hieu_luc=HieuLuc.HET_HIEU_LUC)
