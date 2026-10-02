@@ -134,6 +134,63 @@ def get_dynamic_replacements(doc) -> list[str]:
                 pass
 
     return results
+ 
+ 
+# ═══════════════════════════════════════════════════════════════════
+# 2.2 QUERYSET DÙNG CHUNG / KIỂM QUYỀN TRUY CẬP (Mục B4 & B5 Issue #53)
+# ═══════════════════════════════════════════════════════════════════
+
+def get_accessible_documents(user, doc_type: str = "vanbanden", strict_need_to_know: bool = False):
+    """
+    QuerySet chuẩn hoá dùng chung cho:
+    - Module Văn Bản (Nhóm 2)
+    - Dashboard / KPI (Nhóm 1)
+    - Trợ lý AI (Nhóm 8)
+
+    Quy tắc phân quyền (Access Control Matrix):
+    1. Văn bản Đến (vanbanden):
+       - User thường: xem được nếu hien_thi=True
+       - Admin/Staff: xem được tất cả
+    2. Văn bản Đi (vanbandi):
+       - User thường: xem được nếu hien_thi=True
+       - Admin/Staff: xem được tất cả
+    3. Văn bản Mật (vanbanmat) - Nguyên tắc Need-to-know:
+       - User thường: CHỈ xem được nếu:
+         + Là người tạo (nguoi_tao=user), HOẶC
+         + Đích danh là người nhận (user in nguoi_nhan), HOẶC
+         + Thuộc đơn vị nhận (don_vi_nhan chứa đơn vị của user)
+       - Admin/Superuser: Khi bật strict_need_to_know=True (Dashboard/AI),
+         kể cả admin cũng phải thuộc danh sách người nhận/người tạo mới được cấp dữ liệu.
+    """
+    from django.db.models import Q
+
+    doc_type_clean = str(doc_type).strip().lower()
+    if doc_type_clean in ("di", "vanbandi"):
+        model = VanBanDi
+    elif doc_type_clean in ("mat", "vanbanmat"):
+        model = VanBanMat
+    else:
+        model = VanBanDen
+
+    if not user or not user.is_authenticated:
+        return model.objects.none()
+
+    qs = model.objects.select_related("nguoi_tao").prefetch_related("attachments", "nguoi_nhan")
+    is_admin = getattr(user, "is_superuser", False) or getattr(user, "is_staff", False)
+
+    if model == VanBanMat:
+        need_to_know = Q(nguoi_nhan=user) | Q(nguoi_tao=user)
+        user_don_vi = getattr(user, "don_vi", None) or getattr(user, "don_vi_id", None)
+        if hasattr(model, "don_vi_nhan") and user_don_vi:
+            need_to_know |= Q(don_vi_nhan=user_don_vi)
+
+        if strict_need_to_know or not is_admin:
+            qs = qs.filter(need_to_know).distinct()
+    else:
+        if not is_admin:
+            qs = qs.filter(hien_thi=True)
+
+    return qs
 
 
 # ═══════════════════════════════════════════════════════════════════

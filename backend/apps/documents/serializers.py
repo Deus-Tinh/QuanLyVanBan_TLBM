@@ -260,9 +260,10 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         loai = validated_data.pop("loai", LoaiVanBan.DEN)
         model = get_document_model(loai)
 
-        # VB Mật không có so_thu_tu
+        # VB Mật không có so_thu_tu và không gửi mail toàn trường (Mục B2)
         if str(loai).upper() in ("MAT", "VANBANMAT"):
             validated_data.pop("so_thu_tu", None)
+            validated_data["gui_mail_toan_he_thong"] = False
 
         instance = model.objects.create(**validated_data)
         if nguoi_nhan:
@@ -313,6 +314,12 @@ class VanBanMatSerializer(serializers.ModelSerializer):
     loai_display = serializers.CharField(source="get_loai_display", read_only=True)
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
     attachments = VanBanMatAttachmentSerializer(many=True, read_only=True)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # Mục B2 Issue #53: Văn bản mật không gửi email toàn hệ thống
+        attrs["gui_mail_toan_he_thong"] = False
+        return attrs
 
     class Meta:
         model = VanBanMat

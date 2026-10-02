@@ -56,6 +56,7 @@ from .services import (
     export_to_excel,
     generate_excel_template,
     generate_so_thu_tu,
+    get_accessible_documents,
     import_from_excel,
     log_document_view,
 )
@@ -253,13 +254,8 @@ class DocumentViewSet(viewsets.ViewSet):
 
     def _get_queryset_for_model(self, model):
         check_and_update_expired_documents()
-        qs = model.objects.select_related("nguoi_tao").prefetch_related("attachments", "nguoi_nhan")
-        user = self.request.user
-
-        # Bảo vệ Văn bản Mật
-        if model == VanBanMat and not user.is_staff:
-            qs = qs.filter(Q(nguoi_nhan=user) | Q(nguoi_tao=user)).distinct()
-        return qs
+        doc_type = getattr(model, "document_kind", "vanbanden")
+        return get_accessible_documents(self.request.user, doc_type)
 
     def _get_object_across_models(self, pk):
         loai = self.request.query_params.get("loai") or self.request.query_params.get("type")
@@ -528,6 +524,9 @@ class VanBanDenViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = VanBanDenFilter
 
+    def get_queryset(self):
+        return get_accessible_documents(self.request.user, "vanbanden")
+
     def perform_create(self, serializer):
         nam = serializer.validated_data.get("nam", timezone.now().year)
         so_thu_tu = generate_so_thu_tu("DEN", nam)
@@ -538,12 +537,14 @@ class VanBanDenViewSet(viewsets.ModelViewSet):
 
 class VanBanDiViewSet(viewsets.ModelViewSet):
     """API ViewSet riêng biệt cho Văn bản Đi."""
-    queryset = VanBanDi.objects.select_related("nguoi_tao").prefetch_related("attachments", "nguoi_nhan")
     serializer_class = VanBanDiSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = DocumentPagination
     filter_backends = [DjangoFilterBackend]
     filterset_class = VanBanDiFilter
+
+    def get_queryset(self):
+        return get_accessible_documents(self.request.user, "vanbandi")
 
     def perform_create(self, serializer):
         nam = serializer.validated_data.get("nam", timezone.now().year)
@@ -562,11 +563,7 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
     filterset_class = VanBanMatFilter
 
     def get_queryset(self):
-        user = self.request.user
-        qs = VanBanMat.objects.select_related("nguoi_tao").prefetch_related("attachments", "nguoi_nhan")
-        if not user.is_staff:
-            qs = qs.filter(Q(nguoi_nhan=user) | Q(nguoi_tao=user)).distinct()
-        return qs
+        return get_accessible_documents(self.request.user, "vanbanmat")
 
     def perform_create(self, serializer):
         doc = serializer.save(nguoi_tao=self.request.user)

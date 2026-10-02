@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import apiClient from '@lib/apiClient';
 import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
@@ -41,7 +42,7 @@ interface FormState {
   ten_loai_van_ban: string;
   nguoi_ky: string;
   chuc_vu: string;
-  hieu_luc: 'CON_HIEU_LUC' | 'HET_HIEU_LUC' | 'HET_VA_THAY_THE';
+  hieu_luc: 'CON_HIEU_LUC' | 'CON_HIEU_LUC_1_PHAN' | 'HET_HIEU_LUC' | 'HET_VA_THAY_THE';
   ngay_het_hieu_luc: string;
   link_thay_the: string;
   ghi_chu: string;
@@ -92,7 +93,10 @@ function toLocalDateString(dateInput?: string | Date | null): string {
   if (!dateInput) return '';
   const d = new Date(dateInput);
   if (isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatFileSize(bytes?: number): string {
@@ -138,7 +142,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
 
   function buildInitialForm(initDoc?: any): FormState {
     const now = new Date();
-    const defaultDatetime = toLocalDatetimeString(now);
     const defaultDate = toLocalDateString(now);
 
     if (!initDoc) {
@@ -147,7 +150,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         nam: now.getFullYear(),
         so_hieu: '',
         so_thu_tu: undefined,
-        ngay_den: defaultDatetime,
+        ngay_den: defaultDate,
         ngay_van_ban: defaultDate,
         noi_ban_hanh: '',
         trich_yeu: '',
@@ -177,7 +180,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       nam: initDoc.nam ?? now.getFullYear(),
       so_hieu: initDoc.so_hieu ?? initDoc.soHieu ?? '',
       so_thu_tu: initDoc.so_thu_tu ?? initDoc.soDen ?? undefined,
-      ngay_den: toLocalDatetimeString(initDoc.ngay_den ?? initDoc.ngayDen) || defaultDatetime,
+      ngay_den: toLocalDateString(initDoc.ngay_den ?? initDoc.ngayDen) || defaultDate,
       ngay_van_ban: toLocalDateString(initDoc.ngay_van_ban ?? initDoc.ngayVanBan ?? initDoc.ngay_thang_van_ban) || defaultDate,
       noi_ban_hanh: initDoc.noi_ban_hanh ?? initDoc.coQuanBanHanh ?? initDoc.co_quan_ban_hanh ?? '',
       trich_yeu: initDoc.trich_yeu ?? initDoc.trichYeu ?? '',
@@ -419,10 +422,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       payload.append('gui_mail_toan_he_thong', form.gui_mail_toan_he_thong ? 'true' : 'false');
 
       if (form.ngay_den) {
-        payload.append('ngay_den', new Date(form.ngay_den).toISOString());
+        payload.append('ngay_den', form.ngay_den);
       }
       if (form.ngay_van_ban) {
-        payload.append('ngay_van_ban', new Date(form.ngay_van_ban).toISOString());
+        payload.append('ngay_van_ban', form.ngay_van_ban);
       }
       if (form.nguoi_ky?.trim()) {
         payload.append('nguoi_ky', form.nguoi_ky.trim());
@@ -440,7 +443,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         payload.append('link_thay_the', '');
       }
       if (form.ngay_het_hieu_luc) {
-        payload.append('ngay_het_hieu_luc', new Date(form.ngay_het_hieu_luc).toISOString());
+        payload.append('ngay_het_hieu_luc', form.ngay_het_hieu_luc);
       }
 
       if (Array.isArray(form.nguoi_nhan)) {
@@ -460,7 +463,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
             id: initial?.id || Date.now(),
             ...form,
             so_thu_tu: initial?.so_thu_tu || Math.floor(Math.random() * 50 + 1),
-            ngay_den: form.ngay_den ? new Date(form.ngay_den).toISOString() : new Date().toISOString(),
+            ngay_den: form.ngay_den || toLocalDateString(new Date()),
             created_at: new Date().toISOString(),
             attachment_count: files.length + existingAttachments.length,
           };
@@ -511,14 +514,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
       {/* Modal Dialog Card */}
       <form
-        className="bg-surface border border-border-subtle rounded-2xl shadow-2xl z-10 w-[940px] max-w-full flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150"
+        className="bg-surface border border-border-subtle rounded-2xl shadow-2xl z-10 w-[940px] max-w-full flex flex-col max-h-[88vh] my-auto animate-in fade-in zoom-in-95 duration-150"
         onSubmit={handleSubmit}
       >
         {/* Sticky Header */}
@@ -592,10 +595,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
               {/* Ngày đến */}
               <div className="col-span-12 sm:col-span-4">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Ngày giờ đến <span className="text-danger">*</span>
+                  Ngày đến <span className="text-danger">*</span>
                 </label>
                 <input
-                  type="datetime-local"
+                  type="date"
                   value={form.ngay_den}
                   onChange={e => setForm({ ...form, ngay_den: e.target.value })}
                   className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
@@ -630,6 +633,26 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
+              {/* Danh mục hồ sơ (chia danh mục trước rồi mới chia theo loại văn bản) */}
+              <div className="col-span-12 sm:col-span-4">
+                <label className="block text-xs font-semibold text-secondary mb-1.5">
+                  Danh mục hồ sơ
+                </label>
+                <input
+                  list="folder-types-list"
+                  value={form.danh_muc_ho_so}
+                  onChange={e => setForm({ ...form, danh_muc_ho_so: e.target.value })}
+                  placeholder="VD: Hồ sơ công văn đến..."
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                />
+                <datalist id="folder-types-list">
+                  <option value="Hồ sơ công văn đến năm 2026" />
+                  <option value="Hồ sơ chỉ đạo điều hành năm 2026" />
+                  <option value="Hồ sơ nhân sự & tổ chức" />
+                  <option value="Hồ sơ tài chính & dự án" />
+                </datalist>
+              </div>
+
               {/* Loại văn bản */}
               <div className="col-span-12 sm:col-span-4">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
@@ -652,27 +675,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   <option value="Nghị quyết" />
                   <option value="Báo cáo" />
                   <option value="Hướng dẫn" />
-                </datalist>
-              </div>
-
-              {/* Danh mục hồ sơ */}
-              <div className="col-span-12 sm:col-span-4">
-                <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Danh mục hồ sơ
-                </label>
-                <input
-                  list="folder-types-list"
-                  value={form.danh_muc_ho_so}
-                  onChange={e => setForm({ ...form, danh_muc_ho_so: e.target.value })}
-                  placeholder="VD: Hồ sơ công văn đến..."
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                />
-                <datalist id="folder-types-list">
-                  <option value="Hồ sơ công văn đến năm 2026" />
-                  <option value="Hồ sơ chỉ đạo điều hành năm 2026" />
-                  <option value="Hồ sơ đào tạo & tuyển sinh năm 2026" />
-                  <option value="Hồ sơ tài chính kế hoạch" />
-                  <option value="Hồ sơ đề án khoa học công nghệ" />
                 </datalist>
               </div>
             </div>
@@ -765,12 +767,60 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Trạng thái hiệu lực (Khi Thêm mới: Khóa mặc định "Còn hiệu lực"; Khi Sửa: Có đủ 3 trạng thái) */}
+              {/* Trạng thái hiệu lực (Hiển thị màu sắc động & hiệu ứng tương ứng với trạng thái) */}
               <div className="col-span-12 sm:col-span-6">
-                <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Trạng thái hiệu lực
-                </label>
-                {initial?.id ? (
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-secondary m-0">
+                    Trạng thái hiệu lực
+                  </label>
+                  {form.hieu_luc === 'CON_HIEU_LUC' && (
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Đang áp dụng
+                    </span>
+                  )}
+                  {form.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
+                    <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                      Hiệu lực 1 phần
+                    </span>
+                  )}
+                  {form.hieu_luc === 'HET_HIEU_LUC' && (
+                    <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                      Hết giá trị
+                    </span>
+                  )}
+                  {form.hieu_luc === 'HET_VA_THAY_THE' && (
+                    <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      Đã bị thay thế
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+                    {form.hieu_luc === 'CON_HIEU_LUC' && (
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                      </span>
+                    )}
+                    {form.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500" />
+                      </span>
+                    )}
+                    {form.hieu_luc === 'HET_HIEU_LUC' && (
+                      <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+                    )}
+                    {form.hieu_luc === 'HET_VA_THAY_THE' && (
+                      <span className="inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                    )}
+                  </div>
+
                   <select
                     value={form.hieu_luc}
                     onChange={e => {
@@ -782,25 +832,32 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                         setShowReplacementDropdown(false);
                       }
                     }}
-                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                    className={`w-full text-sm rounded-xl pl-8 pr-8 py-2 font-semibold transition-all duration-200 border cursor-pointer ${
+                      form.hieu_luc === 'CON_HIEU_LUC'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-xs'
+                        : form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
+                        ? 'bg-purple-500/10 border-purple-500/40 text-purple-700 dark:text-purple-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-xs'
+                        : form.hieu_luc === 'HET_HIEU_LUC'
+                        ? 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-400 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 shadow-xs'
+                        : 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-xs'
+                    }`}
                   >
                     {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                      <option value="HET_VA_THAY_THE" disabled>
+                      <option value="HET_VA_THAY_THE" disabled className="bg-surface text-main font-normal">
                         Đã bị thay thế (Hệ thống tự động)
                       </option>
                     )}
-                    <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-                    <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-                  </select>
-                ) : (
-                  <div className="w-full text-sm bg-surface/60 border border-border-subtle rounded-xl px-3 py-2 text-main flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-emerald-600 font-semibold text-xs">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                    <option value="CON_HIEU_LUC" className="bg-surface text-emerald-600 font-semibold">
                       Còn hiệu lực
-                    </span>
-                    <span className="text-[11px] text-muted italic">Mặc định khi thêm mới</span>
-                  </div>
-                )}
+                    </option>
+                    <option value="CON_HIEU_LUC_1_PHAN" className="bg-surface text-purple-600 font-semibold">
+                      Còn hiệu lực 1 phần
+                    </option>
+                    <option value="HET_HIEU_LUC" className="bg-surface text-rose-600 font-semibold">
+                      Hết hiệu lực
+                    </option>
+                  </select>
+                </div>
               </div>
 
               {/* Ngày hết hiệu lực */}
@@ -816,8 +873,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Tùy chọn thay thế cho văn bản khác khi trạng thái Còn hiệu lực */}
-              {form.hieu_luc === 'CON_HIEU_LUC' && (
+              {/* Tùy chọn thay thế cho văn bản khác khi trạng thái Còn hiệu lực hoặc Còn hiệu lực 1 phần */}
+              {(form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN') && (
                 <div className="col-span-12 pt-1">
                   <label className="inline-flex items-center gap-2 cursor-pointer select-none">
                     <input
@@ -847,12 +904,12 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-semibold text-warning-text m-0">
                       <i className="fa-solid fa-link mr-1.5" />
-                      {form.hieu_luc === 'CON_HIEU_LUC'
+                      {isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
                         ? 'Văn bản bị thay thế (Số hiệu hoặc liên kết) *'
                         : 'Văn bản mới thay thế (Số hiệu hoặc liên kết) *'}
                     </label>
                     <span className="text-[11px] text-muted">
-                      {form.hieu_luc === 'CON_HIEU_LUC'
+                      {isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
                         ? 'Gõ số hiệu văn bản cũ để tìm nhanh'
                         : 'Gõ số hiệu hoặc từ khóa để gợi ý'}
                     </span>
@@ -999,7 +1056,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                         className="w-4 h-4 text-primary rounded border-border-subtle focus:ring-primary/20 transition-fast"
                       />
                       <span>
-                        {form.hieu_luc === 'CON_HIEU_LUC' ? (
+                        {isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN' ? (
                           <>Tự động cập nhật văn bản cũ sang trạng thái <strong className="text-warning-text">Đã thay thế</strong></>
                         ) : (
                           <>Tự động đồng bộ liên kết 2 chiều giữa hai văn bản</>
@@ -1245,21 +1302,33 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   </div>
                 </label>
 
-                {/* Gửi mail */}
-                <label className="flex items-start gap-3 p-3 rounded-xl border border-border-subtle bg-surface hover:bg-hover/50 cursor-pointer transition-fast">
-                  <input
-                    type="checkbox"
-                    checked={form.gui_mail_toan_he_thong}
-                    onChange={e => setForm({ ...form, gui_mail_toan_he_thong: e.target.checked })}
-                    className="mt-0.5 rounded border-border-subtle text-primary focus:ring-primary"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-main block">Gửi email toàn trường</span>
-                    <span className="text-[11px] text-muted block leading-snug">
-                      Tự động gửi thông báo văn bản mới tới hòm thư CBNV
-                    </span>
+                {/* Gửi mail (Chỉ cho Văn bản Đến / Đi, Văn bản Mật lưu hành nội bộ khép kín) */}
+                {form.loai !== 'MAT' ? (
+                  <label className="flex items-start gap-3 p-3 rounded-xl border border-border-subtle bg-surface hover:bg-hover/50 cursor-pointer transition-fast">
+                    <input
+                      type="checkbox"
+                      checked={form.gui_mail_toan_he_thong}
+                      onChange={e => setForm({ ...form, gui_mail_toan_he_thong: e.target.checked })}
+                      className="mt-0.5 rounded border-border-subtle text-primary focus:ring-primary"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-main block">Gửi email toàn trường</span>
+                      <span className="text-[11px] text-muted block leading-snug">
+                        Tự động gửi thông báo văn bản mới tới hòm thư CBNV
+                      </span>
+                    </div>
+                  </label>
+                ) : (
+                  <div className="flex items-start gap-3 p-3 rounded-xl border border-purple-500/20 bg-purple-500/5 text-purple-700 dark:text-purple-300">
+                    <span className="text-base leading-none">🔒</span>
+                    <div>
+                      <span className="text-xs font-bold block">Văn bản Mật lưu hành nội bộ</span>
+                      <span className="text-[11px] text-muted block leading-snug">
+                        Không gửi email diện rộng toàn trường. Chỉ cán bộ/đơn vị nhận được chỉ định mới có quyền tiếp cận.
+                      </span>
+                    </div>
                   </div>
-                </label>
+                )}
               </div>
             </div>
           </div>
@@ -1299,6 +1368,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         onClose={() => setAlertOpen(false)}
         message={alertMsg}
       />
-    </div>
+    </div>,
+    document.body
   );
 }

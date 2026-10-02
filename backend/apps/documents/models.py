@@ -319,6 +319,11 @@ class VanBanMat(BaseVanBan):
     def noi_ban_hanh(self, val):
         self._noi_ban_hanh = val
 
+    def save(self, *args, **kwargs):
+        # Mục B2 Issue #53: Văn bản mật luôn bị ép gui_mail_toan_he_thong = False
+        self.gui_mail_toan_he_thong = False
+        super().save(*args, **kwargs)
+
     class Meta:
         db_table = "documents_vanbanmat"
         verbose_name = "Văn bản Mật"
