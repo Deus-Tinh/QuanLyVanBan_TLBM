@@ -57,10 +57,14 @@ INSTALLED_APPS = [
     "dashboard",
     "birthdays",
     "organizations",
+    "authorization",
 ]
 
 # Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
 AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo SQL_Fix4: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

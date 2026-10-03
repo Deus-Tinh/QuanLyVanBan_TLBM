@@ -32,10 +32,7 @@ class OrganizationModelAndAPITest(TestCase):
             email="test@itc.edu.vn",
             don_vi=self.unit,
         )
-        self.export_permission = Permission.objects.get(
-            content_type__app_label="organizations",
-            codename="export_donvi",
-        )
+        self.export_permission = Permission.objects.get(codename="export_donvi")
         self.user.user_permissions.add(self.export_permission)
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)

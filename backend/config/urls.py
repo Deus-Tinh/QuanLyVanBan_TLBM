@@ -22,5 +22,9 @@ urlpatterns = [
     # ── Module Nhóm 7 — Khánh (Issue #24) ──────────────────────────────────
     # API Quản lý Cán bộ Nhân viên (CBNV): /api/accounts/...
     path("api/accounts/", include("accounts.employee_urls", namespace="employee_management")),
+
+    # ── Module Nhóm 7 — Tân + Hiếu (Issue #21) ─────────────────────────────
+    # API Phân quyền (Issue #21): /api/roles/, /api/permissions/, /api/auth/me/permissions/
+    path("api/", include("authorization.urls", namespace="authorization")),
 ]
 
