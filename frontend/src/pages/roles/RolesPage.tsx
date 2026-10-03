@@ -41,7 +41,7 @@ export default function RolesPage() {
   // Tải toàn bộ danh sách quyền hệ thống (1 lần, dùng chung cho mọi nhóm quyền)
   useEffect(() => {
     let ignore = false;
-    apiClient<Permission[]>('/api/authorization/permissions/?all=true')
+    apiClient<Permission[]>('/api/permissions/?all=true')
       .then((data) => {
         if (!ignore) setPermissions(data || []);
       })
@@ -52,7 +52,7 @@ export default function RolesPage() {
   }, []);
 
   const requestRoles = () =>
-    apiClient<PaginatedResponse<Role> | Role[]>('/api/authorization/groups/?all=true').then((res) =>
+    apiClient<PaginatedResponse<Role> | Role[]>('/api/roles/?all=true').then((res) =>
       Array.isArray(res) ? res : res.results || []
     );
 
@@ -123,7 +123,7 @@ export default function RolesPage() {
     if (!selectedRole) return;
     setIsSavingPermissions(true);
     try {
-      await apiClient.put(`/api/authorization/groups/${selectedRole.id}/`, {
+      await apiClient.put(`/api/roles/${selectedRole.id}/`, {
         name: selectedRole.name,
         permission_ids: Array.from(selectedPermissionIds),
       });
@@ -142,11 +142,11 @@ export default function RolesPage() {
     try {
       if (editingRole) {
         // Chỉ đổi tên - không gửi permission_ids để giữ nguyên quyền hiện có
-        await apiClient.put(`/api/authorization/groups/${editingRole.id}/`, { name: formData.name });
+        await apiClient.put(`/api/roles/${editingRole.id}/`, { name: formData.name });
         showToast('roles.messages.updateSuccess');
         await reloadRoles();
       } else {
-        const created = await apiClient.post<Role>('/api/authorization/groups/', { name: formData.name });
+        const created = await apiClient.post<Role>('/api/roles/', { name: formData.name });
         showToast('roles.messages.createSuccess');
         await reloadRoles();
         if (created?.id) {
@@ -163,7 +163,7 @@ export default function RolesPage() {
     if (!deletingRole) return;
     setIsDeletingRole(true);
     try {
-      await apiClient.delete(`/api/authorization/groups/${deletingRole.id}/`);
+      await apiClient.delete(`/api/roles/${deletingRole.id}/`);
       showToast('roles.messages.deleteSuccess');
       if (selectedRoleId === deletingRole.id) {
         setSelectedRoleId(null);

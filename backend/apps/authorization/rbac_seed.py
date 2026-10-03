@@ -281,13 +281,17 @@ GROUP_PERMISSIONS = {'Văn thư': ['view_donvi',
                        'send_wish_sinhnhat',
                        'use_aiassistant']}
 
-# Quyền cho chính module Phân quyền (Nhóm 7): SQL_Fix4 chưa có, bổ sung qua migration (idempotent).
+# Quyền SQL_Fix4 chưa có nhưng Issue #20/#21/#22 yêu cầu: bổ sung qua migration (idempotent), gán cho nhóm Quản trị hệ thống.
 # Cần PM đưa vào DDL base ở lần cập nhật sau; trong lúc đó migration tự thêm vào DB dựng từ DDL.
 EXTRA_PERMISSIONS = [
     ("Xem danh sách nhóm quyền", "view_nhomquyen", "Phân quyền"),
     ("Thêm nhóm quyền", "add_nhomquyen", "Phân quyền"),
     ("Sửa nhóm quyền", "change_nhomquyen", "Phân quyền"),
     ("Xóa nhóm quyền", "delete_nhomquyen", "Phân quyền"),
+    ("Import file chức vụ", "import_chucvu", "Chức vụ"),
+    ("Thêm phòng họp", "add_phonghop", "Phòng họp (danh mục)"),
+    ("Sửa phòng họp", "change_phonghop", "Phòng họp (danh mục)"),
+    ("Xóa phòng họp", "delete_phonghop", "Phòng họp (danh mục)"),
 ]
 EXTRA_GROUP_PERMISSIONS = {
     "Quản trị hệ thống": [codename for _, codename, _ in EXTRA_PERMISSIONS],

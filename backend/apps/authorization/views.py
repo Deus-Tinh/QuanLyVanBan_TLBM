@@ -54,7 +54,7 @@ def group_list_create_view(request):
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-@api_view(["GET", "PUT", "DELETE"])
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def group_detail_view(request, pk):
     try:
@@ -68,10 +68,10 @@ def group_detail_view(request, pk):
         serializer = GroupSerializer(group)
         return Response(serializer.data)
 
-    if request.method == "PUT":
+    if request.method in ("PUT", "PATCH"):
         if not request.user.has_perm("change_nhomquyen"):
             return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
-        serializer = GroupSerializer(group, data=request.data)
+        serializer = GroupSerializer(group, data=request.data, partial=request.method == "PATCH")
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -99,3 +99,38 @@ def permission_list_view(request):
 
     serializer = PermissionSerializer(PermissionInfo.objects.all(), many=True)
     return Response(serializer.data)
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def group_permissions_view(request, pk):
+    """Gán/bỏ quyền cho một nhóm: thay toàn bộ tập quyền bằng `permission_ids`."""
+    if not request.user.has_perm("change_nhomquyen"):
+        return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        group = Group.objects.get(pk=pk)
+    except Group.DoesNotExist:
+        return Response({"detail": "roles.messages.groupNotFound"}, status=status.HTTP_404_NOT_FOUND)
+
+    if "permission_ids" not in request.data:
+        return Response(
+            {"permission_ids": ["roles.messages.permissionInvalid"]}, status=status.HTTP_400_BAD_REQUEST
+        )
+    serializer = GroupSerializer(group, data={"permission_ids": request.data["permission_ids"]}, partial=True)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    serializer.save()
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_permissions_view(request):
+    """Quyền của user đang đăng nhập (codename). Frontend chỉ dùng để ẩn/hiện thao tác; backend vẫn kiểm quyền thật."""
+    user = request.user
+    return Response(
+        {
+            "is_superuser": user.is_superuser,
+            "permissions": sorted(user.get_all_permissions()),
+        }
+    )

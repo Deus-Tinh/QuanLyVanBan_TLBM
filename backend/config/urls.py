@@ -24,7 +24,7 @@ urlpatterns = [
     path("api/accounts/", include("accounts.employee_urls", namespace="employee_management")),
 
     # ── Module Nhóm 7 — Tân + Hiếu (Issue #21) ─────────────────────────────
-    # API Phân quyền (Nhóm quyền & Quyền hạn): /api/authorization/...
-    path("api/authorization/", include("authorization.urls", namespace="authorization")),
+    # API Phân quyền (Issue #21): /api/roles/, /api/permissions/, /api/auth/me/permissions/
+    path("api/", include("authorization.urls", namespace="authorization")),
 ]
 

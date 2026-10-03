@@ -622,6 +622,8 @@
   "roles": {
     "title": "Phân Quyền & Vai Trò",
     "desc": "Quản lý nhóm quyền và các quyền hạn được gán cho từng nhóm.",
+    "matrixSearchPlaceholder": "Tìm quyền theo tên, mã quyền hoặc module...",
+    "matrixSearchEmpty": "Không tìm thấy quyền phù hợp.",
     "addBtn": "Thêm Nhóm Quyền",
     "editTitle": "Sửa Nhóm Quyền",
     "createTitle": "Thêm Nhóm Quyền",

@@ -621,6 +621,8 @@
   "roles": {
     "title": "Roles & Permissions",
     "desc": "Manage user role groups and their assigned permissions.",
+    "matrixSearchPlaceholder": "Search permissions by name, code or module...",
+    "matrixSearchEmpty": "No matching permissions found.",
     "addBtn": "Add Role",
     "editTitle": "Edit Role",
     "createTitle": "Add Role",
