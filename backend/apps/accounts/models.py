@@ -1,69 +1,197 @@
+import datetime
+
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import PermissionsMixin
+from django.core.validators import RegexValidator
 from django.db import models
-from django.contrib.auth.models import User
+
+# Regex kiểm tra số điện thoại Việt Nam chuẩn
+vietnam_phone_regex = RegexValidator(
+    regex=r"^(0|\+84)[1-9][0-9]{7,9}$",
+    message="Số điện thoại không hợp lệ. Vui lòng nhập định dạng Việt Nam hợp lệ (ví dụ: 0912345678 hoặc 0281234567).",
+)
 
 
-class StaffProfile(models.Model):
+class Position(models.Model):
+    """Danh mục Chức vụ — bảng accounts_position theo SQL_Fix4."""
+
+    display_order = models.PositiveIntegerField(
+        unique=True,
+        verbose_name="STT ưu tiên hiển thị",
+        help_text="Số nguyên dương duy nhất, sắp xếp từ nhỏ đến lớn.",
+    )
+    name = models.CharField(
+        max_length=255,
+        verbose_name="Tên chức vụ",
+        help_text="Bắt buộc, ví dụ: Tổng Giám đốc, Trưởng phòng, Chuyên viên...",
+    )
+    is_public = models.BooleanField(default=True, verbose_name="Hiển thị công khai (isPublic)")
+    note = models.TextField(blank=True, default="", verbose_name="Ghi chú")
+
+    class Meta:
+        db_table = "accounts_position"
+        verbose_name = "Chức vụ"
+        verbose_name_plural = "Danh mục Chức vụ"
+        ordering = ["display_order", "name", "id"]
+        default_permissions = ()
+        permissions = [
+            ("view_chucvu", "Xem danh sách chức vụ"),
+            ("add_chucvu", "Thêm chức vụ"),
+            ("change_chucvu", "Sửa chức vụ"),
+            ("delete_chucvu", "Xóa chức vụ"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_next_display_order(cls) -> int:
+        latest = cls.objects.order_by("-display_order").first()
+        return (latest.display_order + 1) if latest else 1
+
+
+class EmployeeManager(BaseUserManager):
+    use_in_migrations = True
+
+    def _fill_required_refs(self, extra):
+        """DDL bắt buộc ho_ten, ngay_sinh, chuc_vu, don_vi — điền mặc định khi nơi gọi (createsuperuser, test) không truyền."""
+        from organizations.models import DonVi, KhoiKhuVuc
+
+        if not extra.get("chuc_vu") and not extra.get("chuc_vu_id"):
+            position = Position.objects.order_by("display_order").first()
+            if position is None:
+                position = Position.objects.create(
+                    display_order=Position.get_next_display_order(), name="Quản trị viên"
+                )
+            extra["chuc_vu"] = position
+        if not extra.get("don_vi") and not extra.get("don_vi_id"):
+            don_vi = DonVi.objects.order_by("stt_uu_tien").first()
+            if don_vi is None:
+                khoi, _ = KhoiKhuVuc.objects.get_or_create(ten="Mặc định")
+                latest = DonVi.objects.order_by("-stt_uu_tien").first()
+                don_vi = DonVi.objects.create(
+                    khoi=khoi,
+                    stt_uu_tien=(latest.stt_uu_tien + 1) if latest else 1,
+                    ten="Quản trị hệ thống",
+                )
+            extra["don_vi"] = don_vi
+        extra.setdefault("ngay_sinh", datetime.date(1990, 1, 1))
+
+    def _create_employee(self, username, password, **extra):
+        if not username:
+            raise ValueError("Tên đăng nhập không được để trống.")
+        extra.setdefault("ho_ten", username)
+        self._fill_required_refs(extra)
+        email = extra.pop("email", None) or None
+        if email:
+            email = self.normalize_email(email)
+        employee = self.model(username=username, email=email, **extra)
+        employee.set_password(password)
+        employee.save(using=self._db)
+        return employee
+
+    def create_user(self, username, password=None, **extra):
+        extra.setdefault("is_staff", False)
+        extra.setdefault("is_superuser", False)
+        return self._create_employee(username, password, **extra)
+
+    def create_superuser(self, username, password=None, **extra):
+        extra.setdefault("is_staff", True)
+        extra.setdefault("is_superuser", True)
+        if extra.get("is_staff") is not True or extra.get("is_superuser") is not True:
+            raise ValueError("Superuser phải có is_staff=True và is_superuser=True.")
+        return self._create_employee(username, password, **extra)
+
+
+class Employee(AbstractBaseUser, PermissionsMixin):
     """
-    Mở rộng User mặc định của Django để lưu thông tin CBNV ITC.
-    Mỗi User Django tương ứng đúng 1 StaffProfile (OneToOne).
+    Cán bộ nhân viên — bảng accounts_employee theo SQL_Fix4, đồng thời là Custom User Model.
+    groups / user_permissions (PermissionsMixin) ánh xạ đúng accounts_employee_groups
+    và accounts_employee_user_permissions trong DDL.
     """
 
-    ROLE_CHOICES = [
-        ("admin", "Quản trị viên"),
-        ("staff", "Cán bộ chuyên viên"),
-    ]
+    class Status(models.TextChoices):
+        LAM_VIEC = "LAM_VIEC", "Đang làm việc"
+        NGHI_VIEC = "NGHI_VIEC", "Nghỉ việc"
 
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name="profile",
-        verbose_name="Tài khoản",
+    ho_ten = models.CharField(max_length=150, verbose_name="Họ và tên")
+    ngay_sinh = models.DateField(
+        verbose_name="Ngày sinh",
+        help_text="Lưu đủ ngày/tháng/năm; giao diện che năm với người không có quyền xem đầy đủ.",
     )
-    full_name = models.CharField(
-        max_length=150,
-        verbose_name="Họ và tên đầy đủ",
-    )
-    department = models.CharField(
-        max_length=200,
-        blank=True,
-        default="",
-        verbose_name="Đơn vị / Phòng ban",
-    )
-    position = models.CharField(
-        max_length=200,
-        blank=True,
-        default="",
+    chuc_vu = models.ForeignKey(
+        Position,
+        on_delete=models.PROTECT,
+        related_name="employees",
         verbose_name="Chức vụ",
     )
-    role = models.CharField(
-        max_length=20,
-        choices=ROLE_CHOICES,
-        default="staff",
-        verbose_name="Quyền hạn",
+    chuc_danh = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name="Chức danh (tự do)",
     )
-    phone = models.CharField(
+    email = models.EmailField(max_length=254, unique=True, null=True, blank=True, verbose_name="Email")
+    sdt = models.CharField(
         max_length=20,
         blank=True,
         default="",
+        validators=[vietnam_phone_regex],
         verbose_name="Số điện thoại",
     )
-    avatar_url = models.URLField(
-        blank=True,
-        default="",
-        verbose_name="URL ảnh đại diện",
+    don_vi = models.ForeignKey(
+        "organizations.DonVi",
+        on_delete=models.PROTECT,
+        related_name="employees",
+        verbose_name="Đơn vị / Phòng ban",
     )
-    birthday = models.DateField(
-        null=True,
-        blank=True,
-        verbose_name="Ngày sinh",
+    username = models.CharField(max_length=150, unique=True, verbose_name="Tên đăng nhập")
+    is_active = models.BooleanField(default=True, verbose_name="Đang hoạt động")
+    is_staff = models.BooleanField(default=False, verbose_name="Quyền truy cập trang quản trị")
+    is_public = models.BooleanField(default=True, verbose_name="Hiển thị công khai")
+    trang_thai = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.LAM_VIEC,
+        verbose_name="Trạng thái làm việc",
     )
+    ghi_chu = models.TextField(blank=True, default="", verbose_name="Ghi chú")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
 
+    objects = EmployeeManager()
+
+    USERNAME_FIELD = "username"
+    EMAIL_FIELD = "email"
+    REQUIRED_FIELDS = ["email", "ho_ten"]
+
     class Meta:
-        verbose_name = "Hồ sơ CBNV"
-        verbose_name_plural = "Hồ sơ CBNV"
-        ordering = ["full_name"]
+        db_table = "accounts_employee"
+        verbose_name = "Cán bộ nhân viên"
+        verbose_name_plural = "Cán bộ nhân viên"
+        ordering = ["don_vi__stt_uu_tien", "chuc_vu__display_order", "ho_ten", "id"]
+        default_permissions = ()
+        permissions = [
+            ("view_list_cbnv", "Xem danh sách CBNV"),
+            ("view_full_cbnv", "Xem đầy đủ thông tin CBNV (gồm năm sinh, nhóm quyền)"),
+            ("add_cbnv", "Thêm CBNV"),
+            ("change_full_cbnv", "Sửa mọi thông tin CBNV"),
+            ("change_self_cbnv", "Sửa thông tin cá nhân của mình"),
+            ("delete_cbnv", "Xóa CBNV"),
+            ("approve_password_reset_cbnv", "Duyệt cấp lại mật khẩu CBNV"),
+            ("import_cbnv", "Nhập CBNV từ file Excel"),
+        ]
 
     def __str__(self):
-        return f"{self.full_name} ({self.user.username}) — {self.get_role_display()}"
+        return f"{self.ho_ten} ({self.username})"
+
+    def get_full_name(self):
+        return self.ho_ten
+
+    def get_short_name(self):
+        return self.ho_ten.split(" ")[-1] if self.ho_ten else self.username
+
+    def save(self, *args, **kwargs):
+        if self.trang_thai == self.Status.NGHI_VIEC:
+            self.is_active = False
+        super().save(*args, **kwargs)

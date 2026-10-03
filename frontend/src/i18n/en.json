@@ -468,6 +468,7 @@
       "priorityExists": "Priority index is already in use. Please choose another one.",
       "priorityConflict": "The priority index could not be allocated because of a concurrent operation. Please try again.",
       "regionNotFound": "Region not found.",
+      "unitHasEmployees": "Cannot delete this unit because it still has employees assigned.",
       "regionHasUnits": "Cannot delete region because it still contains active units.",
       "unitNotFound": "Unit/Department not found.",
       "protectedError": "Cannot delete due to data protection rules.",
@@ -478,6 +479,143 @@
       "exportError": "Failed to download Excel file. Please try again.",
       "fetchError": "Failed to load data list. Please check your network connection.",
       "exportPermissionDenied": "You do not have permission to export the unit list to Excel."
+    }
+  },
+  "employees": {
+    "title": "Employee Management",
+    "subtitle": "Staff profiles, department assignments, job positions, and system permissions.",
+    "actions": {
+      "addEmployee": "Add Employee",
+      "importExcel": "Import Excel",
+      "template": "Download Template",
+      "edit": "Edit",
+      "delete": "Delete",
+      "view": "View Details",
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "create": "Create Employee",
+      "close": "Close"
+    },
+    "table": {
+      "employee": "Employee",
+      "unit": "Unit / Department",
+      "position": "Position & Title",
+      "birthday": "Birthday",
+      "phone": "Phone Number",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "filters": {
+      "allUnits": "All Units",
+      "allPositions": "All Positions",
+      "allStatuses": "All Statuses",
+      "filteringNotice": "Filtering: found {count} employees",
+      "reset": "Reset Filters"
+    },
+    "status": {
+      "working": "Active",
+      "resigned": "Resigned"
+    },
+    "fields": {
+      "fullName": "Full Name",
+      "email": "Official Email",
+      "username": "Username",
+      "initialPassword": "Initial Password",
+      "birthday": "Birthday",
+      "phone": "Phone Number",
+      "unit": "Unit / Department",
+      "region": "Region",
+      "position": "Position",
+      "title": "Custom Title",
+      "status": "Employment Status",
+      "groups": "Permission Groups (RBAC)",
+      "notes": "Notes",
+      "isPublicLabel": "Public Directory",
+      "isPublicHelp": "Allow contact details to appear in the internal employee directory.",
+      "public": "Public",
+      "internalOnly": "Internal",
+      "joined": "Joined Date"
+    },
+    "placeholders": {
+      "search": "Search by name, username, email, phone...",
+      "fullName": "Enter full name...",
+      "email": "Enter email (e.g. employee@company.com)...",
+      "username": "Enter username (leave blank to auto-generate)...",
+      "initialPassword": "Enter password (leave blank to generate random 10-char password)...",
+      "phone": "Enter phone number (e.g. 0912345678)...",
+      "selectUnit": "-- Select Unit / Department --",
+      "selectPosition": "-- Select Position --",
+      "title": "e.g. Senior Specialist, Assistant...",
+      "notes": "Enter additional notes if any..."
+    },
+    "hints": {
+      "usernameAuto": "Leave blank to automatically generate from email address.",
+      "passwordAuto": "Leave blank to generate a secure random 10-character password.",
+      "statusNotice": "Note: Changing to 'Resigned' automatically deactivates the login account.",
+      "birthdayMaskedTooltip": "Birth year is masked for privacy (requires view_sensitive_cbnv permission)",
+      "masked": "Masked",
+      "groupsHidden": "Permission groups hidden due to privacy policy."
+    },
+    "modal": {
+      "createTitle": "Add New Employee",
+      "createDesc": "Create new staff profile along with system login account.",
+      "editTitle": "Edit Employee Profile",
+      "editDesc": "Update assignment, position, and permission groups."
+    },
+    "created": {
+      "successTitle": "Employee Created Successfully!",
+      "passwordNotice": "A system account and temporary password have been generated. Please copy and provide it to the employee:",
+      "copyPassword": "Copy Password",
+      "copied": "Copied!"
+    },
+    "detail": {
+      "title": "Employee Details",
+      "noGroups": "No permission groups assigned."
+    },
+    "delete": {
+      "confirmTitle": "Confirm Employee Deletion",
+      "confirmDesc": "Are you sure you want to delete employee \"{name}\"? The associated user account will also be permanently deleted."
+    },
+    "import": {
+      "title": "Import Employees From Excel",
+      "subtitle": "Bulk import staff profiles from a .xlsx spreadsheet.",
+      "templateGuide": "Need the standard template?",
+      "templateDesc": "Download the pre-formatted Excel template with sample rows.",
+      "downloadTemplate": "Download .xlsx Template",
+      "downloadTemplateError": "Failed to download template. Please try again.",
+      "dragDropPrompt": "Drag and drop .xlsx file here or click to browse",
+      "formatNotice": "Supports Microsoft Excel (.xlsx), up to 5MB",
+      "invalidFileType": "Invalid file type! Please select a .xlsx spreadsheet.",
+      "noFileSelected": "Please select an Excel file to proceed with import.",
+      "hasErrors": "Excel file contains invalid data. Please review the errors below.",
+      "uploadError": "An error occurred while uploading the file.",
+      "startImport": "Import Data",
+      "errorListHeader": "Detected {count} row errors:",
+      "row": "Row",
+      "errorDetail": "Error Details"
+    },
+    "validation": {
+      "nameRequired": "Employee full name is required.",
+      "emailRequired": "Email address is required.",
+      "birthdayRequired": "Birthday is required.",
+      "phoneInvalid": "Phone number is not valid."
+    },
+    "messages": {
+      "fetchError": "Failed to load employee list.",
+      "downloadSuccess": "Excel template downloaded successfully!",
+      "downloadError": "Failed to download template. Please try again.",
+      "createSuccess": "Employee added successfully!",
+      "updateSuccess": "Profile updated successfully!",
+      "deleteSuccess": "Employee deleted successfully!",
+      "deleteError": "Cannot delete this employee.",
+      "importSuccess": "Successfully imported {count} employees from Excel!",
+      "saveError": "Failed to save employee profile.",
+      "loading": "Loading data...",
+      "noData": "No employees found",
+      "noDataHelp": "Try adjusting your search query or filters."
+    },
+    "pagination": {
+      "showing": "Showing {from} - {to} of {total} employees"
     }
   },
   "auth": {

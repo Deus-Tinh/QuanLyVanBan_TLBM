@@ -6,7 +6,8 @@ from django.db import IntegrityError
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
-from django.contrib.auth.models import Permission, User
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 
 from organizations.models import KhoiKhuVuc, DonVi
 
@@ -17,19 +18,6 @@ class OrganizationModelAndAPITest(TestCase):
     """
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="testuser",
-            password="testpassword123",
-            email="test@itc.edu.vn",
-        )
-        self.export_permission = Permission.objects.get(
-            content_type__app_label="organizations",
-            codename="export_donvi",
-        )
-        self.user.user_permissions.add(self.export_permission)
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
-
         self.region = KhoiKhuVuc.objects.create(ten="Khối Cơ quan")
         self.unit = DonVi.objects.create(
             khoi=self.region,
@@ -38,6 +26,19 @@ class OrganizationModelAndAPITest(TestCase):
             dien_thoai="02838123456",
             email="ketoan@itc.edu.vn",
         )
+        self.user = get_user_model().objects.create_user(
+            username="testuser",
+            password="testpassword123",
+            email="test@itc.edu.vn",
+            don_vi=self.unit,
+        )
+        self.export_permission = Permission.objects.get(
+            content_type__app_label="organizations",
+            codename="export_donvi",
+        )
+        self.user.user_permissions.add(self.export_permission)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
 
     def test_khoi_khuvuc_creation(self):
         self.assertEqual(str(self.region), "Khối Cơ quan")
@@ -286,10 +287,18 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertEqual(res_put.data["ten"], "Phòng Kế toán Đổi Tên")
         self.assertFalse(res_put.data["is_public"])
 
-        # Xóa DELETE
-        res_delete = self.client.delete(f"/api/organizations/units/{self.unit.id}/")
+        # Xóa DELETE (đơn vị không có nhân viên)
+        spare = DonVi.objects.create(khoi=self.region, stt_uu_tien=2, ten="Phòng Trống")
+        res_delete = self.client.delete(f"/api/organizations/units/{spare.id}/")
         self.assertEqual(res_delete.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(DonVi.objects.filter(pk=self.unit.id).exists())
+        self.assertFalse(DonVi.objects.filter(pk=spare.id).exists())
+
+    def test_prevent_delete_unit_with_employees(self):
+        """Đơn vị còn nhân viên trực thuộc không được xóa (400, không phải 500)."""
+        res = self.client.delete(f"/api/organizations/units/{self.unit.id}/")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data["detail"], "organizations.messages.unitHasEmployees")
+        self.assertTrue(DonVi.objects.filter(pk=self.unit.id).exists())
 
     def test_unauthenticated_access_denied(self):
         """Kiểm tra bắt buộc xác thực đăng nhập (401 Unauthorized)."""

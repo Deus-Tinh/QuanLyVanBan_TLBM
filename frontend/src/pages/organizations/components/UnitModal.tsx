@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from '@i18n/translate';
 import { Unit, Region, UnitFormData } from '@app-types/organization';
 import { Button } from '@components/common/Button';
+import { Select } from '@components/common/Select';
 
 interface UnitModalProps {
   isOpen: boolean;
@@ -138,22 +139,27 @@ export const UnitModal: React.FC<UnitModalProps> = ({
 
           {/* Thuộc Khối / Khu vực */}
           <div>
-            <label className="block text-sm font-semibold text-secondary mb-1.5">
-              {t('organizations.unit.regionLabel')} <span className="text-danger">*</span>
-            </label>
-            <select
+            <Select
+              label={t('organizations.unit.regionLabel')}
+              required
               name="khoi"
-              value={formData.khoi}
-              onChange={handleChange}
-              className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border-subtle rounded-lg text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-            >
-              <option value="">{t('organizations.unit.regionPlaceholder')}</option>
-              {regions.map((reg) => (
-                <option key={reg.id} value={reg.id}>
-                  {reg.ten}
-                </option>
-              ))}
-            </select>
+              value={formData.khoi ? String(formData.khoi) : ''}
+              onChange={(val) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  khoi: val === '' ? '' : parseInt(val, 10),
+                }));
+                if (errorKey) setErrorKey(null);
+              }}
+              placeholder={t('organizations.unit.regionPlaceholder')}
+              leftIcon="fa-layer-group"
+              searchable={regions.length > 7}
+              clearable
+              options={regions.map((reg) => ({
+                value: String(reg.id),
+                label: reg.ten,
+              }))}
+            />
           </div>
 
           {/* Tên Đơn vị & STT ưu tiên */}
