@@ -39,6 +39,7 @@ class Position(models.Model):
             ("add_chucvu", "Thêm chức vụ"),
             ("change_chucvu", "Sửa chức vụ"),
             ("delete_chucvu", "Xóa chức vụ"),
+            ("import_chucvu", "Import file chức vụ"),
         ]
 
     def __str__(self):

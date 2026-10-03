@@ -94,10 +94,10 @@ describe('EmployeesPage Component (Issue #24)', () => {
           { id: 2, ten: 'Phòng Kế toán', khoi: 1, khoi_ten: 'Khối Cơ quan', stt_uu_tien: 2, dia_chi: '', dien_thoai: '', email: '', is_public: true, ghi_chu: '' },
         ];
       }
-      if (endpoint.includes('/accounts/positions/')) {
+      if (endpoint.includes('/api/positions/')) {
         return [
-          { id: 1, name: 'Chuyên viên', display_order: 1, is_public: true, note: '' },
-          { id: 2, name: 'Trưởng phòng', display_order: 2, is_public: true, note: '' },
+          { id: 1, ten_chuc_vu: 'Chuyên viên', stt_uu_tien: 1, is_public: true, ghi_chu: '' },
+          { id: 2, ten_chuc_vu: 'Trưởng phòng', stt_uu_tien: 2, is_public: true, ghi_chu: '' },
         ];
       }
       if (endpoint.includes('/accounts/groups/')) {

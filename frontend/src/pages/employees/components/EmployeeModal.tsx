@@ -371,7 +371,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   clearable
                   options={positions.map((pos) => ({
                     value: String(pos.id),
-                    label: pos.name,
+                    label: pos.ten_chuc_vu,
                   }))}
                 />
               </div>

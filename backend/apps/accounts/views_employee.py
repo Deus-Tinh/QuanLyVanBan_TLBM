@@ -13,10 +13,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Employee, Position
+from .models import Employee
 from .serializers import (
     STATUS_API_TO_DB,
-    PositionSerializer,
     GroupSimpleSerializer,
     EmployeeSerializer,
     EmployeeCreateSerializer,
@@ -30,23 +29,6 @@ class StandardEmployeePagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
     max_page_size = 100
-
-
-class PositionViewSet(viewsets.ModelViewSet):
-    """
-    CRUD danh mục Chức vụ (accounts_position).
-    """
-    queryset = Position.objects.all().order_by("display_order", "name")
-    serializer_class = PositionSerializer
-    permission_classes = [IsAuthenticated]
-    pagination_class = StandardEmployeePagination
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        if request.query_params.get("all", "").lower() == "true":
-            serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return super().list(request, *args, **kwargs)
 
 
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):

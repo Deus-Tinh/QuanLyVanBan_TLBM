@@ -10,6 +10,7 @@ import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import OrganizationsPage from '@pages/organizations/OrganizationsPage';
 import EmployeesPage from '@pages/employees/EmployeesPage';
+import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
 
@@ -92,7 +93,7 @@ export default function AppRouter({
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
         <Route path="/organizations" element={<OrganizationsPage />} />
         <Route path="/employees" element={<EmployeesPage />} />
-        <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
+        <Route path="/positions" element={<PositionsPage />} />
         <Route path="/roles" element={<RolesPage />} />
 
         {/* Tiện ích Cá nhân & Trợ lý AI (Nhóm 1 phụ trách) */}

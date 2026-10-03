@@ -43,13 +43,10 @@ export interface Employee {
 
 export interface Position {
   id: number;
-  name: string;
-  display_order: number;
+  stt_uu_tien: number;
+  ten_chuc_vu: string;
   is_public: boolean;
-  note: string;
-  employee_count?: number;
-  created_at?: string;
-  updated_at?: string;
+  ghi_chu: string | null;
 }
 
 export interface GroupSimple {

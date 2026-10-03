@@ -5,13 +5,12 @@ Tác giả: Lê Duy Khánh (leduykhanhdevs).
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views_employee import EmployeeViewSet, PositionViewSet, GroupViewSet
+from .views_employee import EmployeeViewSet, GroupViewSet
 
 app_name = "employee_management"
 
 router = DefaultRouter()
 router.register(r"employees", EmployeeViewSet, basename="employee")
-router.register(r"positions", PositionViewSet, basename="position")
 router.register(r"groups", GroupViewSet, basename="group")
 
 urlpatterns = [
