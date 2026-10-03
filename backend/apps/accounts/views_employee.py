@@ -22,6 +22,7 @@ from .serializers import (
     EmployeeUpdateSerializer,
 )
 from .excel_cbnv import generate_cbnv_template, import_cbnv_from_excel
+from .permissions import CanChangeEmployeePermission, require_permission
 
 
 class StandardEmployeePagination(PageNumberPagination):
@@ -50,8 +51,22 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     API Quản lý Cán bộ Nhân viên (CBNV - Issue #24).
     Hỗ trợ tìm kiếm, lọc theo đơn vị/chức vụ/trạng thái, tải file mẫu và import Excel.
     """
-    permission_classes = [IsAuthenticated]
     pagination_class = StandardEmployeePagination
+
+    def get_permissions(self):
+        if self.action in ["list", "retrieve", "template"]:
+            permission_classes = [IsAuthenticated, require_permission("view_list_cbnv")]
+        elif self.action == "create":
+            permission_classes = [IsAuthenticated, require_permission("add_cbnv")]
+        elif self.action in ["update", "partial_update"]:
+            permission_classes = [IsAuthenticated, CanChangeEmployeePermission]
+        elif self.action == "destroy":
+            permission_classes = [IsAuthenticated, require_permission("delete_cbnv")]
+        elif self.action == "import_excel":
+            permission_classes = [IsAuthenticated, require_permission("import_cbnv")]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
         queryset = (
@@ -169,13 +184,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     def import_excel(self, request):
         """
         Nhập danh sách cán bộ nhân viên từ tệp Excel (.xlsx).
-        Yêu cầu quyền accounts.import_cbnv hoặc superuser/staff.
+        Yêu cầu quyền import_cbnv hoặc superuser (kiểm soát bởi get_permissions).
         """
-        if not (request.user.is_superuser or request.user.is_staff or request.user.has_perm("accounts.import_cbnv")):
-            return Response(
-                {"detail": "Bạn không có quyền nhập danh sách cán bộ nhân viên từ Excel."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         file_obj = request.FILES.get("file")
         if not file_obj:

@@ -93,9 +93,38 @@ class EmployeeBaseTestCase(APITestCase):
             chuc_vu=self.cv_truong_phong,
             sdt="0987654321",
         )
+        self.perm_view_list = Permission.objects.get(codename="view_list_cbnv")
         self.perm_sensitive = Permission.objects.get(codename="view_full_cbnv")
         self.perm_import = Permission.objects.get(codename="import_cbnv")
-        self.sensitive_user.user_permissions.add(self.perm_sensitive, self.perm_import)
+        self.perm_add = Permission.objects.get(codename="add_cbnv")
+        self.perm_change_full = Permission.objects.get(codename="change_full_cbnv")
+        self.perm_change_self = Permission.objects.get(codename="change_self_cbnv")
+        self.perm_delete = Permission.objects.get(codename="delete_cbnv")
+
+        self.normal_user.user_permissions.add(self.perm_view_list)
+        self.sensitive_user.user_permissions.add(self.perm_view_list, self.perm_sensitive, self.perm_import)
+
+        # User không có quyền nào (để test 403)
+        self.no_perm_user = User.objects.create_user(
+            username="no_perm_user",
+            email="noperm@donvi.gov.vn",
+            password="NoPermPassword123",
+            ho_ten="Người dùng không quyền",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+        )
+
+        # User chỉ có quyền thay đổi thông tin bản thân (change_self_cbnv)
+        self.self_user = User.objects.create_user(
+            username="self_user",
+            email="self@donvi.gov.vn",
+            password="SelfPassword123",
+            ho_ten="Người dùng sửa bản thân",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+            sdt="0911223344",
+        )
+        self.self_user.user_permissions.add(self.perm_view_list, self.perm_change_self)
 
         # URLs
         self.employee_list_url = "/api/accounts/employees/"
@@ -410,6 +439,148 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
         # Kiểm tra bản ghi trong DB
         self.assertTrue(User.objects.filter(email="doanvanhau@donvi.gov.vn").exists())
         self.assertTrue(User.objects.filter(ho_ten="Đoàn Văn Hậu", don_vi=self.don_vi_1).exists())
+
+
+class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
+    """
+    Kiểm thử chuyên sâu bảo mật phân quyền RBAC (Issue #24 & Review PR #39).
+    Kiểm tra 401 (chưa xác thực) và 403 (thiếu quyền) cho tất cả endpoint CRUD, import và xuất mẫu.
+    """
+
+    def test_unauthenticated_requests_return_401(self):
+        """Request khi chưa đăng nhập (không có token) phải trả về 401 Unauthorized."""
+        self.client.force_authenticate(user=None)
+
+        detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
+        payload = {
+            "ho_ten": "Test Unauthorized",
+            "email": "unauth@donvi.gov.vn",
+            "ngay_sinh": "1990-01-01",
+            "don_vi_id": self.don_vi_1.id,
+            "chuc_vu_id": self.cv_chuyen_vien.id,
+        }
+
+        # 1. Read endpoints
+        self.assertEqual(self.client.get(self.employee_list_url).status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(self.client.get(detail_url).status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(self.client.get(self.template_url).status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # 2. Write endpoints
+        self.assertEqual(self.client.post(self.employee_list_url, payload, format="json").status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(self.client.put(detail_url, payload, format="json").status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(self.client.patch(detail_url, {"sdt": "0912345678"}, format="json").status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(self.client.delete(detail_url).status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(self.client.post(self.import_url, {}, format="multipart").status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_without_permissions_returns_403(self):
+        """User đã đăng nhập nhưng không có quyền tương ứng phải bị từ chối với 403 Forbidden."""
+        self.client.force_authenticate(user=self.no_perm_user)
+
+        detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
+        payload = {
+            "ho_ten": "CBNV Không Quyền",
+            "email": "failperm@donvi.gov.vn",
+            "ngay_sinh": "1990-01-01",
+            "don_vi_id": self.don_vi_1.id,
+            "chuc_vu_id": self.cv_chuyen_vien.id,
+        }
+
+        # Read endpoints
+        self.assertEqual(self.client.get(self.employee_list_url).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.get(detail_url).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.get(self.template_url).status_code, status.HTTP_403_FORBIDDEN)
+
+        # Write endpoints
+        self.assertEqual(self.client.post(self.employee_list_url, payload, format="json").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.patch(detail_url, {"sdt": "0912345678"}, format="json").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.delete(detail_url).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.post(self.import_url, {}, format="multipart").status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_change_self_permission_isolated_to_own_profile(self):
+        """User có quyền change_self_cbnv chỉ được sửa chính mình, sửa người khác trả về 403."""
+        self.client.force_authenticate(user=self.self_user)
+
+        # 1. Sửa thông tin chính mình -> Thành công 200 OK
+        own_url = f"{self.employee_list_url}{self.self_user.id}/"
+        res_self = self.client.patch(own_url, {"sdt": "0909998877", "chuc_danh": "Chuyên viên số 1"}, format="json")
+        self.assertEqual(res_self.status_code, status.HTTP_200_OK)
+        self.self_user.refresh_from_db()
+        self.assertEqual(self.self_user.sdt, "0909998877")
+        self.assertEqual(self.self_user.chuc_danh, "Chuyên viên số 1")
+
+        # 2. Cố gắng sửa thông tin CBNV khác -> Bị từ chối 403 Forbidden
+        other_url = f"{self.employee_list_url}{self.normal_user.id}/"
+        res_other = self.client.patch(other_url, {"sdt": "0901112233"}, format="json")
+        self.assertEqual(res_other.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_change_full_permission_can_update_any_employee(self):
+        """User có quyền change_full_cbnv có thể sửa thông tin của bất kỳ CBNV nào."""
+        hr_user = User.objects.create_user(
+            username="hr_user",
+            email="hr@donvi.gov.vn",
+            password="HrPassword123",
+            ho_ten="Cán bộ nhân sự",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+        )
+        hr_user.user_permissions.add(self.perm_view_list, self.perm_change_full)
+        self.client.force_authenticate(user=hr_user)
+
+        target_url = f"{self.employee_list_url}{self.normal_user.id}/"
+        res = self.client.patch(target_url, {"sdt": "0988776655"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.normal_user.refresh_from_db()
+        self.assertEqual(self.normal_user.sdt, "0988776655")
+
+    def test_add_and_delete_permissions_isolated(self):
+        """Kiểm tra quyền add_cbnv và delete_cbnv hoạt động độc lập và chính xác."""
+        creator_user = User.objects.create_user(
+            username="creator_user",
+            email="creator@donvi.gov.vn",
+            password="CreatorPassword123",
+            ho_ten="Cán bộ thêm mới",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+        )
+        creator_user.user_permissions.add(self.perm_add)
+        self.client.force_authenticate(user=creator_user)
+
+        # 1. Có quyền add_cbnv -> POST thành công
+        payload = {
+            "ho_ten": "Nhân viên mới do Creator tạo",
+            "email": "newbie@donvi.gov.vn",
+            "ngay_sinh": "1994-04-04",
+            "don_vi_id": self.don_vi_1.id,
+            "chuc_vu_id": self.cv_chuyen_vien.id,
+        }
+        res_create = self.client.post(self.employee_list_url, payload, format="json")
+        self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
+        new_emp_id = res_create.json()["id"]
+
+        # 2. Không có quyền delete_cbnv -> DELETE bị từ chối 403
+        del_url = f"{self.employee_list_url}{new_emp_id}/"
+        res_delete_denied = self.client.delete(del_url)
+        self.assertEqual(res_delete_denied.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 3. User có quyền delete_cbnv -> DELETE thành công 204
+        deleter_user = User.objects.create_user(
+            username="deleter_user",
+            email="deleter@donvi.gov.vn",
+            password="DeleterPassword123",
+            ho_ten="Cán bộ xóa",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+        )
+        deleter_user.user_permissions.add(self.perm_delete)
+        self.client.force_authenticate(user=deleter_user)
+        res_delete_ok = self.client.delete(del_url)
+        self.assertEqual(res_delete_ok.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_superuser_bypasses_all_permission_gates(self):
+        """Superuser không cần gán quyền lẻ tẻ, luôn vượt qua tất cả các chốt kiểm tra."""
+        self.client.force_authenticate(user=self.admin_user)
+        self.assertEqual(self.client.get(self.employee_list_url).status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(self.template_url).status_code, status.HTTP_200_OK)
 
 
 class SeedDbCommandTests(APITestCase):

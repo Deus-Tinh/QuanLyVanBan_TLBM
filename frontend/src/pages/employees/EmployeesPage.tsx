@@ -119,7 +119,8 @@ export default function EmployeesPage() {
     return () => {
       ignore = true;
     };
-  }, [currentPage, searchQuery, selectedUnitId, selectedPositionId, selectedStatus, reloadKey, showToast, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, searchQuery, selectedUnitId, selectedPositionId, selectedStatus, reloadKey]);
 
   // Tải file Excel mẫu
   const handleDownloadTemplate = async () => {

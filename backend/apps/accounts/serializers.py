@@ -26,13 +26,13 @@ STATUS_DB_TO_API = {
 }
 STATUS_API_CHOICES = list(STATUS_API_TO_DB.keys())
 
-SENSITIVE_PERMISSION = "accounts.view_full_cbnv"
+SENSITIVE_PERMISSION = "view_full_cbnv"
 
 
 def user_can_view_sensitive(user) -> bool:
     if not user or not user.is_authenticated:
         return False
-    return bool(user.is_superuser or user.is_staff or user.has_perm(SENSITIVE_PERMISSION))
+    return bool(user.is_superuser or user.has_perm(SENSITIVE_PERMISSION))
 
 
 class ChangePasswordSerializer(serializers.Serializer):
