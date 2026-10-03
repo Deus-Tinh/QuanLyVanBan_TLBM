@@ -564,7 +564,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   1. Tiếp nhận & Vào sổ công văn
                 </h4>
               </div>
-              <span className="text-[11px] text-muted">Thông tin định danh văn bản</span>
+              <span className="text-xs text-muted">Thông tin định danh văn bản</span>
             </div>
 
             <div className="grid grid-cols-12 gap-3.5">
@@ -582,7 +582,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
               {/* Số đến */}
               <div className="col-span-12 sm:col-span-3">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Số đến <span className="text-muted font-normal text-[11px]">(Tự động)</span>
+                  Số đến <span className="text-muted font-normal text-xs">(Tự động)</span>
                 </label>
                 <input
                   readOnly
@@ -691,7 +691,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   2. Nguồn ban hành & Nội dung văn bản
                 </h4>
               </div>
-              <span className="text-[11px] text-muted">Cơ quan gửi & Trích yếu</span>
+              <span className="text-xs text-muted">Cơ quan gửi & Trích yếu</span>
             </div>
 
             <div className="space-y-3.5">
@@ -737,7 +737,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   3. Ký duyệt & Hiệu lực văn bản
                 </h4>
               </div>
-              <span className="text-[11px] text-muted">Thông tin người ký & Trạng thái pháp lý</span>
+              <span className="text-xs text-muted">Thông tin người ký & Trạng thái pháp lý</span>
             </div>
 
             <div className="grid grid-cols-12 gap-3.5">
@@ -774,25 +774,25 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                     Trạng thái hiệu lực
                   </label>
                   {form.hieu_luc === 'CON_HIEU_LUC' && (
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       Đang áp dụng
                     </span>
                   )}
                   {form.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
-                    <span className="text-[11px] font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
                       Hiệu lực 1 phần
                     </span>
                   )}
                   {form.hieu_luc === 'HET_HIEU_LUC' && (
-                    <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                       Hết giá trị
                     </span>
                   )}
                   {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                    <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       Đã bị thay thế
                     </span>
@@ -863,7 +863,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
               {/* Ngày hết hiệu lực */}
               <div className="col-span-12 sm:col-span-6">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Ngày hết hiệu lực <span className="text-muted font-normal text-[11px]">(Tùy chọn)</span>
+                  Ngày hết hiệu lực <span className="text-muted font-normal text-xs">(Tùy chọn)</span>
                 </label>
                 <input
                   type="date"
@@ -908,7 +908,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                         ? 'Văn bản bị thay thế (Số hiệu hoặc liên kết) *'
                         : 'Văn bản mới thay thế (Số hiệu hoặc liên kết) *'}
                     </label>
-                    <span className="text-[11px] text-muted">
+                    <span className="text-xs text-muted">
                       {isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
                         ? 'Gõ số hiệu văn bản cũ để tìm nhanh'
                         : 'Gõ số hiệu hoặc từ khóa để gợi ý'}
@@ -950,7 +950,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                     {/* Dropdown danh sách văn bản gợi ý */}
                     {showReplacementDropdown && (
                       <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-surface border border-border-subtle rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
-                        <div className="px-3 py-2 bg-canvas/80 border-b border-border-subtle/80 flex items-center justify-between text-[11px] font-semibold text-secondary sticky top-0 backdrop-blur-sm z-10">
+                        <div className="px-3 py-2 bg-canvas/80 border-b border-border-subtle/80 flex items-center justify-between text-xs font-semibold text-secondary sticky top-0 backdrop-blur-sm z-10">
                           <span className="flex items-center gap-1.5">
                             <i className="fa-solid fa-list-check text-primary" />
                             {form.link_thay_the.trim() ? (
@@ -959,7 +959,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                               <>Văn bản trong hệ thống ({replacementSuggestions.length})</>
                             )}
                           </span>
-                          <span className="text-[10px] text-muted">Nhấp vào để chọn</span>
+                          <span className="text-xs text-muted">Nhấp vào để chọn</span>
                         </div>
 
                         {replacementSuggestions.length > 0 ? (
@@ -976,13 +976,13 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                                       {doc.so_hieu}
                                     </span>
                                     {doc.loai_display && (
-                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/20 text-secondary font-medium">
+                                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted/20 text-secondary font-medium">
                                         {doc.loai_display}
                                       </span>
                                     )}
                                   </div>
                                   {(doc.ngay_ban_hanh || doc.ngay_den) && (
-                                    <span className="text-[11px] text-muted font-mono">
+                                    <span className="text-xs text-muted font-mono">
                                       {new Date(doc.ngay_ban_hanh || doc.ngay_den!).toLocaleDateString('vi-VN')}
                                     </span>
                                   )}
@@ -991,8 +991,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                                   {doc.trich_yeu}
                                 </p>
                                 {doc.noi_ban_hanh && (
-                                  <div className="text-[11px] text-muted mt-1 flex items-center gap-1.5">
-                                    <i className="fa-solid fa-building text-[10px]" />
+                                  <div className="text-xs text-muted mt-1 flex items-center gap-1.5">
+                                    <i className="fa-solid fa-building text-xs" />
                                     <span className="truncate">{doc.noi_ban_hanh}</span>
                                   </div>
                                 )}
@@ -1022,7 +1022,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                               {selectedReplacementDoc.so_hieu}
                             </span>
                             {selectedReplacementDoc.noi_ban_hanh && (
-                              <span className="text-[11px] text-secondary truncate">
+                              <span className="text-xs text-secondary truncate">
                                 • {selectedReplacementDoc.noi_ban_hanh}
                               </span>
                             )}
@@ -1063,7 +1063,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                         )}
                       </span>
                     </label>
-                    <span className="text-[10px] text-muted hidden sm:inline">(Tự động hóa)</span>
+                    <span className="text-xs text-muted hidden sm:inline">(Tự động hóa)</span>
                   </div>
                 </div>
               )}
@@ -1081,7 +1081,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   4. Phân phối xử lý & Tệp đính kèm
                 </h4>
               </div>
-              <span className="text-[11px] text-muted">Điều phối đơn vị & Tải lên tệp</span>
+              <span className="text-xs text-muted">Điều phối đơn vị & Tải lên tệp</span>
             </div>
 
             {/* Phân phối đơn vị & cán bộ */}
@@ -1134,7 +1134,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                             className="rounded border-border-subtle text-primary focus:ring-primary"
                           />
                           <span className="font-medium">{s.full_name || s.username}</span>
-                          <span className="text-[11px] text-muted">(@{s.username})</span>
+                          <span className="text-xs text-muted">(@{s.username})</span>
                         </label>
                       );
                     })}
@@ -1161,7 +1161,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                           {att.file_name}
                         </span>
                         {att.file_size && (
-                          <span className="text-[10px] text-muted shrink-0">
+                          <span className="text-xs text-muted shrink-0">
                             ({formatFileSize(att.file_size)})
                           </span>
                         )}
@@ -1187,7 +1187,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 <label className="text-xs font-semibold text-secondary">
                   Tải lên tệp đính kèm mới
                 </label>
-                <span className="text-[11px] text-muted">
+                <span className="text-xs text-muted">
                   Hỗ trợ PDF, DOC, DOCX, PNG, JPG (Tối đa 10 tệp)
                 </span>
               </div>
@@ -1226,7 +1226,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 <p className="text-xs font-medium text-main m-0">
                   Kéo thả tệp vào đây hoặc <span className="text-primary underline">chọn từ thiết bị</span>
                 </p>
-                <p className="text-[11px] text-muted m-0 mt-1">
+                <p className="text-xs text-muted m-0 mt-1">
                   Tập tin đính kèm minh chứng, công văn scan hoặc bản mềm
                 </p>
               </div>
@@ -1234,7 +1234,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
               {/* File List Selected */}
               {files.length > 0 && (
                 <div className="mt-2.5 space-y-1.5">
-                  <div className="text-[11px] font-semibold text-secondary">
+                  <div className="text-xs font-semibold text-secondary">
                     {files.length} tệp đã chọn sẵn sàng tải lên:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1248,7 +1248,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                           <span className="truncate text-main font-medium" title={file.name}>
                             {file.name}
                           </span>
-                          <span className="text-[10px] text-muted shrink-0">
+                          <span className="text-xs text-muted shrink-0">
                             ({formatFileSize(file.size)})
                           </span>
                         </div>
@@ -1296,7 +1296,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   />
                   <div>
                     <span className="text-xs font-bold text-main block">Hiển thị trên hệ thống</span>
-                    <span className="text-[11px] text-muted block leading-snug">
+                    <span className="text-xs text-muted block leading-snug">
                       Cho phép cán bộ nhân viên tra cứu và xem văn bản này
                     </span>
                   </div>
@@ -1313,7 +1313,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                     />
                     <div>
                       <span className="text-xs font-bold text-main block">Gửi email toàn trường</span>
-                      <span className="text-[11px] text-muted block leading-snug">
+                      <span className="text-xs text-muted block leading-snug">
                         Tự động gửi thông báo văn bản mới tới hòm thư CBNV
                       </span>
                     </div>
@@ -1323,7 +1323,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                     <span className="text-base leading-none">🔒</span>
                     <div>
                       <span className="text-xs font-bold block">Văn bản Mật lưu hành nội bộ</span>
-                      <span className="text-[11px] text-muted block leading-snug">
+                      <span className="text-xs text-muted block leading-snug">
                         Không gửi email diện rộng toàn trường. Chỉ cán bộ/đơn vị nhận được chỉ định mới có quyền tiếp cận.
                       </span>
                     </div>

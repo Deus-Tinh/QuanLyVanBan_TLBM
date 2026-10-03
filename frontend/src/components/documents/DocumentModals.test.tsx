@@ -147,9 +147,9 @@ describe('DocumentFormModal', () => {
     expect(screen.getByText(/Trích yếu nội dung văn bản/i)).toBeInTheDocument();
     expect(screen.getByText(/Trạng thái hiệu lực/i)).toBeInTheDocument();
 
-    // Ở chế độ Thêm mới, trạng thái mặc định khóa là Còn hiệu lực, có checkbox thay thế cho văn bản khác
+    // Ở chế độ Thêm mới, người dùng có thể chọn Còn hiệu lực hoặc Hết hiệu lực
     expect(screen.getByText('Còn hiệu lực')).toBeInTheDocument();
-    expect(screen.getByText('Mặc định khi thêm mới')).toBeInTheDocument();
+    expect(screen.getByText('Hết hiệu lực')).toBeInTheDocument();
     expect(screen.getByText(/Văn bản này thay thế cho văn bản khác trong hệ thống/i)).toBeInTheDocument();
 
     // Toggles
@@ -189,8 +189,9 @@ describe('DocumentFormModal', () => {
     const noiBanHanhInput = screen.getByDisplayValue('Bộ GD&ĐT');
     expect(noiBanHanhInput).not.toHaveAttribute('readonly');
 
-    // Khi sửa văn bản: chỉ cho phép chọn "Còn hiệu lực" hoặc "Hết hiệu lực"
+    // Khi sửa văn bản: cho phép chọn "Còn hiệu lực", "Còn hiệu lực 1 phần" hoặc "Hết hiệu lực"
     expect(screen.getByRole('option', { name: 'Còn hiệu lực' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Còn hiệu lực 1 phần' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Hết hiệu lực' })).toBeInTheDocument();
     // KHÔNG có mục chọn thủ công "Đã bị thay thế"
     expect(screen.queryByRole('option', { name: 'Đã bị thay thế' })).not.toBeInTheDocument();

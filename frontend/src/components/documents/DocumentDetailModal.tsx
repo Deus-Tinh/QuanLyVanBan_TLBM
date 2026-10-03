@@ -330,7 +330,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                             <span className="text-xs font-medium text-main block truncate" title={att.file_name}>
                               {att.file_name}
                             </span>
-                            <span className="text-[10px] text-muted block">
+                            <span className="text-xs text-muted block">
                               {formatFileSize(att.file_size)} • {formatDate(att.uploaded_at)}
                             </span>
                           </div>
@@ -356,7 +356,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
               </div>
 
               {/* Footer metadata */}
-              <div className="text-[11px] text-muted flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-subtle/50">
+              <div className="text-xs text-muted flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-subtle/50">
                 <span>
                   Người tạo: <strong>{document.nguoi_tao_name || 'Hệ thống'}</strong> lúc{' '}
                   {formatDateTime(document.created_at)}

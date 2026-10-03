@@ -31,6 +31,7 @@
     "dashboard": "Home",
     "documents": "Documents",
     "records": "Dossiers & Files",
+    "records_resources": "Dossiers & Documents",
     "workflow": "Tasks & Signing",
     "system": "System Utilities",
     "ai": "AI Assistant",

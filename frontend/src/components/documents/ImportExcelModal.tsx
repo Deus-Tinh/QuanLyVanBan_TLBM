@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
 
@@ -99,10 +100,10 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+  const content = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
       {/* Modal Dialog */}
       <div className="bg-surface border border-border-subtle rounded-2xl shadow-2xl z-10 w-[540px] max-w-full p-6 animate-in fade-in zoom-in-95 duration-150">
@@ -228,4 +229,6 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
       <AlertModal open={alertOpen} onClose={() => setAlertOpen(false)} message={alertMsg} />
     </div>
   );
+
+  return typeof window !== 'undefined' ? createPortal(content, window.document.body) : content;
 }
