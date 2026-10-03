@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '@i18n/translate';
 import { apiClient, downloadBlob } from '@lib/apiClient';
+import { usePermissions } from '@lib/permissions';
+import { authService } from '@lib/authService';
 import {
   Employee,
   Position,
@@ -19,6 +21,8 @@ import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
+  const { can } = usePermissions();
+  const currentSession = authService.getSession();
 
   // Dữ liệu danh sách & phân trang
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -233,36 +237,42 @@ export default function EmployeesPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleDownloadTemplate}
-            isLoading={isDownloadingTemplate}
-            icon="fa-file-excel"
-          >
-            {t('employees.actions.template')}
-          </Button>
+          {can('import_cbnv') && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleDownloadTemplate}
+              isLoading={isDownloadingTemplate}
+              icon="fa-file-excel"
+            >
+              {t('employees.actions.template')}
+            </Button>
+          )}
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setIsImportModalOpen(true)}
-            icon="fa-file-import"
-          >
-            {t('employees.actions.importExcel')}
-          </Button>
+          {can('import_cbnv') && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsImportModalOpen(true)}
+              icon="fa-file-import"
+            >
+              {t('employees.actions.importExcel')}
+            </Button>
+          )}
 
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => {
-              setEditingEmployee(null);
-              setIsEmployeeModalOpen(true);
-            }}
-            icon="fa-user-plus"
-          >
-            {t('employees.actions.addEmployee')}
-          </Button>
+          {can('add_cbnv') && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setEditingEmployee(null);
+                setIsEmployeeModalOpen(true);
+              }}
+              icon="fa-user-plus"
+            >
+              {t('employees.actions.addEmployee')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -527,31 +537,35 @@ export default function EmployeesPage() {
                             <i className="fa-solid fa-eye text-sm" />
                           </button>
 
-                          {/* Chỉnh sửa */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingEmployee(emp);
-                              setIsEmployeeModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-elevated transition-colors"
-                            title={t('employees.actions.edit')}
-                          >
-                            <i className="fa-solid fa-pen-to-square text-sm" />
-                          </button>
+                          {/* Chỉnh sửa: Có quyền change_full_cbnv hoặc change_self_cbnv đối với chính mình */}
+                          {(can('change_full_cbnv') || (can('change_self_cbnv') && Boolean(currentSession?.username && currentSession.username === emp.username))) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmployee(emp);
+                                setIsEmployeeModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-elevated transition-colors cursor-pointer"
+                              title={t('employees.actions.edit')}
+                            >
+                              <i className="fa-solid fa-pen-to-square text-sm" />
+                            </button>
+                          )}
 
                           {/* Xóa */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeleteErrorMessage(null);
-                              setDeletingEmployee(emp);
-                            }}
-                            className="p-1.5 rounded-lg text-secondary hover:text-danger hover:bg-danger-subtle transition-colors"
-                            title={t('employees.actions.delete')}
-                          >
-                            <i className="fa-solid fa-trash-can text-sm" />
-                          </button>
+                          {can('delete_cbnv') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeleteErrorMessage(null);
+                                setDeletingEmployee(emp);
+                              }}
+                              className="p-1.5 rounded-lg text-secondary hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer"
+                              title={t('employees.actions.delete')}
+                            >
+                              <i className="fa-solid fa-trash-can text-sm" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

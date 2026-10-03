@@ -4,6 +4,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import EmployeesPage from './EmployeesPage';
 import * as apiClientModule from '@lib/apiClient';
+import { resetPermissionsCache } from '@lib/permissions';
 
 vi.mock('@lib/apiClient', async () => {
   const actual = await vi.importActual<typeof apiClientModule>('@lib/apiClient');
@@ -87,7 +88,22 @@ const mockEmployeeData = [
 describe('EmployeesPage Component (Issue #24)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetPermissionsCache();
     mockedApiClient.mockImplementation(async (endpoint: string) => {
+      if (endpoint.includes('/api/auth/me/permissions/')) {
+        return {
+          is_superuser: true,
+          permissions: [
+            'view_list_cbnv',
+            'add_cbnv',
+            'change_full_cbnv',
+            'change_self_cbnv',
+            'delete_cbnv',
+            'import_cbnv',
+            'view_nhomquyen',
+          ],
+        };
+      }
       if (endpoint.includes('/organizations/units/')) {
         return [
           { id: 1, ten: 'Văn phòng Viện', khoi: 1, khoi_ten: 'Khối Cơ quan', stt_uu_tien: 1, dia_chi: '', dien_thoai: '', email: '', is_public: true, ghi_chu: '' },
@@ -203,4 +219,50 @@ describe('EmployeesPage Component (Issue #24)', () => {
       expect(screen.getByText('Thông Tin Chi Tiết Cán Bộ Nhân Viên')).toBeInTheDocument();
     });
   });
+
+  it('hides add, import, edit, and delete buttons when user only has view_list_cbnv permission', async () => {
+    mockedApiClient.mockImplementation(async (endpoint: string) => {
+      if (endpoint.includes('/api/auth/me/permissions/')) {
+        return {
+          is_superuser: false,
+          permissions: ['view_list_cbnv'],
+        };
+      }
+      if (endpoint.includes('/organizations/units/')) return [];
+      if (endpoint.includes('/api/positions/')) return [];
+      if (endpoint.includes('/accounts/groups/')) return [];
+      if (endpoint.includes('/accounts/employees/')) {
+        return {
+          count: 2,
+          next: null,
+          previous: null,
+          results: mockEmployeeData,
+        };
+      }
+      return [];
+    });
+
+    render(
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Bình')).toBeInTheDocument();
+    });
+
+    // Header buttons should be hidden
+    expect(screen.queryByRole('button', { name: /Thêm nhân viên/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Nhập từ Excel/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tải mẫu/i })).not.toBeInTheDocument();
+
+    // Row edit and delete buttons should be hidden
+    expect(screen.queryByTitle('Chỉnh sửa')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Xóa')).not.toBeInTheDocument();
+
+    // View detail button should still be visible
+    expect(screen.getAllByTitle('Xem chi tiết').length).toBeGreaterThan(0);
+  });
 });
+

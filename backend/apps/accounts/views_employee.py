@@ -22,7 +22,7 @@ from .serializers import (
     EmployeeUpdateSerializer,
 )
 from .excel_cbnv import generate_cbnv_template, import_cbnv_from_excel
-from .permissions import CanChangeEmployeePermission, require_permission
+from .permissions import CanChangeEmployeePermission, CanViewGroupPermission, require_permission
 
 
 class StandardEmployeePagination(PageNumberPagination):
@@ -35,10 +35,11 @@ class StandardEmployeePagination(PageNumberPagination):
 class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     """
     Danh sách Nhóm quyền (auth.Group) hỗ trợ cấu hình phân quyền cho CBNV.
+    Yêu cầu quyền view_nhomquyen, change_full_cbnv hoặc add_cbnv.
     """
     queryset = Group.objects.all().order_by("name")
     serializer_class = GroupSimpleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanViewGroupPermission]
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -143,6 +144,19 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
+
+        # Bảo vệ đặc quyền: Người dùng không có quyền change_full_cbnv và không phải superuser
+        # CHỈ ĐƯỢC PHÉP sửa các trường thông tin cá nhân (sdt, email, ngay_sinh, avatar_url).
+        user = request.user
+        if not (user.is_superuser or user.has_perm("change_full_cbnv")):
+            allowed_self_fields = {"sdt", "email", "ngay_sinh", "avatar_url"}
+            disallowed_fields = set(request.data.keys()) - allowed_self_fields
+            if disallowed_fields:
+                return Response(
+                    {"detail": "roles.messages.permissionDenied"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         serializer = EmployeeUpdateSerializer(
             instance, data=request.data, partial=partial, context={"request": request}
         )

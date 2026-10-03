@@ -353,8 +353,16 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
 class GroupAPITests(EmployeeBaseTestCase):
     """Kiểm tra API Nhóm quyền (Chức vụ có bộ test riêng ở test_positions.py)."""
 
-    def test_list_groups(self):
+    def test_list_groups_forbidden_without_permission(self):
+        """User thường không có quyền add_cbnv / change_full_cbnv / view_nhomquyen bị chặn 403."""
         self.client.force_authenticate(user=self.normal_user)
+        res = self.client.get(self.group_list_url)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.data["detail"], "roles.messages.permissionDenied")
+
+    def test_list_groups_success_with_permission(self):
+        """Superuser hoặc User có quyền thêm CBNV (add_cbnv) được xem danh sách nhóm quyền (200)."""
+        self.client.force_authenticate(user=self.admin_user)
         res = self.client.get(self.group_list_url)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = res.json()
@@ -500,18 +508,70 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         """User có quyền change_self_cbnv chỉ được sửa chính mình, sửa người khác trả về 403."""
         self.client.force_authenticate(user=self.self_user)
 
-        # 1. Sửa thông tin chính mình -> Thành công 200 OK
+        # 1. Sửa thông tin cá nhân chính mình -> Thành công 200 OK
         own_url = f"{self.employee_list_url}{self.self_user.id}/"
-        res_self = self.client.patch(own_url, {"sdt": "0909998877", "chuc_danh": "Chuyên viên số 1"}, format="json")
+        res_self = self.client.patch(own_url, {"sdt": "0909998877"}, format="json")
         self.assertEqual(res_self.status_code, status.HTTP_200_OK)
         self.self_user.refresh_from_db()
         self.assertEqual(self.self_user.sdt, "0909998877")
-        self.assertEqual(self.self_user.chuc_danh, "Chuyên viên số 1")
 
         # 2. Cố gắng sửa thông tin CBNV khác -> Bị từ chối 403 Forbidden
         other_url = f"{self.employee_list_url}{self.normal_user.id}/"
         res_other = self.client.patch(other_url, {"sdt": "0901112233"}, format="json")
         self.assertEqual(res_other.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_change_self_cannot_escalate_privileges_or_modify_admin_fields(self):
+        """
+        Tài khoản chỉ có change_self_cbnv tuyệt đối không được tự nâng quyền
+        hoặc thay đổi chức vụ, đơn vị, trạng thái, chức danh, nhóm quyền của chính mình (403 Forbidden).
+        """
+        self.client.force_authenticate(user=self.self_user)
+        own_url = f"{self.employee_list_url}{self.self_user.id}/"
+
+        # 1. Tự gán nhóm quyền cho mình -> Bị chặn 403
+        res_group = self.client.patch(own_url, {"nhom_quyen_ids": [self.group_van_thu.id]}, format="json")
+        self.assertEqual(res_group.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res_group.data["detail"], "roles.messages.permissionDenied")
+        self.self_user.refresh_from_db()
+        self.assertEqual(self.self_user.groups.count(), 0)
+
+        # 2. Tự đổi trạng thái làm việc / nghỉ việc -> 403
+        res_status = self.client.patch(own_url, {"trang_thai": "nghi_viec"}, format="json")
+        self.assertEqual(res_status.status_code, status.HTTP_403_FORBIDDEN)
+        self.self_user.refresh_from_db()
+        self.assertEqual(self.self_user.trang_thai, Employee.Status.LAM_VIEC)
+
+        # 3. Tự đổi đơn vị phòng ban -> 403
+        res_unit = self.client.patch(own_url, {"don_vi_id": self.don_vi_2.id}, format="json")
+        self.assertEqual(res_unit.status_code, status.HTTP_403_FORBIDDEN)
+        self.self_user.refresh_from_db()
+        self.assertEqual(self.self_user.don_vi_id, self.don_vi_1.id)
+
+        # 4. Tự đổi chức vụ -> 403
+        res_pos = self.client.patch(own_url, {"chuc_vu_id": self.cv_truong_phong.id}, format="json")
+        self.assertEqual(res_pos.status_code, status.HTTP_403_FORBIDDEN)
+        self.self_user.refresh_from_db()
+        self.assertEqual(self.self_user.chuc_vu_id, self.cv_chuyen_vien.id)
+
+        # 5. Tự đổi chức danh -> 403
+        res_title = self.client.patch(own_url, {"chuc_danh": "Trưởng phòng phụ trách"}, format="json")
+        self.assertEqual(res_title.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 6. Tự đổi ghi chú hoặc is_public -> 403
+        self.assertEqual(self.client.patch(own_url, {"ghi_chu": "Hack ghi chú"}, format="json").status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.patch(own_url, {"is_public": False}, format="json").status_code, status.HTTP_403_FORBIDDEN)
+
+        # 7. Gửi thông tin cá nhân hợp lệ (sdt, email, ngay_sinh) -> 200 OK
+        res_ok = self.client.patch(
+            own_url,
+            {"sdt": "0988112233", "email": "newself@donvi.gov.vn", "ngay_sinh": "1993-03-03"},
+            format="json"
+        )
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+        self.self_user.refresh_from_db()
+        self.assertEqual(self.self_user.sdt, "0988112233")
+        self.assertEqual(self.self_user.email, "newself@donvi.gov.vn")
+        self.assertEqual(self.self_user.ngay_sinh.strftime("%Y-%m-%d"), "1993-03-03")
 
     def test_change_full_permission_can_update_any_employee(self):
         """User có quyền change_full_cbnv có thể sửa thông tin của bất kỳ CBNV nào."""
