@@ -7,7 +7,7 @@ import string
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from organizations.models import DonVi
@@ -54,23 +54,73 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class PositionSerializer(serializers.ModelSerializer):
-    """Serializer danh mục Chức vụ (accounts_position)."""
+    """
+    Danh mục Chức vụ (accounts_position, Issue #20).
+    Key API theo Issue (stt_uu_tien, ten_chuc_vu, ghi_chu) ánh xạ vào cột DDL (display_order, name, note).
+    """
+
+    stt_uu_tien = serializers.IntegerField(
+        source="display_order",
+        required=False,
+        min_value=1,
+        error_messages={
+            "min_value": "positions.messages.sttInvalid",
+            "invalid": "positions.messages.sttInvalid",
+        },
+    )
+    ten_chuc_vu = serializers.CharField(
+        source="name",
+        max_length=255,
+        error_messages={
+            "blank": "positions.messages.nameRequired",
+            "required": "positions.messages.nameRequired",
+            "null": "positions.messages.nameRequired",
+            "max_length": "positions.messages.nameTooLong",
+        },
+    )
+    ghi_chu = serializers.CharField(source="note", required=False, allow_blank=True, allow_null=True)
+    is_public = serializers.BooleanField(required=False, default=True)
 
     class Meta:
         model = Position
-        fields = ["id", "name", "display_order", "is_public", "note"]
+        fields = ["id", "stt_uu_tien", "ten_chuc_vu", "is_public", "ghi_chu"]
         read_only_fields = ["id"]
 
-    def validate_name(self, value):
-        trimmed = value.strip()
+    def validate_ten_chuc_vu(self, value):
+        trimmed = " ".join(value.split())
         if not trimmed:
-            raise serializers.ValidationError("Tên chức vụ không được để trống.")
-        duplicated = Position.objects.filter(name__iexact=trimmed)
+            raise serializers.ValidationError("positions.messages.nameRequired")
+        # So khớp bằng casefold ở Python: iexact của SQLite không phân biệt hoa/thường với chữ có dấu.
+        others = Position.objects.all()
+        if self.instance is not None:
+            others = others.exclude(pk=self.instance.pk)
+        if trimmed.casefold() in {n.casefold() for n in others.values_list("name", flat=True)}:
+            raise serializers.ValidationError("positions.messages.nameExists")
+        return trimmed
+
+    def validate_stt_uu_tien(self, value):
+        duplicated = Position.objects.filter(display_order=value)
         if self.instance is not None:
             duplicated = duplicated.exclude(pk=self.instance.pk)
         if duplicated.exists():
-            raise serializers.ValidationError("Tên chức vụ đã tồn tại.")
-        return trimmed
+            raise serializers.ValidationError("positions.messages.sttExists")
+        return value
+
+    def validate_ghi_chu(self, value):
+        return (value or "").strip()
+
+    def create(self, validated_data):
+        if "display_order" in validated_data:
+            return super().create(validated_data)
+        # Không truyền STT: tự lấy MAX + 1; thử lại nếu hai request cùng lúc chọn trùng số.
+        for _ in range(5):
+            validated_data["display_order"] = Position.get_next_display_order()
+            try:
+                with transaction.atomic():
+                    return super().create(validated_data)
+            except IntegrityError:
+                continue
+        raise serializers.ValidationError({"stt_uu_tien": ["positions.messages.sttExists"]})
 
 
 class GroupSimpleSerializer(serializers.ModelSerializer):

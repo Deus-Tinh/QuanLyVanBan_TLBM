@@ -71,7 +71,7 @@ export default function EmployeesPage() {
       })
       .catch(() => {});
 
-    apiClient<Position[]>('/api/accounts/positions/?all=true')
+    apiClient<Position[]>('/api/positions/?all=true')
       .then((res) => {
         if (Array.isArray(res)) setPositions(res);
         else if (res && 'results' in res) setPositions((res as PaginatedResponse<Position>).results);
@@ -318,7 +318,7 @@ export default function EmployeesPage() {
               { value: '', label: t('employees.filters.allPositions') },
               ...positions.map((p) => ({
                 value: String(p.id),
-                label: p.name,
+                label: p.ten_chuc_vu,
               })),
             ]}
           />

@@ -99,7 +99,6 @@ class EmployeeBaseTestCase(APITestCase):
 
         # URLs
         self.employee_list_url = "/api/accounts/employees/"
-        self.position_list_url = "/api/accounts/positions/"
         self.group_list_url = "/api/accounts/groups/"
         self.template_url = "/api/accounts/employees/template/"
         self.import_url = "/api/accounts/employees/import/"
@@ -322,23 +321,8 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
         self.assertTrue(self.normal_user.is_active)
 
 
-class PositionAndGroupAPITests(EmployeeBaseTestCase):
-    """Kiểm tra API Chức vụ và Nhóm quyền."""
-
-    def test_list_positions(self):
-        self.client.force_authenticate(user=self.normal_user)
-        res = self.client.get(f"{self.position_list_url}?all=true")
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-        data = res.json()
-        self.assertEqual(len(data), 2)
-        self.assertEqual(data[0]["name"], "Trưởng phòng")
-        self.assertEqual(data[1]["name"], "Chuyên viên")
-
-    def test_position_duplicate_name_rejected(self):
-        self.client.force_authenticate(user=self.admin_user)
-        res = self.client.post(self.position_list_url, {"name": "trưởng phòng", "display_order": 99}, format="json")
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("name", res.json())
+class GroupAPITests(EmployeeBaseTestCase):
+    """Kiểm tra API Nhóm quyền (Chức vụ có bộ test riêng ở test_positions.py)."""
 
     def test_list_groups(self):
         self.client.force_authenticate(user=self.normal_user)
