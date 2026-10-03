@@ -21,6 +21,21 @@ class StandardPagination(PageNumberPagination):
     max_page_size = 100
 
 
+# Khối/Khu vực và Đơn vị dùng chung bộ quyền *_donvi của DDL (DDL không có quyền riêng cho Khối).
+LIST_REQUIRED_PERM = {"GET": "view_donvi", "POST": "add_donvi"}
+DETAIL_REQUIRED_PERM = {
+    "GET": "view_donvi",
+    "PUT": "change_donvi",
+    "PATCH": "change_donvi",
+    "DELETE": "delete_donvi",
+}
+
+
+def _permission_denied():
+    key = "organizations.messages.permissionDenied"
+    return Response({"detail": key, "key": key}, status=status.HTTP_403_FORBIDDEN)
+
+
 class CanExportUnits(BasePermission):
     message = "organizations.messages.exportPermissionDenied"
 
@@ -35,6 +50,9 @@ class CanExportUnits(BasePermission):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def region_list_create_view(request):
+    if not request.user.has_perm(LIST_REQUIRED_PERM[request.method]):
+        return _permission_denied()
+
     if request.method == "GET":
         queryset = KhoiKhuVuc.objects.all().order_by("ten")
         search_query = request.query_params.get("search", "").strip()
@@ -67,6 +85,9 @@ def region_list_create_view(request):
 @api_view(["GET", "PUT", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def region_detail_view(request, pk):
+    if not request.user.has_perm(DETAIL_REQUIRED_PERM[request.method]):
+        return _permission_denied()
+
     try:
         region = KhoiKhuVuc.objects.get(pk=pk)
     except KhoiKhuVuc.DoesNotExist:
@@ -109,6 +130,9 @@ def region_detail_view(request, pk):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def unit_list_create_view(request):
+    if not request.user.has_perm(LIST_REQUIRED_PERM[request.method]):
+        return _permission_denied()
+
     if request.method == "GET":
         queryset = DonVi.objects.select_related("khoi").all().order_by("stt_uu_tien", "ten")
 
@@ -145,6 +169,9 @@ def unit_list_create_view(request):
 @api_view(["GET", "PUT", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
 def unit_detail_view(request, pk):
+    if not request.user.has_perm(DETAIL_REQUIRED_PERM[request.method]):
+        return _permission_denied()
+
     try:
         unit = DonVi.objects.select_related("khoi").get(pk=pk)
     except DonVi.DoesNotExist:

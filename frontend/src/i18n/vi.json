@@ -479,7 +479,8 @@
       "exportSuccess": "Xuất tệp Excel thành công!",
       "exportError": "Không thể tải tệp Excel. Vui lòng thử lại sau.",
       "fetchError": "Không thể tải danh sách dữ liệu. Vui lòng kiểm tra lại kết nối mạng.",
-      "exportPermissionDenied": "Bạn không có quyền xuất danh sách Đơn vị ra Excel."
+      "exportPermissionDenied": "Bạn không có quyền xuất danh sách Đơn vị ra Excel.",
+      "permissionDenied": "Bạn không có quyền thực hiện thao tác này."
     }
   },
   "employees": {

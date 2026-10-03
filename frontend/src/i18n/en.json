@@ -478,7 +478,8 @@
       "exportSuccess": "Exported to Excel successfully!",
       "exportError": "Failed to download Excel file. Please try again.",
       "fetchError": "Failed to load data list. Please check your network connection.",
-      "exportPermissionDenied": "You do not have permission to export the unit list to Excel."
+      "exportPermissionDenied": "You do not have permission to export the unit list to Excel.",
+      "permissionDenied": "You do not have permission to perform this action."
     }
   },
   "employees": {
