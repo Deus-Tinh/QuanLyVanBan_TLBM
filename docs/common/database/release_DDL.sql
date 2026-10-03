@@ -1,4 +1,19 @@
 -- =====================================================================
+-- RELEASE_DDL_v1 — trạng thái đích của Issue #53, sinh từ RELEASE_DDL_v0
+-- Thay đổi so với v0 (mọi thay đổi đều đánh dấu [v1] tại vị trí):
+--   1) ENUM hieu_luc_status thêm 'CON_HIEU_LUC_1_PHAN' (Nhóm 2; dùng chung 3 bảng văn bản và records_chitiettailieu).
+--   2) records_chitiettailieu thêm don_vi_id (FK organizations_donvi, NULL) và chỉ mục (Nhóm 4).
+--   3) records_chitiettailieu_attachment thêm file_size, mime_type (NULL) (Nhóm 4).
+--   4) documents_vanbanmat: CHECK gui_mail_toan_he_thong = FALSE (mục B2).
+--   5) auth_permission thêm 8 quyền: view/add/change/delete_nhomquyen, import_chucvu,
+--      add/change/delete_phonghop (Nhóm 7); nhóm ADMIN nhận qua phép CROSS JOIN sẵn có.
+--   6) Thêm bảng signing_key_unlock (Nhóm 5, Phase 6a; mục B7).
+--   7) Cấp quyền chỉ đọc theo bảng/cột cho role qlvb_readonly nếu role tồn tại (Nhóm 8).
+-- Không đưa vào DDL: mục B3 (độ khẩn/độ mật/số đăng ký; Nhóm 2 xác nhận bỏ), B1 (quy ước tài liệu),
+--   B4/B5 (queryset dùng chung ở tầng ứng dụng), B6 (chưa chốt), bảng dashboard_* và bảng Django hệ thống.
+-- Quy tắc cho nhóm: không tạo lại các thay đổi 2, 3, 5 bằng migration riêng (trùng cột/quyền khi áp dụng).
+-- =====================================================================
+-- =====================================================================
 -- RELEASE_DDL_v0 — sinh từ SQL_Fix4 (csdl_qlvbtl_schema_final.sql)
 -- Thay đổi so với SQL_Fix4 (chỉ phần Trình ký đã chốt, giữ model, sửa DDL):
 --   1) signing_request.document_type: bỏ DEFAULT 'vanbanden'.
@@ -15,7 +30,7 @@
 -- =====================================================================
 -- HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ TÀI LIỆU (QLVB&TL) — PostgreSQL DDL
 -- Sinh tự động & đồng bộ từ đặc tả: CSDL QLVB&TL.md
--- Quy mô: 60 bảng vật lý | 21 kiểu ENUM | 73 quyền thao tác | 5 nhóm quyền chuẩn | 198 lượt phân quyền
+-- Quy mô: 61 bảng vật lý | 21 kiểu ENUM | 81 quyền thao tác | 5 nhóm quyền chuẩn | 206 lượt phân quyền
 -- =====================================================================
 -- GHI CHÚ VỀ CÁC QUYẾT ĐỊNH THIẾT KẾ & ĐỒNG BỘ KIẾN TRÚC:
 --
@@ -45,7 +60,7 @@
 -- mở rộng cột module_ten phục vụ trực tiếp giao diện phân nhóm quyền, không phụ
 -- thuộc cứng vào bảng nội bộ django_content_type để đảm bảo tính độc lập DDL.
 -- Cột content_type_id để NULL để chạy DDL trực tiếp trên PostgreSQL;
--- Seed 73 quyền chi tiết, 5 nhóm quyền chuẩn và 198 lượt mapping idempotent.
+-- Seed 81 quyền chi tiết, 5 nhóm quyền chuẩn và 206 lượt mapping idempotent.
 -- 7) [Tô Thanh Tân] accounts_employee bổ sung is_active (khóa tài khoản nhân viên nghỉ
 -- việc theo chuẩn Django User), is_staff, is_superuser; thống nhất mô hình
 -- Custom User Model hoặc Profile 1-1 không bị dư thừa dữ liệu.
@@ -116,7 +131,7 @@ LANGUAGE plpgsql;
 -- 0.1 ENUM TYPES
 -- ---------------------------------------------------------------------
 -- Hiệu lực văn bản / tài liệu: thống nhất 1 ENUM duy nhất dùng chung cho cả Văn bản và Tài liệu lưu trữ
-CREATE TYPE hieu_luc_status       AS ENUM ('CON_HIEU_LUC', 'HET_HIEU_LUC', 'HET_VA_THAY_THE');
+CREATE TYPE hieu_luc_status       AS ENUM ('CON_HIEU_LUC', 'CON_HIEU_LUC_1_PHAN', 'HET_HIEU_LUC', 'HET_VA_THAY_THE');
 -- [REMOVED] hoso_status ENUM — đã xóa theo yêu cầu Nhóm 3 (Thịnh Trương): cột trang_thai chưa được duyệt.
 CREATE TYPE chitiettailieu_hienthi AS ENUM ('TAT_CA','NOI_BO_PHONG_BAN');
 
@@ -457,6 +472,7 @@ CREATE TABLE records_chitiettailieu (
     link_thay_the VARCHAR(500),
     ghi_chu TEXT,
     hien_thi chitiettailieu_hienthi NOT NULL,
+    don_vi_id BIGINT REFERENCES organizations_donvi (id) ON DELETE RESTRICT, -- [v1] Đơn vị sở hữu; phục vụ lọc NOI_BO_PHONG_BAN (Nhóm 4, Nhóm 8)
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -464,6 +480,8 @@ CREATE TABLE records_chitiettailieu (
 
 CREATE TRIGGER trg_chitiettailieu_updated_at BEFORE UPDATE ON records_chitiettailieu
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX idx_chitiettailieu_don_vi ON records_chitiettailieu (don_vi_id);
 
 -- Loại tài liệu cấp 2 áp dụng cho chi tiết tài liệu (M2M, lọc theo dm_tai_lieu đã chọn)
 CREATE TABLE records_chitiettailieu_loaitailieu (
@@ -481,6 +499,8 @@ CREATE TABLE records_chitiettailieu_attachment (
     document_id BIGINT NOT NULL REFERENCES records_chitiettailieu (id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL, -- Tên gốc file khi upload
     path VARCHAR(500) NOT NULL, -- Đường dẫn lưu file trên server/storage
+    file_size BIGINT CHECK (file_size >= 0), -- [v1] Dung lượng (byte); NULL với bản ghi cũ (Nhóm 4)
+    mime_type VARCHAR(255), -- [v1] Kiểu MIME; NULL với bản ghi cũ (Nhóm 4)
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE, -- Cờ xóa mềm
     created_time TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_user_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
@@ -802,7 +822,9 @@ CREATE TABLE documents_vanbanmat (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_vanbanmat_link_thay_the CHECK (
         hieu_luc <> 'HET_VA_THAY_THE' OR (link_thay_the IS NOT NULL AND BTRIM(link_thay_the) <> '')
-    )
+    ),
+    -- [v1] B2: văn bản mật (nội bộ hạn chế) không được gửi mail toàn hệ thống
+    CONSTRAINT chk_vanbanmat_khong_mail_toan_he_thong CHECK (gui_mail_toan_he_thong = FALSE)
 );
 
 CREATE TRIGGER trg_vanbanmat_updated_at BEFORE UPDATE ON documents_vanbanmat
@@ -1183,6 +1205,23 @@ CREATE TABLE signing_key (
 CREATE UNIQUE INDEX uq_signing_key_mot_khoa_hoat_dong ON signing_key (nguoi_so_huu_id) WHERE (trang_thai = 'HOAT_DONG');
 CREATE INDEX idx_signing_key_khoa_thay_the ON signing_key (khoa_thay_the_id);
 CREATE INDEX idx_signing_key_nguoi_so_huu ON signing_key (nguoi_so_huu_id);
+
+-- 9.8b. [v1] Mở khóa ký bằng PIN (Nhóm 5, Phase 6a) — bảng trạng thái, được phép UPDATE.
+-- Không lưu PIN; chỉ lưu hash verifier và mảnh bí mật máy chủ đã mã hóa. Sự kiện PIN ghi vào signing_audit_log.
+CREATE TABLE signing_key_unlock (
+    id BIGSERIAL PRIMARY KEY,
+    khoa_id BIGINT NOT NULL UNIQUE REFERENCES signing_key (id) ON DELETE CASCADE,
+    ma_bam_xac_minh_pin TEXT NOT NULL,
+    manh_bi_mat_ma_hoa TEXT NOT NULL,
+    tham_so_kdf JSONB NOT NULL,
+    so_lan_sai INTEGER NOT NULL DEFAULT 0 CHECK (so_lan_sai >= 0),
+    khoa_den TIMESTAMPTZ, -- NULL: không bị khóa
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TRIGGER trg_signing_key_unlock_updated_at BEFORE UPDATE ON signing_key_unlock
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- 9.9. Chữ ký số điện tử (Bảo toàn bằng chứng pháp lý — Bất biến không thể sửa/xóa)
 -- Issue #47 P0.3: Chặn DELETE và chặn UPDATE mọi cột, CHỈ CHO PHÉP cập nhật trang_thai_xac_minh và thoi_diem_xac_minh
@@ -1920,7 +1959,7 @@ SET
     ma_nhom_quyen = EXCLUDED.ma_nhom_quyen;
 
 -- ---------------------------------------------------------------------
--- 5) Seed 73 Quyền thao tác chi tiết (auth_permission)
+-- 5) Seed 81 Quyền thao tác chi tiết (auth_permission)
 -- ---------------------------------------------------------------------
 INSERT INTO
     auth_permission (name, codename, module_ten)
@@ -2298,6 +2337,47 @@ VALUES
         'send_wish_sinhnhat',
         'Sinh nhật'
     ),
+    -- [v1] Quyền bổ sung của Nhóm 7 (Issue #53): trang Phân quyền, import Chức vụ, quản lý danh mục phòng họp
+    (
+        'Xem danh sách nhóm quyền',
+        'view_nhomquyen',
+        'Phân quyền'
+    ),
+    (
+        'Thêm nhóm quyền',
+        'add_nhomquyen',
+        'Phân quyền'
+    ),
+    (
+        'Sửa nhóm quyền',
+        'change_nhomquyen',
+        'Phân quyền'
+    ),
+    (
+        'Xóa nhóm quyền',
+        'delete_nhomquyen',
+        'Phân quyền'
+    ),
+    (
+        'Import chức vụ từ Excel',
+        'import_chucvu',
+        'Chức vụ'
+    ),
+    (
+        'Thêm phòng họp (danh mục)',
+        'add_phonghop',
+        'Phòng họp (danh mục)'
+    ),
+    (
+        'Sửa phòng họp (danh mục)',
+        'change_phonghop',
+        'Phòng họp (danh mục)'
+    ),
+    (
+        'Xóa phòng họp (danh mục)',
+        'delete_phonghop',
+        'Phòng họp (danh mục)'
+    ),
     -- Chatbox AI (Nhóm 8)
     (
         'Sử dụng chatbot (chỉ trả lời nội dung người hỏi có quyền Xem)',
@@ -2489,3 +2569,31 @@ WHERE
     ) ON CONFLICT (group_id, permission_id) DO NOTHING;
 
 COMMIT;
+
+-- =====================================================================
+-- [v1] TÀI KHOẢN CSDL CHỈ ĐỌC CHO TRỢ LÝ AI (Nhóm 8)
+-- - Role được tạo ngoài DDL (kèm mật khẩu từ biến môi trường); khối dưới chỉ cấp quyền khi role đã tồn tại.
+-- - Cấp theo bảng/cột cần dùng; KHÔNG cấp văn bản mật, bảng khóa ký/PIN/nhật ký, cột password;
+--   KHÔNG dùng ALTER DEFAULT PRIVILEGES.
+-- - Quyền "ai được xem văn bản nào" lấy từ lớp dùng chung của Nhóm 2/Nhóm 7, không viết lại bằng SQL thô.
+-- =====================================================================
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'qlvb_readonly') THEN
+        GRANT SELECT (id, don_vi_id, is_active, trang_thai, is_superuser) ON accounts_employee TO qlvb_readonly;
+        GRANT SELECT (id, ten) ON organizations_donvi TO qlvb_readonly;
+        GRANT SELECT ON
+            documents_vanbanden,
+            documents_vanbanden_nguoinhan,
+            documents_vanbanden_donvinhan,
+            documents_vanbandi,
+            documents_vanbandi_noibanhanh,
+            documents_vanbandi_nguoinhan,
+            documents_vanbandi_donvinhan,
+            records_chitiettailieu
+        TO qlvb_readonly;
+    ELSE
+        RAISE NOTICE 'Role qlvb_readonly chưa tồn tại: bỏ qua cấp quyền chỉ đọc cho trợ lý AI';
+    END IF;
+END
+$$;
