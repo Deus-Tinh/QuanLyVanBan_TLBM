@@ -381,6 +381,73 @@
       "desc": "Hỏi đáp tài liệu quy trình, văn bản đến/đi và liên kết tra cứu thông minh."
     }
   },
+  "records": {
+    "common": {
+      "dossier": "Hồ sơ"
+    },
+    "actions": {
+      "filter": "Lọc dữ liệu",
+      "reset": "Đặt lại",
+      "retry": "Thử lại",
+      "viewDocuments": "Xem văn bản"
+    },
+    "filters": {
+      "year": "Lọc theo năm",
+      "allYears": "Tất cả năm",
+      "documentType": "Lọc theo loại văn bản",
+      "allDocumentTypes": "Tất cả"
+    },
+    "table": {
+      "index": "STT",
+      "createdDate": "Ngày lập",
+      "note": "Ghi chú",
+      "action": "Thao tác"
+    },
+    "documentKinds": {
+      "vanbanden": "Văn bản đến",
+      "vanbandi": "Văn bản đi",
+      "vanbanmat": "Văn bản mật"
+    },
+    "documentTypes": {
+      "back": "Quay lại danh mục hồ sơ",
+      "title": "Văn bản cấp 2",
+      "readOnlyNote": "Danh mục cấp 2 chỉ dùng để tra cứu; không thêm, sửa hoặc xóa tại màn hình này.",
+      "viewAllDocuments": "Xem toàn bộ văn bản",
+      "searchLabel": "Tìm văn bản cấp 2",
+      "searchPlaceholder": "Tìm theo tên loại văn bản...",
+      "loading": "Đang tải danh sách văn bản cấp 2",
+      "emptyTitle": "Chưa có văn bản cấp 2 phù hợp",
+      "emptyDescription": "Bạn vẫn có thể mở danh sách toàn bộ văn bản thuộc hồ sơ.",
+      "name": "Tên văn bản cấp 2"
+    },
+    "documents": {
+      "back": "Quay lại văn bản cấp 2",
+      "title": "Văn bản thuộc hồ sơ",
+      "readOnlyNote": "Màn hình tra cứu chỉ đọc; không có thao tác thêm, sửa hoặc xóa.",
+      "searchLabel": "Tìm kiếm văn bản",
+      "searchPlaceholder": "Tìm theo số/ký hiệu hoặc trích yếu...",
+      "loading": "Đang tải danh sách văn bản",
+      "emptyTitle": "Không có văn bản phù hợp",
+      "emptyDescription": "Hãy thử thay đổi từ khóa, năm hoặc loại văn bản.",
+      "reference": "Số/ký hiệu",
+      "summary": "Trích yếu",
+      "documentDate": "Ngày văn bản",
+      "kind": "Loại"
+    },
+    "errors": {
+      "title": "Không thể tải dữ liệu",
+      "missingDossier": "Không xác định được hồ sơ cần xem.",
+      "loadDocumentTypes": "Không thể tải danh sách văn bản cấp 2.",
+      "loadDocuments": "Không thể tải danh sách văn bản của hồ sơ.",
+      "sharedSchemaUnavailable": "Các bảng văn bản dùng chung của Nhóm 2 chưa sẵn sàng theo DDL đã chốt. Hãy đồng bộ schema trước khi kiểm thử luồng này."
+    },
+    "pagination": {
+      "summary": "Hiển thị {first}–{last} trong tổng số {count}",
+      "previous": "Trước",
+      "next": "Sau",
+      "page": "Trang {page}/{total}"
+    }
+  },
   "auth": {
     "backToDashboard": "Vào Bàn Làm Việc (Dashboard)",
     "brandTitle": "Quản lý văn bản & Tài liệu Bảo Long",

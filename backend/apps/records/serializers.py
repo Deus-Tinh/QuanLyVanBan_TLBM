@@ -195,3 +195,26 @@ class LoaiVanBanSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+
+class DossierDocumentFilterSerializer(serializers.Serializer):
+    search = serializers.CharField(required=False, allow_blank=True, default="")
+    year = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=9999)
+    type = serializers.ChoiceField(
+        required=False,
+        allow_blank=True,
+        default="",
+        choices=("vanbanden", "vanbandi", "vanbanmat"),
+    )
+    page = serializers.IntegerField(required=False, default=1, min_value=1)
+    page_size = serializers.IntegerField(required=False, default=10, min_value=1, max_value=100)
+
+
+class DossierDocumentSerializer(serializers.Serializer):
+    key = serializers.CharField()
+    id = serializers.IntegerField()
+    document_type = serializers.ChoiceField(choices=("vanbanden", "vanbandi", "vanbanmat"))
+    so_hieu = serializers.CharField()
+    trich_yeu = serializers.CharField()
+    ngay_van_ban = serializers.DateTimeField(allow_null=True)
+    nam = serializers.IntegerField()
