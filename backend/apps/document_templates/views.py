@@ -4,6 +4,7 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -137,7 +138,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
     - Xuất Excel danh sách tài liệu theo đúng bộ lọc tìm kiếm
     """
     serializer_class = TaiLieuChiTietSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TaiLieuChiTietFilter
     search_fields = ['tieu_de', 'ky_hieu', 'noi_ban_hanh', 'ghi_chu']
@@ -172,8 +173,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         kwargs = {}
         if self.request.user and self.request.user.is_authenticated:
-            if 'nguoi_tao' not in serializer.validated_data:
-                kwargs['nguoi_tao'] = self.request.user
+            kwargs['nguoi_tao'] = self.request.user
         serializer.save(**kwargs)
 
     @action(detail=True, methods=['post'], url_path='toggle-validity')
@@ -206,8 +206,15 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
         if ngay_het_hieu_luc is not None:
             obj.ngay_het_hieu_luc = ngay_het_hieu_luc
 
-        obj.full_clean()
-        obj.save()
+        try:
+            obj.full_clean()
+            obj.save()
+        except DjangoValidationError as e:
+            return Response(
+                e.message_dict if hasattr(e, 'message_dict') else {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = self.get_serializer(obj)
         return Response(serializer.data)
 

@@ -270,3 +270,44 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         self.assertEqual(ws.cell(row=4, column=3).value, "Tiêu đề tài liệu")
         # Ít nhất có 2 dòng dữ liệu
         self.assertGreaterEqual(ws.max_row, 5)
+
+    def test_anonymous_user_cannot_create_or_modify_or_delete_document(self):
+        """Khắc phục Lỗi 1 (P0): Người dùng ẩn danh không được phép POST, PATCH, DELETE"""
+        self.client.force_authenticate(user=None)
+        # Thử POST ẩn danh
+        res_post = self.client.post('/api/resources/documents/', {'tieu_de': 'Tài liệu lậu'})
+        self.assertEqual(res_post.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Thử PATCH ẩn danh
+        res_patch = self.client.patch(f'/api/resources/documents/{self.doc1.id}/', {'tieu_de': 'Sửa lậu'})
+        self.assertEqual(res_patch.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Thử DELETE ẩn danh
+        res_del = self.client.delete(f'/api/resources/documents/{self.doc1.id}/')
+        self.assertEqual(res_del.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_patch_cannot_overwrite_nguoi_tao(self):
+        """Khắc phục Lỗi 2 (P1): PATCH không được phép ghi đè trường nguoi_tao"""
+        self.client.force_authenticate(user=self.admin)
+        other_user = User.objects.create_user(username='other_user', password='password123')
+        original_creator_id = self.doc1.nguoi_tao_id
+
+        res = self.client.patch(f'/api/resources/documents/{self.doc1.id}/', {
+            'nguoi_tao': other_user.id
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.doc1.refresh_from_db()
+        # nguoi_tao phải giữ nguyên là người tạo ban đầu
+        self.assertEqual(self.doc1.nguoi_tao_id, original_creator_id)
+
+    def test_toggle_validity_missing_replacement_link_returns_400(self):
+        """Khắc phục Lỗi 3 (P2): Đổi sang HET_VA_THAY_THE mà thiếu link thay thế phải trả về 400 Bad Request, không được bung lỗi 500"""
+        self.client.force_authenticate(user=self.user)
+        url = f'/api/resources/documents/{self.doc1.id}/toggle-validity/'
+        res = self.client.post(url, {
+            'hieu_luc': 'HET_VA_THAY_THE',
+            'link_thay_the': ''  # Rỗng -> phải trả 400
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('link_thay_the', res.data)
+

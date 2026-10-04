@@ -20,7 +20,7 @@ class DanhMucTaiLieuSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'nguoi_lap', 'created_at', 'updated_at']
 
     def get_nguoi_lap_name(self, obj):
         if not obj.nguoi_lap:
@@ -84,7 +84,7 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'nguoi_tao', 'created_at', 'updated_at']
 
     def get_loai_tai_lieu_names(self, obj):
         return [loai.ten_loai for loai in obj.loai_tai_lieu.all()]

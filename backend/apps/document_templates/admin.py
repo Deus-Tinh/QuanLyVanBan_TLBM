@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet
+from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuLoaiTaiLieu
+
+
+class ChiTietTaiLieuLoaiTaiLieuInline(admin.TabularInline):
+    model = ChiTietTaiLieuLoaiTaiLieu
+    extra = 1
 
 
 @admin.register(DanhMucTaiLieu)
@@ -22,5 +27,5 @@ class TaiLieuChiTietAdmin(admin.ModelAdmin):
     list_display = ('id', 'ky_hieu', 'tieu_de', 'dm_tai_lieu', 'hieu_luc', 'ngay_dang', 'hien_thi', 'nguoi_tao')
     list_filter = ('hieu_luc', 'hien_thi', 'dm_tai_lieu', 'ngay_dang')
     search_fields = ('tieu_de', 'ky_hieu', 'noi_ban_hanh', 'ghi_chu')
-    filter_horizontal = ('loai_tai_lieu',)
+    inlines = [ChiTietTaiLieuLoaiTaiLieuInline]
     ordering = ('-ngay_dang', '-id')

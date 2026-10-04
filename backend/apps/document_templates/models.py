@@ -1,7 +1,7 @@
 import os
 from django.db import models
 from django.core.exceptions import ValidationError
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.db.models import Max
 
 
@@ -26,7 +26,14 @@ class DanhMucTaiLieu(models.Model):
     stt_uu_tien = models.SmallIntegerField(unique=True, verbose_name="STT ưu tiên")
     ky_hieu = models.CharField(max_length=255, blank=True, null=True, verbose_name="Số ký hiệu")
     ten_tai_lieu = models.CharField(max_length=255, verbose_name="Tên tài liệu")
-    nguoi_lap = models.ForeignKey(User, on_delete=models.RESTRICT, null=True, blank=True, verbose_name="Người lập")
+    nguoi_lap = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        db_column="nguoi_lap_id",
+        verbose_name="Người lập"
+    )
     ngay_lap = models.DateField(null=True, blank=True, verbose_name="Ngày lập")
     ghi_chu = models.TextField(blank=True, null=True, verbose_name="Ghi chú")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -77,6 +84,31 @@ class LoaiTaiLieu(models.Model):
         return f"{self.ten_loai} ({self.dm_tai_lieu.ten_tai_lieu})"
 
 
+class ChiTietTaiLieuLoaiTaiLieu(models.Model):
+    """
+    Bảng nối Nhiều - Nhiều giữa Chi tiết tài liệu và Loại tài liệu cấp 2
+    Khớp bảng records_chitiettailieu_loaitailieu trong DDL Base (Khóa chính ghép)
+    """
+    pk = models.CompositePrimaryKey('chitiettailieu', 'loaitailieu')
+    chitiettailieu = models.ForeignKey(
+        'TaiLieuChiTiet',
+        on_delete=models.CASCADE,
+        db_column='chitiettailieu_id',
+        verbose_name="Chi tiết tài liệu"
+    )
+    loaitailieu = models.ForeignKey(
+        LoaiTaiLieu,
+        on_delete=models.RESTRICT,
+        db_column='loaitailieu_id',
+        verbose_name="Loại tài liệu"
+    )
+
+    class Meta:
+        db_table = "records_chitiettailieu_loaitailieu"
+        verbose_name = "Chi tiết tài liệu - Loại tài liệu"
+        verbose_name_plural = "Chi tiết tài liệu - Loại tài liệu"
+
+
 class TaiLieuChiTiet(models.Model):
     """
     3. Chi tiết tài liệu chung (Khớp bảng records_chitiettailieu trong SQL)
@@ -100,9 +132,9 @@ class TaiLieuChiTiet(models.Model):
     )
     loai_tai_lieu = models.ManyToManyField(
         LoaiTaiLieu,
+        through=ChiTietTaiLieuLoaiTaiLieu,
         blank=True,
         related_name='tai_lieu_thuoc_loai',
-        db_table="records_chitiettailieu_loaitailieu",
         verbose_name="Loại tài liệu (Cấp 2)"
     )
     ky_hieu = models.CharField(max_length=255, blank=True, null=True, verbose_name="Ký hiệu tài liệu")
@@ -130,10 +162,11 @@ class TaiLieuChiTiet(models.Model):
         verbose_name="Hiển thị"
     )
     nguoi_tao = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        db_column="nguoi_tao",
         verbose_name="Người tạo"
     )
     created_at = models.DateTimeField(auto_now_add=True)
