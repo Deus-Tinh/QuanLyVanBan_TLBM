@@ -1,6 +1,7 @@
 ﻿import { useSyncExternalStore } from 'react';
 import viJson from './vi.json';
 import enJson from './en.json';
+import { useCallback } from 'react';
 
 export type SupportedLanguage = 'vi' | 'en';
 export type TranslationSchema = typeof viJson;
@@ -109,11 +110,15 @@ function getServerSnapshot(): SupportedLanguage {
 export function useTranslation() {
   const lang: SupportedLanguage = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const translations = DICTIONARIES[lang];
+  const translate = useCallback(
+    (key: string, replacements?: Record<string, string>) => t(key, replacements, lang),
+    [lang]
+  );
 
   return {
     currentLang: lang,
     setLanguage,
-    t: (key: string, replacements?: Record<string, string>) => t(key, replacements, lang),
+    t: translate,
     translations,
   };
 }

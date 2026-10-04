@@ -380,6 +380,73 @@
       "desc": "Intelligent procedural Q&A, incoming/outgoing document search, and deep system cross-linking."
     }
   },
+  "records": {
+    "common": {
+      "dossier": "Dossier"
+    },
+    "actions": {
+      "filter": "Apply filters",
+      "reset": "Reset",
+      "retry": "Try again",
+      "viewDocuments": "View documents"
+    },
+    "filters": {
+      "year": "Filter by year",
+      "allYears": "All years",
+      "documentType": "Filter by document type",
+      "allDocumentTypes": "All"
+    },
+    "table": {
+      "index": "No.",
+      "createdDate": "Created date",
+      "note": "Notes",
+      "action": "Action"
+    },
+    "documentKinds": {
+      "vanbanden": "Incoming",
+      "vanbandi": "Outgoing",
+      "vanbanmat": "Confidential"
+    },
+    "documentTypes": {
+      "back": "Back to dossiers",
+      "title": "Level-2 documents",
+      "readOnlyNote": "This level-2 catalog is read-only; add, edit, and delete actions are not available here.",
+      "viewAllDocuments": "View all documents",
+      "searchLabel": "Search level-2 documents",
+      "searchPlaceholder": "Search by document category name...",
+      "loading": "Loading level-2 documents",
+      "emptyTitle": "No matching level-2 documents",
+      "emptyDescription": "You can still open all documents linked to this dossier.",
+      "name": "Level-2 document name"
+    },
+    "documents": {
+      "back": "Back to level-2 documents",
+      "title": "Documents in dossier",
+      "readOnlyNote": "This is a read-only lookup screen with no add, edit, or delete actions.",
+      "searchLabel": "Search documents",
+      "searchPlaceholder": "Search by reference number or summary...",
+      "loading": "Loading documents",
+      "emptyTitle": "No matching documents",
+      "emptyDescription": "Try changing the keyword, year, or document type.",
+      "reference": "Reference",
+      "summary": "Summary",
+      "documentDate": "Document date",
+      "kind": "Type"
+    },
+    "errors": {
+      "title": "Unable to load data",
+      "missingDossier": "The requested dossier could not be identified.",
+      "loadDocumentTypes": "Unable to load the level-2 document list.",
+      "loadDocuments": "Unable to load documents for this dossier.",
+      "sharedSchemaUnavailable": "Group 2's shared document tables are not yet available under the approved DDL. Synchronize the schema before testing this flow."
+    },
+    "pagination": {
+      "summary": "Showing {first}–{last} of {count}",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page}/{total}"
+    }
+  },
   "auth": {
     "backToDashboard": "Go to Dashboard",
     "brandTitle": "Bao Long Document & Records Management",
