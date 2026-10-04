@@ -4,11 +4,23 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import { DocumentItem } from './ModernDashboardView';
 
-describe('DocumentPreviewModal Component (PDF Reader View)', () => {
+describe('DocumentPreviewModal Component (Group 2 Detail & PDF Reader View)', () => {
   const mockDoc: DocumentItem = {
-    code: '128/QĐ-UBND',
-    title: 'Phê duyệt đề án chuyển đổi số công vụ',
-    date: '01/10/2026',
+    code: '56/NQ-HĐND',
+    title: 'Nghị quyết quy định chính sách hỗ trợ phát triển giáo dục mầm non',
+    date: '29/09/2026',
+    arrivalNumber: '#8',
+    bookYear: '2026',
+    arrivalDate: '30/09/2026',
+    issuingPlace: 'Hội đồng Nhân dân TP. Hồ Chí Minh',
+    signer: 'Nguyễn Thị Lệ',
+    signerRole: 'Chủ tịch HĐND',
+    validityStatus: 'expired',
+    validityStatusLabel: 'Hết hiệu lực và thay thế',
+    replacedBy: '15/CV-BGDĐT',
+    note: 'Đã được thay thế bởi văn bản hướng dẫn 15/CV-BGDĐT',
+    creator: 'Trí Kiệt Lê',
+    createdAt: '30/09/2026 21:49:59',
   };
 
   it('does not render when isOpen is false', () => {
@@ -23,7 +35,7 @@ describe('DocumentPreviewModal Component (PDF Reader View)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('renders modal with full PDF reader layout when isOpen is true', () => {
+  it('renders modal with full Group 2 document details layout when isOpen is true', () => {
     render(
       <DocumentPreviewModal
         isOpen={true}
@@ -33,54 +45,59 @@ describe('DocumentPreviewModal Component (PDF Reader View)', () => {
       />
     );
 
-    // Modal dialog is in the document
+    // Modal dialog is present
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
-    // Document code and title in header
-    expect(screen.getByText('128/QĐ-UBND.pdf')).toBeInTheDocument();
-    expect(screen.getAllByText(/Phê duyệt đề án chuyển đổi số công vụ/i).length).toBeGreaterThan(0);
+    // Header elements: title, badge code, and subtitle
+    expect(screen.getByText('Chi Tiết Văn Bản Đến')).toBeInTheDocument();
+    expect(screen.getByText('56/NQ-HĐND')).toBeInTheDocument();
+    expect(screen.getByText('Xem toàn bộ thông tin chi tiết và danh sách tệp đính kèm.')).toBeInTheDocument();
 
-    // Vietnamese Administrative Document Standards (Nghị định 30/2020/NĐ-CP)
-    expect(screen.getByText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM')).toBeInTheDocument();
-    expect(screen.getByText('Độc lập - Tự do - Hạnh phúc')).toBeInTheDocument();
-    expect(screen.getByText('TỔNG CÔNG TY CỔ PHẦN BẢO HIỂM BẢO LONG')).toBeInTheDocument();
+    // Expired warning banner
+    expect(screen.getByText('VĂN BẢN ĐÃ HẾT HIỆU LỰC (ĐÃ THAY THẾ)')).toBeInTheDocument();
+    expect(screen.getAllByText('15/CV-BGDĐT').length).toBeGreaterThan(0);
 
-    // Cambridge KET / Specification structured table layout
-    expect(screen.getByText('Phần / STT')).toBeInTheDocument();
-    expect(screen.getByText('Nội dung quy định & Trích dẫn nghiệp vụ')).toBeInTheDocument();
-    expect(screen.getByText('Yêu cầu nghiệp vụ / Căn cứ pháp lý')).toBeInTheDocument();
-    expect(screen.getByText('Chỉ tiêu / Định mức')).toBeInTheDocument();
+    // Excerpt / Summary block
+    expect(screen.getByText('TRÍCH YẾU NỘI DUNG')).toBeInTheDocument();
+    expect(screen.getByText('Nghị quyết quy định chính sách hỗ trợ phát triển giáo dục mầm non')).toBeInTheDocument();
 
-    // Rows in table
-    expect(screen.getByText('Quy cách văn bản & Tiếp nhận vào hệ thống hồ sơ số')).toBeInTheDocument();
-    expect(screen.getByText('100% chuẩn hóa')).toBeInTheDocument();
+    // Column 1: Incoming specifications
+    expect(screen.getByText('THÔNG SỐ ĐẾN')).toBeInTheDocument();
+    expect(screen.getByText('#8')).toBeInTheDocument();
 
-    // Digital signature stamp
-    expect(screen.getByText('ĐÃ KÝ SỐ ĐIỆN TỬ')).toBeInTheDocument();
-    expect(screen.getByText('Ký bởi: BẢO HIỂM BẢO LONG')).toBeInTheDocument();
+    // Column 2: Issuing Agency & Validity
+    expect(screen.getByText('CƠ QUAN BAN HÀNH & HIỆU LỰC')).toBeInTheDocument();
+    expect(screen.getByText('Hội đồng Nhân dân TP. Hồ Chí Minh')).toBeInTheDocument();
+    expect(screen.getByText('Hết hiệu lực và thay thế')).toBeInTheDocument();
+
+    // Note block
+    expect(screen.getByText(/Đã được thay thế bởi văn bản hướng dẫn 15\/CV-BGDĐT/i)).toBeInTheDocument();
+
+    // Attachments section
+    expect(screen.getAllByText(/TỆP ĐÍNH KÈM/i).length).toBeGreaterThan(0);
+
+    // Footer creator info
+    expect(screen.getByText('Trí Kiệt Lê')).toBeInTheDocument();
   });
 
-  it('handles zoom in, zoom out and reset zoom', () => {
+  it('switches to digitized PDF viewer tab when clicked', () => {
     render(
       <DocumentPreviewModal
         isOpen={true}
         onClose={vi.fn()}
         document={mockDoc}
+        docType="incoming"
       />
     );
 
-    const zoomLabel = screen.getByText('100%');
-    expect(zoomLabel).toBeInTheDocument();
+    // Click tab "Bản số hóa (PDF)"
+    const pdfTabBtn = screen.getByText('Bản số hóa (PDF)');
+    fireEvent.click(pdfTabBtn);
 
-    // Click Zoom in
-    const zoomInBtn = screen.getByLabelText('Phóng to');
-    fireEvent.click(zoomInBtn);
-    expect(screen.getByText('115%')).toBeInTheDocument();
-
-    // Click Zoom out
-    const zoomOutBtn = screen.getByLabelText('Thu nhỏ');
-    fireEvent.click(zoomOutBtn);
-    expect(screen.getByText('100%')).toBeInTheDocument();
+    // PDF sheet content should now be visible
+    expect(screen.getByText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM')).toBeInTheDocument();
+    expect(screen.getByText('Độc lập - Tự do - Hạnh phúc')).toBeInTheDocument();
+    expect(screen.getByText('ĐÃ KÝ SỐ ĐIỆN TỬ')).toBeInTheDocument();
   });
 
   it('triggers onClose when close button is clicked', () => {
@@ -130,11 +147,11 @@ describe('DocumentPreviewModal Component (PDF Reader View)', () => {
       />
     );
 
-    const nextBtn = screen.getByText('Văn bản tiếp theo');
+    const nextBtn = screen.getByLabelText('Văn bản tiếp theo');
     fireEvent.click(nextBtn);
     expect(handleNext).toHaveBeenCalledTimes(1);
 
-    const prevBtn = screen.getByText('Văn bản trước');
+    const prevBtn = screen.getByLabelText('Văn bản trước');
     fireEvent.click(prevBtn);
     expect(handlePrev).toHaveBeenCalledTimes(1);
   });

@@ -123,10 +123,11 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     const docRow = screen.getByText('128/QĐ-UBND');
     fireEvent.click(docRow);
 
-    // Modal opens with document preview
+    // Modal opens with document details matching Group 2 specifications
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText('128/QĐ-UBND.pdf')).toBeInTheDocument();
-    expect(screen.getByText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM')).toBeInTheDocument();
+    expect(screen.getByText('Chi Tiết Văn Bản Đến')).toBeInTheDocument();
+    expect(screen.getByText('TRÍCH YẾU NỘI DUNG')).toBeInTheDocument();
+    expect(screen.getByText('THÔNG SỐ ĐẾN')).toBeInTheDocument();
 
     // Close modal
     const closeBtn = screen.getByLabelText('Đóng (ESC)');

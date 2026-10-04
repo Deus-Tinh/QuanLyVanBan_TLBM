@@ -14,6 +14,14 @@ export interface TaskItem {
   variant: 'success' | 'warning' | 'info' | 'danger';
 }
 
+export interface DocumentAttachment {
+  name: string;
+  size?: string;
+  date?: string;
+  type?: 'pdf' | 'excel' | 'word' | 'image' | 'other';
+  url?: string;
+}
+
 export interface DocumentItem {
   code: string;
   title: string;
@@ -21,6 +29,20 @@ export interface DocumentItem {
   id?: string | number;
   sender?: string;
   recipient?: string;
+  arrivalNumber?: string | number;
+  bookYear?: number | string;
+  arrivalDate?: string;
+  issuingPlace?: string;
+  signer?: string;
+  signerRole?: string;
+  validityStatus?: 'valid' | 'expired' | 'partial';
+  validityStatusLabel?: string;
+  replacedBy?: string;
+  note?: string;
+  attachments?: DocumentAttachment[];
+  creator?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ResourceTemplateItem {
