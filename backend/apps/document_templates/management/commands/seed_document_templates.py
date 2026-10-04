@@ -1,6 +1,6 @@
 from datetime import date
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from document_templates.models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet
 
@@ -10,6 +10,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE("Dang khoi tao du lieu mau Tai lieu & Bieu mau..."))
+        User = get_user_model()
 
         admin_user, _ = User.objects.get_or_create(
             username="admin",

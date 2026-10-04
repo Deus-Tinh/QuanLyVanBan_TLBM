@@ -64,6 +64,7 @@ class LoaiTaiLieu(models.Model):
     dm_tai_lieu = models.ForeignKey(
         DanhMucTaiLieu,
         on_delete=models.PROTECT,
+        db_column="dm_tai_lieu",
         related_name="danh_sach_loai",
         verbose_name="Thuộc danh mục cấp 1"
     )
@@ -127,6 +128,7 @@ class TaiLieuChiTiet(models.Model):
     dm_tai_lieu = models.ForeignKey(
         DanhMucTaiLieu,
         on_delete=models.RESTRICT,
+        db_column="dm_tai_lieu",
         related_name='tai_lieu_thuoc_danh_muc',
         verbose_name="Danh mục tài liệu (Cấp 1)"
     )
