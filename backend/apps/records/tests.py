@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.test import TestCase
 
 from records.models import HoSo, LoaiVanBan
@@ -28,9 +28,67 @@ class RecordsModelTests(TestCase):
         self.assertEqual(HoSo.objects.filter(is_he_thong=True).count(), 1)
         dossier = HoSo.objects.get(is_he_thong=True)
         with transaction.atomic():
-            with self.assertRaises(IntegrityError):
+            with self.assertRaises(DatabaseError):
                 HoSo.objects.filter(pk=dossier.pk).delete()
         self.assertTrue(HoSo.objects.filter(pk=dossier.pk).exists())
+
+    def test_system_dossier_flag_cannot_be_lowered(self):
+        call_command("ensure_common_hoso", verbosity=0)
+        dossier = HoSo.objects.get(is_he_thong=True)
+
+        dossier.is_he_thong = False
+        with self.assertRaises(ValueError):
+            dossier.save(update_fields=["is_he_thong"])
+
+        dossier.refresh_from_db()
+        self.assertTrue(dossier.is_he_thong)
+
+        with transaction.atomic():
+            with self.assertRaises(DatabaseError):
+                HoSo.objects.filter(pk=dossier.pk).update(is_he_thong=False)
+
+        dossier.refresh_from_db()
+        self.assertTrue(dossier.is_he_thong)
+
+    def test_model_normalizes_codes_and_document_type_names(self):
+        dossier = HoSo.objects.create(
+            so_ky_hieu="  HS-TRIM  ",
+            ten_ho_so="Hồ sơ chuẩn hóa",
+            nguoi_lap=self.user,
+        )
+        document_type = LoaiVanBan.objects.create(
+            ho_so=dossier,
+            ten_loai="  Quyết định  ",
+        )
+
+        self.assertEqual(dossier.so_ky_hieu, "HS-TRIM")
+        self.assertEqual(document_type.ten_loai, "Quyết định")
+
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                HoSo.objects.create(
+                    so_ky_hieu=" HS-TRIM ",
+                    ten_ho_so="Hồ sơ trùng",
+                    nguoi_lap=self.user,
+                )
+
+    def test_model_rejects_blank_codes_and_document_type_names(self):
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                HoSo.objects.create(
+                    so_ky_hieu="   ",
+                    ten_ho_so="Hồ sơ không hợp lệ",
+                    nguoi_lap=self.user,
+                )
+
+        dossier = HoSo.objects.create(
+            so_ky_hieu="HS-VALID",
+            ten_ho_so="Hồ sơ hợp lệ",
+            nguoi_lap=self.user,
+        )
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                LoaiVanBan.objects.create(ho_so=dossier, ten_loai="   ")
 
     def test_document_type_names_are_unique_per_dossier_after_trim_and_lower(self):
         dossier = HoSo.objects.create(so_ky_hieu="A", ten_ho_so="A", nguoi_lap=self.user)
@@ -75,6 +133,19 @@ class RecordsApiTests(APITestCase):
             response.status_code,
             status.HTTP_401_UNAUTHORIZED,
         )
+
+    def test_dossier_rejects_blank_code(self):
+        response = self.client.post(
+            self.dossier_list_url,
+            {
+                "so_ky_hieu": "   ",
+                "ten_ho_so": "Hồ sơ không hợp lệ",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("so_ky_hieu", response.data)
 
     def test_dossier_crud_and_response_contract(self):
         create_response = self.client.post(
@@ -277,3 +348,17 @@ class RecordsApiTests(APITestCase):
             delete_response.status_code,
             status.HTTP_204_NO_CONTENT,
         )
+
+    def test_document_type_rejects_blank_name(self):
+        dossier = self.create_dossier()
+        response = self.client.post(
+            reverse(
+                "records:document-type-list-create",
+                args=[dossier.pk],
+            ),
+            {"ten_loai": "   "},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ten_loai", response.data)

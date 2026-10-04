@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import migrations, models
 from django.db.models.functions import Lower, Trim
+from django.db.models.lookups import Exact
 import django.db.models.deletion
 
 
@@ -36,6 +37,7 @@ class Migration(migrations.Migration):
                 ],
                 "constraints": [
                     models.CheckConstraint(condition=models.Q(stt_uu_tien__gt=0), name="ck_records_hoso_stt_positive"),
+                    models.CheckConstraint(condition=~Exact(Trim("so_ky_hieu"), models.Value("")), name="ck_records_hoso_so_ky_hieu_not_blank"),
                     models.UniqueConstraint(fields=["is_he_thong"], condition=models.Q(is_he_thong=True), name="uq_records_hoso_he_thong"),
                 ],
             },
@@ -59,6 +61,7 @@ class Migration(migrations.Migration):
                     models.Index(fields=["ngay_lap"], name="idx_loaivanban_ngay_lap"),
                 ],
                 "constraints": [
+                    models.CheckConstraint(condition=~Exact(Trim("ten_loai"), models.Value("")), name="ck_records_loaivanban_ten_loai_not_blank"),
                     models.UniqueConstraint(models.F("ho_so"), Lower(Trim("ten_loai")), name="uq_records_loaivanban_hoso_ten"),
                 ],
             },

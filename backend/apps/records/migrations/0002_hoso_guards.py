@@ -75,12 +75,41 @@ def install_guards(apps, schema_editor):
                   END IF;
                 END $$;
             """)
+            cursor.execute("""
+                CREATE OR REPLACE FUNCTION prevent_update_he_thong_hoso()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                  IF OLD.is_he_thong = TRUE AND NEW.is_he_thong = FALSE THEN
+                    RAISE EXCEPTION 'Không thể gỡ bỏ cờ is_he_thong từ TRUE sang FALSE (records_hoso id=%).', OLD.id;
+                  END IF;
+                  RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            """)
+            cursor.execute("""
+                DO $$ BEGIN
+                  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_hoso_prevent_update_he_thong'
+                    AND tgrelid = 'records_hoso'::regclass) THEN
+                    CREATE TRIGGER trg_hoso_prevent_update_he_thong
+                    BEFORE UPDATE ON records_hoso
+                    FOR EACH ROW EXECUTE FUNCTION prevent_update_he_thong_hoso();
+                  END IF;
+                END $$;
+            """)
         elif vendor == "sqlite":
             cursor.execute("""
                 CREATE TRIGGER IF NOT EXISTS trg_hoso_prevent_delete
                 BEFORE DELETE ON records_hoso WHEN OLD.is_he_thong = 1
                 BEGIN
                   SELECT RAISE(ABORT, 'Không thể xóa Hồ sơ chung / bản ghi hệ thống.');
+                END;
+            """)
+            cursor.execute("""
+                CREATE TRIGGER IF NOT EXISTS trg_hoso_prevent_update_he_thong
+                BEFORE UPDATE OF is_he_thong ON records_hoso
+                WHEN OLD.is_he_thong = 1 AND NEW.is_he_thong = 0
+                BEGIN
+                  SELECT RAISE(ABORT, 'Không thể gỡ bỏ cờ is_he_thong từ TRUE sang FALSE.');
                 END;
             """)
 
@@ -93,11 +122,14 @@ def remove_guards(apps, schema_editor):
             cursor.execute("DROP TRIGGER IF EXISTS trg_loaivanban_updated_at ON records_loaivanban")
             cursor.execute("DROP TRIGGER IF EXISTS trg_hoso_auto_stt ON records_hoso")
             cursor.execute("DROP TRIGGER IF EXISTS trg_hoso_prevent_delete ON records_hoso")
+            cursor.execute("DROP TRIGGER IF EXISTS trg_hoso_prevent_update_he_thong ON records_hoso")
             cursor.execute("DROP FUNCTION IF EXISTS records_set_updated_at()")
             cursor.execute("DROP FUNCTION IF EXISTS auto_stt_uu_tien_hoso()")
             cursor.execute("DROP FUNCTION IF EXISTS prevent_delete_he_thong_hoso()")
+            cursor.execute("DROP FUNCTION IF EXISTS prevent_update_he_thong_hoso()")
         elif vendor == "sqlite":
             cursor.execute("DROP TRIGGER IF EXISTS trg_hoso_prevent_delete")
+            cursor.execute("DROP TRIGGER IF EXISTS trg_hoso_prevent_update_he_thong")
 
 
 class Migration(migrations.Migration):

@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import connections, models, router, transaction
-from django.db.models import Max, Q
+from django.db.models import Max, Q, Value
 from django.db.models.functions import Lower, Trim
+from django.db.models.lookups import Exact
 
 
 class HoSo(models.Model):
@@ -29,6 +30,10 @@ class HoSo(models.Model):
             models.CheckConstraint(
                 condition=Q(stt_uu_tien__gt=0), name="ck_records_hoso_stt_positive"
             ),
+            models.CheckConstraint(
+                condition=~Exact(Trim("so_ky_hieu"), Value("")),
+                name="ck_records_hoso_so_ky_hieu_not_blank",
+            ),
             models.UniqueConstraint(
                 fields=["is_he_thong"],
                 condition=Q(is_he_thong=True),
@@ -42,6 +47,24 @@ class HoSo(models.Model):
 
     def save(self, *args, **kwargs):
         using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+        self.so_ky_hieu = self.so_ky_hieu.strip()
+
+        update_fields = kwargs.get("update_fields")
+        is_saving_system_flag = update_fields is None or "is_he_thong" in update_fields
+        if (
+            not self._state.adding
+            and self.pk is not None
+            and is_saving_system_flag
+            and not self.is_he_thong
+            and type(self)
+            .objects.using(using)
+            .filter(pk=self.pk, is_he_thong=True)
+            .exists()
+        ):
+            raise ValueError(
+                "Không thể gỡ bỏ cờ is_he_thong của Hồ sơ chung / hồ sơ hệ thống."
+            )
+
         if self._state.adding and self.stt_uu_tien in (None, 0):
             with transaction.atomic(using=using):
                 # Cùng khóa với trigger PostgreSQL trong SQL đã duyệt.
@@ -78,6 +101,10 @@ class LoaiVanBan(models.Model):
         db_table = "records_loaivanban"
         ordering = ["id"]
         constraints = [
+            models.CheckConstraint(
+                condition=~Exact(Trim("ten_loai"), Value("")),
+                name="ck_records_loaivanban_ten_loai_not_blank",
+            ),
             models.UniqueConstraint(
                 models.F("ho_so"),
                 Lower(Trim("ten_loai")),
@@ -88,6 +115,10 @@ class LoaiVanBan(models.Model):
             models.Index(fields=["ten_loai"], name="idx_loaivanban_ten"),
             models.Index(fields=["ngay_lap"], name="idx_loaivanban_ngay_lap"),
         ]
+
+    def save(self, *args, **kwargs):
+        self.ten_loai = self.ten_loai.strip()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return self.ten_loai
