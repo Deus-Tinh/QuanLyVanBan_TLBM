@@ -172,6 +172,21 @@ const initialMockDocuments: ResourceItem[] = [
     hien_thi: 'TAT_CA',
     nguoi_tao_name: 'Thượng Mạnh Quỳnh',
   },
+  {
+    id: 7,
+    dm_tai_lieu: 4,
+    dm_tai_lieu_name: 'Các đơn vị phòng ban cấp 2',
+    loai_tai_lieu: [11],
+    loai_tai_lieu_names: ['Biên bản họp phòng ban'],
+    ky_hieu: 'BBH-PB2-2026',
+    tieu_de: 'Biên bản họp giao ban công tác các đơn vị phòng ban cấp 2',
+    ngay_dang: '2026-03-05',
+    noi_ban_hanh: 'Các Đơn Vị Phòng Ban Cấp 2',
+    hieu_luc: 'CON_HIEU_LUC',
+    file_dinh_kem: 'https://example.com/files/bien_ban_hop_pb2.docx',
+    hien_thi: 'TAT_CA',
+    nguoi_tao_name: 'Đỗ Trung Phong',
+  },
 ];
 
 export default function ResourceManagementPage() {
@@ -180,15 +195,15 @@ export default function ResourceManagementPage() {
   const [types, setTypes] = useState<ResourceType[]>(initialMockTypes);
 
   // ============================================================================
-  // BỘ LỌC ĐA NĂNG:
-  // - selectedCategory: Mặc định là '1' ("Tài liệu, Biểu mẫu chung") theo yêu cầu của Thầy
-  // - selectedType: Bộ lọc Cấp 2 phụ thuộc Cấp 1 (Cascading Filter)
+  // BỘ LỌC ĐA NĂNG & PHÂN TẦNG:
+  // - selectedCategory: Lọc theo Cấp 1 (Mặc định 'all' để xem toàn bộ kho)
+  // - selectedType: Lọc theo Cấp 2 (Bên trong Cấp 1 đang chọn)
   // - selectedYear: Lọc theo năm văn bản (2026, 2025, 2024...)
   // - statusFilter: Lọc theo trạng thái hiệu lực
   // - searchTerm: Tìm theo tiêu đề, ký hiệu, nơi ban hành
   // ============================================================================
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('1'); // Mặc định mở ngay Tài liệu chung
+  const [selectedCategory, setSelectedCategory] = useState<string>('1'); // Mặc định vào Danh mục 1: Tài liệu, Biểu mẫu chung theo đề án
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -373,24 +388,24 @@ export default function ResourceManagementPage() {
         prev.map((d) =>
           d.id === formInitialData.id
             ? {
-                ...d,
-                dm_tai_lieu: Number(payload.dm_tai_lieu),
-                dm_tai_lieu_name: cat?.ten_tai_lieu,
-                loai_tai_lieu: payload.loai_tai_lieu,
-                loai_tai_lieu_names: selectedTypeNames,
-                ky_hieu: payload.ky_hieu,
-                tieu_de: payload.tieu_de,
-                ngay_dang: payload.ngay_dang,
-                noi_ban_hanh: payload.noi_ban_hanh,
-                hieu_luc: payload.hieu_luc,
-                ngay_het_hieu_luc: payload.ngay_het_hieu_luc,
-                link_thay_the: payload.link_thay_the,
-                ghi_chu: payload.ghi_chu,
-                hien_thi: payload.hien_thi,
-                file_dinh_kem: payload.file
-                  ? URL.createObjectURL(payload.file)
-                  : d.file_dinh_kem,
-              }
+              ...d,
+              dm_tai_lieu: Number(payload.dm_tai_lieu),
+              dm_tai_lieu_name: cat?.ten_tai_lieu,
+              loai_tai_lieu: payload.loai_tai_lieu,
+              loai_tai_lieu_names: selectedTypeNames,
+              ky_hieu: payload.ky_hieu,
+              tieu_de: payload.tieu_de,
+              ngay_dang: payload.ngay_dang,
+              noi_ban_hanh: payload.noi_ban_hanh,
+              hieu_luc: payload.hieu_luc,
+              ngay_het_hieu_luc: payload.ngay_het_hieu_luc,
+              link_thay_the: payload.link_thay_the,
+              ghi_chu: payload.ghi_chu,
+              hien_thi: payload.hien_thi,
+              file_dinh_kem: payload.file
+                ? URL.createObjectURL(payload.file)
+                : d.file_dinh_kem,
+            }
             : d
         )
       );
@@ -468,7 +483,7 @@ export default function ResourceManagementPage() {
   };
 
   // Xuất Excel: Liên kết API Backend để tải file về máy (theo đặc tả phân hệ của Nguyễn Chí Tín)
-  const [, setIsExporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleExportExcel = async () => {
     try {
@@ -575,14 +590,6 @@ export default function ResourceManagementPage() {
       {/* Header trang & Nút hành động */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-5 sm:p-6 rounded-2xl border border-border-subtle shadow-xs">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-primary-subtle text-primary border border-primary/20">
-              Phân Hệ 4
-            </span>
-            <span className="text-xs text-secondary font-medium">
-              Nhóm 4: Quỳnh, Trang, Tín, Phong
-            </span>
-          </div>
           <h1 className="text-xl sm:text-2xl font-black text-main tracking-tight">
             Kho Tài Liệu &amp; Biểu Mẫu Dùng Chung
           </h1>
@@ -616,189 +623,222 @@ export default function ResourceManagementPage() {
         </div>
       </div>
 
-      {/* THANH CHỌN NHANH DANH MỤC CẤP 1 (QUICK TABS / PILLS) */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-        <span className="text-xs font-bold text-muted uppercase tracking-wider shrink-0 mr-1">
-          <i className="fa-solid fa-layer-group mr-1.5 text-primary" />
-          Danh mục Cấp 1:
-        </span>
-
-        {/* Nút Tất cả */}
-        <button
-          type="button"
-          onClick={() => handleCategorySelect('all')}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-            selectedCategory === 'all'
-              ? 'bg-primary text-white shadow-xs scale-102'
-              : 'bg-surface hover:bg-surface-elevated text-secondary border border-border-subtle'
-          }`}
-        >
-          <span>Tất cả danh mục</span>
-          <span
-            className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-              selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-muted'
-            }`}
-          >
-            {documents.length}
-          </span>
-        </button>
-
-        {/* Danh sách các Cấp 1 */}
-        {categories.map((c) => {
-          const docCount = documents.filter((d) => d.dm_tai_lieu === c.id).length;
-          const isSelected = selectedCategory === String(c.id);
-
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => handleCategorySelect(String(c.id))}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-                isSelected
-                  ? 'bg-primary text-white shadow-xs scale-102'
-                  : 'bg-surface hover:bg-surface-elevated text-secondary border border-border-subtle'
-              }`}
-            >
-              {c.stt_uu_tien === 1 && <i className="fa-solid fa-star text-[10px] text-amber-300" />}
-              <span>{c.ten_tai_lieu}</span>
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-surface-elevated text-muted'
-                }`}
-              >
-                {docCount}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* THANH BỘ LỌC ĐA NĂNG (GỒM CẤP 1, CẤP 2 CASCADING, NĂM, TRẠNG THÁI, TỪ KHÓA) */}
+      {/* THANH BỘ LỌC ĐA NĂNG & TRA CỨU */}
       <div className="bg-surface p-4 rounded-xl border border-border-subtle shadow-xs space-y-3">
-        <div className="flex items-center justify-between text-xs text-muted font-medium border-b border-border-subtle pb-2">
-          <div className="flex items-center gap-2">
+        {/* Tiêu đề thanh lọc & Thống kê kết quả kèm Breadcrumb vị trí hiện tại */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-muted font-medium border-b border-border-subtle pb-2.5 gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <i className="fa-solid fa-filter text-primary" />
-            <span className="font-semibold text-main">Bộ lọc &amp; Tra cứu nâng cao</span>
-            {selectedCategory !== 'all' && (
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded bg-primary-subtle text-primary text-[11px] font-medium">
-                Đang lọc Cấp 1: {categories.find((c) => c.id === Number(selectedCategory))?.ten_tai_lieu}
+            <span className="font-semibold text-main text-sm">Bộ lọc &amp; Tra cứu tài liệu</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary-subtle text-primary text-xs font-semibold border border-primary/20">
+              <i className="fa-solid fa-folder text-[10px]" />
+              <span>
+                {selectedCategory === 'all'
+                  ? 'Toàn bộ kho tài liệu'
+                  : categories.find((c) => c.id === Number(selectedCategory))?.ten_tai_lieu}
               </span>
-            )}
+              {selectedType !== 'all' && (
+                <>
+                  <i className="fa-solid fa-chevron-right text-[8px] opacity-60" />
+                  <span>{types.find((t) => t.id === Number(selectedType))?.ten_loai}</span>
+                </>
+              )}
+            </span>
           </div>
-          <span className="text-[11px] text-secondary">
-            Tìm thấy: <strong className="text-primary font-bold">{totalCount}</strong> kết quả
+          <span className="text-xs text-secondary">
+            Đang hiển thị: <strong className="text-primary font-bold">{totalCount}</strong> tài liệu
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Bảng các ô lọc chính (Tìm kiếm, Cấp 1, Cấp 2 dropdown phân tầng, Năm, Hiệu lực) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-3">
           {/* 1. Tìm kiếm từ khóa */}
-          <div className="relative sm:col-span-2">
-            <i className="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-muted" />
-            <input
-              type="text"
-              placeholder="Tìm theo tiêu đề, ký hiệu, nơi ban hành..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary"
-            />
+          <div className="col-span-12 sm:col-span-2 md:col-span-3 lg:col-span-3">
+            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center gap-1.5">
+              <i className="fa-solid fa-magnifying-glass text-muted text-[10px]" />
+              <span>Tìm kiếm từ khóa</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Tiêu đề, ký hiệu, nơi ban hành..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full h-9 pl-3 pr-8 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary placeholder:text-muted transition-colors"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1"
+                  title="Xóa từ khóa"
+                >
+                  <i className="fa-solid fa-xmark" />
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* 2. Lọc Cấp 1 (Danh mục tài liệu) */}
-          <div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => handleCategorySelect(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium"
-              title="Danh mục tài liệu Cấp 1"
-            >
-              <option value="all">-- Tất cả Cấp 1 --</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.stt_uu_tien}. {c.ten_tai_lieu}
-                </option>
-              ))}
-            </select>
+          {/* 2. Chọn Danh mục Cấp 1 (Thư mục chính) */}
+          <div className="col-span-6 sm:col-span-1 md:col-span-3 lg:col-span-3">
+            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <i className="fa-solid fa-folder text-primary text-[10px]" />
+                <span>Danh mục Cấp 1</span>
+              </span>
+              <span className="text-[10px] text-muted">Thư mục chính</span>
+            </label>
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => handleCategorySelect(e.target.value)}
+                className="w-full h-9 pl-3 pr-7 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
+                title="Danh mục tài liệu Cấp 1"
+              >
+                {categories.map((c) => {
+                  const count = documents.filter((d) => d.dm_tai_lieu === c.id).length;
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.ten_tai_lieu} ({count} tài liệu)
+                    </option>
+                  );
+                })}
+                <option value="all">-- Toàn bộ kho (Tất cả Cấp 1 - {documents.length} tài liệu) --</option>
+              </select>
+              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
+            </div>
           </div>
 
-          {/* 3. Lọc Cấp 2 (Loại tài liệu biểu mẫu - CASCADING FILTER THEO CẤP 1) */}
-          <div>
-            <select
-              value={selectedType}
-              onChange={(e) => {
-                setSelectedType(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium"
-              title="Loại tài liệu biểu mẫu Cấp 2 (lọc phân tầng)"
-            >
-              <option value="all">
-                {selectedCategory === 'all'
-                  ? '-- Tất cả Loại Cấp 2 --'
-                  : `-- Tất cả Loại của Cấp 1 này (${availableTypesForFilter.length}) --`}
-              </option>
-              {availableTypesForFilter.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.ten_loai} {!t.is_public ? '(Nội bộ)' : ''}
-                </option>
-              ))}
-            </select>
+          {/* 3. Lọc Cấp 2 (Loại tài liệu biểu mẫu - Dropdown phân tầng theo Cấp 1) */}
+          <div className="col-span-6 sm:col-span-1 md:col-span-2 lg:col-span-2">
+            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <i className="fa-solid fa-folder-tree text-primary text-[10px]" />
+                <span>Loại biểu mẫu (Cấp 2)</span>
+              </span>
+              {selectedCategory !== 'all' && (
+                <span className="text-[10px] text-primary font-bold">({availableTypesForFilter.length} loại)</span>
+              )}
+            </label>
+            <div className="relative">
+              <select
+                value={selectedType}
+                disabled={selectedCategory === 'all'}
+                onChange={(e) => {
+                  setSelectedType(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className={`w-full h-9 pl-3 pr-7 text-xs rounded-lg border transition-colors appearance-none ${
+                  selectedCategory === 'all'
+                    ? 'bg-surface-elevated/40 border-border-subtle/60 text-muted cursor-not-allowed'
+                    : 'bg-surface-elevated border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer font-medium'
+                }`}
+                title={
+                  selectedCategory === 'all'
+                    ? 'Vui lòng chọn Danh mục Cấp 1 trước để lọc theo Cấp 2'
+                    : 'Loại tài liệu biểu mẫu Cấp 2'
+                }
+              >
+                {selectedCategory === 'all' ? (
+                  <option value="all">-- Chọn 1 Cấp 1 để xem Cấp 2 --</option>
+                ) : (
+                  <>
+                    <option value="all">
+                      -- Tất cả loại thuộc Cấp 1 này ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length} tài liệu) --
+                    </option>
+                    {availableTypesForFilter.map((t) => {
+                      const count = documents.filter(
+                        (d) =>
+                          d.dm_tai_lieu === Number(selectedCategory) &&
+                          Array.isArray(d.loai_tai_lieu) &&
+                          d.loai_tai_lieu.includes(t.id)
+                      ).length;
+
+                      return (
+                        <option key={t.id} value={t.id}>
+                          {t.ten_loai} ({count} tài liệu)
+                        </option>
+                      );
+                    })}
+                  </>
+                )}
+              </select>
+              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
+            </div>
           </div>
 
-          {/* 4. Lọc theo Năm (Yêu cầu đặc tả: "lọc văn bản theo năm") */}
-          <div>
-            <select
-              value={selectedYear}
-              onChange={(e) => {
-                setSelectedYear(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium"
-              title="Lọc văn bản theo năm ban hành"
-            >
-              <option value="all">-- Tất cả Năm --</option>
-              {availableYears.map((yr) => (
-                <option key={yr} value={yr}>
-                  Năm {yr}
-                </option>
-              ))}
-            </select>
+          {/* 4. Lọc theo Năm ban hành */}
+          <div className="col-span-6 sm:col-span-1 md:col-span-2 lg:col-span-2">
+            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center gap-1.5">
+              <i className="fa-regular fa-calendar text-muted text-[10px]" />
+              <span>Năm ban hành</span>
+            </label>
+            <div className="relative">
+              <select
+                value={selectedYear}
+                onChange={(e) => {
+                  setSelectedYear(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full h-9 pl-3 pr-7 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
+                title="Lọc theo năm ban hành"
+              >
+                <option value="all">-- Tất cả Năm --</option>
+                {availableYears.map((yr) => (
+                  <option key={yr} value={yr}>
+                    Năm {yr}
+                  </option>
+                ))}
+              </select>
+              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
+            </div>
           </div>
 
           {/* 5. Lọc Trạng thái hiệu lực */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium"
-              title="Lọc theo tình trạng hiệu lực văn bản"
-            >
-              <option value="all">-- Tất cả Hiệu lực --</option>
-              <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-              <option value="HET_HIEU_LUC">Hết hiệu lực (Bôi tối)</option>
-              <option value="HET_VA_THAY_THE">Hết hiệu lực và thay thế</option>
-            </select>
+          <div className="col-span-6 sm:col-span-1 md:col-span-2 lg:col-span-2">
+            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center gap-1.5">
+              <i className="fa-solid fa-shield-halved text-muted text-[10px]" />
+              <span>Hiệu lực</span>
+            </label>
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full h-9 pl-3 pr-7 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
+                title="Lọc theo tình trạng hiệu lực"
+              >
+                <option value="all">-- Tất cả Hiệu lực --</option>
+                <option value="CON_HIEU_LUC">Còn hiệu lực</option>
+                <option value="HET_HIEU_LUC">Hết hiệu lực</option>
+                <option value="HET_VA_THAY_THE">Hết và thay thế</option>
+              </select>
+              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
+            </div>
           </div>
         </div>
 
         {/* Nút đặt lại nhanh khi có bộ lọc đang kích hoạt */}
         {(searchTerm || selectedCategory !== '1' || selectedType !== 'all' || selectedYear !== 'all' || statusFilter !== 'all') && (
-          <div className="flex items-center justify-between pt-1 text-xs">
+          <div className="flex items-center justify-between pt-2 border-t border-border-subtle text-xs">
             <div className="flex flex-wrap items-center gap-1.5 text-muted">
-              <span>Đang kích hoạt lọc:</span>
+              <span>Đang lọc:</span>
               {selectedCategory !== '1' && (
-                <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium">
-                  Cấp 1: {selectedCategory === 'all' ? 'Tất cả' : categories.find(c => c.id === Number(selectedCategory))?.ten_tai_lieu}
+                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded border border-primary/20 font-medium">
+                  Cấp 1: {selectedCategory === 'all' ? 'Toàn bộ kho' : categories.find((c) => c.id === Number(selectedCategory))?.ten_tai_lieu}
                 </span>
               )}
               {selectedType !== 'all' && (
-                <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium">
-                  Cấp 2: {types.find(t => t.id === Number(selectedType))?.ten_loai}
+                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded border border-primary/20 font-medium">
+                  Cấp 2: {types.find((t) => t.id === Number(selectedType))?.ten_loai}
                 </span>
               )}
               {selectedYear !== 'all' && (
@@ -808,7 +848,12 @@ export default function ResourceManagementPage() {
               )}
               {statusFilter !== 'all' && (
                 <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium">
-                  Hiệu lực: {statusFilter}
+                  Hiệu lực: {statusFilter === 'CON_HIEU_LUC' ? 'Còn hiệu lực' : statusFilter === 'HET_HIEU_LUC' ? 'Hết hiệu lực' : 'Hết & Thay thế'}
+                </span>
+              )}
+              {searchTerm && (
+                <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium truncate max-w-[150px]">
+                  "{searchTerm}"
                 </span>
               )}
             </div>
@@ -817,7 +862,7 @@ export default function ResourceManagementPage() {
               type="button"
               onClick={() => {
                 setSearchTerm('');
-                setSelectedCategory('1'); // Quay lại mặc định Tài liệu chung
+                setSelectedCategory('1'); // Quay lại mặc định: 1. Tài liệu, Biểu mẫu chung
                 setSelectedType('all');
                 setSelectedYear('all');
                 setStatusFilter('all');
@@ -848,6 +893,17 @@ export default function ResourceManagementPage() {
         onDelete={handleDelete}
         onDownloadFile={handleDownloadFile}
         onExportExcel={handleExportExcel}
+        isExporting={isExporting}
+        currentCategoryName={
+          selectedCategory === 'all'
+            ? 'Toàn bộ kho lưu trữ'
+            : categories.find((c) => c.id === Number(selectedCategory))?.ten_tai_lieu
+        }
+        currentTypeName={
+          selectedType === 'all'
+            ? undefined
+            : types.find((t) => t.id === Number(selectedType))?.ten_loai
+        }
       />
 
       {/* MODAL XEM CHI TIẾT TÀI LIỆU (DẠNG POPUP THỂ HIỆN TOÀN BỘ CÁC TRƯỜNG) */}

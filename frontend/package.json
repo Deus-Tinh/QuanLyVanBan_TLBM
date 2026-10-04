@@ -3,12 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:tokens": "node scripts/check-css-tokens.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
