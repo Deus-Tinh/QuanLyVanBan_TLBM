@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from django.urls import reverse
 from rest_framework import status
@@ -10,7 +11,10 @@ from django.db import DatabaseError, IntegrityError, transaction
 from django.test import TestCase
 
 from records.models import HoSo, LoaiVanBan
-from records.document_queries import DocumentDataUnavailable
+from records.document_queries import (
+    DocumentDataUnavailable,
+    query_dossier_documents,
+)
 
 
 class RecordsModelTests(TestCase):
@@ -34,6 +38,33 @@ class RecordsModelTests(TestCase):
                 HoSo.objects.filter(pk=dossier.pk).delete()
         self.assertTrue(HoSo.objects.filter(pk=dossier.pk).exists())
 
+    def test_system_dossier_seed_handles_occupied_first_priority(self):
+        HoSo.objects.create(
+            stt_uu_tien=1,
+            so_ky_hieu="HS-EXISTING",
+            ten_ho_so="Hồ sơ có trước",
+            nguoi_lap=self.user,
+        )
+
+        call_command("ensure_common_hoso", verbosity=0)
+
+        common = HoSo.objects.get(is_he_thong=True)
+        self.assertEqual(common.so_ky_hieu, "HSC")
+        self.assertEqual(common.stt_uu_tien, 2)
+
+    def test_system_dossier_seed_promotes_existing_hsc(self):
+        existing = HoSo.objects.create(
+            so_ky_hieu="HSC",
+            ten_ho_so="Hồ sơ chung",
+            nguoi_lap=self.user,
+        )
+
+        call_command("ensure_common_hoso", verbosity=0)
+
+        existing.refresh_from_db()
+        self.assertTrue(existing.is_he_thong)
+        self.assertEqual(HoSo.objects.filter(is_he_thong=True).count(), 1)
+
     def test_system_dossier_flag_cannot_be_lowered(self):
         call_command("ensure_common_hoso", verbosity=0)
         dossier = HoSo.objects.get(is_he_thong=True)
@@ -55,7 +86,7 @@ class RecordsModelTests(TestCase):
     def test_model_normalizes_codes_and_document_type_names(self):
         dossier = HoSo.objects.create(
             so_ky_hieu="  HS-TRIM  ",
-            ten_ho_so="Hồ sơ chuẩn hóa",
+            ten_ho_so="  Hồ sơ chuẩn hóa  ",
             nguoi_lap=self.user,
         )
         document_type = LoaiVanBan.objects.create(
@@ -64,6 +95,7 @@ class RecordsModelTests(TestCase):
         )
 
         self.assertEqual(dossier.so_ky_hieu, "HS-TRIM")
+        self.assertEqual(dossier.ten_ho_so, "Hồ sơ chuẩn hóa")
         self.assertEqual(document_type.ten_loai, "Quyết định")
 
         with transaction.atomic():
@@ -80,6 +112,14 @@ class RecordsModelTests(TestCase):
                 HoSo.objects.create(
                     so_ky_hieu="   ",
                     ten_ho_so="Hồ sơ không hợp lệ",
+                    nguoi_lap=self.user,
+                )
+
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                HoSo.objects.create(
+                    so_ky_hieu="HS-BLANK-NAME",
+                    ten_ho_so="   ",
                     nguoi_lap=self.user,
                 )
 
@@ -284,6 +324,20 @@ class RecordsApiTests(APITestCase):
             status.HTTP_409_CONFLICT,
         )
 
+    @patch(
+        "records.views.HoSoDetailAPIView.perform_destroy",
+        side_effect=IntegrityError("foreign key violation"),
+    )
+    def test_dossier_referenced_by_group2_returns_conflict(self, _perform_destroy):
+        dossier = self.create_dossier()
+
+        response = self.client.delete(
+            reverse("records:dossier-detail", args=[dossier.pk])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertTrue(HoSo.objects.filter(pk=dossier.pk).exists())
+
     def test_document_type_crud_and_duplicate_validation(self):
         dossier = self.create_dossier()
 
@@ -365,6 +419,27 @@ class RecordsApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("ten_loai", response.data)
 
+    @patch(
+        "records.views.LoaiVanBanDetailAPIView.perform_destroy",
+        side_effect=IntegrityError("foreign key violation"),
+    )
+    def test_document_type_referenced_by_group2_returns_conflict(
+        self,
+        _perform_destroy,
+    ):
+        dossier = self.create_dossier()
+        document_type = LoaiVanBan.objects.create(
+            ho_so=dossier,
+            ten_loai="Quyết định",
+        )
+
+        response = self.client.delete(
+            reverse("records:document-type-detail", args=[document_type.pk])
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertTrue(LoaiVanBan.objects.filter(pk=document_type.pk).exists())
+
     @patch("records.views.query_dossier_documents")
     def test_dossier_document_list_contract_and_filters(self, query_documents):
         dossier = self.create_dossier()
@@ -433,3 +508,44 @@ class RecordsApiTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         query_documents.assert_not_called()
+
+
+class DossierDocumentQuerySecurityTests(TestCase):
+    @patch("records.document_queries.connection")
+    def test_confidential_scope_also_applies_to_superuser(self, db_connection):
+        db_connection.introspection.table_names.return_value = [
+            "documents_vanbanmat",
+            "documents_vanbanmat_hoso",
+            "documents_vanbanmat_nguoinhan",
+            "documents_vanbanmat_donvinhan",
+        ]
+        cursor = MagicMock()
+        cursor.fetchone.return_value = (0,)
+        cursor.description = [
+            ("id",),
+            ("document_type",),
+            ("so_hieu",),
+            ("trich_yeu",),
+            ("ngay_van_ban",),
+            ("nam",),
+        ]
+        cursor.fetchall.return_value = []
+        db_connection.cursor.return_value.__enter__.return_value = cursor
+        user = SimpleNamespace(
+            pk=7,
+            is_staff=True,
+            is_superuser=True,
+            don_vi_id=3,
+        )
+
+        query_dossier_documents(
+            dossier_id=11,
+            user=user,
+            document_type="vanbanmat",
+        )
+
+        count_sql, count_params = cursor.execute.call_args_list[0].args
+        self.assertIn("d.nguoi_tao = %s", count_sql)
+        self.assertIn("documents_vanbanmat_nguoinhan", count_sql)
+        self.assertIn("documents_vanbanmat_donvinhan", count_sql)
+        self.assertEqual(count_params, [11, 7, 7, 3])

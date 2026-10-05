@@ -8,6 +8,7 @@ export interface Dossier {
   nguoi_lap?: string | { id?: EntityId; full_name?: string; ho_ten?: string; username?: string } | null;
   ngay_lap?: string | null;
   ghi_chu?: string | null;
+  is_he_thong?: boolean;
   created_at?: string;
   updated_at?: string;
 }

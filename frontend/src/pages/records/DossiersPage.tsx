@@ -15,7 +15,14 @@ const controlClass =
 function apiErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof ApiError)) return fallback;
   if (error.status === 403) return 'Bạn không có quyền thực hiện thao tác này.';
-  return String(error.data?.error || error.data?.message || error.data?.detail || fallback);
+  const direct = error.data?.error || error.data?.message || error.data?.detail;
+  if (direct) return String(direct);
+
+  for (const value of Object.values(error.data ?? {})) {
+    if (typeof value === 'string' && value.trim()) return value;
+    if (Array.isArray(value) && value.length > 0) return String(value[0]);
+  }
+  return fallback;
 }
 
 function displayDate(value?: string | null): string {
@@ -32,8 +39,8 @@ function creatorName(value: Dossier['nguoi_lap']): string {
 
 function sortedDossiers(items: Dossier[]): Dossier[] {
   return [...items].sort((a, b) => {
-    const aCommon = a.ten_ho_so.trim().toLocaleLowerCase('vi') === 'hồ sơ chung' ? 0 : 1;
-    const bCommon = b.ten_ho_so.trim().toLocaleLowerCase('vi') === 'hồ sơ chung' ? 0 : 1;
+    const aCommon = a.is_he_thong ? 0 : 1;
+    const bCommon = b.is_he_thong ? 0 : 1;
     if (aCommon !== bCommon) return aCommon - bCommon;
     return (a.stt_uu_tien ?? Number.MAX_SAFE_INTEGER) - (b.stt_uu_tien ?? Number.MAX_SAFE_INTEGER);
   });
@@ -219,7 +226,9 @@ export default function DossiersPage() {
                         <div className="flex justify-end gap-1">
                           <Button type="button" size="sm" variant="ghost" icon="fa-folder-open" onClick={(event) => { event.stopPropagation(); navigate(`/records/${item.id}/document-types`, { state: { dossier: item } }); }} aria-label={`Xem loại văn bản của ${item.ten_ho_so}`}>Xem</Button>
                           <Button type="button" size="sm" variant="ghost" icon="fa-pen" onClick={(event) => { event.stopPropagation(); setSaveError(null); setEditing(item); }} aria-label={`Sửa ${item.ten_ho_so}`} />
-                          <Button type="button" size="sm" variant="ghost" icon="fa-trash" className="text-danger hover:text-danger" onClick={(event) => { event.stopPropagation(); setDeleting(item); }} aria-label={`Xóa ${item.ten_ho_so}`} />
+                          {!item.is_he_thong && (
+                            <Button type="button" size="sm" variant="ghost" icon="fa-trash" className="text-danger hover:text-danger" onClick={(event) => { event.stopPropagation(); setDeleting(item); }} aria-label={`Xóa ${item.ten_ho_so}`} />
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

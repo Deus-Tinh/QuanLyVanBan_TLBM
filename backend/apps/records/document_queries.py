@@ -96,7 +96,9 @@ def query_dossier_documents(
         if not is_staff:
             conditions.append("d.hien_thi = TRUE")
 
-        if selected_type == "vanbanmat" and not is_staff:
+        # Văn bản mật luôn phải giới hạn theo người/đơn vị nhận, kể cả
+        # tài khoản staff hoặc superuser (quy tắc C5 của kế hoạch Ship MVP).
+        if selected_type == "vanbanmat":
             confidential_rules = ["d.nguoi_tao = %s"]
             source_parameters.append(user_id)
 
