@@ -146,7 +146,7 @@ def _xac_minh(key, nguoi_thuc_hien, xac_minh_pin, field, trang_thai_cho_phep, kh
         if crypto.verify_pin_verifier(raw, _khoa_mac(), unlock.ma_bam_xac_minh_pin):
             unlock.so_lan_sai = 0
             unlock.khoa_den = None
-            unlock.save(update_fields=["so_lan_sai", "khoa_den", "update_at"])
+            unlock.save(update_fields=["so_lan_sai", "khoa_den", "updated_at"])
             return khi_dung(key, unlock)
 
         unlock.so_lan_sai += 1
@@ -171,7 +171,7 @@ def _xac_minh(key, nguoi_thuc_hien, xac_minh_pin, field, trang_thai_cho_phep, kh
                 detail=f"PIN không đúng. Còn {nguong - unlock.so_lan_sai} lần thử trước khi bị khóa.",
                 fields={"so_lan_con_lai": [nguong - unlock.so_lan_sai]},
             )
-        unlock.save(update_fields=["so_lan_sai", "khoa_den", "update_at"])
+        unlock.save(update_fields=["so_lan_sai", "khoa_den", "updated_at"])
     # Ném lỗi sau khi transaction đã commit bộ đếm
     raise loi
 
@@ -239,7 +239,7 @@ def doi_pin(key, nguoi_thuc_hien, xac_minh_pin_cu, xac_minh_pin_moi, tham_so_kdf
         manh_bi_mat = _giai_ma_manh_bi_mat(key, unlock)
         unlock.ma_bam_xac_minh_pin = ma_bam_moi
         unlock.tham_so_kdf = tham_so
-        unlock.save(update_fields=["ma_bam_xac_minh_pin", "tham_so_kdf", "update_at"])
+        unlock.save(update_fields=["ma_bam_xac_minh_pin", "tham_so_kdf", "updated_at"])
         ghi_nhat_ky(nguoi_thuc_hien, LOAI, key.pk, "DOI_PIN", du_lieu_kem_theo={"tham_so_kdf": tham_so},
                     dia_chi_ip=dia_chi_ip)
         return unlock, manh_bi_mat

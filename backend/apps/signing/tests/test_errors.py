@@ -1,10 +1,12 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 from signing.errors import ConflictError, SigningAPIView, SigningError
+
+User = get_user_model()
 
 
 class _RaiseView(SigningAPIView):

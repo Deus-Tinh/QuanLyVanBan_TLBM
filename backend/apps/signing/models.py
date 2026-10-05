@@ -501,7 +501,8 @@ class SigningKeyUnlock(models.Model):
     so_lan_sai = models.PositiveIntegerField(default=0)
     khoa_den = models.DateTimeField(null=True, blank=True)  # rỗng: không bị khóa tạm
     created_at = models.DateTimeField(auto_now_add=True)
-    update_at = models.DateTimeField(auto_now=True)
+    # DDL base dùng updated_at (trigger set_updated_at), khác update_at của các bảng signing_* khác
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "signing_key_unlock"

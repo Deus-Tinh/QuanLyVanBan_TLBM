@@ -2,12 +2,18 @@ import base64
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from signing import enums
 from signing.models import SigningAuditLog, SigningKey, SigningProcess
+from signing.permissions import co_quyen
+
+from .helpers import cap_quyen
+
+User = get_user_model()
 
 BASE = "/api/v1/signing"
 
@@ -22,6 +28,9 @@ class ApiBase(TestCase):
     def setUp(self):
         self.u1 = User.objects.create_user("u1", password="p")
         self.u2 = User.objects.create_user("u2", password="p")
+        # u1: quản lý quy trình và ký; u2: chỉ xem và ký
+        cap_quyen(self.u1, "view_trinhky", "manage_signing_process", "sign_trinhky")
+        cap_quyen(self.u2, "view_trinhky", "sign_trinhky")
         self.c1, self.c2, self.anon = APIClient(), APIClient(), APIClient()
         self.c1.force_authenticate(self.u1)
         self.c2.force_authenticate(self.u2)
@@ -80,23 +89,25 @@ class ProcessApiTests(ApiBase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["code"], "quy_trinh_trung_ma")
 
-    def test_visibility_draft_only_for_creator(self):
+    def test_non_manager_sees_only_active_processes(self):
         body = self.create()
         self.assertEqual(self.c2.get(f"{BASE}/quy-trinh/{body['id']}/").status_code, 404)
         self.assertEqual(len(self.c2.get(f"{BASE}/quy-trinh/").data), 0)
         self.assertEqual(self.c1.get(f"{BASE}/quy-trinh/{body['id']}/").status_code, 200)
         self.assertEqual(self.c1.post(f"{BASE}/quy-trinh/{body['id']}/kich-hoat/").status_code, 200)
-        # quy trình hoạt động: mọi người dùng xem được
+        # quy trình hoạt động: người có view_trinhky xem được
         self.assertEqual(self.c2.get(f"{BASE}/quy-trinh/{body['id']}/").status_code, 200)
         self.assertEqual(len(self.c2.get(f"{BASE}/quy-trinh/").data), 1)
 
-    def test_only_creator_can_change_state(self):
+    def test_non_manager_cannot_change_state(self):
         body = self.create()
         self.c1.post(f"{BASE}/quy-trinh/{body['id']}/kich-hoat/")
         for action in ("ngung", "nhan-ban"):
             response = self.c2.post(f"{BASE}/quy-trinh/{body['id']}/{action}/")
             self.assertEqual(response.status_code, 403, action)
             self.assertEqual(response.data["code"], "khong_co_quyen")
+            self.assertEqual(response.data["fields"], {"quyen": ["manage_signing_process"]})
+        self.assertEqual(SigningProcess.objects.get(pk=body["id"]).trang_thai, enums.TrangThaiQuyTrinh.HOAT_DONG)
 
     def test_lifecycle_activate_deactivate_clone(self):
         pid = self.create()["id"]
@@ -202,3 +213,74 @@ class KeyApiTests(ApiBase):
         entry = SigningAuditLog.objects.get(hanh_dong="DANG_KY_KHOA", ma_doi_tuong=key["id"])
         self.assertEqual(entry.dia_chi_ip, "127.0.0.1")
         self.assertEqual(entry.nguoi_thuc_hien, self.u1)
+
+
+class PermissionApiTests(ApiBase):
+    """Phase 6b (issue #64): kiểm quyền theo codename của DDL, không chỉ kiểm đăng nhập."""
+
+    def setUp(self):
+        super().setUp()
+        self.u3 = User.objects.create_user("u3", password="p")  # không có quyền nào
+        self.c3 = APIClient()
+        self.c3.force_authenticate(self.u3)
+        self.process = self.c1.post(f"{BASE}/quy-trinh/", ProcessApiTests.payload(self), format="json").data
+
+    def test_user_without_permissions_cannot_create_or_activate_process(self):
+        r = self.c3.post(f"{BASE}/quy-trinh/", ProcessApiTests.payload(self, "QT3"), format="json")
+        self.assertEqual((r.status_code, r.data["code"]), (403, "khong_co_quyen"))
+        self.assertFalse(SigningProcess.objects.filter(ma_quy_trinh="QT3").exists())
+        r = self.c3.post(f"{BASE}/quy-trinh/{self.process['id']}/kich-hoat/")
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(SigningProcess.objects.get(pk=self.process["id"]).trang_thai, enums.TrangThaiQuyTrinh.NHAP)
+
+    def test_view_permission_required_to_read_processes(self):
+        self.assertEqual(self.c3.get(f"{BASE}/quy-trinh/").status_code, 403)
+        self.assertEqual(self.c3.get(f"{BASE}/quy-trinh/{self.process['id']}/").status_code, 403)
+
+    def test_any_manager_can_manage_process_of_other_manager(self):
+        cap_quyen(self.u3, "manage_signing_process")
+        self.assertEqual(len(self.c3.get(f"{BASE}/quy-trinh/").data), 1)  # thấy cả bản NHAP
+        r = self.c3.post(f"{BASE}/quy-trinh/{self.process['id']}/kich-hoat/")
+        self.assertEqual((r.status_code, r.data["trang_thai"]), (200, "HOAT_DONG"))
+
+    def test_permission_through_group(self):
+        group = Group.objects.create(name="Quản trị trình ký")
+        group.permissions.add(Permission.objects.get(codename="manage_signing_process"))
+        self.u3.groups.add(group)
+        r = self.c3.post(f"{BASE}/quy-trinh/", ProcessApiTests.payload(self, "QT4"), format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+
+    def test_superuser_allowed_without_explicit_permission(self):
+        admin = User.objects.create_superuser("admin", password="p")
+        client = APIClient()
+        client.force_authenticate(admin)
+        self.assertEqual(client.post(f"{BASE}/quy-trinh/{self.process['id']}/kich-hoat/").status_code, 200)
+
+    def test_inactive_user_has_no_permission(self):
+        self.u1.is_active = False
+        self.u1.save(update_fields=["is_active"])
+        self.assertFalse(co_quyen(self.u1, "manage_signing_process"))
+
+    def test_sign_permission_required_for_key_registration_and_pin(self):
+        _, public = new_keypair()
+        r = self.c3.post(f"{BASE}/khoa/", {
+            "ma_khoa": "k3", "khoa_cong_khai": public, "ngay_hieu_luc": "2026-10-01T00:00:00Z",
+        }, format="json")
+        self.assertEqual((r.status_code, r.data["fields"]), (403, {"quyen": ["sign_trinhky"]}))
+        self.assertFalse(SigningKey.objects.filter(nguoi_so_huu=self.u3).exists())
+
+    def test_revoke_own_key_allowed_after_sign_permission_removed(self):
+        cap_quyen(self.u3, "sign_trinhky")
+        _, public = new_keypair()
+        key = self.c3.post(f"{BASE}/khoa/", {
+            "ma_khoa": "k3", "khoa_cong_khai": public, "ngay_hieu_luc": "2026-10-01T00:00:00Z",
+        }, format="json").data
+        self.u3.user_permissions.clear()
+        u3 = User.objects.get(pk=self.u3.pk)  # bỏ cache quyền của backend
+        client = APIClient()
+        client.force_authenticate(u3)
+        self.assertEqual(client.post(f"{BASE}/khoa/{key['id']}/kich-hoat/").status_code, 403)
+        self.assertEqual(len(client.get(f"{BASE}/khoa/").data), 1)
+        r = client.post(f"{BASE}/khoa/{key['id']}/thu-hoi/", {"ly_do": "Chuyển công tác"}, format="json")
+        self.assertEqual((r.status_code, r.data["trang_thai"]), (200, "THU_HOI"))
+

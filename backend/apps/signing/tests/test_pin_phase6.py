@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
@@ -21,6 +21,10 @@ from signing.errors import ConflictError, SigningError
 from signing.models import SigningAuditLog, SigningKey, SigningKeyUnlock
 from signing.services import keys as key_service
 from signing.services import pin as pin_service
+
+from .helpers import cap_quyen
+
+User = get_user_model()
 
 BASE = "/api/v1/signing"
 KDF = {"thuat_toan": "argon2id", "m": 65536, "t": 3, "p": 1, "phien_ban": 1}
@@ -211,9 +215,18 @@ class DoiPinTests(PinBase):
 class PinApiTests(PinBase):
     def setUp(self):
         super().setUp()
+        cap_quyen(self.u1, "sign_trinhky")
+        cap_quyen(self.u2, "sign_trinhky")
         self.c1, self.c2 = APIClient(), APIClient()
         self.c1.force_authenticate(self.u1)
         self.c2.force_authenticate(self.u2)
+
+    def test_pin_endpoints_require_sign_permission(self):
+        u3 = User.objects.create_user("u3", password="p")
+        c3 = APIClient()
+        c3.force_authenticate(u3)
+        r = c3.post(f"{BASE}/khoa/{self.key.pk}/mo-khoa-ky/", {"xac_minh_pin": self.pin}, format="json")
+        self.assertEqual((r.status_code, r.data["code"]), (403, "khong_co_quyen"))
 
     def test_unlock_endpoint_and_response_content(self):
         r = self.c1.post(f"{BASE}/khoa/{self.key.pk}/mo-khoa-ky/", {"xac_minh_pin": self.pin}, format="json")

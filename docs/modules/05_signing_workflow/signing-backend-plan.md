@@ -536,7 +536,7 @@ Ràng buộc: CHECK `loai_doi_tuong` thuộc luồng ký (request/attempt/signer
 | Số lần sai | `so_lan_sai` | Number | X | Mặc định 0 |
 | Khóa đến | `khoa_den` | DateTime | | Rỗng: không bị khóa |
 | Ngày tạo | `created_at` | DateTime (auto) | | |
-| Ngày cập nhật | `update_at` | DateTime (auto) | | |
+| Ngày cập nhật | `updated_at` | DateTime (auto) | | Theo DDL base (trigger `set_updated_at`); khác `update_at` của các bảng `signing_*` khác |
 
 Bảng trạng thái, không phải bảng bằng chứng: được cập nhật. Mọi sự kiện đặt/đổi/mở khóa/sai/khóa PIN ghi vào `signing_audit_log` (loại đối tượng `signing_key`).
 

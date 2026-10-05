@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
@@ -10,6 +10,8 @@ from signing.models import (
     SigningProcess, SigningProcessStep, SigningProcessStepSigner, SigningRequest,
     SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
+
+User = get_user_model()
 
 H1, H2 = "a" * 64, "b" * 64
 

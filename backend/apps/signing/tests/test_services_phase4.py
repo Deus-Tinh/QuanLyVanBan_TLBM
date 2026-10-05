@@ -2,7 +2,7 @@ import base64
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
@@ -11,6 +11,8 @@ from signing.errors import ConflictError, SigningError
 from signing.models import SigningAuditLog, SigningKey, SigningProcess
 from signing.services import keys as key_service
 from signing.services import process as process_service
+
+User = get_user_model()
 
 
 def new_keypair():

@@ -1,10 +1,12 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
 from signing import enums
 from signing.models import SigningKey, SigningProcess, SigningProcessStep
+
+User = get_user_model()
 
 
 def make_key(user, ma="k1", fp="a" * 64, **kw):

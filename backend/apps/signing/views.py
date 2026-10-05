@@ -1,14 +1,14 @@
 import base64
 
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from . import enums
-from .errors import SigningAPIView, SigningError
+from .errors import SigningAPIView
 from .models import SigningKey, SigningProcess
+from .permissions import KY_TRINH_KY, QUAN_LY_QUY_TRINH, XEM_TRINH_KY, co_quyen, yeu_cau_quyen
 from .serializers import (
     DatPinSerializer, DoiPinSerializer, KhoaDangKySerializer, KhoaSerializer, MoKhoaKySerializer,
     QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer, XacMinhSoHuuSerializer,
@@ -29,23 +29,18 @@ def _ip(request):
     return request.META.get("REMOTE_ADDR") or None
 
 
-def _khong_co_quyen():
-    return SigningError(
-        code="khong_co_quyen", detail="Không có quyền thao tác trên đối tượng này.",
-        status_code=status.HTTP_403_FORBIDDEN,
-    )
-
-
 # ── Quy trình ────────────────────────────────────────────────────────────────
-# Phase 5: chưa có phân quyền theo vai trò (Phase 6). Tạm thời quy trình HOAT_DONG
-# xem được với mọi người dùng đã đăng nhập; quy trình khác và mọi thao tác thay đổi
-# chỉ dành cho người tạo.
+# Phase 6b (plan mục 8): xem cần view_trinhky; tạo, kích hoạt, ngừng, nhân bản cần
+# manage_signing_process. Quy trình là cấu hình chung của cơ quan: người có quyền quản lý
+# thấy mọi trạng thái và thao tác được trên mọi quy trình; người khác chỉ thấy HOAT_DONG.
 
 
 def _quy_trinh_xem_duoc(user):
-    return SigningProcess.objects.filter(
-        Q(trang_thai=enums.TrangThaiQuyTrinh.HOAT_DONG) | Q(create_by=user)
-    ).prefetch_related("cap_ky_set__nguoi_ky_set")
+    queryset = SigningProcess.objects.prefetch_related("cap_ky_set__nguoi_ky_set")
+    if co_quyen(user, QUAN_LY_QUY_TRINH):
+        return queryset
+    yeu_cau_quyen(user, XEM_TRINH_KY)
+    return queryset.filter(trang_thai=enums.TrangThaiQuyTrinh.HOAT_DONG)
 
 
 class QuyTrinhListCreateView(SigningAPIView):
@@ -57,6 +52,7 @@ class QuyTrinhListCreateView(SigningAPIView):
         return Response(QuyTrinhSerializer(queryset, many=True).data)
 
     def post(self, request):
+        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
         data = QuyTrinhInputSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         process = process_service.tao_quy_trinh(request.user, **data.validated_data)
@@ -81,9 +77,8 @@ class QuyTrinhActionView(SigningAPIView):
     action = None
 
     def post(self, request, pk):
+        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
         process = get_object_or_404(_quy_trinh_xem_duoc(request.user), pk=pk)
-        if process.create_by_id != request.user.pk:
-            raise _khong_co_quyen()
         result = self.actions[self.action](process, request.user)
         result = _quy_trinh_xem_duoc(request.user).get(pk=result.pk)
         code = status.HTTP_201_CREATED if self.action == "nhan-ban" else status.HTTP_200_OK
@@ -92,6 +87,9 @@ class QuyTrinhActionView(SigningAPIView):
 
 # ── Khóa ký ──────────────────────────────────────────────────────────────────
 # Người dùng chỉ thấy và thao tác trên khóa của chính mình (khóa người khác trả 404).
+# Đăng ký, xác minh, kích hoạt, xoay vòng khóa và thao tác PIN cần sign_trinhky.
+# Xem danh sách, lấy challenge và thu hồi khóa của chính mình không cần quyền riêng:
+# người bị gỡ quyền ký vẫn phải thu hồi được khóa của mình.
 
 
 def _khoa_cua_toi(request):
@@ -103,6 +101,7 @@ class KhoaListCreateView(SigningAPIView):
         return Response(KhoaSerializer(_khoa_cua_toi(request).order_by("-created_at"), many=True).data)
 
     def post(self, request):
+        yeu_cau_quyen(request.user, KY_TRINH_KY)
         data = KhoaDangKySerializer(data=request.data)
         data.is_valid(raise_exception=True)
         key = key_service.dang_ky(request.user, dia_chi_ip=_ip(request), **data.validated_data)
@@ -121,6 +120,8 @@ class KhoaActionView(SigningAPIView):
     action = None
 
     def post(self, request, pk):
+        if self.action != "thu-hoi":
+            yeu_cau_quyen(request.user, KY_TRINH_KY)
         key = get_object_or_404(_khoa_cua_toi(request), pk=pk)
         ip = _ip(request)
         if self.action == "xac-minh":
@@ -153,6 +154,7 @@ class KhoaPinView(SigningAPIView):
     action = None
 
     def post(self, request, pk):
+        yeu_cau_quyen(request.user, KY_TRINH_KY)
         key = get_object_or_404(_khoa_cua_toi(request), pk=pk)
         ip = _ip(request)
         http_status = status.HTTP_200_OK

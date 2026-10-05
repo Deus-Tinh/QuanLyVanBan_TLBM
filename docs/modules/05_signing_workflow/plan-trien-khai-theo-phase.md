@@ -21,7 +21,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 4 | Service quy trình và khóa ký, ghi nhật ký | Phase 3 | Hoàn thành (`97e5950`) |
 | 5 | API quy trình và khóa ký, giới hạn theo quyền sở hữu | Phase 4 | Hoàn thành (`64ea1cd`) |
 | 6a | Bảo vệ khóa ký bằng PIN (Argon2id + `k_srv`): model, service, API, nhật ký | Phase 5 | Hoàn thành (nhánh `feat/signing-phase6-pin`) |
-| 6b | Phân quyền theo 8 quyền của phân hệ; quản trị mở lại PIN bị khóa cứng | Chốt model người dùng và cách gán quyền | Chờ quyết định |
+| 6b | Kiểm quyền API quy trình và khóa ký theo codename DDL (issue #64); quản trị mở lại PIN bị khóa cứng | RBAC Nhóm 7 (`require_permission`) | Hoàn thành phần kiểm quyền API; mở lại PIN khóa cứng chưa làm |
 | 7 | Yêu cầu trình ký, lượt trình, snapshot người ký | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) | Chờ nhóm liên quan |
 | 8 | Hành động ký, từ chối, thu hồi; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
 | 9 | Yêu cầu chỉnh sửa, ủy quyền, hạn xử lý, thông báo | Phase 8 | Chờ Phase 8 |
@@ -65,11 +65,20 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 - Tham số Argon2id kiểm tra mức sàn `m >= 65536 KiB, t >= 3, p >= 1`. Chính sách PIN 8 chữ số kiểm tra ở frontend (server không thấy PIN).
 - Test: `tests/test_pin_phase6.py` (khóa theo ngưỡng, đếm đồng thời trên PostgreSQL, `k_srv` chỉ trả sau xác minh, không trả PIN/hash/bản bọc).
 
-### Phase 6b — Phân quyền (chờ quyết định)
-- 8 quyền theo CSDL chung: `view_trinhky`, `add_trinhky`, `sign_trinhky`, `manage_signing_process`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit`.
-- Cần chốt: model người dùng của hệ thống (`accounts_employee` hay `auth.User`) và cách kiểm tra quyền ở tầng API.
-- Bảo vệ khóa ký bằng PIN theo `signing-backend-plan.md` mục 3.4: bảng `signing_key_unlock`, endpoint `dat-pin`, `mo-khoa-ky`, `doi-pin`, khóa theo số lần sai (5 lần: 15 phút; 10 lần: khóa cứng), nhật ký sự kiện PIN. Service và model nằm ở backend; phần Argon2id WASM nằm ở frontend (Phase 10).
-- Test: sai PIN quá ngưỡng bị khóa; bộ đếm đúng khi gọi đồng thời; `k_srv` chỉ trả sau khi xác minh; không có endpoint nào trả bản bọc hoặc PIN.
+### Phase 6b — Phân quyền (kiểm quyền API hoàn thành, issue #64)
+- Mô hình người dùng đã chốt ở #53: `accounts.Employee` qua `settings.AUTH_USER_MODEL`; kiểm quyền bằng codename trần theo DDL (RBAC Nhóm 7).
+- `signing/permissions.py`: `co_quyen(user, codename)` và `yeu_cau_quyen(...)` (403 `khong_co_quyen`, `fields.quyen` là codename thiếu). Có `authorization.backends.RbacBackend` thì dùng `user.has_perm(codename)`; chưa có thì tra quyền riêng và quyền theo nhóm. Superuser luôn được phép; tài khoản `is_active = False` không có quyền.
+- Ánh xạ quyền cho API đã có:
+
+| API | Quyền |
+|---|---|
+| `GET /quy-trinh/`, `GET /quy-trinh/{id}/` | `view_trinhky` (chỉ thấy `HOAT_DONG`) hoặc `manage_signing_process` (thấy mọi trạng thái) |
+| `POST /quy-trinh/`, `kich-hoat`, `ngung`, `nhan-ban` | `manage_signing_process`; người có quyền thao tác được trên mọi quy trình (cấu hình chung của cơ quan, không giới hạn người tạo) |
+| `POST /khoa/`, `xac-minh`, `kich-hoat`, `xoay-vong`, `dat-pin`, `mo-khoa-ky`, `doi-pin` | `sign_trinhky` |
+| `GET /khoa/`, `GET thach-thuc`, `POST thu-hoi` | Chỉ cần đăng nhập, giới hạn khóa của chính mình (người bị gỡ quyền ký vẫn thu hồi được khóa) |
+
+- Chưa làm: quản trị mở lại PIN bị khóa cứng; `add_trinhky`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` áp dụng khi có API ở Phase 7–9.
+- Test: `PermissionApiTests` trong `tests/test_api_phase5.py`, `test_pin_endpoints_require_sign_permission` trong `tests/test_pin_phase6.py`. Test tạo người dùng qua `get_user_model()`, không import `auth.User` (#68 mục C3).
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
 - Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không; hình thức ký thay (KT., TL., TUQ.) và thời hạn ủy quyền.
@@ -90,3 +99,16 @@ Các điểm lệch còn lại cần xác nhận:
 4. Trigger `prevent_delete_or_tamper_signing_signature` chỉ so 9 cột; `ghi_chu_ky`, `ky_tre_han`, `so_giay_tre`, `created_at` vẫn sửa được ở DB, trong khi model chỉ cho đổi `trang_thai_xac_minh` và `thoi_diem_xac_minh`. Đề xuất chặn mọi cột trừ hai cột xác minh.
 5. `ON DELETE` của DDL lệch model (PROTECT) ở `signing_attempt.trinh_ky_id` (CASCADE), `signing_attempt.luot_truoc_id` (SET NULL), `signing_request_step.luot_trinh_id` (CASCADE), `signing_request_step_signer.buoc_ky_id` (CASCADE), `signing_request_step_signer.uy_quyen_tu_id` (SET NULL), `signing_key.khoa_thay_the_id` (SET NULL). Đề xuất đổi sang `RESTRICT`.
 6. DDL trỏ FK người dùng tới `accounts_employee`, còn migration nhánh 5 trỏ `auth_user`; DDL thêm FK cho `don_vi_id`, `chuc_vu_id` trong khi model là số nguyên. Chốt cùng Phase 6–7.
+
+## 5. Đối chiếu DDL base v1 (`ddl_base_v0`, commit `407b134`)
+
+Đối chiếu tự động trên PostgreSQL 18: một DB nạp `docs/common/database/release_DDL.sql`, một DB chạy migration của nhánh; so cột, kiểu, null, khóa ngoại, CHECK/UNIQUE theo tên của 15 bảng `signing_*`.
+
+- Đủ 15 bảng; CHECK/UNIQUE trùng tên và định nghĩa.
+- `signing_key_unlock`: DDL dùng `updated_at` (trigger `set_updated_at`); model đã đổi theo (#67 mục 6).
+- Cột người dùng là `integer` khi chạy trên `auth.User`, `bigint` trong DDL: hết lệch khi `AUTH_USER_MODEL = "accounts.Employee"` (#68 C1).
+- `signing_request.document_type` là ENUM `document_kind` trong DDL, `varchar(20)` trong model: ORM ghi và lọc chuỗi được trên cột ENUM; không chặn `--fake`.
+- `chuc_vu_id`, `don_vi_id` là FK trong DDL, số nguyên trong model: đổi sang FK ở Phase 7.
+- `ON DELETE`: Django luôn tạo FK `NO ACTION` và xử lý xóa ở ứng dụng; DDL dùng `RESTRICT`/`CASCADE`/`SET NULL`. Riêng `signing_key_unlock.khoa_id` là `CASCADE` trong DDL, `PROTECT` trong model: khóa ký không bị xóa (chỉ thu hồi) nên không ảnh hưởng nghiệp vụ.
+- Quy trình migrate trên DB dựng từ DDL (#68 mục 2): `migrate signing --fake`.
+

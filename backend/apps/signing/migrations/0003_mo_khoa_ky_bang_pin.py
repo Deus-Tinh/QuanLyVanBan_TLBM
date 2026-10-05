@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('so_lan_sai', models.PositiveIntegerField(default=0)),
                 ('khoa_den', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('update_at', models.DateTimeField(auto_now=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
                 ('khoa', models.OneToOneField(on_delete=django.db.models.deletion.PROTECT, related_name='mo_khoa_pin', to='signing.signingkey')),
             ],
             options={
