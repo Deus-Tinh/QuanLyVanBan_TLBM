@@ -13,6 +13,7 @@ import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -88,7 +89,7 @@ export default function AppRouter({
         <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
         <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
         <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
-        <Route path="/birthdays" element={<SyllabusPreview activePage="birthdays" />} />
+        <Route path="/birthdays" element={<BirthdayPage />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
         <Route path="/organizations" element={<OrganizationsPage />} />
