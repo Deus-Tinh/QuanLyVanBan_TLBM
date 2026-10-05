@@ -30,13 +30,24 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if not 0 <= options["retries"] <= 10:
             raise CommandError("--retries phải từ 0 đến 10.")
-        if settings.EMAIL_BACKEND != "django.core.mail.backends.smtp.EmailBackend" and not (
-            settings.EMAIL_BACKEND == "django.core.mail.backends.locmem.EmailBackend"
-            and options["allow_locmem"]
+        current_backend = None
+        if hasattr(settings, "MAILERS"):
+            mailers_dict = getattr(settings, "MAILERS", {})
+            default_mailer = mailers_dict.get("default", {})
+            current_backend = default_mailer.get("BACKEND")
+        elif hasattr(settings, "EMAIL_BACKEND"):
+            try:
+                current_backend = settings.EMAIL_BACKEND
+            except AttributeError:
+                current_backend = None
+
+        smtp_backend = "django.core.mail.backends.smtp.EmailBackend"
+        memory_backend = "django.core.mail.backends.locmem.EmailBackend"
+        if current_backend != smtp_backend and not (
+            options["allow_locmem"] and (current_backend == memory_backend or "locmem" in str(current_backend))
         ):
             raise CommandError(
-                "Cần cấu hình EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend "
-                "trước khi gửi email sinh nhật."
+                "Cần cấu hình email backend dạng SMTP trước khi gửi email sinh nhật."
             )
 
         if options["date"]:
@@ -47,7 +58,14 @@ class Command(BaseCommand):
         else:
             target_date = timezone.localdate()
 
-        self.stdout.write(f"Bắt đầu gửi email sinh nhật ngày {target_date:%d/%m/%Y}.")
+        def _safe_write(writer, text):
+            try:
+                writer(text)
+            except UnicodeEncodeError:
+                safe_text = text.encode("ascii", errors="backslashreplace").decode("ascii")
+                writer(safe_text)
+
+        _safe_write(self.stdout.write, f"Bắt đầu gửi email sinh nhật ngày {target_date:%d/%m/%Y}.")
         results = send_automated_birthday_emails(
             target_date=target_date,
             max_retries=options["retries"],
@@ -55,21 +73,21 @@ class Command(BaseCommand):
         )
 
         for detail in results["details"]:
-            status = detail["status"]
             name = detail["full_name"]
-            if status == "SUCCESS":
-                self.stdout.write(self.style.SUCCESS(f"Đã gửi: {name}"))
-            elif status == "SKIPPED":
-                self.stdout.write(self.style.WARNING(f"Bỏ qua: {name} - {detail['reason']}"))
+            if detail.get("skipped"):
+                _safe_write(self.stdout.write, self.style.WARNING(f"Bỏ qua: {name} - {detail['reason']}"))
+            elif detail.get("status") == "SUCCESS":
+                _safe_write(self.stdout.write, self.style.SUCCESS(f"Đã gửi: {name}"))
             else:
-                self.stderr.write(self.style.ERROR(f"Cần xử lý: {name} - {detail['error']}"))
+                _safe_write(self.stderr.write, self.style.ERROR(f"Cần xử lý: {name} - {detail.get('error', '')}"))
 
-        self.stdout.write(
+        summary = (
             f"Tổng: {results['total_eligible']} | "
             f"Đã gửi: {results['sent_count']} | "
             f"Bỏ qua: {results['skipped_count']} | "
-            f"Thất bại: {results['failed_count']} | "
-            f"Cần đối soát: {results['uncertain_count']}"
+            f"Chờ gửi lại: {results.get('retry_count', 0)} | "
+            f"Thất bại: {results['failed_count']}"
         )
+        _safe_write(self.stdout.write, summary)
         if results["failed_count"]:
             raise CommandError("Có email chưa được xác nhận gửi thành công; xem nhật ký BirthdayEmailLog.")

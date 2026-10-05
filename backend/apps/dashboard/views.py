@@ -1,15 +1,11 @@
-import calendar
 from datetime import timedelta
-from django.conf import settings
-from django.db.models import Q
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.models import StaffProfile
-from birthdays.services import is_birthday_on_date
 from .models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
@@ -63,8 +59,7 @@ def overview_view(request):
 
     # ── 1. Thống kê số liệu tổng quan ──────────────────────────────────────
     user = request.user
-    profile = getattr(user, "profile", None)
-    is_admin = user.is_superuser or (profile and profile.role == "admin")
+    is_admin = user.is_superuser
 
     current_year = today.year
     incoming_qs = IncomingDocument.objects.filter(issued_date__year=current_year)
@@ -149,55 +144,43 @@ def overview_view(request):
     ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
-    leap_strategy = getattr(settings, "BIRTHDAY_LEAP_DAY_STRATEGY", "FEB_28")
-
-    def birthday_profiles_on(target_date):
-        birthday_filter = Q(birthday__month=target_date.month, birthday__day=target_date.day)
-        if not calendar.isleap(target_date.year) and (
-            (leap_strategy == "FEB_28" and target_date.month == 2 and target_date.day == 28)
-            or (leap_strategy == "MAR_01" and target_date.month == 3 and target_date.day == 1)
-        ):
-            birthday_filter |= Q(birthday__month=2, birthday__day=29)
-        candidates = (
-            StaffProfile.objects.filter(user__is_active=True)
-            .filter(birthday_filter)
-            .order_by("department", "position", "full_name", "id")
-        )
-        return [
-            profile for profile in candidates
-            if is_birthday_on_date(profile.birthday, target_date, leap_year_strategy=leap_strategy)
-        ]
-
-    today_profiles = birthday_profiles_on(today)
-    tomorrow_profiles = birthday_profiles_on(tomorrow)
+    employees = get_user_model().objects.filter(is_active=True).select_related("don_vi", "chuc_vu")
+    today_profiles = employees.filter(
+        ngay_sinh__month=today.month,
+        ngay_sinh__day=today.day,
+    )
+    tomorrow_profiles = employees.filter(
+        ngay_sinh__month=tomorrow.month,
+        ngay_sinh__day=tomorrow.day,
+    )
 
     # Mảng phẳng birthdays chuẩn BirthdayEmployee của React
     birthdays_list = []
     for p in today_profiles:
         birthdays_list.append({
             "id": p.id,
-            "name": p.full_name,
-            "fullName": p.full_name,
-            "full_name": p.full_name,
-            "birthdate": f"{p.birthday.strftime('%d/%m')} (Hôm nay)",
-            "position": p.position or "Chuyên viên",
-            "roleTitle": p.position or "Chuyên viên",
-            "department": p.department or "Ban Quản lý",
-            "unit": p.department or "Ban Quản lý",
+            "name": p.ho_ten,
+            "fullName": p.ho_ten,
+            "full_name": p.ho_ten,
+            "birthdate": f"{today.strftime('%d/%m')} (Hôm nay)",
+            "position": p.chuc_vu.name,
+            "roleTitle": p.chuc_vu.name,
+            "department": p.don_vi.ten,
+            "unit": p.don_vi.ten,
             "isToday": True,
             "label": "Hôm nay",
         })
     for p in tomorrow_profiles:
         birthdays_list.append({
             "id": p.id,
-            "name": p.full_name,
-            "fullName": p.full_name,
-            "full_name": p.full_name,
-            "birthdate": f"{p.birthday.strftime('%d/%m')} (Ngày mai)",
-            "position": p.position or "Chuyên viên",
-            "roleTitle": p.position or "Chuyên viên",
-            "department": p.department or "Ban Quản lý",
-            "unit": p.department or "Ban Quản lý",
+            "name": p.ho_ten,
+            "fullName": p.ho_ten,
+            "full_name": p.ho_ten,
+            "birthdate": f"{tomorrow.strftime('%d/%m')} (Ngày mai)",
+            "position": p.chuc_vu.name,
+            "roleTitle": p.chuc_vu.name,
+            "department": p.don_vi.ten,
+            "unit": p.don_vi.ten,
             "isToday": False,
             "label": "Ngày mai",
         })
@@ -205,17 +188,17 @@ def overview_view(request):
     birthdays_by_day = {
         "today": [
             {
-                "full_name": p.full_name,
-                "department": p.department,
-                "position": p.position,
+                "full_name": p.ho_ten,
+                "department": p.don_vi.ten,
+                "position": p.chuc_vu.name,
             }
             for p in today_profiles
         ],
         "tomorrow": [
             {
-                "full_name": p.full_name,
-                "department": p.department,
-                "position": p.position,
+                "full_name": p.ho_ten,
+                "department": p.don_vi.ten,
+                "position": p.chuc_vu.name,
             }
             for p in tomorrow_profiles
         ],

@@ -18,6 +18,9 @@ from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Tải biến môi trường từ .env
+load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR.parent / ".env")
 
 # Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
@@ -54,7 +57,14 @@ INSTALLED_APPS = [
     "dashboard",
     "birthdays",
     "organizations",
+    "authorization",
 ]
+
+# Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo SQL_Fix4: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -96,12 +106,28 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+TESTING = "test" in sys.argv
+
+DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
+
+if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "qlvb_db"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -141,22 +167,14 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 
-# Export these variables in the process environment before starting Django.
-# Console delivery is suitable for local development only; deployment must
-# explicitly select Django's SMTP backend and provide SMTP credentials.
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() in ("1", "true", "yes")
-EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() in ("1", "true", "yes")
-EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "30"))
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "qlvb-admin@itc.edu.vn")
+# Email
+# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-# The agreed Gregorian rule celebrates 29 February birthdays on 28 February
-# in non-leap years. Calendar, dashboard, and email job share this setting.
-BIRTHDAY_LEAP_DAY_STRATEGY = os.getenv("BIRTHDAY_LEAP_DAY_STRATEGY", "FEB_28")
+MAILERS = {
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+    },
+}
 
 # CORS Configuration (Cho phép Frontend kết nối API)
 CORS_ALLOW_ALL_ORIGINS = True

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient, ApiError } from '@lib/apiClient';
 import { t as translate, useTranslation } from '@i18n/translate';
+import './BirthdayPage.css';
 
 export interface BirthdayStaff {
   id: number;

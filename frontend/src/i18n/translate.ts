@@ -1,4 +1,4 @@
-﻿import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import viJson from './vi.json';
 import enJson from './en.json';
 
@@ -68,7 +68,7 @@ export function setLanguage(lang: SupportedLanguage): void {
  */
 export function t(
   key: string,
-  replacements?: Record<string, string>,
+  replacements?: Record<string, string | number>,
   langOverride?: SupportedLanguage
 ): string {
   const lang = langOverride || currentLang;
@@ -92,7 +92,7 @@ export function t(
 
   if (replacements && typeof result === 'string') {
     Object.entries(replacements).forEach(([k, v]) => {
-      result = result.replace(new RegExp(`{${k}}`, 'g'), v);
+      result = result.replace(new RegExp(`{${k}}`, 'g'), String(v));
     });
   }
 
@@ -113,7 +113,7 @@ export function useTranslation() {
   return {
     currentLang: lang,
     setLanguage,
-    t: (key: string, replacements?: Record<string, string>) => t(key, replacements, lang),
+    t: (key: string, replacements?: Record<string, string | number>) => t(key, replacements, lang),
     translations,
   };
 }

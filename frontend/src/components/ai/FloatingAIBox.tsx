@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { ActivePageId } from '@app-types/navigation';
 
 interface FloatingAIBoxProps {
   onNavigate?: (pageId: ActivePageId) => void;
-  activePage?: ActivePageId;
 }
 
 interface Message {
@@ -40,17 +38,7 @@ const INITIAL_MESSAGES: Message[] = [
   },
 ];
 
-export default function FloatingAIBox({ onNavigate, activePage }: FloatingAIBoxProps) {
-  let locationPathname = '';
-  try {
-    const location = useLocation();
-    locationPathname = location.pathname;
-  } catch {
-    // Fallback if rendered outside Router
-  }
-
-  const isBirthdays = activePage === 'birthdays' || locationPathname.startsWith('/birthdays');
-
+export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
@@ -132,18 +120,12 @@ export default function FloatingAIBox({ onNavigate, activePage }: FloatingAIBoxP
 
   return (
     <>
-      {/* 1. NÚT AI ROBOT NỔI CỐ ĐỊNH XUỐNG GÓC DƯỚI BÊN PHẢI (Nhích lên để không che thanh footer, trên mobile ở trang sinh nhật đặt tại góc trên phải để không che ô Tháng 12) */}
+      {/* 1. NÚT AI ROBOT NỔI CỐ ĐỊNH XUỐNG GÓC DƯỚI BÊN PHẢI (Nhích lên để không che thanh footer) */}
       {!isOpen && (
-        <div
-          className={`fixed z-[9998] transition-all duration-normal ${
-            isBirthdays
-              ? 'top-28 right-3 lg:top-auto lg:bottom-[72px] lg:right-8'
-              : 'bottom-3 right-3 sm:bottom-[72px] sm:right-8'
-          }`}
-        >
+        <div className="fixed bottom-[72px] right-6 sm:right-8 z-[9998]">
           <button
             type="button"
-            className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-purple-600 via-primary to-cyan-400 p-[2px] sm:p-[2.5px] shadow-xl hover:shadow-2xl shadow-primary/25 cursor-pointer flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 via-primary to-cyan-400 p-[2.5px] shadow-xl hover:shadow-2xl shadow-primary/25 cursor-pointer flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 group"
             onClick={() => {
               setIsOpen(true);
               setIsMinimized(false);
@@ -153,11 +135,11 @@ export default function FloatingAIBox({ onNavigate, activePage }: FloatingAIBoxP
           >
             {/* Vòng hào quang sáng xung quanh */}
             <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping -z-10" />
-            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-primary text-xl sm:text-2xl shadow-inner group-hover:bg-primary group-hover:text-white transition-colors duration-fast">
+            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-primary text-2xl shadow-inner group-hover:bg-primary group-hover:text-white transition-colors duration-fast">
               <i className="fa-solid fa-robot" />
             </div>
             {/* Chấm trạng thái trực tuyến */}
-            <span className="absolute top-0.5 right-0.5 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-emerald-500 border-2 border-surface shadow-xs" />
+            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-surface shadow-xs" />
           </button>
         </div>
       )}
@@ -166,12 +148,8 @@ export default function FloatingAIBox({ onNavigate, activePage }: FloatingAIBoxP
       {isOpen && (
         <div
           ref={windowRef}
-          className={`fixed z-[9999] w-[390px] max-w-[calc(100vw-24px)] sm:max-w-[calc(100vw-32px)] rounded-2xl bg-surface-elevated/95 backdrop-blur-xl border border-subtle shadow-2xl flex flex-col overflow-hidden transition-all duration-fast animate-in fade-in slide-in-from-bottom-4 ${
-            isMinimized ? 'h-14' : 'h-[540px] max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-120px)]'
-          } ${
-            isBirthdays && isMinimized
-              ? 'top-28 right-3 lg:top-auto lg:bottom-[68px] lg:right-6'
-              : 'bottom-3 right-3 sm:bottom-[68px] sm:right-6'
+          className={`fixed bottom-[68px] right-6 z-[9999] w-[390px] max-w-[calc(100vw-32px)] rounded-2xl bg-surface-elevated/95 backdrop-blur-xl border border-subtle shadow-2xl flex flex-col overflow-hidden transition-all duration-fast animate-in fade-in slide-in-from-bottom-4 ${
+            isMinimized ? 'h-14' : 'h-[540px] max-h-[calc(100vh-120px)]'
           }`}
         >
           {/* Thanh tiêu đề (Header) */}
