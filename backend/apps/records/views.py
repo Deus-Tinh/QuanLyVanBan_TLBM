@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from django.db.models import Q
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404
@@ -83,7 +84,7 @@ class HoSoDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
         try:
             self.perform_destroy(instance)
-        except ProtectedError:
+        except (ProtectedError, IntegrityError):
             return Response(
                 {
                     "detail": (
@@ -150,6 +151,22 @@ class LoaiVanBanDetailAPIView(
     serializer_class = LoaiVanBanSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "patch", "delete", "head", "options"]
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        try:
+            self.perform_destroy(instance)
+        except (ProtectedError, IntegrityError):
+            return Response(
+                {
+                    "detail": (
+                        "Không thể xóa loại văn bản vì vẫn còn văn bản "
+                        "đang tham chiếu đến loại này."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def _page_url(request, page):

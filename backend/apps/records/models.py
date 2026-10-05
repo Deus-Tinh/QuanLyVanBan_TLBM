@@ -34,6 +34,10 @@ class HoSo(models.Model):
                 condition=~Exact(Trim("so_ky_hieu"), Value("")),
                 name="ck_records_hoso_so_ky_hieu_not_blank",
             ),
+            models.CheckConstraint(
+                condition=~Exact(Trim("ten_ho_so"), Value("")),
+                name="ck_records_hoso_ten_ho_so_not_blank",
+            ),
             models.UniqueConstraint(
                 fields=["is_he_thong"],
                 condition=Q(is_he_thong=True),
@@ -48,6 +52,7 @@ class HoSo(models.Model):
     def save(self, *args, **kwargs):
         using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
         self.so_ky_hieu = self.so_ky_hieu.strip()
+        self.ten_ho_so = self.ten_ho_so.strip()
 
         update_fields = kwargs.get("update_fields")
         is_saving_system_flag = update_fields is None or "is_he_thong" in update_fields

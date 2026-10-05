@@ -70,8 +70,8 @@ function RecordModalForm(props: RecordModalProps) {
       setValidation('Vui lòng nhập số/ký hiệu hồ sơ.');
       return;
     }
-    if (mode === 'dossier' && priority && (!Number.isInteger(Number(priority)) || Number(priority) < 0)) {
-      setValidation('Số thứ tự ưu tiên phải là số nguyên không âm.');
+    if (mode === 'dossier' && priority && (!Number.isInteger(Number(priority)) || Number(priority) < 1)) {
+      setValidation('Số thứ tự ưu tiên phải là số nguyên dương.');
       return;
     }
 
@@ -123,11 +123,11 @@ function RecordModalForm(props: RecordModalProps) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold text-secondary">
                 Số/ký hiệu *
-                <input className={`${fieldClass} mt-1.5`} value={code} onChange={(e) => setCode(e.target.value)} maxLength={100} autoFocus />
+                <input className={`${fieldClass} mt-1.5`} value={code} onChange={(e) => setCode(e.target.value)} maxLength={255} autoFocus />
               </label>
               <label className="block text-sm font-semibold text-secondary">
                 Thứ tự ưu tiên
-                <input className={`${fieldClass} mt-1.5`} type="number" min="0" value={priority} onChange={(e) => setPriority(e.target.value)} />
+                <input className={`${fieldClass} mt-1.5`} type="number" min="1" value={priority} onChange={(e) => setPriority(e.target.value)} />
               </label>
             </div>
           )}
