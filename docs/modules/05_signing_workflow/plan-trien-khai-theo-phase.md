@@ -77,7 +77,8 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | `POST /khoa/`, `xac-minh`, `kich-hoat`, `xoay-vong`, `dat-pin`, `mo-khoa-ky`, `doi-pin` | `sign_trinhky` |
 | `GET /khoa/`, `GET thach-thuc`, `POST thu-hoi` | Chỉ cần đăng nhập, giới hạn khóa của chính mình (người bị gỡ quyền ký vẫn thu hồi được khóa) |
 
-- Chưa làm: quản trị mở lại PIN bị khóa cứng; `add_trinhky`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` áp dụng khi có API ở Phase 7–9.
+- Kích hoạt phiên bản mới tự ngừng phiên bản đang hoạt động cùng mã (`signing-backend-plan.md` mục 3.1); khóa mọi phiên bản cùng mã theo thứ tự `pk`.
+- Chưa làm: quản trị mở lại PIN bị khóa cứng (người dùng vẫn tự thu hồi khóa và đăng ký khóa mới được); `add_trinhky`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` áp dụng khi có API ở Phase 7–9.
 - Test: `PermissionApiTests` trong `tests/test_api_phase5.py`, `test_pin_endpoints_require_sign_permission` trong `tests/test_pin_phase6.py`. Test tạo người dùng qua `get_user_model()`, không import `auth.User` (#68 mục C3).
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài

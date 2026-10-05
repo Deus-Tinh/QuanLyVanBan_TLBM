@@ -15,7 +15,7 @@ class SigningPingTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_ping_ok_when_authenticated(self):
-        user = User.objects.create_user(username="signer", password="password123")
+        user = User.objects.create_user(username="signer")
         self.client.force_authenticate(user=user)
         response = self.client.get("/api/v1/signing/ping/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)

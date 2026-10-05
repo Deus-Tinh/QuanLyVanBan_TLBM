@@ -70,8 +70,9 @@ Hệ thống tách hai giai đoạn:
 
 - Vòng đời: `NHAP -> HOAT_DONG -> NGUNG`.
 - Chỉ quy trình `HOAT_DONG` được chọn khi tạo yêu cầu.
-- Người tạo quy trình, hoặc tài khoản quản trị / ban / phòng có quyền `quan_ly_quy_trinh_ky`, được kích hoạt quy trình.
+- Tài khoản có quyền `manage_signing_process` được tạo, kích hoạt, ngừng, nhân bản quy trình (Phase 6b). Người tạo bị gỡ quyền thì không thao tác được nữa.
 - Chỉ sửa trực tiếp quy trình ở trạng thái `NHAP`. Muốn thay đổi quy trình đã kích hoạt thì nhân bản thành phiên bản mới (`phien_ban` + 1, cùng `ma_quy_trinh`); phiên bản cũ giữ nguyên để tra cứu.
+- Mỗi `ma_quy_trinh` chỉ có một phiên bản `HOAT_DONG`: kích hoạt phiên bản mới thì phiên bản đang hoạt động cùng mã chuyển `NGUNG` trong cùng transaction (ghi nhật ký `NGUNG_QUY_TRINH` kèm phiên bản thay thế). Yêu cầu đã tạo từ phiên bản cũ không bị ảnh hưởng.
 - Phạm vi hiển thị: `pham_vi` = `PHONG_BAN` hoặc `CONG_TY`.
 - Quy trình có `kieu_ky_mac_dinh`. Khi tạo yêu cầu, người tạo chọn `TUAN_TU` hoặc `SONG_SONG`; giá trị được chốt vào `signing_request.kieu_ky` và áp dụng cho toàn yêu cầu.
 - Người tạo yêu cầu không được sửa danh sách người ký đã cấu hình trong quy trình.

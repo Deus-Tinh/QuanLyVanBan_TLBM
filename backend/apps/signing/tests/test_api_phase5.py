@@ -26,8 +26,8 @@ def new_keypair():
 
 class ApiBase(TestCase):
     def setUp(self):
-        self.u1 = User.objects.create_user("u1", password="p")
-        self.u2 = User.objects.create_user("u2", password="p")
+        self.u1 = User.objects.create_user("u1")
+        self.u2 = User.objects.create_user("u2")
         # u1: quản lý quy trình và ký; u2: chỉ xem và ký
         cap_quyen(self.u1, "view_trinhky", "manage_signing_process", "sign_trinhky")
         cap_quyen(self.u2, "view_trinhky", "sign_trinhky")
@@ -220,7 +220,7 @@ class PermissionApiTests(ApiBase):
 
     def setUp(self):
         super().setUp()
-        self.u3 = User.objects.create_user("u3", password="p")  # không có quyền nào
+        self.u3 = User.objects.create_user("u3")  # không có quyền nào
         self.c3 = APIClient()
         self.c3.force_authenticate(self.u3)
         self.process = self.c1.post(f"{BASE}/quy-trinh/", ProcessApiTests.payload(self), format="json").data
@@ -251,7 +251,7 @@ class PermissionApiTests(ApiBase):
         self.assertEqual(r.status_code, 201, r.data)
 
     def test_superuser_allowed_without_explicit_permission(self):
-        admin = User.objects.create_superuser("admin", password="p")
+        admin = User.objects.create_superuser("admin")
         client = APIClient()
         client.force_authenticate(admin)
         self.assertEqual(client.post(f"{BASE}/quy-trinh/{self.process['id']}/kich-hoat/").status_code, 200)

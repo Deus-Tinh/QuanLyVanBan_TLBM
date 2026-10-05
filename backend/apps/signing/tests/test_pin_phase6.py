@@ -55,8 +55,8 @@ def hanh_dong(key):
 
 class PinBase(TestCase):
     def setUp(self):
-        self.u1 = User.objects.create_user("u1", password="p")
-        self.u2 = User.objects.create_user("u2", password="p")
+        self.u1 = User.objects.create_user("u1")
+        self.u2 = User.objects.create_user("u2")
         self.key = khoa_hoat_dong(self.u1)
         self.pin = xac_minh()
         self.unlock, self.k_srv = pin_service.dat_pin(self.key, self.u1, self.pin, KDF)
@@ -222,7 +222,7 @@ class PinApiTests(PinBase):
         self.c2.force_authenticate(self.u2)
 
     def test_pin_endpoints_require_sign_permission(self):
-        u3 = User.objects.create_user("u3", password="p")
+        u3 = User.objects.create_user("u3")
         c3 = APIClient()
         c3.force_authenticate(u3)
         r = c3.post(f"{BASE}/khoa/{self.key.pk}/mo-khoa-ky/", {"xac_minh_pin": self.pin}, format="json")
@@ -263,7 +263,7 @@ class PinApiTests(PinBase):
 @unittest.skipUnless(connection.vendor == "postgresql", "Cần PostgreSQL để kiểm tra khóa dòng đồng thời")
 class PinConcurrencyTests(TransactionTestCase):
     def test_concurrent_wrong_attempts_counted_exactly(self):
-        user = User.objects.create_user("u1", password="p")
+        user = User.objects.create_user("u1")
         key = khoa_hoat_dong(user)
         pin_service.dat_pin(key, user, xac_minh(), KDF)
 
