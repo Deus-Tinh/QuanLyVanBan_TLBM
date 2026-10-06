@@ -5,40 +5,24 @@ const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000
 export const API_BASE_URL = RAW_BASE_URL.replace(/\/+$/, '');
 
 // ---------------------------------------------------------------------------
-// NGƯỜI DÙNG GIẢ LẬP — GỠ KHI NHÓM 7 CÓ JWT
-// Backend đọc id này qua header X-Mock-User-Id (chỉ khi DEBUG=True).
-// Xem thêm components/MockUserSwitcher.tsx.
+// XÁC THỰC: dùng JWT chung của dự án (accounts/login/ cấp access token).
+// Lớp xác thực giả lập X-Mock-User-Id đã bị gỡ ở backend (issue #65-1).
+// TODO(C1 Nhom 7): doi ACCESS_TOKEN_STORAGE_KEY cho khop khoa ma trang dang nhap luu token.
 // ---------------------------------------------------------------------------
-export const MOCK_USER_STORAGE_KEY = 'work.mockUserId';
+export const ACCESS_TOKEN_STORAGE_KEY = 'tlbm_access_token';
 
-export function getMockUserId(): string {
+export function getAccessToken(): string {
   try {
-    return window.localStorage.getItem(MOCK_USER_STORAGE_KEY) || '';
+    return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) || '';
   } catch {
     return '';
   }
 }
 
-export function setMockUserId(userId: number | string | null): void {
-  try {
-    if (userId === null || userId === '') {
-      window.localStorage.removeItem(MOCK_USER_STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(MOCK_USER_STORAGE_KEY, String(userId));
-    }
-  } catch {
-    // Trình duyệt chặn localStorage thì bỏ qua, backend sẽ dùng tài khoản quản trị mặc định.
-  }
-}
-
-/** Header xác thực gắn vào mọi request; khi có JWT của nhóm 7 thì đổi tại đây. */
+/** Header xác thực gắn vào mọi request của module. */
 export function authHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {};
-  const mockUserId = getMockUserId();
-  if (mockUserId) {
-    headers['X-Mock-User-Id'] = mockUserId;
-  }
-  return headers;
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +96,7 @@ export function flattenErrors(payload: unknown): { message: string; fieldErrors:
 
 export function messageForStatus(status: number): string {
   if (status === 401) {
-    return 'Chưa xác định được người dùng. Hãy chọn lại người dùng ở ô "Đang giả lập user" rồi thử lại.';
+    return 'Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Hãy đăng nhập lại rồi thử lại.';
   }
   if (status === 403) {
     return 'Bạn không có quyền thực hiện thao tác này.';

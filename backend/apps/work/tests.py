@@ -1092,37 +1092,78 @@ class EmployeeApiTests(WorkTestBase):
         self.assertTrue(response.data["isAdmin"])
 
 
-@override_settings(DEBUG=True)
-class MockHeaderAuthenticationTests(WorkTestBase):
-    def test_header_hop_le_dung_user_do(self):
-        response = self.client.get("/api/work/me/", HTTP_X_MOCK_USER_ID=str(self.member.pk))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["id"], self.member.pk)
-        self.assertFalse(response.data["isAdmin"])
+class AnonymousAccessTests(WorkTestBase):
+    """
+    Issue #65-1 và #65-2: không còn lớp xác thực giả lập, không còn tự đăng nhập superuser.
+    Request không có token phải bị từ chối ở mọi endpoint, kể cả khi DEBUG=True.
+    """
 
-    def test_khong_gui_header_thi_dung_superuser_dau_tien(self):
+    def payload(self):
+        return {
+            "title": "Việc do khách tạo",
+            "createdDate": self.today.isoformat(),
+            "dueDate": self.days(3).isoformat(),
+            "requirement": "Yêu cầu",
+            "hostId": self.host.pk,
+            "directorIds": [self.director.pk],
+            "participantIds": [self.member.pk],
+        }
+
+    def test_khong_co_token_thi_khong_doc_duoc(self):
+        for url in ("/api/work/tasks/", "/api/work/me/", "/api/work/employees/", "/api/work/tasks/latest/"):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED, url)
+            self.assertIn("Hãy đăng nhập", response.data["detail"])
+
+    def test_khong_co_token_thi_khong_tao_duoc_cong_viec(self):
+        response = self.client.post("/api/work/tasks/", self.payload(), format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertFalse(Task.objects.filter(title="Việc do khách tạo").exists())
+
+    @override_settings(DEBUG=True)
+    def test_debug_true_cung_khong_duoc_mien_dang_nhap(self):
+        """Trước đây bật DEBUG là tự đăng nhập bằng superuser — lỗ hổng đã bị gỡ."""
         response = self.client.get("/api/work/me/")
-        self.assertEqual(response.data["id"], self.admin.pk)
-
-    def test_id_khong_ton_tai_bao_loi_co_huong_dan(self):
-        response = self.client.get("/api/work/me/", HTTP_X_MOCK_USER_ID="99999")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("Hãy chọn lại người dùng giả lập", response.data["detail"])
-
-    def test_id_khong_phai_so(self):
-        response = self.client.get("/api/work/me/", HTTP_X_MOCK_USER_ID="abc")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_chua_co_superuser_huong_dan_createsuperuser(self):
-        User.objects.filter(is_superuser=True).delete()
-        response = self.client.get("/api/work/me/")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("createsuperuser", response.data["detail"])
-
-
-class MockHeaderDisabledWhenNotDebugTests(WorkTestBase):
-    def test_debug_false_thi_bo_qua_header(self):
-        # Test runner luôn chạy với DEBUG=False.
+    @override_settings(DEBUG=True)
+    def test_header_gia_lap_cu_khong_con_tac_dung(self):
         response = self.client.get("/api/work/me/", HTTP_X_MOCK_USER_ID=str(self.admin.pk))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("Bạn chưa đăng nhập", response.data["detail"])
+
+    def test_cac_thao_tac_ghi_deu_chan_nguoi_an_danh(self):
+        task = self.make_task()
+        evidence = self.add_evidence(task, user=self.member)
+        thao_tac = [
+            ("patch", self.task_url(task), {"title": "Đổi"}),
+            ("delete", self.task_url(task), None),
+            ("post", self.task_url(task, "open/"), None),
+            ("post", self.task_url(task, "comments/"), {"content": "Ý kiến"}),
+            ("delete", self.task_url(task, f"evidences/{evidence.pk}/"), None),
+            ("post", self.task_url(task, "approve/"), None),
+            ("post", self.task_url(task, "unapprove/"), None),
+        ]
+        for method, url, data in thao_tac:
+            response = getattr(self.client, method)(url, data) if data else getattr(self.client, method)(url)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED, f"{method} {url}")
+
+    def test_dang_nhap_roi_thi_tao_duoc(self):
+        self.login(self.creator)
+        response = self.client.post("/api/work/tasks/", self.payload(), format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
+
+class JwtAuthenticationTests(WorkTestBase):
+    """Module dùng đúng cơ chế đăng nhập chung của dự án: JWT do accounts/login/ cấp."""
+
+    def test_token_hop_le_goi_duoc_api(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        token = RefreshToken.for_user(self.member).access_token
+        response = self.client.get("/api/work/me/", HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], self.member.pk)
+
+    def test_token_rac_bi_tu_choi(self):
+        response = self.client.get("/api/work/me/", HTTP_AUTHORIZATION="Bearer khong-phai-token")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

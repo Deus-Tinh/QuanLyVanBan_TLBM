@@ -6,7 +6,7 @@ export function listEmployees(search = '', signal?: AbortSignal): Promise<Employ
   return request<Employee[]>('work/employees/', { params: { search }, signal });
 }
 
-/** Người dùng đang đăng nhập (hiện đang giả lập bằng header X-Mock-User-Id). */
+/** Người dùng đang đăng nhập (xác định theo token JWT gửi kèm request). */
 export function getMe(signal?: AbortSignal): Promise<CurrentUser> {
   return request<CurrentUser>('work/me/', { signal });
 }

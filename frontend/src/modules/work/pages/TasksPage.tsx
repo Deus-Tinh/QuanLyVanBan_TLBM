@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import MockUserSwitcher from '../components/MockUserSwitcher';
 import TaskDetailPage from './TaskDetailPage';
 import TaskListPage from './TaskListPage';
 
@@ -28,9 +27,6 @@ function readView(): View {
 
 export default function TasksPage() {
   const [view, setView] = useState<View>(readView);
-  // Đổi người dùng giả lập thì dựng lại trang con để tải dữ liệu theo quyền mới.
-  const [userVersion, setUserVersion] = useState(0);
-
   useEffect(() => {
     try {
       window.sessionStorage.setItem(VIEW_STORAGE_KEY, JSON.stringify(view));
@@ -41,17 +37,14 @@ export default function TasksPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <MockUserSwitcher onUserChange={() => setUserVersion((version) => version + 1)} />
-
       {view.mode === 'detail' ? (
         <TaskDetailPage
-          key={`detail-${view.taskId}-${userVersion}`}
+          key={`detail-${view.taskId}`}
           taskId={view.taskId}
           onBack={() => setView({ mode: 'list' })}
         />
       ) : (
         <TaskListPage
-          key={`list-${userVersion}`}
           onOpenTask={(taskId) => setView({ mode: 'detail', taskId })}
         />
       )}

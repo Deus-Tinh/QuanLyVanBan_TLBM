@@ -4,7 +4,6 @@ import DateInput, { todayIso } from '../components/DateInput';
 import EmployeeMultiSelect from '../components/EmployeeMultiSelect';
 import EmployeeSelect from '../components/EmployeeSelect';
 import FilePicker from '../components/FilePicker';
-import MockUserSwitcher from '../components/MockUserSwitcher';
 import TaskStatusBadge from '../components/TaskStatusBadge';
 import WorkAlert from '../components/WorkAlert';
 import WorkModal from '../components/WorkModal';
@@ -52,8 +51,6 @@ export default function WorkComponentsPreviewPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '900px' }}>
-      <MockUserSwitcher />
-
       <Section title="TaskStatusBadge">
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {ALL_STATUSES.map((status) => (

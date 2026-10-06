@@ -9,10 +9,8 @@ from django.db.models import Exists, OuterRef, Prefetch, Q
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from rest_framework import mixins, status, viewsets
-from rest_framework.authentication import BaseAuthentication
 from rest_framework.decorators import action
 from rest_framework.exceptions import (
-    AuthenticationFailed,
     NotAuthenticated,
     NotFound,
     PermissionDenied,
@@ -58,49 +56,8 @@ TASK_NOT_FOUND_MESSAGE = (
 
 
 # ==========================================================================
-# ===== KHU VỰC: Xác thực giả lập, phân trang, lớp nền =====
+# ===== KHU VỰC: Phân trang, lớp nền =====
 # ==========================================================================
-
-class MockHeaderAuthentication(BaseAuthentication):
-    """
-    XÁC THỰC GIẢ LẬP — GỠ KHI NHÓM 7 CÓ JWT.
-    Đọc id người dùng từ header `X-Mock-User-Id`. Chỉ hoạt động khi DEBUG=True.
-    Không gửi header thì dùng tài khoản quản trị (superuser) có id nhỏ nhất.
-    """
-
-    header_name = "HTTP_X_MOCK_USER_ID"
-
-    def authenticate(self, request):
-        if not settings.DEBUG:
-            return None
-
-        raw_id = request.META.get(self.header_name, "").strip()
-        if raw_id:
-            if not raw_id.isdigit():
-                raise AuthenticationFailed(
-                    "Mã người dùng giả lập không hợp lệ. "
-                    "Hãy chọn lại người dùng ở ô \"Đang giả lập user\" trên trang Công việc."
-                )
-            user = User.objects.filter(pk=int(raw_id), is_active=True).first()
-            if user is None:
-                raise AuthenticationFailed(
-                    f"Không tìm thấy tài khoản đang hoạt động có id {raw_id}. "
-                    "Hãy chọn lại người dùng giả lập, hoặc tạo tài khoản trong trang quản trị Django."
-                )
-            return (user, None)
-
-        user = User.objects.filter(is_superuser=True, is_active=True).order_by("pk").first()
-        if user is None:
-            raise AuthenticationFailed(
-                "Chưa có tài khoản quản trị nào trong hệ thống. "
-                "Hãy chạy lệnh `python manage.py createsuperuser` rồi tải lại trang."
-            )
-        return (user, None)
-
-    def authenticate_header(self, request):
-        # Có giá trị này thì DRF trả 401 thay vì 403 khi chưa xác thực.
-        return "X-Mock-User-Id"
-
 
 class TaskPagination(PageNumberPagination):
     page_size = 10
@@ -123,13 +80,16 @@ class TaskPagination(PageNumberPagination):
 class WorkApiMixin:
     """Cấu hình chung cho mọi API của module Công việc."""
 
-    # Ưu tiên JWT thật của nhóm 7; không có JWT thì mới dùng header giả lập (chỉ khi DEBUG).
-    authentication_classes = [JWTAuthentication, MockHeaderAuthentication]
+    # Dùng đúng cơ chế đăng nhập chung của dự án: JWT do `accounts/login/` cấp.
+    # Không còn lớp xác thực giả lập: request không có token thì trả 401 (issue #65-1).
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def permission_denied(self, request, message=None, code=None):
         if request.authenticators and not request.successful_authenticator:
-            raise NotAuthenticated("Bạn chưa đăng nhập. Hãy đăng nhập lại rồi thử lại.")
+            raise NotAuthenticated(
+                "Bạn chưa đăng nhập. Hãy đăng nhập để lấy token rồi thử lại."
+            )
         super().permission_denied(request, message=message, code=code)
 
 
@@ -265,6 +225,8 @@ class TaskViewSet(
         return queryset
 
     def create(self, request, *args, **kwargs):
+        # Chỉ người đã đăng nhập mới tạo được công việc (permission_classes = IsAuthenticated).
+        # TODO(#65-2, cho C2 Nhom 7): thay bang require_permission("add_congviec") khi RBAC len staging.
         serializer = TaskWriteSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         task = serializer.save()
