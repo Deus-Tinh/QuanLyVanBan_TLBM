@@ -34,7 +34,7 @@ Vì phần lõi chưa có service, đây là thời điểm rẻ nhất để s�
 | 5 | Ủy quyền khẩn cấp không có quy tắc "thẩm quyền tương đương", không có thể thức KT./TL./TUQ. | Cao | Ủy quyền đặt trước theo thời gian + danh sách người nhận hợp lệ + hình thức ký | Thêm bảng `signing_delegation`; thêm `hinh_thuc_ky` | `[CHỐT]` thiết kế (NĐ 30/2020 Điều 13); `[CẦN XÁC NHẬN]` danh sách người nhận hợp lệ, trước Phase 9 |
 | 6 | Hạn chót chỉ để hiển thị, leo thang chưa định nghĩa người nhận | Trung bình | Quy tắc nhắc + leo thang theo cấp trên trực tiếp + báo cáo trễ hạn | Mở rộng `cau_hinh_nhac_han` | `[CHỐT]` |
 | 7 | Ký nội bộ bằng PKI riêng + PIN nhưng không có giá trị pháp lý; người ký cuối phải ký hai lần | Trung bình | Ký chính cuối cùng gộp vào bước ký số CA | Không | `[CHỐT]` hướng; adapter Phase 10 |
-| 8 | Phạm vi gồm cả văn bản đến; văn bản mật chưa rõ | Trung bình | Bỏ `vanbanden`; `vanbanmat` ngoài phạm vi cho tới khi pháp chế xác nhận | Đổi `LoaiVanBan` | `[CẦN XÁC NHẬN]` trước Phase 7 |
+| 8 | Phạm vi gồm cả văn bản đến; văn bản mật chưa rõ | Trung bình | Bỏ `vanbanden`; văn bản mật đã bỏ khỏi hệ thống, thay bằng `pham_vi = 'HAN_CHE'` | Đổi `LoaiVanBan` | `[CHỐT]` (GVHD, DDL #81) |
 | 9 | Chưa ráp khâu văn thư: cấp số, ngày, ký số cơ quan | Cao | Tách 3 bước: phẳng hóa → ký số người có thẩm quyền → hệ thống cấp số, văn thư ký số cơ quan | Contract với Nhóm 2 | `[CẦN XÁC NHẬN]` Nhóm 2, trước Phase 10 |
 
 Ngoài nghiệp vụ, có một điểm thiết kế bảo mật ảnh hưởng quy tắc nghiệp vụ "đổi PIN": xem mục 11.
@@ -194,10 +194,12 @@ Căn cứ: Điều 13 yêu cầu ủy quyền có thời hạn và phạm vi, n�
 - Văn bản đến là văn bản của cơ quan khác; cơ quan nhận không ký lên đó. Nghiệp vụ với văn bản đến là trình lãnh đạo **cho ý kiến chỉ đạo** rồi giao xử lý — thuộc luồng xử lý văn bản đến (Nhóm 2), không phải trình ký.
 - Văn bản chứa bí mật nhà nước chịu quy định riêng về hệ thống xử lý (không xử lý trên hệ thống kết nối Internet khi chưa đáp ứng yêu cầu bảo vệ). Đưa vào phạm vi khi chưa có xác nhận là rủi ro pháp lý.
 
-**Đề xuất `[CẦN XÁC NHẬN]` trước Phase 7.**
+**Cập nhật 06/10/2026 `[CHỐT]`.** GVHD chốt bỏ văn bản mật. Khách hàng là doanh nghiệp bảo hiểm, nên "văn bản mật" là tài liệu nội bộ hạn chế (không phải bí mật nhà nước) và được xử lý bằng cột `pham_vi = 'HAN_CHE'` trên văn bản đến/đi (DDL #81). Lý do bí mật nhà nước nêu ở trên không còn áp dụng. Căn cứ bảo vệ dữ liệu là Luật Bảo vệ dữ liệu cá nhân 2025. Bảo mật trình ký giữ nguyên, kèm quy tắc văn bản hạn chế tại `signing-backend-plan.md` mục 3.3.
+
+**Đề xuất.**
 
 - Bỏ `vanbanden` khỏi phạm vi Trình ký; bút phê/chỉ đạo văn bản đến chuyển cho Nhóm 2.
-- `vanbanmat`: ngoài phạm vi MVP cho tới khi pháp chế xác nhận; nếu đồ án cần thể hiện thì chỉ mô phỏng, ghi rõ trong tài liệu.
+- `vanbanmat`: đã bỏ khỏi hệ thống.
 - Trình ký MVP chỉ nhận `vanbandi` (dự thảo văn bản đi). Giữ cột `document_type` để mở rộng sau.
 
 **Ảnh hưởng.** Đổi enum `LoaiVanBan`; DDL base có `DEFAULT 'vanbanden'` ở `signing_request.document_type` (đã nêu trong plan phase mục 4) — bỏ luôn giá trị mặc định này.
@@ -228,7 +230,7 @@ Quy tắc hiện tại: đổi PIN giữ nguyên `k_srv` để client bọc lạ
 | Việc | Người/nhóm | Hạn |
 |---|---|---|
 | Duyệt các mục `[CHỐT]` trong tài liệu này | Nhóm 5 | Trước Phase 7 |
-| Xác nhận văn bản mật; quy chế cơ quan về người được nhận ủy quyền | Pháp chế/Ban chuyên môn | Trước Phase 7 (văn bản mật), Phase 9 (ủy quyền) |
+| Quy chế về người được nhận ủy quyền | Ban chuyên môn | Trước Phase 9 |
 | Đồng bộ DDL base: bỏ `kieu_ky*`, thêm `ho_so_goc`, `don_vi_ap_dung`, `pham_vi_chuc_vu`, `hinh_thuc_ky`, bảng `signing_delegation`; bỏ default `vanbanden` | Nhóm CSDL + Nhóm 5 | Trước Phase 7 |
 | Contract cấp số văn bản đi, chuyển trạng thái phát hành | Nhóm 2 + Nhóm 5 | Trước Phase 10 |
 | Danh sách cấp trên trực tiếp, người nhận ủy quyền hợp lệ theo chức danh | Nhóm 7 + Nhóm 5 | Trước Phase 9 |
@@ -251,7 +253,7 @@ Mỗi điểm dựa trên một hoặc nhiều loại căn cứ, theo thứ tự
 | 6 | Ủy quyền theo thời gian; KT./TL./TUQ. | [PHÁP LÝ] | NĐ 30/2020 Điều 13: cấp phó ký thay (KT.) cấp trưởng; người đứng đầu giao người đứng đầu đơn vị ký thừa lệnh (TL.); ký thừa ủy quyền (TUQ.) phải bằng văn bản, có thời hạn và phạm vi. Đây là căn cứ của `signing_delegation` (`tu_ngay`, `den_ngay`, `pham_vi`) và `hinh_thuc_ky`. |
 | 7 | Nhắc và leo thang quá hạn | [THỰC TIỄN] + [THIẾT KẾ] | Hệ thống quản lý văn bản có nhắc hạn và báo cáo trễ hạn. Các mốc 24 giờ/48 giờ là đề xuất, không có nguồn; nhóm có thể chốt mốc khác. |
 | 8 | Ký nội bộ khác ký pháp lý; ký số từ xa | [PHÁP LÝ] + [THỰC TIỄN] | Luật Giao dịch điện tử 2023 và NĐ 23/2025/NĐ-CP phân biệt chữ ký điện tử với chữ ký số do tổ chức cung cấp dịch vụ chứng thực được cấp phép. Dịch vụ ký số từ xa trong nước (VNPT SmartCA, Viettel MySign) xác nhận ký trên ứng dụng di động, không cần thiết bị ký cắm vào máy chủ. |
-| 9 | Bỏ văn bản đến; văn bản mật ngoài phạm vi | [PHÁP LÝ] | NĐ 30/2020, mục quản lý văn bản đến: trình tự tiếp nhận → đăng ký → trình người có thẩm quyền cho ý kiến chỉ đạo → chuyển giao, giải quyết; không có bước ký lên văn bản đến. Luật Bảo vệ bí mật nhà nước 2018 Điều 5: nghiêm cấm soạn thảo, lưu giữ tài liệu chứa bí mật nhà nước trên máy tính, thiết bị đã hoặc đang kết nối Internet, mạng máy tính, mạng viễn thông, trừ trường hợp theo quy định về cơ yếu. |
+| 9 | Bỏ văn bản đến; văn bản mật đã bỏ, thay bằng phạm vi hạn chế | [PHÁP LÝ] + quyết định GVHD | NĐ 30/2020, mục quản lý văn bản đến: trình tự tiếp nhận → đăng ký → trình người có thẩm quyền cho ý kiến chỉ đạo → chuyển giao, giải quyết; không có bước ký lên văn bản đến. Văn bản mật: GVHD chốt bỏ; khách hàng doanh nghiệp bảo hiểm không xử lý bí mật nhà nước. Tài liệu hạn chế chứa dữ liệu khách hàng thuộc phạm vi Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15, hiệu lực 01/01/2026): kiểm soát quyền xem và nhật ký truy cập là nghĩa vụ. |
 | 10 | Tách khâu văn thư | [PHÁP LÝ] + [THỰC TIỄN] | NĐ 30/2020 Điều 14: trình tự văn bản đi gồm cấp số, thời gian ban hành → đăng ký → ký số của cơ quan (văn bản điện tử). Điều 15: số và ký hiệu duy nhất trong năm; văn bản điện tử được cấp số, thời gian ban hành bằng chức năng của Hệ thống. Điều 17, Phụ lục I: ký số của cơ quan, tổ chức. Chuẩn chữ ký PDF: DocMDP mức 2 cho phép điền trường và ký tiếp sau chữ ký chứng thực. |
 | 11 | Xoay vòng `k_srv` khi đổi PIN | [THIẾT KẾ] | Nguyên tắc quản lý khóa: khi nghi bí mật bị lộ thì thay bí mật, không chỉ thay lớp bảo vệ bên ngoài (NIST SP 800-57 Part 1, phần xử lý khóa bị lộ). Với code hiện tại, `k_srv` không đổi nên đổi PIN không vô hiệu hóa `k_srv` đã lộ. |
 
@@ -266,7 +268,8 @@ Mỗi điểm dựa trên một hoặc nhiều loại căn cứ, theo thứ tự
 - NĐ 30/2020/NĐ-CP về công tác văn thư: https://caselaw.vn/van-ban-phap-luat/351088-nghi-dinh-so-30-2020-nd-cp-ngay-05-03-2020-cua-chinh-phu-ve-cong-tac-van-thu
 - Quản lý văn bản đi theo NĐ 30/2020 (Sở Xây dựng Đồng Nai): https://sxd.dongnai.gov.vn/vi/news/Van-ban-trien-khai-va-quy-pham-phap-luat-moi/quy-dinh-ve-quan-ly-van-ban-di-theo-nghi-dinh-so-30-2020-nd-cp-cua-chinh-phu-12600.html
 - Ký thay, ký thừa lệnh, ký thừa ủy quyền (LuatVietnam): https://luatvietnam.vn/hanh-chinh/ky-thay-ky-thua-lenh-ky-thua-uy-quyen-570-22342-article.html
-- Luật Bảo vệ bí mật nhà nước 2018, Điều 5: https://hethongphapluat.com/luat-bao-ve-bi-mat-nha-nuoc-2018/dieu-5
+- Luật Bảo vệ bí mật nhà nước 2018, Điều 5 (căn cứ cũ, không còn áp dụng sau khi bỏ văn bản mật): https://hethongphapluat.com/luat-bao-ve-bi-mat-nha-nuoc-2018/dieu-5
+- Luật Bảo vệ dữ liệu cá nhân 2025: https://luatvietnam.vn/dan-su/luat-bao-ve-du-lieu-ca-nhan-2025-co-hieu-luc-khi-nao-568-103652-article.html
 - Luật Giao dịch điện tử 2023: https://caselaw.vn/van-ban-phap-luat/411469-luat-giao-dich-dien-tu-so-20-2023-qh15-ngay-22-06-2023-cua-quoc-hoi
 - NĐ 23/2025/NĐ-CP về chữ ký điện tử và dịch vụ tin cậy: https://caselaw.vn/van-ban-phap-luat/411540-nghi-dinh-so-23-2025-nd-cp-ngay-21-02-2025-cua-chinh-phu-quy-dinh-ve-chu-ky-dien-tu-va-dich-vu-tin-cay
 - DocuSign, routing order: https://blink.ucsd.edu/technology/esignature/senders/envelope/recipients.html

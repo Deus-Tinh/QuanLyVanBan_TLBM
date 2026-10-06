@@ -36,7 +36,7 @@ Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân ch
      - Khi ký, backend chỉ lưu snapshot ảnh chữ ký vào bản ghi chữ ký, không sửa tệp.
      - Chỉ khi lượt trình `HOAN_THANH`, `PdfStampingService` dán toàn bộ ảnh chữ ký một lần và sinh tệp hoàn tất (`vi_tri_tep_hoan_tat`), làm đầu vào cho khâu phát hành pháp lý.
    - Thiết lập hạn chót (`han_chot`) và số giờ xử lý từng cấp (`so_gio_xu_ly`).
-   - Phạm vi văn bản: MVP chỉ trình ký **văn bản đi** (`vanbandi`). Văn bản đến không trình ký (bút phê/chỉ đạo thuộc Nhóm 2); văn bản mật chờ pháp chế xác nhận.
+   - Phạm vi văn bản: chỉ trình ký **văn bản đi** (`vanbandi`). Văn bản đến không trình ký (bút phê/chỉ đạo thuộc Nhóm 2). Văn bản mật đã bỏ (GVHD chốt); tài liệu nội bộ hạn chế là văn bản đi có `pham_vi = 'HAN_CHE'`, trình ký được với quy tắc bảo mật riêng (`signing-backend-plan.md` mục 3.3).
 4. **Danh sách hồ sơ trình ký:**
    - Tabs: *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Toàn bộ hồ sơ*.
    - Bộ lọc: phòng ban, trạng thái, mức độ, khoảng thời gian.
@@ -159,6 +159,7 @@ API ảnh chữ ký cá nhân thuộc Nhóm 7, không nằm trong phân hệ nà
 - **Lazy Stamping:** không sửa raw bytes tệp PDF trong luồng nội bộ; chỉ dán ảnh chữ ký một lần khi lượt trình `HOAN_THANH`, dùng snapshot ảnh tại thời điểm ký.
 - **Bảo vệ khóa ký bằng PIN (Phase 6):** PIN 8 chữ số, Argon2id ở client; bản bọc private key chỉ ở thiết bị, server giữ mảnh bí mật `k_srv` và hash verifier, khóa theo số lần sai, có nhật ký; đổi PIN xoay vòng `k_srv` (Phase 6c). Chi tiết tại `signing-backend-plan.md` mục 3.4.
 - **Thể thức:** khối chữ ký in theo `hinh_thuc_ky` (ký trực tiếp, KT., TL., TUQ.).
+- **Văn bản hạn chế (`pham_vi = 'HAN_CHE'`):** hồ sơ, tệp và lịch sử chỉ người tạo, người ký và văn thư phát hành thấy, superuser không ngoại lệ; mở tệp ghi nhật ký; thông báo không chứa nội dung; trợ lý AI không dùng. Bảo mật trình ký (khóa ký, PIN, mã băm, nhật ký, bằng chứng) giữ nguyên.
 - **Ranh giới pháp lý:** người ký phát hành pháp lý bắt buộc có Chứng thư số CA hợp pháp.
 - **Technical Gates:**
   - `python backend/manage.py check` (Pass)
