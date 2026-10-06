@@ -236,9 +236,17 @@ def import_cbnv_from_excel(file_obj) -> dict:
         if not don_vi_name:
             errors.append({"row": idx, "message": "Tên Đơn vị / Phòng ban không được để trống."})
         else:
-            don_vi_instance = DonVi.objects.filter(ten__iexact=don_vi_name).first()
-            if not don_vi_instance:
+            matching_units = DonVi.objects.filter(ten__iexact=don_vi_name)
+            unit_count = matching_units.count()
+            if unit_count == 0:
                 errors.append({"row": idx, "message": f"Không tìm thấy Đơn vị có tên '{don_vi_name}' trong hệ thống."})
+            elif unit_count > 1:
+                errors.append({
+                    "row": idx,
+                    "message": f"Tên Đơn vị '{don_vi_name}' trùng lặp giữa nhiều Khối/Khu vực. Vui lòng ghi rõ hoặc chọn đơn vị chính xác.",
+                })
+            else:
+                don_vi_instance = matching_units.first()
 
         # 6. Validate Chức vụ
         chuc_vu_instance = None
@@ -247,9 +255,7 @@ def import_cbnv_from_excel(file_obj) -> dict:
         else:
             chuc_vu_instance = Position.objects.filter(name__iexact=chuc_vu_name).first()
             if not chuc_vu_instance:
-                # Nếu chưa có, tạo tự động chức vụ mới
-                next_order = Position.get_next_display_order()
-                chuc_vu_instance = Position.objects.create(name=chuc_vu_name, display_order=next_order)
+                errors.append({"row": idx, "message": f"Không tìm thấy Chức vụ có tên '{chuc_vu_name}' trong hệ thống."})
 
         # 7. Validate Trạng thái
         trang_thai = Employee.Status.LAM_VIEC

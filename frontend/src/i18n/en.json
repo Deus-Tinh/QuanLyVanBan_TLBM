@@ -555,7 +555,8 @@
       "statusNotice": "Note: Changing to 'Resigned' automatically deactivates the login account.",
       "birthdayMaskedTooltip": "Birth year is masked for privacy (requires view_sensitive_cbnv permission)",
       "masked": "Masked",
-      "groupsHidden": "Permission groups hidden due to privacy policy."
+      "groupsHidden": "Permission groups hidden due to privacy policy.",
+      "selfEditNotice": "You are updating your own profile. Only contact info and birthday can be edited; organizational attributes are managed by Administrators."
     },
     "modal": {
       "createTitle": "Add New Employee",
@@ -609,6 +610,15 @@
       "updateSuccess": "Profile updated successfully!",
       "deleteSuccess": "Employee deleted successfully!",
       "deleteError": "Cannot delete this employee.",
+      "cannotDeleteSelf": "You cannot delete your own account.",
+      "cannotDeleteSuperuser": "Permission denied to delete a Superuser account.",
+      "cannotDeleteLastSuperuser": "Cannot delete the last active Superuser account.",
+      "cannotDeactivateSelf": "You cannot deactivate or set resigned status for your own account.",
+      "cannotDeactivateSuperuser": "Permission denied to deactivate a Superuser account.",
+      "cannotDeactivateLastSuperuser": "Cannot deactivate the last active Superuser account.",
+      "invalidDataFormat": "Request data must be a JSON object.",
+      "invalidOrdering": "Invalid ordering parameter.",
+      "invalidFilterParam": "Filter parameter must be a valid integer.",
       "importSuccess": "Successfully imported {count} employees from Excel!",
       "saveError": "Failed to save employee profile.",
       "loading": "Loading data...",

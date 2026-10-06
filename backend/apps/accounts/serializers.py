@@ -7,6 +7,8 @@ import string
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
@@ -193,9 +195,15 @@ class EmployeeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def _can_view_sensitive(self) -> bool:
+    def _can_view_sensitive(self, obj=None) -> bool:
         request = self.context.get("request")
-        return user_can_view_sensitive(getattr(request, "user", None))
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return False
+        # Chủ hồ sơ được xem ngày sinh và thông tin cá nhân đầy đủ của chính mình
+        if obj is not None and user.id == obj.id:
+            return True
+        return user_can_view_sensitive(user)
 
     def get_temporary_password(self, obj):
         return getattr(obj, "raw_temporary_password", None)
@@ -208,22 +216,22 @@ class EmployeeSerializer(serializers.ModelSerializer):
         return STATUS_DB_TO_API.get(obj.trang_thai, obj.trang_thai)
 
     def get_has_sensitive_permission(self, obj) -> bool:
-        return self._can_view_sensitive()
+        return self._can_view_sensitive(obj)
 
     def get_ngay_sinh(self, obj):
-        if self._can_view_sensitive():
+        if self._can_view_sensitive(obj):
             return obj.ngay_sinh.isoformat()
         return obj.ngay_sinh.strftime("%d/%m/----")
 
     def get_birthday(self, obj):
-        # Chỉ trả ngày sinh đầy đủ cho người có quyền; người khác chỉ thấy ngay_sinh đã che năm.
-        return obj.ngay_sinh.isoformat() if self._can_view_sensitive() else None
+        # Chỉ trả ngày sinh đầy đủ cho người có quyền hoặc chính chủ; người khác chỉ thấy ngay_sinh đã che năm.
+        return obj.ngay_sinh.isoformat() if self._can_view_sensitive(obj) else None
 
     def get_is_birthday_masked(self, obj) -> bool:
-        return not self._can_view_sensitive()
+        return not self._can_view_sensitive(obj)
 
     def get_nhom_quyen(self, obj):
-        if not self._can_view_sensitive():
+        if not self._can_view_sensitive(obj):
             return []
         return [{"id": g.id, "name": g.name} for g in obj.groups.all()]
 
@@ -268,6 +276,16 @@ class EmployeeCreateSerializer(serializers.Serializer):
             trimmed = value.strip()
             if get_user_model().objects.filter(username__iexact=trimmed).exists():
                 raise serializers.ValidationError(f"Tên đăng nhập '{trimmed}' đã tồn tại trong hệ thống.")
+            return trimmed
+        return value
+
+    def validate_password(self, value):
+        if value:
+            trimmed = value.strip()
+            try:
+                validate_password(trimmed)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(list(e.messages))
             return trimmed
         return value
 

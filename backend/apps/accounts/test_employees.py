@@ -333,6 +333,17 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
         self.assertEqual(data["ngay_sinh"], "1995-05-20")
         self.assertFalse(data["is_birthday_masked"])
 
+    def test_owner_sees_unmasked_birthday(self):
+        """Chủ tài khoản (dù không có quyền view_full_cbnv) luôn xem được ngày sinh đầy đủ của chính mình."""
+        self.client.force_authenticate(user=self.normal_user)
+        own_url = f"{self.employee_list_url}{self.normal_user.id}/"
+        res = self.client.get(own_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.json()
+        self.assertEqual(data["ngay_sinh"], "1995-05-20")
+        self.assertEqual(data["birthday"], "1995-05-20")
+        self.assertFalse(data["is_birthday_masked"])
+
     def test_status_nghi_viec_deactivates_user(self):
         """Khi cập nhật trạng thái 'nghi_viec', user.is_active tự động chuyển thành False."""
         self.client.force_authenticate(user=self.admin_user)
@@ -447,6 +458,55 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
         # Kiểm tra bản ghi trong DB
         self.assertTrue(User.objects.filter(email="doanvanhau@donvi.gov.vn").exists())
         self.assertTrue(User.objects.filter(ho_ten="Đoàn Văn Hậu", don_vi=self.don_vi_1).exists())
+
+    def test_import_excel_does_not_create_position_on_error(self):
+        """Review PR #71: Không tự ý tạo Chức vụ mới khi import nếu không tồn tại; phải báo lỗi dòng."""
+        self.client.force_authenticate(user=self.sensitive_user)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Danh Sach CBNV"
+        ws.append(["STT", "Họ và tên (*)", "Ngày sinh (*)", "Email (*)", "Số điện thoại", "Tên Đơn vị / Phòng ban (*)", "Tên Chức vụ (*)", "Chức danh tự do", "Trạng thái", "Ghi chú"])
+        ws.append(["(Ghi chú)", "", "", "", "", "", "", "", "", ""])
+        ws.append([1, "Lê Không Chức Vụ", "1990-01-01", "nochucvu@donvi.gov.vn", "0911223344", "Văn phòng Viện", "Chức Vụ Không Tồn Tại 999", "", "Đang làm việc", ""])
+
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        bio.name = "chuc_vu_la.xlsx"
+
+        res = self.client.post(self.import_url, {"file": bio}, format="multipart")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        data = res.json()
+        self.assertFalse(data["success"])
+        self.assertTrue(any("Không tìm thấy Chức vụ" in err["message"] for err in data["errors"]))
+        self.assertFalse(Position.objects.filter(name="Chức Vụ Không Tồn Tại 999").exists())
+
+    def test_import_excel_duplicate_unit_name_fails(self):
+        """Review PR #71: Đơn vị trùng tên giữa nhiều Khối/Khu vực phải báo lỗi yêu cầu ghi rõ."""
+        self.client.force_authenticate(user=self.sensitive_user)
+
+        # Tạo thêm 1 khối và 1 đơn vị cùng tên "Văn phòng Viện"
+        khoi2 = KhoiKhuVuc.objects.create(ten="Khối Cơ quan phía Nam")
+        DonVi.objects.create(ten="Văn phòng Viện", khoi=khoi2, stt_uu_tien=99)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Danh Sach CBNV"
+        ws.append(["STT", "Họ và tên (*)", "Ngày sinh (*)", "Email (*)", "Số điện thoại", "Tên Đơn vị / Phòng ban (*)", "Tên Chức vụ (*)", "Chức danh tự do", "Trạng thái", "Ghi chú"])
+        ws.append(["(Ghi chú)", "", "", "", "", "", "", "", "", ""])
+        ws.append([1, "Nguyễn Trùng Đơn Vị", "1990-01-01", "trungdonvi@donvi.gov.vn", "0911223344", "Văn phòng Viện", "Chuyên viên", "", "Đang làm việc", ""])
+
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        bio.name = "trung_don_vi.xlsx"
+
+        res = self.client.post(self.import_url, {"file": bio}, format="multipart")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        data = res.json()
+        self.assertFalse(data["success"])
+        self.assertTrue(any("trùng lặp giữa nhiều Khối/Khu vực" in err["message"] for err in data["errors"]))
 
 
 class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
@@ -641,6 +701,142 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.client.force_authenticate(user=self.admin_user)
         self.assertEqual(self.client.get(self.employee_list_url).status_code, status.HTTP_200_OK)
         self.assertEqual(self.client.get(self.template_url).status_code, status.HTTP_200_OK)
+
+    def test_ordering_and_filter_security(self):
+        """Review PR #71: Chặn ordering bất hợp pháp, che ordering ngày sinh nếu thiếu quyền, validate filter int, chặn mảng JSON."""
+        # 1. User thường (chỉ có view_list_cbnv) ordering field lạ -> 400 Bad Request
+        self.client.force_authenticate(user=self.normal_user)
+        res_bogus = self.client.get(f"{self.employee_list_url}?ordering=bogus_field")
+        self.assertEqual(res_bogus.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_bogus.data["detail"], "employees.messages.invalidOrdering")
+
+        # 2. User thường ordering ngay_sinh mà không có view_full_cbnv -> 400 Bad Request
+        res_birth = self.client.get(f"{self.employee_list_url}?ordering=ngay_sinh")
+        self.assertEqual(res_birth.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_birth.data["detail"], "employees.messages.invalidOrdering")
+
+        # 3. User có view_full_cbnv ordering ngay_sinh -> 200 OK
+        self.client.force_authenticate(user=self.sensitive_user)
+        res_birth_ok = self.client.get(f"{self.employee_list_url}?ordering=-ngay_sinh")
+        self.assertEqual(res_birth_ok.status_code, status.HTTP_200_OK)
+
+        # 4. Filter id không phải số nguyên -> 400 Bad Request (thay vì 500)
+        res_filter_err = self.client.get(f"{self.employee_list_url}?don_vi_id=abc")
+        self.assertEqual(res_filter_err.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_filter_err.data["detail"], "employees.messages.invalidFilterParam")
+
+        # 5. Gửi body là mảng JSON thay vì dict -> 400 Bad Request (thay vì 500)
+        self.client.force_authenticate(user=self.admin_user)
+        res_array = self.client.patch(
+            f"{self.employee_list_url}{self.normal_user.id}/",
+            [{"ho_ten": "Hacked"}],
+            format="json",
+        )
+        self.assertEqual(res_array.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_array.data["detail"], "employees.messages.invalidDataFormat")
+
+    def test_business_guards_on_delete_and_deactivate(self):
+        """Review PR #71: Bảo vệ an toàn hệ thống khi xóa và thôi việc (nghỉ việc)."""
+        # 1. Superuser cố gắng tự xóa chính mình -> 400
+        self.client.force_authenticate(user=self.admin_user)
+        res_self_del = self.client.delete(f"{self.employee_list_url}{self.admin_user.id}/")
+        self.assertEqual(res_self_del.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_self_del.data["detail"], "employees.messages.cannotDeleteSelf")
+
+        # 2. Superuser cố gắng tự thôi việc chính mình -> 400
+        res_self_deact = self.client.patch(
+            f"{self.employee_list_url}{self.admin_user.id}/",
+            {"trang_thai": "nghi_viec"},
+            format="json",
+        )
+        self.assertEqual(res_self_deact.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_self_deact.data["detail"], "employees.messages.cannotDeactivateSelf")
+
+        # 3. User có delete_cbnv (nhưng không phải superuser) cố xóa superuser -> 403
+        deleter_user = User.objects.create_user(
+            username="guard_deleter",
+            email="gdeleter@donvi.gov.vn",
+            password="DeleterPass123",
+            ho_ten="Deleter",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+        )
+        deleter_user.user_permissions.add(self.perm_delete)
+        self.client.force_authenticate(user=deleter_user)
+        res_del_su = self.client.delete(f"{self.employee_list_url}{self.admin_user.id}/")
+        self.assertEqual(res_del_su.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res_del_su.data["detail"], "employees.messages.cannotDeleteSuperuser")
+
+        # 4. User có change_full_cbnv (nhưng không phải superuser) cố chuyển superuser thành nghỉ việc -> 403
+        hr_user = User.objects.create_user(
+            username="guard_hr",
+            email="ghr@donvi.gov.vn",
+            password="HrPassword123",
+            ho_ten="HR User",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+        )
+        hr_user.user_permissions.add(self.perm_change_full)
+        self.client.force_authenticate(user=hr_user)
+        res_deact_su = self.client.patch(
+            f"{self.employee_list_url}{self.admin_user.id}/",
+            {"trang_thai": "nghi_viec"},
+            format="json",
+        )
+        self.assertEqual(res_deact_su.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res_deact_su.data["detail"], "employees.messages.cannotDeactivateSuperuser")
+
+        # 5. Superuser thứ 2 thôi việc superuser đầu tiên, nhưng không thể thôi việc superuser cuối cùng
+        second_admin = User.objects.create_superuser(
+            username="admin_2",
+            email="admin2@donvi.gov.vn",
+            password="AdminPassword123",
+            ho_ten="Quản trị viên 2",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_truong_phong,
+        )
+        self.client.force_authenticate(user=second_admin)
+        res_deact_1 = self.client.patch(
+            f"{self.employee_list_url}{self.admin_user.id}/",
+            {"trang_thai": "nghi_viec"},
+            format="json",
+        )
+        self.assertEqual(res_deact_1.status_code, status.HTTP_200_OK)
+
+        # Giờ admin_user đã nghỉ việc, chỉ còn second_admin là superuser active.
+        # Nếu ai đó cố gắng xóa hoặc thôi việc admin_2 -> 400 cannotDeactivateLastSuperuser
+        third_admin = User.objects.create_superuser(
+            username="admin_3",
+            email="admin3@donvi.gov.vn",
+            password="AdminPassword123",
+            ho_ten="Quản trị viên 3",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_truong_phong,
+            trang_thai=Employee.Status.NGHI_VIEC,
+        )
+        self.client.force_authenticate(user=third_admin)
+        res_last = self.client.patch(
+            f"{self.employee_list_url}{second_admin.id}/",
+            {"trang_thai": "nghi_viec"},
+            format="json",
+        )
+        self.assertEqual(res_last.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_last.data["detail"], "employees.messages.cannotDeactivateLastSuperuser")
+
+    def test_manual_create_rejects_weak_password(self):
+        """Review PR #71: Tạo tài khoản thủ công với mật khẩu yếu phải bị từ chối 400 qua validate_password."""
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "ho_ten": "Tài Khoản Mật Khẩu Yếu",
+            "email": "weakpass@donvi.gov.vn",
+            "ngay_sinh": "1990-01-01",
+            "don_vi_id": self.don_vi_1.id,
+            "chuc_vu_id": self.cv_chuyen_vien.id,
+            "password": "123",
+        }
+        res = self.client.post(self.employee_list_url, payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", res.json())
 
 
 class SeedDbCommandTests(APITestCase):

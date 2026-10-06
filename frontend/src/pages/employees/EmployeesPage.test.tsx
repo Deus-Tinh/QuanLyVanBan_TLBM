@@ -264,5 +264,126 @@ describe('EmployeesPage Component (Issue #24)', () => {
     // View detail button should still be visible
     expect(screen.getAllByTitle('Xem chi tiết').length).toBeGreaterThan(0);
   });
+
+  it('allows self-edit for own record with change_self_cbnv and disables administrative fields', async () => {
+    localStorage.setItem(
+      'tlbm_session',
+      JSON.stringify({
+        username: 'binhnv',
+        fullName: 'Nguyễn Văn Bình',
+        role: 'staff',
+      })
+    );
+
+    mockedApiClient.mockImplementation(async (endpoint: string) => {
+      if (endpoint.includes('/api/auth/me/permissions/')) {
+        return {
+          is_superuser: false,
+          permissions: ['view_list_cbnv', 'change_self_cbnv'],
+        };
+      }
+      if (endpoint.includes('/organizations/units/')) return [];
+      if (endpoint.includes('/api/positions/')) return [];
+      if (endpoint.includes('/accounts/groups/')) return [];
+      if (endpoint.includes('/accounts/employees/')) {
+        return {
+          count: 2,
+          next: null,
+          previous: null,
+          results: mockEmployeeData,
+        };
+      }
+      return [];
+    });
+
+    render(
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Bình')).toBeInTheDocument();
+    });
+
+    // Sửa button should appear for binhnv row (only 1 edit button on the page)
+    const editBtns = screen.getAllByTitle('Chỉnh sửa');
+    expect(editBtns.length).toBe(1);
+
+    fireEvent.click(editBtns[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chỉnh Sửa Hồ Sơ Nhân Viên')).toBeInTheDocument();
+    });
+
+    // Check that selfEditNotice is displayed
+    expect(screen.getByText(/Bạn đang cập nhật hồ sơ của chính mình/i)).toBeInTheDocument();
+
+    // Check that administrative fields (e.g., name or note) are disabled
+    const nameInput = document.querySelector<HTMLInputElement>('input[name="ho_ten"]')!;
+    expect(nameInput).not.toBeNull();
+    expect(nameInput).toBeDisabled();
+
+    // Clean up
+    localStorage.removeItem('tlbm_session');
+  });
+
+  it('displays error message from backend when delete fails', async () => {
+    mockedApiClient.mockImplementation(async (endpoint: string) => {
+      if (endpoint.includes('/api/auth/me/permissions/')) {
+        return {
+          is_superuser: true,
+          permissions: ['view_list_cbnv', 'delete_cbnv'],
+        };
+      }
+      if (endpoint.includes('/organizations/units/')) return [];
+      if (endpoint.includes('/api/positions/')) return [];
+      if (endpoint.includes('/accounts/groups/')) return [];
+      if (endpoint.includes('/accounts/employees/')) {
+        return {
+          count: 2,
+          next: null,
+          previous: null,
+          results: mockEmployeeData,
+        };
+      }
+      return [];
+    });
+
+    mockedApiClient.delete.mockRejectedValueOnce({
+      status: 400,
+      data: {
+        detail: 'employees.messages.cannotDeleteSelf',
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Bình')).toBeInTheDocument();
+    });
+
+    const deleteBtns = screen.getAllByTitle('Xóa');
+    fireEvent.click(deleteBtns[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('Xác nhận xóa cán bộ nhân viên')).toBeInTheDocument();
+    });
+
+    // The modal's confirm button is the last button with text "Xóa"
+    const deleteActionBtns = screen.getAllByRole('button', { name: /^Xóa$/i });
+    const confirmBtn = deleteActionBtns[deleteActionBtns.length - 1];
+    fireEvent.click(confirmBtn);
+
+    expect(mockedApiClient.delete).toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(screen.getByText('Bạn không thể tự xóa tài khoản của chính mình.')).toBeInTheDocument();
+    });
+  });
 });
 

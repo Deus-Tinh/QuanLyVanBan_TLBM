@@ -179,7 +179,7 @@ export default function EmployeesPage() {
       if (err && typeof err === 'object' && 'data' in err) {
         const errorData = (err as { data: { detail?: string } }).data;
         if (errorData?.detail) {
-          setDeleteErrorMessage(errorData.detail);
+          setDeleteErrorMessage(t(errorData.detail));
           return;
         }
       }

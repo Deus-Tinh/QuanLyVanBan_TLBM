@@ -8,6 +8,7 @@ from django.contrib.auth.models import Group
 from django.http import HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
@@ -20,9 +21,21 @@ from .serializers import (
     EmployeeSerializer,
     EmployeeCreateSerializer,
     EmployeeUpdateSerializer,
+    user_can_view_sensitive,
 )
 from .excel_cbnv import generate_cbnv_template, import_cbnv_from_excel
 from .permissions import CanChangeEmployeePermission, CanViewGroupPermission, require_permission
+
+
+SAFE_ORDERING_FIELDS = {
+    "ho_ten", "-ho_ten",
+    "username", "-username",
+    "email", "-email",
+    "created_at", "-created_at",
+    "don_vi__stt_uu_tien", "-don_vi__stt_uu_tien",
+    "chuc_vu__display_order", "-chuc_vu__display_order",
+    "id", "-id",
+}
 
 
 class StandardEmployeePagination(PageNumberPagination):
@@ -85,6 +98,14 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 | Q(sdt__icontains=search)
             )
 
+        for param_name in ("don_vi_id", "khoi_id", "chuc_vu_id"):
+            val = self.request.query_params.get(param_name)
+            if val is not None and val != "":
+                try:
+                    int(val)
+                except ValueError:
+                    raise ValidationError({"detail": "employees.messages.invalidFilterParam"})
+
         don_vi_id = self.request.query_params.get("don_vi_id")
         if don_vi_id:
             queryset = queryset.filter(don_vi_id=don_vi_id)
@@ -107,6 +128,12 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         ordering = self.request.query_params.get("ordering")
         if ordering:
+            allowed = set(SAFE_ORDERING_FIELDS)
+            user = getattr(self.request, "user", None)
+            if user and (user.is_superuser or user.has_perm("view_full_cbnv")):
+                allowed.update({"ngay_sinh", "-ngay_sinh"})
+            if ordering not in allowed:
+                raise ValidationError({"detail": "employees.messages.invalidOrdering"})
             queryset = queryset.order_by(ordering)
         else:
             queryset = queryset.order_by(
@@ -135,6 +162,11 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
+        if not isinstance(request.data, dict):
+            return Response(
+                {"detail": "employees.messages.invalidDataFormat"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         serializer = EmployeeCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         employee = serializer.save()
@@ -143,11 +175,17 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
+        if not isinstance(request.data, dict):
+            return Response(
+                {"detail": "employees.messages.invalidDataFormat"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         instance = self.get_object()
+        user = request.user
 
         # Bảo vệ đặc quyền: Người dùng không có quyền change_full_cbnv và không phải superuser
         # CHỈ ĐƯỢC PHÉP sửa các trường thông tin cá nhân (sdt, email, ngay_sinh, avatar_url).
-        user = request.user
         if not (user.is_superuser or user.has_perm("change_full_cbnv")):
             allowed_self_fields = {"sdt", "email", "ngay_sinh", "avatar_url"}
             disallowed_fields = set(request.data.keys()) - allowed_self_fields
@@ -156,6 +194,36 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                     {"detail": "roles.messages.permissionDenied"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
+
+        # Chốt nghiệp vụ khóa tài khoản / chuyển trạng thái nghỉ việc:
+        new_status = request.data.get("trang_thai")
+        is_active = request.data.get("is_active")
+        is_deactivating = (
+            (new_status in ("nghi_viec", Employee.Status.NGHI_VIEC))
+            or (is_active is False)
+        )
+        if is_deactivating:
+            if instance.id == user.id:
+                return Response(
+                    {"detail": "employees.messages.cannotDeactivateSelf"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if instance.is_superuser and not user.is_superuser:
+                return Response(
+                    {"detail": "employees.messages.cannotDeactivateSuperuser"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if instance.is_superuser:
+                other_active = (
+                    Employee.objects.filter(is_superuser=True, is_active=True)
+                    .exclude(trang_thai=Employee.Status.NGHI_VIEC)
+                    .exclude(id=instance.id)
+                )
+                if not other_active.exists():
+                    return Response(
+                        {"detail": "employees.messages.cannotDeactivateLastSuperuser"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         serializer = EmployeeUpdateSerializer(
             instance, data=request.data, partial=partial, context={"request": request}
@@ -171,6 +239,35 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
+        user = request.user
+
+        # 1. Không cho phép tự xóa chính mình
+        if instance.id == user.id:
+            return Response(
+                {"detail": "employees.messages.cannotDeleteSelf"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 2. Không cho phép người không phải superuser xóa tài khoản superuser
+        if instance.is_superuser and not user.is_superuser:
+            return Response(
+                {"detail": "employees.messages.cannotDeleteSuperuser"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 3. Không để mất superuser hoạt động cuối cùng
+        if instance.is_superuser:
+            other_active = (
+                Employee.objects.filter(is_superuser=True, is_active=True)
+                .exclude(trang_thai=Employee.Status.NGHI_VIEC)
+                .exclude(id=instance.id)
+            )
+            if not other_active.exists():
+                return Response(
+                    {"detail": "employees.messages.cannotDeleteLastSuperuser"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         try:
             with transaction.atomic():
                 instance.delete()

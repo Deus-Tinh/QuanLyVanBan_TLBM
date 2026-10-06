@@ -5,6 +5,8 @@ import { Unit } from '@app-types/organization';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
 import { Select } from '@components/common/Select';
+import { usePermissions } from '@lib/permissions';
+import { ApiError } from '@lib/apiClient';
 
 interface EmployeeModalProps {
   isOpen: boolean;
@@ -28,6 +30,8 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation();
+  const { can } = usePermissions();
+  const isSelfEditOnly = Boolean(initialData && !can('change_full_cbnv'));
 
   const [formData, setFormData] = useState(() => {
     if (initialData) {
@@ -115,26 +119,37 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
     }
 
     try {
-      const payload: EmployeeCreatePayload = {
-        ho_ten: formData.ho_ten.trim(),
-        email: formData.email.trim(),
-        ngay_sinh: formData.ngay_sinh,
-        don_vi_id: formData.don_vi_id ? Number(formData.don_vi_id) : null,
-        chuc_vu_id: formData.chuc_vu_id ? Number(formData.chuc_vu_id) : null,
-        chuc_danh: formData.chuc_danh.trim(),
-        sdt: formData.sdt.trim(),
-        nhom_quyen_ids: formData.nhom_quyen_ids,
-        trang_thai: formData.trang_thai,
-        is_public: formData.is_public,
-        ghi_chu: formData.ghi_chu.trim(),
-      };
+      let payload: EmployeeCreatePayload | EmployeeUpdatePayload;
 
-      if (!initialData) {
-        if (formData.username.trim()) {
-          payload.username = formData.username.trim();
-        }
-        if (formData.password.trim()) {
-          payload.password = formData.password.trim();
+      if (isSelfEditOnly) {
+        // Chỉ gửi các trường thông tin cá nhân được phép đối với chủ tài khoản
+        payload = {
+          email: formData.email.trim(),
+          sdt: formData.sdt.trim(),
+          ngay_sinh: formData.ngay_sinh,
+        };
+      } else {
+        payload = {
+          ho_ten: formData.ho_ten.trim(),
+          email: formData.email.trim(),
+          ngay_sinh: formData.ngay_sinh,
+          don_vi_id: formData.don_vi_id ? Number(formData.don_vi_id) : null,
+          chuc_vu_id: formData.chuc_vu_id ? Number(formData.chuc_vu_id) : null,
+          chuc_danh: formData.chuc_danh.trim(),
+          sdt: formData.sdt.trim(),
+          nhom_quyen_ids: formData.nhom_quyen_ids,
+          trang_thai: formData.trang_thai,
+          is_public: formData.is_public,
+          ghi_chu: formData.ghi_chu.trim(),
+        };
+
+        if (!initialData) {
+          if (formData.username.trim()) {
+            (payload as EmployeeCreatePayload).username = formData.username.trim();
+          }
+          if (formData.password.trim()) {
+            (payload as EmployeeCreatePayload).password = formData.password.trim();
+          }
         }
       }
 
@@ -145,7 +160,14 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
         onClose();
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
+      if (err instanceof ApiError) {
+        const detail = err.data.detail || err.data.error || err.data.message;
+        if (typeof detail === 'string') {
+          setErrorKey(t(detail));
+        } else {
+          setErrorKey(err.message);
+        }
+      } else if (err instanceof Error) {
         setErrorKey(err.message);
       } else {
         setErrorKey(t('employees.messages.saveError'));
@@ -224,6 +246,13 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+            {isSelfEditOnly && (
+              <div className="p-3 text-xs bg-primary/10 text-primary border border-primary/20 rounded-lg flex items-center gap-2">
+                <i className="fa-solid fa-circle-info text-sm shrink-0" />
+                <span>{t('employees.hints.selfEditNotice')}</span>
+              </div>
+            )}
+
             {errorKey && (
               <div className="p-3 text-sm text-danger bg-danger-subtle border border-danger-border rounded-lg flex items-center gap-2">
                 <i className="fa-solid fa-circle-exclamation shrink-0" />
@@ -242,8 +271,9 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   name="ho_ten"
                   value={formData.ho_ten}
                   onChange={handleChange}
+                  disabled={isSelfEditOnly}
                   placeholder={t('employees.placeholders.fullName')}
-                  className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   required
                 />
               </div>
@@ -340,14 +370,15 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   label={t('employees.fields.unit')}
                   name="don_vi_id"
                   value={formData.don_vi_id}
+                  disabled={isSelfEditOnly}
                   onChange={(val) => {
                     setFormData((prev) => ({ ...prev, don_vi_id: val }));
                     if (errorKey) setErrorKey(null);
                   }}
                   placeholder={t('employees.placeholders.selectUnit')}
                   leftIcon="fa-building"
-                  clearable
-                  searchable
+                  clearable={!isSelfEditOnly}
+                  searchable={!isSelfEditOnly}
                   options={units.map((u) => ({
                     value: String(u.id),
                     label: u.ten,
@@ -362,13 +393,14 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   label={t('employees.fields.position')}
                   name="chuc_vu_id"
                   value={formData.chuc_vu_id}
+                  disabled={isSelfEditOnly}
                   onChange={(val) => {
                     setFormData((prev) => ({ ...prev, chuc_vu_id: val }));
                     if (errorKey) setErrorKey(null);
                   }}
                   placeholder={t('employees.placeholders.selectPosition')}
                   leftIcon="fa-id-badge"
-                  clearable
+                  clearable={!isSelfEditOnly}
                   options={positions.map((pos) => ({
                     value: String(pos.id),
                     label: pos.ten_chuc_vu,
@@ -386,8 +418,9 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   name="chuc_danh"
                   value={formData.chuc_danh}
                   onChange={handleChange}
+                  disabled={isSelfEditOnly}
                   placeholder={t('employees.placeholders.title')}
-                  className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -397,6 +430,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   label={t('employees.fields.status')}
                   name="trang_thai"
                   value={formData.trang_thai}
+                  disabled={isSelfEditOnly}
                   onChange={(val) => {
                     setFormData((prev) => ({ ...prev, trang_thai: val as EmployeeStatus }));
                     if (errorKey) setErrorKey(null);
@@ -429,19 +463,20 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                 <label className="block text-sm font-semibold text-secondary mb-1.5">
                   {t('employees.fields.groups')}
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-surface-elevated border border-border rounded-lg max-h-36 overflow-y-auto">
+                <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-surface-elevated border border-border rounded-lg max-h-36 overflow-y-auto ${isSelfEditOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
                   {groups.map((group) => {
                     const isChecked = formData.nhom_quyen_ids.includes(group.id);
                     return (
                       <label
                         key={group.id}
-                        className="flex items-center gap-2 text-xs text-main cursor-pointer select-none hover:text-primary transition-colors"
+                        className={`flex items-center gap-2 text-xs text-main select-none transition-colors ${isSelfEditOnly ? 'cursor-not-allowed' : 'cursor-pointer hover:text-primary'}`}
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
+                          disabled={isSelfEditOnly}
                           onChange={() => handleGroupToggle(group.id)}
-                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                          className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed"
                         />
                         <span>{group.name}</span>
                       </label>
@@ -461,22 +496,24 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                 rows={2}
                 value={formData.ghi_chu}
                 onChange={handleChange}
+                disabled={isSelfEditOnly}
                 placeholder={t('employees.placeholders.notes')}
-                className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none"
+                className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </div>
 
             {/* Công khai */}
-            <div className="flex items-start gap-3 p-3 bg-surface-elevated border border-border rounded-lg">
+            <div className={`flex items-start gap-3 p-3 bg-surface-elevated border border-border rounded-lg ${isSelfEditOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
               <input
                 type="checkbox"
                 id="is_public_emp"
                 name="is_public"
                 checked={formData.is_public}
+                disabled={isSelfEditOnly}
                 onChange={handleChange}
-                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
+                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer disabled:cursor-not-allowed"
               />
-              <label htmlFor="is_public_emp" className="text-sm cursor-pointer select-none">
+              <label htmlFor="is_public_emp" className={`text-sm select-none ${isSelfEditOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                 <span className="font-semibold text-main block">{t('employees.fields.isPublicLabel')}</span>
                 <span className="text-muted text-xs block">{t('employees.fields.isPublicHelp')}</span>
               </label>
