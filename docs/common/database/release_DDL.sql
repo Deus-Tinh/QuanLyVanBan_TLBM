@@ -12,6 +12,10 @@
 -- Quy tắc xem văn bản HAN_CHE (tầng ứng dụng, queryset dùng chung của Nhóm 2):
 --   chỉ người tạo, người nhận, thành viên đơn vị nhận; không ngoại lệ cho superuser hay quyền view_*;
 --   mọi lượt mở ghi documents_view_log.
+-- Bổ sung độ khẩn (đánh dấu [ĐỘ KHẨN]): documents_vanbanden, documents_vanbandi thêm cột do_khan
+--   ('THUONG' | 'KHAN' | 'THUONG_KHAN' | 'HOA_TOC'), mặc định 'THUONG'. GVHD chỉ bỏ độ mật; độ khẩn giữ
+--   để ưu tiên xử lý và nhắc hạn. Số đăng ký đã có qua so_thu_tu + UNIQUE (nam, so_thu_tu).
+-- Trợ lý AI không dùng văn bản HAN_CHE trong mọi trường hợp, kể cả khi người hỏi là người nhận.
 -- Quy mô sau thay đổi: 54 bảng vật lý | 21 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
 -- =====================================================================
 -- =====================================================================
@@ -25,7 +29,7 @@
 --      add/change/delete_phonghop (Nhóm 7); nhóm ADMIN nhận qua phép CROSS JOIN sẵn có.
 --   6) Thêm bảng signing_key_unlock (Nhóm 5, Phase 6a; mục B7).
 --   7) Cấp quyền chỉ đọc theo bảng/cột cho role qlvb_readonly nếu role tồn tại (Nhóm 8).
--- Không đưa vào DDL: mục B3 (độ khẩn/độ mật/số đăng ký; Nhóm 2 xác nhận bỏ), B1 (quy ước tài liệu),
+-- Không đưa vào DDL: mục B3 (độ khẩn/độ mật/số đăng ký; Nhóm 2 xác nhận bỏ — [ĐỘ KHẨN] độ khẩn đã bổ sung lại), B1 (quy ước tài liệu),
 --   B4/B5 (queryset dùng chung ở tầng ứng dụng), B6 (chưa chốt), bảng dashboard_* và bảng Django hệ thống.
 -- Quy tắc cho nhóm: không tạo lại các thay đổi 2, 3, 5 bằng migration riêng (trùng cột/quyền khi áp dụng).
 -- =====================================================================
@@ -547,6 +551,7 @@ CREATE TABLE documents_vanbanden (
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
     pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
+    do_khan VARCHAR(20) NOT NULL DEFAULT 'THUONG', -- [ĐỘ KHẨN] THUONG | KHAN | THUONG_KHAN | HOA_TOC
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -556,6 +561,8 @@ CREATE TABLE documents_vanbanden (
     ),
     -- [BỎ MẬT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
     CONSTRAINT chk_vanbanden_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
+    -- [ĐỘ KHẨN] Mức độ khẩn theo thể thức văn bản (Nghị định 30/2020, ô 10b)
+    CONSTRAINT chk_vanbanden_do_khan CHECK (do_khan IN ('THUONG', 'KHAN', 'THUONG_KHAN', 'HOA_TOC')),
     -- [BỎ MẬT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
     CONSTRAINT chk_vanbanden_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
@@ -692,6 +699,7 @@ CREATE TABLE documents_vanbandi (
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
     pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
+    do_khan VARCHAR(20) NOT NULL DEFAULT 'THUONG', -- [ĐỘ KHẨN] THUONG | KHAN | THUONG_KHAN | HOA_TOC
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -701,6 +709,8 @@ CREATE TABLE documents_vanbandi (
     ),
     -- [BỎ MẬT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
     CONSTRAINT chk_vanbandi_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
+    -- [ĐỘ KHẨN] Mức độ khẩn theo thể thức văn bản (Nghị định 30/2020, ô 10b)
+    CONSTRAINT chk_vanbandi_do_khan CHECK (do_khan IN ('THUONG', 'KHAN', 'THUONG_KHAN', 'HOA_TOC')),
     -- [BỎ MẬT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
     CONSTRAINT chk_vanbandi_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
