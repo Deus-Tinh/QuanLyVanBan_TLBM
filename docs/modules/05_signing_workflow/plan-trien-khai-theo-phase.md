@@ -90,7 +90,7 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - Đề xuất nhóm CSDL sửa DDL base đồng bộ: bỏ `kieu_ky*`, bỏ default `vanbanden`, thêm các cột/bảng mới của Phase 7–9 (dưới đây).
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
-- Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không (tới lúc đó MVP chỉ nhận `vanbandi`). Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
+- Văn bản mật đã bỏ (GVHD chốt, DDL #81); trình ký chỉ nhận `vanbandi`. Phase 7–8 áp quy tắc văn bản hạn chế (`pham_vi = 'HAN_CHE'`, `signing-backend-plan.md` mục 3.3): lọc người xem hồ sơ, ghi nhật ký mở tệp, thông báo không chứa nội dung. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
 - Phase 7:
   - Cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
   - Thêm `signing_process.don_vi_ap_dung`; kiểm quyền quy trình `PHONG_BAN` theo lãnh đạo đơn vị.

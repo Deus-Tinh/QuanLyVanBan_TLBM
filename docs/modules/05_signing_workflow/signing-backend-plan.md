@@ -37,7 +37,7 @@ Xây dựng backend Django REST Framework cho nghiệp vụ trình ký văn bả
 - Ký theo quorum hoặc "một trong nhiều người ký".
 - Tự động từ chối hoặc tự động hủy khi quá hạn.
 - Luồng tự do (người xử lý tự chọn người kế tiếp, không theo quy trình mẫu).
-- Văn bản đến (`vanbanden`): bút phê/chỉ đạo thuộc luồng xử lý văn bản đến của Nhóm 2. Văn bản mật (`vanbanmat`): ngoài phạm vi cho tới khi pháp chế xác nhận `[CẦN XÁC NHẬN]`.
+- Văn bản đến (`vanbanden`): bút phê/chỉ đạo thuộc luồng xử lý văn bản đến của Nhóm 2. Văn bản mật (`vanbanmat`): đã bỏ khỏi hệ thống (GVHD chốt); tài liệu nội bộ hạn chế là văn bản đi `pham_vi = 'HAN_CHE'`, trình ký theo mục 3.3.
 - Lưu private key (kể cả dạng mã hóa) trên backend để đồng bộ đa thiết bị; cần thiết kế custody/recovery riêng.
 - Nhiều tệp đính kèm/phụ lục trong một lượt trình (MVP: một lượt trình ứng với một tệp).
 - Vai trò xem/góp ý không ký; thu hồi hoặc ban hành bản thay thế sau khi lượt trình `HOAN_THANH`.
@@ -148,6 +148,17 @@ Hệ thống tách hai giai đoạn:
 - Muốn trình lại sau từ chối: thao tác `trinh-lai` tạo **yêu cầu mới** (sao chép văn bản, quy trình đang hoạt động, vị trí ký), `ho_so_goc` trỏ về yêu cầu bị từ chối. Không mở lại yêu cầu đã `TU_CHOI`.
 - Người tạo được hủy trước khi hoàn thành; quản trị viên được hủy thay (override) nhưng bắt buộc lý do và ghi nhật ký.
 - `[CHƯA CHỐT]` Xử lý khi phát hiện sai sau khi lượt trình `HOAN_THANH` (hủy, thu hồi, ban hành bản thay thế): MVP chưa hỗ trợ, xem mục 12.
+
+**Văn bản hạn chế trong trình ký**
+
+GVHD đã chốt bỏ văn bản mật. Tài liệu nội bộ hạn chế là văn bản đi có `pham_vi = 'HAN_CHE'` (DDL `ddl_base_v0`, PR #81), vẫn trình ký được. Bảo mật của phân hệ Trình ký (khóa ký Ed25519, PIN và `k_srv`, mã băm, nhật ký chỉ ghi thêm, bằng chứng tổng hợp) giữ nguyên, không phụ thuộc việc bỏ văn bản mật. Bổ sung các quy tắc sau cho văn bản `HAN_CHE`:
+
+- Hồ sơ, lượt trình, tệp và lịch sử chỉ hiển thị cho người tạo hồ sơ, người ký của lượt trình (kể cả người nhận ủy quyền) và văn thư thực hiện phát hành. Danh sách, tìm kiếm và đếm số liệu lọc theo đúng tập này. Superuser và quyền `view_trinhky` không được ngoại lệ.
+- Người ký được xem tệp của lượt trình trong phạm vi hồ sơ trình ký; việc tham gia trình ký không cấp quyền xem văn bản gốc ngoài hồ sơ.
+- Mỗi lần mở tệp của hồ sơ `HAN_CHE` ghi một sự kiện vào `signing_audit_log`.
+- Thông báo (in-app, email) chỉ chứa mã hồ sơ và đường dẫn, không chứa trích yếu, nội dung hay tệp đính kèm.
+- Trợ lý AI không đọc bảng `signing_*` (DDL không cấp quyền cho `qlvb_readonly`) và không dùng văn bản `HAN_CHE` trong mọi trường hợp.
+- Phạm vi lấy từ văn bản gốc tại thời điểm gửi và chốt vào lượt trình; đổi phạm vi văn bản sau khi gửi không mở rộng người xem hồ sơ đang chạy.
 
 ### 3.4. Khóa ký, chữ ký và ảnh chữ ký cá nhân
 
@@ -322,7 +333,7 @@ Ràng buộc: CHECK có đúng một trong `nguoi_ky`, `chuc_vu`. Mọi người
 | Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
 |---|---|---|---|---|
 | ID | `id` | Number (auto) | | |
-| Loại văn bản | `document_type` | Text (20) [vanbandi] | X | Truyền tường minh, không có giá trị mặc định. MVP chỉ nhận `vanbandi`; `vanbanden` ngoài phạm vi, `vanbanmat` `[CẦN XÁC NHẬN]` (mục 1.3) |
+| Loại văn bản | `document_type` | Text (20) [vanbandi] | X | Truyền tường minh, không có giá trị mặc định. Chỉ nhận `vanbandi`; `vanbanden` ngoài phạm vi; `vanbanmat` đã bỏ khỏi `document_kind` (mục 1.3) |
 | Văn bản liên quan | `van_ban_id` | Number (BigInt) | X | Không FK (3 bảng văn bản); index `(document_type, van_ban_id)` |
 | Phiên bản văn bản | `phien_ban_van_ban` | Text (50) | | Bản sao từ lượt trình hiện hành |
 | Vị trí lưu tệp | `vi_tri_luu_tep` | Text (500) | | Bản sao từ lượt trình hiện hành |
@@ -865,7 +876,7 @@ Nếu repo có chuẩn lint/type check thì bổ sung đúng lệnh của repo t
 - `[CẦN XÁC NHẬN]` Contract cấp số văn bản đi và chuyển trạng thái phát hành với Nhóm 2 (mục 1.4), trước Phase 10.
 - `[CẦN XÁC NHẬN]` Danh sách cấp trên trực tiếp và người nhận ủy quyền hợp lệ theo chức danh (Nhóm 7), trước Phase 9.
 - `[CHƯA CHỐT]` Luồng tự do (không theo quy trình mẫu): ngoài MVP.
-- `[CẦN XÁC NHẬN]` Văn bản mật (`vanbanmat`) có được ký trên hệ thống này hay phải tách môi trường theo quy định bảo vệ bí mật nhà nước; cần pháp chế xác nhận trước Phase 7. Tới lúc đó MVP chỉ nhận `vanbandi`.
+- `[ĐÃ CHỐT]` Văn bản mật đã bỏ (GVHD). Khách hàng là doanh nghiệp bảo hiểm; tài liệu nội bộ hạn chế xử lý bằng `pham_vi = 'HAN_CHE'` và quy tắc mục 3.3. Căn cứ bảo vệ dữ liệu: Luật Bảo vệ dữ liệu cá nhân 2025 (Luật số 91/2025/QH15).
 - `[CHƯA CHỐT]` Thu hồi hoặc thay thế sau khi lượt trình `HOAN_THANH`; nhiều tệp đính kèm; vai trò xem/góp ý không ký.
 - `[RỦI RO]` Test đồng thời (Phase 8) cần PostgreSQL; cấu hình mặc định là SQLite và `requirements.txt` chưa có `psycopg`.
 
