@@ -161,14 +161,24 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
       }
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        const detail = err.data.detail || err.data.error || err.data.message;
+        const detail = err.data?.detail || err.data?.error || err.data?.message;
         if (typeof detail === 'string') {
           setErrorKey(t(detail));
+        } else if (err.data && typeof err.data === 'object') {
+          const firstKey = Object.keys(err.data)[0];
+          const val = (err.data as Record<string, unknown>)[firstKey];
+          if (Array.isArray(val) && val.length > 0) {
+            setErrorKey(t(String(val[0])));
+          } else if (typeof val === 'string') {
+            setErrorKey(t(val));
+          } else {
+            setErrorKey(t(err.message));
+          }
         } else {
-          setErrorKey(err.message);
+          setErrorKey(t(err.message));
         }
       } else if (err instanceof Error) {
-        setErrorKey(err.message);
+        setErrorKey(t(err.message));
       } else {
         setErrorKey(t('employees.messages.saveError'));
       }

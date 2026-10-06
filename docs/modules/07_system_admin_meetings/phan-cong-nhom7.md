@@ -44,6 +44,7 @@
 - Có tên đăng nhập, mật khẩu. Thêm CBNV mới.
 - Danh sách lấy theo thứ tự: đơn vị/phòng ban có ưu tiên → chức vụ. Cột hiển thị: STT, Họ và tên, Đơn vị, Chức danh, Nhóm quyền (**chỉ admin thấy cột này**), Email, SĐT cá nhân/bàn, Trạng thái (Làm việc/Nghỉ việc — **bôi đỏ nếu nghỉ việc**), Thao tác (sửa/xóa).
 - Import file mẫu; Chi tiết CBNV dạng popup (hiển thị hết thông tin nhưng **che năm sinh**); có phân trang.
+- **Quy tắc mật khẩu khi Import Excel:** Tài khoản tạo hàng loạt qua Excel sẽ nhận mật khẩu tạm thời ngẫu nhiên an toàn sinh từ hệ thống. Cán bộ nhân viên sau đó nhận tài khoản và chủ động lấy lại/thiết lập mật khẩu qua tính năng Quên mật khẩu / Cấp lại mật khẩu của hệ thống (hoặc được Quản trị viên duyệt cấp lại mật khẩu qua quyền `approve_password_reset_cbnv`).
 - **Field:** Họ và tên(*); Ngày tháng năm sinh(*) — lưu đủ ngày nhưng giao diện ẩn năm sinh; Chức vụ(*) — chọn từ danh sách (FK); Chức danh — text tự do, khác Chức vụ; Nhóm quyền(*) — chọn từ danh sách; Email; SĐT; Đơn vị(*) — chọn từ danh sách (FK); Mật khẩu IT cấp — chỉ admin thấy khi cấp; isPublic(*) — mặc định true; Ghi chú.
 
 **Trang Phân quyền** (Tân + Hiếu phụ trách):

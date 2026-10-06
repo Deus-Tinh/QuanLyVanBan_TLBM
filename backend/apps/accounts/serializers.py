@@ -262,20 +262,20 @@ class EmployeeCreateSerializer(serializers.Serializer):
     def validate_ho_ten(self, value):
         trimmed = value.strip()
         if not trimmed:
-            raise serializers.ValidationError("Họ và tên nhân viên không được để trống.")
+            raise serializers.ValidationError("employees.validation.nameRequired")
         return trimmed
 
     def validate_email(self, value):
         normalized = value.strip().lower()
         if get_user_model().objects.filter(email__iexact=normalized).exists():
-            raise serializers.ValidationError(f"Địa chỉ email '{normalized}' đã tồn tại trong hệ thống.")
+            raise serializers.ValidationError("employees.messages.emailExists")
         return normalized
 
     def validate_username(self, value):
         if value:
             trimmed = value.strip()
             if get_user_model().objects.filter(username__iexact=trimmed).exists():
-                raise serializers.ValidationError(f"Tên đăng nhập '{trimmed}' đã tồn tại trong hệ thống.")
+                raise serializers.ValidationError("employees.messages.usernameExists")
             return trimmed
         return value
 
@@ -357,7 +357,7 @@ class EmployeeUpdateSerializer(serializers.Serializer):
         normalized = value.strip().lower()
         duplicated = get_user_model().objects.filter(email__iexact=normalized).exclude(pk=self.instance.pk)
         if duplicated.exists():
-            raise serializers.ValidationError(f"Địa chỉ email '{normalized}' đã thuộc về nhân viên khác.")
+            raise serializers.ValidationError("employees.messages.emailExists")
         return normalized
 
     def update(self, instance, validated_data):

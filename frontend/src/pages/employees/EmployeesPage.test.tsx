@@ -385,5 +385,63 @@ describe('EmployeesPage Component (Issue #24)', () => {
       expect(screen.getByText('Bạn không thể tự xóa tài khoản của chính mình.')).toBeInTheDocument();
     });
   });
+
+  it('displays localized row errors when excel import fails with error codes', async () => {
+    mockedApiClient.post.mockRejectedValueOnce({
+      status: 400,
+      data: {
+        success: false,
+        message: 'employees.messages.importHasErrors',
+        errors: [
+          {
+            row: 3,
+            field: 'email',
+            code: 'employees.messages.emailExists',
+            value: 'trung@donvi.gov.vn',
+            message: "Email 'trung@donvi.gov.vn' đã tồn tại trên hệ thống.",
+          },
+          {
+            row: 4,
+            field: 'don_vi',
+            code: 'employees.messages.unitNotFound',
+            value: 'Phòng Ảo',
+            message: "Không tìm thấy Đơn vị có tên 'Phòng Ảo' trong hệ thống.",
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Bình')).toBeInTheDocument();
+    });
+
+    const importBtn = screen.getByRole('button', { name: /Nhập từ Excel/i });
+    fireEvent.click(importBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nhập Danh Sách CBNV Từ Excel')).toBeInTheDocument();
+    });
+
+    const file = new File(['dummy content'], 'danh_sach.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    const submitBtn = screen.getByRole('button', { name: /Tiến hành nạp dữ liệu/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Dữ liệu tệp Excel chứa lỗi. Vui lòng kiểm tra lại theo danh sách bên dưới.')).toBeInTheDocument();
+      expect(screen.getByText(/Địa chỉ email đã tồn tại trong hệ thống/i)).toBeInTheDocument();
+      expect(screen.getByText(/Không tìm thấy Đơn vị có tên 'Phòng Ảo' trong hệ thống/i)).toBeInTheDocument();
+    });
+  });
 });
 

@@ -275,7 +275,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         except ProtectedError:
             return Response(
                 {
-                    "detail": "Không thể xóa cán bộ nhân viên này do đang có dữ liệu liên kết khác trong hệ thống."
+                    "detail": "employees.messages.cannotDeleteProtected"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -301,13 +301,13 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         file_obj = request.FILES.get("file")
         if not file_obj:
             return Response(
-                {"detail": "Vui lòng chọn tệp Excel (.xlsx) để tải lên."},
+                {"detail": "employees.messages.fileRequired"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         if not file_obj.name.lower().endswith(".xlsx"):
             return Response(
-                {"detail": "Định dạng tệp không được hỗ trợ. Vui lòng sử dụng tệp có đuôi .xlsx."},
+                {"detail": "employees.messages.fileInvalidType"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -316,7 +316,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "success": False,
-                    "message": "Dữ liệu tệp Excel chứa lỗi. Vui lòng kiểm tra lại theo danh sách bên dưới.",
+                    "message": "employees.messages.importHasErrors",
                     "errors": result["errors"],
                     "total_errors": len(result["errors"]),
                 },
@@ -326,7 +326,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 "success": True,
-                "message": f"Nhập thành công {result['created_count']} cán bộ nhân viên.",
+                "message": "employees.messages.importSuccess",
                 "created_count": result["created_count"],
             },
             status=status.HTTP_201_CREATED,

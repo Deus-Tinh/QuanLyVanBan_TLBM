@@ -102,19 +102,21 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'data' in err) {
-        const errorData = (err as { data: ExcelImportResponse }).data;
+        const errorData = (err as { data: ExcelImportResponse & { detail?: string } }).data;
         if (errorData?.errors && Array.isArray(errorData.errors)) {
           setErrorList(errorData.errors);
-          setGeneralError(errorData.message || t('employees.import.hasErrors'));
+          const rawMsg = errorData.message || 'employees.import.hasErrors';
+          setGeneralError(t(rawMsg));
           return;
         }
-        if (errorData?.message) {
-          setGeneralError(errorData.message);
+        const singleMsg = errorData?.message || errorData?.detail;
+        if (singleMsg) {
+          setGeneralError(t(singleMsg));
           return;
         }
       }
       if (err instanceof Error) {
-        setGeneralError(err.message);
+        setGeneralError(t(err.message));
       } else {
         setGeneralError(t('employees.import.uploadError'));
       }
@@ -233,16 +235,31 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-danger-border/30 bg-surface">
-                    {errorList.map((err, idx) => (
-                      <tr key={idx} className="hover:bg-danger-subtle/20">
-                        <td className="py-2 px-3 text-center font-mono font-semibold text-danger">
-                          #{err.row}
-                        </td>
-                        <td className="py-2 px-3 text-secondary">
-                          {err.message}
-                        </td>
-                      </tr>
-                    ))}
+                    {errorList.map((err, idx) => {
+                      const fieldLabel = err.field
+                        ? t(`employees.import.fields.${err.field}`)
+                        : null;
+                      const hasFieldLabel = fieldLabel && !fieldLabel.startsWith('employees.import.fields.');
+                      const errorDetail = err.code
+                        ? t(err.code, { value: err.value || '', field: err.field || '' })
+                        : err.message;
+
+                      return (
+                        <tr key={idx} className="hover:bg-danger-subtle/20">
+                          <td className="py-2 px-3 text-center font-mono font-semibold text-danger">
+                            {err.row > 0 ? `#${err.row}` : '-'}
+                          </td>
+                          <td className="py-2 px-3 text-secondary">
+                            {hasFieldLabel && (
+                              <span className="font-semibold text-main mr-1.5">
+                                [{fieldLabel}]:
+                              </span>
+                            )}
+                            <span>{errorDetail}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
