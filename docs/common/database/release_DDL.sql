@@ -1,5 +1,5 @@
 -- =====================================================================
--- THAY ĐỔI CHƯA CHỐT (đánh dấu [CHƯA CHỐT] tại vị trí; không tăng phiên bản cho tới khi chốt)
+-- THAY ĐỔI BỎ VĂN BẢN MẬT (GVHD đã chốt bỏ văn bản mật; đánh dấu [BỎ MẬT] tại vị trí; giữ nhãn phiên bản)
 -- Bối cảnh: khách hàng là doanh nghiệp bảo hiểm; "văn bản mật" được hiểu là tài liệu nội bộ
 --   hạn chế (không phải bí mật nhà nước) và xử lý bằng quyền xem + nhật ký xem trên văn bản đến/đi.
 --   1) Bỏ phân hệ văn bản mật: xóa 7 bảng documents_vanbanmat*, 2 hàm và 4 trigger đi kèm.
@@ -188,7 +188,7 @@ CREATE TYPE emaillog_status        AS ENUM ('PENDING','SENDING','SUCCESS','FAILE
 
 CREATE TYPE employee_work_status   AS ENUM ('LAM_VIEC','NGHI_VIEC');
 -- dùng chung cho generic relation "văn bản liên quan"
-CREATE TYPE document_kind          AS ENUM ('vanbanden','vanbandi'); -- [CHƯA CHỐT] bỏ 'vanbanmat'
+CREATE TYPE document_kind          AS ENUM ('vanbanden','vanbandi'); -- [BỎ MẬT] bỏ 'vanbanmat'
 
 -- =====================================================================
 -- 12. DANH MỤC CHỨC VỤ (accounts_position)
@@ -546,7 +546,7 @@ CREATE TABLE documents_vanbanden (
     ghi_chu TEXT,
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
-    pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [CHƯA CHỐT] NOI_BO | HAN_CHE
+    pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -554,9 +554,9 @@ CREATE TABLE documents_vanbanden (
     CONSTRAINT chk_vanbanden_link_thay_the CHECK (
         hieu_luc <> 'HET_VA_THAY_THE' OR (link_thay_the IS NOT NULL AND BTRIM(link_thay_the) <> '')
     ),
-    -- [CHƯA CHỐT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
+    -- [BỎ MẬT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
     CONSTRAINT chk_vanbanden_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
-    -- [CHƯA CHỐT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
+    -- [BỎ MẬT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
     CONSTRAINT chk_vanbanden_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
 
@@ -691,7 +691,7 @@ CREATE TABLE documents_vanbandi (
     ghi_chu TEXT,
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
-    pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [CHƯA CHỐT] NOI_BO | HAN_CHE
+    pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -699,9 +699,9 @@ CREATE TABLE documents_vanbandi (
     CONSTRAINT chk_vanbandi_link_thay_the CHECK (
         hieu_luc <> 'HET_VA_THAY_THE' OR (link_thay_the IS NOT NULL AND BTRIM(link_thay_the) <> '')
     ),
-    -- [CHƯA CHỐT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
+    -- [BỎ MẬT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
     CONSTRAINT chk_vanbandi_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
-    -- [CHƯA CHỐT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
+    -- [BỎ MẬT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
     CONSTRAINT chk_vanbandi_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
 
@@ -825,7 +825,7 @@ CREATE INDEX idx_vanbandi_attachment_doc ON documents_vanbandi_attachment (docum
 CREATE INDEX idx_vanbandi_attachment_deleted ON documents_vanbandi_attachment (is_deleted);
 
 -- =====================================================================
--- 3. [CHƯA CHỐT] VĂN BẢN MẬT: đã bỏ. Tài liệu nội bộ hạn chế dùng cột pham_vi = 'HAN_CHE'
+-- 3. [BỎ MẬT] VĂN BẢN MẬT: đã bỏ. Tài liệu nội bộ hạn chế dùng cột pham_vi = 'HAN_CHE'
 -- trên documents_vanbanden / documents_vanbandi.
 -- =====================================================================
 
@@ -2425,11 +2425,11 @@ WHERE
 COMMIT;
 
 -- =====================================================================
--- [v1][CHƯA CHỐT] TÀI KHOẢN CSDL CHỈ ĐỌC CHO TRỢ LÝ AI (Nhóm 8)
+-- [v1][BỎ MẬT] TÀI KHOẢN CSDL CHỈ ĐỌC CHO TRỢ LÝ AI (Nhóm 8)
 -- - Role được tạo ngoài DDL (kèm mật khẩu từ biến môi trường); khối dưới chỉ cấp quyền khi role đã tồn tại.
 -- - Cấp theo bảng/cột cần dùng; KHÔNG cấp bảng khóa ký/PIN/nhật ký, cột password;
 --   KHÔNG dùng ALTER DEFAULT PRIVILEGES.
--- - [CHƯA CHỐT] Văn bản đến/đi chỉ đọc qua view ai_* đã loại văn bản pham_vi = 'HAN_CHE';
+-- - [BỎ MẬT] Văn bản đến/đi chỉ đọc qua view ai_* đã loại văn bản pham_vi = 'HAN_CHE';
 --   không cấp SELECT trên bảng văn bản gốc. View dùng security_barrier để điều kiện lọc
 --   được áp trước mọi điều kiện do truy vấn của AI đưa vào.
 -- - Quyền "ai được xem văn bản nào" lấy từ lớp dùng chung của Nhóm 2/Nhóm 7, không viết lại bằng SQL thô.
