@@ -1,4 +1,20 @@
 -- =====================================================================
+-- THAY ĐỔI CHƯA CHỐT (đánh dấu [CHƯA CHỐT] tại vị trí; không tăng phiên bản cho tới khi chốt)
+-- Bối cảnh: khách hàng là doanh nghiệp bảo hiểm; "văn bản mật" được hiểu là tài liệu nội bộ
+--   hạn chế (không phải bí mật nhà nước) và xử lý bằng quyền xem + nhật ký xem trên văn bản đến/đi.
+--   1) Bỏ phân hệ văn bản mật: xóa 7 bảng documents_vanbanmat*, 2 hàm và 4 trigger đi kèm.
+--   2) ENUM document_kind còn 'vanbanden', 'vanbandi'.
+--   3) documents_vanbanden, documents_vanbandi thêm cột pham_vi ('NOI_BO' | 'HAN_CHE'), mặc định 'NOI_BO';
+--      CHECK văn bản HAN_CHE không gửi mail toàn hệ thống (chuyển từ CHECK B2 của bảng mật).
+--   4) Bỏ 4 quyền view/add/change/delete_vanbanmat và các lượt phân quyền tương ứng.
+--   5) Trợ lý AI (role qlvb_readonly) chỉ đọc văn bản qua view ai_* đã loại văn bản HAN_CHE,
+--      không còn quyền SELECT trên bảng văn bản gốc.
+-- Quy tắc xem văn bản HAN_CHE (tầng ứng dụng, queryset dùng chung của Nhóm 2):
+--   chỉ người tạo, người nhận, thành viên đơn vị nhận; không ngoại lệ cho superuser hay quyền view_*;
+--   mọi lượt mở ghi documents_view_log.
+-- Quy mô sau thay đổi: 54 bảng vật lý | 21 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
+-- =====================================================================
+-- =====================================================================
 -- RELEASE_DDL_v1 — trạng thái đích của Issue #53, sinh từ RELEASE_DDL_v0
 -- Thay đổi so với v0 (mọi thay đổi đều đánh dấu [v1] tại vị trí):
 --   1) ENUM hieu_luc_status thêm 'CON_HIEU_LUC_1_PHAN' (Nhóm 2; dùng chung 3 bảng văn bản và records_chitiettailieu).
@@ -172,7 +188,7 @@ CREATE TYPE emaillog_status        AS ENUM ('PENDING','SENDING','SUCCESS','FAILE
 
 CREATE TYPE employee_work_status   AS ENUM ('LAM_VIEC','NGHI_VIEC');
 -- dùng chung cho generic relation "văn bản liên quan"
-CREATE TYPE document_kind          AS ENUM ('vanbanden','vanbandi','vanbanmat');
+CREATE TYPE document_kind          AS ENUM ('vanbanden','vanbandi'); -- [CHƯA CHỐT] bỏ 'vanbanmat'
 
 -- =====================================================================
 -- 12. DANH MỤC CHỨC VỤ (accounts_position)
@@ -530,13 +546,18 @@ CREATE TABLE documents_vanbanden (
     ghi_chu TEXT,
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
+    pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [CHƯA CHỐT] NOI_BO | HAN_CHE
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_vanbanden_nam_stt UNIQUE (nam, so_thu_tu), -- Nghị định 30/2020/NĐ-CP: chống trùng số đến trong năm
     CONSTRAINT chk_vanbanden_link_thay_the CHECK (
         hieu_luc <> 'HET_VA_THAY_THE' OR (link_thay_the IS NOT NULL AND BTRIM(link_thay_the) <> '')
-    )
+    ),
+    -- [CHƯA CHỐT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
+    CONSTRAINT chk_vanbanden_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
+    -- [CHƯA CHỐT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
+    CONSTRAINT chk_vanbanden_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
 
 CREATE TRIGGER trg_vanbanden_updated_at BEFORE UPDATE ON documents_vanbanden
@@ -670,13 +691,18 @@ CREATE TABLE documents_vanbandi (
     ghi_chu TEXT,
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
+    pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [CHƯA CHỐT] NOI_BO | HAN_CHE
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_vanbandi_nam_stt UNIQUE (nam, so_thu_tu), -- Nghị định 30/2020/NĐ-CP: chống trùng số đi trong năm
     CONSTRAINT chk_vanbandi_link_thay_the CHECK (
         hieu_luc <> 'HET_VA_THAY_THE' OR (link_thay_the IS NOT NULL AND BTRIM(link_thay_the) <> '')
-    )
+    ),
+    -- [CHƯA CHỐT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
+    CONSTRAINT chk_vanbandi_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
+    -- [CHƯA CHỐT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
+    CONSTRAINT chk_vanbandi_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
 
 CREATE TRIGGER trg_vanbandi_updated_at BEFORE UPDATE ON documents_vanbandi
@@ -799,155 +825,13 @@ CREATE INDEX idx_vanbandi_attachment_doc ON documents_vanbandi_attachment (docum
 CREATE INDEX idx_vanbandi_attachment_deleted ON documents_vanbandi_attachment (is_deleted);
 
 -- =====================================================================
--- 3. VĂN BẢN MẬT (documents_vanbanmat)
--- Người nhận: CHỈ đích danh CBNV được liệt kê mới xem được (áp dụng ở tầng app/permission)
+-- 3. [CHƯA CHỐT] VĂN BẢN MẬT: đã bỏ. Tài liệu nội bộ hạn chế dùng cột pham_vi = 'HAN_CHE'
+-- trên documents_vanbanden / documents_vanbandi.
 -- =====================================================================
-CREATE TABLE documents_vanbanmat (
-    id BIGSERIAL PRIMARY KEY,
-    nam SMALLINT NOT NULL,
-    so_hieu VARCHAR(255) NOT NULL,
-    trich_yeu TEXT NOT NULL,
-    ngay_ban_hanh TIMESTAMPTZ,
-    ngay_van_ban TIMESTAMPTZ,
-    nguoi_ky VARCHAR(255),
-    chuc_vu VARCHAR(255),
-    hieu_luc hieu_luc_status NOT NULL,
-    ngay_het_hieu_luc TIMESTAMPTZ,
-    link_thay_the VARCHAR(500),
-    ghi_chu TEXT,
-    hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
-    gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
-    nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_vanbanmat_link_thay_the CHECK (
-        hieu_luc <> 'HET_VA_THAY_THE' OR (link_thay_the IS NOT NULL AND BTRIM(link_thay_the) <> '')
-    ),
-    -- [v1] B2: văn bản mật (nội bộ hạn chế) không được gửi mail toàn hệ thống
-    CONSTRAINT chk_vanbanmat_khong_mail_toan_he_thong CHECK (gui_mail_toan_he_thong = FALSE)
-);
-
-CREATE TRIGGER trg_vanbanmat_updated_at BEFORE UPDATE ON documents_vanbanmat
-  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
-CREATE INDEX idx_vanbanmat_sohieu ON documents_vanbanmat (so_hieu);
-
-CREATE TABLE documents_vanbanmat_hoso (
-    vanbanmat_id BIGINT NOT NULL REFERENCES documents_vanbanmat (id) ON DELETE CASCADE,
-    hoso_id BIGINT NOT NULL REFERENCES records_hoso (id) ON DELETE RESTRICT,
-    PRIMARY KEY (vanbanmat_id, hoso_id)
-);
-
-CREATE INDEX idx_vanbanmat_hoso_hoso ON documents_vanbanmat_hoso (hoso_id);
-
-CREATE TABLE documents_vanbanmat_danhmuc (
-    vanbanmat_id BIGINT NOT NULL REFERENCES documents_vanbanmat (id) ON DELETE CASCADE,
-    loaivanban_id BIGINT NOT NULL REFERENCES records_loaivanban (id) ON DELETE RESTRICT,
-    PRIMARY KEY (vanbanmat_id, loaivanban_id)
-);
-
-CREATE INDEX idx_vanbanmat_danhmuc_loai ON documents_vanbanmat_danhmuc (loaivanban_id);
-
--- Toàn vẹn tham chiếu chéo giữa Hồ sơ và Loại văn bản cho Văn bản mật:
--- 1) Khi thêm Loại văn bản, nếu văn bản đã liên kết hồ sơ thì Loại văn bản phải thuộc đúng Hồ sơ đó
-CREATE OR REPLACE FUNCTION check_vanbanmat_cross_reference()
-RETURNS TRIGGER AS
-$$
-
-DECLARE
-v_hoso_id BIGINT;
-BEGIN
-SELECT ho_so_id INTO v_hoso_id FROM records_loaivanban WHERE id = NEW.loaivanban_id;
-IF EXISTS (SELECT 1 FROM documents_vanbanmat_hoso WHERE vanbanmat_id = NEW.vanbanmat_id) THEN
-IF NOT EXISTS (
-SELECT 1 FROM documents_vanbanmat_hoso
-WHERE vanbanmat_id = NEW.vanbanmat_id AND hoso_id = v_hoso_id
-) THEN
-RAISE EXCEPTION 'Vi phạm toàn vẹn tham chiếu chéo: Loại văn bản (id=%) thuộc Hồ sơ (id=%), nhưng Văn bản mật (id=%) không liên kết với Hồ sơ này.',
-NEW.loaivanban_id, v_hoso_id, NEW.vanbanmat_id;
-END IF;
-END IF;
-RETURN NEW;
-END;
-
-$$
-LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_vanbanmat_danhmuc_cross_ref
-  BEFORE INSERT OR UPDATE ON documents_vanbanmat_danhmuc
-  FOR EACH ROW EXECUTE FUNCTION check_vanbanmat_cross_reference();
-
--- 2) Khi xóa liên kết hồ sơ, không cho xóa nếu văn bản vẫn còn chứa loại văn bản thuộc hồ sơ đó
--- An toàn khi xóa văn bản cha (ON DELETE CASCADE): bỏ qua kiểm tra nếu văn bản cha không còn tồn tại
-CREATE OR REPLACE FUNCTION check_vanbanmat_hoso_delete_cross_ref()
-RETURNS TRIGGER AS
-$$
-
-BEGIN
--- Nếu văn bản cha không còn tồn tại (đang trong luồng ON DELETE CASCADE của documents_vanbanmat), bỏ qua không chặn
-IF NOT EXISTS (SELECT 1 FROM documents_vanbanmat WHERE id = OLD.vanbanmat_id) THEN
-RETURN OLD;
-END IF;
-
-IF EXISTS (
-SELECT 1 FROM documents_vanbanmat_danhmuc dm
-JOIN records_loaivanban lvb ON dm.loaivanban_id = lvb.id
-WHERE dm.vanbanmat_id = OLD.vanbanmat_id AND lvb.ho_so_id = OLD.hoso_id
-) THEN
-RAISE EXCEPTION 'Không thể gỡ Hồ sơ (id=%) khỏi Văn bản mật (id=%): văn bản vẫn còn chứa Loại văn bản thuộc Hồ sơ này.',
-OLD.hoso_id, OLD.vanbanmat_id;
-END IF;
-RETURN OLD;
-END;
-
-$$
-LANGUAGE plpgsql;
-
-CREATE CONSTRAINT TRIGGER trg_vanbanmat_hoso_del_cross_ref
-  AFTER DELETE ON documents_vanbanmat_hoso
-  DEFERRABLE INITIALLY IMMEDIATE
-  FOR EACH ROW EXECUTE FUNCTION check_vanbanmat_hoso_delete_cross_ref();
-
--- Bảng trung gian M2M Nơi ban hành cho Văn bản mật
-CREATE TABLE documents_vanbanmat_noibanhanh (
-    vanbanmat_id BIGINT NOT NULL REFERENCES documents_vanbanmat (id) ON DELETE CASCADE,
-    donvi_id BIGINT NOT NULL REFERENCES organizations_donvi (id) ON DELETE RESTRICT,
-    PRIMARY KEY (vanbanmat_id, donvi_id)
-);
-
-CREATE INDEX idx_vanbanmat_noibanhanh_donvi ON documents_vanbanmat_noibanhanh (donvi_id);
-
--- Đơn vị nhận: xem được cả đơn vị
-CREATE TABLE documents_vanbanmat_donvinhan (
-    vanbanmat_id BIGINT NOT NULL REFERENCES documents_vanbanmat (id) ON DELETE CASCADE,
-    donvi_id BIGINT NOT NULL REFERENCES organizations_donvi (id) ON DELETE RESTRICT,
-    PRIMARY KEY (vanbanmat_id, donvi_id)
-);
--- Người nhận: chỉ đích danh CBNV được xem
-CREATE TABLE documents_vanbanmat_nguoinhan (
-    vanbanmat_id BIGINT NOT NULL REFERENCES documents_vanbanmat (id) ON DELETE CASCADE,
-    employee_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
-    PRIMARY KEY (vanbanmat_id, employee_id)
-);
-
--- Tệp đính kèm Văn bản Mật (1-N, Hướng A theo Thầy Duy chốt)
-CREATE TABLE documents_vanbanmat_attachment (
-    id BIGSERIAL PRIMARY KEY,
-    document_id BIGINT NOT NULL REFERENCES documents_vanbanmat (id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    path VARCHAR(500) NOT NULL,
-    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    created_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_user_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
-);
-
-CREATE INDEX idx_vanbanmat_attachment_doc ON documents_vanbanmat_attachment (document_id);
-
-CREATE INDEX idx_vanbanmat_attachment_deleted ON documents_vanbanmat_attachment (is_deleted);
 
 -- =====================================================================
 -- BẢNG PHỤ: LỊCH SỬ NGƯỜI XEM (documents_view_log)
--- Dùng chung cho cả 3 bảng văn bản (Đến/Đi/Mật) qua cặp document_type +
+-- Dùng chung cho 2 bảng văn bản (Đến/Đi) qua cặp document_type +
 -- document_id (generic relation, cùng cơ chế với signing_request/task_congviec).
 -- unique_together(document_type, document_id, user_id) -> mỗi user chỉ giữ
 -- 1 bản ghi mới nhất trên 1 văn bản (upsert ở tầng app bằng
@@ -984,9 +868,6 @@ CREATE TRIGGER trg_del_viewlog_vanbanden AFTER DELETE ON documents_vanbanden
 
 CREATE TRIGGER trg_del_viewlog_vanbandi AFTER DELETE ON documents_vanbandi
     FOR EACH ROW EXECUTE FUNCTION trg_cleanup_viewlog_on_doc_delete('vanbandi');
-
-CREATE TRIGGER trg_del_viewlog_vanbanmat AFTER DELETE ON documents_vanbanmat
-    FOR EACH ROW EXECUTE FUNCTION trg_cleanup_viewlog_on_doc_delete('vanbanmat');
 
 -- =====================================================================
 -- =====================================================================
@@ -1059,7 +940,7 @@ CREATE INDEX idx_signing_process_step_signer_nguoi ON signing_process_step_signe
 -- Issue #47 P2.12: Bổ sung index signing_request (han_chot)
 CREATE TABLE signing_request (
     id BIGSERIAL PRIMARY KEY,
-    document_type document_kind NOT NULL, -- Phân định văn bản đến, đi, mật (Generic Relation); bắt buộc truyền tường minh, không có giá trị mặc định
+    document_type document_kind NOT NULL, -- Phân định văn bản đến, đi (Generic Relation); bắt buộc truyền tường minh, không có giá trị mặc định
     van_ban_id BIGINT NOT NULL,
     phien_ban_van_ban VARCHAR(50), -- Cho phép NULL ở bản nháp ban đầu
     vi_tri_luu_tep VARCHAR(500), -- Cho phép NULL ở bản nháp ban đầu
@@ -2155,27 +2036,6 @@ VALUES
         'send_mail_all_vanbandi',
         'Văn bản đi'
     ),
-    -- Văn bản mật (Nhóm 2)
-    (
-        'Xem văn bản mật (chỉ người được liệt kê đích danh)',
-        'view_vanbanmat',
-        'Văn bản mật'
-    ),
-    (
-        'Thêm văn bản mật',
-        'add_vanbanmat',
-        'Văn bản mật'
-    ),
-    (
-        'Sửa văn bản mật',
-        'change_vanbanmat',
-        'Văn bản mật'
-    ),
-    (
-        'Xóa văn bản mật',
-        'delete_vanbanmat',
-        'Văn bản mật'
-    ),
     -- Hồ sơ lưu trữ (Nhóm 3)
     (
         'Xem danh mục hồ sơ',
@@ -2418,7 +2278,6 @@ WHERE
         'change_self_cbnv',
         'view_vanbanden',
         'view_vanbandi',
-        'view_vanbanmat',
         'view_read_log_vanbanden',
         'view_read_log_vanbandi',
         'view_hoso',
@@ -2458,7 +2317,6 @@ WHERE
         'change_self_cbnv',
         'view_vanbanden',
         'view_vanbandi',
-        'view_vanbanmat',
         'view_read_log_vanbanden',
         'view_hoso',
         'view_tailieu',
@@ -2496,7 +2354,6 @@ WHERE
         'change_self_cbnv',
         'view_vanbanden',
         'view_vanbandi',
-        'view_vanbanmat',
         'view_hoso',
         'view_tailieu',
         'view_trinhky',
@@ -2513,7 +2370,7 @@ WHERE
         'use_aiassistant'
     ) ON CONFLICT (group_id, permission_id) DO NOTHING;
 
--- Nhóm VT (Văn thư): Nghiệp vụ văn thư lưu trữ, văn bản đến/đi/mật, quản lý hồ sơ, tài liệu biểu mẫu
+-- Nhóm VT (Văn thư): Nghiệp vụ văn thư lưu trữ, văn bản đến/đi, quản lý hồ sơ, tài liệu biểu mẫu
 INSERT INTO
     auth_group_permissions (group_id, permission_id)
 SELECT g.id, p.id
@@ -2542,9 +2399,6 @@ WHERE
         'export_vanbandi',
         'view_read_log_vanbandi',
         'send_mail_all_vanbandi',
-        'view_vanbanmat',
-        'add_vanbanmat',
-        'change_vanbanmat',
         'view_hoso',
         'add_hoso',
         'change_hoso',
@@ -2571,25 +2425,59 @@ WHERE
 COMMIT;
 
 -- =====================================================================
--- [v1] TÀI KHOẢN CSDL CHỈ ĐỌC CHO TRỢ LÝ AI (Nhóm 8)
+-- [v1][CHƯA CHỐT] TÀI KHOẢN CSDL CHỈ ĐỌC CHO TRỢ LÝ AI (Nhóm 8)
 -- - Role được tạo ngoài DDL (kèm mật khẩu từ biến môi trường); khối dưới chỉ cấp quyền khi role đã tồn tại.
--- - Cấp theo bảng/cột cần dùng; KHÔNG cấp văn bản mật, bảng khóa ký/PIN/nhật ký, cột password;
+-- - Cấp theo bảng/cột cần dùng; KHÔNG cấp bảng khóa ký/PIN/nhật ký, cột password;
 --   KHÔNG dùng ALTER DEFAULT PRIVILEGES.
+-- - [CHƯA CHỐT] Văn bản đến/đi chỉ đọc qua view ai_* đã loại văn bản pham_vi = 'HAN_CHE';
+--   không cấp SELECT trên bảng văn bản gốc. View dùng security_barrier để điều kiện lọc
+--   được áp trước mọi điều kiện do truy vấn của AI đưa vào.
 -- - Quyền "ai được xem văn bản nào" lấy từ lớp dùng chung của Nhóm 2/Nhóm 7, không viết lại bằng SQL thô.
 -- =====================================================================
+CREATE VIEW ai_vanbanden WITH (security_barrier) AS
+    SELECT * FROM documents_vanbanden WHERE pham_vi = 'NOI_BO';
+
+CREATE VIEW ai_vanbanden_nguoinhan WITH (security_barrier) AS
+    SELECT nn.* FROM documents_vanbanden_nguoinhan nn
+    JOIN documents_vanbanden vb ON vb.id = nn.vanbanden_id
+    WHERE vb.pham_vi = 'NOI_BO';
+
+CREATE VIEW ai_vanbanden_donvinhan WITH (security_barrier) AS
+    SELECT dv.* FROM documents_vanbanden_donvinhan dv
+    JOIN documents_vanbanden vb ON vb.id = dv.vanbanden_id
+    WHERE vb.pham_vi = 'NOI_BO';
+
+CREATE VIEW ai_vanbandi WITH (security_barrier) AS
+    SELECT * FROM documents_vanbandi WHERE pham_vi = 'NOI_BO';
+
+CREATE VIEW ai_vanbandi_noibanhanh WITH (security_barrier) AS
+    SELECT nb.* FROM documents_vanbandi_noibanhanh nb
+    JOIN documents_vanbandi vb ON vb.id = nb.vanbandi_id
+    WHERE vb.pham_vi = 'NOI_BO';
+
+CREATE VIEW ai_vanbandi_nguoinhan WITH (security_barrier) AS
+    SELECT nn.* FROM documents_vanbandi_nguoinhan nn
+    JOIN documents_vanbandi vb ON vb.id = nn.vanbandi_id
+    WHERE vb.pham_vi = 'NOI_BO';
+
+CREATE VIEW ai_vanbandi_donvinhan WITH (security_barrier) AS
+    SELECT dv.* FROM documents_vanbandi_donvinhan dv
+    JOIN documents_vanbandi vb ON vb.id = dv.vanbandi_id
+    WHERE vb.pham_vi = 'NOI_BO';
+
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'qlvb_readonly') THEN
         GRANT SELECT (id, don_vi_id, is_active, trang_thai, is_superuser) ON accounts_employee TO qlvb_readonly;
         GRANT SELECT (id, ten) ON organizations_donvi TO qlvb_readonly;
         GRANT SELECT ON
-            documents_vanbanden,
-            documents_vanbanden_nguoinhan,
-            documents_vanbanden_donvinhan,
-            documents_vanbandi,
-            documents_vanbandi_noibanhanh,
-            documents_vanbandi_nguoinhan,
-            documents_vanbandi_donvinhan,
+            ai_vanbanden,
+            ai_vanbanden_nguoinhan,
+            ai_vanbanden_donvinhan,
+            ai_vanbandi,
+            ai_vanbandi_noibanhanh,
+            ai_vanbandi_nguoinhan,
+            ai_vanbandi_donvinhan,
             records_chitiettailieu
         TO qlvb_readonly;
     ELSE
