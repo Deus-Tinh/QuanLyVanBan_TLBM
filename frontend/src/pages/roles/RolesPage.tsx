@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@i18n/translate';
 import { apiClient } from '@lib/apiClient';
+import { usePermissions } from '@lib/permissions';
 import { Role, Permission, PaginatedResponse } from '@app-types/authorization';
 import { Button } from '@components/common/Button';
 import { RoleModal } from './components/RoleModal';
@@ -9,6 +10,11 @@ import { PermissionMatrix } from './components/PermissionMatrix';
 
 export default function RolesPage() {
   const { t } = useTranslation();
+  // Chỉ ẩn/hiện thao tác cho gọn giao diện; backend vẫn kiểm quyền thật (view/add/change/delete_nhomquyen).
+  const { can } = usePermissions();
+  const canAdd = can('add_nhomquyen');
+  const canChange = can('change_nhomquyen');
+  const canDelete = can('delete_nhomquyen');
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoadingRoles, setIsLoadingRoles] = useState<boolean>(true);
@@ -212,45 +218,51 @@ export default function RolesPage() {
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
             <div className="flex shrink-0 items-center gap-1 border-b border-border bg-surface-elevated px-2 py-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              icon="fa-plus"
-              onClick={() => {
-                setEditingRole(null);
-                setIsRoleModalOpen(true);
-              }}
-            >
-              {t('roles.actions.addGroup')}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon="fa-pen"
-              disabled={!selectedRole}
-              onClick={() => {
-                if (selectedRole) {
-                  setEditingRole(selectedRole);
+            {canAdd && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="fa-plus"
+                onClick={() => {
+                  setEditingRole(null);
                   setIsRoleModalOpen(true);
-                }
-              }}
-            >
-              {t('roles.actions.edit')}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon="fa-xmark"
-              disabled={!selectedRole}
-              onClick={() => {
-                if (selectedRole) {
-                  setDeletingRole(selectedRole);
-                  setDeleteErrorKey(null);
-                }
-              }}
-            >
-              {t('roles.actions.delete')}
-            </Button>
+                }}
+              >
+                {t('roles.actions.addGroup')}
+              </Button>
+            )}
+            {canChange && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="fa-pen"
+                disabled={!selectedRole}
+                onClick={() => {
+                  if (selectedRole) {
+                    setEditingRole(selectedRole);
+                    setIsRoleModalOpen(true);
+                  }
+                }}
+              >
+                {t('roles.actions.edit')}
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon="fa-xmark"
+                disabled={!selectedRole}
+                onClick={() => {
+                  if (selectedRole) {
+                    setDeletingRole(selectedRole);
+                    setDeleteErrorKey(null);
+                  }
+                }}
+              >
+                {t('roles.actions.delete')}
+              </Button>
+            )}
           </div>
 
             <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
@@ -299,36 +311,38 @@ export default function RolesPage() {
 
         {/* Cột phải: Ma trận phân quyền của nhóm đang chọn */}
         <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-elevated px-4 py-2">
-            <Button
-              size="sm"
-              variant="primary"
-              icon="fa-floppy-disk"
-              disabled={!selectedRole}
-              isLoading={isSavingPermissions}
-              onClick={handleSavePermissions}
-            >
-              {t('roles.actions.save')}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon="fa-check-double"
-              disabled={!selectedRole}
-              onClick={() => setSelectedPermissionIds(new Set(permissions.map((p) => p.id)))}
-            >
-              {t('roles.actions.selectAll')}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon="fa-square"
-              disabled={!selectedRole}
-              onClick={() => setSelectedPermissionIds(new Set())}
-            >
-              {t('roles.actions.deselectAll')}
-            </Button>
-          </div>
+          {canChange && (
+            <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-elevated px-4 py-2">
+              <Button
+                size="sm"
+                variant="primary"
+                icon="fa-floppy-disk"
+                disabled={!selectedRole}
+                isLoading={isSavingPermissions}
+                onClick={handleSavePermissions}
+              >
+                {t('roles.actions.save')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon="fa-check-double"
+                disabled={!selectedRole}
+                onClick={() => setSelectedPermissionIds(new Set(permissions.map((p) => p.id)))}
+              >
+                {t('roles.actions.selectAll')}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon="fa-square"
+                disabled={!selectedRole}
+                onClick={() => setSelectedPermissionIds(new Set())}
+              >
+                {t('roles.actions.deselectAll')}
+              </Button>
+            </div>
+          )}
 
           <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-5">
             {!selectedRole ? (
@@ -340,7 +354,12 @@ export default function RolesPage() {
                 </ul>
               </div>
             ) : (
-              <PermissionMatrix permissions={permissions} selectedIds={selectedPermissionIds} onToggle={togglePermission} />
+              <PermissionMatrix
+                permissions={permissions}
+                selectedIds={selectedPermissionIds}
+                onToggle={togglePermission}
+                readOnly={!canChange}
+              />
             )}
           </div>
         </div>

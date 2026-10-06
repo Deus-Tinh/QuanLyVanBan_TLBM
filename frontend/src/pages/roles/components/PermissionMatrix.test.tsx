@@ -63,4 +63,14 @@ describe('PermissionMatrix', () => {
     fireEvent.click(screen.getByRole('checkbox'));
     expect(onToggle).toHaveBeenCalledWith(4);
   });
+
+  it('disables every checkbox in read-only mode and never toggles', () => {
+    const onToggle = vi.fn();
+    render(<PermissionMatrix permissions={PERMISSIONS} selectedIds={new Set([1])} onToggle={onToggle} readOnly />);
+    const checkboxes = screen.getAllByRole('checkbox');
+    checkboxes.forEach((checkbox) => expect(checkbox).toBeDisabled());
+    expect(checkboxes[0]).toBeChecked();
+    fireEvent.click(checkboxes[1]);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
 });
