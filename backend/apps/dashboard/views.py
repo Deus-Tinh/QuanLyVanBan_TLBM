@@ -127,64 +127,21 @@ def overview_view(request):
     ]
 
     # ── 4. Lịch phòng họp hôm nay ──────────────────────────────────────────
-    try:
-        from meetings.models import MeetingBooking
-        real_bookings = MeetingBooking.objects.filter(
-            date=today,
-        ).exclude(status=MeetingBooking.Status.CANCELLED).select_related("room", "organizer", "department")
-        if real_bookings.exists():
-            today_meetings = [
-                {
-                    "id": f"booking-{b.id}",
-                    "room_name": b.room.name if b.room else "",
-                    "roomName": b.room.name if b.room else "",
-                    "meeting_title": b.title,
-                    "topic": b.title,
-                    "start_time": b.start_time.strftime("%H:%M") if b.start_time else "",
-                    "end_time": b.end_time.strftime("%H:%M") if b.end_time else "",
-                    "time": f"{b.start_time.strftime('%H:%M')} - {b.end_time.strftime('%H:%M')}" if b.start_time and b.end_time else "",
-                    "organizer": (
-                        b.department.name if b.department else (
-                            getattr(b.organizer, 'ho_ten', None)
-                            or (b.organizer.get_full_name() if hasattr(b.organizer, 'get_full_name') and b.organizer.get_full_name() else getattr(b.organizer, 'username', ''))
-                        )
-                    ) if (b.organizer or b.department) else "",
-                    "status": "ready" if b.status == MeetingBooking.Status.CONFIRMED else b.status.lower(),
-                }
-                for b in real_bookings
-            ]
-        else:
-            today_meetings = [
-                {
-                    "id": f"room-{m.id}",
-                    "room_name": m.room_name,
-                    "roomName": m.room_name,
-                    "meeting_title": m.meeting_title,
-                    "topic": m.meeting_title,
-                    "start_time": m.start_time.strftime("%H:%M"),
-                    "end_time": m.end_time.strftime("%H:%M"),
-                    "time": f"{m.start_time.strftime('%H:%M')} - {m.end_time.strftime('%H:%M')}",
-                    "organizer": m.organizer,
-                    "status": m.status or "ready",
-                }
-                for m in MeetingRoom.objects.filter(date=today)
-            ]
-    except Exception:
-        today_meetings = [
-            {
-                "id": f"room-{m.id}",
-                "room_name": m.room_name,
-                "roomName": m.room_name,
-                "meeting_title": m.meeting_title,
-                "topic": m.meeting_title,
-                "start_time": m.start_time.strftime("%H:%M"),
-                "end_time": m.end_time.strftime("%H:%M"),
-                "time": f"{m.start_time.strftime('%H:%M')} - {m.end_time.strftime('%H:%M')}",
-                "organizer": m.organizer,
-                "status": m.status or "ready",
-            }
-            for m in MeetingRoom.objects.filter(date=today)
-        ]
+    today_meetings = [
+        {
+            "id": f"room-{m.id}",
+            "room_name": m.room_name,
+            "roomName": m.room_name,
+            "meeting_title": m.meeting_title,
+            "topic": m.meeting_title,
+            "start_time": m.start_time.strftime("%H:%M"),
+            "end_time": m.end_time.strftime("%H:%M"),
+            "time": f"{m.start_time.strftime('%H:%M')} - {m.end_time.strftime('%H:%M')}",
+            "organizer": m.organizer,
+            "status": m.status or "ready",
+        }
+        for m in MeetingRoom.objects.filter(date=today)
+    ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
     employees = get_user_model().objects.filter(is_active=True).select_related("don_vi", "chuc_vu")

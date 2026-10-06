@@ -106,6 +106,19 @@ describe('MeetingsPage Component (Issue #22)', () => {
       if (url.includes('/api/auth/profile/')) {
         return Promise.resolve(mockProfile);
       }
+      if (url.includes('/api/auth/me/permissions/')) {
+        return Promise.resolve({
+          is_superuser: true,
+          permissions: [
+            'add_phonghop',
+            'change_phonghop',
+            'delete_phonghop',
+            'add_datphonghop',
+            'change_own_datphonghop',
+            'change_any_datphonghop',
+          ],
+        });
+      }
       if (url.includes('/api/meeting-rooms/')) {
         return Promise.resolve({ results: mockRooms, count: 2 });
       }
@@ -180,6 +193,7 @@ describe('MeetingsPage Component (Issue #22)', () => {
   it('displays empty state when there are no bookings on the selected date', async () => {
     getMockFn().mockImplementation((url: string) => {
       if (url.includes('/api/auth/profile/')) return Promise.resolve(mockProfile);
+      if (url.includes('/api/auth/me/permissions/')) return Promise.resolve({ is_superuser: true, permissions: ['add_datphonghop'] });
       if (url.includes('/api/meeting-rooms/')) return Promise.resolve({ results: mockRooms, count: 2 });
       if (url.includes('/api/meeting-bookings/')) return Promise.resolve({ results: [], count: 0 });
       return Promise.resolve({});

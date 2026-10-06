@@ -17,12 +17,12 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
     Serializer CRUD cho Danh mục phòng họp (MeetingRoom / meetings_meetingroom).
     """
 
-    name = serializers.CharField(required=False)
-    location = serializers.CharField(required=False, allow_blank=True, default="")
-    capacity = serializers.IntegerField(required=False, default=10)
+    name = serializers.CharField(max_length=100, required=False)
+    location = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    capacity = serializers.IntegerField(min_value=1, max_value=2147483647, required=False, default=10)
     amenities = serializers.CharField(required=False, allow_blank=True, default="")
     is_public = serializers.BooleanField(required=False, default=True)
-    status = serializers.CharField(required=False, default=MeetingRoom.Status.AVAILABLE)
+    status = serializers.ChoiceField(choices=MeetingRoom.Status.choices, required=False, default=MeetingRoom.Status.AVAILABLE)
     ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
 
     # Bí danh tiếng Việt cho Frontend tương thích ngược
@@ -163,13 +163,13 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
     room = serializers.PrimaryKeyRelatedField(
         queryset=MeetingRoom.objects.all(), required=False
     )
-    title = serializers.CharField(required=False)
+    title = serializers.CharField(max_length=255, required=False)
     date = serializers.DateField(required=False)
     start_time = serializers.TimeField(required=False)
     end_time = serializers.TimeField(required=False)
-    attendees_count = serializers.IntegerField(required=False, default=1)
+    attendees_count = serializers.IntegerField(min_value=1, max_value=2147483647, required=False, default=1)
     purpose = serializers.CharField(required=False, allow_blank=True, default="")
-    status = serializers.CharField(required=False, default=MeetingBooking.Status.CONFIRMED)
+    status = serializers.ChoiceField(choices=MeetingBooking.Status.choices, required=False, default=MeetingBooking.Status.CONFIRMED)
     department = serializers.PrimaryKeyRelatedField(
         queryset=DonVi.objects.all(), required=False, allow_null=True
     )

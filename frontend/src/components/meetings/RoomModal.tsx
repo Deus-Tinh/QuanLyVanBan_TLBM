@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MeetingRoom, CreateMeetingRoomDTO } from '@app-types/meeting';
 import { apiClient, ApiError } from '@lib/apiClient';
 import { Button } from '@components/common/Button';
+import { useTranslation } from '@i18n/translate';
 
 interface RoomModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
   onSuccess,
   roomToEdit,
 }) => {
+  const { t } = useTranslation();
   const [tenPhong, setTenPhong] = useState(roomToEdit?.ten_phong || '');
   const [viTri, setViTri] = useState(roomToEdit?.vi_tri || '');
   const [sucChua, setSucChua] = useState<number>(roomToEdit?.suc_chua ?? 10);
@@ -94,19 +96,19 @@ export const RoomModal: React.FC<RoomModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-              {roomToEdit ? 'Chỉnh sửa phòng họp' : 'Thêm phòng họp mới'}
+              {roomToEdit ? t('meetings.modalRoom.editTitle') : t('meetings.modalRoom.createTitle')}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {roomToEdit
-                ? `Cập nhật thông tin chi tiết cho ${roomToEdit.ten_phong}`
-                : 'Khai báo thông số phòng họp vào hệ thống'}
+                ? t('meetings.modalRoom.editSubtitle', { name: roomToEdit.ten_phong })
+                : t('meetings.modalRoom.createSubtitle')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800"
-            aria-label="Đóng"
+            aria-label={t('meetings.modalRoom.cancelBtn')}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -125,13 +127,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({
           {/* Tên phòng */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              Tên phòng họp <span className="text-red-500">*</span>
+              {t('meetings.modalRoom.nameLabel')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={tenPhong}
               onChange={(e) => setTenPhong(e.target.value)}
-              placeholder="VD: Phòng Hội thảo A, Phòng Họp Ban Giám Đốc"
+              placeholder={t('meetings.modalRoom.namePlaceholder')}
               className={`w-full px-3.5 py-2 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 bg-slate-50 dark:bg-slate-800/80 dark:text-white ${
                 errors.ten_phong
                   ? 'border-red-400 focus:ring-red-400/30'
@@ -147,13 +149,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                Vị trí phòng
+                {t('meetings.modalRoom.locationLabel')}
               </label>
               <input
                 type="text"
                 value={viTri}
                 onChange={(e) => setViTri(e.target.value)}
-                placeholder="VD: Tầng 2, Tòa Nhà A"
+                placeholder={t('meetings.modalRoom.locationPlaceholder')}
                 className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
               />
               {errors.vi_tri && (
@@ -163,7 +165,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                Sức chứa (người) <span className="text-red-500">*</span>
+                {t('meetings.modalRoom.capacityLabel')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -186,13 +188,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({
           {/* Thiết bị */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              Trang thiết bị có sẵn
+              {t('meetings.modalRoom.amenitiesLabel')}
             </label>
             <textarea
               rows={2}
               value={thietBi}
               onChange={(e) => setThietBi(e.target.value)}
-              placeholder="VD: Máy chiếu Sony 4K, 2 Micro không dây, Tivi 75 inch, Hệ thống camera trực tuyến..."
+              placeholder={t('meetings.modalRoom.amenitiesPlaceholder')}
               className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
             />
             {errors.thiet_bi && (
@@ -204,10 +206,10 @@ export const RoomModal: React.FC<RoomModalProps> = ({
           <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
             <div>
               <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                Trạng thái hoạt động
+                {t('meetings.modalRoom.statusLabel')}
               </span>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Cho phép hiển thị khả dụng trong danh mục
+                {t('meetings.modalRoom.statusDesc')}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -224,13 +226,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({
           {/* Ghi chú */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              Ghi chú
+              {t('meetings.modalRoom.notesLabel')}
             </label>
             <textarea
               rows={2}
               value={ghiChu}
               onChange={(e) => setGhiChu(e.target.value)}
-              placeholder="VD: Lưu ý tắt thiết bị sau khi dùng hoặc liên hệ kỹ thuật khi cần hỗ trợ..."
+              placeholder={t('meetings.modalRoom.notesPlaceholder')}
               className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
             />
           </div>
@@ -243,7 +245,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
               onClick={onClose}
               disabled={loading}
             >
-              Hủy
+              {t('meetings.modalRoom.cancelBtn')}
             </Button>
             <Button
               type="submit"
@@ -256,12 +258,12 @@ export const RoomModal: React.FC<RoomModalProps> = ({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                   </svg>
-                  <span>Đang lưu...</span>
+                  <span>{t('meetings.modalRoom.savingBtn')}</span>
                 </span>
               ) : roomToEdit ? (
-                'Lưu thay đổi'
+                t('meetings.modalRoom.updateBtn')
               ) : (
-                'Thêm phòng'
+                t('meetings.modalRoom.saveBtn')
               )}
             </Button>
           </div>

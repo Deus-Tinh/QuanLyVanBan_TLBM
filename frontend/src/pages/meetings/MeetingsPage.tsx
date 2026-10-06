@@ -6,6 +6,8 @@ import { Badge } from '@components/common/Badge';
 import { Card } from '@components/common/Card';
 import { BookingModal } from '@components/meetings/BookingModal';
 import { RoomModal } from '@components/meetings/RoomModal';
+import { useTranslation } from '@i18n/translate';
+import { usePermissions } from '@lib/permissions';
 
 interface PaginatedResponse<T> {
   count?: number;
@@ -21,6 +23,9 @@ interface UserProfileResponse {
 }
 
 export const MeetingsPage: React.FC = () => {
+  const { t } = useTranslation();
+  const { can, loaded } = usePermissions();
+
   // Tab hiện tại: 'schedule' (Lịch đặt) | 'rooms' (Danh mục phòng)
   const [activeTab, setActiveTab] = useState<'schedule' | 'rooms'>('schedule');
 
@@ -185,7 +190,7 @@ export const MeetingsPage: React.FC = () => {
       await apiClient.post(`/api/meeting-bookings/${cancellingBooking.id}/cancel/`, {
         ly_do_huy: cancelReason.trim(),
       });
-      showToast('success', 'Đã hủy lịch đặt phòng họp thành công! Khung giờ đã được giải phóng.');
+      showToast('success', t('meetings.messages.cancelSuccess'));
       setCancellingBooking(null);
       setCancelReason('');
       setReloadBookingsTrigger((prev) => prev + 1);
@@ -193,7 +198,7 @@ export const MeetingsPage: React.FC = () => {
       if (err instanceof ApiError) {
         showToast('error', err.message);
       } else {
-        showToast('error', 'Không thể hủy lịch đặt phòng.');
+        showToast('error', t('meetings.messages.cancelError'));
       }
     } finally {
       setIsSubmittingCancel(false);
@@ -206,15 +211,15 @@ export const MeetingsPage: React.FC = () => {
     setIsSubmittingDelete(true);
     try {
       await apiClient.delete(`/api/meeting-rooms/${deletingRoom.id}/`);
-      showToast('success', `Đã xóa phòng họp '${deletingRoom.ten_phong}' thành công.`);
+      showToast('success', t('meetings.messages.deleteRoomSuccess', { name: deletingRoom.ten_phong }));
       setDeletingRoom(null);
       setReloadRoomsTrigger((prev) => prev + 1);
       setReloadBookingsTrigger((prev) => prev + 1);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        showToast('error', err.message || (err.data?.error as string) || 'Không thể xóa phòng họp.');
+        showToast('error', err.message || (err.data?.error as string) || t('meetings.messages.deleteRoomError'));
       } else {
-        showToast('error', 'Đã có lỗi xảy ra khi xóa phòng họp.');
+        showToast('error', t('meetings.messages.unexpectedError'));
       }
     } finally {
       setIsSubmittingDelete(false);
@@ -222,6 +227,12 @@ export const MeetingsPage: React.FC = () => {
   };
 
   const isAdmin = currentUser?.role === 'admin';
+  const canAddRoom = can('add_phonghop') || (loaded ? false : isAdmin);
+  const canChangeRoom = can('change_phonghop') || (loaded ? false : isAdmin);
+  const canDeleteRoom = can('delete_phonghop') || (loaded ? false : isAdmin);
+  const canAddBooking = can('add_datphonghop') || (loaded ? false : true);
+  const canChangeOwnBooking = can('change_own_datphonghop') || (loaded ? false : true);
+  const canChangeAnyBooking = can('change_any_datphonghop') || (loaded ? false : isAdmin);
 
   // Lọc danh mục phòng ở Tab 2
   const filteredRooms = rooms.filter((r) => {
@@ -282,9 +293,9 @@ export const MeetingsPage: React.FC = () => {
               <i className="fa-solid fa-people-roof" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-main tracking-tight">Phân hệ Quản lý Phòng họp</h1>
+              <h1 className="text-2xl font-black text-main tracking-tight">{t('meetings.title')}</h1>
               <p className="text-sm text-secondary">
-                Xem lịch trực quan, giữ chỗ tự động và quản lý danh mục phòng họp ITC
+                {t('meetings.subtitle')}
               </p>
             </div>
           </div>
@@ -293,18 +304,20 @@ export const MeetingsPage: React.FC = () => {
         {/* Nút hành động */}
         <div className="flex items-center gap-3 flex-wrap">
           {activeTab === 'schedule' ? (
-            <Button
-              variant="primary"
-              icon="fa-calendar-plus"
-              onClick={() => {
-                setBookingToEdit(null);
-                setIsBookingModalOpen(true);
-              }}
-            >
-              Đặt phòng họp mới
-            </Button>
+            canAddBooking && (
+              <Button
+                variant="primary"
+                icon="fa-calendar-plus"
+                onClick={() => {
+                  setBookingToEdit(null);
+                  setIsBookingModalOpen(true);
+                }}
+              >
+                {t('meetings.bookMeetingBtn')}
+              </Button>
+            )
           ) : (
-            isAdmin && (
+            canAddRoom && (
               <Button
                 variant="primary"
                 icon="fa-plus"
@@ -313,7 +326,7 @@ export const MeetingsPage: React.FC = () => {
                   setIsRoomModalOpen(true);
                 }}
               >
-                Thêm phòng họp mới
+                {t('meetings.addRoomBtn')}
               </Button>
             )
           )}
@@ -331,7 +344,7 @@ export const MeetingsPage: React.FC = () => {
           }`}
         >
           <i className="fa-regular fa-calendar-days text-base" />
-          <span>Lịch đặt phòng họp theo ngày</span>
+          <span>{t('meetings.tabSchedule')}</span>
           <span className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-semibold">
             {activeInDay}
           </span>
@@ -346,7 +359,7 @@ export const MeetingsPage: React.FC = () => {
           }`}
         >
           <i className="fa-solid fa-door-open text-base" />
-          <span>Danh mục phòng họp</span>
+          <span>{t('meetings.tabRooms')}</span>
           <span className="px-2 py-0.5 rounded-full text-xs bg-surface-elevated text-secondary font-semibold">
             {rooms.length}
           </span>
@@ -360,7 +373,7 @@ export const MeetingsPage: React.FC = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="p-4 bg-surface flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-muted uppercase tracking-wider">Tổng cuộc họp</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">{t('meetings.totalToday')}</p>
                 <p className="text-2xl font-black text-main mt-1">{totalInDay}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -370,7 +383,7 @@ export const MeetingsPage: React.FC = () => {
 
             <Card className="p-4 bg-surface flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-muted uppercase tracking-wider">Có hiệu lực</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">{t('meetings.confirmedToday')}</p>
                 <p className="text-2xl font-black text-success mt-1">{activeInDay}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center">
@@ -380,7 +393,7 @@ export const MeetingsPage: React.FC = () => {
 
             <Card className="p-4 bg-surface flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-muted uppercase tracking-wider">Đã hoàn thành</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">{t('meetings.completedToday')}</p>
                 <p className="text-2xl font-black text-secondary mt-1">{completedInDay}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-surface-elevated text-secondary flex items-center justify-center">
@@ -390,7 +403,7 @@ export const MeetingsPage: React.FC = () => {
 
             <Card className="p-4 bg-surface flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-muted uppercase tracking-wider">Đã hủy</p>
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">{t('meetings.cancelledToday')}</p>
                 <p className="text-2xl font-black text-danger mt-1">{cancelledInDay}</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center">
@@ -407,7 +420,7 @@ export const MeetingsPage: React.FC = () => {
                 variant="secondary"
                 size="sm"
                 onClick={() => handleDateChange(-1)}
-                title="Ngày trước"
+                title={t('meetings.prevDay')}
               >
                 <i className="fa-solid fa-chevron-left" />
               </Button>
@@ -417,13 +430,13 @@ export const MeetingsPage: React.FC = () => {
                 onClick={handleSetToday}
                 className="font-bold"
               >
-                Hôm nay
+                {t('meetings.today')}
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => handleDateChange(1)}
-                title="Ngày sau"
+                title={t('meetings.nextDay')}
               >
                 <i className="fa-solid fa-chevron-right" />
               </Button>
@@ -441,13 +454,13 @@ export const MeetingsPage: React.FC = () => {
             {/* Bộ lọc phòng & Trạng thái */}
             <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-secondary">Phòng:</span>
+                <span className="text-xs font-bold text-secondary">{t('meetings.table.room')}:</span>
                 <select
                   value={selectedRoomFilter}
                   onChange={(e) => setSelectedRoomFilter(e.target.value)}
                   className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
                 >
-                  <option value="all">Tất cả các phòng</option>
+                  <option value="all">{t('meetings.allRooms')}</option>
                   {rooms.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.ten_phong}
@@ -457,16 +470,16 @@ export const MeetingsPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-secondary">Trạng thái:</span>
+                <span className="text-xs font-bold text-secondary">{t('meetings.table.status')}:</span>
                 <select
                   value={selectedStatusFilter}
                   onChange={(e) => setSelectedStatusFilter(e.target.value)}
                   className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
                 >
-                  <option value="all">Tất cả trạng thái</option>
-                  <option value="da_dat">Đã đặt (Hiệu lực)</option>
-                  <option value="hoan_thanh">Đã hoàn thành</option>
-                  <option value="da_huy">Đã hủy (Giải phóng)</option>
+                  <option value="all">{t('meetings.allStatuses')}</option>
+                  <option value="da_dat">{t('meetings.filterConfirmed')}</option>
+                  <option value="hoan_thanh">{t('meetings.filterCompleted')}</option>
+                  <option value="da_huy">{t('meetings.filterCancelled')}</option>
                 </select>
               </div>
             </div>
@@ -476,31 +489,31 @@ export const MeetingsPage: React.FC = () => {
           {loadingBookings ? (
             <div className="bg-surface rounded-2xl border border-border-subtle p-12 text-center text-muted">
               <i className="fa-solid fa-spinner fa-spin text-3xl text-primary mb-3" />
-              <p className="text-sm font-medium">Đang tải lịch đặt phòng họp...</p>
+              <p className="text-sm font-medium">{t('meetings.loadingBookings')}</p>
             </div>
           ) : bookings.length === 0 ? (
             <div className="bg-surface rounded-2xl border border-border-subtle p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-surface-elevated mx-auto flex items-center justify-center text-muted text-2xl mb-4">
                 <i className="fa-regular fa-calendar-xmark" />
               </div>
-              <h3 className="text-base font-bold text-main">Không có lịch đặt phòng họp</h3>
+              <h3 className="text-base font-bold text-main">{t('meetings.noBookingsTitle')}</h3>
               <p className="text-xs text-muted max-w-sm mx-auto mt-1 mb-5">
-                Chưa có cuộc họp nào được đăng ký trong ngày{' '}
-                <span className="font-semibold text-main">
-                  {new Date(selectedDate).toLocaleDateString('vi-VN')}
-                </span>
-                . Bạn có thể bấm nút dưới đây để giữ chỗ.
+                {t('meetings.noBookingsDesc', {
+                  date: new Date(selectedDate).toLocaleDateString('vi-VN'),
+                })}
               </p>
-              <Button
-                variant="primary"
-                icon="fa-calendar-plus"
-                onClick={() => {
-                  setBookingToEdit(null);
-                  setIsBookingModalOpen(true);
-                }}
-              >
-                Đặt phòng ngay
-              </Button>
+              {canAddBooking && (
+                <Button
+                  variant="primary"
+                  icon="fa-calendar-plus"
+                  onClick={() => {
+                    setBookingToEdit(null);
+                    setIsBookingModalOpen(true);
+                  }}
+                >
+                  {t('meetings.bookNowBtn')}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -516,7 +529,7 @@ export const MeetingsPage: React.FC = () => {
                 })}`;
 
                 const isOwner = currentUser && booking.nguoi_dat === currentUser.id;
-                const canModify = isOwner || isAdmin;
+                const canModify = (isOwner && canChangeOwnBooking) || canChangeAnyBooking;
 
                 return (
                   <Card
@@ -543,17 +556,17 @@ export const MeetingsPage: React.FC = () => {
                             <span className="font-black text-base text-main">{booking.tieu_de}</span>
                             {booking.trang_thai === 'da_dat' && (
                               <Badge variant="success" size="sm" withDot>
-                                Đã giữ chỗ
+                                {t('meetings.status.confirmed')}
                               </Badge>
                             )}
                             {booking.trang_thai === 'hoan_thanh' && (
                               <Badge variant="secondary" size="sm">
-                                Đã hoàn thành
+                                {t('meetings.status.completed')}
                               </Badge>
                             )}
                             {booking.trang_thai === 'da_huy' && (
                               <Badge variant="danger" size="sm" withDot>
-                                Đã hủy
+                                {t('meetings.status.cancelled')}
                               </Badge>
                             )}
                           </div>
@@ -568,7 +581,7 @@ export const MeetingsPage: React.FC = () => {
 
                             <span className="flex items-center gap-1.5">
                               <i className="fa-solid fa-user-tie text-muted" />
-                              Người đặt:{' '}
+                              {t('meetings.table.organizer')}:{' '}
                               <strong className="text-main font-semibold">
                                 {booking.nguoi_dat_detail?.full_name || booking.nguoi_dat_detail?.username || 'CBNV'}
                               </strong>
@@ -577,13 +590,13 @@ export const MeetingsPage: React.FC = () => {
                             {booking.don_vi_to_chuc && (
                               <span className="flex items-center gap-1.5">
                                 <i className="fa-solid fa-building text-muted" />
-                                Đơn vị: {booking.don_vi_to_chuc}
+                                {t('meetings.modalBooking.departmentLabel')}: {booking.don_vi_to_chuc}
                               </span>
                             )}
 
                             <span className="flex items-center gap-1.5">
                               <i className="fa-solid fa-users text-muted" />
-                              Tham gia: {booking.so_nguoi_tham_gia} người
+                              {t('meetings.table.attendees')}: {booking.so_nguoi_tham_gia}
                             </span>
                           </div>
 
@@ -608,7 +621,7 @@ export const MeetingsPage: React.FC = () => {
                               setIsBookingModalOpen(true);
                             }}
                           >
-                            Sửa
+                            {t('meetings.actions.edit')}
                           </Button>
                           <Button
                             variant="danger"
@@ -619,7 +632,7 @@ export const MeetingsPage: React.FC = () => {
                               setCancelReason('');
                             }}
                           >
-                            Hủy lịch
+                            {t('meetings.actions.cancel')}
                           </Button>
                         </div>
                       )}
@@ -642,7 +655,7 @@ export const MeetingsPage: React.FC = () => {
                 <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm" />
                 <input
                   type="text"
-                  placeholder="Tìm phòng theo tên, vị trí, thiết bị..."
+                  placeholder={t('meetings.searchRoomPlaceholder')}
                   value={roomSearchTerm}
                   onChange={(e) => setRoomSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main placeholder:text-muted text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -656,9 +669,9 @@ export const MeetingsPage: React.FC = () => {
                 onChange={(e) => setRoomStatusFilter(e.target.value)}
                 className="px-3.5 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
               >
-                <option value="all">Tất cả trạng thái</option>
-                <option value="public">Đang hoạt động (Công khai)</option>
-                <option value="hidden">Tạm ẩn (Bảo trì/Khóa)</option>
+                <option value="all">{t('meetings.allStatuses')}</option>
+                <option value="public">{t('meetings.publicOnly')}</option>
+                <option value="hidden">{t('meetings.privateOnly')}</option>
               </select>
             </div>
           </div>
@@ -667,18 +680,18 @@ export const MeetingsPage: React.FC = () => {
           {loadingRooms ? (
             <div className="bg-surface rounded-2xl border border-border-subtle p-12 text-center text-muted">
               <i className="fa-solid fa-spinner fa-spin text-3xl text-primary mb-3" />
-              <p className="text-sm font-medium">Đang tải danh mục phòng họp...</p>
+              <p className="text-sm font-medium">{t('meetings.loadingRooms')}</p>
             </div>
           ) : filteredRooms.length === 0 ? (
             <div className="bg-surface rounded-2xl border border-border-subtle p-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-surface-elevated mx-auto flex items-center justify-center text-muted text-2xl mb-4">
                 <i className="fa-solid fa-door-closed" />
               </div>
-              <h3 className="text-base font-bold text-main">Không tìm thấy phòng họp phù hợp</h3>
+              <h3 className="text-base font-bold text-main">{t('meetings.emptyRooms')}</h3>
               <p className="text-xs text-muted max-w-sm mx-auto mt-1 mb-5">
-                Thử thay đổi từ khóa tìm kiếm hoặc bấm nút bên dưới để tạo phòng mới.
+                {t('meetings.emptyRoomsDesc')}
               </p>
-              {isAdmin && (
+              {canAddRoom && (
                 <Button
                   variant="primary"
                   icon="fa-plus"
@@ -687,7 +700,7 @@ export const MeetingsPage: React.FC = () => {
                     setIsRoomModalOpen(true);
                   }}
                 >
-                  Thêm phòng họp
+                  {t('meetings.addRoomBtn')}
                 </Button>
               )}
             </div>
@@ -701,34 +714,34 @@ export const MeetingsPage: React.FC = () => {
                         <h3 className="text-base font-bold text-main">{room.ten_phong}</h3>
                         <p className="text-xs text-muted flex items-center gap-1.5 mt-0.5">
                           <i className="fa-solid fa-location-dot text-primary" />
-                          {room.vi_tri || 'Chưa cập nhật vị trí'}
+                          {room.vi_tri || t('meetings.table.notUpdated')}
                         </p>
                       </div>
                       {room.is_public ? (
                         <Badge variant="success" size="sm" withDot>
-                          Hoạt động
+                          {t('meetings.status.public')}
                         </Badge>
                       ) : (
                         <Badge variant="secondary" size="sm">
-                          Tạm ẩn
+                          {t('meetings.status.private')}
                         </Badge>
                       )}
                     </div>
 
                     {/* Sức chứa */}
                     <div className="p-3 rounded-xl bg-surface-elevated/60 border border-border-subtle mb-3 flex items-center justify-between">
-                      <span className="text-xs text-secondary font-medium">Sức chứa tối đa:</span>
+                      <span className="text-xs text-secondary font-medium">{t('meetings.table.capacityMax')}</span>
                       <span className="text-sm font-black text-primary flex items-center gap-1">
                         <i className="fa-solid fa-users text-xs" />
-                        {room.suc_chua} người
+                        {room.suc_chua} {t('meetings.table.attendees')}
                       </span>
                     </div>
 
                     {/* Thiết bị */}
                     <div className="space-y-1 mb-4">
-                      <p className="text-[11px] font-bold text-muted uppercase tracking-wider">Trang thiết bị:</p>
+                      <p className="text-[11px] font-bold text-muted uppercase tracking-wider">{t('meetings.table.amenitiesLabel')}</p>
                       <p className="text-xs text-secondary line-clamp-2">
-                        {room.thiet_bi || 'Chưa có thông tin trang thiết bị'}
+                        {room.thiet_bi || t('meetings.table.noAmenities')}
                       </p>
                     </div>
 
@@ -741,40 +754,46 @@ export const MeetingsPage: React.FC = () => {
 
                   {/* Actions */}
                   <div className="pt-4 mt-4 border-t border-border-subtle flex items-center justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon="fa-calendar-plus"
-                      onClick={() => {
-                        setSelectedRoomFilter(String(room.id));
-                        setActiveTab('schedule');
-                        setIsBookingModalOpen(true);
-                      }}
-                    >
-                      Đặt phòng này
-                    </Button>
+                    {canAddBooking ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon="fa-calendar-plus"
+                        onClick={() => {
+                          setSelectedRoomFilter(String(room.id));
+                          setActiveTab('schedule');
+                          setIsBookingModalOpen(true);
+                        }}
+                      >
+                        {t('meetings.table.bookThisRoom')}
+                      </Button>
+                    ) : <div />}
 
-                    {isAdmin && (
+                    {(canChangeRoom || canDeleteRoom) && (
                       <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setRoomToEdit(room);
-                            setIsRoomModalOpen(true);
-                          }}
-                          title="Sửa thông tin phòng"
-                        >
-                          <i className="fa-solid fa-pen-to-square text-secondary hover:text-main" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeletingRoom(room)}
-                          title="Xóa phòng"
-                        >
-                          <i className="fa-solid fa-trash-can text-danger/80 hover:text-danger" />
-                        </Button>
+                        {canChangeRoom && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setRoomToEdit(room);
+                              setIsRoomModalOpen(true);
+                            }}
+                            title={t('meetings.actions.edit')}
+                          >
+                            <i className="fa-solid fa-pen-to-square text-secondary hover:text-main" />
+                          </Button>
+                        )}
+                        {canDeleteRoom && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingRoom(room)}
+                            title={t('meetings.actions.delete')}
+                          >
+                            <i className="fa-solid fa-trash-can text-danger/80 hover:text-danger" />
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -793,7 +812,7 @@ export const MeetingsPage: React.FC = () => {
           setBookingToEdit(null);
         }}
         onSuccess={() => {
-          showToast('success', bookingToEdit ? 'Đã cập nhật lịch đặt phòng!' : 'Đặt phòng họp thành công!');
+          showToast('success', bookingToEdit ? t('meetings.messages.updateBookingSuccess') : t('meetings.messages.saveBookingSuccess'));
           setReloadBookingsTrigger((prev) => prev + 1);
         }}
         rooms={rooms}
@@ -810,7 +829,7 @@ export const MeetingsPage: React.FC = () => {
           setRoomToEdit(null);
         }}
         onSuccess={() => {
-          showToast('success', roomToEdit ? 'Đã cập nhật phòng họp!' : 'Tạo phòng họp mới thành công!');
+          showToast('success', roomToEdit ? t('meetings.messages.updateRoomSuccess') : t('meetings.messages.saveRoomSuccess'));
           setReloadRoomsTrigger((prev) => prev + 1);
         }}
         roomToEdit={roomToEdit}
@@ -831,24 +850,23 @@ export const MeetingsPage: React.FC = () => {
               </div>
               <div>
                 <h3 id="cancel-modal-title" className="text-base font-bold text-main">
-                  Xác nhận hủy lịch họp
+                  {t('meetings.modalCancel.title')}
                 </h3>
-                <p className="text-xs text-muted">Hành động này sẽ giải phóng khung giờ</p>
+                <p className="text-xs text-muted">{t('meetings.modalCancel.subtitle')}</p>
               </div>
             </div>
 
             <p className="text-sm text-secondary">
-              Bạn có chắc chắn muốn hủy cuộc họp:{' '}
-              <strong className="text-main font-semibold">'{cancellingBooking.tieu_de}'</strong>?
+              {t('meetings.modalCancel.desc', { title: cancellingBooking.tieu_de })}
             </p>
 
             <div>
               <label className="block text-xs font-bold text-secondary mb-1">
-                Lý do hủy lịch:
+                {t('meetings.modalCancel.reasonLabel')}
               </label>
               <textarea
                 rows={2}
-                placeholder="VD: Thay đổi lịch công tác, hoãn cuộc họp..."
+                placeholder={t('meetings.modalCancel.reasonPlaceholder')}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs focus:outline-none focus:ring-2 focus:ring-danger/40"
@@ -862,7 +880,7 @@ export const MeetingsPage: React.FC = () => {
                 onClick={() => setCancellingBooking(null)}
                 disabled={isSubmittingCancel}
               >
-                Giữ lại
+                {t('meetings.modalCancel.closeBtn')}
               </Button>
               <Button
                 variant="danger"
@@ -870,7 +888,7 @@ export const MeetingsPage: React.FC = () => {
                 isLoading={isSubmittingCancel}
                 onClick={handleConfirmCancelBooking}
               >
-                Xác nhận hủy
+                {t('meetings.modalCancel.confirmBtn')}
               </Button>
             </div>
           </div>
@@ -892,19 +910,18 @@ export const MeetingsPage: React.FC = () => {
               </div>
               <div>
                 <h3 id="delete-room-modal-title" className="text-base font-bold text-main">
-                  Xác nhận xóa phòng họp
+                  {t('meetings.modalDeleteRoom.title')}
                 </h3>
-                <p className="text-xs text-muted">Kiểm tra bảo toàn lịch sử đặt phòng</p>
+                <p className="text-xs text-muted">{t('meetings.modalDeleteRoom.subtitle')}</p>
               </div>
             </div>
 
             <p className="text-sm text-secondary">
-              Bạn có chắc muốn xóa phòng họp{' '}
-              <strong className="text-main font-semibold">'{deletingRoom.ten_phong}'</strong>?
+              {t('meetings.modalDeleteRoom.desc', { name: deletingRoom.ten_phong })}
             </p>
             <p className="text-xs text-warning-text bg-warning-subtle p-2.5 rounded-lg border border-warning-border">
               <i className="fa-solid fa-circle-info mr-1" />
-              Nếu phòng đã từng có lịch đặt, hệ thống sẽ ngăn chặn xóa để bảo toàn dữ liệu lịch sử.
+              {t('meetings.modalDeleteRoom.warning')}
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -914,7 +931,7 @@ export const MeetingsPage: React.FC = () => {
                 onClick={() => setDeletingRoom(null)}
                 disabled={isSubmittingDelete}
               >
-                Hủy bỏ
+                {t('meetings.modalDeleteRoom.closeBtn')}
               </Button>
               <Button
                 variant="danger"
@@ -922,7 +939,7 @@ export const MeetingsPage: React.FC = () => {
                 isLoading={isSubmittingDelete}
                 onClick={handleConfirmDeleteRoom}
               >
-                Xóa phòng họp
+                {t('meetings.modalDeleteRoom.confirmBtn')}
               </Button>
             </div>
           </div>

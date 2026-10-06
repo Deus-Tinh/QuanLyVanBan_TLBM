@@ -8,6 +8,7 @@ import {
 } from '@app-types/meeting';
 import { apiClient, ApiError } from '@lib/apiClient';
 import { Button } from '@components/common/Button';
+import { useTranslation } from '@i18n/translate';
 
 export interface BookingModalProps {
   isOpen: boolean;
@@ -63,6 +64,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
   initialDate,
   currentUser,
 }) => {
+  const { t } = useTranslation();
   // Tính toán giá trị mặc định ban đầu
   const initialValues = useMemo<FormInitialValues>(() => {
     if (bookingToEdit) {
@@ -245,10 +247,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
           </div>
           <div>
             <h2 id="booking-modal-title" className="text-lg font-bold text-main">
-              {bookingToEdit ? 'Chỉnh sửa lịch đặt phòng' : 'Đặt phòng họp mới'}
+              {bookingToEdit ? t('meetings.modalBooking.editTitle') : t('meetings.modalBooking.createTitle')}
             </h2>
             <p className="text-xs text-muted">
-              Điền thông tin khung giờ và nội dung cuộc họp để khóa phòng
+              {t('meetings.modalBooking.subtitle')}
             </p>
           </div>
         </div>
@@ -256,7 +258,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           type="button"
           onClick={onClose}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors"
-          aria-label="Đóng"
+          aria-label={t('meetings.modalBooking.cancelBtn')}
         >
           <i className="fa-solid fa-xmark text-lg" />
         </button>
@@ -281,7 +283,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
             htmlFor="booking-room-select"
             className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5"
           >
-            Phòng họp <span className="text-danger">*</span>
+            {t('meetings.modalBooking.roomLabel')} <span className="text-danger">*</span>
           </label>
           <select
             id="booking-room-select"
@@ -297,7 +299,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
               fieldErrors.phong_hop ? 'border-danger' : 'border-border-subtle'
             }`}
           >
-            <option value="" disabled>-- Chọn phòng họp khả dụng --</option>
+            <option value="" disabled>{t('meetings.modalBooking.roomPlaceholder')}</option>
             {rooms.map((r) => (
               <option key={r.id} value={r.id} disabled={!r.is_public && r.id !== bookingToEdit?.phong_hop}>
                 {r.ten_phong} (Sức chứa: {r.suc_chua} người) {r.vi_tri ? `- ${r.vi_tri}` : ''} {!r.is_public ? '[Tạm ẩn]' : ''}
@@ -337,12 +339,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
             htmlFor="booking-title-input"
             className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5"
           >
-            Tiêu đề cuộc họp <span className="text-danger">*</span>
+            {t('meetings.modalBooking.titleLabel')} <span className="text-danger">*</span>
           </label>
           <input
             id="booking-title-input"
             type="text"
-            placeholder="VD: Họp giao ban tuần, Họp tổng kết dự án..."
+            placeholder={t('meetings.modalBooking.titlePlaceholder')}
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
@@ -367,12 +369,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
               htmlFor="booking-department-input"
               className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5"
             >
-              Đơn vị tổ chức
+              {t('meetings.modalBooking.departmentLabel')}
             </label>
             <input
               id="booking-department-input"
               type="text"
-              placeholder="VD: Phòng Hành chính, Ban Giám đốc..."
+              placeholder={t('meetings.modalBooking.departmentPlaceholder')}
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border-subtle text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm font-medium transition-all"
@@ -384,7 +386,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
               htmlFor="booking-attendees-input"
               className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5"
             >
-              Số người tham gia <span className="text-danger">*</span>
+              {t('meetings.modalBooking.attendeesLabel')} <span className="text-danger">*</span>
             </label>
             <input
               id="booking-attendees-input"
@@ -412,7 +414,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         {/* Ngày họp & Khung giờ */}
         <div className="p-3.5 rounded-xl bg-surface-elevated/40 border border-border-subtle space-y-3">
           <div className="text-xs font-bold text-main uppercase tracking-wider flex items-center gap-1.5">
-            <i className="fa-regular fa-clock text-primary" /> Khung giờ họp
+            <i className="fa-regular fa-clock text-primary" /> {t('meetings.modalBooking.timeSlotLabel')}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
@@ -420,7 +422,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 htmlFor="booking-date-input"
                 className="block text-xs font-semibold text-secondary mb-1"
               >
-                Ngày họp <span className="text-danger">*</span>
+                {t('meetings.modalBooking.dateLabel')} <span className="text-danger">*</span>
               </label>
               <input
                 id="booking-date-input"
@@ -437,7 +439,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 htmlFor="booking-start-time-input"
                 className="block text-xs font-semibold text-secondary mb-1"
               >
-                Giờ bắt đầu <span className="text-danger">*</span>
+                {t('meetings.modalBooking.startTimeLabel')} <span className="text-danger">*</span>
               </label>
               <input
                 id="booking-start-time-input"
@@ -456,7 +458,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 htmlFor="booking-end-time-input"
                 className="block text-xs font-semibold text-secondary mb-1"
               >
-                Giờ kết thúc <span className="text-danger">*</span>
+                {t('meetings.modalBooking.endTimeLabel')} <span className="text-danger">*</span>
               </label>
               <input
                 id="booking-end-time-input"
@@ -481,12 +483,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
             htmlFor="booking-note-textarea"
             className="block text-xs font-bold text-secondary uppercase tracking-wider mb-1.5"
           >
-            Ghi chú / Yêu cầu trang thiết bị
+            {t('meetings.modalBooking.purposeLabel')}
           </label>
           <textarea
             id="booking-note-textarea"
             rows={2}
-            placeholder="VD: Cần hỗ trợ kết nối máy chiếu 4K, micro không dây, chuẩn bị trà nước..."
+            placeholder={t('meetings.modalBooking.purposePlaceholder')}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border-subtle text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm font-medium transition-all resize-none"
@@ -501,7 +503,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
             onClick={onClose}
             disabled={loading}
           >
-            Hủy bỏ
+            {t('meetings.modalBooking.cancelBtn')}
           </Button>
           <Button
             type="submit"
@@ -509,7 +511,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
             isLoading={loading}
             icon="fa-check"
           >
-            {bookingToEdit ? 'Lưu thay đổi' : 'Xác nhận đặt phòng'}
+            {bookingToEdit ? t('meetings.modalBooking.updateBtn') : t('meetings.modalBooking.saveBtn')}
           </Button>
         </div>
       </form>

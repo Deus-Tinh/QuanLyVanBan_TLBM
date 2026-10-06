@@ -51,12 +51,14 @@ class PhongHopAPITestCase(APITestCase):
             password="AdminPassword123!",
         )
 
-        # Staff user thông thường (chưa có quyền ghi PhongHop)
+        # Staff user thông thường (có quyền xem lịch phòng họp, chưa có quyền ghi PhongHop)
         self.regular_user = User.objects.create_user(
             username="regular_user",
             email="regular@tlbm.vn",
             password="RegularPassword123!",
         )
+        view_perm = Permission.objects.filter(codename="view_schedule_phonghop")
+        self.regular_user.user_permissions.add(*view_perm)
 
         # Staff user có quyền quản lý phòng họp
         self.manager_user = User.objects.create_user(
@@ -65,7 +67,7 @@ class PhongHopAPITestCase(APITestCase):
             password="ManagerPassword123!",
         )
         manager_perms = Permission.objects.filter(
-            codename__in=["add_phonghop", "change_phonghop", "delete_phonghop"]
+            codename__in=["view_schedule_phonghop", "add_phonghop", "change_phonghop", "delete_phonghop"]
         )
         self.manager_user.user_permissions.add(*manager_perms)
 
@@ -93,22 +95,39 @@ class PhongHopAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_list_rooms_paginated(self):
-        """Lấy danh sách phòng họp có phân trang."""
+        """Lấy danh sách phòng họp có phân trang: User thường chỉ thấy phòng public, Quản lý thấy tất cả."""
+        # User thường chỉ thấy phòng is_public=True
         self.client.force_authenticate(user=self.regular_user)
         response = self.client.get("/api/meeting-rooms/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("count", response.data)
-        self.assertIn("results", response.data)
-        self.assertEqual(response.data["count"], 2)
-        self.assertEqual(len(response.data["results"]), 2)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["name"], "Phòng Hội trường A")
+
+        # Quản lý có quyền change_phonghop thấy cả phòng nội bộ
+        self.client.force_authenticate(user=self.manager_user)
+        res_mgr = self.client.get("/api/meeting-rooms/")
+        self.assertEqual(res_mgr.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_mgr.data["count"], 2)
 
     def test_list_rooms_all_unpaginated(self):
         """Tham số all=true trả về danh sách thuần không phân trang."""
-        self.client.force_authenticate(user=self.regular_user)
+        self.client.force_authenticate(user=self.manager_user)
         response = self.client.get("/api/meeting-rooms/?all=true")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, list)
         self.assertEqual(len(response.data), 2)
+
+    def test_user_without_view_schedule_permission_denied(self):
+        """Tài khoản đăng nhập nhưng không có view_schedule_phonghop bị 403."""
+        no_perm_user = User.objects.create_user(
+            username="no_perm_user",
+            email="noperm@tlbm.vn",
+            password="NoPermPassword123!",
+        )
+        self.client.force_authenticate(user=no_perm_user)
+        res = self.client.get("/api/meeting-rooms/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_retrieve_room_detail(self):
         """Xem chi tiết một phòng họp."""
@@ -120,7 +139,7 @@ class PhongHopAPITestCase(APITestCase):
 
     def test_search_rooms(self):
         """Tìm kiếm phòng họp theo từ khóa (tên, vị trí, thiết bị)."""
-        self.client.force_authenticate(user=self.regular_user)
+        self.client.force_authenticate(user=self.manager_user)
 
         # Tìm theo tên
         res1 = self.client.get("/api/meeting-rooms/?search=Hội trường")
@@ -137,9 +156,9 @@ class PhongHopAPITestCase(APITestCase):
         self.assertEqual(res3.data["count"], 1)
 
     def test_filter_by_is_public(self):
-        """Lọc phòng họp theo trạng thái công khai / khả dụng."""
-        self.client.force_authenticate(user=self.regular_user)
-
+        """Lọc phòng họp theo trạng thái công khai / nội bộ."""
+        # Manager thấy cả 2
+        self.client.force_authenticate(user=self.manager_user)
         res_public = self.client.get("/api/meeting-rooms/?is_public=true")
         self.assertEqual(res_public.data["count"], 1)
         self.assertEqual(res_public.data["results"][0]["ten_phong"], "Phòng Hội trường A")
@@ -147,6 +166,11 @@ class PhongHopAPITestCase(APITestCase):
         res_hidden = self.client.get("/api/meeting-rooms/?is_public=false")
         self.assertEqual(res_hidden.data["count"], 1)
         self.assertEqual(res_hidden.data["results"][0]["ten_phong"], "Phòng Họp B")
+
+        # Regular user không bao giờ thấy phòng is_public=false
+        self.client.force_authenticate(user=self.regular_user)
+        res_reg_hidden = self.client.get("/api/meeting-rooms/?is_public=false")
+        self.assertEqual(res_reg_hidden.data["count"], 0)
 
     def test_create_room_as_manager(self):
         """User có quyền có thể tạo phòng họp mới."""
@@ -540,4 +564,55 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.booking1.refresh_from_db()
         self.assertEqual(self.booking1.status, MeetingBooking.Status.CANCELLED)
+
+    def test_staff_user_without_add_phonghop_cannot_create_room(self):
+        """User có is_staff=True nhưng không có quyền add_phonghop bị 403 Forbidden."""
+        staff_only_user = User.objects.create_user(
+            username="staff_only_user",
+            email="staff@tlbm.vn",
+            password="StaffPassword123!",
+            is_staff=True,  # Chỉ có cờ admin site, không có quyền nghiệp vụ
+        )
+        self.client.force_authenticate(user=staff_only_user)
+        res = self.client.post("/api/meeting-rooms/", {
+            "name": "Phòng Tạo Lậu",
+            "capacity": 10,
+        })
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_invalid_status_param_returns_400(self):
+        """Truyền status không thuộc enum (ví dụ ?status=bogus) phải trả về 400 thay vì 500 DataError."""
+        self.client.force_authenticate(user=self.admin_user)
+        # Phòng họp
+        res_rooms = self.client.get("/api/meeting-rooms/?status=BOGUS")
+        self.assertEqual(res_rooms.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Lịch đặt phòng
+        res_bookings = self.client.get("/api/meeting-bookings/?status=BOGUS")
+        self.assertEqual(res_bookings.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invalid_room_id_param_returns_400(self):
+        """Truyền room_id không phải số (ví dụ ?room_id=abc) phải trả về 400 thay vì 500 ValueError."""
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.get("/api/meeting-bookings/?room_id=abc")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_room_name_max_length_100(self):
+        """Tên phòng dài hơn 100 ký tự phải báo lỗi 400 thay vì DataError varchar(100)."""
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.post("/api/meeting-rooms/", {
+            "name": "A" * 105,
+            "capacity": 10,
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_capacity_max_value_overflow(self):
+        """Sức chứa vượt quá giới hạn 32-bit integer phải báo lỗi 400 thay vì DataError integer overflow."""
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.post("/api/meeting-rooms/", {
+            "name": "Phòng Quá Lớn",
+            "capacity": 99999999999999,
+        })
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
 

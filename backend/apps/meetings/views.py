@@ -24,29 +24,31 @@ class StandardPagination(PageNumberPagination):
 
 class MeetingRoomPermission(permissions.BasePermission):
     """
-    Quyền truy cập danh mục phòng họp theo chuẩn Django RBAC contract:
-    - Xem (GET, HEAD, OPTIONS): User đã đăng nhập (IsAuthenticated)
-    - Thêm (POST): Cần quyền 'add_phonghop' hoặc superuser/staff
-    - Sửa (PUT, PATCH): Cần quyền 'change_phonghop' hoặc superuser/staff
-    - Xóa (DELETE): Cần quyền 'delete_phonghop' hoặc superuser/staff
+    Quyền truy cập danh mục phòng họp theo chuẩn Django RBAC contract (Issue #21):
+    - Xem (GET, HEAD, OPTIONS): Yêu cầu quyền 'view_schedule_phonghop' hoặc is_superuser
+    - Thêm (POST): Cần quyền 'add_phonghop' hoặc is_superuser
+    - Sửa (PUT, PATCH): Cần quyền 'change_phonghop' hoặc is_superuser
+    - Xóa (DELETE): Cần quyền 'delete_phonghop' hoặc is_superuser
+    (Bỏ hoàn toàn bypass is_staff, chỉ giữ is_superuser)
     """
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        user = request.user
+        if not user or not user.is_authenticated:
             return False
 
-        if request.method in permissions.SAFE_METHODS:
+        if user.is_superuser:
             return True
 
-        if request.user.is_superuser or request.user.is_staff:
-            return True
+        if request.method in permissions.SAFE_METHODS:
+            return user.has_perm("view_schedule_phonghop")
 
         if request.method == "POST":
-            return request.user.has_perm("add_phonghop")
+            return user.has_perm("add_phonghop")
         if request.method in ["PUT", "PATCH"]:
-            return request.user.has_perm("change_phonghop")
+            return user.has_perm("change_phonghop")
         if request.method == "DELETE":
-            return request.user.has_perm("delete_phonghop")
+            return user.has_perm("delete_phonghop")
 
         return False
 
@@ -67,21 +69,37 @@ class MeetingRoomViewSet(viewsets.ModelViewSet):
     permission_classes = [MeetingRoomPermission]
 
     def get_queryset(self):
+        from rest_framework.exceptions import ValidationError
+
+        user = self.request.user
         queryset = MeetingRoom.objects.all()
 
-        # Lọc theo trạng thái is_public
+        # 1. Bảo mật phòng nội bộ (is_public=False)
+        # Chỉ Admin hoặc người có quyền change_phonghop mới thấy phòng nội bộ
+        can_manage = user.is_superuser or user.has_perm("change_phonghop")
         is_public_param = self.request.query_params.get("is_public")
         if is_public_param is not None and is_public_param != "":
             val = str(is_public_param).strip().lower()
             if val in ["true", "1"]:
                 queryset = queryset.filter(is_public=True)
             elif val in ["false", "0"]:
-                queryset = queryset.filter(is_public=False)
+                if can_manage:
+                    queryset = queryset.filter(is_public=False)
+                else:
+                    queryset = queryset.none()
+        elif not can_manage:
+            queryset = queryset.filter(is_public=True)
 
-        # Lọc theo trạng thái status
+        # 2. Lọc theo trạng thái status (chống 500 DataError trên PostgreSQL ENUM)
         status_param = self.request.query_params.get("status")
         if status_param:
-            queryset = queryset.filter(status=status_param.upper())
+            valid_statuses = [choice[0] for choice in MeetingRoom.Status.choices]
+            cleaned_status = status_param.upper()
+            if cleaned_status not in valid_statuses:
+                raise ValidationError({
+                    "status": f"Trạng thái phòng '{status_param}' không hợp lệ. Các giá trị hợp lệ: {', '.join(valid_statuses)}."
+                })
+            queryset = queryset.filter(status=cleaned_status)
 
         # Tìm kiếm theo từ khóa (name, location, amenities, ghi_chu)
         search = self.request.query_params.get("search", "").strip()
@@ -152,33 +170,36 @@ class MeetingRoomViewSet(viewsets.ModelViewSet):
 class IsOwnerOrAdminForBooking(permissions.BasePermission):
     """
     Quyền truy cập đặt lịch phòng họp theo chuẩn RBAC Issue #21 & DDL:
-    - Xem danh sách / chi tiết: User đã đăng nhập (có view_schedule_phonghop).
-    - Tạo mới (POST): Cần quyền 'add_datphonghop' hoặc superuser/staff.
+    - Xem danh sách / chi tiết: Cần quyền 'view_schedule_phonghop' hoặc is_superuser
+    - Tạo mới (POST): Cần quyền 'add_datphonghop' hoặc is_superuser
     - Sửa / Hủy / Xóa:
-      * Nếu là người đặt: cần quyền 'change_own_datphonghop' hoặc superuser/staff.
-      * Nếu là người khác: cần quyền 'change_any_datphonghop' hoặc superuser/staff.
+      * Nếu là người đặt: cần quyền 'change_own_datphonghop' hoặc is_superuser
+      * Nếu là người khác: cần quyền 'change_any_datphonghop' hoặc is_superuser
+    (Bỏ hoàn toàn bypass is_staff, chỉ giữ is_superuser)
     """
 
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
+        user = request.user
+        if not user or not user.is_authenticated:
             return False
-        if request.user.is_superuser or request.user.is_staff:
+        if user.is_superuser:
             return True
         if request.method in permissions.SAFE_METHODS:
-            return True
+            return user.has_perm("view_schedule_phonghop")
         if request.method == "POST" and getattr(view, "action", None) != "cancel":
-            return request.user.has_perm("add_datphonghop")
+            return user.has_perm("add_datphonghop")
         return True
 
     def has_object_permission(self, request, view, obj):
+        user = request.user
+        if user.is_superuser:
+            return True
         if request.method in permissions.SAFE_METHODS:
-            return True
-        if request.user.is_superuser or request.user.is_staff:
-            return True
-        is_owner = obj.organizer_id == request.user.id
+            return user.has_perm("view_schedule_phonghop")
+        is_owner = obj.organizer_id == user.id
         if is_owner:
-            return request.user.has_perm("change_own_datphonghop")
-        return request.user.has_perm("change_any_datphonghop")
+            return user.has_perm("change_own_datphonghop")
+        return user.has_perm("change_any_datphonghop")
 
 
 class MeetingBookingViewSet(viewsets.ModelViewSet):
@@ -198,26 +219,22 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        # Tự động cập nhật các cuộc họp đã qua giờ kết thúc sang trạng thái 'COMPLETED'
-        now = timezone.localtime()
-        MeetingBooking.objects.filter(
-            status=MeetingBooking.Status.CONFIRMED,
-            date__lt=now.date(),
-        ).update(status=MeetingBooking.Status.COMPLETED)
-        MeetingBooking.objects.filter(
-            status=MeetingBooking.Status.CONFIRMED,
-            date=now.date(),
-            end_time__lte=now.time(),
-        ).update(status=MeetingBooking.Status.COMPLETED)
+        from rest_framework.exceptions import ValidationError
 
         qs = super().get_queryset().order_by("-date", "-start_time")
 
-        # Lọc theo phòng họp
-        room_id = self.request.query_params.get("room_id") or self.request.query_params.get("phong_hop") or self.request.query_params.get("room")
-        if room_id:
-            qs = qs.filter(room_id=room_id)
+        # 1. Lọc theo phòng họp an toàn (chống ValueError 500 khi room_id không phải số)
+        room_param = self.request.query_params.get("room_id") or self.request.query_params.get("phong_hop") or self.request.query_params.get("room")
+        if room_param:
+            try:
+                valid_room_id = int(room_param)
+                qs = qs.filter(room_id=valid_room_id)
+            except (ValueError, TypeError):
+                raise ValidationError({
+                    "room_id": f"Mã phòng họp '{room_param}' không hợp lệ. Vui lòng nhập số nguyên."
+                })
 
-        # Lọc theo trạng thái
+        # 2. Lọc theo trạng thái an toàn (chống 500 DataError trên PostgreSQL ENUM)
         status_param = self.request.query_params.get("status") or self.request.query_params.get("trang_thai")
         if status_param:
             mapping = {
@@ -225,19 +242,26 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 "da_huy": MeetingBooking.Status.CANCELLED,
                 "hoan_thanh": MeetingBooking.Status.COMPLETED,
             }
-            mapped_status = mapping.get(status_param, status_param.upper())
+            mapped_status = mapping.get(str(status_param).lower(), str(status_param).upper())
+            valid_statuses = [choice[0] for choice in MeetingBooking.Status.choices]
+            if mapped_status not in valid_statuses:
+                raise ValidationError({
+                    "status": f"Trạng thái đặt phòng '{status_param}' không hợp lệ. Các giá trị hợp lệ: {', '.join(valid_statuses)}."
+                })
             qs = qs.filter(status=mapped_status)
 
-        # Lọc theo ngày cụ thể (YYYY-MM-DD)
+        # 3. Lọc theo ngày cụ thể (YYYY-MM-DD) an toàn
         date_str = self.request.query_params.get("date")
         if date_str:
             try:
                 target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
                 qs = qs.filter(date=target_date).order_by("start_time")
             except ValueError:
-                pass
+                raise ValidationError({
+                    "date": f"Định dạng ngày '{date_str}' không hợp lệ. Yêu cầu định dạng YYYY-MM-DD."
+                })
 
-        # Lọc theo khoảng ngày (start_date, end_date)
+        # 4. Lọc theo khoảng ngày (start_date, end_date) an toàn
         start_date = self.request.query_params.get("start_date")
         end_date = self.request.query_params.get("end_date")
         if start_date:
@@ -245,13 +269,17 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 sd = datetime.strptime(start_date, "%Y-%m-%d").date()
                 qs = qs.filter(date__gte=sd)
             except ValueError:
-                pass
+                raise ValidationError({
+                    "start_date": f"Định dạng ngày bắt đầu '{start_date}' không hợp lệ. Yêu cầu định dạng YYYY-MM-DD."
+                })
         if end_date:
             try:
                 ed = datetime.strptime(end_date, "%Y-%m-%d").date()
                 qs = qs.filter(date__lte=ed)
             except ValueError:
-                pass
+                raise ValidationError({
+                    "end_date": f"Định dạng ngày kết thúc '{end_date}' không hợp lệ. Yêu cầu định dạng YYYY-MM-DD."
+                })
 
         return qs
 
