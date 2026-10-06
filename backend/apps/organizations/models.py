@@ -13,20 +13,19 @@ class KhoiKhuVuc(models.Model):
         unique=True,
         verbose_name="organizations.region.nameLabel",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="common.createdAt",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="common.updatedAt",
+
+    thu_tu_hien_thi = models.PositiveIntegerField(
+        default=0,
+        verbose_name="organizations.region.displayOrderLabel",
+        help_text="organizations.region.displayOrderHelp",
     )
 
     class Meta:
+        db_table = "organizations_khoi"
         app_label = "organizations"
         verbose_name = "organizations.tabs.regions"
         verbose_name_plural = "organizations.tabs.regions"
-        ordering = ["ten"]
+        ordering = ["thu_tu_hien_thi", "ten"]
 
     def clean(self):
         super().clean()
@@ -87,16 +86,9 @@ class DonVi(models.Model):
         default="",
         verbose_name="organizations.unit.notesLabel",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="common.createdAt",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="common.updatedAt",
-    )
 
     class Meta:
+        db_table = "organizations_donvi"
         app_label = "organizations"
         verbose_name = "organizations.tabs.units"
         verbose_name_plural = "organizations.tabs.units"

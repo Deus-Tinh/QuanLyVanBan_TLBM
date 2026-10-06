@@ -6,7 +6,8 @@ from django.db import IntegrityError
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
-from django.contrib.auth.models import Permission, User
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 
 from organizations.models import KhoiKhuVuc, DonVi
 
@@ -17,19 +18,6 @@ class OrganizationModelAndAPITest(TestCase):
     """
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="testuser",
-            password="testpassword123",
-            email="test@itc.edu.vn",
-        )
-        self.export_permission = Permission.objects.get(
-            content_type__app_label="organizations",
-            codename="export_donvi",
-        )
-        self.user.user_permissions.add(self.export_permission)
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
-
         self.region = KhoiKhuVuc.objects.create(ten="Khối Cơ quan")
         self.unit = DonVi.objects.create(
             khoi=self.region,
@@ -38,6 +26,20 @@ class OrganizationModelAndAPITest(TestCase):
             dien_thoai="02838123456",
             email="ketoan@itc.edu.vn",
         )
+        self.user = get_user_model().objects.create_user(
+            username="testuser",
+            password="testpassword123",
+            email="test@itc.edu.vn",
+            don_vi=self.unit,
+        )
+        self.export_permission = Permission.objects.get(codename="export_donvi")
+        self.user.user_permissions.add(
+            *Permission.objects.filter(
+                codename__in=["view_donvi", "add_donvi", "change_donvi", "delete_donvi", "export_donvi"]
+            )
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
 
     def test_khoi_khuvuc_creation(self):
         self.assertEqual(str(self.region), "Khối Cơ quan")
@@ -286,13 +288,115 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertEqual(res_put.data["ten"], "Phòng Kế toán Đổi Tên")
         self.assertFalse(res_put.data["is_public"])
 
-        # Xóa DELETE
-        res_delete = self.client.delete(f"/api/organizations/units/{self.unit.id}/")
+        # Xóa DELETE (đơn vị không có nhân viên)
+        spare = DonVi.objects.create(khoi=self.region, stt_uu_tien=2, ten="Phòng Trống")
+        res_delete = self.client.delete(f"/api/organizations/units/{spare.id}/")
         self.assertEqual(res_delete.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(DonVi.objects.filter(pk=self.unit.id).exists())
+        self.assertFalse(DonVi.objects.filter(pk=spare.id).exists())
+
+    def test_prevent_delete_unit_with_employees(self):
+        """Đơn vị còn nhân viên trực thuộc không được xóa (400, không phải 500)."""
+        res = self.client.delete(f"/api/organizations/units/{self.unit.id}/")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data["detail"], "organizations.messages.unitHasEmployees")
+        self.assertTrue(DonVi.objects.filter(pk=self.unit.id).exists())
 
     def test_unauthenticated_access_denied(self):
         """Kiểm tra bắt buộc xác thực đăng nhập (401 Unauthorized)."""
         unauthenticated_client = APIClient()
         response = unauthenticated_client.get("/api/organizations/units/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class OrganizationPermissionAPITest(TestCase):
+    """RBAC cho Khối và Đơn vị: 401 chưa đăng nhập, 403 thiếu quyền, 200/201/204 khi đủ quyền."""
+
+    def setUp(self):
+        self.region = KhoiKhuVuc.objects.create(ten="Khối Quyền")
+        self.unit = DonVi.objects.create(khoi=self.region, stt_uu_tien=1, ten="Đơn vị Quyền")
+        User = get_user_model()
+
+        def make(username, *codenames):
+            user = User.objects.create_user(username=username, password="x", don_vi=self.unit)
+            if codenames:
+                user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+            client = APIClient()
+            client.force_authenticate(user=user)
+            return client
+
+        self.nobody = make("org_nobody")
+        self.viewer = make("org_viewer", "view_donvi")
+        self.admin = make("org_admin", "view_donvi", "add_donvi", "change_donvi", "delete_donvi")
+        self.anon = APIClient()
+        self.region_payload = {"ten": "Khối Mới"}
+        self.unit_payload = {"khoi": self.region.id, "ten": "Đơn vị Mới", "is_public": True}
+
+    def assert_denied(self, response):
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data["detail"], "organizations.messages.permissionDenied")
+
+    def test_unauthenticated_gets_401_on_every_write(self):
+        for response in (
+            self.anon.post("/api/organizations/regions/", self.region_payload, format="json"),
+            self.anon.delete(f"/api/organizations/regions/{self.region.id}/"),
+            self.anon.post("/api/organizations/units/", self.unit_payload, format="json"),
+            self.anon.put(f"/api/organizations/units/{self.unit.id}/", self.unit_payload, format="json"),
+            self.anon.delete(f"/api/organizations/units/{self.unit.id}/"),
+        ):
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_without_permissions_is_denied_everywhere(self):
+        self.assert_denied(self.nobody.get("/api/organizations/regions/"))
+        self.assert_denied(self.nobody.get("/api/organizations/units/"))
+        self.assert_denied(self.nobody.post("/api/organizations/regions/", self.region_payload, format="json"))
+        self.assert_denied(self.nobody.post("/api/organizations/units/", self.unit_payload, format="json"))
+        self.assertEqual(KhoiKhuVuc.objects.count(), 1)
+        self.assertEqual(DonVi.objects.count(), 1)
+
+    def test_view_only_user_can_read_but_not_write(self):
+        self.assertEqual(self.viewer.get("/api/organizations/regions/?all=true").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.viewer.get("/api/organizations/units/").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.viewer.get(f"/api/organizations/units/{self.unit.id}/").status_code, status.HTTP_200_OK)
+        self.assert_denied(self.viewer.post("/api/organizations/regions/", self.region_payload, format="json"))
+        self.assert_denied(self.viewer.put(f"/api/organizations/regions/{self.region.id}/", self.region_payload, format="json"))
+        self.assert_denied(self.viewer.patch(f"/api/organizations/regions/{self.region.id}/", self.region_payload, format="json"))
+        self.assert_denied(self.viewer.delete(f"/api/organizations/regions/{self.region.id}/"))
+        self.assert_denied(self.viewer.post("/api/organizations/units/", self.unit_payload, format="json"))
+        self.assert_denied(self.viewer.put(f"/api/organizations/units/{self.unit.id}/", self.unit_payload, format="json"))
+        self.assert_denied(self.viewer.patch(f"/api/organizations/units/{self.unit.id}/", {"ten": "Bị sửa"}, format="json"))
+        self.assert_denied(self.viewer.delete(f"/api/organizations/units/{self.unit.id}/"))
+        self.unit.refresh_from_db()
+        self.assertEqual(self.unit.ten, "Đơn vị Quyền")
+        self.assertEqual(KhoiKhuVuc.objects.count(), 1)
+
+    def test_denied_before_lookup_does_not_leak_existence(self):
+        self.assert_denied(self.viewer.delete("/api/organizations/units/999999/"))
+        self.assert_denied(self.nobody.get("/api/organizations/regions/999999/"))
+
+    def test_user_with_write_permissions_can_manage(self):
+        created = self.admin.post("/api/organizations/regions/", self.region_payload, format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        region_id = created.data["id"]
+        self.assertEqual(
+            self.admin.patch(f"/api/organizations/regions/{region_id}/", {"ten": "Khối Đổi"}, format="json").status_code,
+            status.HTTP_200_OK,
+        )
+        unit = self.admin.post("/api/organizations/units/", {**self.unit_payload, "khoi": region_id}, format="json")
+        self.assertEqual(unit.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self.admin.delete(f"/api/organizations/units/{unit.data['id']}/").status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(self.admin.delete(f"/api/organizations/regions/{region_id}/").status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_permissions_are_independent(self):
+        only_add = APIClient()
+        user = get_user_model().objects.create_user(username="org_only_add", password="x", don_vi=self.unit)
+        user.user_permissions.add(*Permission.objects.filter(codename__in=["view_donvi", "add_donvi"]))
+        only_add.force_authenticate(user=user)
+        self.assertEqual(only_add.post("/api/organizations/units/", self.unit_payload, format="json").status_code, status.HTTP_201_CREATED)
+        self.assert_denied(only_add.put(f"/api/organizations/units/{self.unit.id}/", self.unit_payload, format="json"))
+        self.assert_denied(only_add.delete(f"/api/organizations/units/{self.unit.id}/"))
+
+    def test_superuser_is_allowed_without_explicit_permissions(self):
+        root = get_user_model().objects.create_superuser(username="org_root", password="x", email="r@example.com", don_vi=self.unit)
+        client = APIClient()
+        client.force_authenticate(user=root)
+        self.assertEqual(client.post("/api/organizations/regions/", {"ten": "Khối Root"}, format="json").status_code, status.HTTP_201_CREATED)

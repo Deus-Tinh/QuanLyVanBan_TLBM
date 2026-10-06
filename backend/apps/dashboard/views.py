@@ -1,11 +1,11 @@
 from datetime import timedelta
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.models import StaffProfile
 from .models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
@@ -59,8 +59,7 @@ def overview_view(request):
 
     # ── 1. Thống kê số liệu tổng quan ──────────────────────────────────────
     user = request.user
-    profile = getattr(user, "profile", None)
-    is_admin = user.is_superuser or (profile and profile.role == "admin")
+    is_admin = user.is_superuser
 
     current_year = today.year
     incoming_qs = IncomingDocument.objects.filter(issued_date__year=current_year)
@@ -183,43 +182,43 @@ def overview_view(request):
         ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
-    today_profiles = StaffProfile.objects.filter(
-        birthday__month=today.month,
-        birthday__day=today.day,
-    ).select_related("user")
-
-    tomorrow_profiles = StaffProfile.objects.filter(
-        birthday__month=tomorrow.month,
-        birthday__day=tomorrow.day,
-    ).select_related("user")
+    employees = get_user_model().objects.filter(is_active=True).select_related("don_vi", "chuc_vu")
+    today_profiles = employees.filter(
+        ngay_sinh__month=today.month,
+        ngay_sinh__day=today.day,
+    )
+    tomorrow_profiles = employees.filter(
+        ngay_sinh__month=tomorrow.month,
+        ngay_sinh__day=tomorrow.day,
+    )
 
     # Mảng phẳng birthdays chuẩn BirthdayEmployee của React
     birthdays_list = []
     for p in today_profiles:
         birthdays_list.append({
             "id": p.id,
-            "name": p.full_name,
-            "fullName": p.full_name,
-            "full_name": p.full_name,
+            "name": p.ho_ten,
+            "fullName": p.ho_ten,
+            "full_name": p.ho_ten,
             "birthdate": f"{today.strftime('%d/%m')} (Hôm nay)",
-            "position": p.position or "Chuyên viên",
-            "roleTitle": p.position or "Chuyên viên",
-            "department": p.department or "Ban Quản lý",
-            "unit": p.department or "Ban Quản lý",
+            "position": p.chuc_vu.name,
+            "roleTitle": p.chuc_vu.name,
+            "department": p.don_vi.ten,
+            "unit": p.don_vi.ten,
             "isToday": True,
             "label": "Hôm nay",
         })
     for p in tomorrow_profiles:
         birthdays_list.append({
             "id": p.id,
-            "name": p.full_name,
-            "fullName": p.full_name,
-            "full_name": p.full_name,
+            "name": p.ho_ten,
+            "fullName": p.ho_ten,
+            "full_name": p.ho_ten,
             "birthdate": f"{tomorrow.strftime('%d/%m')} (Ngày mai)",
-            "position": p.position or "Chuyên viên",
-            "roleTitle": p.position or "Chuyên viên",
-            "department": p.department or "Ban Quản lý",
-            "unit": p.department or "Ban Quản lý",
+            "position": p.chuc_vu.name,
+            "roleTitle": p.chuc_vu.name,
+            "department": p.don_vi.ten,
+            "unit": p.don_vi.ten,
             "isToday": False,
             "label": "Ngày mai",
         })
@@ -227,17 +226,17 @@ def overview_view(request):
     birthdays_by_day = {
         "today": [
             {
-                "full_name": p.full_name,
-                "department": p.department,
-                "position": p.position,
+                "full_name": p.ho_ten,
+                "department": p.don_vi.ten,
+                "position": p.chuc_vu.name,
             }
             for p in today_profiles
         ],
         "tomorrow": [
             {
-                "full_name": p.full_name,
-                "department": p.department,
-                "position": p.position,
+                "full_name": p.ho_ten,
+                "department": p.don_vi.ten,
+                "position": p.chuc_vu.name,
             }
             for p in tomorrow_profiles
         ],

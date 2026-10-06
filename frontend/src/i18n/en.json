@@ -469,6 +469,7 @@
       "priorityExists": "Priority index is already in use. Please choose another one.",
       "priorityConflict": "The priority index could not be allocated because of a concurrent operation. Please try again.",
       "regionNotFound": "Region not found.",
+      "unitHasEmployees": "Cannot delete this unit because it still has employees assigned.",
       "regionHasUnits": "Cannot delete region because it still contains active units.",
       "unitNotFound": "Unit/Department not found.",
       "protectedError": "Cannot delete due to data protection rules.",
@@ -478,7 +479,296 @@
       "exportSuccess": "Exported to Excel successfully!",
       "exportError": "Failed to download Excel file. Please try again.",
       "fetchError": "Failed to load data list. Please check your network connection.",
-      "exportPermissionDenied": "You do not have permission to export the unit list to Excel."
+      "exportPermissionDenied": "You do not have permission to export the unit list to Excel.",
+      "permissionDenied": "You do not have permission to perform this action."
+    }
+  },
+  "employees": {
+    "title": "Employee Management",
+    "subtitle": "Staff profiles, department assignments, job positions, and system permissions.",
+    "actions": {
+      "addEmployee": "Add Employee",
+      "importExcel": "Import Excel",
+      "template": "Download Template",
+      "edit": "Edit",
+      "delete": "Delete",
+      "view": "View Details",
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "create": "Create Employee",
+      "close": "Close"
+    },
+    "table": {
+      "employee": "Employee",
+      "unit": "Unit / Department",
+      "position": "Position & Title",
+      "birthday": "Birthday",
+      "phone": "Phone Number",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "filters": {
+      "allUnits": "All Units",
+      "allPositions": "All Positions",
+      "allStatuses": "All Statuses",
+      "filteringNotice": "Filtering: found {count} employees",
+      "reset": "Reset Filters"
+    },
+    "status": {
+      "working": "Active",
+      "resigned": "Resigned"
+    },
+    "fields": {
+      "fullName": "Full Name",
+      "email": "Official Email",
+      "username": "Username",
+      "initialPassword": "Initial Password",
+      "birthday": "Birthday",
+      "phone": "Phone Number",
+      "unit": "Unit / Department",
+      "region": "Region",
+      "position": "Position",
+      "title": "Custom Title",
+      "status": "Employment Status",
+      "groups": "Permission Groups (RBAC)",
+      "notes": "Notes",
+      "isPublicLabel": "Public Directory",
+      "isPublicHelp": "Allow contact details to appear in the internal employee directory.",
+      "public": "Public",
+      "internalOnly": "Internal",
+      "joined": "Joined Date"
+    },
+    "placeholders": {
+      "search": "Search by name, username, email, phone...",
+      "fullName": "Enter full name...",
+      "email": "Enter email (e.g. employee@company.com)...",
+      "username": "Enter username (leave blank to auto-generate)...",
+      "initialPassword": "Enter password (leave blank to generate random 10-char password)...",
+      "phone": "Enter phone number (e.g. 0912345678)...",
+      "selectUnit": "-- Select Unit / Department --",
+      "selectPosition": "-- Select Position --",
+      "title": "e.g. Senior Specialist, Assistant...",
+      "notes": "Enter additional notes if any..."
+    },
+    "hints": {
+      "usernameAuto": "Leave blank to automatically generate from email address.",
+      "passwordAuto": "Leave blank to generate a secure random 10-character password.",
+      "statusNotice": "Note: Changing to 'Resigned' automatically deactivates the login account.",
+      "birthdayMaskedTooltip": "Birth year is masked for privacy (requires view_sensitive_cbnv permission)",
+      "masked": "Masked",
+      "groupsHidden": "Permission groups hidden due to privacy policy."
+    },
+    "modal": {
+      "createTitle": "Add New Employee",
+      "createDesc": "Create new staff profile along with system login account.",
+      "editTitle": "Edit Employee Profile",
+      "editDesc": "Update assignment, position, and permission groups."
+    },
+    "created": {
+      "successTitle": "Employee Created Successfully!",
+      "passwordNotice": "A system account and temporary password have been generated. Please copy and provide it to the employee:",
+      "copyPassword": "Copy Password",
+      "copied": "Copied!"
+    },
+    "detail": {
+      "title": "Employee Details",
+      "noGroups": "No permission groups assigned."
+    },
+    "delete": {
+      "confirmTitle": "Confirm Employee Deletion",
+      "confirmDesc": "Are you sure you want to delete employee \"{name}\"? The associated user account will also be permanently deleted."
+    },
+    "import": {
+      "title": "Import Employees From Excel",
+      "subtitle": "Bulk import staff profiles from a .xlsx spreadsheet.",
+      "templateGuide": "Need the standard template?",
+      "templateDesc": "Download the pre-formatted Excel template with sample rows.",
+      "downloadTemplate": "Download .xlsx Template",
+      "downloadTemplateError": "Failed to download template. Please try again.",
+      "dragDropPrompt": "Drag and drop .xlsx file here or click to browse",
+      "formatNotice": "Supports Microsoft Excel (.xlsx), up to 5MB",
+      "invalidFileType": "Invalid file type! Please select a .xlsx spreadsheet.",
+      "noFileSelected": "Please select an Excel file to proceed with import.",
+      "hasErrors": "Excel file contains invalid data. Please review the errors below.",
+      "uploadError": "An error occurred while uploading the file.",
+      "startImport": "Import Data",
+      "errorListHeader": "Detected {count} row errors:",
+      "row": "Row",
+      "errorDetail": "Error Details"
+    },
+    "validation": {
+      "nameRequired": "Employee full name is required.",
+      "emailRequired": "Email address is required.",
+      "birthdayRequired": "Birthday is required.",
+      "phoneInvalid": "Phone number is not valid."
+    },
+    "messages": {
+      "fetchError": "Failed to load employee list.",
+      "downloadSuccess": "Excel template downloaded successfully!",
+      "downloadError": "Failed to download template. Please try again.",
+      "createSuccess": "Employee added successfully!",
+      "updateSuccess": "Profile updated successfully!",
+      "deleteSuccess": "Employee deleted successfully!",
+      "deleteError": "Cannot delete this employee.",
+      "importSuccess": "Successfully imported {count} employees from Excel!",
+      "saveError": "Failed to save employee profile.",
+      "loading": "Loading data...",
+      "noData": "No employees found",
+      "noDataHelp": "Try adjusting your search query or filters."
+    },
+    "pagination": {
+      "showing": "Showing {from} - {to} of {total} employees"
+    }
+  },
+  "positions": {
+    "title": "Position Directory",
+    "desc": "Manage the shared position catalog for staff and its display priority order.",
+    "addBtn": "Add Position",
+    "createTitle": "Add New Position",
+    "editTitle": "Update Position",
+    "sttLabel": "Priority No.",
+    "sttPlaceholder": "Leave blank to use the next number automatically",
+    "sttHelp": "Positive integer, must be unique. Leave blank to auto-assign the highest number + 1.",
+    "nameLabel": "Position name",
+    "namePlaceholder": "e.g. Department Head",
+    "isPublicLabel": "Publicly visible",
+    "isPublicHelp": "If unchecked, the position is only visible to administrators.",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Enter additional notes (optional)",
+    "deleteConfirmTitle": "Confirm position deletion",
+    "deleteConfirmDesc": "Are you sure you want to delete the position \"{name}\"? This action cannot be undone.",
+    "table": {
+      "stt": "No.",
+      "name": "Position name",
+      "status": "Status",
+      "notes": "Notes",
+      "actions": "Actions",
+      "public": "Public",
+      "internal": "Internal",
+      "empty": "No positions yet.",
+      "emptySearch": "No matching positions found.",
+      "loading": "Loading data...",
+      "emptyValue": "—",
+      "paginationInfo": "Showing {from} - {to} of {total}",
+      "prevPage": "Previous page",
+      "nextPage": "Next page"
+    },
+    "actions": {
+      "searchPlaceholder": "Search by position name...",
+      "save": "Save changes",
+      "create": "Create",
+      "cancel": "Cancel",
+      "close": "Close",
+      "edit": "Edit",
+      "delete": "Delete",
+      "retry": "Retry"
+    },
+    "messages": {
+      "nameRequired": "Position name cannot be empty or contain only spaces.",
+      "nameTooLong": "Position name must be at most 255 characters.",
+      "nameExists": "This position name already exists.",
+      "sttInvalid": "Priority number must be a positive integer.",
+      "sttExists": "This priority number is already in use. Please choose another.",
+      "notFound": "Position not found.",
+      "inUse": "This position cannot be deleted because it is assigned to staff members.",
+      "permissionDenied": "You do not have permission to perform this action.",
+      "createSuccess": "Position added successfully.",
+      "updateSuccess": "Position updated successfully.",
+      "deleteSuccess": "Position deleted successfully.",
+      "fetchError": "Unable to load positions. Please try again.",
+      "saveError": "Unable to save the position. Please try again.",
+      "templateError": "Unable to download the template. Please try again."
+    },
+    "import": {
+      "openBtn": "Import Excel",
+      "title": "Import Positions From Excel",
+      "desc": "Download the template, fill in the positions, then upload it. Invalid rows are reported with a reason; valid rows are still saved.",
+      "downloadTemplate": "Download template (.xlsx)",
+      "chooseFile": "Choose Excel file (.xlsx)",
+      "noFile": "No file selected",
+      "upload": "Upload and import",
+      "uploading": "Importing...",
+      "resultTitle": "Import result",
+      "totalRows": "Total rows",
+      "importedRows": "Succeeded",
+      "failedRows": "Failed",
+      "errorsTitle": "Failed row details",
+      "rowLabel": "Row {row}",
+      "valueLabel": "Value: {value}",
+      "allSuccess": "All rows were imported successfully.",
+      "fields": {
+        "stt_uu_tien": "Priority No.",
+        "ten_chuc_vu": "Position name",
+        "is_public": "Publicly visible"
+      },
+      "errors": {
+        "fileRequired": "Please choose an Excel file to import.",
+        "invalidFile": "Invalid file. Only intact Excel (.xlsx) files are accepted.",
+        "invalidTemplate": "The file does not match the template. Download the template and keep the first-row columns unchanged.",
+        "emptyFile": "The file has no data rows.",
+        "tooManyRows": "The file has too many rows (maximum 1000 rows per import).",
+        "fileTooLarge": "The file is too large (maximum 2 MB).",
+        "invalidStt": "Priority number must be a positive integer.",
+        "invalidPublic": "The public column only accepts Yes or No.",
+        "duplicateNameInFile": "This position name duplicates a row above in the file.",
+        "duplicateSttInFile": "This priority number duplicates a row above in the file.",
+        "importFailed": "Import failed. Please try again."
+      }
+    }
+  },
+  "roles": {
+    "title": "Roles & Permissions",
+    "desc": "Manage user role groups and their assigned permissions.",
+    "matrixSearchPlaceholder": "Search permissions by name, code or module...",
+    "matrixSearchEmpty": "No matching permissions found.",
+    "addBtn": "Add Role",
+    "editTitle": "Edit Role",
+    "createTitle": "Add Role",
+    "nameLabel": "Role Name",
+    "namePlaceholder": "Enter role name...",
+    "matrixPlaceholderTitle": "Role-based permission assignment",
+    "matrixPlaceholderStep1": "Select a role to set up its permissions",
+    "matrixPlaceholderStep2": "Configure the permissions used by the selected role",
+    "deleteConfirmTitle": "Confirm role deletion?",
+    "deleteConfirmDesc": "Are you sure you want to delete the role \"{name}\"? This action cannot be undone.",
+    "table": {
+      "name": "Role Name",
+      "userCount": "Users",
+      "permissionCount": "Permissions",
+      "actions": "Actions",
+      "loading": "Loading data...",
+      "empty": "No roles defined yet.",
+      "paginationInfo": "Showing {from} - {to} of {total}"
+    },
+    "actionsColumns": {
+      "view": "View",
+      "add": "Add",
+      "change": "Edit",
+      "delete": "Delete"
+    },
+    "actions": {
+      "searchPlaceholder": "Search by role name...",
+      "addGroup": "Add role",
+      "edit": "Edit",
+      "delete": "Delete",
+      "retry": "Retry",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all"
+    },
+    "messages": {
+      "fetchError": "Failed to load role list. Please check your network connection.",
+      "permissionDenied": "You do not have permission to perform this action.",
+      "groupNotFound": "Role not found.",
+      "groupHasUsers": "Cannot delete this role because it is still assigned to one or more users.",
+      "nameRequired": "Role name cannot be empty.",
+      "nameExists": "This role name already exists.",
+      "permissionInvalid": "One or more selected permissions are invalid.",
+      "createSuccess": "Role created successfully!",
+      "updateSuccess": "Role updated successfully!",
+      "deleteSuccess": "Role deleted successfully!"
     }
   },
   "auth": {
