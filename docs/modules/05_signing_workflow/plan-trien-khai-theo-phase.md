@@ -22,10 +22,11 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 5 | API quy trình và khóa ký, giới hạn theo quyền sở hữu | Phase 4 | Hoàn thành (`64ea1cd`) |
 | 6a | Bảo vệ khóa ký bằng PIN (Argon2id + `k_srv`): model, service, API, nhật ký | Phase 5 | Hoàn thành (nhánh `feat/signing-phase6-pin`) |
 | 6b | Kiểm quyền API quy trình và khóa ký theo codename DDL (issue #64); quản trị mở lại PIN bị khóa cứng | RBAC Nhóm 7 (`require_permission`) | Hoàn thành phần kiểm quyền API; mở lại PIN khóa cứng chưa làm |
-| 7 | Yêu cầu trình ký, lượt trình, snapshot người ký | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) | Chờ nhóm liên quan |
-| 8 | Hành động ký, từ chối, thu hồi; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
-| 9 | Yêu cầu chỉnh sửa, ủy quyền, hạn xử lý, thông báo | Phase 8 | Chờ Phase 8 |
-| 10 | Phẳng hóa PDF, adapter pháp lý, frontend | Phase 8; chốt hệ tọa độ vị trí ký | Chờ |
+| 6c | Điều chỉnh theo đánh giá nghiệp vụ: bỏ `kieu_ky*`, xoay vòng `k_srv` khi đổi PIN, đồng bộ DDL | Duyệt `danh-gia-nghiep-vu-va-de-xuat.md` | Chưa làm |
+| 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; `trinh-lai` | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7); pháp chế xác nhận văn bản mật | Chờ nhóm liên quan |
+| 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
+| 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Chờ Phase 8 |
+| 10 | Phẳng hóa PDF theo thể thức; ký số từ xa (adapter); cấp số qua hệ thống Nhóm 2 và ký số cơ quan; frontend | Phase 8; chốt hệ tọa độ vị trí ký; contract cấp số với Nhóm 2 | Chờ |
 
 ## 3. Chi tiết các phase
 
@@ -81,12 +82,29 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 - Chưa làm: quản trị mở lại PIN bị khóa cứng (người dùng vẫn tự thu hồi khóa và đăng ký khóa mới được); `add_trinhky`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` áp dụng khi có API ở Phase 7–9.
 - Test: `PermissionApiTests` trong `tests/test_api_phase5.py`, `test_pin_endpoints_require_sign_permission` trong `tests/test_pin_phase6.py`. Test tạo người dùng qua `get_user_model()`, không import `auth.User` (#68 mục C3).
 
+### Phase 6c — Điều chỉnh theo đánh giá nghiệp vụ (chưa làm)
+Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng model đã có.
+- Bỏ `signing_process.kieu_ky_mac_dinh`, `signing_request.kieu_ky` và enum `KieuKy` (migration `0004`); sửa `services/process.py`, serializer, test Phase 4–5. Cấp luôn tuần tự, song song là nhiều người trong một cấp.
+- Thu hẹp `LoaiVanBan` về `vanbandi` cho MVP (giữ cột `document_type`).
+- `doi-pin` xoay vòng `k_srv`: sinh mảnh mới, trả `manh_bi_mat_cu` và `manh_bi_mat`; nhật ký `DOI_PIN` ghi cờ xoay vòng. Test: sau đổi PIN, `k_srv` cũ không còn mở được bản bọc mới.
+- Đề xuất nhóm CSDL sửa DDL base đồng bộ: bỏ `kieu_ky*`, bỏ default `vanbanden`, thêm các cột/bảng mới của Phase 7–9 (dưới đây).
+
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
-- Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không; hình thức ký thay (KT., TL., TUQ.) và thời hạn ủy quyền.
-- Phase 7: cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
-- Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL.
-- Phase 9: nhắc hạn cần cấu hình tác vụ định kỳ.
-- Phase 10: cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF); dòng nhận diện "bản duyệt nội bộ, chưa phát hành" trên tệp hoàn tất; màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
+- Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không (tới lúc đó MVP chỉ nhận `vanbandi`). Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
+- Phase 7:
+  - Cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
+  - Thêm `signing_process.don_vi_ap_dung`; kiểm quyền quy trình `PHONG_BAN` theo lãnh đạo đơn vị.
+  - Thêm `signing_process_step_signer.pham_vi_chuc_vu`; `gui` resolve chức vụ tương đối, nhận `chon_nguoi_ky` khi nhiều ứng viên.
+  - Thêm `signing_request.ho_so_goc`; API `trinh-lai` thay `xem-xet-lai`; `TU_CHOI` là trạng thái kết thúc.
+- Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL. Thu hồi chữ ký theo điều kiện "cấp còn mở".
+- Phase 9:
+  - Bảng `signing_delegation`, cột `hinh_thuc_ky`, `uy_quyen_theo`; áp ủy quyền khi mở cấp; ủy quyền khẩn cấp chỉ cấp trên trực tiếp/quản trị, người nhận thuộc danh sách hợp lệ.
+  - Nhắc hạn, nhắc lặp, leo thang 48 giờ cho cấp trên trực tiếp; báo cáo trễ hạn. Cần cấu hình tác vụ định kỳ và dữ liệu cấp trên trực tiếp (Nhóm 7).
+- Phase 10:
+  - Phẳng hóa in khối chữ ký theo `hinh_thuc_ky`, chừa ô số/ngày.
+  - `LegalSignerAdapter` theo mô hình ký số từ xa; khi có CA, ký chính cấp cuối dùng adapter thay Ed25519.
+  - Hệ thống sổ văn bản đi của Nhóm 2 cấp số, thời gian ban hành (NĐ 30/2020 Điều 15); văn thư ký số cơ quan, chuyển trạng thái phát hành.
+  - Cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF); dòng nhận diện "bản duyệt nội bộ, chưa phát hành" trên tệp hoàn tất; màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
 
 ## 4. Đối chiếu CSDL chung sau issue #47
 
