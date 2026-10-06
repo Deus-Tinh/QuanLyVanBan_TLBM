@@ -91,4 +91,4 @@ Giảng viên hướng dẫn: NCS.ThS. Trần Phương Duy.
 
 ---
 
-© 2026 Dự án QLVB&TL — Lớp CD25CT_CLC, giảng viên hướng dẫn ThS. Trần Phương Duy — Khoa Công nghệ Thông tin, Trường Cao đẳng Công nghệ Thông tin TP.HCM (ITC).
+© 2026 Dự án QLVB&TL — Lớp CD25CT_CLC, giảng viên hướng dẫn NCS.ThS. Trần Phương Duy — Khoa Công nghệ Thông tin, Trường Cao đẳng Công nghệ Thông tin TP.HCM (ITC).
