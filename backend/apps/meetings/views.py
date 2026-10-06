@@ -1,18 +1,19 @@
 """
 Views cho phân hệ Phòng họp (Issue #22 - Nhóm 7).
+Chuẩn hóa 100% theo DDL cơ sở dữ liệu release_DDL.sql (SQL_Fix4, Issue #53).
 """
 
 from datetime import datetime
-from django.db import transaction
-from django.db.models import Q, ProtectedError
+from django.db import transaction, IntegrityError
+from django.db.models import Q, ProtectedError, RestrictedError
 from django.utils import timezone
 from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from meetings.models import PhongHop, DatPhongHop
-from meetings.serializers import PhongHopSerializer, DatPhongHopSerializer
+from meetings.models import MeetingRoom, MeetingBooking
+from meetings.serializers import MeetingRoomSerializer, MeetingBookingSerializer
 
 
 class StandardPagination(PageNumberPagination):
@@ -23,11 +24,11 @@ class StandardPagination(PageNumberPagination):
 
 class MeetingRoomPermission(permissions.BasePermission):
     """
-    Quyền truy cập danh mục phòng họp theo chuẩn Django RBAC:
+    Quyền truy cập danh mục phòng họp theo chuẩn Django RBAC contract:
     - Xem (GET, HEAD, OPTIONS): User đã đăng nhập (IsAuthenticated)
-    - Thêm (POST): Cần quyền 'meetings.add_phonghop' hoặc superuser/staff
-    - Sửa (PUT, PATCH): Cần quyền 'meetings.change_phonghop' hoặc superuser/staff
-    - Xóa (DELETE): Cần quyền 'meetings.delete_phonghop' hoặc superuser/staff
+    - Thêm (POST): Cần quyền 'add_phonghop' hoặc superuser/staff
+    - Sửa (PUT, PATCH): Cần quyền 'change_phonghop' hoặc superuser/staff
+    - Xóa (DELETE): Cần quyền 'delete_phonghop' hoặc superuser/staff
     """
 
     def has_permission(self, request, view):
@@ -50,7 +51,7 @@ class MeetingRoomPermission(permissions.BasePermission):
         return False
 
 
-class PhongHopViewSet(viewsets.ModelViewSet):
+class MeetingRoomViewSet(viewsets.ModelViewSet):
     """
     API ViewSet quản lý CRUD Danh mục phòng họp:
     - GET /api/meeting-rooms/ : Xem danh sách (phân trang, tìm kiếm, lọc)
@@ -60,15 +61,15 @@ class PhongHopViewSet(viewsets.ModelViewSet):
     - DELETE /api/meeting-rooms/{id}/ : Xóa phòng họp (an toàn, bảo vệ dữ liệu liên kết)
     """
 
-    queryset = PhongHop.objects.all()
-    serializer_class = PhongHopSerializer
+    queryset = MeetingRoom.objects.all()
+    serializer_class = MeetingRoomSerializer
     pagination_class = StandardPagination
     permission_classes = [MeetingRoomPermission]
 
     def get_queryset(self):
-        queryset = PhongHop.objects.all()
+        queryset = MeetingRoom.objects.all()
 
-        # Lọc theo trạng thái is_public nếu có query param
+        # Lọc theo trạng thái is_public
         is_public_param = self.request.query_params.get("is_public")
         if is_public_param is not None and is_public_param != "":
             val = str(is_public_param).strip().lower()
@@ -77,37 +78,47 @@ class PhongHopViewSet(viewsets.ModelViewSet):
             elif val in ["false", "0"]:
                 queryset = queryset.filter(is_public=False)
 
-        # Tìm kiếm theo từ khóa (ten_phong, vi_tri, thiet_bi, ghi_chu)
+        # Lọc theo trạng thái status
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param.upper())
+
+        # Tìm kiếm theo từ khóa (name, location, amenities, ghi_chu)
         search = self.request.query_params.get("search", "").strip()
         if search:
             queryset = queryset.filter(
-                Q(ten_phong__icontains=search)
-                | Q(vi_tri__icontains=search)
-                | Q(thiet_bi__icontains=search)
+                Q(name__icontains=search)
+                | Q(location__icontains=search)
+                | Q(amenities__icontains=search)
                 | Q(ghi_chu__icontains=search)
             )
 
         # Sắp xếp
-        ordering = self.request.query_params.get("ordering", "ten_phong")
+        ordering = self.request.query_params.get("ordering", "name")
         valid_orderings = [
+            "name",
+            "-name",
+            "capacity",
+            "-capacity",
+            "created_at",
+            "-created_at",
             "ten_phong",
             "-ten_phong",
             "suc_chua",
             "-suc_chua",
-            "created_at",
-            "-created_at",
         ]
         if ordering in valid_orderings:
-            queryset = queryset.order_by(ordering)
+            mapped_ordering = ordering.replace("ten_phong", "name").replace("suc_chua", "capacity")
+            queryset = queryset.order_by(mapped_ordering)
         else:
-            queryset = queryset.order_by("ten_phong")
+            queryset = queryset.order_by("name")
 
         return queryset
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Hỗ trợ all=true để lấy toàn bộ danh sách không phân trang (dành cho dropdown/select)
+        # Hỗ trợ all=true để lấy toàn bộ danh sách không phân trang (cho dropdown)
         if request.query_params.get("all", "").lower() == "true":
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -122,16 +133,16 @@ class PhongHopViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         """
-        Xóa phòng họp an toàn. Chặn xóa dây chuyền nếu có dữ liệu liên kết.
+        Xóa phòng họp an toàn. Chặn xóa nếu có dữ liệu liên kết.
         """
         try:
             return super().destroy(request, *args, **kwargs)
-        except ProtectedError:
+        except (ProtectedError, RestrictedError):
             return Response(
                 {
                     "error": (
                         "Không thể xóa phòng họp này vì đã có dữ liệu lịch đặt liên kết. "
-                        "Vui lòng chuyển trạng thái phòng sang ẩn (is_public=False) thay vì xóa."
+                        "Vui lòng chuyển trạng thái phòng sang Không khả dụng (UNAVAILABLE) hoặc ẩn (is_public=False) thay vì xóa."
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
@@ -140,8 +151,8 @@ class PhongHopViewSet(viewsets.ModelViewSet):
 
 class IsOwnerOrAdminForBooking(permissions.BasePermission):
     """
-    Quyền truy cập đặt lịch phòng họp theo RBAC contract Issue #21:
-    - Xem danh sách / chi tiết: Bất kỳ user đã xác thực (IsAuthenticated).
+    Quyền truy cập đặt lịch phòng họp theo chuẩn RBAC Issue #21 & DDL:
+    - Xem danh sách / chi tiết: User đã đăng nhập (có view_schedule_phonghop).
     - Tạo mới (POST): Cần quyền 'add_datphonghop' hoặc superuser/staff.
     - Sửa / Hủy / Xóa:
       * Nếu là người đặt: cần quyền 'change_own_datphonghop' hoặc superuser/staff.
@@ -164,81 +175,81 @@ class IsOwnerOrAdminForBooking(permissions.BasePermission):
             return True
         if request.user.is_superuser or request.user.is_staff:
             return True
-        is_owner = obj.nguoi_dat_id == request.user.id
+        is_owner = obj.organizer_id == request.user.id
         if is_owner:
             return request.user.has_perm("change_own_datphonghop")
         return request.user.has_perm("change_any_datphonghop")
 
 
-class DatPhongHopViewSet(viewsets.ModelViewSet):
+class MeetingBookingViewSet(viewsets.ModelViewSet):
     """
     API ViewSet quản lý Đặt lịch phòng họp:
     - GET /api/meeting-bookings/ : Danh sách lịch đặt (hỗ trợ lọc theo date, room_id, status)
     - POST /api/meeting-bookings/ : Tạo lịch đặt mới (Database Lock chống race condition)
     - GET /api/meeting-bookings/{id}/ : Chi tiết lịch đặt
-    - PUT/PATCH /api/meeting-bookings/{id}/ : Cập nhật lịch đặt (Database Lock)
+    - PUT/PATCH /api/meeting-bookings/{id}/ : Cập nhật lịch đặt
     - DELETE /api/meeting-bookings/{id}/ : Xóa lịch đặt
     - POST /api/meeting-bookings/{id}/cancel/ : Hủy lịch giải phóng khung giờ
     """
 
-    queryset = DatPhongHop.objects.select_related("phong_hop", "nguoi_dat").all()
-    serializer_class = DatPhongHopSerializer
+    queryset = MeetingBooking.objects.select_related("room", "organizer", "department").all()
+    serializer_class = MeetingBookingSerializer
     permission_classes = [IsOwnerOrAdminForBooking]
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        # Tự động cập nhật các cuộc họp đã qua giờ kết thúc sang trạng thái 'hoan_thanh'
-        now = timezone.now()
-        DatPhongHop.objects.filter(
-            trang_thai=DatPhongHop.STATUS_DA_DAT,
-            thoi_gian_ket_thuc__lte=now,
-        ).update(trang_thai=DatPhongHop.STATUS_HOAN_THANH)
+        # Tự động cập nhật các cuộc họp đã qua giờ kết thúc sang trạng thái 'COMPLETED'
+        now = timezone.localtime()
+        MeetingBooking.objects.filter(
+            status=MeetingBooking.Status.CONFIRMED,
+            date__lt=now.date(),
+        ).update(status=MeetingBooking.Status.COMPLETED)
+        MeetingBooking.objects.filter(
+            status=MeetingBooking.Status.CONFIRMED,
+            date=now.date(),
+            end_time__lte=now.time(),
+        ).update(status=MeetingBooking.Status.COMPLETED)
 
-        qs = super().get_queryset().order_by("-thoi_gian_bat_dau")
+        qs = super().get_queryset().order_by("-date", "-start_time")
 
         # Lọc theo phòng họp
-        phong_id = self.request.query_params.get("room_id") or self.request.query_params.get("phong_hop")
-        if phong_id:
-            qs = qs.filter(phong_hop_id=phong_id)
+        room_id = self.request.query_params.get("room_id") or self.request.query_params.get("phong_hop") or self.request.query_params.get("room")
+        if room_id:
+            qs = qs.filter(room_id=room_id)
 
         # Lọc theo trạng thái
-        trang_thai = self.request.query_params.get("status") or self.request.query_params.get("trang_thai")
-        if trang_thai:
-            qs = qs.filter(trang_thai=trang_thai)
+        status_param = self.request.query_params.get("status") or self.request.query_params.get("trang_thai")
+        if status_param:
+            mapping = {
+                "da_dat": MeetingBooking.Status.CONFIRMED,
+                "da_huy": MeetingBooking.Status.CANCELLED,
+                "hoan_thanh": MeetingBooking.Status.COMPLETED,
+            }
+            mapped_status = mapping.get(status_param, status_param.upper())
+            qs = qs.filter(status=mapped_status)
 
         # Lọc theo ngày cụ thể (YYYY-MM-DD)
         date_str = self.request.query_params.get("date")
         if date_str:
             try:
                 target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-                tz = timezone.get_current_timezone()
-                start_of_day = timezone.make_aware(
-                    datetime.combine(target_date, datetime.min.time()), tz
-                )
-                end_of_day = timezone.make_aware(
-                    datetime.combine(target_date, datetime.max.time()), tz
-                )
-                qs = qs.filter(
-                    thoi_gian_bat_dau__lt=end_of_day,
-                    thoi_gian_ket_thuc__gt=start_of_day,
-                ).order_by("thoi_gian_bat_dau")
+                qs = qs.filter(date=target_date).order_by("start_time")
             except ValueError:
                 pass
 
         # Lọc theo khoảng ngày (start_date, end_date)
         start_date = self.request.query_params.get("start_date")
         end_date = self.request.query_params.get("end_date")
-        tz = timezone.get_current_timezone()
         if start_date:
             try:
                 sd = datetime.strptime(start_date, "%Y-%m-%d").date()
-                qs = qs.filter(thoi_gian_ket_thuc__gte=timezone.make_aware(datetime.combine(sd, datetime.min.time()), tz))
+                qs = qs.filter(date__gte=sd)
             except ValueError:
                 pass
         if end_date:
             try:
                 ed = datetime.strptime(end_date, "%Y-%m-%d").date()
-                qs = qs.filter(thoi_gian_bat_dau__lte=timezone.make_aware(datetime.combine(ed, datetime.max.time()), tz))
+                qs = qs.filter(date__lte=ed)
             except ValueError:
                 pass
 
@@ -246,45 +257,66 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        Tạo lịch đặt phòng với Database Lock (select_for_update) chống race condition.
+        Tạo lịch đặt phòng với Database Lock và chống race condition.
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        phong_hop = serializer.validated_data["phong_hop"]
-        start = serializer.validated_data["thoi_gian_bat_dau"]
-        end = serializer.validated_data["thoi_gian_ket_thuc"]
+        room = serializer.validated_data["room"]
+        booking_date = serializer.validated_data["date"]
+        start = serializer.validated_data["start_time"]
+        end = serializer.validated_data["end_time"]
 
-        with transaction.atomic():
-            # Khóa bản ghi phòng họp để các request đồng thời phải tuần tự kiểm tra
-            locked_room = PhongHop.objects.select_for_update().get(id=phong_hop.id)
+        try:
+            with transaction.atomic():
+                # Khóa bản ghi phòng họp để các request đồng thời phải tuần tự kiểm tra
+                locked_room = MeetingRoom.objects.select_for_update().get(id=room.id)
 
-            conflicts = DatPhongHop.objects.filter(
-                phong_hop=locked_room,
-                thoi_gian_bat_dau__lt=end,
-                thoi_gian_ket_thuc__gt=start,
-            ).exclude(trang_thai=DatPhongHop.STATUS_DA_HUY)
+                if locked_room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
+                    return Response(
+                        {
+                            "error": f"Phòng họp '{locked_room.name}' đang ở trạng thái {locked_room.get_status_display()}, không thể đặt lịch."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-            if conflicts.exists():
-                conflict = conflicts.first()
-                host = getattr(conflict.nguoi_dat, "ho_ten", None) or conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
-                tz = timezone.get_current_timezone()
-                c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")
-                c_end = timezone.localtime(conflict.thoi_gian_ket_thuc, tz).strftime("%H:%M ngày %d/%m/%Y")
-                return Response(
-                    {
-                        "error": f"Phòng '{locked_room.ten_phong}' vừa được đặt trùng khung giờ: '{conflict.tieu_de}' ({c_start} - {c_end}) bởi {host}. Vui lòng chọn khung giờ khác!"
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                conflicts = MeetingBooking.objects.filter(
+                    room=locked_room,
+                    date=booking_date,
+                    start_time__lt=end,
+                    end_time__gt=start,
+                ).exclude(status=MeetingBooking.Status.CANCELLED)
 
-            self.perform_create(serializer)
+                if conflicts.exists():
+                    conflict = conflicts.first()
+                    organizer = conflict.organizer
+                    host = getattr(organizer, "ho_ten", None) or organizer.get_full_name() or organizer.username
+                    c_start = conflict.start_time.strftime("%H:%M")
+                    c_end = conflict.end_time.strftime("%H:%M")
+                    c_date = conflict.date.strftime("%d/%m/%Y")
+                    return Response(
+                        {
+                            "error": f"Phòng '{locked_room.name}' vừa được đặt trùng khung giờ: '{conflict.title}' ({c_start} - {c_end} ngày {c_date}) bởi {host}. Vui lòng chọn khung giờ khác!"
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                self.perform_create(serializer)
+
+        except IntegrityError:
+            # Bắt lỗi ràng buộc chống trùng cấp CSDL (PostgreSQL GiST excl_room_time)
+            return Response(
+                {
+                    "error": "Khung giờ này vừa có người khác đặt trước. Vui lòng chọn khung giờ khác!"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        serializer.save(nguoi_dat=self.request.user)
+        serializer.save(organizer=self.request.user)
 
     def update(self, request, *args, **kwargs):
         """
@@ -295,35 +327,55 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
-        phong_hop = serializer.validated_data.get("phong_hop", instance.phong_hop)
-        start = serializer.validated_data.get("thoi_gian_bat_dau", instance.thoi_gian_bat_dau)
-        end = serializer.validated_data.get("thoi_gian_ket_thuc", instance.thoi_gian_ket_thuc)
-        new_status = serializer.validated_data.get("trang_thai", instance.trang_thai)
+        room = serializer.validated_data.get("room", instance.room)
+        booking_date = serializer.validated_data.get("date", instance.date)
+        start = serializer.validated_data.get("start_time", instance.start_time)
+        end = serializer.validated_data.get("end_time", instance.end_time)
+        new_status = serializer.validated_data.get("status", instance.status)
 
-        with transaction.atomic():
-            locked_room = PhongHop.objects.select_for_update().get(id=phong_hop.id)
+        try:
+            with transaction.atomic():
+                locked_room = MeetingRoom.objects.select_for_update().get(id=room.id)
 
-            if new_status != DatPhongHop.STATUS_DA_HUY:
-                conflicts = DatPhongHop.objects.filter(
-                    phong_hop=locked_room,
-                    thoi_gian_bat_dau__lt=end,
-                    thoi_gian_ket_thuc__gt=start,
-                ).exclude(trang_thai=DatPhongHop.STATUS_DA_HUY).exclude(pk=instance.pk)
+                if new_status != MeetingBooking.Status.CANCELLED:
+                    if locked_room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
+                        return Response(
+                            {
+                                "error": f"Phòng họp '{locked_room.name}' đang ở trạng thái {locked_room.get_status_display()}, không thể đặt lịch."
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
-                if conflicts.exists():
-                    conflict = conflicts.first()
-                    host = getattr(conflict.nguoi_dat, "ho_ten", None) or conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
-                    tz = timezone.get_current_timezone()
-                    c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")
-                    c_end = timezone.localtime(conflict.thoi_gian_ket_thuc, tz).strftime("%H:%M ngày %d/%m/%Y")
-                    return Response(
-                        {
-                            "error": f"Không thể đổi sang khung giờ này vì bị trùng với cuộc họp '{conflict.tieu_de}' ({c_start} - {c_end}) bởi {host}!"
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                    conflicts = MeetingBooking.objects.filter(
+                        room=locked_room,
+                        date=booking_date,
+                        start_time__lt=end,
+                        end_time__gt=start,
+                    ).exclude(status=MeetingBooking.Status.CANCELLED).exclude(pk=instance.pk)
 
-            self.perform_update(serializer)
+                    if conflicts.exists():
+                        conflict = conflicts.first()
+                        organizer = conflict.organizer
+                        host = getattr(organizer, "ho_ten", None) or organizer.get_full_name() or organizer.username
+                        c_start = conflict.start_time.strftime("%H:%M")
+                        c_end = conflict.end_time.strftime("%H:%M")
+                        c_date = conflict.date.strftime("%d/%m/%Y")
+                        return Response(
+                            {
+                                "error": f"Không thể đổi sang khung giờ này vì bị trùng với cuộc họp '{conflict.title}' ({c_start} - {c_end} ngày {c_date}) bởi {host}!"
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                self.perform_update(serializer)
+
+        except IntegrityError:
+            return Response(
+                {
+                    "error": "Khung giờ này bị trùng lặp với lịch họp khác trên hệ thống!"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(serializer.data)
 
@@ -333,16 +385,16 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
         Hủy lịch đặt phòng họp: giải phóng khung giờ nhưng vẫn giữ lại bản ghi lịch sử.
         """
         booking = self.get_object()
-        if booking.trang_thai == DatPhongHop.STATUS_DA_HUY:
+        if booking.status == MeetingBooking.Status.CANCELLED:
             return Response(
                 {"detail": "Lịch đặt phòng này đã được hủy trước đó."},
                 status=status.HTTP_200_OK,
             )
 
-        booking.trang_thai = DatPhongHop.STATUS_DA_HUY
+        booking.status = MeetingBooking.Status.CANCELLED
         reason = request.data.get("ly_do_huy", "").strip()
         if reason:
-            booking.ghi_chu = (booking.ghi_chu + f"\n[Lý do hủy]: {reason}").strip()
+            booking.purpose = (booking.purpose + f"\n[Lý do hủy]: {reason}").strip()
         booking.save()
 
         serializer = self.get_serializer(booking)
@@ -354,3 +406,7 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+
+# Aliases cho backward-compatibility
+PhongHopViewSet = MeetingRoomViewSet
+DatPhongHopViewSet = MeetingBookingViewSet

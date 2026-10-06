@@ -16,7 +16,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from meetings.models import PhongHop, DatPhongHop
+from meetings.models import MeetingRoom, MeetingBooking, PhongHop, DatPhongHop
 
 User = get_user_model()
 
@@ -462,4 +462,82 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.booking1.refresh_from_db()
         self.assertEqual(self.booking1.trang_thai, DatPhongHop.STATUS_DA_HUY)
+
+    def test_create_booking_with_ddl_english_payload(self):
+        """Tạo lịch đặt phòng bằng payload tiếng Anh theo đúng DDL SQL_Fix4."""
+        self.client.force_authenticate(user=self.user1)
+        target_date = (self.base_time + timedelta(days=2)).date()
+        payload = {
+            "room_id": self.room1.id,
+            "title": "Họp Chiến Lược Quý 4",
+            "date": target_date.isoformat(),
+            "start_time": "14:00:00",
+            "end_time": "15:30:00",
+            "attendees_count": 6,
+            "purpose": "Đánh giá KPI và kế hoạch ngân sách",
+            "status": "CONFIRMED",
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["title"], "Họp Chiến Lược Quý 4")
+        self.assertEqual(res.data["status"], "CONFIRMED")
+        self.assertEqual(res.data["attendees_count"], 6)
+
+    def test_cannot_book_maintenance_room(self):
+        """Không cho phép đặt phòng họp đang ở trạng thái MAINTENANCE."""
+        m_room = PhongHop.objects.create(
+            name="Phòng Bảo Trì 101",
+            location="Tầng 1",
+            capacity=20,
+            status=MeetingRoom.Status.MAINTENANCE,
+        )
+        self.client.force_authenticate(user=self.user1)
+        payload = {
+            "room_id": m_room.id,
+            "title": "Họp Thử Phòng Bảo Trì",
+            "date": (self.base_time + timedelta(days=3)).date().isoformat(),
+            "start_time": "09:00:00",
+            "end_time": "10:00:00",
+            "attendees_count": 5,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_book_unavailable_room(self):
+        """Không cho phép đặt phòng họp đang ở trạng thái UNAVAILABLE."""
+        u_room = PhongHop.objects.create(
+            name="Phòng Khóa Tạm Thời",
+            location="Tầng 2",
+            capacity=10,
+            status=MeetingRoom.Status.UNAVAILABLE,
+        )
+        self.client.force_authenticate(user=self.user1)
+        payload = {
+            "phong_hop": u_room.id,
+            "tieu_de": "Họp Thử Phòng Khóa",
+            "thoi_gian_bat_dau": (self.base_time + timedelta(days=3, hours=9)).isoformat(),
+            "thoi_gian_ket_thuc": (self.base_time + timedelta(days=3, hours=10)).isoformat(),
+            "so_nguoi_tham_gia": 4,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_user_with_change_any_datphonghop_can_cancel_other_booking(self):
+        """User có quyền change_any_datphonghop có thể hủy lịch của người khác."""
+        perm_user = User.objects.create_user(
+            username="dispatcher_user",
+            email="dispatcher@tlbm.vn",
+            password="DispatcherPass123!",
+        )
+        perm = Permission.objects.get(codename="change_any_datphonghop")
+        perm_user.user_permissions.add(perm)
+
+        self.client.force_authenticate(user=perm_user)
+        res = self.client.post(
+            f"/api/meeting-bookings/{self.booking1.id}/cancel/",
+            {"ly_do_huy": "Điều phối bởi bộ phận hành chính"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.booking1.refresh_from_db()
+        self.assertEqual(self.booking1.status, MeetingBooking.Status.CANCELLED)
 

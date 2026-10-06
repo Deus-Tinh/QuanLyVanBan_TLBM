@@ -128,23 +128,28 @@ def overview_view(request):
 
     # ── 4. Lịch phòng họp hôm nay ──────────────────────────────────────────
     try:
-        from meetings.models import DatPhongHop
-        real_bookings = DatPhongHop.objects.filter(
-            thoi_gian_bat_dau__date=today,
-        ).exclude(trang_thai=DatPhongHop.STATUS_DA_HUY).select_related("phong_hop", "nguoi_dat")
+        from meetings.models import MeetingBooking
+        real_bookings = MeetingBooking.objects.filter(
+            date=today,
+        ).exclude(status=MeetingBooking.Status.CANCELLED).select_related("room", "organizer", "department")
         if real_bookings.exists():
             today_meetings = [
                 {
                     "id": f"booking-{b.id}",
-                    "room_name": b.phong_hop.ten_phong,
-                    "roomName": b.phong_hop.ten_phong,
-                    "meeting_title": b.tieu_de,
-                    "topic": b.tieu_de,
-                    "start_time": timezone.localtime(b.thoi_gian_bat_dau).strftime("%H:%M"),
-                    "end_time": timezone.localtime(b.thoi_gian_ket_thuc).strftime("%H:%M"),
-                    "time": f"{timezone.localtime(b.thoi_gian_bat_dau).strftime('%H:%M')} - {timezone.localtime(b.thoi_gian_ket_thuc).strftime('%H:%M')}",
-                    "organizer": b.don_vi_to_chuc or (b.nguoi_dat.profile.full_name if hasattr(b.nguoi_dat, 'profile') else b.nguoi_dat.username),
-                    "status": "ready" if b.trang_thai == DatPhongHop.STATUS_DA_DAT else b.trang_thai,
+                    "room_name": b.room.name if b.room else "",
+                    "roomName": b.room.name if b.room else "",
+                    "meeting_title": b.title,
+                    "topic": b.title,
+                    "start_time": b.start_time.strftime("%H:%M") if b.start_time else "",
+                    "end_time": b.end_time.strftime("%H:%M") if b.end_time else "",
+                    "time": f"{b.start_time.strftime('%H:%M')} - {b.end_time.strftime('%H:%M')}" if b.start_time and b.end_time else "",
+                    "organizer": (
+                        b.department.name if b.department else (
+                            getattr(b.organizer, 'ho_ten', None)
+                            or (b.organizer.get_full_name() if hasattr(b.organizer, 'get_full_name') and b.organizer.get_full_name() else getattr(b.organizer, 'username', ''))
+                        )
+                    ) if (b.organizer or b.department) else "",
+                    "status": "ready" if b.status == MeetingBooking.Status.CONFIRMED else b.status.lower(),
                 }
                 for b in real_bookings
             ]

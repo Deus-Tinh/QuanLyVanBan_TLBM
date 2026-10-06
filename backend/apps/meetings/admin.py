@@ -3,36 +3,37 @@ Django Admin cho app meetings (Issue #22 - Nhóm 7).
 """
 
 from django.contrib import admin
-from meetings.models import PhongHop, DatPhongHop
+from meetings.models import MeetingRoom, MeetingBooking
 
 
-@admin.register(PhongHop)
-class PhongHopAdmin(admin.ModelAdmin):
-    list_display = ("ten_phong", "vi_tri", "suc_chua", "is_public", "created_at", "updated_at")
-    list_filter = ("is_public", "created_at")
-    search_fields = ("ten_phong", "vi_tri", "thiet_bi", "ghi_chu")
-    ordering = ("ten_phong",)
+@admin.register(MeetingRoom)
+class MeetingRoomAdmin(admin.ModelAdmin):
+    list_display = ("name", "location", "capacity", "status", "is_public", "created_at", "updated_at")
+    list_filter = ("status", "is_public", "created_at")
+    search_fields = ("name", "location", "amenities", "ghi_chu")
+    ordering = ("name",)
 
 
-@admin.register(DatPhongHop)
-class DatPhongHopAdmin(admin.ModelAdmin):
+@admin.register(MeetingBooking)
+class MeetingBookingAdmin(admin.ModelAdmin):
     list_display = (
-        "tieu_de",
-        "phong_hop",
-        "nguoi_dat",
-        "don_vi_to_chuc",
-        "thoi_gian_bat_dau",
-        "thoi_gian_ket_thuc",
-        "so_nguoi_tham_gia",
-        "trang_thai",
+        "title",
+        "room",
+        "organizer",
+        "department",
+        "date",
+        "start_time",
+        "end_time",
+        "attendees_count",
+        "status",
         "created_at",
     )
-    list_filter = ("trang_thai", "phong_hop", "thoi_gian_bat_dau")
+    list_filter = ("status", "room", "date")
     search_fields = (
-        "tieu_de",
-        "don_vi_to_chuc",
-        "nguoi_dat__username",
-        "nguoi_dat__first_name",
-        "nguoi_dat__last_name",
+        "title",
+        "purpose",
+        "organizer__username",
+        "organizer__ho_ten",
+        "department__ten",
     )
-    ordering = ("-thoi_gian_bat_dau",)
+    ordering = ("-date", "-start_time")
