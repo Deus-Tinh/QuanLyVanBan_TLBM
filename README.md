@@ -1,203 +1,360 @@
-# HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ TÀI LIỆU (QLVB&TL)
-> **Đồ Án Cuối Kỳ Môn Học Django — Trường Cao Đẳng Công Nghệ Thông Tin TP.HCM (ITC)**  
-> **Tên thương hiệu hệ thống**: TLBM SYSTEM  
-> **Kho lưu trữ chính**: [QuanLyVanBan_TLBM](https://github.com/QuanLyVanBanTLBM/QuanLyVanBan_TLBM)
+# TLBM — Hệ thống Quản lý Văn bản và Tài liệu (QLVB&TL)
+
+Hệ thống nội bộ số hóa luồng văn bản đến/đi, hồ sơ lưu trữ, tài liệu biểu mẫu, trình ký, giao việc và tiện ích văn phòng cho doanh nghiệp. Đồ án môn Django, Trường Cao đẳng Công nghệ Thông tin TP.HCM (ITC).
+
+| Hạng mục | Giá trị |
+|---|---|
+| Nhánh tích hợp | `staging` |
+| Trạng thái | Đang tích hợp nền chung (xem [Trạng thái bàn giao](#2-trạng-thái-bàn-giao)) |
+| Backend | Django 6.1, Django REST Framework, SimpleJWT — Python 3.12 |
+| Frontend | React 19, TypeScript 6, Vite 8 — Node.js 22.22+ / 24.15+, pnpm 10 |
+| Cơ sở dữ liệu | PostgreSQL 16 (môi trường dùng chung), SQLite (phát triển cục bộ) |
+| Theo dõi tiến độ | Issue tổng [#68](../../issues/68), milestone `Base staging`, `MVP` |
 
 ---
 
-## 📖 1. Giới thiệu tổng quan
+## Mục lục
 
-Hệ thống **Quản Lý Văn Bản và Tài Liệu (QLVB&TL)** là giải pháp phần mềm nội bộ số hóa toàn bộ quy trình hành chính, xử lý công văn, tờ trình, biểu mẫu và luồng văn bản (đến, đi, mật) trong tổ chức/doanh nghiệp.
-
-Hệ thống được phát triển theo mô hình **Full-Stack tách biệt**:
-- **Backend**: Django 6.1 (Python 3.12+) cung cấp RESTful APIs, CORS Middleware và xác thực người dùng.
-- **Frontend**: React 19 + TypeScript 6 + Vite 8, định tuyến URL bằng `react-router-dom` qua thẻ `<Outlet />`, quản lý gói thống nhất bằng **`pnpm`**, với 2 giao diện chuẩn mực (**Sleek Dark** & **Clean Light**) chuyển đổi tức thì 1-click.
-
----
-
-## 👥 2. Cơ cấu tổ chức & Phân công nhiệm vụ
-
-### Ban quản trị dự án (Core Team)
-- **Project Manager (PM)**: Châu Tuấn Kiệt *(Trưởng Nhóm 1)*
-- **Business Analyst (BA)**: Giảng viên phụ trách môn học (NCS.ThS. Trần Phương Duy)
-- **Data Architect (DA)**: Tô Thanh Tân *(Trưởng Nhóm 7)*
-- **DevOps Lead**: Lê Thanh Hậu *(Trưởng Nhóm 5)*
-
-### Chi tiết phân công 8 Nhóm nghiệp vụ
-
-| Nhóm | Trưởng nhóm & Thành viên | Module phụ trách | Phạm vi nghiệp vụ |
-| :---: | :--- | :--- | :--- |
-| **Nhóm 1** | **Châu Tuấn Kiệt (TN)**<br>Nguyễn Văn Hiếu<br>Nguyễn Duy Quân | **Layout, Dashboard & App Shell** | - Kiến trúc App Shell dùng chung cho 8 nhóm qua `<Outlet />`<br>- Header tinh gọn, Sidebar đa cấp (Facebook Accordion & Mini Dock), Footer hành chính<br>- Trang chủ Dashboard (KPI stats, sinh nhật, phòng họp, tìm kiếm tương tác)<br>- 2 Theme chuẩn mực (Clean Light & Sleek Dark), Auth UI & Trợ lý AI |
-| **Nhóm 2** | **Lê Trí Kiệt (TN)**<br>Nguyễn Anh Đô<br>Nguyễn Tấn Lộc Khiêm<br>Trần Nhật Tân | **Văn Bản** | - Quản lý Văn bản Đến, Văn bản Đi, Văn bản Mật<br>- Bộ lọc, tìm kiếm, Import/Export Excel, phân quyền người xem |
-| **Nhóm 3** | **Đặng Trường Thịnh (TN)**<br>Phan Thị Ánh Tuyền<br>Nguyễn Thị Yến Nhi | **Hồ Sơ** | - Danh mục hồ sơ cấp 1, cấp 2 (loại văn bản)<br>- Liên kết văn bản theo hồ sơ lưu trữ |
-| **Nhóm 4** | **Thượng Mạnh Quỳnh (TN)**<br>Huỳnh Thị Kim Trang<br>Nguyễn Chí Tín<br>Đỗ Trung Phong | **Tài Liệu & Biểu Mẫu** | - Danh mục tài liệu, biểu mẫu chung và nội bộ phòng ban<br>- Quản lý file đính kèm, hiệu lực văn bản |
-| **Nhóm 5** | **Lê Thanh Hậu (TN)**<br>Lê Thành Tài | **Trình Ký & DevOps** | - Quy trình trình ký văn bản nội bộ, sơ đồ ký điện tử<br>- Quản trị CI/CD, GitLab Staging & Production |
-| **Nhóm 6** | **Phan Tạ Hữu Đức (TN)**<br>Nguyễn Duy Bảo<br>Đỗ Ngọc Phát<br>Lâm Chí Vĩ | **Công Việc** | - Giao việc, theo dõi tiến độ, phân công CBNV<br>- Trạng thái xử lý công việc và báo cáo hoàn thành |
-| **Nhóm 7** | **Tô Thanh Tân (TN)**<br>Lê Duy Khánh<br>Đỗ Mạnh Quang<br>Nguyễn Phan Minh Hiếu<br>Trần Đình Tình | **Hệ Thống & Tiện Ích** | - Quản lý đơn vị, phòng ban, chức vụ, danh bạ CBNV<br>- Đặt phòng họp nội bộ và thông báo sinh nhật tự động |
-| **Nhóm 8** | **Trần Vũ Giang Anh (TN)**<br>Huỳnh Vương Thanh Nhã | **Trợ Lý AI (Chatbox)** | - Box chat tra cứu nhanh quy trình, hỏi đáp văn bản đến/đi |
+1. [Tổng quan](#1-tổng-quan)
+2. [Trạng thái bàn giao](#2-trạng-thái-bàn-giao)
+3. [Phạm vi chức năng](#3-phạm-vi-chức-năng)
+4. [Kiến trúc](#4-kiến-trúc)
+5. [Cấu trúc mã nguồn](#5-cấu-trúc-mã-nguồn)
+6. [Cài đặt và chạy cục bộ](#6-cài-đặt-và-chạy-cục-bộ)
+7. [Cơ sở dữ liệu](#7-cơ-sở-dữ-liệu)
+8. [Kiểm thử và CI](#8-kiểm-thử-và-ci)
+9. [Triển khai](#9-triển-khai)
+10. [Bảo mật và dữ liệu](#10-bảo-mật-và-dữ-liệu)
+11. [Quy trình phát triển](#11-quy-trình-phát-triển)
+12. [Hạn chế đã biết](#12-hạn-chế-đã-biết)
+13. [Tổ chức dự án](#13-tổ-chức-dự-án)
+14. [Tài liệu liên quan](#14-tài-liệu-liên-quan)
 
 ---
 
-## 📁 3. Cấu trúc thư mục chuẩn & Quy chuẩn tài liệu
+## 1. Tổng quan
 
-Thư mục tài liệu `docs/` được tổ chức thành các phân vùng chuẩn mực:
-- `docs/common/`: Tài liệu kiến trúc tổng thể, quy trình Git và quy chuẩn lập trình dùng chung cho toàn bộ dự án.
-- `docs/modules/`: Phân chia thư mục đặc tả chi tiết cho 8 nhóm chuyên trách độc lập (ví dụ `docs/modules/01_layout_dashboard/` của Nhóm 1).
+TLBM quản lý vòng đời văn bản và tài liệu trong tổ chức:
+
+- **Văn bản đến/đi**: tiếp nhận, vào sổ, cấp số, phân phối, tra cứu; phạm vi xem `Nội bộ` hoặc `Hạn chế`; độ khẩn.
+- **Hồ sơ và tài liệu**: hồ sơ lưu trữ, loại văn bản, tài liệu và biểu mẫu dùng chung.
+- **Trình ký**: quy trình ký nhiều cấp, chữ ký điện tử nội bộ có kiểm tra toàn vẹn, khâu phát hành.
+- **Công việc**: giao việc, theo dõi tiến độ, duyệt kết quả.
+- **Quản trị và tiện ích**: cơ cấu tổ chức, chức vụ, cán bộ nhân viên, phân quyền, phòng họp, sinh nhật.
+- **Trợ lý AI**: hỏi đáp trên văn bản người dùng có quyền xem.
+
+Hệ thống tách backend (REST API) và frontend (SPA), giao tiếp qua JSON và JWT.
+
+---
+
+## 2. Trạng thái bàn giao
+
+Cập nhật: 07/10/2026. Nguồn chi tiết: issue [#68](../../issues/68).
+
+| Thành phần | Trên `staging` | Ghi chú |
+|---|---|---|
+| App Shell, đăng nhập JWT, dashboard (Nhóm 1) | Có | Dashboard đang dùng model tạm, chuyển sang dữ liệu thật theo [#83](../../issues/83) |
+| Trợ lý AI (Nhóm 8) | Có | Chuyển sang đọc view `ai_*` theo [#83](../../issues/83) |
+| Sinh nhật (Nhóm 7) | Có | |
+| CI: lint, test, build, i18n, design token, migration PostgreSQL | Có | Check `frontend` đang đỏ do design token (mục 12) |
+| `Employee`, RBAC, đơn vị, chức vụ (Nhóm 7) | Chưa | PR [#72](../../pull/72), điều kiện tiên quyết cho các nhóm còn lại |
+| DDL chuẩn (`docs/common/database/release_DDL.sql`) | Chưa | Đang ở nhánh `ddl_base_v0` |
+| Văn bản, hồ sơ, tài liệu, trình ký, công việc (Nhóm 2–6) | Chưa | Phát triển trên nhánh nhóm, tích hợp theo thứ tự trong [#68](../../issues/68) |
+
+Thứ tự tích hợp: `Employee`/RBAC → DDL → các phân hệ nghiệp vụ. Triển khai lên máy chủ Linux chỉ thực hiện sau khi toàn bộ mục trong milestone `Base staging` hoàn thành.
+
+---
+
+## 3. Phạm vi chức năng
+
+| Nhóm | Phân hệ | Nhánh | App backend | Chức năng chính |
+|:---:|---|---|---|---|
+| 1 | Layout, Dashboard | `1_layout_home` | `dashboard`, `accounts` | App Shell dùng chung qua `<Outlet />`, header, sidebar đa cấp, 2 giao diện sáng/tối, đăng nhập, dashboard |
+| 2 | Văn bản | `2_documents` | `documents` | Văn bản đến/đi, phạm vi xem, độ khẩn, nhật ký xem, nhập/xuất Excel |
+| 3 | Hồ sơ | `3_dossiers_documents` | `records` | Hồ sơ lưu trữ, loại văn bản, liên kết văn bản – hồ sơ |
+| 4 | Tài liệu, biểu mẫu | `4_documents_templates` | `document_templates` | Danh mục và chi tiết tài liệu, biểu mẫu, tệp đính kèm, hiệu lực |
+| 5 | Trình ký | `5_signing_workflow` | `signing` | Quy trình ký nhiều cấp, khóa ký Ed25519 bảo vệ bằng PIN, nhật ký chỉ ghi thêm, phát hành |
+| 6 | Công việc | `6_tasks` | `work` | Giao việc, người chủ trì/phối hợp, duyệt, báo cáo |
+| 7 | Quản trị, tiện ích | `7_meeting_rooms_birthdays_system` | `accounts`, `authorization`, `organizations`, `birthdays` | Cán bộ nhân viên, đơn vị, chức vụ, nhóm quyền, phòng họp, sinh nhật |
+| 8 | Trợ lý AI | `8_ai_chatbox` | `backend/services`, `backend/api` | Hỏi đáp trên văn bản có quyền xem, truy vấn chỉ đọc |
+
+Đặc tả chi tiết từng phân hệ: `docs/modules/<số>_<tên>/`.
+
+---
+
+## 4. Kiến trúc
 
 ```text
-DoAnCuoiKy/
-├── backend/                  # Mã nguồn Backend Django (Python)
-│   ├── config/               # Thiết lập hệ thống (settings.py với CORS, urls, wsgi)
-│   ├── apps/                 # Các module nghiệp vụ Django (birthdays, documents, accounts...)
-│   ├── requirements.txt      # Thư viện phụ thuộc Backend (Django, django-cors-headers, DRF, SimpleJWT)
-│   ├── db.sqlite3            # Cơ sở dữ liệu nội bộ SQLite
-│   └── manage.py             # Script quản trị Django
-├── frontend/                 # Mã nguồn Frontend React 19 + TypeScript 6 + Vite 8
+┌───────────────────────────┐     HTTPS / JSON + JWT     ┌──────────────────────────────┐
+│ Frontend (React SPA)      │ ─────────────────────────► │ Backend (Django + DRF)       │
+│ Vite build → file tĩnh    │ ◄───────────────────────── │ /api/auth, /api/<phân hệ>/   │
+└───────────────────────────┘                            └──────────────┬───────────────┘
+                                                                        │ ORM / SQL
+                                                         ┌──────────────▼───────────────┐
+                                                         │ PostgreSQL 16                │
+                                                         │ Schema: release_DDL.sql      │
+                                                         │ Role chỉ đọc qlvb_readonly   │
+                                                         │ (trợ lý AI, chỉ qua view ai_*)│
+                                                         └──────────────────────────────┘
+```
+
+| Lớp | Công nghệ | Ghi chú |
+|---|---|---|
+| Giao diện | React 19, TypeScript 6, Vite 8, `react-router-dom` | Định tuyến URL thật, mọi trang dùng chung `MainLayout` |
+| Định dạng giao diện | CSS Variables (`frontend/src/styles/global.css`) | Không dùng mã màu hex hoặc cỡ chữ pixel trực tiếp |
+| Đa ngôn ngữ | `vi`, `en` | Mọi chuỗi giao diện qua `t('namespace.key')` |
+| API | Django REST Framework | Tiền tố `/api/` |
+| Xác thực | SimpleJWT (access + refresh) | `apiClient` tự gắn Bearer token, tự làm mới khi nhận 401 |
+| Phân quyền | RBAC theo codename (`user.has_perm("<codename>")`) | Quyền và nhóm quyền seed từ DDL |
+| Người dùng | `accounts.Employee` làm `AUTH_USER_MODEL` | Có hiệu lực trên `staging` sau PR #72 |
+
+---
+
+## 5. Cấu trúc mã nguồn
+
+```text
+.
+├── backend/
+│   ├── config/             # settings.py, settings_ci.py, urls.py, wsgi.py, asgi.py
+│   ├── apps/               # App nghiệp vụ Django (accounts, dashboard, birthdays, ...)
+│   ├── api/                # API trợ lý AI
+│   ├── services/           # Dịch vụ trợ lý AI (RAG, nguồn dữ liệu SQL chỉ đọc)
+│   ├── tests/              # Test tích hợp dùng chung
+│   ├── requirements.txt
+│   └── manage.py
+├── frontend/
 │   ├── src/
-│   │   ├── pages/            # Toàn bộ trang hoàn chỉnh chia theo luồng (auth, dashboard, profile, settings, ai...)
-│   │   ├── components/       # Toàn bộ component chia theo luồng (auth, dashboard, layout, common, ai...)
-│   │   ├── layouts/          # Base Layout tổng thể (MainLayout.tsx)
-│   │   ├── lib/              # Hằng số (constants.ts), API Client (apiClient.ts), authService.ts, routes.ts
-│   │   ├── hooks/            # Custom hooks tự động hóa
-│   │   ├── styles/           # CSS tokens & giao diện chuẩn (global.css, animations.css...)
-│   │   ├── i18n/             # Đa ngôn ngữ (translate.ts, vi.json, en.json)
-│   │   ├── types/            # Định nghĩa kiểu dữ liệu TypeScript (auth, navigation, theme...)
-│   │   └── app/              # Cấu hình gốc Router (router.tsx, App.tsx, main.tsx)
-│   ├── package.json
-│   ├── pnpm-lock.yaml        # Khóa gói pnpm duy nhất của dự án
-│   ├── tsconfig.app.json     # Cấu hình Path Aliases (@pages, @components, @layouts...)
-│   └── vite.config.ts
-├── docs/                     # Hệ thống tài liệu dự án
-│   ├── common/               # Tài liệu dùng chung 8 nhóm
-│   └── modules/              # 8 thư mục đặc tả của 8 nhóm (01_layout_dashboard,...)
-├── CHAY_FULL_STACK.bat       # Script khởi chạy 1-click cho Windows
-└── README.md
+│   │   ├── app/            # Router, App, main
+│   │   ├── layouts/        # MainLayout
+│   │   ├── pages/          # Trang theo phân hệ
+│   │   ├── components/     # Component theo phân hệ
+│   │   ├── lib/            # apiClient, authService, routes, constants
+│   │   ├── i18n/           # en.json, translate.ts, vi.json
+│   │   ├── styles/         # global.css (design token)
+│   │   └── types/
+│   ├── scripts/            # check-i18n.mjs, check-css-tokens.mjs
+│   └── package.json
+├── data/                   # Dữ liệu tham chiếu của trợ lý AI
+├── docs/
+│   ├── common/             # Kiến trúc, quy chuẩn, CSDL, quy trình dùng chung
+│   └── modules/            # Đặc tả theo phân hệ
+├── .github/                # Workflow CI, mẫu issue/PR
+└── .env.example
 ```
 
 ---
 
-## 🚀 4. Hướng dẫn cài đặt & Khởi chạy Local
+## 6. Cài đặt và chạy cục bộ
 
-### Yêu cầu môi trường tiên quyết
-- **Node.js**: Phiên bản 22.22.2 trở lên (hoặc 24.15.0 trở lên). Node 18/20 không chạy được `pnpm test` (`vitest 5`, `jsdom 30`)
-- **pnpm**: Trình quản lý gói chuẩn (`npm install -g pnpm`), dùng bản 10.x
-- **Python**: Phiên bản 3.12 trở lên (Django 6.1 không hỗ trợ Python thấp hơn)
+### Yêu cầu
 
----
+| Công cụ | Phiên bản |
+|---|---|
+| Python | 3.12 trở lên |
+| Node.js | 22.22.2+ hoặc 24.15.0+ (Node 18/20 không chạy được `pnpm test`) |
+| pnpm | 10.x (không dùng npm/yarn để giữ nguyên `pnpm-lock.yaml`) |
+| PostgreSQL | 16 (chỉ cần khi chạy với DDL chuẩn hoặc test tích hợp) |
 
-### Cách 1: Khởi chạy 1-Click (Tự động hóa trên Windows)
-Dự án đã tích hợp sẵn script tự động kiểm tra virtualenv, bật song song 2 server và tự mở trình duyệt:
-```cmd
-CHAY_FULL_STACK.bat
-```
-Script sẽ tự động:
-1. Mở cửa sổ Django Backend tại `http://127.0.0.1:8000/`
-2. Mở cửa sổ React Frontend Vite tại `http://localhost:5173/`
-3. Tự động điều hướng trình duyệt vào Bàn làm việc: `http://localhost:5173/dashboard`
+### Backend
 
----
-
-### Cách 2: Khởi chạy thủ công từng phần (Dành cho Developer / Mac / Linux)
-
-#### 1. Khởi chạy Backend (Django)
-Mở một cửa sổ Terminal tại thư mục gốc của dự án:
 ```bash
-# 1. Di chuyển vào thư mục backend
 cd backend
-
-# 2. Tạo và kích hoạt môi trường ảo Python (Virtual Environment)
-# Trên Windows:
-python -m venv .venv
-.venv\Scripts\activate
-
-# Trên macOS / Linux:
 python3 -m venv .venv
-source .venv/bin/activate
-
-# 3. Cài đặt các thư viện phụ thuộc
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-# 4. Áp dụng cơ sở dữ liệu (Migrations)
 python manage.py migrate
-
-# 5. Khởi động máy chủ phát triển Django
+python manage.py createsuperuser
 python manage.py runserver 127.0.0.1:8000
 ```
-- **Backend API URL**: `http://127.0.0.1:8000/api/`
-- **Django Admin URL**: `http://127.0.0.1:8000/admin/`
 
-#### 2. Khởi chạy Frontend (React + TypeScript + Vite)
-Mở một cửa sổ Terminal **mới** song song:
+- API: `http://127.0.0.1:8000/api/`
+- Django Admin: `http://127.0.0.1:8000/admin/`
+
+Mặc định chạy SQLite để phát triển nhanh. Chạy trên PostgreSQL theo [mục 7](#7-cơ-sở-dữ-liệu).
+
+### Frontend
+
 ```bash
-# 1. Di chuyển vào thư mục frontend
 cd frontend
-
-# 2. Cài đặt toàn bộ dependencies (bắt buộc dùng pnpm)
 pnpm install
-
-# 3. Khởi chạy máy chủ phát triển Vite
 pnpm dev
 ```
-- **Frontend App URL**: `http://localhost:5173/`
-- **Tài khoản đăng nhập kiểm thử (Chỉ dùng cho môi trường Localhost để dev/test, tuyệt đối không dùng trên Staging/Production)**:
-  + **Quản trị viên**: `admin` / `Admin@123`
-  + **Cán bộ chuyên viên**: `canbo` / `Canbo@123`
-  *(Lưu ý quan trọng: Thông tin tài khoản mẫu này được sinh tự động bởi script seed data của Backend phục vụ kiểm thử nội bộ trên Localhost; tài liệu tiêu chuẩn Staging không lưu trữ mật khẩu kiểm thử).*
 
-#### 3. Các lệnh kiểm tra chất lượng mã nguồn (Quality Assurance)
-Tại thư mục `frontend/`:
+- Ứng dụng: `http://localhost:5173/`
+- Địa chỉ API cấu hình qua `VITE_API_BASE_URL` (xem `.env.example`).
+
+Tài khoản đăng nhập cục bộ tạo bằng `createsuperuser`. Repo không chứa tài khoản hoặc mật khẩu mặc định.
+
+---
+
+## 7. Cơ sở dữ liệu
+
+**Nguồn sự thật của schema:** `docs/common/database/release_DDL.sql` trên nhánh `ddl_base_v0` (54 bảng, 21 ENUM, 77 quyền, 5 nhóm quyền). Migration Django phải tạo ra đúng bảng, cột, kiểu và ràng buộc như DDL.
+
+Quy tắc thay đổi schema:
+
+1. Mở PR vào `ddl_base_v0`, chỉ sửa `docs/common/database/`; workflow `DDL Check` phải pass.
+2. Sau khi PR DDL đã merge, phân hệ mới mở PR chứa migration tương ứng.
+
+Dựng cơ sở dữ liệu cho môi trường dùng chung:
+
 ```bash
-# Chạy toàn bộ Unit Tests (Yêu cầu toàn bộ test suite phải pass 100%)
-pnpm test
+# 1. Tạo role chỉ đọc cho trợ lý AI TRƯỚC khi nạp DDL (khối cấp quyền chỉ chạy khi role đã tồn tại)
+psql -d postgres -c "CREATE ROLE qlvb_readonly LOGIN PASSWORD '<mật khẩu từ biến môi trường>'"
 
-# Kiểm tra cú pháp và quy chuẩn mã nguồn (ESLint)
-pnpm lint
+# 2. Tạo database và nạp DDL
+createdb tlbm
+psql -d tlbm -v ON_ERROR_STOP=1 -f docs/common/database/release_DDL.sql
 
-# Kiểm tra biên dịch TypeScript & đóng gói production
-pnpm build
+# 3. Đánh dấu migration nền đã áp dụng (bảng đã có từ DDL)
+cd backend
+python manage.py migrate contenttypes
+python manage.py migrate auth --fake
+python manage.py migrate accounts --fake
+python manage.py migrate organizations --fake
+python manage.py migrate authorization
+python manage.py migrate --fake-initial
 ```
 
----
-
-## 🎨 5. Điểm nhấn kiến trúc nền tảng (Nhóm 1 — App Shell)
-
-1. **Khung Layout dùng chung qua `<Outlet />`**:
-   - Toàn bộ các trang (`/dashboard`, `/ai-assistant`, `/documents/incoming`, `/settings`...) đều thừa hưởng cố định **Header, Sidebar và Footer**.
-   - Điều hướng chuẩn URL qua `react-router-dom`: Tải lại F5 giữ nguyên trang, hỗ trợ Back/Forward và chia sẻ Deep Link.
-
-2. **Thanh điều hướng truyền thống đa cấp**:
-   - Giao diện Facebook Accordion và Mini Dock linh hoạt, tự động mở rộng theo URL đang hiển thị.
-   - Nhãn trạng thái rõ ràng cho từng phân hệ đang được phát triển bởi các nhóm 2 – 8.
-
-3. **Hệ thống 2 Giao diện chuẩn mực (Clean Light & Sleek Dark)**:
-   - Chuyển đổi nhanh 1-chạm qua biểu tượng Mặt trời / Mặt trăng trên Header.
-   - Nền tảng CSS Variables chuẩn design system tại `frontend/src/styles/global.css`.
-
-4. **Hệ thống xác thực thực tế (Django Authentication + SimpleJWT)**:
-   - Đăng nhập bảo mật qua REST API (`/api/auth/login/`), cấp phát cặp token Access Token & Refresh Token.
-   - Cơ chế `apiClient` tự động gắn Bearer Token và tự động refresh token khi gặp HTTP 401; quản lý phiên đăng nhập an toàn và hỗ trợ phân quyền vai trò (Admin / Cán bộ chuyên viên).
+Trigger bảo toàn dữ liệu (chữ ký, nhật ký chỉ ghi thêm), view `ai_*` và quyền của role chỉ đọc chỉ có trong DDL, Django migration không tạo ra. Vì vậy môi trường dùng chung luôn dựng từ DDL, không dựng bằng `migrate` thuần.
 
 ---
 
-## 📝 6. Quy chuẩn đóng góp mã nguồn (Git Flow & Baseline Staging)
+## 8. Kiểm thử và CI
 
-> [!IMPORTANT]
-> **Trạng thái nhánh `1_layout_home`:** Hiện tại là **Baseline Candidate (Bản chuẩn tạm thời / ứng viên)**. Chỉ sau khi được Reviewer / DevOps kiểm duyệt và hợp nhất chính thức vào `staging`, commit trên `staging` mới trở thành **Baseline chính thức** cho toàn bộ 8 nhóm.  
-> Việc đồng bộ tài liệu là điều kiện tiên quyết nhưng chưa đồng nghĩa Staging đã sẵn sàng; CI, cấu hình môi trường và smoke test là các bước kiểm thử độc lập tiếp theo.
+Chạy cục bộ trước khi mở PR:
 
-1. **Quy trình tạo branch từ staging**:
-   - Các nhóm 2, 3, 4, 5, 6, 7, 8 khi bắt đầu phát triển tính năng không dùng quy trình Fork, mà **tạo branch trực tiếp từ `staging`** mới nhất:
-     ```bash
-     git checkout staging
-     git pull origin staging
-     git checkout -b feat/<ten-tinh-nang>
-     ```
-2. **Không commit trực tiếp vào `staging` hay `main`**:
-   - Mọi thay đổi đều phải thông qua Pull Request (PR) trỏ vào `staging`.
-   - PR phải vượt qua 100% Tiêu chuẩn Quality Gate (5 bài test Backend & Frontend) và được Reviewer phê duyệt.
-3. **Quản lý gói đồng nhất**:
-   - Sử dụng duy nhất **`pnpm`** cho frontend để bảo đảm tính toàn vẹn của `pnpm-lock.yaml` (nghiêm cấm dùng npm/yarn).
+```bash
+# Backend
+cd backend
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test
+
+# Frontend
+cd frontend
+pnpm lint
+pnpm test
+pnpm build
+pnpm check:i18n
+pnpm check:tokens
+```
+
+Workflow trên GitHub Actions:
+
+| Workflow | Job | Nội dung |
+|---|---|---|
+| `CI` | `backend` | `check`, kiểm tra migration, test (Python 3.12) |
+| `CI` | `frontend` | lint, test, build, kiểm tra i18n và design token (Node 24) |
+| `DB Integration` | `migrate-postgres` | Áp migration trên PostgreSQL, phát hiện xung đột giữa các nhánh |
+| `DDL Check` (nhánh `ddl_base_v0`) | `ddl-load` | Nạp DDL trên PostgreSQL trống, có và không có role chỉ đọc |
+| `Route pull request reviews` | `route-reviewers` | Tự gán người review theo phân hệ |
 
 ---
-*Bản quyền © 2026 Nhóm 1 — Dự án QLVB&TL — Khoa CNTT Trường Cao Đẳng Công Nghệ Thông Tin TP.HCM (ITC).*
 
+## 9. Triển khai
+
+Môi trường đích: máy chủ Linux, PostgreSQL 16, backend chạy WSGI sau reverse proxy, frontend phục vụ file tĩnh từ `pnpm build`.
+
+Điều kiện triển khai: toàn bộ milestone `Base staging` hoàn thành và CI trên `staging` xanh.
+
+Trình tự:
+
+1. Dựng database theo [mục 7](#7-cơ-sở-dữ-liệu); sao lưu ngay sau khi nạp DDL (`pg_dump`).
+2. Cấu hình biến môi trường production:
+   - `DJANGO_DEBUG=False`, `DJANGO_SECRET_KEY` riêng, `DJANGO_ALLOWED_HOSTS` theo tên miền;
+   - `SIGNING_PIN_SECRET` riêng (phân hệ trình ký; đổi giá trị làm mọi PIN đã đặt mất hiệu lực);
+   - thông tin kết nối PostgreSQL và mật khẩu role `qlvb_readonly`.
+3. Cài backend, chạy `python manage.py collectstatic`, khởi động WSGI.
+4. Build frontend với `VITE_API_BASE_URL` của môi trường, đặt file tĩnh sau reverse proxy.
+5. Kiểm tra nhanh:
+   - đăng nhập bằng tài khoản `Employee`;
+   - mở danh sách văn bản đến/đi;
+   - role `qlvb_readonly` truy vấn bảng `documents_vanbanden` phải bị từ chối quyền.
+
+Không đưa khóa, mật khẩu hoặc file `.env` vào repo.
+
+---
+
+## 10. Bảo mật và dữ liệu
+
+- **Phạm vi xem văn bản**: văn bản `HAN_CHE` chỉ người tạo, người nhận và thành viên đơn vị nhận xem được, không ngoại lệ cho superuser. Mọi lượt mở được ghi `documents_view_log`. Toàn bộ phân hệ lấy văn bản qua một hàm dùng chung của phân hệ Văn bản.
+- **Trợ lý AI**: không dùng văn bản `HAN_CHE` trong mọi trường hợp; chỉ đọc qua view `ai_*` bằng role chỉ đọc.
+- **Trình ký**: backend không lưu khóa bí mật; khóa ký bảo vệ bằng PIN, chống dò PIN theo số lần sai; chữ ký và nhật ký là bằng chứng bất biến.
+- **Phân quyền**: mọi thao tác ghi kiểm quyền RBAC ở API; không có endpoint ghi cho người dùng ẩn danh.
+- **Dữ liệu cá nhân**: hệ thống xử lý dữ liệu nhân viên và có thể chứa dữ liệu khách hàng. Kiểm soát truy cập và nhật ký truy cập là yêu cầu bắt buộc theo Luật Bảo vệ dữ liệu cá nhân 2025.
+
+---
+
+## 11. Quy trình phát triển
+
+| Nhánh | Vai trò | Người merge |
+|---|---|---|
+| `main` | Bản phát hành | DevOps |
+| `staging` | Tích hợp chung | DevOps |
+| `ddl_base_v0` | Schema chuẩn | DevOps |
+| `<số>_<phân hệ>` | Nhánh của từng nhóm | Trưởng nhóm |
+| `feat/...`, `fix/...`, `docs/...` | Nhánh tính năng, tạo từ nhánh nhóm hoặc `staging` | — |
+
+Quy tắc:
+
+- Không commit trực tiếp vào `main`, `staging`, `ddl_base_v0`. Mọi thay đổi qua Pull Request.
+- PR được merge khi CI xanh, có ít nhất 1 approve, không còn xung đột.
+- Mỗi PR gắn issue (`Closes #<số>`), label nhóm (`nhom-1` … `nhom-8`) và milestone (`Base staging` hoặc `MVP`).
+- Commit theo Conventional Commits: `feat(scope): ...`, `fix(scope): ...`, `docs: ...`.
+- Thay đổi schema theo [mục 7](#7-cơ-sở-dữ-liệu): DDL trước, migration sau.
+
+Chi tiết: `docs/common/guidelines/quy-uoc-quan-ly-du-an.md`, `docs/common/guidelines/git_workflow.md`, `docs/common/QUALITY_GATE_STAGING.md`.
+
+---
+
+## 12. Hạn chế đã biết
+
+| Hạn chế | Ảnh hưởng | Theo dõi |
+|---|---|---|
+| `backend/config/settings.py` đặt cứng `SECRET_KEY`, `DEBUG = True`, SQLite; chưa đọc biến trong `.env.example` | Chưa dùng được cho production | [#68](../../issues/68) mục C8 |
+| `backend/django_project/settings.py` trùng lặp, không được sử dụng | Gây nhầm cấu hình | [#68](../../issues/68) mục C8 |
+| `frontend/src/style.css` còn 37 mã màu hex | Check `frontend` đỏ trên mọi PR vào `staging` | [#68](../../issues/68) mục C9 |
+| `psycopg` chưa có trong `requirements.txt` (CI cài riêng) | Chạy PostgreSQL cục bộ phải cài thêm `psycopg[binary]` | [#68](../../issues/68) mục C8 |
+| Một số chỗ còn tham chiếu văn bản mật (đã bỏ khỏi thiết kế) | Lệch với DDL hiện hành | [#83](../../issues/83) |
+| Repo private trên gói GitHub Free không hỗ trợ bảo vệ nhánh | Quy tắc merge đang là quy ước thủ công | [#67](../../issues/67) mục 7 |
+
+---
+
+## 13. Tổ chức dự án
+
+| Vai trò | Người phụ trách |
+|---|---|
+| Giảng viên hướng dẫn | NCS.ThS. Trần Phương Duy |
+| Project Manager | Châu Tuấn Kiệt (Nhóm 1) |
+| Data Architect | Tô Thanh Tân (Nhóm 7) |
+| DevOps Lead | Lê Thanh Hậu (Nhóm 5) |
+
+| Nhóm | Trưởng nhóm | Thành viên | Phân hệ |
+|:---:|---|---|---|
+| 1 | Châu Tuấn Kiệt | Nguyễn Văn Hiếu, Nguyễn Duy Quân | Layout, Dashboard |
+| 2 | Lê Trí Kiệt | Nguyễn Anh Đô, Nguyễn Tấn Lộc Khiêm, Trần Nhật Tân | Văn bản |
+| 3 | Đặng Trường Thịnh | Phan Thị Ánh Tuyền, Nguyễn Thị Yến Nhi | Hồ sơ |
+| 4 | Thượng Mạnh Quỳnh | Huỳnh Thị Kim Trang, Nguyễn Chí Tín, Đỗ Trung Phong | Tài liệu, biểu mẫu |
+| 5 | Lê Thanh Hậu | Lê Thành Tài | Trình ký, DevOps |
+| 6 | Phan Tạ Hữu Đức | Nguyễn Duy Bảo, Đỗ Ngọc Phát, Lâm Chí Vĩ | Công việc |
+| 7 | Tô Thanh Tân | Lê Duy Khánh, Đỗ Mạnh Quang, Nguyễn Phan Minh Hiếu, Trần Đình Tình | Quản trị, phòng họp, sinh nhật |
+| 8 | Trần Vũ Giang Anh | Huỳnh Vương Thanh Nhã | Trợ lý AI |
+
+---
+
+## 14. Tài liệu liên quan
+
+| Tài liệu | Nội dung |
+|---|---|
+| `docs/common/ITC - Django - QLVB&TL.md` | Đặc tả đề bài và phân công |
+| `docs/common/architecture/structure.md` | Cấu trúc thư mục chuẩn |
+| `docs/common/FRONTEND_BASELINE_GUIDE.md` | Hướng dẫn thêm màn hình vào App Shell |
+| `docs/common/QUALITY_GATE_STAGING.md` | Điều kiện đưa mã nguồn lên `staging` |
+| `docs/common/guidelines/git_workflow.md` | Quy trình Git |
+| `docs/common/guidelines/quy-uoc-quan-ly-du-an.md` | Quy ước merge, schema, issue/label/milestone |
+| `docs/modules/` | Đặc tả từng phân hệ |
+
+---
+
+© 2026 Dự án QLVB&TL — Khoa Công nghệ Thông tin, Trường Cao đẳng Công nghệ Thông tin TP.HCM (ITC).
