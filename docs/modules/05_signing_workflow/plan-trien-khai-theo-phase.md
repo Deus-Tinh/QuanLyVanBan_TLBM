@@ -25,8 +25,8 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 6c | Điều chỉnh theo đánh giá nghiệp vụ: bỏ `kieu_ky*`, xoay vòng `k_srv` khi đổi PIN, đồng bộ DDL | Duyệt `danh-gia-nghiep-vu-va-de-xuat.md` | Chưa làm |
 | 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; `trinh-lai` | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7); pháp chế xác nhận văn bản mật | Chờ nhóm liên quan |
 | 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
-| 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; pháp chế xác nhận KT./TL./TUQ.; cấp trên trực tiếp (Nhóm 7) | Chờ Phase 8 |
-| 10 | Phẳng hóa PDF theo thể thức; ký số từ xa (adapter); văn thư cấp số và ký số cơ quan; frontend | Phase 8; chốt hệ tọa độ vị trí ký; contract cấp số với Nhóm 2 | Chờ |
+| 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Chờ Phase 8 |
+| 10 | Phẳng hóa PDF theo thể thức; ký số từ xa (adapter); cấp số qua hệ thống Nhóm 2 và ký số cơ quan; frontend | Phase 8; chốt hệ tọa độ vị trí ký; contract cấp số với Nhóm 2 | Chờ |
 
 ## 3. Chi tiết các phase
 
@@ -90,7 +90,7 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - Đề xuất nhóm CSDL sửa DDL base đồng bộ: bỏ `kieu_ky*`, bỏ default `vanbanden`, thêm các cột/bảng mới của Phase 7–9 (dưới đây).
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
-- Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không (tới lúc đó MVP chỉ nhận `vanbandi`); hình thức ký thay (KT., TL., TUQ.) và ủy quyền theo thời gian.
+- Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không (tới lúc đó MVP chỉ nhận `vanbandi`). Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
 - Phase 7:
   - Cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
   - Thêm `signing_process.don_vi_ap_dung`; kiểm quyền quy trình `PHONG_BAN` theo lãnh đạo đơn vị.
@@ -103,7 +103,7 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - Phase 10:
   - Phẳng hóa in khối chữ ký theo `hinh_thuc_ky`, chừa ô số/ngày.
   - `LegalSignerAdapter` theo mô hình ký số từ xa; khi có CA, ký chính cấp cuối dùng adapter thay Ed25519.
-  - Văn thư cấp số qua API sổ văn bản đi của Nhóm 2, ký số cơ quan, chuyển trạng thái phát hành.
+  - Hệ thống sổ văn bản đi của Nhóm 2 cấp số, thời gian ban hành (NĐ 30/2020 Điều 15); văn thư ký số cơ quan, chuyển trạng thái phát hành.
   - Cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF); dòng nhận diện "bản duyệt nội bộ, chưa phát hành" trên tệp hoàn tất; màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
 
 ## 4. Đối chiếu CSDL chung sau issue #47

@@ -54,8 +54,8 @@ Hệ thống tách hai giai đoạn:
 1. **Giai đoạn 1 — Duyệt nội bộ:** toàn bộ luồng tuần tự/song song, Ed25519, snapshot và nhật ký của module này. Mục đích: kiểm soát quy trình, chống tráo văn bản, chống chối bỏ trong nội bộ, giảm chi phí vận hành.
 2. **Giai đoạn 2 — Phát hành pháp lý:** chỉ mở khi lượt trình đã `HOAN_THANH` và đã có tệp PDF hoàn tất (mục 3.2):
    - **Ký số cá nhân lãnh đạo:** `LegalSignerAdapter` kết nối dịch vụ ký số từ xa (Cloud CA / HSM / VNeID Remote Signing) hoặc đọc CCCD gắn chip (NFC/đầu đọc) để nhúng chứng thư số X.509.
-   - **Cấp số và ký số cơ quan:** văn thư cấp số, ký hiệu, ngày ban hành qua sổ văn bản đi của Nhóm 2 (Nhóm 5 không tự sinh số), điền vào ô dành sẵn trên tệp, rồi ký số của cơ quan kèm dấu thời gian TSA theo chuẩn PAdES `[CẦN XÁC NHẬN]` contract với Nhóm 2.
-   - Chữ ký số của người có thẩm quyền đặt mức cho phép bổ sung trường sau khi ký, để văn thư điền số/ngày không làm mất hiệu lực chữ ký.
+   - **Cấp số và ký số cơ quan:** hệ thống sổ văn bản đi của Nhóm 2 cấp số, ký hiệu, thời gian ban hành bằng chức năng của hệ thống (NĐ 30/2020 Điều 15; Nhóm 5 không tự sinh số, văn thư không nhập tay) và điền vào trường dành sẵn trên tệp; văn thư ký số của cơ quan kèm dấu thời gian TSA theo chuẩn PAdES (Điều 14, 17) `[CẦN XÁC NHẬN]` contract với Nhóm 2.
+   - Chữ ký số của người có thẩm quyền đặt mức DocMDP 2 (cho phép điền trường và ký tiếp), để việc điền số/ngày không làm mất hiệu lực chữ ký.
    - `LegalSignerAdapter` theo mô hình ký số từ xa: gửi mã băm, người ký xác nhận trên thiết bị của mình, nhận lại chữ ký và chứng thư. Không giả định USB token cắm vào máy chủ.
    - Khi đã tích hợp CA, người `KY_CHINH` của cấp cuối ký bằng adapter thay cho Ed25519 (một lần ký vừa hoàn thành lượt trình vừa là chữ ký ban hành). Khi chưa có CA, giữ Ed25519 và phát hành ở bước sau.
    - MVP chỉ định nghĩa interface adapter; tích hợp nhà cung cấp cụ thể làm sau.
@@ -217,7 +217,7 @@ Hệ thống tách hai giai đoạn:
   - Quá hạn 48 giờ: leo thang cho cấp trên trực tiếp của người ký (theo cơ cấu Nhóm 7) và người tạo, kèm gợi ý ủy quyền khẩn cấp.
 - Báo cáo trễ hạn theo người/đơn vị (số hồ sơ đang quá hạn, thời gian xử lý trung bình) đọc từ `ky_tre_han`, `so_giay_tre`, `han_xu_ly`.
 
-**Ủy quyền** `[CẦN XÁC NHẬN]` pháp chế trước Phase 9
+**Ủy quyền** (căn cứ NĐ 30/2020 Điều 13; `[CẦN XÁC NHẬN]` danh sách người nhận hợp lệ trước Phase 9)
 
 - **Ủy quyền đặt trước theo thời gian** (`signing_delegation`): người ủy quyền hoặc cấp trên trực tiếp/quản trị khai báo người nhận, khoảng thời gian, phạm vi (quy trình/loại văn bản, rỗng = tất cả), hình thức ký (`KT`, `TL`, `TUQ`), lý do. Khi mở cấp ký, người ký có ủy quyền đang hiệu lực khớp phạm vi thì chuyển sang người nhận; ghi `uy_quyen_tu`, `ngay_uy_quyen`, `ly_do_uy_quyen`, `hinh_thuc_ky` và nhật ký.
 - **Ủy quyền khẩn cấp** từng hồ sơ: chỉ cấp trên trực tiếp của người ký hoặc quản trị (`delegate_trinhky`) thực hiện; người ký không tự ủy quyền từng hồ sơ. Lý do bắt buộc.
@@ -565,7 +565,7 @@ Ràng buộc: CHECK `loai_doi_tuong` thuộc luồng ký (request/attempt/signer
 
 Bảng trạng thái, không phải bảng bằng chứng: được cập nhật. Mọi sự kiện đặt/đổi/mở khóa/sai/khóa PIN ghi vào `signing_audit_log` (loại đối tượng `signing_key`).
 
-#### `signing_delegation` — Ủy quyền ký theo thời gian `[CẦN XÁC NHẬN]`
+#### `signing_delegation` — Ủy quyền ký theo thời gian (NĐ 30/2020 Điều 13: ủy quyền có thời hạn và phạm vi)
 
 | Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
 |---|---|---|---|---|
@@ -677,7 +677,7 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - `POST /signing/attempts/{id}/yeu-cau-sua`: `tieu_de`, `ly_do` bắt buộc; mở thread.
 - `POST /signing/attempts/{id}/uy-quyen`: ủy quyền khẩn cấp; `nguoi_ky` mới, `ly_do_uy_quyen`, `hinh_thuc_ky` bắt buộc; chỉ cấp trên trực tiếp hoặc quản trị.
 - `POST /signing/attempts/{id}/thu-hoi`: khi cấp của người ký còn mở, trước khi hoàn thành.
-- `GET|POST /signing/uy-quyen/`, `POST /signing/uy-quyen/{id}/huy/`: ủy quyền theo thời gian `[CẦN XÁC NHẬN]`.
+- `GET|POST /signing/uy-quyen/`, `POST /signing/uy-quyen/{id}/huy/`: ủy quyền theo thời gian.
 - `GET|POST /signing/change-threads/{id}/messages`: trao đổi trong thread.
 - `POST /signing/change-threads/{id}/giai-quyet`: tải bản mới, đóng thread, tạo lượt trình mới.
 
@@ -862,7 +862,6 @@ Nếu repo có chuẩn lint/type check thì bổ sung đúng lệnh của repo t
 - `[CHƯA CHỐT]` Khôi phục khóa đa thiết bị; MVP không lưu private key trên backend. MVP: một khóa trên một thiết bị, mất PIN thì thu hồi và cấp khóa mới sau khi xác minh danh tính (mục 3.4).
 - `[RỦI RO]` Xác thực khi ký phụ thuộc thiết kế PIN ở mục 3.4; chưa triển khai. Hiện tại ký chỉ dựa vào phiên đăng nhập và khóa phía client.
 - `[RỦI RO]` Chống chối bỏ nội bộ chỉ đáng tin ở mức tin cậy vào CSDL (khóa công khai và chữ ký đều lưu trong CSDL). Giảm bằng chuỗi hash nhật ký hoặc dấu thời gian bên thứ ba; chưa thuộc MVP.
-- `[CẦN XÁC NHẬN]` Hình thức ký thay (KT., TL., TUQ.) và ủy quyền theo thời gian (mục 3.5, bảng `signing_delegation`); cần pháp chế hoặc Ban chuyên môn xác nhận trước Phase 9.
 - `[CẦN XÁC NHẬN]` Contract cấp số văn bản đi và chuyển trạng thái phát hành với Nhóm 2 (mục 1.4), trước Phase 10.
 - `[CẦN XÁC NHẬN]` Danh sách cấp trên trực tiếp và người nhận ủy quyền hợp lệ theo chức danh (Nhóm 7), trước Phase 9.
 - `[CHƯA CHỐT]` Luồng tự do (không theo quy trình mẫu): ngoài MVP.

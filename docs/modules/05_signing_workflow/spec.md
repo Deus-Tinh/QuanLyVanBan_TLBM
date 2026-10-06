@@ -50,7 +50,7 @@ Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân ch
 7. **Quá hạn và ủy quyền khẩn cấp:**
    - Quá hạn không tự hủy, không tự từ chối; người ký vẫn ký muộn được và hệ thống ghi `ky_tre_han = true`, `so_giay_tre`.
    - Nhắc và leo thang: nhắc trước hạn 24 giờ, tại hạn, nhắc lặp mỗi 24 giờ khi quá hạn; quá hạn 48 giờ báo cấp trên trực tiếp của người ký và người tạo. Có báo cáo trễ hạn theo người/đơn vị.
-   - **Ủy quyền theo thời gian** (cần pháp chế xác nhận): người ủy quyền hoặc cấp trên khai báo trước người nhận, khoảng thời gian, phạm vi và hình thức ký (KT., TL., TUQ.); hồ sơ đến trong khoảng đó tự chuyển người nhận.
+   - **Ủy quyền theo thời gian** (căn cứ NĐ 30/2020 Điều 13: ủy quyền có thời hạn và phạm vi): người ủy quyền hoặc cấp trên khai báo trước người nhận, khoảng thời gian, phạm vi và hình thức ký (KT., TL., TUQ.); hồ sơ đến trong khoảng đó tự chuyển người nhận.
    - **Ủy quyền khẩn cấp** (`uy_quyen`): chỉ cấp trên trực tiếp của người ký hoặc quản trị thực hiện; người nhận phải thuộc danh sách người nhận hợp lệ của chức danh (định nghĩa của "thẩm quyền tương đương"); lý do bắt buộc (`ly_do_uy_quyen`), có nhật ký; không ủy quyền cho người đã có trong cùng cấp.
    - Hình thức ký (`hinh_thuc_ky`: ký trực tiếp, KT., TL., TUQ.) được ghi trên người ký và dùng để in đúng thể thức khối chữ ký.
 8. **Khâu phát hành pháp lý (bước bổ sung cuối):**
@@ -58,7 +58,7 @@ Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân ch
    - Ba bước tuần tự sau khi lượt trình `HOAN_THANH`:
      1. Phẳng hóa: dán ảnh chữ ký và khối chữ ký đúng hình thức ký, chừa ô số/ngày.
      2. Ký số người có thẩm quyền qua `LegalSignerAdapter` theo mô hình ký số từ xa (Cloud CA / HSM / VNeID). Khi đã tích hợp CA, người ký chính cấp cuối ký bằng adapter thay cho Ed25519 để không phải ký hai lần.
-     3. Văn thư cấp số, ký hiệu, ngày qua sổ văn bản đi của Nhóm 2, rồi ký số của cơ quan kèm dấu thời gian TSA theo chuẩn PAdES.
+     3. Hệ thống sổ văn bản đi của Nhóm 2 cấp số, ký hiệu, thời gian ban hành bằng chức năng của hệ thống (NĐ 30/2020 Điều 15); văn thư ký số của cơ quan kèm dấu thời gian TSA theo chuẩn PAdES.
    - **LƯU Ý PHÁP LÝ (BẮT BUỘC):** Người chịu trách nhiệm pháp lý cao nhất (người đại diện theo pháp luật / lãnh đạo có thẩm quyền ban hành) bắt buộc phải có Chứng thư số X.509 do tổ chức cung cấp dịch vụ chứng thực chữ ký số (CA) được cấp phép.
 
 ---
@@ -76,7 +76,7 @@ Chi tiết field, kiểu dữ liệu và ràng buộc tại [`signing-backend-pl
 | `signing_attempt` | Lượt trình bất biến, nguồn sự thật của mã băm, tệp hoàn tất | `NHAP`, `CHO_KY`, `YEU_CAU_SUA`, `HOAN_THANH`, `TU_CHOI`, `HUY` |
 | `signing_request_step` | Snapshot cấp ký của lượt trình | `CHUA_MO`, `DANG_KY`, `HOAN_THANH`, `TAM_DUNG` |
 | `signing_request_step_signer` | Snapshot người ký, tọa độ ký, ủy quyền, `hinh_thuc_ky`, `chu_ky_hien_hanh` | `CHO_KY`, `DA_KY`, `TU_CHOI`, `YEU_CAU_SUA` |
-| `signing_delegation` | Ủy quyền ký theo thời gian (cần pháp chế xác nhận) | `HIEU_LUC`, `DA_HUY` |
+| `signing_delegation` | Ủy quyền ký theo thời gian | `HIEU_LUC`, `DA_HUY` |
 | `signing_key` | Khóa công khai Ed25519 (không lưu private key) | `CHO_KICH_HOAT`, `HOAT_DONG`, `DA_XOAY_VONG`, `THU_HOI`, `HET_HAN` |
 | `signing_signature` | Chữ ký bất biến: `chu_ky_so`, `ghi_chu_ky`, `ky_tre_han`, snapshot ảnh chữ ký | `CHUA_XAC_MINH`, `HOP_LE`, `KHONG_HOP_LE` |
 | `signing_manifest` | Bằng chứng tổng hợp chuẩn hóa, `ma_bam_bang_chung` | `NHAP`, `DA_CHOT` |

@@ -9,7 +9,7 @@ Ký hiệu trạng thái quyết định:
 - `[CHỐT]`: đã áp dụng vào spec/plan trong cùng thay đổi này.
 - `[CẦN XÁC NHẬN]`: đã ghi vào spec/plan theo đề xuất, cần pháp chế/Ban chuyên môn hoặc nhóm liên quan xác nhận trước phase ghi bên cạnh.
 
-Nguồn đối chiếu thực tế: Nghị định 30/2020/NĐ-CP về công tác văn thư (thể thức, ký thay/thừa lệnh/thừa ủy quyền, quy trình ban hành văn bản điện tử); cách vận hành phổ biến của các hệ thống quản lý văn bản điện tử trong nước (luồng trình duyệt, trả lại, ủy quyền theo thời gian, ký số từ xa); mô hình định tuyến của DocuSign/Adobe Sign (routing order, decline, correct). Các trích dẫn điều khoản cần đối chiếu nguyên văn trước khi đưa vào tài liệu nghiệm thu.
+Cơ sở lập luận của từng điểm (pháp lý, thực tiễn sản phẩm hoặc lập luận thiết kế) và danh sách nguồn ở mục 13. Các trích dẫn điều khoản cần đối chiếu nguyên văn trên Công báo trước khi đưa vào tài liệu nghiệm thu.
 
 ---
 
@@ -31,11 +31,11 @@ Vì phần lõi chưa có service, đây là thời điểm rẻ nhất để s�
 | 2 | `TU_CHOI` vừa là kết thúc vừa mở lại được bằng `xem_xet_lai` | Cao | `TU_CHOI` là kết thúc; trình lại bằng hồ sơ mới trỏ về hồ sơ gốc | Thêm `ho_so_goc`; bỏ `TU_CHOI -> CHO_KY` | `[CHỐT]` |
 | 3 | Chỉ ADMIN quản lý quy trình nhưng quy trình có phạm vi `PHONG_BAN` | Trung bình | Quyền quản lý quy trình theo phạm vi đơn vị | Thêm `don_vi_ap_dung` cho quy trình `PHONG_BAN` | `[CHỐT]` |
 | 4 | Người ký theo chức vụ: chưa có quy tắc khi nhiều người cùng chức vụ | Cao | Chức vụ tương đối theo đơn vị; nhiều người thì người tạo chọn | Thêm `pham_vi_chuc_vu` | `[CHỐT]` |
-| 5 | Ủy quyền khẩn cấp không có quy tắc "thẩm quyền tương đương", không có thể thức KT./TL./TUQ. | Cao | Ủy quyền đặt trước theo thời gian + danh sách người nhận hợp lệ + hình thức ký | Thêm bảng `signing_delegation`; thêm `hinh_thuc_ky` | `[CẦN XÁC NHẬN]` pháp chế, trước Phase 9 |
+| 5 | Ủy quyền khẩn cấp không có quy tắc "thẩm quyền tương đương", không có thể thức KT./TL./TUQ. | Cao | Ủy quyền đặt trước theo thời gian + danh sách người nhận hợp lệ + hình thức ký | Thêm bảng `signing_delegation`; thêm `hinh_thuc_ky` | `[CHỐT]` thiết kế (NĐ 30/2020 Điều 13); `[CẦN XÁC NHẬN]` danh sách người nhận hợp lệ, trước Phase 9 |
 | 6 | Hạn chót chỉ để hiển thị, leo thang chưa định nghĩa người nhận | Trung bình | Quy tắc nhắc + leo thang theo cấp trên trực tiếp + báo cáo trễ hạn | Mở rộng `cau_hinh_nhac_han` | `[CHỐT]` |
 | 7 | Ký nội bộ bằng PKI riêng + PIN nhưng không có giá trị pháp lý; người ký cuối phải ký hai lần | Trung bình | Ký chính cuối cùng gộp vào bước ký số CA | Không | `[CHỐT]` hướng; adapter Phase 10 |
 | 8 | Phạm vi gồm cả văn bản đến; văn bản mật chưa rõ | Trung bình | Bỏ `vanbanden`; `vanbanmat` ngoài phạm vi cho tới khi pháp chế xác nhận | Đổi `LoaiVanBan` | `[CẦN XÁC NHẬN]` trước Phase 7 |
-| 9 | Chưa ráp khâu văn thư: cấp số, ngày, ký số cơ quan | Cao | Tách 3 bước: phẳng hóa → ký số người có thẩm quyền → văn thư cấp số và ký số cơ quan | Contract với Nhóm 2 | `[CẦN XÁC NHẬN]` Nhóm 2, trước Phase 10 |
+| 9 | Chưa ráp khâu văn thư: cấp số, ngày, ký số cơ quan | Cao | Tách 3 bước: phẳng hóa → ký số người có thẩm quyền → hệ thống cấp số, văn thư ký số cơ quan | Contract với Nhóm 2 | `[CẦN XÁC NHẬN]` Nhóm 2, trước Phase 10 |
 
 Ngoài nghiệp vụ, có một điểm thiết kế bảo mật ảnh hưởng quy tắc nghiệp vụ "đổi PIN": xem mục 11.
 
@@ -129,7 +129,7 @@ Ngoài nghiệp vụ, có một điểm thiết kế bảo mật ảnh hưởng 
 
 - "Thẩm quyền tương đương" không kiểm tra được bằng máy: hiện tại ai có quyền `delegate_trinhky` cũng chuyển được cho bất kỳ ai.
 - Người ký tự ủy quyền cho người khác trên từng hồ sơ dễ bị lạm dụng (đẩy việc, né trách nhiệm).
-- Văn bản ký thay **phải đổi thể thức khối chữ ký**. Theo Nghị định 30/2020, cấp phó ký thay cấp trưởng ghi "KT." trước chức vụ người đứng đầu, ký thừa lệnh ghi "TL.", ký thừa ủy quyền ghi "TUQ.". Nếu bước phẳng hóa chỉ dán ảnh chữ ký, văn bản ra **sai thể thức**.
+- Văn bản ký thay **phải đổi thể thức khối chữ ký**. Theo Nghị định 30/2020 Điều 13, cấp phó ký thay cấp trưởng ghi "KT." trước chức vụ người đứng đầu, ký thừa lệnh ghi "TL.", ký thừa ủy quyền ghi "TUQ."; ký thừa ủy quyền phải bằng văn bản, có thời hạn và phạm vi. Nếu bước phẳng hóa chỉ dán ảnh chữ ký, văn bản ra **sai thể thức**.
 
 **Thực tế làm thế nào.**
 
@@ -137,7 +137,9 @@ Ngoài nghiệp vụ, có một điểm thiết kế bảo mật ảnh hưởng 
 - **Chuyển xử lý khẩn cấp** từng hồ sơ chỉ dành cho cấp trên hoặc văn thư/quản trị, có lý do.
 - Danh sách người được nhận ủy quyền của một chức danh được cấu hình sẵn (cấp phó được phân công), không tự do.
 
-**Đề xuất `[CẦN XÁC NHẬN]` pháp chế trước Phase 9.**
+**Đề xuất `[CHỐT]` thiết kế; `[CẦN XÁC NHẬN]` danh sách người nhận hợp lệ theo chức danh (Nhóm 7/quy chế cơ quan) trước Phase 9.**
+
+Căn cứ: Điều 13 yêu cầu ủy quyền có thời hạn và phạm vi, nên ủy quyền được lưu thành bản ghi có `tu_ngay`, `den_ngay`, `pham_vi`, không xử lý từng hồ sơ một cách tự do.
 
 - Bảng mới `signing_delegation`: `nguoi_uy_quyen`, `nguoi_nhan`, `tu_ngay`, `den_ngay`, `hinh_thuc_ky` (`KT`, `TL`, `TUQ`), `pham_vi` (loại văn bản/quy trình, rỗng = tất cả), `ly_do`, `trang_thai` (`HIEU_LUC`, `DA_HUY`), người tạo, thời điểm. Người tạo là chính người ủy quyền hoặc cấp trên trực tiếp/quản trị.
 - Khi mở cấp ký, nếu người ký có ủy quyền đang hiệu lực khớp phạm vi thì chuyển sang người nhận, ghi `uy_quyen_tu`, `hinh_thuc_ky`, nhật ký.
@@ -204,15 +206,15 @@ Ngoài nghiệp vụ, có một điểm thiết kế bảo mật ảnh hưởng 
 
 **Hiện trạng.** Hoàn thành lượt trình thì phẳng hóa ảnh chữ ký thành tệp hoàn tất; `LegalSignerAdapter` ký số và "văn thư (hoặc hệ thống) cấp số văn bản" (plan mục 1.4). Chưa nói số văn bản do ai cấp, cấp trước hay sau ký số, và tệp quay về Nhóm 2 thế nào.
 
-**Thực tế làm thế nào.** Với văn bản điện tử theo Nghị định 30/2020: người có thẩm quyền ký số → văn thư **cấp số, ghi ngày tháng năm** vào văn bản → văn thư **ký số của cơ quan** → phát hành và lưu. Về kỹ thuật PDF, chữ ký số của người có thẩm quyền được đặt mức cho phép bổ sung trường/ghi chú sau khi ký, nhờ đó văn thư điền số, ngày mà không làm mất hiệu lực chữ ký trước.
+**Thực tế làm thế nào.** Theo Nghị định 30/2020, trình tự quản lý văn bản đi gồm cấp số và thời gian ban hành → đăng ký văn bản đi → ký số của cơ quan, tổ chức đối với văn bản điện tử (Điều 14). Với văn bản điện tử, số và thời gian ban hành được cấp **bằng chức năng của Hệ thống** (Điều 15), không nhập tay. Về kỹ thuật PDF, chữ ký số của người có thẩm quyền đặt mức DocMDP 2 (cho phép điền trường và ký tiếp), nhờ đó hệ thống điền số, ngày vào trường dành sẵn mà không làm mất hiệu lực chữ ký trước.
 
 **Đề xuất `[CẦN XÁC NHẬN]` Nhóm 2 trước Phase 10.**
 
-- Số và ký hiệu văn bản đi do **sổ văn bản đi của Nhóm 2** cấp; Nhóm 5 không tự sinh số.
+- Số và ký hiệu văn bản đi do **hệ thống sổ văn bản đi của Nhóm 2** cấp tự động; Nhóm 5 không tự sinh số, văn thư không nhập tay.
 - Phase 10 tách thành ba bước tuần tự, mỗi bước có trạng thái và nhật ký:
   1. Phẳng hóa: dán ảnh chữ ký và khối chữ ký đúng `hinh_thuc_ky`, để trống ô số/ngày.
   2. Ký số người có thẩm quyền qua `LegalSignerAdapter` (hoặc đã ký ở cấp cuối theo mục 8).
-  3. Văn thư cấp số, ngày (gọi API Nhóm 2), ký số cơ quan, chuyển văn bản sang trạng thái phát hành của Nhóm 2.
+  3. Văn thư thực hiện phát hành: hệ thống Nhóm 2 cấp số và thời gian ban hành, điền vào trường dành sẵn; văn thư ký số của cơ quan; văn bản chuyển sang trạng thái phát hành của Nhóm 2.
 - Contract với Nhóm 2: Nhóm 5 trả `vi_tri_tep_hoan_tat`, `ma_bam_tep_hoan_tat`, danh sách người ký; Nhóm 2 trả số, ký hiệu, ngày ban hành.
 
 ## 11. Ghi chú bảo mật liên quan quy tắc nghiệp vụ "đổi PIN"
@@ -226,8 +228,47 @@ Quy tắc hiện tại: đổi PIN giữ nguyên `k_srv` để client bọc lạ
 | Việc | Người/nhóm | Hạn |
 |---|---|---|
 | Duyệt các mục `[CHỐT]` trong tài liệu này | Nhóm 5 | Trước Phase 7 |
-| Xác nhận KT./TL./TUQ., ủy quyền theo thời gian, văn bản mật | Pháp chế/Ban chuyên môn | Trước Phase 7 (văn bản mật), Phase 9 (ủy quyền) |
+| Xác nhận văn bản mật; quy chế cơ quan về người được nhận ủy quyền | Pháp chế/Ban chuyên môn | Trước Phase 7 (văn bản mật), Phase 9 (ủy quyền) |
 | Đồng bộ DDL base: bỏ `kieu_ky*`, thêm `ho_so_goc`, `don_vi_ap_dung`, `pham_vi_chuc_vu`, `hinh_thuc_ky`, bảng `signing_delegation`; bỏ default `vanbanden` | Nhóm CSDL + Nhóm 5 | Trước Phase 7 |
 | Contract cấp số văn bản đi, chuyển trạng thái phát hành | Nhóm 2 + Nhóm 5 | Trước Phase 10 |
 | Danh sách cấp trên trực tiếp, người nhận ủy quyền hợp lệ theo chức danh | Nhóm 7 + Nhóm 5 | Trước Phase 9 |
 | Phase 6c: migration bỏ `kieu_ky*`, xoay vòng `k_srv` khi đổi PIN | Nhóm 5 | Trước Phase 7 |
+
+## 13. Cơ sở lập luận
+
+Mỗi điểm dựa trên một hoặc nhiều loại căn cứ, theo thứ tự độ ràng buộc giảm dần:
+
+- **[PHÁP LÝ]**: có điều khoản cụ thể.
+- **[THỰC TIỄN]**: cách sản phẩm đang vận hành thực tế.
+- **[THIẾT KẾ]**: lập luận kỹ thuật, không có nguồn bên ngoài; có thể phản biện và thay đổi.
+
+| Mục | Điểm | Loại căn cứ | Căn cứ cụ thể |
+|---|---|---|---|
+| 2 | Cấp tuần tự, song song trong cấp | [THỰC TIỄN] + [THIẾT KẾ] | DocuSign định tuyến theo routing order: người nhận cùng thứ tự xử lý song song, khác thứ tự xử lý tuần tự; song song là thuộc tính của từng bậc, không phải của toàn luồng. `SONG_SONG` toàn yêu cầu tương đương quy trình một cấp, nên dư thừa. |
+| 3 | Từ chối là kết thúc | [THỰC TIỄN] + [PHÁP LÝ gián tiếp] | DocuSign: người ký decline thì envelope bị hủy, các chữ ký đã thu không còn hiệu lực, gửi lại phải tạo envelope mới. NĐ 30/2020 Điều 11: bản thảo phải do người có thẩm quyền ký văn bản duyệt; bản thảo không được duyệt thì trình lại là bản thảo mới. |
+| 4 | Quyền quy trình theo đơn vị | [THIẾT KẾ] | Không có nguồn pháp lý. Quy trình phạm vi `PHONG_BAN` không gắn đơn vị thì phạm vi không có nghĩa; lãnh đạo đơn vị là người nắm luồng ký của đơn vị. |
+| 5 | Chức vụ tương đối, chọn người khi nhiều ứng viên | [THIẾT KẾ] | Không có nguồn pháp lý. Chức vụ hiểu theo toàn cơ quan thì có nhiều người giữ, mọi cách gán tự động đều sai. |
+| 6 | Ủy quyền theo thời gian; KT./TL./TUQ. | [PHÁP LÝ] | NĐ 30/2020 Điều 13: cấp phó ký thay (KT.) cấp trưởng; người đứng đầu giao người đứng đầu đơn vị ký thừa lệnh (TL.); ký thừa ủy quyền (TUQ.) phải bằng văn bản, có thời hạn và phạm vi. Đây là căn cứ của `signing_delegation` (`tu_ngay`, `den_ngay`, `pham_vi`) và `hinh_thuc_ky`. |
+| 7 | Nhắc và leo thang quá hạn | [THỰC TIỄN] + [THIẾT KẾ] | Hệ thống quản lý văn bản có nhắc hạn và báo cáo trễ hạn. Các mốc 24 giờ/48 giờ là đề xuất, không có nguồn; nhóm có thể chốt mốc khác. |
+| 8 | Ký nội bộ khác ký pháp lý; ký số từ xa | [PHÁP LÝ] + [THỰC TIỄN] | Luật Giao dịch điện tử 2023 và NĐ 23/2025/NĐ-CP phân biệt chữ ký điện tử với chữ ký số do tổ chức cung cấp dịch vụ chứng thực được cấp phép. Dịch vụ ký số từ xa trong nước (VNPT SmartCA, Viettel MySign) xác nhận ký trên ứng dụng di động, không cần thiết bị ký cắm vào máy chủ. |
+| 9 | Bỏ văn bản đến; văn bản mật ngoài phạm vi | [PHÁP LÝ] | NĐ 30/2020, mục quản lý văn bản đến: trình tự tiếp nhận → đăng ký → trình người có thẩm quyền cho ý kiến chỉ đạo → chuyển giao, giải quyết; không có bước ký lên văn bản đến. Luật Bảo vệ bí mật nhà nước 2018 Điều 5: nghiêm cấm soạn thảo, lưu giữ tài liệu chứa bí mật nhà nước trên máy tính, thiết bị đã hoặc đang kết nối Internet, mạng máy tính, mạng viễn thông, trừ trường hợp theo quy định về cơ yếu. |
+| 10 | Tách khâu văn thư | [PHÁP LÝ] + [THỰC TIỄN] | NĐ 30/2020 Điều 14: trình tự văn bản đi gồm cấp số, thời gian ban hành → đăng ký → ký số của cơ quan (văn bản điện tử). Điều 15: số và ký hiệu duy nhất trong năm; văn bản điện tử được cấp số, thời gian ban hành bằng chức năng của Hệ thống. Điều 17, Phụ lục I: ký số của cơ quan, tổ chức. Chuẩn chữ ký PDF: DocMDP mức 2 cho phép điền trường và ký tiếp sau chữ ký chứng thực. |
+| 11 | Xoay vòng `k_srv` khi đổi PIN | [THIẾT KẾ] | Nguyên tắc quản lý khóa: khi nghi bí mật bị lộ thì thay bí mật, không chỉ thay lớp bảo vệ bên ngoài (NIST SP 800-57 Part 1, phần xử lý khóa bị lộ). Với code hiện tại, `k_srv` không đổi nên đổi PIN không vô hiệu hóa `k_srv` đã lộ. |
+
+**Giới hạn của căn cứ**
+
+- Các điều khoản được tra qua trang tổng hợp văn bản pháp luật và bài phân tích, chưa đối chiếu bản Công báo.
+- "Ký nháy" (ký tắt) không được NĐ 30/2020 quy định thành thao tác riêng. Điều 12 quy định trách nhiệm: người đứng đầu đơn vị soạn thảo chịu trách nhiệm về nội dung; người kiểm tra thể thức chịu trách nhiệm về thể thức, kỹ thuật trình bày. Vai trò `KY_NHAY` là tập quán nghiệp vụ dựa trên trách nhiệm này, không phải quy định bắt buộc.
+- Việc xếp chữ ký Ed25519 nội bộ vào nhóm chữ ký điện tử và điều kiện để có giá trị pháp lý cần pháp chế xác nhận.
+
+**Nguồn**
+
+- NĐ 30/2020/NĐ-CP về công tác văn thư: https://caselaw.vn/van-ban-phap-luat/351088-nghi-dinh-so-30-2020-nd-cp-ngay-05-03-2020-cua-chinh-phu-ve-cong-tac-van-thu
+- Quản lý văn bản đi theo NĐ 30/2020 (Sở Xây dựng Đồng Nai): https://sxd.dongnai.gov.vn/vi/news/Van-ban-trien-khai-va-quy-pham-phap-luat-moi/quy-dinh-ve-quan-ly-van-ban-di-theo-nghi-dinh-so-30-2020-nd-cp-cua-chinh-phu-12600.html
+- Ký thay, ký thừa lệnh, ký thừa ủy quyền (LuatVietnam): https://luatvietnam.vn/hanh-chinh/ky-thay-ky-thua-lenh-ky-thua-uy-quyen-570-22342-article.html
+- Luật Bảo vệ bí mật nhà nước 2018, Điều 5: https://hethongphapluat.com/luat-bao-ve-bi-mat-nha-nuoc-2018/dieu-5
+- Luật Giao dịch điện tử 2023: https://caselaw.vn/van-ban-phap-luat/411469-luat-giao-dich-dien-tu-so-20-2023-qh15-ngay-22-06-2023-cua-quoc-hoi
+- NĐ 23/2025/NĐ-CP về chữ ký điện tử và dịch vụ tin cậy: https://caselaw.vn/van-ban-phap-luat/411540-nghi-dinh-so-23-2025-nd-cp-ngay-21-02-2025-cua-chinh-phu-quy-dinh-ve-chu-ky-dien-tu-va-dich-vu-tin-cay
+- DocuSign, routing order: https://blink.ucsd.edu/technology/esignature/senders/envelope/recipients.html
+- DocuSign, decline và void envelope: https://www.docusign.co.uk/blog/quick-tip-tuesday-deleting-or-voiding-envelopes-in-docusign/
+- PDF DocMDP, mức cho phép sau khi ký: https://atick.readthedocs.io/en/latest/certification.html
