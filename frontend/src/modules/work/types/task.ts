@@ -76,8 +76,8 @@ export interface TaskListItem {
   permissions: TaskPermissions;
 }
 
-/** Loại văn bản của nhóm 2 mà công việc phát sinh từ đó. */
-export type DocumentKind = 'vanbanden' | 'vanbandi' | 'vanbanmat';
+/** Loại văn bản của nhóm 2 mà công việc phát sinh từ đó (văn bản mật đã bỏ — issue #83). */
+export type DocumentKind = 'vanbanden' | 'vanbandi';
 
 export interface TaskDetail extends TaskListItem {
   firstOpenedAt: string | null;

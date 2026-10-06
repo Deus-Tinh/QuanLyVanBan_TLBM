@@ -331,13 +331,15 @@ class TaskWriteSerializer(serializers.Serializer):
         required=False,
         error_messages={"invalid": "Danh sách phòng ban không hợp lệ. Hãy chọn lại phòng ban."},
     )
+    # TODO(issue #83): kiem tra nguoi dung co duoc xem van ban nay khong bang
+    # van_ban_xem_duoc(user, loai) cua nhom 2 khi ham dung chung len nhanh.
     documentType = serializers.ChoiceField(
         source="document_type",
         choices=DocumentKind.choices,
         required=False,
         allow_null=True,
         error_messages={
-            "invalid_choice": "Loại văn bản không hợp lệ. Hãy chọn Văn bản đến, Văn bản đi hoặc Văn bản mật."
+            "invalid_choice": "Loại văn bản không hợp lệ. Hãy chọn Văn bản đến hoặc Văn bản đi."
         },
     )
     documentId = serializers.IntegerField(source="document_id", required=False, allow_null=True)

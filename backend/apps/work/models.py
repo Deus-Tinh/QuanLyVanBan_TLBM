@@ -145,11 +145,13 @@ class AttachmentKind(models.TextChoices):
 
 
 class DocumentKind(models.TextChoices):
-    """Loại văn bản của nhóm 2 mà công việc phát sinh từ đó (enum document_kind)."""
+    """
+    Loại văn bản của nhóm 2 mà công việc phát sinh từ đó (enum document_kind).
+    Chỉ còn văn bản đến và văn bản đi — GVHD đã bỏ hẳn văn bản mật (issue #83).
+    """
 
     VAN_BAN_DEN = "vanbanden", "Văn bản đến"
     VAN_BAN_DI = "vanbandi", "Văn bản đi"
-    VAN_BAN_MAT = "vanbanmat", "Văn bản mật"
 
 
 # Mã quyền do nhóm 7 cấp; gom một chỗ để đổi nhanh khi hệ thống phân quyền xong.
@@ -265,6 +267,8 @@ class Task(models.Model):
 
     # Văn bản liên quan (công việc phát sinh từ Văn bản đến / đi của nhóm 2).
     # TODO: doi document_id thanh FK that khi nhom 2 chot ten model van ban.
+    # TODO(issue #83): khi hien thi hoac kiem tra van ban lien quan, dung ham dung chung
+    # van_ban_xem_duoc(user, loai) cua nhom 2 (ham nay chua co tren nhanh).
     document_type = models.CharField(
         "Loại văn bản liên quan",
         max_length=20,

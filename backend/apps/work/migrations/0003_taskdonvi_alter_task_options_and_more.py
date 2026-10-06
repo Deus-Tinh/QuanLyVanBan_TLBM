@@ -48,7 +48,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='task',
             name='document_type',
-            field=models.CharField(blank=True, choices=[('vanbanden', 'Văn bản đến'), ('vanbandi', 'Văn bản đi'), ('vanbanmat', 'Văn bản mật')], max_length=20, null=True, verbose_name='Loại văn bản liên quan'),
+            field=models.CharField(blank=True, choices=[('vanbanden', 'Văn bản đến'), ('vanbandi', 'Văn bản đi')], max_length=20, null=True, verbose_name='Loại văn bản liên quan'),
         ),
         migrations.AddField(
             model_name='taskattachment',

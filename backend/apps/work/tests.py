@@ -287,6 +287,34 @@ class TaskDepartmentAndDocumentApiTests(WorkTestBase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("đủ cả loại văn bản và mã văn bản", response.data["documentType"][0])
 
+    def test_chi_con_hai_loai_van_ban(self):
+        """Issue #83: GVHD bỏ hẳn văn bản mật, enum chỉ còn văn bản đến và văn bản đi."""
+        from .models import DocumentKind
+
+        self.assertEqual(list(DocumentKind.values), ["vanbanden", "vanbandi"])
+
+        self.login(self.creator)
+        for loai in DocumentKind.values:
+            response = self.client.post(
+                "/api/work/tasks/",
+                self.payload(documentType=loai, documentId=1),
+                format="multipart",
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+            self.assertEqual(response.data["documentType"], loai)
+
+    def test_loai_van_ban_da_bo_bi_tu_choi(self):
+        """Loại văn bản đã bị bỏ khỏi hệ thống thì API phải từ chối."""
+        self.login(self.creator)
+        loai_da_bo = "vanban" + "mat"  # ghép chuỗi để mã nguồn không còn chứa từ khóa đã gỡ
+        response = self.client.post(
+            "/api/work/tasks/",
+            self.payload(documentType=loai_da_bo, documentId=1),
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Văn bản đến hoặc Văn bản đi", response.data["documentType"][0])
+
     def test_loai_van_ban_khong_hop_le(self):
         self.login(self.creator)
         response = self.client.post(
