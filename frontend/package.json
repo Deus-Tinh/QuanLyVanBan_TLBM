@@ -9,6 +9,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:tokens": "node scripts/check-tokens.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

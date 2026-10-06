@@ -31,6 +31,7 @@
     "dashboard": "Home",
     "documents": "Documents",
     "records": "Dossiers & Files",
+    "records_resources": "Dossiers & Resources",
     "workflow": "Tasks & Signing",
     "system": "System Utilities",
     "ai": "AI Assistant",
@@ -388,7 +389,13 @@
       "filter": "Apply filters",
       "reset": "Reset",
       "retry": "Try again",
-      "viewDocuments": "View documents"
+      "viewDocuments": "View documents",
+      "view": "View",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "close": "Close",
+      "saveChanges": "Save changes",
+      "addNew": "Add new"
     },
     "filters": {
       "year": "Filter by year",
@@ -406,6 +413,54 @@
       "vanbanden": "Incoming",
       "vanbandi": "Outgoing",
       "vanbanmat": "Confidential"
+    },
+    "dossiers": {
+      "moduleLabel": "Group 3 · Dossiers and resources",
+      "title": "Dossier catalog",
+      "description": "Manage level-1 dossiers and open the document types assigned to each dossier.",
+      "add": "Add dossier",
+      "closeNotice": "Close notification",
+      "searchLabel": "Search dossiers",
+      "searchPlaceholder": "Search by dossier name or reference...",
+      "loading": "Loading dossiers",
+      "emptyTitle": "No matching dossiers",
+      "emptyDescription": "Change the filters or add a dossier to get started.",
+      "reference": "Reference",
+      "name": "Dossier name",
+      "creator": "Created by",
+      "viewDocumentTypesLabel": "View document types for {name}",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete dossier?",
+      "confirmDeleteMessage": "Dossier “{name}” will be deleted. The operation may be rejected if the dossier still contains related data.",
+      "notices": {
+        "updated": "Dossier updated successfully.",
+        "created": "Dossier added successfully.",
+        "deleted": "Dossier deleted successfully."
+      }
+    },
+    "modal": {
+      "requiredFields": "Fields marked with * are required.",
+      "titles": {
+        "addDossier": "Add dossier",
+        "editDossier": "Edit dossier",
+        "addDocumentType": "Add document type",
+        "editDocumentType": "Edit document type"
+      },
+      "fields": {
+        "reference": "Reference",
+        "priority": "Priority",
+        "dossierName": "Dossier name",
+        "documentTypeName": "Document type name",
+        "createdDate": "Created date",
+        "note": "Notes"
+      },
+      "validation": {
+        "dossierNameRequired": "Enter a dossier name.",
+        "documentTypeNameRequired": "Enter a document type name.",
+        "referenceRequired": "Enter a dossier reference.",
+        "priorityPositive": "Priority must be a positive integer."
+      }
     },
     "documentTypes": {
       "back": "Back to dossiers",
@@ -435,6 +490,10 @@
     },
     "errors": {
       "title": "Unable to load data",
+      "forbidden": "You do not have permission to perform this action.",
+      "loadDossiers": "Unable to load dossiers.",
+      "saveDossier": "Unable to save the dossier. Check the entered data.",
+      "deleteDossier": "Unable to delete the dossier. It may still contain related data.",
       "missingDossier": "The requested dossier could not be identified.",
       "loadDocumentTypes": "Unable to load the level-2 document list.",
       "loadDocuments": "Unable to load documents for this dossier.",

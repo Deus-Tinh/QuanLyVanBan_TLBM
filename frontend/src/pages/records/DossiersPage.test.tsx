@@ -1,9 +1,10 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { recordsService } from '@lib/recordsService';
+import { setLanguage } from '@i18n/translate';
 import DossiersPage from './DossiersPage';
 
 
@@ -25,6 +26,12 @@ vi.mock('@lib/recordsService', () => ({
 describe('DossiersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setLanguage('vi');
+  });
+
+  afterEach(() => {
+    cleanup();
+    setLanguage('vi');
   });
 
   it('does not offer deletion for the system dossier', async () => {
@@ -63,5 +70,27 @@ describe('DossiersPage', () => {
       screen.queryByLabelText('Xóa Tên hệ thống có thể thay đổi')
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Xóa Hồ sơ thường')).toBeInTheDocument();
+  });
+
+  it('renders the dossier page in English', async () => {
+    act(() => setLanguage('en'));
+    vi.mocked(recordsService.listDossiers).mockResolvedValue({
+      items: [],
+      count: 0,
+      next: null,
+      previous: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <DossiersPage />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Dossier catalog' })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add dossier' })).toBeInTheDocument();
+    expect(await screen.findByText('No matching dossiers')).toBeInTheDocument();
   });
 });
