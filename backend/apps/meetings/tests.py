@@ -64,11 +64,10 @@ class PhongHopAPITestCase(APITestCase):
             email="manager@tlbm.vn",
             password="ManagerPassword123!",
         )
-        content_type = ContentType.objects.get_for_model(PhongHop)
-        add_perm = Permission.objects.get(content_type=content_type, codename="add_phonghop")
-        change_perm = Permission.objects.get(content_type=content_type, codename="change_phonghop")
-        delete_perm = Permission.objects.get(content_type=content_type, codename="delete_phonghop")
-        self.manager_user.user_permissions.add(add_perm, change_perm, delete_perm)
+        manager_perms = Permission.objects.filter(
+            codename__in=["add_phonghop", "change_phonghop", "delete_phonghop"]
+        )
+        self.manager_user.user_permissions.add(*manager_perms)
 
         # Tạo sẵn một số phòng họp mẫu
         self.room1 = PhongHop.objects.create(
@@ -323,6 +322,12 @@ class DatPhongHopAPITestCase(APITestCase):
             email="user2@tlbm.vn",
             password="UserTwoPass123!",
         )
+
+        booking_perms = Permission.objects.filter(
+            codename__in=["add_datphonghop", "change_own_datphonghop", "view_schedule_phonghop"]
+        )
+        self.user1.user_permissions.add(*booking_perms)
+        self.user2.user_permissions.add(*booking_perms)
 
         self.room1 = PhongHop.objects.create(
             ten_phong="Phòng Họp VIP 1",

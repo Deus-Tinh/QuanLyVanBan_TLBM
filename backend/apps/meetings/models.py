@@ -6,7 +6,6 @@ Models cho phân hệ Phòng họp (Issue #22 - Nhóm 7).
 """
 
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -67,6 +66,13 @@ class PhongHop(models.Model):
         verbose_name = "Phòng họp"
         verbose_name_plural = "Danh mục phòng họp"
         ordering = ["ten_phong"]
+        default_permissions = ()
+        permissions = [
+            ("view_schedule_phonghop", "Xem lịch phòng họp"),
+            ("add_phonghop", "Thêm phòng họp"),
+            ("change_phonghop", "Sửa phòng họp"),
+            ("delete_phonghop", "Xóa phòng họp"),
+        ]
 
     def __str__(self):
         return f"{self.ten_phong} ({self.suc_chua} chỗ)"
@@ -99,7 +105,7 @@ class DatPhongHop(models.Model):
         verbose_name="Phòng họp",
     )
     nguoi_dat = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="meeting_bookings",
         verbose_name="Người đặt",
@@ -149,8 +155,11 @@ class DatPhongHop(models.Model):
         verbose_name = "Lịch đặt phòng họp"
         verbose_name_plural = "Danh sách đặt phòng họp"
         ordering = ["-thoi_gian_bat_dau"]
+        default_permissions = ()
         permissions = [
-            ("cancel_datphonghop", "Có thể hủy lịch đặt phòng họp"),
+            ("add_datphonghop", "Đặt phòng họp"),
+            ("change_own_datphonghop", "Sửa/Hủy lịch do chính mình đặt"),
+            ("change_any_datphonghop", "Sửa/Hủy mọi lịch đặt phòng (QT)"),
         ]
 
     def __str__(self):
@@ -189,9 +198,8 @@ class DatPhongHop(models.Model):
 
                 if conflicts.exists():
                     conflict = conflicts.first()
-                    nguoi_dat_name = conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
-                    if hasattr(conflict.nguoi_dat, "profile") and conflict.nguoi_dat.profile.full_name:
-                        nguoi_dat_name = conflict.nguoi_dat.profile.full_name
+                    nguoi_dat = conflict.nguoi_dat
+                    nguoi_dat_name = getattr(nguoi_dat, "ho_ten", None) or nguoi_dat.get_full_name() or nguoi_dat.username
 
                     tz = timezone.get_current_timezone()
                     c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")

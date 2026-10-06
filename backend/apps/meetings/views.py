@@ -41,11 +41,11 @@ class MeetingRoomPermission(permissions.BasePermission):
             return True
 
         if request.method == "POST":
-            return request.user.has_perm("meetings.add_phonghop")
+            return request.user.has_perm("add_phonghop")
         if request.method in ["PUT", "PATCH"]:
-            return request.user.has_perm("meetings.change_phonghop")
+            return request.user.has_perm("change_phonghop")
         if request.method == "DELETE":
-            return request.user.has_perm("meetings.delete_phonghop")
+            return request.user.has_perm("delete_phonghop")
 
         return False
 
@@ -140,21 +140,34 @@ class PhongHopViewSet(viewsets.ModelViewSet):
 
 class IsOwnerOrAdminForBooking(permissions.BasePermission):
     """
-    Quyền truy cập đặt lịch phòng họp:
+    Quyền truy cập đặt lịch phòng họp theo RBAC contract Issue #21:
     - Xem danh sách / chi tiết: Bất kỳ user đã xác thực (IsAuthenticated).
-    - Tạo mới (POST): Bất kỳ user đã xác thực.
-    - Sửa / Hủy / Xóa: Chỉ người tạo (nguoi_dat) hoặc admin/staff.
+    - Tạo mới (POST): Cần quyền 'add_datphonghop' hoặc superuser/staff.
+    - Sửa / Hủy / Xóa:
+      * Nếu là người đặt: cần quyền 'change_own_datphonghop' hoặc superuser/staff.
+      * Nếu là người khác: cần quyền 'change_any_datphonghop' hoặc superuser/staff.
     """
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated)
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser or request.user.is_staff:
+            return True
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.method == "POST" and getattr(view, "action", None) != "cancel":
+            return request.user.has_perm("add_datphonghop")
+        return True
 
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
         if request.user.is_superuser or request.user.is_staff:
             return True
-        return obj.nguoi_dat == request.user
+        is_owner = obj.nguoi_dat_id == request.user.id
+        if is_owner:
+            return request.user.has_perm("change_own_datphonghop")
+        return request.user.has_perm("change_any_datphonghop")
 
 
 class DatPhongHopViewSet(viewsets.ModelViewSet):
@@ -168,7 +181,7 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
     - POST /api/meeting-bookings/{id}/cancel/ : Hủy lịch giải phóng khung giờ
     """
 
-    queryset = DatPhongHop.objects.select_related("phong_hop", "nguoi_dat", "nguoi_dat__profile").all()
+    queryset = DatPhongHop.objects.select_related("phong_hop", "nguoi_dat").all()
     serializer_class = DatPhongHopSerializer
     permission_classes = [IsOwnerOrAdminForBooking]
     pagination_class = StandardPagination
@@ -254,9 +267,7 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
 
             if conflicts.exists():
                 conflict = conflicts.first()
-                host = conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
-                if hasattr(conflict.nguoi_dat, "profile") and conflict.nguoi_dat.profile.full_name:
-                    host = conflict.nguoi_dat.profile.full_name
+                host = getattr(conflict.nguoi_dat, "ho_ten", None) or conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
                 tz = timezone.get_current_timezone()
                 c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")
                 c_end = timezone.localtime(conflict.thoi_gian_ket_thuc, tz).strftime("%H:%M ngày %d/%m/%Y")
@@ -271,6 +282,9 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
 
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        serializer.save(nguoi_dat=self.request.user)
 
     def update(self, request, *args, **kwargs):
         """
@@ -298,9 +312,7 @@ class DatPhongHopViewSet(viewsets.ModelViewSet):
 
                 if conflicts.exists():
                     conflict = conflicts.first()
-                    host = conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
-                    if hasattr(conflict.nguoi_dat, "profile") and conflict.nguoi_dat.profile.full_name:
-                        host = conflict.nguoi_dat.profile.full_name
+                    host = getattr(conflict.nguoi_dat, "ho_ten", None) or conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
                     tz = timezone.get_current_timezone()
                     c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")
                     c_end = timezone.localtime(conflict.thoi_gian_ket_thuc, tz).strftime("%H:%M ngày %d/%m/%Y")

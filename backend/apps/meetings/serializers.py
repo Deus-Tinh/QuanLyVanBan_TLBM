@@ -58,19 +58,25 @@ class UserSimpleSerializer(serializers.Serializer):
     role = serializers.SerializerMethodField()
 
     def get_full_name(self, obj):
-        if hasattr(obj, "profile") and obj.profile.full_name:
-            return obj.profile.full_name
-        return obj.get_full_name() or obj.username
+        return getattr(obj, "ho_ten", None) or obj.get_full_name() or obj.username
 
     def get_department(self, obj):
-        if hasattr(obj, "profile"):
-            return obj.profile.department or ""
+        if hasattr(obj, "don_vi") and obj.don_vi:
+            return getattr(obj.don_vi, "ten", str(obj.don_vi))
+        if hasattr(obj, "profile") and getattr(obj.profile, "department", None):
+            return obj.profile.department
         return ""
 
     def get_role(self, obj):
-        if hasattr(obj, "profile"):
-            return obj.profile.role or "staff"
-        return "admin" if (obj.is_staff or obj.is_superuser) else "staff"
+        if hasattr(obj, "chuc_vu") and obj.chuc_vu:
+            return getattr(obj.chuc_vu, "name", str(obj.chuc_vu))
+        if getattr(obj, "is_superuser", False):
+            return "admin"
+        if hasattr(obj, "groups"):
+            first_group = obj.groups.values_list("name", flat=True).first()
+            if first_group:
+                return first_group
+        return "staff"
 
 
 class DatPhongHopSerializer(serializers.ModelSerializer):
@@ -135,9 +141,8 @@ class DatPhongHopSerializer(serializers.ModelSerializer):
 
             if conflicts.exists():
                 conflict = conflicts.first()
-                nguoi_dat_name = conflict.nguoi_dat.get_full_name() or conflict.nguoi_dat.username
-                if hasattr(conflict.nguoi_dat, "profile") and conflict.nguoi_dat.profile.full_name:
-                    nguoi_dat_name = conflict.nguoi_dat.profile.full_name
+                nguoi_dat = conflict.nguoi_dat
+                nguoi_dat_name = getattr(nguoi_dat, "ho_ten", None) or nguoi_dat.get_full_name() or nguoi_dat.username
 
                 tz = timezone.get_current_timezone()
                 c_start = timezone.localtime(conflict.thoi_gian_bat_dau, tz).strftime("%H:%M")
@@ -151,10 +156,12 @@ class DatPhongHopSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get("request")
         if request and hasattr(request, "user") and request.user.is_authenticated:
-            validated_data["nguoi_dat"] = request.user
+            validated_data.setdefault("nguoi_dat", request.user)
             # Tự động gán đơn vị tổ chức nếu chưa điền
             if not validated_data.get("don_vi_to_chuc"):
-                if hasattr(request.user, "profile") and request.user.profile.department:
+                if hasattr(request.user, "don_vi") and request.user.don_vi:
+                    validated_data["don_vi_to_chuc"] = getattr(request.user.don_vi, "ten", str(request.user.don_vi))
+                elif hasattr(request.user, "profile") and getattr(request.user.profile, "department", None):
                     validated_data["don_vi_to_chuc"] = request.user.profile.department
         return super().create(validated_data)
 
