@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@components/common';
+import { useTranslation } from '@i18n/translate';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -18,6 +19,8 @@ export default function ConfirmDialog({
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
+
   React.useEffect(() => {
     if (!open) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -47,8 +50,12 @@ export default function ConfirmDialog({
           </div>
         </div>
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" disabled={isLoading} onClick={onCancel}>Hủy</Button>
-          <Button type="button" variant="danger" isLoading={isLoading} onClick={onConfirm}>Xóa</Button>
+          <Button type="button" variant="secondary" disabled={isLoading} onClick={onCancel}>
+            {t('records.actions.cancel')}
+          </Button>
+          <Button type="button" variant="danger" isLoading={isLoading} onClick={onConfirm}>
+            {t('records.actions.delete')}
+          </Button>
         </div>
       </div>
     </div>

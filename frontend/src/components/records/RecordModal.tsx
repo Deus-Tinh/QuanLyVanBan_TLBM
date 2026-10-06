@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@components/common';
 import type { Dossier, DossierPayload, DocumentType, DocumentTypePayload } from '@app-types/records';
+import { useTranslation } from '@i18n/translate';
 
 const fieldClass =
   'w-full rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2.5 text-sm text-main outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-subtle disabled:opacity-60';
@@ -38,6 +39,7 @@ export default function RecordModal(props: RecordModalProps) {
 }
 
 function RecordModalForm(props: RecordModalProps) {
+  const { t } = useTranslation();
   const { open, isLoading = false, error, onClose, mode, value } = props;
   const dossier = mode === 'dossier' ? (value as Dossier | null | undefined) : null;
   const documentType = mode === 'documentType' ? (value as DocumentType | null | undefined) : null;
@@ -58,20 +60,28 @@ function RecordModalForm(props: RecordModalProps) {
   }, [open, isLoading, onClose]);
 
   const isEditing = Boolean(value);
-  const title = `${isEditing ? 'Chỉnh sửa' : 'Thêm'} ${mode === 'dossier' ? 'hồ sơ' : 'loại văn bản'}`;
+  const title = t(
+    `records.modal.titles.${isEditing ? 'edit' : 'add'}${mode === 'dossier' ? 'Dossier' : 'DocumentType'}`
+  );
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim()) {
-      setValidation(mode === 'dossier' ? 'Vui lòng nhập tên hồ sơ.' : 'Vui lòng nhập tên loại văn bản.');
+      setValidation(
+        t(
+          mode === 'dossier'
+            ? 'records.modal.validation.dossierNameRequired'
+            : 'records.modal.validation.documentTypeNameRequired'
+        )
+      );
       return;
     }
     if (mode === 'dossier' && !code.trim()) {
-      setValidation('Vui lòng nhập số/ký hiệu hồ sơ.');
+      setValidation(t('records.modal.validation.referenceRequired'));
       return;
     }
     if (mode === 'dossier' && priority && (!Number.isInteger(Number(priority)) || Number(priority) < 1)) {
-      setValidation('Số thứ tự ưu tiên phải là số nguyên dương.');
+      setValidation(t('records.modal.validation.priorityPositive'));
       return;
     }
 
@@ -105,14 +115,14 @@ function RecordModalForm(props: RecordModalProps) {
         <div className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
           <div>
             <h2 id="record-modal-title" className="m-0 text-lg font-bold text-main">{title}</h2>
-            <p className="m-0 mt-1 text-xs text-muted">Các trường có dấu * là bắt buộc.</p>
+            <p className="m-0 mt-1 text-xs text-muted">{t('records.modal.requiredFields')}</p>
           </div>
           <button
             type="button"
             className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-muted transition hover:bg-surface-hover hover:text-main"
             onClick={onClose}
             disabled={isLoading}
-            aria-label="Đóng"
+            aria-label={t('records.actions.close')}
           >
             <i className="fa-solid fa-xmark" />
           </button>
@@ -122,18 +132,22 @@ function RecordModalForm(props: RecordModalProps) {
           {mode === 'dossier' && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold text-secondary">
-                Số/ký hiệu *
+                {t('records.modal.fields.reference')} *
                 <input className={`${fieldClass} mt-1.5`} value={code} onChange={(e) => setCode(e.target.value)} maxLength={255} autoFocus />
               </label>
               <label className="block text-sm font-semibold text-secondary">
-                Thứ tự ưu tiên
+                {t('records.modal.fields.priority')}
                 <input className={`${fieldClass} mt-1.5`} type="number" min="1" value={priority} onChange={(e) => setPriority(e.target.value)} />
               </label>
             </div>
           )}
 
           <label className="block text-sm font-semibold text-secondary">
-            {mode === 'dossier' ? 'Tên hồ sơ' : 'Tên loại văn bản'} *
+            {t(
+              mode === 'dossier'
+                ? 'records.modal.fields.dossierName'
+                : 'records.modal.fields.documentTypeName'
+            )} *
             <input
               className={`${fieldClass} mt-1.5`}
               value={name}
@@ -144,12 +158,12 @@ function RecordModalForm(props: RecordModalProps) {
           </label>
 
           <label className="block text-sm font-semibold text-secondary">
-            Ngày lập
+            {t('records.modal.fields.createdDate')}
             <input className={`${fieldClass} mt-1.5`} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
 
           <label className="block text-sm font-semibold text-secondary">
-            Ghi chú
+            {t('records.modal.fields.note')}
             <textarea className={`${fieldClass} mt-1.5 min-h-24 resize-y`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} />
           </label>
 
@@ -161,9 +175,11 @@ function RecordModalForm(props: RecordModalProps) {
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border-subtle px-5 py-4">
-          <Button type="button" variant="secondary" disabled={isLoading} onClick={onClose}>Hủy</Button>
+          <Button type="button" variant="secondary" disabled={isLoading} onClick={onClose}>
+            {t('records.actions.cancel')}
+          </Button>
           <Button type="submit" isLoading={isLoading} icon="fa-floppy-disk">
-            {isEditing ? 'Lưu thay đổi' : 'Thêm mới'}
+            {t(isEditing ? 'records.actions.saveChanges' : 'records.actions.addNew')}
           </Button>
         </div>
       </form>

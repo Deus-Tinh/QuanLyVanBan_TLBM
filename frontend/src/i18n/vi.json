@@ -389,7 +389,13 @@
       "filter": "Lọc dữ liệu",
       "reset": "Đặt lại",
       "retry": "Thử lại",
-      "viewDocuments": "Xem văn bản"
+      "viewDocuments": "Xem văn bản",
+      "view": "Xem",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "close": "Đóng",
+      "saveChanges": "Lưu thay đổi",
+      "addNew": "Thêm mới"
     },
     "filters": {
       "year": "Lọc theo năm",
@@ -407,6 +413,54 @@
       "vanbanden": "Văn bản đến",
       "vanbandi": "Văn bản đi",
       "vanbanmat": "Văn bản mật"
+    },
+    "dossiers": {
+      "moduleLabel": "Nhóm 3 · Hồ sơ và tài liệu",
+      "title": "Danh mục hồ sơ",
+      "description": "Quản lý hồ sơ cấp 1 và truy cập các loại văn bản thuộc từng hồ sơ.",
+      "add": "Thêm hồ sơ",
+      "closeNotice": "Đóng thông báo",
+      "searchLabel": "Tìm kiếm hồ sơ",
+      "searchPlaceholder": "Tìm theo tên hoặc số/ký hiệu hồ sơ...",
+      "loading": "Đang tải danh sách hồ sơ",
+      "emptyTitle": "Chưa có hồ sơ phù hợp",
+      "emptyDescription": "Thay đổi bộ lọc hoặc thêm hồ sơ mới để bắt đầu.",
+      "reference": "Số/ký hiệu",
+      "name": "Tên hồ sơ",
+      "creator": "Người lập",
+      "viewDocumentTypesLabel": "Xem loại văn bản của {name}",
+      "editLabel": "Sửa {name}",
+      "deleteLabel": "Xóa {name}",
+      "confirmDeleteTitle": "Xóa hồ sơ?",
+      "confirmDeleteMessage": "Hồ sơ “{name}” sẽ bị xóa. Thao tác có thể bị từ chối nếu hồ sơ còn dữ liệu liên quan.",
+      "notices": {
+        "updated": "Đã cập nhật hồ sơ thành công.",
+        "created": "Đã thêm hồ sơ thành công.",
+        "deleted": "Đã xóa hồ sơ thành công."
+      }
+    },
+    "modal": {
+      "requiredFields": "Các trường có dấu * là bắt buộc.",
+      "titles": {
+        "addDossier": "Thêm hồ sơ",
+        "editDossier": "Chỉnh sửa hồ sơ",
+        "addDocumentType": "Thêm loại văn bản",
+        "editDocumentType": "Chỉnh sửa loại văn bản"
+      },
+      "fields": {
+        "reference": "Số/ký hiệu",
+        "priority": "Thứ tự ưu tiên",
+        "dossierName": "Tên hồ sơ",
+        "documentTypeName": "Tên loại văn bản",
+        "createdDate": "Ngày lập",
+        "note": "Ghi chú"
+      },
+      "validation": {
+        "dossierNameRequired": "Vui lòng nhập tên hồ sơ.",
+        "documentTypeNameRequired": "Vui lòng nhập tên loại văn bản.",
+        "referenceRequired": "Vui lòng nhập số/ký hiệu hồ sơ.",
+        "priorityPositive": "Số thứ tự ưu tiên phải là số nguyên dương."
+      }
     },
     "documentTypes": {
       "back": "Quay lại danh mục hồ sơ",
@@ -436,6 +490,10 @@
     },
     "errors": {
       "title": "Không thể tải dữ liệu",
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "loadDossiers": "Không thể tải danh sách hồ sơ.",
+      "saveDossier": "Không thể lưu hồ sơ. Vui lòng kiểm tra lại dữ liệu.",
+      "deleteDossier": "Không thể xóa hồ sơ. Hồ sơ có thể đang chứa dữ liệu liên quan.",
       "missingDossier": "Không xác định được hồ sơ cần xem.",
       "loadDocumentTypes": "Không thể tải danh sách văn bản cấp 2.",
       "loadDocuments": "Không thể tải danh sách văn bản của hồ sơ.",
