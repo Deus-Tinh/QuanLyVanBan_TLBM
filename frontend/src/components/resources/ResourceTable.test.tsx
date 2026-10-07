@@ -156,4 +156,59 @@ describe('ResourceTable Component', () => {
 
     expect(screen.getByText('Còn hiệu lực 1 phần')).toBeInTheDocument();
   });
+
+  it('handles multi-page pagination controls correctly', () => {
+    const handlePageChange = vi.fn();
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={2}
+        totalPages={10}
+        pageSize={5}
+        totalCount={50}
+        onPageChange={handlePageChange}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Kiểm tra nút chuyển trang
+    const prevBtn = screen.getByTitle('Trang trước');
+    fireEvent.click(prevBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(1);
+
+    const nextBtn = screen.getByTitle('Trang sau');
+    fireEvent.click(nextBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(3);
+
+    // Kiểm tra nút Về trang đầu và Đến trang cuối
+    const firstBtn = screen.getByTitle('Về trang đầu (Trang 1)');
+    fireEvent.click(firstBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(1);
+
+    const lastBtn = screen.getByTitle('Đến trang cuối (Trang 10)');
+    fireEvent.click(lastBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(10);
+  });
+
+  it('supports quick jumping to page via input', () => {
+    const handlePageChange = vi.fn();
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={20}
+        pageSize={5}
+        totalCount={100}
+        onPageChange={handlePageChange}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    const jumpInput = screen.getByLabelText('Nhập số trang muốn chuyển tới');
+    fireEvent.change(jumpInput, { target: { value: '8' } });
+
+    const goBtn = screen.getByTitle('Chuyển đến trang đã nhập');
+    fireEvent.click(goBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(8);
+  });
 });
