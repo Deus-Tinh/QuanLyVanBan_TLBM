@@ -25,7 +25,6 @@ class VaiTroKy(models.TextChoices):
 class LoaiVanBan(models.TextChoices):
     VAN_BAN_DEN = "vanbanden", "Văn bản đến"
     VAN_BAN_DI = "vanbandi", "Văn bản đi"
-    VAN_BAN_MAT = "vanbanmat", "Văn bản mật"
 
 
 class TrangThaiYeuCau(models.TextChoices):

@@ -60,7 +60,7 @@ Hệ thống tách hai giai đoạn:
 - `[FACT]` Cấu hình hiện tại: SQLite, `AUTH_USER_MODEL` mặc định (`auth.User`); app `accounts` chỉ có `StaffProfile` (OneToOne tới tài khoản). `requirements.txt` chưa có `psycopg`, `celery`, `redis`.
 - `[ĐỀ XUẤT]` Stack đích: Django REST Framework, PostgreSQL, Celery, Redis.
 - `[ĐỀ XUẤT]` Mọi FK người dùng trỏ tới `AUTH_USER_MODEL`; không tạo bảng người dùng mới.
-- `[FACT]` CSDL chung (`csdl_qlvbtl_schema_final.sql`) dùng 3 bảng văn bản đến/đi/mật và kiểu enum `document_kind`; do đó Trình ký tham chiếu văn bản bằng `document_type` + `van_ban_id`, không FK.
+- `[FACT]` CSDL chung (`csdl_qlvbtl_schema_final.sql`) dùng bảng văn bản đến và văn bản đi (văn bản mật hành chính đã bỏ, PR #81); do đó Trình ký tham chiếu văn bản bằng `document_type` + `van_ban_id`, không FK.
 - `[CHƯA XÁC MINH]` CSDL chung trỏ FK người dùng tới `accounts_employee`, trong khi Django hiện dùng `auth.User`; chờ chốt model người dùng (Phase 6).
 - `[CHƯA XÁC MINH]` Tên model đơn vị/phòng ban, chức vụ và API lưu trữ tài liệu hiện có (Nhóm 7).
 
@@ -299,7 +299,7 @@ Ràng buộc: CHECK có đúng một trong `nguoi_ky`, `chuc_vu`. Mọi người
 | Tên trường | Field | Kiểu dữ liệu | Bắt buộc | Ghi chú |
 |---|---|---|---|---|
 | ID | `id` | Number (auto) | | |
-| Loại văn bản | `document_type` | Text (20) [vanbanden, vanbandi, vanbanmat] | X | Truyền tường minh, không có giá trị mặc định |
+| Loại văn bản | `document_type` | Text (20) [vanbanden, vanbandi] | X | Truyền tường minh, không có giá trị mặc định. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) không đi qua trình ký |
 | Văn bản liên quan | `van_ban_id` | Number (BigInt) | X | Không FK (3 bảng văn bản); index `(document_type, van_ban_id)` |
 | Phiên bản văn bản | `phien_ban_van_ban` | Text (50) | | Bản sao từ lượt trình hiện hành |
 | Vị trí lưu tệp | `vi_tri_luu_tep` | Text (500) | | Bản sao từ lượt trình hiện hành |
@@ -545,7 +545,7 @@ Bảng trạng thái, không phải bảng bằng chứng: được cập nhật
 | Nhóm / Sheet | Field | Nội dung |
 |---|---|---|
 | Nhóm 7 — CBNV | `anh_chu_ky` | Image (PNG nền trong suốt, tối đa 2MB); ảnh chữ ký cá nhân trong hồ sơ |
-| Nhóm 2 — Văn bản | `document_type`, `van_ban_id` | CSDL chung có 3 bảng đến/đi/mật; Trình ký tham chiếu bằng cặp này, không FK. Cần Nhóm 2 xác nhận khóa chính từng bảng |
+| Nhóm 2 — Văn bản | `document_type`, `van_ban_id` | CSDL chung có bảng đến/đi; Trình ký tham chiếu bằng cặp này, không FK. Cần Nhóm 2 xác nhận khóa chính từng bảng |
 
 ### 5.3. Ràng buộc tổng hợp
 
@@ -807,7 +807,7 @@ Nếu repo có chuẩn lint/type check thì bổ sung đúng lệnh của repo t
 - `[RỦI RO]` Xác thực khi ký phụ thuộc thiết kế PIN ở mục 3.4; chưa triển khai. Hiện tại ký chỉ dựa vào phiên đăng nhập và khóa phía client.
 - `[RỦI RO]` Chống chối bỏ nội bộ chỉ đáng tin ở mức tin cậy vào CSDL (khóa công khai và chữ ký đều lưu trong CSDL). Giảm bằng chuỗi hash nhật ký hoặc dấu thời gian bên thứ ba; chưa thuộc MVP.
 - `[CHƯA XÁC MINH]` Hình thức ký thay (KT., TL., TUQ.), thời hạn ủy quyền; cần pháp chế hoặc Ban chuyên môn xác nhận.
-- `[CHƯA XÁC MINH]` Văn bản mật (`vanbanmat`) có được ký trên hệ thống này hay phải tách môi trường theo quy định bảo vệ bí mật nhà nước; cần pháp chế xác nhận trước Phase 7.
+- `[ĐÃ CHỐT]` Văn bản hạn chế (mật nội bộ, `pham_vi = 'HAN_CHE'`) không ký và không đi qua trình ký (GVHD xác nhận). Văn bản thường vẫn ký bình thường, gồm ký nháy (`KY_NHAY`) và ký chính (`KY_CHINH`). Khi có trường `pham_vi` (#82), API tạo phiếu từ chối văn bản `HAN_CHE`; theo dõi tại #83.
 - `[CHƯA CHỐT]` Thu hồi hoặc thay thế sau khi lượt trình `HOAN_THANH`; nhiều tệp đính kèm; vai trò xem/góp ý không ký.
 - `[RỦI RO]` Test đồng thời (Phase 8) cần PostgreSQL; cấu hình mặc định là SQLite và `requirements.txt` chưa có `psycopg`.
 

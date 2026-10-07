@@ -40,7 +40,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 
 ### Phase 3 — Các model còn lại
 - `SigningProcessStepSigner`, `SigningRequest`, `SigningAttempt`, `SigningRequestStep`, `SigningRequestStepSigner`, `SigningSignature`, `SigningManifest`, `SigningChangeThread`, `SigningChangeMessage`, `SigningAuditLog`, `SigningNotification`.
-- Văn bản: `document_type` (đến/đi/mật) + `van_ban_id`, không FK.
+- Văn bản: `document_type` (đến/đi) + `van_ban_id`, không FK.
 - Chức vụ: `chuc_vu_id` số nguyên cho phép rỗng tạm thời; CHECK "người ký hoặc chức vụ" khai báo ngay.
 - Ràng buộc unique, CHECK SHA-256, CHECK nhật ký luồng ký, CHECK lý do ủy quyền theo `signing-backend-plan.md` mục 5.2, 5.3.
 - Bất biến ở tầng model (môi trường SQLite chưa có trigger): chặn sửa chữ ký (trừ trường xác minh), chặn sửa/xóa manifest `DA_CHOT`, nhật ký chỉ ghi thêm.
@@ -63,7 +63,8 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 - Test: sai PIN quá ngưỡng bị khóa; bộ đếm đúng khi gọi đồng thời; `k_srv` chỉ trả sau khi xác minh; không có endpoint nào trả bản bọc hoặc PIN.
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
-- Trước Phase 7 cần xác nhận pháp chế: văn bản mật (`vanbanmat`) có ký trên hệ thống này không; hình thức ký thay (KT., TL., TUQ.) và thời hạn ủy quyền.
+- Văn bản mật hành chính đã bỏ; văn bản hạn chế `HAN_CHE` không đi qua trình ký (từ chối ở API tạo phiếu khi #82 có `pham_vi`).
+- Trước Phase 7 cần xác nhận pháp chế: hình thức ký thay (KT., TL., TUQ.) và thời hạn ủy quyền.
 - Phase 7: cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
 - Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL.
 - Phase 9: nhắc hạn cần cấu hình tác vụ định kỳ.
@@ -75,7 +76,7 @@ Bản `csdl_qlvbtl_schema_final.sql` đính kèm phản hồi issue #47 đã đ�
 
 Các điểm lệch còn lại cần xác nhận:
 
-1. `signing_request.document_type` có `DEFAULT 'vanbanden'`. Khi dữ liệu thiếu, văn bản đi hoặc mật bị ghi nhầm thành văn bản đến. Đề xuất bỏ giá trị mặc định.
+1. `signing_request.document_type` có `DEFAULT 'vanbanden'`. Khi dữ liệu thiếu, văn bản đi bị ghi nhầm thành văn bản đến. Đề xuất bỏ giá trị mặc định.
 2. Kiểu enum `signing_key_status` (`PENDING`, `ROTATED`...) không khớp trạng thái khóa dùng ở phân hệ (`CHO_KICH_HOAT`, `DA_XOAY_VONG`...), và cột `signing_key.trang_thai` không dùng kiểu này. Đề xuất bỏ kiểu enum thừa hoặc đồng bộ giá trị.
 3. Tổng số lượt phân quyền: tiêu đề file ghi 178, phản hồi issue ghi 198. Header file ghi 73 quyền nhưng tiêu đề mục seed ghi 66. Danh sách quyền `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` xuất hiện lặp hai lần trong danh sách quyền của nhóm `BGD` ở phần seed (không gây lỗi do `ON CONFLICT DO NOTHING`, nhưng làm sai lệch cách đếm).
 4. Trigger `prevent_delete_or_tamper_signing_signature` chỉ so 9 cột; `ghi_chu_ky`, `ky_tre_han`, `so_giay_tre`, `created_at` vẫn sửa được ở DB, trong khi model chỉ cho đổi `trang_thai_xac_minh` và `thoi_diem_xac_minh`. Đề xuất chặn mọi cột trừ hai cột xác minh.
