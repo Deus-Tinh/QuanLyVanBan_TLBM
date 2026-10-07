@@ -8,6 +8,7 @@ Hỗ trợ:
 """
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import (
@@ -311,6 +312,11 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         pham_vi = validated_data.get("pham_vi", PhamVi.NOI_BO)
         if pham_vi == PhamVi.HAN_CHE:
             validated_data["gui_mail_toan_he_thong"] = False
+
+        if "so_thu_tu" not in validated_data or not validated_data["so_thu_tu"]:
+            from .services import generate_so_thu_tu
+            year = validated_data.get("nam") or timezone.now().year
+            validated_data["so_thu_tu"] = generate_so_thu_tu(loai, year) or 1
 
         instance = model.objects.create(**validated_data)
         if nguoi_nhan:

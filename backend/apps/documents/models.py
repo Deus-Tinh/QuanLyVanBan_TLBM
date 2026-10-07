@@ -234,9 +234,12 @@ class VanBanDen(BaseVanBan):
     )
 
     def save(self, *args, **kwargs):
-        if not self.so_thu_tu:
-            from .services import generate_so_thu_tu
-            self.so_thu_tu = generate_so_thu_tu("DEN", self.nam or timezone.now().year) or 1
+        if self._state.adding or not self.pk:
+            if not self.so_thu_tu or self.so_thu_tu == 1:
+                from .services import generate_so_thu_tu
+                next_stt = generate_so_thu_tu("DEN", self.nam or timezone.now().year)
+                if next_stt:
+                    self.so_thu_tu = next_stt
         if not self.ngay_den:
             self.ngay_den = timezone.now()
         if not self.ngay_van_ban:
@@ -424,9 +427,12 @@ class VanBanDi(BaseVanBan):
         self._noi_ban_hanh = val
 
     def save(self, *args, **kwargs):
-        if not self.so_thu_tu:
-            from .services import generate_so_thu_tu
-            self.so_thu_tu = generate_so_thu_tu("DI", self.nam or timezone.now().year) or 1
+        if self._state.adding or not self.pk:
+            if not self.so_thu_tu or self.so_thu_tu == 1:
+                from .services import generate_so_thu_tu
+                next_stt = generate_so_thu_tu("DI", self.nam or timezone.now().year)
+                if next_stt:
+                    self.so_thu_tu = next_stt
         if not self.ngay_ban_hanh:
             self.ngay_ban_hanh = timezone.now()
         if not self.ngay_van_ban:

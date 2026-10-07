@@ -83,15 +83,18 @@ def la_nguoi_xem_duoc(user, van_ban):
                 return True
         return False
 
-    # NOI_BO
+    # NOI_BO: Văn bản nội bộ hiển thị cho mọi cán bộ nhân viên đang hoạt động
+    if getattr(van_ban, "hien_thi", True):
+        return True
+
+    if user.is_staff or user.is_superuser:
+        return True
+
     model_name = getattr(van_ban, "document_kind", "vanbanden")
-    return (
-        user.is_staff
-        or user.is_superuser
-        or user.has_perm(f"documents.view_{model_name}")
-        or user.has_perm("documents.view_document")
-        or getattr(van_ban, "hien_thi", True)
-    )
+    try:
+        return user.has_perm(f"documents.view_{model_name}") or user.has_perm("documents.view_document")
+    except Exception:
+        return False
 
 
 def log_access(document_type, document_id, user, hanh_dong, doi_tuong_user=None, tep_id=None, dia_chi_ip=None):

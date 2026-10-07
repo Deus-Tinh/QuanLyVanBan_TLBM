@@ -28,6 +28,14 @@ class Migration(migrations.Migration):
                     DROP TABLE IF EXISTS documents_vanbandi_hoso CASCADE;
                     DROP TABLE IF EXISTS documents_vanbandi_nguoinhan CASCADE;
                     DROP TABLE IF EXISTS documents_vanbandi_noibanhanh CASCADE;
+                    DROP INDEX IF EXISTS idx_vanbanden_sohieu;
+                    DROP INDEX IF EXISTS idx_vanbanden_nam;
+                    DROP INDEX IF EXISTS idx_vanbandi_sohieu;
+                    DROP INDEX IF EXISTS idx_vanbandi_nam;
+                    DROP INDEX IF EXISTS idx_vbden_att_doc;
+                    DROP INDEX IF EXISTS idx_vbden_att_del;
+                    DROP INDEX IF EXISTS idx_vbdi_att_doc;
+                    DROP INDEX IF EXISTS idx_vbdi_att_del;
                     """,
                     reverse_sql="",
                 ),
