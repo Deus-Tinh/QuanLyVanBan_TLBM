@@ -51,19 +51,32 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Đóng menu khi click ra ngoài
+  // Đóng menu khi click ra ngoài, scroll hoặc resize
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('[data-dropdown-root]')) {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest?.('[data-dropdown-root]')) {
         setActiveMenuId(null);
         setMenuPos(null);
         setActiveFileMenuId(null);
       }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
+    document.addEventListener('click', handleClickOutside, true);
+    window.addEventListener('resize', handleClickOutside);
+    window.addEventListener('scroll', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('click', handleClickOutside, true);
+      window.removeEventListener('resize', handleClickOutside);
+      window.removeEventListener('scroll', handleClickOutside, true);
+    };
   }, []);
+
+  // Tự động đóng menu khi chuyển trang hoặc đổi số dòng
+  useEffect(() => {
+    setActiveMenuId(null);
+    setMenuPos(null);
+    setActiveFileMenuId(null);
+  }, [currentPage, pageSize]);
 
   // Mở menu ⋯ với vị trí fixed (không bị cắt bởi overflow và lật lên trên nếu gần đáy)
   const openActionMenu = (e: React.MouseEvent<HTMLButtonElement>, itemId: number) => {

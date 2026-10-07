@@ -83,20 +83,36 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   // Vị trí fixed của dropdown menu Thao tác — không bị cắt bởi overflow và lật lên khi ở đáy
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
-  // Đóng dropdown khi click ngoài hoặc resize cửa sổ
+  const closeAllMenus = () => {
+    setActiveMenuCatId(null);
+    setActiveMenuTypeId(null);
+    setMenuPos(null);
+  };
+
+  // Đóng dropdown khi click ngoài, scroll hoặc resize cửa sổ (lắng nghe cả pha capture để không bị cản bởi stopPropagation)
   useEffect(() => {
-    const handleOutside = () => {
-      setActiveMenuCatId(null);
-      setActiveMenuTypeId(null);
-      setMenuPos(null);
+    const handleOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.('[data-menu-trigger]') || target?.closest?.('[data-floating-menu]')) {
+        return;
+      }
+      closeAllMenus();
     };
-    document.addEventListener('click', handleOutside);
+
+    document.addEventListener('click', handleOutside, true);
     window.addEventListener('resize', handleOutside);
+    window.addEventListener('scroll', handleOutside, true);
     return () => {
-      document.removeEventListener('click', handleOutside);
+      document.removeEventListener('click', handleOutside, true);
       window.removeEventListener('resize', handleOutside);
+      window.removeEventListener('scroll', handleOutside, true);
     };
   }, []);
+
+  // Tự động đóng menu thao tác khi chuyển tab hoặc thay đổi tìm kiếm/bộ lọc
+  useEffect(() => {
+    closeAllMenus();
+  }, [activeTab, catSearch, typeSearch, filterParentCat, isOpen]);
 
   const handleOpenCatMenu = (e: React.MouseEvent<HTMLButtonElement>, catId: number) => {
     e.stopPropagation();
@@ -458,6 +474,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             onClick={() => {
               setActiveTab('category');
               setCatDeleteBlockedMsg(null);
+              closeAllMenus();
             }}
             className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'category'
@@ -483,6 +500,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             onClick={() => {
               setActiveTab('type');
               setCatDeleteBlockedMsg(null);
+              closeAllMenus();
             }}
             className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'type'
@@ -614,6 +632,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             >
                               <button
                                 type="button"
+                                data-menu-trigger="true"
                                 onClick={(e) => handleOpenCatMenu(e, cat.id)}
                                 className={`w-7 h-7 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
                                   activeMenuCatId === cat.id
@@ -751,6 +770,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             >
                               <button
                                 type="button"
+                                data-menu-trigger="true"
                                 onClick={(e) => handleOpenTypeMenu(e, t.id)}
                                 className={`w-7 h-7 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
                                   activeMenuTypeId === t.id
@@ -1161,9 +1181,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
       )}
 
-      {/* Dropdown Menu Floating cho Thư mục — lật lên trên nếu gần đáy modal/màn hình */}
-      {activeMenuCatId !== null && menuPos && (
+      {/* Dropdown Menu Floating cho Thư mục — chỉ hiện khi đang ở tab Thư mục */}
+      {activeTab === 'category' && activeMenuCatId !== null && menuPos && (
         <div
+          data-floating-menu="true"
           className="fixed z-[10002] w-28 bg-surface rounded-xl border border-border-subtle shadow-xl py-1 animate-zoom-in"
           style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
           onClick={(e) => e.stopPropagation()}
@@ -1173,8 +1194,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             onClick={() => {
               const cat = categories.find((c) => c.id === activeMenuCatId);
               if (cat) handleOpenEditCat(cat);
-              setActiveMenuCatId(null);
-              setMenuPos(null);
+              closeAllMenus();
             }}
             className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
           >
@@ -1186,8 +1206,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             onClick={() => {
               const cat = categories.find((c) => c.id === activeMenuCatId);
               if (cat) handleDeleteCategoryWithCheck(cat);
-              setActiveMenuCatId(null);
-              setMenuPos(null);
+              closeAllMenus();
             }}
             className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
           >
@@ -1197,9 +1216,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
       )}
 
-      {/* Dropdown Menu Floating cho Loại tài liệu — lật lên trên nếu gần đáy modal/màn hình */}
-      {activeMenuTypeId !== null && menuPos && (
+      {/* Dropdown Menu Floating cho Loại tài liệu — chỉ hiện khi đang ở tab Loại tài liệu */}
+      {activeTab === 'type' && activeMenuTypeId !== null && menuPos && (
         <div
+          data-floating-menu="true"
           className="fixed z-[10002] w-28 bg-surface rounded-xl border border-border-subtle shadow-xl py-1 animate-zoom-in"
           style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
           onClick={(e) => e.stopPropagation()}
@@ -1209,8 +1229,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             onClick={() => {
               const t = types.find((item) => item.id === activeMenuTypeId);
               if (t) handleOpenEditType(t);
-              setActiveMenuTypeId(null);
-              setMenuPos(null);
+              closeAllMenus();
             }}
             className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
           >
@@ -1222,8 +1241,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             onClick={() => {
               const t = types.find((item) => item.id === activeMenuTypeId);
               if (t) handleDeleteTypeConfirm(t);
-              setActiveMenuTypeId(null);
-              setMenuPos(null);
+              closeAllMenus();
             }}
             className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
           >
