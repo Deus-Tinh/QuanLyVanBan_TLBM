@@ -790,7 +790,7 @@ export default function ResourceManagementPage() {
   };
 
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-4">
       {/* Header trang & Nút hành động (GIỮ NGUYÊN KHÔNG ĐỤNG VÀO) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-5 sm:p-6 rounded-2xl border border-border-subtle shadow-xs">
         <div>

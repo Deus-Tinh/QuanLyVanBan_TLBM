@@ -194,9 +194,12 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   };
 
   return (
-    <div className="w-full space-y-3" ref={tableContainerRef}>
+    <div
+      className="w-full rounded-xl border border-border-subtle bg-surface shadow-xs overflow-hidden"
+      ref={tableContainerRef}
+    >
       {/* Khung Bảng dữ liệu chính */}
-      <div className="w-full overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-xs">
+      <div className="w-full overflow-x-auto">
         <table className="w-full text-left text-sm border-collapse min-w-[850px]">
           <thead className="bg-surface-elevated text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle select-none">
             <tr>
@@ -570,7 +573,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
       </div>
 
       {/* Chân bảng: Chọn số dòng hiển thị + Thanh phân trang */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-secondary">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border-subtle text-xs text-secondary bg-surface">
         {/* Bên trái chân bảng: Dropdown chọn số dòng */}
         <div className="flex items-center gap-2">
           <span>Hiển thị</span>
