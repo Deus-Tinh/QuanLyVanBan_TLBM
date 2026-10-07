@@ -460,35 +460,37 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     title="Bấm để đi vào thư mục của tài liệu"
                   >
                     {/* Cột 1: Ký hiệu (thống nhất font sans chuẩn hệ thống, ngay hàng thẳng lối) */}
-                    <td className="px-4 py-3.5 align-top whitespace-nowrap">
+                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                       <span className="text-xs font-semibold text-main tracking-tight">
                         {item.ky_hieu || '-'}
                       </span>
                     </td>
 
-                    {/* Cột 2: Tiêu đề + Loại tài liệu + Link thay thế */}
-                    <td className="px-4 py-3.5 align-top">
-                      <div className="font-semibold text-sm text-main hover:text-primary transition-colors leading-snug line-clamp-2">
-                        {item.tieu_de}
-                      </div>
+                    {/* Cột 2: Tiêu đề + Loại tài liệu + Link thay thế (Cùng hàng cân đối tuyệt đối) */}
+                    <td className="px-4 py-3.5 align-middle">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-main hover:text-primary transition-colors leading-snug">
+                          {item.tieu_de}
+                        </span>
 
-                      {/* Danh sách Loại tài liệu dạng tag nhỏ */}
-                      {item.loai_tai_lieu_names && item.loai_tai_lieu_names.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                          {item.loai_tai_lieu_names.map((name, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center text-[11px] px-2 py-0.5 rounded bg-surface-elevated text-secondary border border-border-subtle/60"
-                            >
-                              {name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                        {/* Danh sách Loại tài liệu dạng tag nhỏ liền kề tiêu đề */}
+                        {item.loai_tai_lieu_names && item.loai_tai_lieu_names.length > 0 && (
+                          <span className="inline-flex items-center gap-1.5 flex-wrap">
+                            {item.loai_tai_lieu_names.map((name, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-surface-elevated text-secondary border border-border-subtle shadow-2xs whitespace-nowrap"
+                              >
+                                {name}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </div>
 
                       {/* Dòng Link thay thế dưới tiêu đề nếu Hết và thay thế */}
                       {item.hieu_luc === 'HET_VA_THAY_THE' && item.link_thay_the && (
-                        <div className="mt-1.5 opacity-100">
+                        <div className="mt-1 opacity-100">
                           <a
                             href={item.link_thay_the}
                             target="_blank"
@@ -505,23 +507,23 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     </td>
 
                     {/* Cột 3: Nơi ban hành */}
-                    <td className="px-4 py-3.5 align-top text-xs text-secondary leading-snug">
+                    <td className="px-4 py-3.5 align-middle text-xs text-secondary leading-snug">
                       {item.noi_ban_hanh || '-'}
                     </td>
 
-                    {/* Cột 4: Ngày đăng (dd/mm/yyyy thường, thẳng hàng đầu) */}
-                    <td className="px-3.5 py-3.5 text-center align-top whitespace-nowrap text-xs text-secondary leading-snug">
+                    {/* Cột 4: Ngày đăng (dd/mm/yyyy thường, thẳng hàng giữa) */}
+                    <td className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary leading-snug">
                       {formatDate(item.ngay_dang)}
                     </td>
 
-                    {/* Cột 5: Hiệu lực (Badge giữ độ nét 100%, thẳng hàng đầu) */}
-                    <td className="px-4 py-3.5 text-center align-top whitespace-nowrap opacity-100">
+                    {/* Cột 5: Hiệu lực (Badge giữ độ nét 100%, thẳng hàng giữa) */}
+                    <td className="px-4 py-3.5 text-center align-middle whitespace-nowrap opacity-100">
                       {renderStatusBadge(item.hieu_luc)}
                     </td>
 
                     {/* Cột 6: Tệp đính kèm (Icon & Nút tải về cố định độ rộng để thẳng hàng tuyệt đối) */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-top whitespace-nowrap opacity-100"
+                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
                       onClick={(e) => e.stopPropagation()}
                       data-dropdown-root
                     >
@@ -600,7 +602,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
                     {/* Cột 7: Thao tác — Menu "⋯": Xem chi tiết, Chỉnh sửa, Xóa */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-top whitespace-nowrap opacity-100"
+                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
                       onClick={(e) => e.stopPropagation()}
                       data-dropdown-root
                     >
