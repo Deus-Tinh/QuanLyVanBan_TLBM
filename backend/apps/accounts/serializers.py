@@ -2,6 +2,7 @@
 Serializers cho phân hệ Quản lý Cán bộ Nhân viên (CBNV - Issue #24).
 Tác giả: Lê Duy Khánh (leduykhanhdevs). Chuyển sang Employee (Custom User Model) theo SQL_Fix4.
 """
+from datetime import date
 import secrets
 import string
 
@@ -14,6 +15,17 @@ from rest_framework import serializers
 
 from organizations.models import DonVi
 from .models import MAX_DISPLAY_ORDER, Employee, Position, vietnam_phone_regex
+
+
+def validate_employee_birthday(value: date) -> date:
+    """Kiểm tra ngày sinh hợp lệ: không ở tương lai và độ tuổi trong khoảng [18, 100]."""
+    today = date.today()
+    if value > today:
+        raise serializers.ValidationError("employees.messages.birthdayInFuture")
+    age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+    if age < 18 or age > 100:
+        raise serializers.ValidationError("employees.messages.birthdayOutOfRange")
+    return value
 
 # Giao diện dùng 'dang_lam_viec' / 'nghi_viec'; CSDL (ENUM employee_work_status) dùng 'LAM_VIEC' / 'NGHI_VIEC'.
 STATUS_API_TO_DB = {
@@ -242,23 +254,70 @@ class EmployeeSerializer(serializers.ModelSerializer):
 class EmployeeCreateSerializer(serializers.Serializer):
     """Thêm mới CBNV kèm tài khoản đăng nhập; không lưu mật khẩu thô, trả mật khẩu tạm một lần."""
 
-    ho_ten = serializers.CharField(max_length=150, required=True)
-    email = serializers.EmailField(required=True)
+    ho_ten = serializers.CharField(
+        max_length=150,
+        required=True,
+        error_messages={
+            "required": "employees.validation.nameRequired",
+            "blank": "employees.validation.nameRequired",
+            "max_length": "employees.messages.nameTooLong",
+        },
+    )
+    email = serializers.EmailField(
+        required=True,
+        error_messages={
+            "required": "employees.validation.emailRequired",
+            "blank": "employees.validation.emailRequired",
+            "invalid": "employees.messages.invalidEmail",
+        },
+    )
     username = serializers.CharField(max_length=150, required=False, allow_blank=True)
     password = serializers.CharField(
         max_length=128, required=False, allow_blank=True, write_only=True
     )
-    ngay_sinh = serializers.DateField(required=True)
-    don_vi_id = serializers.PrimaryKeyRelatedField(queryset=DonVi.objects.all(), required=True)
-    chuc_vu_id = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), required=True)
+    ngay_sinh = serializers.DateField(
+        required=True,
+        error_messages={
+            "required": "employees.validation.birthdayRequired",
+            "invalid": "employees.import.errors.invalidBirthday",
+        },
+    )
+    don_vi_id = serializers.PrimaryKeyRelatedField(
+        queryset=DonVi.objects.all(),
+        required=True,
+        error_messages={
+            "required": "employees.import.errors.unitRequired",
+            "does_not_exist": "employees.messages.unitNotFound",
+            "incorrect_type": "employees.messages.invalidFilterParam",
+        },
+    )
+    chuc_vu_id = serializers.PrimaryKeyRelatedField(
+        queryset=Position.objects.all(),
+        required=True,
+        error_messages={
+            "required": "employees.import.errors.positionRequired",
+            "does_not_exist": "employees.messages.positionNotFound",
+            "incorrect_type": "employees.messages.invalidFilterParam",
+        },
+    )
     chuc_danh = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
     sdt = serializers.CharField(
         max_length=20, required=False, allow_blank=True, default="", validators=[vietnam_phone_regex]
     )
     nhom_quyen_ids = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Group.objects.all(), required=False
+        many=True,
+        queryset=Group.objects.all(),
+        required=False,
+        error_messages={
+            "does_not_exist": "employees.messages.invalidFilterParam",
+            "incorrect_type": "employees.messages.invalidFilterParam",
+        },
     )
-    trang_thai = serializers.ChoiceField(choices=STATUS_API_CHOICES, default="dang_lam_viec")
+    trang_thai = serializers.ChoiceField(
+        choices=STATUS_API_CHOICES,
+        default="dang_lam_viec",
+        error_messages={"invalid_choice": "employees.messages.invalidFilterParam"},
+    )
     is_public = serializers.BooleanField(default=True)
     ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
 
@@ -266,7 +325,12 @@ class EmployeeCreateSerializer(serializers.Serializer):
         trimmed = value.strip()
         if not trimmed:
             raise serializers.ValidationError("employees.validation.nameRequired")
+        if len(trimmed) > 150:
+            raise serializers.ValidationError("employees.messages.nameTooLong")
         return trimmed
+
+    def validate_ngay_sinh(self, value):
+        return validate_employee_birthday(value)
 
     def validate_email(self, value):
         normalized = value.strip().lower()
@@ -339,22 +403,83 @@ class EmployeeCreateSerializer(serializers.Serializer):
 class EmployeeUpdateSerializer(serializers.Serializer):
     """Cập nhật thông tin CBNV."""
 
-    ho_ten = serializers.CharField(max_length=150, required=False)
-    email = serializers.EmailField(required=False)
-    ngay_sinh = serializers.DateField(required=False)
-    don_vi_id = serializers.PrimaryKeyRelatedField(queryset=DonVi.objects.all(), required=False)
-    chuc_vu_id = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), required=False)
+    ho_ten = serializers.CharField(
+        max_length=150,
+        required=False,
+        error_messages={
+            "blank": "employees.validation.nameRequired",
+            "max_length": "employees.messages.nameTooLong",
+        },
+    )
+    email = serializers.EmailField(
+        required=False,
+        error_messages={
+            "blank": "employees.validation.emailRequired",
+            "invalid": "employees.messages.invalidEmail",
+        },
+    )
+    ngay_sinh = serializers.DateField(
+        required=False,
+        error_messages={
+            "invalid": "employees.import.errors.invalidBirthday",
+        },
+    )
+    don_vi_id = serializers.PrimaryKeyRelatedField(
+        queryset=DonVi.objects.all(),
+        required=False,
+        error_messages={
+            "does_not_exist": "employees.messages.unitNotFound",
+            "incorrect_type": "employees.messages.invalidFilterParam",
+        },
+    )
+    chuc_vu_id = serializers.PrimaryKeyRelatedField(
+        queryset=Position.objects.all(),
+        required=False,
+        error_messages={
+            "does_not_exist": "employees.messages.positionNotFound",
+            "incorrect_type": "employees.messages.invalidFilterParam",
+        },
+    )
     chuc_danh = serializers.CharField(max_length=150, required=False, allow_blank=True)
     sdt = serializers.CharField(
         max_length=20, required=False, allow_blank=True, validators=[vietnam_phone_regex]
     )
     nhom_quyen_ids = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Group.objects.all(), required=False
+        many=True,
+        queryset=Group.objects.all(),
+        required=False,
+        error_messages={
+            "does_not_exist": "employees.messages.invalidFilterParam",
+            "incorrect_type": "employees.messages.invalidFilterParam",
+        },
     )
-    trang_thai = serializers.ChoiceField(choices=STATUS_API_CHOICES, required=False)
+    trang_thai = serializers.ChoiceField(
+        choices=STATUS_API_CHOICES,
+        required=False,
+        error_messages={"invalid_choice": "employees.messages.invalidFilterParam"},
+    )
+    is_active = serializers.BooleanField(
+        required=False,
+        error_messages={"invalid": "employees.messages.invalidDataFormat"},
+    )
     is_public = serializers.BooleanField(required=False)
     ghi_chu = serializers.CharField(required=False, allow_blank=True)
     avatar_url = serializers.CharField(required=False, allow_blank=True)  # nhận nhưng bỏ qua: DDL không có cột
+
+    def validate_ho_ten(self, value):
+        if value is None:
+            return value
+        trimmed = value.strip()
+        if not trimmed:
+            raise serializers.ValidationError("employees.validation.nameRequired")
+        if len(trimmed) > 150:
+            raise serializers.ValidationError("employees.messages.nameTooLong")
+        return trimmed
+
+    def validate_ngay_sinh(self, value):
+        if value is None:
+            return value
+        return validate_employee_birthday(value)
 
     def validate_email(self, value):
         normalized = value.strip().lower()
@@ -379,10 +504,21 @@ class EmployeeUpdateSerializer(serializers.Serializer):
                 if field in validated_data:
                     setattr(instance, field, validated_data[field])
 
+            if "is_active" in validated_data:
+                instance.is_active = validated_data["is_active"]
+                if not instance.is_active and "trang_thai" not in validated_data:
+                    instance.trang_thai = Employee.Status.NGHI_VIEC
+                elif instance.is_active and "trang_thai" not in validated_data and instance.trang_thai == Employee.Status.NGHI_VIEC:
+                    instance.trang_thai = Employee.Status.LAM_VIEC
+
             if "trang_thai" in validated_data:
                 new_status = STATUS_API_TO_DB[validated_data["trang_thai"]]
                 if new_status == Employee.Status.LAM_VIEC and instance.trang_thai == Employee.Status.NGHI_VIEC:
-                    instance.is_active = True
+                    if "is_active" not in validated_data:
+                        instance.is_active = True
+                elif new_status == Employee.Status.NGHI_VIEC:
+                    if "is_active" not in validated_data:
+                        instance.is_active = False
                 instance.trang_thai = new_status
 
             instance.save()
