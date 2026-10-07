@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ResourceItem,
   ResourceCategory,
@@ -202,8 +202,32 @@ export default function ResourceManagementPage() {
   // - statusFilter: Lọc theo trạng thái hiệu lực
   // - searchTerm: Tìm theo tiêu đề, ký hiệu, nơi ban hành
   // ============================================================================
+  // Bộ lọc: Search debounced 300ms
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('1'); // Mặc định vào Danh mục 1: Tài liệu, Biểu mẫu chung theo đề án
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // Sắp xếp Thư mục (Cấp 1) theo STT ưu tiên, mặc định chọn STT = 1
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => (a.stt_uu_tien || 0) - (b.stt_uu_tien || 0));
+  }, [categories]);
+
+  // Ref cho thanh tab ngang — dùng để cuộn bằng nút mũi tên khi nhiều thư mục
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  const scrollTabs = (direction: 'left' | 'right') => {
+    const el = tabBarRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+  };
+
+  const [selectedCategory, setSelectedCategory] = useState<string>('1');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -233,17 +257,13 @@ export default function ResourceManagementPage() {
         yearsSet.add(d.ngay_dang.substring(0, 4));
       }
     });
-    // Thêm các năm mặc định nếu chưa có
     yearsSet.add('2026');
     yearsSet.add('2025');
     yearsSet.add('2024');
     return Array.from(yearsSet).sort().reverse();
   }, [documents]);
 
-  // ============================================================================
-  // CASCADING FILTER CẤP 1 ➔ CẤP 2 (LOẠI TÀI LIỆU):
-  // Khi Cấp 1 thay đổi, danh sách Loại Cấp 2 tự động lọc tương ứng!
-  // ============================================================================
+  // Cascading Loại tài liệu thuộc Thư mục đang chọn
   const availableTypesForFilter = useMemo(() => {
     if (selectedCategory === 'all') {
       return types;
@@ -251,12 +271,82 @@ export default function ResourceManagementPage() {
     return types.filter((t) => t.dm_tai_lieu === Number(selectedCategory));
   }, [types, selectedCategory]);
 
-  // Đổi Cấp 1 thì reset Cấp 2 về 'all' và nhảy về trang 1
+  // Đổi Thư mục: Tự động reset Loại tài liệu về 'all' và về trang 1
   const handleCategorySelect = (newCat: string) => {
     setSelectedCategory(newCat);
     setSelectedType('all');
     setCurrentPage(1);
+    setIsCategoryDropdownOpen(false);
+    setActiveTabDropdownId(null);
   };
+
+  // Dropdown Popovers State (Nút bấm sổ dropdown cho Danh mục & Loại tài liệu)
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [activeTabDropdownId, setActiveTabDropdownId] = useState<number | null>(null);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
+  const tabDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(target)
+      ) {
+        setIsCategoryDropdownOpen(false);
+      }
+      if (
+        typeDropdownRef.current &&
+        !typeDropdownRef.current.contains(target)
+      ) {
+        setIsTypeDropdownOpen(false);
+      }
+      if (
+        tabDropdownRef.current &&
+        !tabDropdownRef.current.contains(target)
+      ) {
+        setActiveTabDropdownId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const currentCategoryLabel = useMemo(() => {
+    if (selectedCategory === 'all') return 'Tất cả danh mục';
+    const found = categories.find((c) => String(c.id) === selectedCategory);
+    return found ? found.ten_tai_lieu : 'Chọn danh mục';
+  }, [selectedCategory, categories]);
+
+  const currentTypeLabel = useMemo(() => {
+    if (selectedType === 'all') return 'Tất cả loại';
+    const found = types.find((t) => String(t.id) === selectedType);
+    return found ? found.ten_loai : 'Chọn loại';
+  }, [selectedType, types]);
+
+  // Xóa toàn bộ bộ lọc
+  const handleClearFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
+    setSelectedType('all');
+    setSelectedYear('all');
+    setStatusFilter('all');
+    setCurrentPage(1);
+    setIsCategoryDropdownOpen(false);
+    setIsTypeDropdownOpen(false);
+    setActiveTabDropdownId(null);
+  };
+
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() ||
+    selectedType !== 'all' ||
+    selectedYear !== 'all' ||
+    statusFilter !== 'all'
+  );
 
   // ============================================================================
   // LỌC DỮ LIỆU BẢNG TỔNG HỢP THEO TẤT CẢ TIÊU CHÍ
@@ -433,6 +523,8 @@ export default function ResourceManagementPage() {
     }
 
     setIsFormOpen(false);
+    setToastMessage('Đã lưu tài liệu');
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   // Quản lý Danh mục Cấp 1
@@ -588,8 +680,8 @@ export default function ResourceManagementPage() {
   };
 
   return (
-    <div className="space-y-5">
-      {/* Header trang & Nút hành động */}
+    <div className="space-y-4 pb-28">
+      {/* Header trang & Nút hành động (GIỮ NGUYÊN KHÔNG ĐỤNG VÀO) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-5 sm:p-6 rounded-2xl border border-border-subtle shadow-xs">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-main tracking-tight">
@@ -601,7 +693,7 @@ export default function ResourceManagementPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Nút Quản lý Cấp 1 & Cấp 2 (Kim Trang phụ trách theo đề án) */}
+          {/* Nút Quản lý Cấp 1 & Cấp 2 */}
           <Button
             variant="outline"
             size="md"
@@ -612,7 +704,7 @@ export default function ResourceManagementPage() {
             Quản lý Danh mục &amp; Cấp 2
           </Button>
 
-          {/* Nút Thêm mới tài liệu (Đỗ Trung Phong phụ trách) */}
+          {/* Nút Thêm mới tài liệu */}
           <Button
             variant="primary"
             size="md"
@@ -625,261 +717,627 @@ export default function ResourceManagementPage() {
         </div>
       </div>
 
-      {/* THANH BỘ LỌC ĐA NĂNG & TRA CỨU */}
-      <div className="bg-surface p-4 rounded-xl border border-border-subtle shadow-xs space-y-3">
-        {/* Tiêu đề thanh lọc & Thống kê kết quả kèm Breadcrumb vị trí hiện tại */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-muted font-medium border-b border-border-subtle pb-2.5 gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <i className="fa-solid fa-filter text-primary" />
-            <span className="font-semibold text-main text-sm">Bộ lọc &amp; Tra cứu tài liệu</span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary-subtle text-primary text-xs font-semibold border border-primary/20">
-              <i className="fa-solid fa-folder text-[10px]" />
-              <span>
-                {selectedCategory === 'all'
-                  ? 'Toàn bộ kho tài liệu'
-                  : categories.find((c) => c.id === Number(selectedCategory))?.ten_tai_lieu}
-              </span>
-              {selectedType !== 'all' && (
-                <>
-                  <i className="fa-solid fa-chevron-right text-[8px] opacity-60" />
-                  <span>{types.find((t) => t.id === Number(selectedType))?.ten_loai}</span>
-                </>
-              )}
-            </span>
-          </div>
-          <span className="text-xs text-secondary">
-            Đang hiển thị: <strong className="text-primary font-bold">{totalCount}</strong> tài liệu
-          </span>
-        </div>
+      {/* 1. THANH TAB THƯ MỤC NGANG (CẤP 1) — có tab "Tất cả" + nút cuộn trái/phải */}
+      <div className="bg-surface rounded-xl border border-border-subtle shadow-xs overflow-hidden">
+        {/* Hàng tab chính */}
+        <div className="relative flex items-stretch border-b border-border-subtle">
+          {/* Nút cuộn trái */}
+          <button
+            type="button"
+            onClick={() => scrollTabs('left')}
+            className="shrink-0 px-2 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
+            aria-label="Cuộn tab sang trái"
+            title="Cuộn sang trái"
+          >
+            <i className="fa-solid fa-chevron-left text-xs" />
+          </button>
 
-        {/* Bảng các ô lọc chính (Tìm kiếm, Cấp 1, Cấp 2 dropdown phân tầng, Năm, Hiệu lực) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-12 gap-3">
-          {/* 1. Tìm kiếm từ khóa */}
-          <div className="col-span-12 sm:col-span-2 md:col-span-3 lg:col-span-3">
-            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center gap-1.5">
-              <i className="fa-solid fa-magnifying-glass text-muted text-[10px]" />
-              <span>Tìm kiếm từ khóa</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Tiêu đề, ký hiệu, nơi ban hành..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full h-9 pl-3 pr-8 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary placeholder:text-muted transition-colors"
-              />
-              {searchTerm && (
+          {/* Vùng tab cuộn ngang */}
+          <div
+            ref={tabBarRef}
+            className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {/* Tab đặc biệt: Tất cả thư mục */}
+            {(() => {
+              const isAll = selectedCategory === 'all';
+              return (
+                <button
+                  key="all"
+                  type="button"
+                  onClick={() => handleCategorySelect('all')}
+                  className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
+                    isAll
+                      ? 'border-primary text-primary bg-primary/5 font-bold'
+                      : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
+                  }`}
+                  aria-current={isAll ? 'page' : undefined}
+                >
+                  <i className={`fa-solid fa-layer-group text-xs ${isAll ? 'text-primary' : 'text-muted'}`} />
+                  <span>Tất cả</span>
+                  <span
+                    className={`px-1.5 py-0.5 text-[11px] rounded-full font-bold ${
+                      isAll
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-elevated text-secondary border border-border-subtle'
+                    }`}
+                  >
+                    {documents.length}
+                  </span>
+                </button>
+              );
+            })()}
+
+            {/* Dải phân cách sau tab Tất cả */}
+            <div className="w-px bg-border-subtle self-stretch my-2 shrink-0" />
+
+            {/* Tab từng Thư mục Cấp 1 */}
+            {sortedCategories.map((cat) => {
+              const isSelected = selectedCategory === String(cat.id);
+              const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
+              const isMenuOpen = activeTabDropdownId === cat.id;
+              const childTypes = types.filter((t) => t.dm_tai_lieu === cat.id);
+
+              return (
+                <div key={cat.id} className="relative flex items-stretch">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCategorySelect(String(cat.id));
+                      setActiveTabDropdownId((prev) => (prev === cat.id ? null : cat.id));
+                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-primary text-primary bg-primary/5 font-bold'
+                        : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
+                    }`}
+                    aria-current={isSelected ? 'page' : undefined}
+                    title={cat.ghi_chu || cat.ten_tai_lieu}
+                  >
+                    <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
+                    <span>{cat.ten_tai_lieu}</span>
+                    <span
+                      className={`px-1.5 py-0.5 text-[11px] rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-primary text-white'
+                          : 'bg-surface-elevated text-muted border border-border-subtle'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                    {childTypes.length > 0 && (
+                      <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ml-0.5 ${
+                        isMenuOpen ? 'rotate-180 text-primary' : isSelected ? 'text-primary' : 'text-muted'
+                      }`} />
+                    )}
+                  </button>
+
+                  {/* Menu dropdown của các loại tài liệu tương ứng thuộc Thư mục này */}
+                  {isMenuOpen && childTypes.length > 0 && (
+                    <div
+                      ref={tabDropdownRef}
+                      className="absolute left-0 top-full mt-1 w-64 max-h-72 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100"
+                    >
+                      <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
+                        <span className="truncate">{cat.ten_tai_lieu}</span>
+                        <span className="text-[10px] text-primary lowercase font-medium">Loại con</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedType('all');
+                          setCurrentPage(1);
+                          setActiveTabDropdownId(null);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          selectedType === 'all'
+                            ? 'bg-primary text-white font-bold'
+                            : 'text-main hover:bg-surface-elevated'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <i className="fa-solid fa-layer-group text-xs" />
+                          <span className="truncate">Tất cả loại ({count})</span>
+                        </span>
+                      </button>
+
+                      <div className="my-1 border-t border-border-subtle" />
+
+                      {childTypes.map((t) => {
+                        const isTypeActive = selectedType === String(t.id);
+                        const docCount = documents.filter(
+                          (d) =>
+                            d.dm_tai_lieu === cat.id &&
+                            Array.isArray(d.loai_tai_lieu) &&
+                            d.loai_tai_lieu.includes(t.id)
+                        ).length;
+
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedType(String(t.id));
+                              setCurrentPage(1);
+                              setActiveTabDropdownId(null);
+                            }}
+                            className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                              isTypeActive
+                                ? 'bg-primary text-white font-bold'
+                                : 'text-main hover:bg-surface-elevated'
+                            }`}
+                            title={t.ghi_chu || t.ten_loai}
+                          >
+                            <span className="flex items-center gap-2 truncate">
+                              {!t.is_public ? (
+                                <i className="fa-solid fa-lock text-[10px] opacity-70" />
+                              ) : (
+                                <i className="fa-solid fa-tag text-xs opacity-70" />
+                              )}
+                              <span className="truncate">{t.ten_loai}</span>
+                            </span>
+                            <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                              isTypeActive ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
+                            }`}>
+                              {docCount}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Nút cuộn phải */}
+          <button
+            type="button"
+            onClick={() => scrollTabs('right')}
+            className="shrink-0 px-2 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
+            aria-label="Cuộn tab sang phải"
+            title="Cuộn sang phải"
+          >
+            <i className="fa-solid fa-chevron-right text-xs" />
+          </button>
+
+          {/* Nút dropdown chọn Danh mục trực tiếp */}
+          <div className="relative shrink-0 flex items-stretch" ref={categoryDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
+              className="px-3 py-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors border-l border-border-subtle flex items-center gap-1.5 cursor-pointer"
+              title="Mở danh sách tất cả Danh mục"
+              aria-label="Danh sách tất cả Danh mục"
+            >
+              <i className="fa-solid fa-folder-tree text-xs text-primary" />
+              <span className="hidden sm:inline">Danh mục</span>
+              <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isCategoryDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-64 max-h-72 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted">
+                  Danh mục tài liệu (Cấp 1)
+                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    setSearchTerm('');
-                    setCurrentPage(1);
+                    handleCategorySelect('all');
+                    setIsCategoryDropdownOpen(false);
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1"
-                  title="Xóa từ khóa"
+                  className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                    selectedCategory === 'all'
+                      ? 'bg-primary text-white font-bold'
+                      : 'text-main hover:bg-surface-elevated'
+                  }`}
                 >
-                  <i className="fa-solid fa-xmark" />
+                  <span className="flex items-center gap-2 truncate">
+                    <i className="fa-solid fa-layer-group text-xs" />
+                    <span className="truncate">Tất cả danh mục</span>
+                  </span>
+                  <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                    selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
+                  }`}>
+                    {documents.length}
+                  </span>
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* 2. Chọn Danh mục Cấp 1 (Thư mục chính) */}
-          <div className="col-span-6 sm:col-span-1 md:col-span-3 lg:col-span-3">
-            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <i className="fa-solid fa-folder text-primary text-[10px]" />
-                <span>Danh mục Cấp 1</span>
-              </span>
-              <span className="text-[10px] text-muted">Thư mục chính</span>
-            </label>
-            <div className="relative">
-              <select
-                value={selectedCategory}
-                onChange={(e) => handleCategorySelect(e.target.value)}
-                className="w-full h-9 pl-3 pr-7 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
-                title="Danh mục tài liệu Cấp 1"
-              >
-                {categories.map((c) => {
-                  const count = documents.filter((d) => d.dm_tai_lieu === c.id).length;
+                <div className="my-1 border-t border-border-subtle" />
+                {sortedCategories.map((cat) => {
+                  const isSelected = selectedCategory === String(cat.id);
+                  const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
                   return (
-                    <option key={c.id} value={c.id}>
-                      {c.ten_tai_lieu} ({count} tài liệu)
-                    </option>
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        handleCategorySelect(String(cat.id));
+                        setIsCategoryDropdownOpen(false);
+                      }}
+                      className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-primary text-white font-bold'
+                          : 'text-main hover:bg-surface-elevated'
+                      }`}
+                      title={cat.ghi_chu || cat.ten_tai_lieu}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <i className={`fa-solid ${isSelected ? 'fa-folder-open' : 'fa-folder'} text-xs`} />
+                        <span className="truncate">{cat.ten_tai_lieu}</span>
+                      </span>
+                      <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
                   );
                 })}
-                <option value="all">-- Toàn bộ kho (Tất cả Cấp 1 - {documents.length} tài liệu) --</option>
-              </select>
-              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
-            </div>
-          </div>
-
-          {/* 3. Lọc Cấp 2 (Loại tài liệu biểu mẫu - Dropdown phân tầng theo Cấp 1) */}
-          <div className="col-span-6 sm:col-span-1 md:col-span-2 lg:col-span-2">
-            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <i className="fa-solid fa-folder-tree text-primary text-[10px]" />
-                <span>Loại biểu mẫu (Cấp 2)</span>
-              </span>
-              {selectedCategory !== 'all' && (
-                <span className="text-[10px] text-primary font-bold">({availableTypesForFilter.length} loại)</span>
-              )}
-            </label>
-            <div className="relative">
-              <select
-                value={selectedType}
-                disabled={selectedCategory === 'all'}
-                onChange={(e) => {
-                  setSelectedType(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className={`w-full h-9 pl-3 pr-7 text-xs rounded-lg border transition-colors appearance-none ${
-                  selectedCategory === 'all'
-                    ? 'bg-surface-elevated/40 border-border-subtle/60 text-muted cursor-not-allowed'
-                    : 'bg-surface-elevated border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer font-medium'
-                }`}
-                title={
-                  selectedCategory === 'all'
-                    ? 'Vui lòng chọn Danh mục Cấp 1 trước để lọc theo Cấp 2'
-                    : 'Loại tài liệu biểu mẫu Cấp 2'
-                }
-              >
-                {selectedCategory === 'all' ? (
-                  <option value="all">-- Chọn 1 Cấp 1 để xem Cấp 2 --</option>
-                ) : (
-                  <>
-                    <option value="all">
-                      -- Tất cả loại thuộc Cấp 1 này ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length} tài liệu) --
-                    </option>
-                    {availableTypesForFilter.map((t) => {
-                      const count = documents.filter(
-                        (d) =>
-                          d.dm_tai_lieu === Number(selectedCategory) &&
-                          Array.isArray(d.loai_tai_lieu) &&
-                          d.loai_tai_lieu.includes(t.id)
-                      ).length;
-
-                      return (
-                        <option key={t.id} value={t.id}>
-                          {t.ten_loai} ({count} tài liệu)
-                        </option>
-                      );
-                    })}
-                  </>
-                )}
-              </select>
-              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
-            </div>
-          </div>
-
-          {/* 4. Lọc theo Năm ban hành */}
-          <div className="col-span-6 sm:col-span-1 md:col-span-2 lg:col-span-2">
-            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center gap-1.5">
-              <i className="fa-regular fa-calendar text-muted text-[10px]" />
-              <span>Năm ban hành</span>
-            </label>
-            <div className="relative">
-              <select
-                value={selectedYear}
-                onChange={(e) => {
-                  setSelectedYear(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full h-9 pl-3 pr-7 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
-                title="Lọc theo năm ban hành"
-              >
-                <option value="all">-- Tất cả Năm --</option>
-                {availableYears.map((yr) => (
-                  <option key={yr} value={yr}>
-                    Năm {yr}
-                  </option>
-                ))}
-              </select>
-              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
-            </div>
-          </div>
-
-          {/* 5. Lọc Trạng thái hiệu lực */}
-          <div className="col-span-6 sm:col-span-1 md:col-span-2 lg:col-span-2">
-            <label className="text-[11px] font-semibold text-secondary mb-1 flex items-center gap-1.5">
-              <i className="fa-solid fa-shield-halved text-muted text-[10px]" />
-              <span>Hiệu lực</span>
-            </label>
-            <div className="relative">
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full h-9 pl-3 pr-7 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
-                title="Lọc theo tình trạng hiệu lực"
-              >
-                <option value="all">-- Tất cả Hiệu lực --</option>
-                <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-                <option value="CON_HIEU_LUC_1_PHAN">Còn hiệu lực một phần</option>
-                <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-                <option value="HET_VA_THAY_THE">Hết và thay thế</option>
-              </select>
-              <i className="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-[10px]" />
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Nút đặt lại nhanh khi có bộ lọc đang kích hoạt */}
-        {(searchTerm || selectedCategory !== '1' || selectedType !== 'all' || selectedYear !== 'all' || statusFilter !== 'all') && (
-          <div className="flex items-center justify-between pt-2 border-t border-border-subtle text-xs">
-            <div className="flex flex-wrap items-center gap-1.5 text-muted">
-              <span>Đang lọc:</span>
-              {selectedCategory !== '1' && (
-                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded border border-primary/20 font-medium">
-                  Cấp 1: {selectedCategory === 'all' ? 'Toàn bộ kho' : categories.find((c) => c.id === Number(selectedCategory))?.ten_tai_lieu}
+        {/* Hàng Cấp 2 — Sub-chips & Dropdown làm rõ mối quan hệ phân cấp Cấp 1 → Cấp 2 */}
+        {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (
+          <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap bg-surface-elevated/40 border-b border-border-subtle">
+            {/* Nhãn cấp phân cấp */}
+            <span className="text-[11px] text-muted font-semibold uppercase tracking-wide shrink-0 flex items-center gap-1">
+              <i className="fa-solid fa-sitemap text-[9px]" />
+              Loại tài liệu:
+            </span>
+
+            {/* NÚT BẤM SỔ DROPDOWN LOẠI TÀI LIỆU */}
+            <div className="relative" ref={typeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsTypeDropdownOpen((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer border shadow-2xs ${
+                  selectedType !== 'all'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-surface text-secondary border-border-subtle hover:border-primary hover:text-primary'
+                }`}
+                title="Mở menu chọn Loại tài liệu"
+                aria-haspopup="listbox"
+                aria-expanded={isTypeDropdownOpen}
+              >
+                <i className={`fa-solid fa-tags text-[10px] ${selectedType !== 'all' ? 'text-white' : 'text-primary'}`} />
+                <span>{selectedType !== 'all' ? `Loại: ${currentTypeLabel}` : 'Chọn loại tài liệu'}</span>
+                <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isTypeDropdownOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-64 max-h-72 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
+                    <span>Loại tài liệu</span>
+                    <span className="text-[10px] text-muted font-normal">Cấp 2</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedType('all');
+                      setCurrentPage(1);
+                      setIsTypeDropdownOpen(false);
+                    }}
+                    className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                      selectedType === 'all'
+                        ? 'bg-primary text-white font-bold'
+                        : 'text-main hover:bg-surface-elevated'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <i className="fa-solid fa-tags text-xs" />
+                      <span className="truncate">Tất cả loại tài liệu</span>
+                    </span>
+                    <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                      selectedType === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
+                    }`}>
+                      {availableTypesForFilter.length}
+                    </span>
+                  </button>
+
+                  <div className="my-1 border-t border-border-subtle" />
+
+                  {availableTypesForFilter.map((t) => {
+                    const isSelected = selectedType === String(t.id);
+                    const docCount = documents.filter(
+                      (d) =>
+                        d.dm_tai_lieu === Number(selectedCategory) &&
+                        Array.isArray(d.loai_tai_lieu) &&
+                        d.loai_tai_lieu.includes(t.id)
+                    ).length;
+
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedType(String(t.id));
+                          setCurrentPage(1);
+                          setIsTypeDropdownOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary text-white font-bold'
+                            : 'text-main hover:bg-surface-elevated'
+                        }`}
+                        title={t.ghi_chu || t.ten_loai}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {!t.is_public ? (
+                            <i className="fa-solid fa-lock text-[10px] opacity-70" />
+                          ) : (
+                            <i className="fa-solid fa-tag text-xs opacity-70" />
+                          )}
+                          <span className="truncate">{t.ten_loai}</span>
+                        </span>
+                        <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
+                        }`}>
+                          {docCount}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Dải phân cách */}
+            <div className="w-px h-4 bg-border-subtle mx-0.5 shrink-0" />
+
+            {/* Chip "Tất cả loại" */}
+            <button
+              type="button"
+              onClick={() => { setSelectedType('all'); setCurrentPage(1); }}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                selectedType === 'all'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
+              }`}
+            >
+              Tất cả
+              <span className={`text-[10px] font-bold ${
+                selectedType === 'all' ? 'text-white/80' : 'text-muted'
+              }`}>
+                ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length})
+              </span>
+            </button>
+
+            {/* Chip từng loại Cấp 2 */}
+            {availableTypesForFilter.map((t) => {
+              const isActive = selectedType === String(t.id);
+              const docCount = documents.filter(
+                (d) =>
+                  d.dm_tai_lieu === Number(selectedCategory) &&
+                  Array.isArray(d.loai_tai_lieu) &&
+                  d.loai_tai_lieu.includes(t.id)
+              ).length;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => { setSelectedType(String(t.id)); setCurrentPage(1); }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
+                  }`}
+                  title={t.ghi_chu || t.ten_loai}
+                >
+                  {!t.is_public && (
+                    <i className="fa-solid fa-lock text-[9px] opacity-70" />
+                  )}
+                  <span>{t.ten_loai}</span>
+                  <span className={`text-[10px] font-bold ${
+                    isActive ? 'text-white/80' : 'text-muted'
+                  }`}>
+                    ({docCount})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Khi ở chế độ Tất cả: hiện gợi ý chọn thư mục để lọc sâu */}
+        {selectedCategory === 'all' && (
+          <div className="px-4 py-2 flex items-center gap-2 bg-primary/3 border-b border-border-subtle">
+            <i className="fa-solid fa-circle-info text-primary text-[11px] shrink-0" />
+            <span className="text-[11px] text-secondary">
+              Đang xem toàn bộ <strong className="text-main font-bold">{documents.length} tài liệu</strong> trong kho.
+              Chọn một <strong className="text-primary">Thư mục</strong> ở trên để lọc theo phòng ban và xem các <strong className="text-primary">Loại tài liệu</strong> con.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 2. THANH BỘ LỌC TÌM KIẾM (MỤC 3) */}
+      <div className="bg-surface p-3.5 rounded-xl border border-border-subtle shadow-xs space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5 items-center">
+          {/* Ô Tìm kiếm rộng rãi: 8 cols */}
+          <div className="sm:col-span-2 md:col-span-8 relative">
+            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Tìm theo tiêu đề, ký hiệu, nơi ban hành..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full h-10 pl-9 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary placeholder:text-muted transition-colors"
+              aria-label="Tìm theo tiêu đề, ký hiệu, nơi ban hành"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchInput('');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1 cursor-pointer"
+                title="Xóa từ khóa"
+                aria-label="Xóa từ khóa tìm kiếm"
+              >
+                <i className="fa-solid fa-xmark" />
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown Năm ban hành - 2 cols */}
+          <div className="sm:col-span-1 md:col-span-2 relative">
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                setSelectedYear(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full h-10 pl-3 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
+              aria-label="Lọc theo năm ban hành"
+            >
+              <option value="all">Tất cả năm</option>
+              {availableYears.map((yr) => (
+                <option key={yr} value={yr}>
+                  Năm {yr}
+                </option>
+              ))}
+            </select>
+            <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-xs" />
+          </div>
+
+          {/* Dropdown Hiệu lực - 2 cols */}
+          <div className="sm:col-span-1 md:col-span-2 relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full h-10 pl-3 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
+              aria-label="Lọc theo tình trạng hiệu lực"
+            >
+              <option value="all">Tất cả hiệu lực</option>
+              <option value="CON_HIEU_LUC">🟢 Còn hiệu lực</option>
+              <option value="CON_HIEU_LUC_1_PHAN">🟡 Còn hiệu lực 1 phần</option>
+              <option value="HET_HIEU_LUC">🔴 Hết hiệu lực</option>
+              <option value="HET_VA_THAY_THE">🟠 Hết và thay thế</option>
+            </select>
+            <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-xs" />
+          </div>
+        </div>
+
+        {/* Chip bộ lọc & Nút Xóa bộ lọc (Mục 3) */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border-subtle text-xs">
+            <div className="flex flex-wrap items-center gap-1.5 text-secondary">
+              <span className="text-muted font-medium mr-0.5">Đang lọc:</span>
+              {searchTerm && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
+                  <span>Tìm: "{searchTerm}"</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchInput('');
+                      setSearchTerm('');
+                    }}
+                    className="text-muted hover:text-danger cursor-pointer"
+                    aria-label="Xóa bộ lọc tìm kiếm"
+                  >
+                    <i className="fa-solid fa-xmark text-[11px]" />
+                  </button>
                 </span>
               )}
               {selectedType !== 'all' && (
-                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded border border-primary/20 font-medium">
-                  Cấp 2: {types.find((t) => t.id === Number(selectedType))?.ten_loai}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
+                  <span>Loại: {types.find((t) => t.id === Number(selectedType))?.ten_loai}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedType('all')}
+                    className="text-muted hover:text-danger cursor-pointer"
+                    aria-label="Xóa bộ lọc loại tài liệu"
+                  >
+                    <i className="fa-solid fa-xmark text-[11px]" />
+                  </button>
                 </span>
               )}
               {selectedYear !== 'all' && (
-                <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium">
-                  Năm: {selectedYear}
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
+                  <span>Năm: {selectedYear}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedYear('all')}
+                    className="text-muted hover:text-danger cursor-pointer"
+                    aria-label="Xóa bộ lọc năm"
+                  >
+                    <i className="fa-solid fa-xmark text-[11px]" />
+                  </button>
                 </span>
               )}
               {statusFilter !== 'all' && (
-                <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium">
-                  Hiệu lực: {statusFilter === 'CON_HIEU_LUC' ? 'Còn hiệu lực' : statusFilter === 'CON_HIEU_LUC_1_PHAN' ? 'Còn hiệu lực 1 phần' : statusFilter === 'HET_HIEU_LUC' ? 'Hết hiệu lực' : 'Hết & Thay thế'}
-                </span>
-              )}
-              {searchTerm && (
-                <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium truncate max-w-[150px]">
-                  "{searchTerm}"
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
+                  <span>
+                    Hiệu lực: {
+                      statusFilter === 'CON_HIEU_LUC'
+                        ? 'Còn hiệu lực'
+                        : statusFilter === 'CON_HIEU_LUC_1_PHAN'
+                          ? 'Còn hiệu lực 1 phần'
+                          : statusFilter === 'HET_HIEU_LUC'
+                            ? 'Hết hiệu lực'
+                            : 'Hết và thay thế'
+                    }
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('all')}
+                    className="text-muted hover:text-danger cursor-pointer"
+                    aria-label="Xóa bộ lọc hiệu lực"
+                  >
+                    <i className="fa-solid fa-xmark text-[11px]" />
+                  </button>
                 </span>
               )}
             </div>
 
             <button
               type="button"
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('1'); // Quay lại mặc định: 1. Tài liệu, Biểu mẫu chung
-                setSelectedType('all');
-                setSelectedYear('all');
-                setStatusFilter('all');
-                setCurrentPage(1);
-              }}
-              className="text-xs text-primary hover:underline flex items-center gap-1 font-semibold cursor-pointer shrink-0 ml-2"
+              onClick={handleClearFilters}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-danger hover:bg-danger-subtle rounded-md transition-colors font-semibold cursor-pointer shrink-0"
             >
-              <i className="fa-solid fa-rotate-left" /> Đặt lại mặc định
+              <i className="fa-solid fa-rotate-left text-[11px]" />
+              <span>Xóa bộ lọc</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* BẢNG DỮ LIỆU TÀI LIỆU CHÍNH (ĐỖ TRUNG PHONG & NGUYỄN CHÍ TÍN) */}
+      {/* 3. THANH KẾT QUẢ TRÊN BẢNG (MỤC 4) */}
+      <div className="flex items-center justify-between text-xs text-secondary px-1">
+        <div>
+          {totalCount === 0 ? (
+            <span>Hiển thị <strong className="text-main font-bold">0 / 0</strong> tài liệu</span>
+          ) : (
+            <span>
+              Hiển thị <strong className="text-main font-bold">{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalCount)}</strong> / <strong className="text-main font-bold">{totalCount}</strong> tài liệu
+            </span>
+          )}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          icon="fa-file-excel"
+          onClick={handleExportExcel}
+          isLoading={isExporting}
+          title="Xuất danh sách theo bộ lọc hiện tại"
+          aria-label="Xuất danh sách theo bộ lọc hiện tại"
+          className="text-xs font-semibold"
+        >
+          Xuất Excel
+        </Button>
+      </div>
+
+      {/* 4. BẢNG DỮ LIỆU TÀI LIỆU CHÍNH (MỤC 5) */}
       <ResourceTable
         items={paginatedDocuments}
         currentPage={currentPage}
@@ -895,29 +1353,32 @@ export default function ResourceManagementPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onDownloadFile={handleDownloadFile}
-        onExportExcel={handleExportExcel}
-        isExporting={isExporting}
-        currentCategoryName={
-          selectedCategory === 'all'
-            ? 'Toàn bộ kho lưu trữ'
-            : categories.find((c) => c.id === Number(selectedCategory))?.ten_tai_lieu
-        }
-        currentTypeName={
-          selectedType === 'all'
-            ? undefined
-            : types.find((t) => t.id === Number(selectedType))?.ten_loai
-        }
+        onClearFilters={handleClearFilters}
+        onDrillDown={(categoryId, typeId) => {
+          // Bấm dòng: chuyển sang Tab Thư mục tương ứng + chọn Loại tài liệu
+          setSelectedCategory(String(categoryId));
+          setSelectedType(typeId ? String(typeId) : 'all');
+          setCurrentPage(1);
+        }}
       />
 
-      {/* MODAL XEM CHI TIẾT TÀI LIỆU (DẠNG POPUP THỂ HIỆN TOÀN BỘ CÁC TRƯỜNG) */}
+      {/* MODAL XEM CHI TIẾT TÀI LIỆU (MỤC 6) */}
       <ResourceDetailModal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         item={detailItem}
         onDownloadFile={handleDownloadFile}
+        onEdit={(item) => {
+          setIsDetailOpen(false);
+          handleEdit(item);
+        }}
+        onDelete={(item) => {
+          setIsDetailOpen(false);
+          handleDelete(item);
+        }}
       />
 
-      {/* MODAL THÊM MỚI / SỬA TÀI LIỆU (DẠNG POPUP VỚI CÁC TRƯỜNG BẮT BUỘC VÀ VALIDATE FILE <20MB) */}
+      {/* MODAL THÊM MỚI / SỬA TÀI LIỆU (MỤC 7) */}
       <ResourceFormModal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
@@ -927,7 +1388,7 @@ export default function ResourceManagementPage() {
         types={types}
       />
 
-      {/* MODAL QUẢN LÝ CẤU TRÚC DANH MỤC CẤP 1 & LOẠI BIỂU MẪU CẤP 2 (HUỲNH THỊ KIM TRANG PHỤ TRÁCH) */}
+      {/* MODAL QUẢN LÝ CẤU TRÚC DANH MỤC CẤP 1 & LOẠI BIỂU MẪU CẤP 2 (MỤC 8) */}
       <CategoryManagementModal
         isOpen={isCategoryModalOpen}
         onClose={() => setIsCategoryModalOpen(false)}
@@ -939,7 +1400,7 @@ export default function ResourceManagementPage() {
         onDeleteType={handleDeleteType}
       />
 
-      {/* MODAL XÁC NHẬN XÓA TÀI LIỆU */}
+      {/* MODAL XÁC NHẬN XÓA TÀI LIỆU (MỤC 5) */}
       {isDeleteOpen && deleteItem && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
@@ -965,7 +1426,7 @@ export default function ResourceManagementPage() {
                   Xác nhận xóa tài liệu
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
-                  Thao tác này sẽ gỡ bỏ tài liệu khỏi hệ thống.
+                  Xóa tài liệu {deleteItem.ky_hieu || deleteItem.tieu_de}? Hành động này không thể hoàn tác.
                 </p>
               </div>
             </div>

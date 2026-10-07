@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useEffect, useMemo, useRef, ChangeEvent, FormEvent } from 'react';
 import {
   ResourceItem,
   ResourceCategory,
@@ -40,540 +40,6 @@ const MAX_FILE_SIZE_MB = 20;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.zip', '.rar'];
 
-interface FormContentProps {
-  onClose: () => void;
-  onSubmit: (data: { formData: FormData; payload: ResourceFormData }) => Promise<void> | void;
-  initialData?: ResourceItem | null;
-  categories: ResourceCategory[];
-  types: ResourceType[];
-  isLoading: boolean;
-}
-
-const FormContent: React.FC<FormContentProps> = ({
-  onClose,
-  onSubmit,
-  initialData,
-  categories,
-  types,
-  isLoading,
-}) => {
-  const isEditMode = Boolean(initialData);
-
-  // Khởi tạo state trực tiếp từ initialData mà không cần useEffect (React 19 pattern)
-  const [formData, setFormData] = useState<ResourceFormData>(() => {
-    if (initialData) {
-      return {
-        dm_tai_lieu: initialData.dm_tai_lieu,
-        loai_tai_lieu: initialData.loai_tai_lieu || [],
-        ky_hieu: initialData.ky_hieu || '',
-        tieu_de: initialData.tieu_de || '',
-        ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
-        noi_ban_hanh: initialData.noi_ban_hanh || '',
-        hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
-        ngay_het_hieu_luc: initialData.ngay_het_hieu_luc || '',
-        link_thay_the: initialData.link_thay_the || '',
-        ghi_chu: initialData.ghi_chu || '',
-        hien_thi: initialData.hien_thi || 'TAT_CA',
-        file: null,
-      };
-    }
-    return {
-      dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
-      loai_tai_lieu: [],
-      ky_hieu: '',
-      tieu_de: '',
-      ngay_dang: new Date().toISOString().split('T')[0],
-      noi_ban_hanh: '',
-      hieu_luc: 'CON_HIEU_LUC',
-      ngay_het_hieu_luc: '',
-      link_thay_the: '',
-      ghi_chu: '',
-      hien_thi: 'TAT_CA',
-      file: null,
-    };
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [fileError, setFileError] = useState<string | null>(null);
-
-  // Danh sách Loại Cấp 2 tương ứng với Danh mục Cấp 1 đã chọn (Cascading)
-  const availableTypes = useMemo(() => {
-    if (!formData.dm_tai_lieu) return [];
-    return types.filter((t) => t.dm_tai_lieu === Number(formData.dm_tai_lieu));
-  }, [formData.dm_tai_lieu, types]);
-
-  // Khi đổi Danh mục Cấp 1, tự động lọc lại Loại Cấp 2 đã chọn
-  const handleCategoryChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const newDmId = e.target.value ? Number(e.target.value) : '';
-    setFormData((prev) => {
-      const validTypes = types
-        .filter((t) => t.dm_tai_lieu === newDmId)
-        .map((t) => t.id);
-      const filteredSelected = prev.loai_tai_lieu.filter((id) => validTypes.includes(id));
-
-      return {
-        ...prev,
-        dm_tai_lieu: newDmId,
-        loai_tai_lieu: filteredSelected,
-      };
-    });
-
-    if (errors.dm_tai_lieu) {
-      setErrors((prev) => ({ ...prev, dm_tai_lieu: '' }));
-    }
-  };
-
-  // Chọn / Bỏ chọn Loại Cấp 2 (Multi-select)
-  const handleToggleType = (typeId: number) => {
-    setFormData((prev) => {
-      const exists = prev.loai_tai_lieu.includes(typeId);
-      const updated = exists
-        ? prev.loai_tai_lieu.filter((id) => id !== typeId)
-        : [...prev.loai_tai_lieu, typeId];
-      return { ...prev, loai_tai_lieu: updated };
-    });
-
-    if (errors.loai_tai_lieu) {
-      setErrors((prev) => ({ ...prev, loai_tai_lieu: '' }));
-    }
-  };
-
-  // Xử lý chọn File và Validation kích thước, định dạng
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) {
-      setFormData((prev) => ({ ...prev, file: null }));
-      setFileError(null);
-      return;
-    }
-
-    // Kiểm tra định dạng đuôi file
-    const ext = '.' + selectedFile.name.split('.').pop()?.toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(ext)) {
-      setFileError(
-        `Định dạng tệp ${ext} không được hỗ trợ. Vui lòng chọn tệp PDF, DOC, DOCX, JPG, PNG, ZIP hoặc RAR.`
-      );
-      setFormData((prev) => ({ ...prev, file: null }));
-      e.target.value = '';
-      return;
-    }
-
-    // Kiểm tra kích thước file <= 20MB (Yêu cầu đặc tả)
-    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
-      setFileError(
-        `Cảnh báo: Dung lượng tệp (${(selectedFile.size / (1024 * 1024)).toFixed(
-          1
-        )}MB) vượt quá giới hạn cho phép (${MAX_FILE_SIZE_MB}MB). Vui lòng nén hoặc chọn tệp nhỏ hơn.`
-      );
-      setFormData((prev) => ({ ...prev, file: null }));
-      e.target.value = '';
-      return;
-    }
-
-    // Hợp lệ
-    setFileError(null);
-    setFormData((prev) => ({ ...prev, file: selectedFile }));
-    if (errors.file) {
-      setErrors((prev) => ({ ...prev, file: '' }));
-    }
-  };
-
-  // Validate toàn bộ Form trước khi submit
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.dm_tai_lieu) {
-      newErrors.dm_tai_lieu = 'Vui lòng chọn Danh mục Cấp 1.';
-    }
-
-    if (availableTypes.length > 0 && formData.loai_tai_lieu.length === 0) {
-      newErrors.loai_tai_lieu = 'Vui lòng chọn ít nhất một Loại tài liệu Cấp 2.';
-    }
-
-    if (!formData.tieu_de.trim()) {
-      newErrors.tieu_de = 'Tiêu đề tài liệu không được để trống.';
-    }
-
-    if (!formData.ngay_dang) {
-      newErrors.ngay_dang = 'Vui lòng chọn ngày đăng.';
-    }
-
-    if (!formData.hieu_luc) {
-      newErrors.hieu_luc = 'Vui lòng chọn trạng thái hiệu lực.';
-    }
-
-    if (
-      (formData.hieu_luc === 'HET_HIEU_LUC' || formData.hieu_luc === 'HET_VA_THAY_THE') &&
-      !formData.ngay_het_hieu_luc
-    ) {
-      newErrors.ngay_het_hieu_luc = 'Tài liệu hết hiệu lực bắt buộc phải có ngày hết hiệu lực.';
-    }
-
-    if (!isEditMode && !formData.file) {
-      newErrors.file = 'Vui lòng tải lên tệp đính kèm cho tài liệu mới.';
-    }
-
-    if (fileError) {
-      newErrors.file = fileError;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    // Chuẩn bị FormData cho Multipart upload API
-    const fd = new FormData();
-    fd.append('dm_tai_lieu', String(formData.dm_tai_lieu));
-    formData.loai_tai_lieu.forEach((id) => fd.append('loai_tai_lieu', String(id)));
-    fd.append('tieu_de', formData.tieu_de.trim());
-    fd.append('ngay_dang', formData.ngay_dang);
-    fd.append('hieu_luc', formData.hieu_luc);
-    fd.append('hien_thi', formData.hien_thi);
-
-    if (formData.ky_hieu.trim()) fd.append('ky_hieu', formData.ky_hieu.trim());
-    if (formData.noi_ban_hanh.trim()) fd.append('noi_ban_hanh', formData.noi_ban_hanh.trim());
-    if (formData.ngay_het_hieu_luc) fd.append('ngay_het_hieu_luc', formData.ngay_het_hieu_luc);
-    if (formData.link_thay_the.trim()) fd.append('link_thay_the', formData.link_thay_the.trim());
-    if (formData.ghi_chu.trim()) fd.append('ghi_chu', formData.ghi_chu.trim());
-
-    if (formData.file) {
-      fd.append('file_dinh_kem', formData.file);
-    }
-
-    await onSubmit({
-      formData: fd,
-      payload: formData,
-    });
-  };
-
-  return (
-    <div
-      className="w-full max-w-3xl max-h-[90vh] bg-surface rounded-2xl border border-border-subtle shadow-xl flex flex-col overflow-hidden animate-slide-in-bottom"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header Modal - Cố định ở trên cùng */}
-      <div className="flex items-center justify-between px-[27px] py-[21px] border-b border-border-subtle bg-surface shrink-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-base">
-            <i className={`fa-solid ${isEditMode ? 'fa-pen-to-square' : 'fa-plus'}`} />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-main leading-tight">
-              {isEditMode ? 'Chỉnh sửa Tài liệu & Biểu mẫu' : 'Thêm mới Tài liệu & Biểu mẫu'}
-            </h3>
-            <p className="text-xs text-muted">
-              {isEditMode
-                ? `Cập nhật thông tin tài liệu #${initialData?.id}`
-                : 'Nhập đầy đủ các thông tin bắt buộc (*) để ban hành tài liệu'}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
-          aria-label="Đóng"
-        >
-          <i className="fa-solid fa-xmark text-lg" />
-        </button>
-      </div>
-
-      {/* Form Container */}
-      <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
-        {/* Vùng cuộn riêng cho các trường Form */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Nhóm 1: Phân loại Cấp 1 & Cấp 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-surface-elevated/40 border border-border-subtle/70">
-            {/* Danh mục Cấp 1 */}
-            <div>
-              <label htmlFor="dm_tai_lieu" className="text-xs font-bold text-main block mb-1.5">
-                Danh mục Cấp 1 <span className="text-danger">*</span>
-              </label>
-              <select
-                id="dm_tai_lieu"
-                value={formData.dm_tai_lieu}
-                onChange={handleCategoryChange}
-                className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary transition-colors ${errors.dm_tai_lieu ? 'border-danger' : 'border-border-subtle'
-                  }`}
-              >
-                <option value="">-- Chọn danh mục Cấp 1 --</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.ten_tai_lieu} {c.ky_hieu ? `(${c.ky_hieu})` : ''}
-                  </option>
-                ))}
-              </select>
-              {errors.dm_tai_lieu && (
-                <p className="text-xs text-danger mt-1">{errors.dm_tai_lieu}</p>
-              )}
-            </div>
-
-            {/* Loại Cấp 2 (Tự động lọc theo Cấp 1) */}
-            <div>
-              <label className="text-xs font-bold text-main block mb-1.5">
-                Loại tài liệu Cấp 2 <span className="text-danger">*</span>
-                <span className="text-xs text-muted font-normal ml-1">
-                  ({availableTypes.length} loại tương ứng)
-                </span>
-              </label>
-              {availableTypes.length === 0 ? (
-                <div className="text-xs text-muted italic py-2 px-3 bg-surface rounded-lg border border-border-subtle">
-                  {formData.dm_tai_lieu
-                    ? 'Danh mục này chưa có Loại Cấp 2 nào.'
-                    : 'Vui lòng chọn Danh mục Cấp 1 trước.'}
-                </div>
-              ) : (
-                <div className="max-h-28 overflow-y-auto p-2 bg-surface rounded-lg border border-border-subtle space-y-1.5">
-                  {availableTypes.map((type) => {
-                    const checked = formData.loai_tai_lieu.includes(type.id);
-                    return (
-                      <label
-                        key={type.id}
-                        className="flex items-center gap-2 text-xs text-main cursor-pointer hover:bg-surface-elevated p-1 rounded transition-colors select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => handleToggleType(type.id)}
-                          className="rounded text-primary focus:ring-0 cursor-pointer"
-                        />
-                        <span>{type.ten_loai}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-              {errors.loai_tai_lieu && (
-                <p className="text-xs text-danger mt-1">{errors.loai_tai_lieu}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Nhóm 2: Thông tin cơ bản */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Ký hiệu */}
-            <div>
-              <label htmlFor="ky_hieu" className="text-xs font-bold text-main block mb-1.5">
-                Số / Ký hiệu tài liệu
-              </label>
-              <input
-                id="ky_hieu"
-                type="text"
-                value={formData.ky_hieu}
-                onChange={(e) => setFormData({ ...formData, ky_hieu: e.target.value })}
-                placeholder="VD: 15/QĐ-BL, BM-01..."
-                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary font-mono"
-              />
-            </div>
-
-            {/* Nơi ban hành */}
-            <div>
-              <label htmlFor="noi_ban_hanh" className="text-xs font-bold text-main block mb-1.5">
-                Nơi ban hành
-              </label>
-              <input
-                id="noi_ban_hanh"
-                type="text"
-                value={formData.noi_ban_hanh}
-                onChange={(e) => setFormData({ ...formData, noi_ban_hanh: e.target.value })}
-                placeholder="VD: Ban Giám Đốc, Phòng Nhân sự..."
-                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary"
-              />
-            </div>
-
-            {/* Ngày đăng */}
-            <div>
-              <label htmlFor="ngay_dang" className="text-xs font-bold text-main block mb-1.5">
-                Ngày đăng / Ban hành <span className="text-danger">*</span>
-              </label>
-              <input
-                id="ngay_dang"
-                type="date"
-                value={formData.ngay_dang}
-                onChange={(e) => setFormData({ ...formData, ngay_dang: e.target.value })}
-                className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary font-mono ${errors.ngay_dang ? 'border-danger' : 'border-border-subtle'
-                  }`}
-              />
-              {errors.ngay_dang && (
-                <p className="text-xs text-danger mt-1">{errors.ngay_dang}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Tiêu đề tài liệu */}
-          <div>
-            <label htmlFor="tieu_de" className="text-xs font-bold text-main block mb-1.5">
-              Tiêu đề tài liệu <span className="text-danger">*</span>
-            </label>
-            <input
-              id="tieu_de"
-              type="text"
-              value={formData.tieu_de}
-              onChange={(e) => setFormData({ ...formData, tieu_de: e.target.value })}
-              placeholder="Nhập tên hoặc trích yếu đầy đủ của tài liệu, biểu mẫu..."
-              className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary ${errors.tieu_de ? 'border-danger' : 'border-border-subtle'
-                }`}
-            />
-            {errors.tieu_de && <p className="text-xs text-danger mt-1">{errors.tieu_de}</p>}
-          </div>
-
-          {/* Nhóm 3: Hiệu lực và Pháp lý */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-surface-elevated/40 border border-border-subtle/70">
-            {/* Trạng thái hiệu lực */}
-            <div>
-              <label htmlFor="hieu_luc" className="text-xs font-bold text-main block mb-1.5">
-                Trạng thái hiệu lực <span className="text-danger">*</span>
-              </label>
-              <select
-                id="hieu_luc"
-                value={formData.hieu_luc}
-                onChange={(e) =>
-                  setFormData({ ...formData, hieu_luc: e.target.value as HieuLucType })
-                }
-                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer"
-              >
-                <option value="CON_HIEU_LUC">Còn hiệu lực</option>
-                <option value="CON_HIEU_LUC_1_PHAN">Còn hiệu lực một phần</option>
-                <option value="HET_HIEU_LUC">Hết hiệu lực</option>
-                <option value="HET_VA_THAY_THE">Hết hiệu lực và thay thế</option>
-              </select>
-            </div>
-
-            {/* Ngày hết hiệu lực (chỉ hiện khi hết hiệu lực) */}
-            <div>
-              <label htmlFor="ngay_het_hieu_luc" className="text-xs font-bold text-main block mb-1.5">
-                Ngày hết hiệu lực{' '}
-                {(formData.hieu_luc === 'HET_HIEU_LUC' || formData.hieu_luc === 'HET_VA_THAY_THE') && <span className="text-danger">*</span>}
-              </label>
-              <input
-                id="ngay_het_hieu_luc"
-                type="date"
-                disabled={formData.hieu_luc === 'CON_HIEU_LUC' || formData.hieu_luc === 'CON_HIEU_LUC_1_PHAN'}
-                value={formData.ngay_het_hieu_luc}
-                onChange={(e) => setFormData({ ...formData, ngay_het_hieu_luc: e.target.value })}
-                className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary font-mono disabled:opacity-50 disabled:bg-surface-elevated ${errors.ngay_het_hieu_luc ? 'border-danger' : 'border-border-subtle'
-                  }`}
-              />
-              {errors.ngay_het_hieu_luc && (
-                <p className="text-xs text-danger mt-1">{errors.ngay_het_hieu_luc}</p>
-              )}
-            </div>
-
-            {/* Phạm vi hiển thị */}
-            <div>
-              <label htmlFor="hien_thi" className="text-xs font-bold text-main block mb-1.5">
-                Phạm vi hiển thị <span className="text-danger">*</span>
-              </label>
-              <select
-                id="hien_thi"
-                value={formData.hien_thi}
-                onChange={(e) =>
-                  setFormData({ ...formData, hien_thi: e.target.value as HienThiType })
-                }
-                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer"
-              >
-                <option value="TAT_CA">Tất cả cán bộ nhân viên</option>
-                <option value="NOI_BO_PHONG_BAN">Nội bộ phòng ban</option>
-              </select>
-            </div>
-
-            {/* Link thay thế (khi chọn Hết và thay thế) */}
-            {formData.hieu_luc === 'HET_VA_THAY_THE' && (
-              <div className="md:col-span-3">
-                <label htmlFor="link_thay_the" className="text-xs font-bold text-warning-text block mb-1.5">
-                  <i className="fa-solid fa-link mr-1" /> Link văn bản thay thế
-                </label>
-                <input
-                  id="link_thay_the"
-                  type="url"
-                  value={formData.link_thay_the}
-                  onChange={(e) => setFormData({ ...formData, link_thay_the: e.target.value })}
-                  placeholder="https://... hoặc đường dẫn văn bản thay thế mới"
-                  className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Nhóm 4: Tải tệp đính kèm & Validation kích thước */}
-          <div>
-            <label htmlFor="file_dinh_kem" className="text-xs font-bold text-main block mb-1.5">
-              Tệp tài liệu đính kèm {!isEditMode && <span className="text-danger">*</span>}
-              <span className="text-xs text-muted font-normal ml-2">
-                (Tối đa {MAX_FILE_SIZE_MB}MB; chấp nhận PDF, DOC, DOCX, JPG, PNG, ZIP, RAR)
-              </span>
-            </label>
-
-            <div className="flex flex-col gap-2">
-              <input
-                id="file_dinh_kem"
-                type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
-                onChange={handleFileChange}
-                className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover file:cursor-pointer cursor-pointer"
-              />
-
-              {/* Thông báo file cũ đang có khi ở chế độ Edit */}
-              {isEditMode && !formData.file && initialData?.file_dinh_kem && (
-                <div className="text-xs text-secondary flex items-center gap-1.5">
-                  <i className="fa-solid fa-file-check text-emerald-500" />
-                  <span>Tệp hiện tại: <strong>{initialData.file_dinh_kem.split('/').pop()}</strong></span>
-                  <span className="text-muted">(Nếu không muốn đổi tệp thì để trống trường này)</span>
-                </div>
-              )}
-
-              {/* Cảnh báo lỗi File kích thước hoặc định dạng */}
-              {(fileError || errors.file) && (
-                <div className="p-2.5 rounded-lg bg-danger-subtle border border-danger-border flex items-start gap-2">
-                  <i className="fa-solid fa-circle-exclamation text-danger mt-0.5 text-xs" />
-                  <p className="text-xs text-danger font-medium">
-                    {fileError || errors.file}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Nhóm 5: Ghi chú */}
-          <div>
-            <label htmlFor="ghi_chu" className="text-xs font-bold text-main block mb-1.5">
-              Ghi chú thêm
-            </label>
-            <textarea
-              id="ghi_chu"
-              rows={3}
-              value={formData.ghi_chu}
-              onChange={(e) => setFormData({ ...formData, ghi_chu: e.target.value })}
-              placeholder="Ghi chú nội dung ban hành, lưu ý khi áp dụng..."
-              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary resize-none"
-            />
-          </div>
-        </div>
-
-        {/* Footer nút hành động - Cố định ở đáy modal */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle bg-surface-elevated/40 shrink-0 z-10">
-          <Button variant="secondary" size="md" onClick={onClose} disabled={isLoading}>
-            Hủy bỏ
-          </Button>
-          <Button
-            variant="primary"
-            size="md"
-            type="submit"
-            isLoading={isLoading}
-            icon={isEditMode ? 'fa-floppy-disk' : 'fa-check'}
-          >
-            {isEditMode ? 'Lưu thay đổi' : 'Ban hành tài liệu'}
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
-};
-
 export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   isOpen,
   onClose,
@@ -583,38 +49,776 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   types = [],
   isLoading = false,
 }) => {
-  // Lắng nghe phím ESC để đóng modal
+  const isEditMode = Boolean(initialData);
+
+  // Form State
+  const [formData, setFormData] = useState<ResourceFormData>({
+    dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
+    loai_tai_lieu: [],
+    ky_hieu: '',
+    tieu_de: '',
+    ngay_dang: new Date().toISOString().split('T')[0],
+    noi_ban_hanh: '',
+    hieu_luc: 'CON_HIEU_LUC',
+    ngay_het_hieu_luc: '',
+    link_thay_the: '',
+    ghi_chu: '',
+    hien_thi: 'TAT_CA',
+    file: null,
+  });
+
+  const [existingFileName, setExistingFileName] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Khởi tạo form khi mở modal
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setFormData({
+          dm_tai_lieu: initialData.dm_tai_lieu,
+          loai_tai_lieu: initialData.loai_tai_lieu || [],
+          ky_hieu: initialData.ky_hieu || '',
+          tieu_de: initialData.tieu_de || '',
+          ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
+          noi_ban_hanh: initialData.noi_ban_hanh || '',
+          hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
+          ngay_het_hieu_luc: initialData.ngay_het_hieu_luc || '',
+          link_thay_the: initialData.link_thay_the || '',
+          ghi_chu: initialData.ghi_chu || '',
+          hien_thi: initialData.hien_thi || 'TAT_CA',
+          file: null,
+        });
+        setExistingFileName(
+          initialData.attachments?.[0]?.name ||
+            initialData.file_dinh_kem?.split('/').pop() ||
+            null
+        );
+      } else {
+        setFormData({
+          dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
+          loai_tai_lieu: [],
+          ky_hieu: '',
+          tieu_de: '',
+          ngay_dang: new Date().toISOString().split('T')[0],
+          noi_ban_hanh: '',
+          hieu_luc: 'CON_HIEU_LUC',
+          ngay_het_hieu_luc: '',
+          link_thay_the: '',
+          ghi_chu: '',
+          hien_thi: 'TAT_CA',
+          file: null,
+        });
+        setExistingFileName(null);
+      }
+      setErrors({});
+      setFileError(null);
+      setIsDirty(false);
+    }
+  }, [isOpen, initialData, categories]);
+
+  // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
+  const handleSafeClose = () => {
+    if (isDirty) {
+      const confirmLeave = window.confirm(
+        'Bạn có chắc muốn hủy các thay đổi chưa lưu?'
+      );
+      if (!confirmLeave) return;
+    }
+    onClose();
+  };
+
+  // Lắng nghe phím ESC
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        handleSafeClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, isDirty]);
+
+  // Danh sách Loại tài liệu theo Thư mục đã chọn (Cascading)
+  const availableTypes = useMemo(() => {
+    if (!formData.dm_tai_lieu) return [];
+    return types.filter((t) => t.dm_tai_lieu === Number(formData.dm_tai_lieu));
+  }, [types, formData.dm_tai_lieu]);
 
   if (!isOpen) return null;
 
-  // Sử dụng key dựa trên initialData?.id hoặc 'create' để reset form state sạch sẽ
-  const formKey = initialData ? `edit-${initialData.id}` : 'create';
+  // Xử lý thay đổi Thư mục (reset Loại tài liệu)
+  const handleCategoryChange = (catId: number | '') => {
+    setIsDirty(true);
+    setFormData((prev) => ({
+      ...prev,
+      dm_tai_lieu: catId,
+      loai_tai_lieu: [],
+    }));
+    if (errors.dm_tai_lieu) {
+      setErrors((prev) => ({ ...prev, dm_tai_lieu: '' }));
+    }
+  };
+
+  // Xử lý toggle checkbox Loại tài liệu (Multi-select)
+  const handleTypeToggle = (typeId: number) => {
+    setIsDirty(true);
+    setFormData((prev) => {
+      const exists = prev.loai_tai_lieu.includes(typeId);
+      const next = exists
+        ? prev.loai_tai_lieu.filter((id) => id !== typeId)
+        : [...prev.loai_tai_lieu, typeId];
+      return { ...prev, loai_tai_lieu: next };
+    });
+    if (errors.loai_tai_lieu) {
+      setErrors((prev) => ({ ...prev, loai_tai_lieu: '' }));
+    }
+  };
+
+  // Xử lý kiểm tra và gán file
+  const validateAndSetFile = (selectedFile: File) => {
+    setFileError(null);
+    const fileNameLower = selectedFile.name.toLowerCase();
+    const isAllowedExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
+
+    if (!isAllowedExt) {
+      setFileError(
+        `Định dạng tệp không được hỗ trợ. Vui lòng chọn tệp: ${ALLOWED_EXTENSIONS.join(', ')}`
+      );
+      return false;
+    }
+
+    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      setFileError(`Dung lượng tệp vượt quá giới hạn cho phép (tối đa ${MAX_FILE_SIZE_MB}MB).`);
+      return false;
+    }
+
+    setIsDirty(true);
+    setFormData((prev) => ({ ...prev, file: selectedFile }));
+    setExistingFileName(null);
+    if (errors.file) {
+      setErrors((prev) => ({ ...prev, file: '' }));
+    }
+    return true;
+  };
+
+  // Chọn file qua input
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      validateAndSetFile(e.target.files[0]);
+    }
+  };
+
+  // Kéo thả file
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      validateAndSetFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  // Validate form trước khi submit
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.dm_tai_lieu) {
+      newErrors.dm_tai_lieu = 'Vui lòng chọn Thư mục';
+    }
+
+    if (formData.loai_tai_lieu.length === 0) {
+      newErrors.loai_tai_lieu = 'Vui lòng chọn ít nhất một Loại tài liệu';
+    }
+
+    if (!formData.tieu_de.trim()) {
+      newErrors.tieu_de = 'Vui lòng nhập Tiêu đề tài liệu';
+    }
+
+    if (!formData.ngay_dang) {
+      newErrors.ngay_dang = 'Vui lòng chọn Ngày đăng';
+    }
+
+    // Ràng buộc nghiêm ngặt khi Hết và thay thế
+    if (formData.hieu_luc === 'HET_VA_THAY_THE') {
+      if (!formData.ngay_het_hieu_luc) {
+        newErrors.ngay_het_hieu_luc = 'Vui lòng nhập Ngày hết hiệu lực khi thay thế văn bản';
+      }
+      if (!formData.link_thay_the.trim()) {
+        newErrors.link_thay_the = 'Vui lòng nhập Link tài liệu thay thế mới';
+      }
+    }
+
+    // Bắt buộc có tệp khi tạo mới
+    if (!isEditMode && !formData.file && !existingFileName) {
+      newErrors.file = 'Vui lòng đính kèm tệp tài liệu';
+    }
+
+    setErrors(newErrors);
+
+    // Tự động focus và cuộn tới trường lỗi đầu tiên
+    const firstErrorKey = Object.keys(newErrors)[0];
+    if (firstErrorKey) {
+      const errorEl = document.getElementById(`field-${firstErrorKey}`);
+      if (errorEl) {
+        errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        errorEl.focus();
+      }
+    }
+
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Xử lý gửi form
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (isLoading) return;
+
+    if (!validateForm()) return;
+
+    const data = new FormData();
+    data.append('dm_tai_lieu', String(formData.dm_tai_lieu));
+    formData.loai_tai_lieu.forEach((tId) => {
+      data.append('loai_tai_lieu', String(tId));
+    });
+    data.append('ky_hieu', formData.ky_hieu.trim());
+    data.append('tieu_de', formData.tieu_de.trim());
+    data.append('ngay_dang', formData.ngay_dang);
+    data.append('noi_ban_hanh', formData.noi_ban_hanh.trim());
+    data.append('hieu_luc', formData.hieu_luc);
+    data.append('hien_thi', formData.hien_thi);
+    data.append('ghi_chu', formData.ghi_chu.trim());
+
+    if (formData.ngay_het_hieu_luc) {
+      data.append('ngay_het_hieu_luc', formData.ngay_het_hieu_luc);
+    }
+    if (formData.link_thay_the) {
+      data.append('link_thay_the', formData.link_thay_the.trim());
+    }
+    if (formData.file) {
+      data.append('file_dinh_kem', formData.file);
+    }
+
+    await onSubmit({ formData: data, payload: formData });
+  };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
-      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
+      onClick={handleSafeClose}
       role="dialog"
       aria-modal="true"
     >
-      <FormContent
-        key={formKey}
-        onClose={onClose}
-        onSubmit={onSubmit}
-        initialData={initialData}
-        categories={categories}
-        types={types}
-        isLoading={isLoading}
-      />
+      <div
+        className="w-full max-w-2xl max-h-[92vh] bg-surface rounded-2xl border border-border-subtle shadow-2xl flex flex-col overflow-hidden animate-slide-in-bottom"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header Modal */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-elevated shrink-0">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-main">
+              {isEditMode ? 'Chỉnh Sửa Tài Liệu & Biểu Mẫu' : 'Thêm Mới Tài Liệu & Biểu Mẫu'}
+            </h2>
+            <p className="text-xs text-secondary mt-0.5">
+              Nhập thông tin theo 4 khối nghiệp vụ chuẩn hoá
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSafeClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface transition-colors cursor-pointer"
+            aria-label="Đóng form"
+          >
+            <i className="fa-solid fa-xmark text-sm" />
+          </button>
+        </div>
+
+        {/* Nội dung Form cuộn dọc theo 4 khối đánh số */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
+          {/* KHỐI 1: Phân loại (Thư mục -> Loại tài liệu) */}
+          <div className="space-y-4 p-4 rounded-xl bg-surface-elevated/60 border border-border-subtle">
+            <div className="flex items-center gap-2 border-b border-border-subtle/80 pb-2">
+              <span className="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                1
+              </span>
+              <h3 className="text-xs font-bold text-main uppercase tracking-wider">
+                Phân loại tài liệu
+              </h3>
+            </div>
+
+            {/* Thư mục (*) */}
+            <div>
+              <label
+                htmlFor="field-dm_tai_lieu"
+                className="text-xs font-semibold text-main block mb-1"
+              >
+                Thư mục <span className="text-danger">*</span>
+              </label>
+              <select
+                id="field-dm_tai_lieu"
+                value={formData.dm_tai_lieu}
+                onChange={(e) =>
+                  handleCategoryChange(e.target.value ? Number(e.target.value) : '')
+                }
+                className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
+              >
+                <option value="">-- Chọn Thư mục --</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.ten_tai_lieu}
+                  </option>
+                ))}
+              </select>
+              {errors.dm_tai_lieu && (
+                <p className="text-danger text-xs mt-1 font-medium">{errors.dm_tai_lieu}</p>
+              )}
+            </div>
+
+            {/* Loại tài liệu (*) (Multi-select) */}
+            <div id="field-loai_tai_lieu">
+              <label className="text-xs font-semibold text-main block mb-1">
+                Loại tài liệu <span className="text-danger">*</span>
+                <span className="text-muted font-normal text-xs ml-1">(chọn một hoặc nhiều loại)</span>
+              </label>
+
+              {!formData.dm_tai_lieu ? (
+                <div className="p-3 rounded-lg bg-surface border border-dashed border-border-subtle text-xs text-muted italic">
+                  Vui lòng chọn Thư mục trước để hiển thị danh sách Loại tài liệu tương ứng.
+                </div>
+              ) : availableTypes.length === 0 ? (
+                <div className="p-3 rounded-lg bg-surface border border-dashed border-border-subtle text-xs text-muted italic">
+                  Thư mục này chưa có Loại tài liệu nào.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-lg bg-surface border border-border-subtle max-h-36 overflow-y-auto">
+                  {availableTypes.map((type) => {
+                    const isChecked = formData.loai_tai_lieu.includes(type.id);
+                    return (
+                      <label
+                        key={type.id}
+                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs cursor-pointer select-none transition-colors ${
+                          isChecked
+                            ? 'bg-primary-subtle text-primary font-semibold'
+                            : 'hover:bg-surface-elevated text-secondary'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleTypeToggle(type.id)}
+                          className="rounded border-border-subtle text-primary focus:ring-0 cursor-pointer"
+                        />
+                        <span className="truncate">{type.ten_loai}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {errors.loai_tai_lieu && (
+                <p className="text-danger text-xs mt-1 font-medium">{errors.loai_tai_lieu}</p>
+              )}
+            </div>
+          </div>
+
+          {/* KHỐI 2: Thông tin văn bản */}
+          <div className="space-y-4 p-4 rounded-xl bg-surface-elevated/60 border border-border-subtle">
+            <div className="flex items-center gap-2 border-b border-border-subtle/80 pb-2">
+              <span className="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                2
+              </span>
+              <h3 className="text-xs font-bold text-main uppercase tracking-wider">
+                Thông tin văn bản
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Ký hiệu */}
+              <div>
+                <label
+                  htmlFor="field-ky_hieu"
+                  className="text-xs font-semibold text-main block mb-1"
+                >
+                  Số ký hiệu
+                </label>
+                <input
+                  id="field-ky_hieu"
+                  type="text"
+                  placeholder="VD: 01/QĐ-BL-2026"
+                  value={formData.ky_hieu}
+                  onChange={(e) => {
+                    setIsDirty(true);
+                    setFormData((prev) => ({ ...prev, ky_hieu: e.target.value }));
+                  }}
+                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main font-mono focus:outline-hidden focus:border-primary transition-colors"
+                />
+              </div>
+
+              {/* Ngày đăng (*) */}
+              <div>
+                <label
+                  htmlFor="field-ngay_dang"
+                  className="text-xs font-semibold text-main block mb-1"
+                >
+                  Ngày đăng <span className="text-danger">*</span>
+                </label>
+                <input
+                  id="field-ngay_dang"
+                  type="date"
+                  value={formData.ngay_dang}
+                  onChange={(e) => {
+                    setIsDirty(true);
+                    setFormData((prev) => ({ ...prev, ngay_dang: e.target.value }));
+                    if (errors.ngay_dang) setErrors((prev) => ({ ...prev, ngay_dang: '' }));
+                  }}
+                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
+                />
+                {errors.ngay_dang && (
+                  <p className="text-danger text-xs mt-1 font-medium">{errors.ngay_dang}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Tiêu đề (*) */}
+            <div>
+              <label
+                htmlFor="field-tieu_de"
+                className="text-xs font-semibold text-main block mb-1"
+              >
+                Tiêu đề tài liệu <span className="text-danger">*</span>
+              </label>
+              <textarea
+                id="field-tieu_de"
+                rows={2}
+                placeholder="Nhập trích yếu hoặc tiêu đề văn bản..."
+                value={formData.tieu_de}
+                onChange={(e) => {
+                  setIsDirty(true);
+                  setFormData((prev) => ({ ...prev, tieu_de: e.target.value }));
+                  if (errors.tieu_de) setErrors((prev) => ({ ...prev, tieu_de: '' }));
+                }}
+                className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors resize-none leading-relaxed"
+              />
+              {errors.tieu_de && (
+                <p className="text-danger text-xs mt-1 font-medium">{errors.tieu_de}</p>
+              )}
+            </div>
+
+            {/* Nơi ban hành */}
+            <div>
+              <label
+                htmlFor="field-noi_ban_hanh"
+                className="text-xs font-semibold text-main block mb-1"
+              >
+                Nơi ban hành
+              </label>
+              <input
+                id="field-noi_ban_hanh"
+                type="text"
+                placeholder="VD: Ban Giám Đốc, Khối Nghiệp Vụ..."
+                value={formData.noi_ban_hanh}
+                onChange={(e) => {
+                  setIsDirty(true);
+                  setFormData((prev) => ({ ...prev, noi_ban_hanh: e.target.value }));
+                }}
+                className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* KHỐI 3: Hiệu lực & Phạm vi */}
+          <div className="space-y-4 p-4 rounded-xl bg-surface-elevated/60 border border-border-subtle">
+            <div className="flex items-center gap-2 border-b border-border-subtle/80 pb-2">
+              <span className="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                3
+              </span>
+              <h3 className="text-xs font-bold text-main uppercase tracking-wider">
+                Hiệu lực &amp; Phạm vi
+              </h3>
+            </div>
+
+            {/* 4 lựa chọn Hiệu lực */}
+            <div>
+              <label className="text-xs font-semibold text-main block mb-2">
+                Trạng thái hiệu lực <span className="text-danger">*</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { value: 'CON_HIEU_LUC', label: 'Còn hiệu lực', color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30' },
+                  { value: 'CON_HIEU_LUC_1_PHAN', label: 'Còn HL 1 phần', color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
+                  { value: 'HET_HIEU_LUC', label: 'Hết hiệu lực', color: 'text-rose-600 bg-rose-500/10 border-rose-500/30' },
+                  { value: 'HET_VA_THAY_THE', label: 'Hết & thay thế', color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
+                ].map((st) => {
+                  const isSelected = formData.hieu_luc === st.value;
+                  return (
+                    <button
+                      key={st.value}
+                      type="button"
+                      onClick={() => {
+                        setIsDirty(true);
+                        setFormData((prev) => ({
+                          ...prev,
+                          hieu_luc: st.value as HieuLucType,
+                        }));
+                      }}
+                      className={`px-2.5 py-2 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
+                        isSelected
+                          ? `${st.color} ring-2 ring-primary/40 font-bold shadow-2xs`
+                          : 'bg-surface border-border-subtle text-secondary hover:bg-surface-elevated'
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Phạm vi áp dụng */}
+            <div>
+              <label className="text-xs font-semibold text-main block mb-1">
+                Phạm vi áp dụng
+              </label>
+              <div className="flex items-center gap-4 text-xs">
+                <label className="inline-flex items-center gap-2 cursor-pointer text-main">
+                  <input
+                    type="radio"
+                    name="hien_thi"
+                    value="TAT_CA"
+                    checked={formData.hien_thi === 'TAT_CA'}
+                    onChange={() => {
+                      setIsDirty(true);
+                      setFormData((prev) => ({ ...prev, hien_thi: 'TAT_CA' }));
+                    }}
+                    className="text-primary focus:ring-0 cursor-pointer"
+                  />
+                  <span>Tất cả phòng ban</span>
+                </label>
+                <label className="inline-flex items-center gap-2 cursor-pointer text-main">
+                  <input
+                    type="radio"
+                    name="hien_thi"
+                    value="NOI_BO_PHONG_BAN"
+                    checked={formData.hien_thi === 'NOI_BO_PHONG_BAN'}
+                    onChange={() => {
+                      setIsDirty(true);
+                      setFormData((prev) => ({ ...prev, hien_thi: 'NOI_BO_PHONG_BAN' }));
+                    }}
+                    className="text-primary focus:ring-0 cursor-pointer"
+                  />
+                  <span>Nội bộ phòng ban</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Điều kiện động khi chọn Hết và thay thế hoặc Hết hiệu lực */}
+            {(formData.hieu_luc === 'HET_VA_THAY_THE' ||
+              formData.hieu_luc === 'HET_HIEU_LUC') && (
+              <div className="pt-2 border-t border-border-subtle/80 space-y-3">
+                {/* Ngày hết hiệu lực */}
+                <div>
+                  <label
+                    htmlFor="field-ngay_het_hieu_luc"
+                    className="text-xs font-semibold text-main block mb-1"
+                  >
+                    Ngày hết hiệu lực{' '}
+                    {formData.hieu_luc === 'HET_VA_THAY_THE' && (
+                      <span className="text-danger">*</span>
+                    )}
+                  </label>
+                  <input
+                    id="field-ngay_het_hieu_luc"
+                    type="date"
+                    value={formData.ngay_het_hieu_luc}
+                    onChange={(e) => {
+                      setIsDirty(true);
+                      setFormData((prev) => ({
+                        ...prev,
+                        ngay_het_hieu_luc: e.target.value,
+                      }));
+                      if (errors.ngay_het_hieu_luc) {
+                        setErrors((prev) => ({ ...prev, ngay_het_hieu_luc: '' }));
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
+                  />
+                  {errors.ngay_het_hieu_luc && (
+                    <p className="text-danger text-xs mt-1 font-medium">
+                      {errors.ngay_het_hieu_luc}
+                    </p>
+                  )}
+                </div>
+
+                {/* Link thay thế (Chỉ bắt buộc khi Hết và thay thế) */}
+                {formData.hieu_luc === 'HET_VA_THAY_THE' && (
+                  <div>
+                    <label
+                      htmlFor="field-link_thay_the"
+                      className="text-xs font-semibold text-main block mb-1"
+                    >
+                      Link tài liệu thay thế mới <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      id="field-link_thay_the"
+                      type="url"
+                      placeholder="https://example.com/files/van-ban-moi.pdf"
+                      value={formData.link_thay_the}
+                      onChange={(e) => {
+                        setIsDirty(true);
+                        setFormData((prev) => ({
+                          ...prev,
+                          link_thay_the: e.target.value,
+                        }));
+                        if (errors.link_thay_the) {
+                          setErrors((prev) => ({ ...prev, link_thay_the: '' }));
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors font-mono"
+                    />
+                    {errors.link_thay_the && (
+                      <p className="text-danger text-xs mt-1 font-medium">
+                        {errors.link_thay_the}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* KHỐI 4: Tệp đính kèm (*) */}
+          <div
+            id="field-file"
+            className="space-y-3 p-4 rounded-xl bg-surface-elevated/60 border border-border-subtle"
+          >
+            <div className="flex items-center gap-2 border-b border-border-subtle/80 pb-2">
+              <span className="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                4
+              </span>
+              <h3 className="text-xs font-bold text-main uppercase tracking-wider">
+                Tệp đính kèm {!isEditMode && <span className="text-danger">*</span>}
+              </h3>
+            </div>
+
+            {/* Vùng kéo-thả tệp */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleDrop}
+              className={`p-5 rounded-xl border-2 border-dashed text-center transition-all cursor-pointer ${
+                isDragOver
+                  ? 'border-primary bg-primary-subtle/30'
+                  : 'border-border-subtle bg-surface hover:bg-surface-elevated'
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept={ALLOWED_EXTENSIONS.join(',')}
+                onChange={handleFileChange}
+              />
+              <div className="w-10 h-10 rounded-full bg-primary-subtle text-primary flex items-center justify-center mx-auto mb-2 text-base">
+                <i className="fa-solid fa-cloud-arrow-up" />
+              </div>
+              <p className="text-xs sm:text-sm font-semibold text-main mb-1">
+                Kéo thả tệp vào đây hoặc <span className="text-primary underline">chọn tệp</span>
+              </p>
+              <p className="text-[11px] text-muted">
+                Hỗ trợ PDF, DOC, DOCX, JPG, PNG, ZIP · Tối đa 20MB/tệp
+              </p>
+            </div>
+
+            {/* Danh sách tệp đã chọn hoặc tệp hiện có */}
+            {(formData.file || existingFileName) && (
+              <div className="p-3 rounded-lg bg-surface border border-border-subtle flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <i className="fa-solid fa-paperclip text-primary shrink-0" />
+                  <span className="truncate font-medium text-main">
+                    {formData.file ? formData.file.name : existingFileName}
+                  </span>
+                  {formData.file && (
+                    <span className="text-[11px] text-muted font-mono shrink-0">
+                      ({(formData.file.size / (1024 * 1024)).toFixed(2)} MB)
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDirty(true);
+                    setFormData((prev) => ({ ...prev, file: null }));
+                    setExistingFileName(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                  }}
+                  className="p-1 text-muted hover:text-danger rounded transition-colors"
+                  title="Xóa tệp này"
+                  aria-label="Xóa tệp"
+                >
+                  <i className="fa-solid fa-trash-can text-xs" />
+                </button>
+              </div>
+            )}
+
+            {fileError && <p className="text-danger text-xs font-medium">{fileError}</p>}
+            {errors.file && <p className="text-danger text-xs font-medium">{errors.file}</p>}
+          </div>
+
+          {/* Ghi chú */}
+          <div>
+            <label
+              htmlFor="field-ghi_chu"
+              className="text-xs font-semibold text-main block mb-1"
+            >
+              Ghi chú bổ sung
+            </label>
+            <input
+              id="field-ghi_chu"
+              type="text"
+              placeholder="Nhập ghi chú (nếu có)..."
+              value={formData.ghi_chu}
+              onChange={(e) => {
+                setIsDirty(true);
+                setFormData((prev) => ({ ...prev, ghi_chu: e.target.value }));
+              }}
+              className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
+            />
+          </div>
+        </form>
+
+        {/* Footer cố định */}
+        <div className="px-6 py-4 border-t border-border-subtle bg-surface-elevated flex items-center justify-end gap-3 shrink-0">
+          <Button
+            variant="outline"
+            size="md"
+            onClick={handleSafeClose}
+            disabled={isLoading}
+            className="text-xs"
+          >
+            Hủy
+          </Button>
+
+          <Button
+            variant="primary"
+            size="md"
+            icon={isLoading ? 'fa-spinner fa-spin' : 'fa-check'}
+            onClick={handleSubmit}
+            isLoading={isLoading}
+            disabled={isLoading}
+            className="text-xs shadow-sm"
+          >
+            {isEditMode ? 'Lưu thay đổi' : 'Lưu tài liệu'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

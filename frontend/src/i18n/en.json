@@ -306,7 +306,7 @@
       "assignedTeam": "Group 4 (Resources & Templates Subsystem)",
       "codeRef": "Item 4.1 & 4.2 · Difficulty: 0.80",
       "isGroup1": false,
-      "desc": "Tier-1 template directory and standardized organizational forms for company-wide download and utilization."
+      "desc": "Folder directory and standardized organizational forms for company-wide download and utilization."
     },
     "approvals": {
       "title": "Digital Signature & Electronic Approval Workflow",
@@ -410,5 +410,30 @@
   },
   "footer": {
     "copyright": "Version v2.0 • Copyright © {year} Bao Long Insurance"
+  },
+  "resourceManagement": {
+    "folder": "Folder",
+    "documentType": "Document Type",
+    "searchPlaceholder": "Search by title, code, issuing authority...",
+    "allTypes": "All types",
+    "allYears": "All years",
+    "allStatuses": "All statuses",
+    "clearFilter": "Clear filter",
+    "exportExcel": "Export Excel",
+    "exportTooltip": "Export list by current filter",
+    "displayRange": "Showing {start}–{end} of {total} documents",
+    "noMatchTitle": "No matching documents found",
+    "noMatchDesc": "Please try another keyword or clear filters to view all documents.",
+    "expiredBannerReplaced": "This document has expired and is superseded by:",
+    "expiredBannerNormal": "This document is currently expired and no longer effective.",
+    "partialBanner": "This document is currently partially effective.",
+    "viewReplacement": "→ View superseding document",
+    "download": "Download",
+    "internal": "Internal",
+    "public": "Public",
+    "savedSuccess": "Document saved successfully",
+    "deleteConfirm": "Delete document {code}? This action cannot be undone.",
+    "deleteFolderHasChildren": "Cannot delete because folder still contains {count} document types",
+    "orderExists": "Display order already exists"
   }
 }

@@ -101,7 +101,7 @@ describe('ResourceTable Component', () => {
     expect(rows[2].className).not.toContain('bg-slate-100/70');
   });
 
-  it('calls onViewDetail when clicking on title or view button', () => {
+  it('calls onViewDetail via action menu Xem chi tiết button', () => {
     const handleViewDetail = vi.fn();
     render(
       <ResourceTable
@@ -115,7 +115,13 @@ describe('ResourceTable Component', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Quy chế quản lý nội bộ 2026'));
+    // Mở menu ⋯ trên dòng đầu tiên
+    const menuButtons = screen.getAllByTitle('Thao tác');
+    fireEvent.click(menuButtons[0]);
+
+    // Bấm "Xem chi tiết" trong menu
+    const viewBtn = screen.getByRole('button', { name: 'Xem chi tiết tài liệu' });
+    fireEvent.click(viewBtn);
     expect(handleViewDetail).toHaveBeenCalledWith(mockItems[0]);
   });
 
@@ -132,7 +138,7 @@ describe('ResourceTable Component', () => {
       />
     );
 
-    expect(screen.getByText('Chưa có tài liệu nào')).toBeInTheDocument();
+    expect(screen.getByText('Không có tài liệu phù hợp')).toBeInTheDocument();
   });
 
   it('renders CON_HIEU_LUC_1_PHAN badge correctly', () => {

@@ -2,7 +2,8 @@
 
 **Đơn vị phụ trách:** Nhóm 4  
 **Độ khó nghiệp vụ:** 0.8  
-**Kho lưu trữ nhánh tích hợp:** `4_documents_templates`
+**Kho lưu trữ nhánh tích hợp:** `4_documents_templates`  
+**Kế hoạch & Luồng chi tiết:** [Plan & Flow (plan_and_flow.md)](./plan_and_flow.md)
 
 ---
 

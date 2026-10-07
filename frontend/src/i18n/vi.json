@@ -306,7 +306,7 @@
       "assignedTeam": "Nhóm 4 (Phân hệ Tài liệu & Biểu mẫu)",
       "codeRef": "Mục 4.1 & 4.2 · Độ khó: 0.80",
       "isGroup1": false,
-      "desc": "Danh mục tài liệu Cấp 1 và kho biểu mẫu quy định tải về sử dụng trong toàn đơn vị."
+      "desc": "Thư mục tài liệu và kho biểu mẫu quy định tải về sử dụng trong toàn đơn vị."
     },
     "approvals": {
       "title": "Quy Trình Trình Ký Số Điện Tử",
@@ -410,5 +410,30 @@
   },
   "footer": {
     "copyright": "Phiên bản v2.0 • Bản quyền © {year} Bảo Long Insurance"
+  },
+  "resourceManagement": {
+    "folder": "Thư mục",
+    "documentType": "Loại tài liệu",
+    "searchPlaceholder": "Tìm theo tiêu đề, ký hiệu, nơi ban hành...",
+    "allTypes": "Tất cả loại",
+    "allYears": "Tất cả năm",
+    "allStatuses": "Tất cả hiệu lực",
+    "clearFilter": "Xóa bộ lọc",
+    "exportExcel": "Xuất Excel",
+    "exportTooltip": "Xuất danh sách theo bộ lọc hiện tại",
+    "displayRange": "Hiển thị {start}–{end} / {total} tài liệu",
+    "noMatchTitle": "Không có tài liệu phù hợp",
+    "noMatchDesc": "Vui lòng thử từ khóa khác hoặc xóa bộ lọc để xem toàn bộ tài liệu.",
+    "expiredBannerReplaced": "Văn bản này đã hết hiệu lực và được thay thế bởi:",
+    "expiredBannerNormal": "Văn bản này hiện đã hết hiệu lực thi hành.",
+    "partialBanner": "Văn bản này hiện chỉ còn hiệu lực một phần.",
+    "viewReplacement": "→ Xem văn bản thay thế",
+    "download": "Tải về",
+    "internal": "Nội bộ",
+    "public": "Công khai",
+    "savedSuccess": "Đã lưu tài liệu thành công",
+    "deleteConfirm": "Xóa tài liệu {code}? Hành động này không thể hoàn tác.",
+    "deleteFolderHasChildren": "Không thể xóa vì thư mục còn {count} loại tài liệu",
+    "orderExists": "STT ưu tiên đã tồn tại"
   }
 }

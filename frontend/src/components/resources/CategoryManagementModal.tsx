@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ResourceCategory, ResourceType } from '@app-types/resource';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
@@ -24,9 +24,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   onSaveType,
   onDeleteType,
 }) => {
+  // 2 tab chính: "category" (Thư mục) | "type" (Loại tài liệu)
   const [activeTab, setActiveTab] = useState<'category' | 'type'>('category');
 
-  // --- State cho Danh mục Cấp 1 ---
+  // Menu "⋯" đang mở theo ID
+  const [activeMenuCatId, setActiveMenuCatId] = useState<number | null>(null);
+  const [activeMenuTypeId, setActiveMenuTypeId] = useState<number | null>(null);
+
+  // --- State Tab Thư mục ---
   const [catSearch, setCatSearch] = useState('');
   const [isEditingCat, setIsEditingCat] = useState(false);
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
@@ -39,8 +44,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     ghi_chu: '',
   });
   const [catError, setCatError] = useState<string | null>(null);
+  const [catDeleteBlockedMsg, setCatDeleteBlockedMsg] = useState<string | null>(null);
 
-  // --- State cho Loại biểu mẫu Cấp 2 ---
+  // --- State Tab Loại tài liệu ---
   const [typeSearch, setTypeSearch] = useState('');
   const [filterParentCat, setFilterParentCat] = useState<string>('all');
   const [isEditingType, setIsEditingType] = useState(false);
@@ -53,18 +59,29 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   });
   const [typeError, setTypeError] = useState<string | null>(null);
 
-  // Tính số thứ tự ưu tiên lớn nhất + 1 để tự động điền khi tạo mới Cấp 1
+  // Đóng dropdown khi click ngoài
+  useEffect(() => {
+    const handleOutside = () => {
+      setActiveMenuCatId(null);
+      setActiveMenuTypeId(null);
+    };
+    document.addEventListener('click', handleOutside);
+    return () => document.removeEventListener('click', handleOutside);
+  }, []);
+
+  // Tính số thứ tự ưu tiên lớn nhất + 1 để tự động điền khi tạo mới Thư mục
   const nextOrderNumber = () => {
     if (categories.length === 0) return 1;
     const maxOrder = Math.max(...categories.map((c) => c.stt_uu_tien || 0));
     return maxOrder + 1;
   };
 
-  // Mở form thêm mới Cấp 1
+  // Mở form thêm mới Thư mục
   const handleOpenAddCat = () => {
     setIsEditingCat(true);
     setEditingCatId(null);
     setCatError(null);
+    setCatDeleteBlockedMsg(null);
     setCatForm({
       stt_uu_tien: nextOrderNumber(),
       ky_hieu: '',
@@ -75,11 +92,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     });
   };
 
-  // Mở form chỉnh sửa Cấp 1
+  // Mở form chỉnh sửa Thư mục
   const handleOpenEditCat = (cat: ResourceCategory) => {
     setIsEditingCat(true);
     setEditingCatId(cat.id);
     setCatError(null);
+    setCatDeleteBlockedMsg(null);
     setCatForm({
       stt_uu_tien: cat.stt_uu_tien,
       ky_hieu: cat.ky_hieu || '',
@@ -90,20 +108,20 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     });
   };
 
-  // Lưu Danh mục Cấp 1
+  // Lưu Thư mục
   const handleSaveCat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!catForm.ten_tai_lieu.trim()) {
-      setCatError('Vui lòng nhập tên danh mục tài liệu');
+      setCatError('Vui lòng nhập tên thư mục');
       return;
     }
 
-    // Kiểm tra trùng STT ưu tiên theo đặc tả yêu cầu
+    // Kiểm tra trùng STT ưu tiên theo đặc tả
     const isDuplicateOrder = categories.some(
       (c) => c.stt_uu_tien === Number(catForm.stt_uu_tien) && c.id !== editingCatId
     );
     if (isDuplicateOrder) {
-      setCatError(`Số thứ tự ưu tiên ${catForm.stt_uu_tien} đã tồn tại! Vui lòng chọn số khác.`);
+      setCatError('STT ưu tiên đã tồn tại');
       return;
     }
 
@@ -121,20 +139,35 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setIsEditingCat(false);
   };
 
-  // Mở form thêm mới Cấp 2
+  // Xóa Thư mục (Chặn xóa nếu còn loại con)
+  const handleDeleteCategoryWithCheck = (cat: ResourceCategory) => {
+    setCatDeleteBlockedMsg(null);
+    const childTypes = types.filter((t) => t.dm_tai_lieu === cat.id);
+    if (childTypes.length > 0) {
+      setCatDeleteBlockedMsg(`Không thể xóa vì thư mục còn ${childTypes.length} loại tài liệu`);
+      return;
+    }
+
+    const confirmDelete = window.confirm(`Xóa thư mục "${cat.ten_tai_lieu}"? Hành động này không thể hoàn tác.`);
+    if (confirmDelete) {
+      onDeleteCategory(cat.id);
+    }
+  };
+
+  // Mở form thêm mới Loại tài liệu
   const handleOpenAddType = () => {
     setIsEditingType(true);
     setEditingTypeId(null);
     setTypeError(null);
     setTypeForm({
-      dm_tai_lieu: filterParentCat !== 'all' ? Number(filterParentCat) : (categories[0]?.id || 1),
+      dm_tai_lieu: filterParentCat !== 'all' ? Number(filterParentCat) : categories[0]?.id || 1,
       ten_loai: '',
       is_public: true,
       ghi_chu: '',
     });
   };
 
-  // Mở form chỉnh sửa Cấp 2
+  // Mở form chỉnh sửa Loại tài liệu
   const handleOpenEditType = (typeItem: ResourceType) => {
     setIsEditingType(true);
     setEditingTypeId(typeItem.id);
@@ -147,7 +180,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     });
   };
 
-  // Lưu Loại biểu mẫu Cấp 2
+  // Lưu Loại tài liệu
   const handleSaveType = (e: React.FormEvent) => {
     e.preventDefault();
     if (!typeForm.ten_loai.trim()) {
@@ -168,7 +201,15 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setIsEditingType(false);
   };
 
-  // Danh mục Cấp 1 đã lọc
+  // Xóa Loại tài liệu có xác nhận
+  const handleDeleteTypeConfirm = (typeItem: ResourceType) => {
+    const confirmDelete = window.confirm(`Xóa loại tài liệu "${typeItem.ten_loai}"? Hành động này không thể hoàn tác.`);
+    if (confirmDelete) {
+      onDeleteType(typeItem.id);
+    }
+  };
+
+  // Thư mục đã lọc và sắp xếp theo STT ưu tiên
   const filteredCategories = useMemo(() => {
     return categories
       .filter((c) => {
@@ -182,7 +223,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       .sort((a, b) => a.stt_uu_tien - b.stt_uu_tien);
   }, [categories, catSearch]);
 
-  // Loại Cấp 2 đã lọc
+  // Loại tài liệu đã lọc
   const filteredTypes = useMemo(() => {
     return types.filter((t) => {
       if (filterParentCat !== 'all' && t.dm_tai_lieu !== Number(filterParentCat)) {
@@ -210,47 +251,43 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-elevated">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-lg shrink-0">
-              <i className="fa-solid fa-folder-tree" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-main">
-                Quản Lý Cấu Trúc Danh Mục &amp; Loại Biểu Mẫu
-              </h2>
-              <p className="text-xs text-secondary mt-0.5">
-                Thiết lập Danh mục cấp 1 và phân loại biểu mẫu cấp 2 theo quy chuẩn hệ thống
-              </p>
-            </div>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-elevated shrink-0">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-main">
+              Quản Lý Thư Mục &amp; Loại Tài Liệu
+            </h2>
+            <p className="text-xs text-secondary mt-0.5">
+              Thiết lập cấu trúc Thư mục và danh mục phân loại biểu mẫu nội bộ
+            </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface transition-colors cursor-pointer"
-            aria-label="Đóng"
+            aria-label="Đóng popup"
           >
             <i className="fa-solid fa-xmark text-sm" />
           </button>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex border-b border-border-subtle px-6 bg-surface">
+        {/* Tab Switcher (Chỉ 2 tab: Thư mục | Loại tài liệu) */}
+        <div className="flex border-b border-border-subtle px-6 bg-surface shrink-0">
           <button
             type="button"
             onClick={() => {
               setActiveTab('category');
               setIsEditingCat(false);
+              setCatDeleteBlockedMsg(null);
             }}
             className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'category'
-                ? 'border-primary text-primary'
+                ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-secondary hover:text-main'
             }`}
           >
-            <i className="fa-solid fa-layer-group" />
-            <span>Danh mục tài liệu (Cấp 1)</span>
+            <i className="fa-solid fa-folder" />
+            <span>Thư mục</span>
             <span className="px-2 py-0.5 rounded-full text-[11px] bg-primary-subtle text-primary font-bold">
               {categories.length}
             </span>
@@ -264,12 +301,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             }}
             className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'type'
-                ? 'border-primary text-primary'
+                ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-secondary hover:text-main'
             }`}
           >
             <i className="fa-solid fa-tags" />
-            <span>Loại tài liệu &amp; biểu mẫu (Cấp 2)</span>
+            <span>Loại tài liệu</span>
             <span className="px-2 py-0.5 rounded-full text-[11px] bg-surface-elevated text-secondary font-bold">
               {types.length}
             </span>
@@ -277,11 +314,29 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
 
         {/* Body Modal */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {/* TAB 1: DANH MỤC CẤP 1 */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+          {/* TAB 1: THƯ MỤC */}
           {activeTab === 'category' && (
             <div className="space-y-4">
-              {/* Form Thêm/Sửa Cấp 1 */}
+              {/* Thông báo nếu bị chặn xóa do còn loại con */}
+              {catDeleteBlockedMsg && (
+                <div className="p-3 rounded-xl bg-danger-subtle text-danger border border-danger/30 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in">
+                  <div className="flex items-center gap-2">
+                    <i className="fa-solid fa-circle-exclamation shrink-0" />
+                    <span>{catDeleteBlockedMsg}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCatDeleteBlockedMsg(null)}
+                    className="p-1 hover:opacity-70 text-xs"
+                    aria-label="Đóng cảnh báo"
+                  >
+                    <i className="fa-solid fa-xmark" />
+                  </button>
+                </div>
+              )}
+
+              {/* Form Thêm / Sửa Thư mục */}
               {isEditingCat ? (
                 <form
                   onSubmit={handleSaveCat}
@@ -290,7 +345,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   <div className="flex items-center justify-between border-b border-border-subtle pb-2.5">
                     <h4 className="text-sm font-bold text-main flex items-center gap-2">
                       <i className="fa-solid fa-pen-to-square text-primary" />
-                      {editingCatId ? 'Chỉnh sửa Danh mục Cấp 1' : 'Thêm mới Danh mục Cấp 1'}
+                      {editingCatId ? 'Chỉnh sửa Thư mục' : 'Thêm mới Thư mục'}
                     </h4>
                     <Button
                       variant="ghost"
@@ -298,218 +353,235 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       onClick={() => setIsEditingCat(false)}
                       className="text-xs"
                     >
-                      Hủy bỏ
+                      Hủy form
                     </Button>
                   </div>
 
-                  {catError && (
-                    <div className="p-3 text-xs bg-danger-subtle text-danger rounded-lg flex items-center gap-2">
-                      <i className="fa-solid fa-circle-exclamation shrink-0" />
-                      <span>{catError}</span>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-secondary mb-1">
-                        STT ưu tiên hiển thị <span className="text-danger">*</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+                    {/* STT ưu tiên (max + 1) */}
+                    <div className="sm:col-span-3">
+                      <label className="text-xs font-semibold text-main block mb-1">
+                        STT ưu tiên <span className="text-danger">*</span>
                       </label>
                       <input
                         type="number"
-                        min="1"
+                        min={1}
                         value={catForm.stt_uu_tien}
-                        onChange={(e) =>
-                          setCatForm({ ...catForm, stt_uu_tien: Number(e.target.value) })
-                        }
+                        onChange={(e) => {
+                          setCatForm({ ...catForm, stt_uu_tien: Number(e.target.value) });
+                          setCatError(null);
+                        }}
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main font-mono focus:outline-hidden focus:border-primary"
                         required
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary"
-                        title="Tự động lấy số lớn nhất + 1, kiểm tra không trùng lặp"
                       />
-                      <span className="text-[10px] text-muted">Tự động tăng, không được trùng</span>
+                      {catError === 'STT ưu tiên đã tồn tại' && (
+                        <p className="text-danger text-xs mt-1 font-medium">{catError}</p>
+                      )}
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-secondary mb-1">
-                        Ký hiệu danh mục
+                    {/* Ký hiệu */}
+                    <div className="sm:col-span-4">
+                      <label className="text-xs font-semibold text-main block mb-1">
+                        Ký hiệu thư mục
                       </label>
                       <input
                         type="text"
-                        placeholder="VD: TLBM-CHUNG, HS-BNS"
+                        placeholder="VD: TLBM-CHUNG"
                         value={catForm.ky_hieu}
                         onChange={(e) => setCatForm({ ...catForm, ky_hieu: e.target.value })}
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary font-mono uppercase"
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main font-mono focus:outline-hidden focus:border-primary"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-secondary mb-1">
-                        Ngày lập
+                    {/* Tên thư mục (*) */}
+                    <div className="sm:col-span-5">
+                      <label className="text-xs font-semibold text-main block mb-1">
+                        Tên thư mục <span className="text-danger">*</span>
                       </label>
                       <input
-                        type="date"
-                        value={catForm.ngay_lap}
-                        onChange={(e) => setCatForm({ ...catForm, ngay_lap: e.target.value })}
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary"
+                        type="text"
+                        placeholder="VD: Tài liệu, Biểu mẫu chung"
+                        value={catForm.ten_tai_lieu}
+                        onChange={(e) => {
+                          setCatForm({ ...catForm, ten_tai_lieu: e.target.value });
+                          if (catError && catError !== 'STT ưu tiên đã tồn tại') setCatError(null);
+                        }}
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary"
+                        required
                       />
+                      {catError && catError !== 'STT ưu tiên đã tồn tại' && (
+                        <p className="text-danger text-xs mt-1 font-medium">{catError}</p>
+                      )}
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-secondary mb-1">
-                      Tên danh mục tài liệu <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="VD: Tài liệu, Biểu mẫu chung"
-                      value={catForm.ten_tai_lieu}
-                      onChange={(e) => setCatForm({ ...catForm, ten_tai_lieu: e.target.value })}
-                      required
-                      className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-secondary mb-1">
-                        Người lập tài liệu <span className="text-danger">*</span>
+                    {/* Người lập */}
+                    <div className="sm:col-span-6">
+                      <label className="text-xs font-semibold text-main block mb-1">
+                        Người lập thư mục
                       </label>
                       <input
                         type="text"
                         value={catForm.nguoi_lap_name}
-                        onChange={(e) =>
-                          setCatForm({ ...catForm, nguoi_lap_name: e.target.value })
-                        }
-                        required
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary"
+                        onChange={(e) => setCatForm({ ...catForm, nguoi_lap_name: e.target.value })}
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-secondary mb-1">
-                        Ghi chú
-                      </label>
+                    {/* Ngày lập */}
+                    <div className="sm:col-span-6">
+                      <label className="text-xs font-semibold text-main block mb-1">Ngày lập</label>
+                      <input
+                        type="date"
+                        value={catForm.ngay_lap}
+                        onChange={(e) => setCatForm({ ...catForm, ngay_lap: e.target.value })}
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary"
+                      />
+                    </div>
+
+                    {/* Ghi chú */}
+                    <div className="sm:col-span-12">
+                      <label className="text-xs font-semibold text-main block mb-1">Ghi chú</label>
                       <input
                         type="text"
-                        placeholder="Ghi chú thêm nếu có"
+                        placeholder="Mô tả phạm vi áp dụng của thư mục..."
                         value={catForm.ghi_chu}
                         onChange={(e) => setCatForm({ ...catForm, ghi_chu: e.target.value })}
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary"
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary"
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setIsEditingCat(false)}
-                      type="button"
-                    >
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingCat(false)}>
                       Hủy
                     </Button>
                     <Button variant="primary" size="sm" type="submit" icon="fa-check">
-                      {editingCatId ? 'Cập nhật danh mục' : 'Thêm danh mục'}
+                      {editingCatId ? 'Cập nhật thư mục' : 'Lưu thư mục'}
                     </Button>
                   </div>
                 </form>
-              ) : (
-                /* Thanh công cụ quản lý Cấp 1 */
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="relative w-full sm:w-72">
-                    <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted" />
-                    <input
-                      type="text"
-                      placeholder="Tìm theo tên hoặc ký hiệu..."
-                      value={catSearch}
-                      onChange={(e) => setCatSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary"
-                    />
-                  </div>
+              ) : null}
 
+              {/* Thanh công cụ Tab Thư mục */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-sm">
+                  <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs" />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo tên hoặc ký hiệu thư mục..."
+                    value={catSearch}
+                    onChange={(e) => setCatSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 bg-surface border border-border-subtle rounded-lg text-xs text-main focus:outline-hidden focus:border-primary"
+                  />
+                </div>
+
+                {!isEditingCat && (
                   <Button
                     variant="primary"
                     size="sm"
                     icon="fa-plus"
                     onClick={handleOpenAddCat}
-                    className="w-full sm:w-auto"
+                    className="text-xs shrink-0"
                   >
-                    Thêm danh mục Cấp 1
+                    + Thêm thư mục
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Bảng Danh mục Cấp 1 */}
-              <div className="overflow-x-auto rounded-xl border border-border-subtle">
+              {/* Bảng danh sách Thư mục */}
+              <div className="w-full overflow-x-auto rounded-xl border border-border-subtle bg-surface">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-surface-elevated font-semibold text-muted uppercase tracking-wider border-b border-border-subtle">
+                  <thead className="bg-surface-elevated font-bold text-muted uppercase border-b border-border-subtle">
                     <tr>
-                      <th className="px-3 py-2.5 text-center w-14">STT</th>
-                      <th className="px-3 py-2.5 w-28">Ký hiệu</th>
-                      <th className="px-4 py-2.5">Tên danh mục Cấp 1</th>
-                      <th className="px-3 py-2.5 w-32">Người lập</th>
-                      <th className="px-3 py-2.5 w-24 text-center">Ngày lập</th>
-                      <th className="px-3 py-2.5 text-center w-24">Thao tác</th>
+                      <th className="px-3 py-3 w-16 text-center">STT</th>
+                      <th className="px-3 py-3 w-28">Ký hiệu</th>
+                      <th className="px-4 py-3 min-w-[200px]">Tên thư mục</th>
+                      <th className="px-3 py-3 w-32">Ngày lập</th>
+                      <th className="px-3 py-3 w-28 text-center">Loại con</th>
+                      <th className="px-3 py-3 w-16 text-center">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
                     {filteredCategories.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-8 text-center text-muted">
-                          Không tìm thấy danh mục cấp 1 phù hợp
+                          Không tìm thấy thư mục nào phù hợp
                         </td>
                       </tr>
                     ) : (
-                      filteredCategories.map((c) => (
-                        <tr
-                          key={c.id}
-                          className="hover:bg-surface-elevated/60 transition-colors"
-                        >
-                          <td className="px-3 py-2.5 text-center font-bold text-primary">
-                            {c.stt_uu_tien}
-                          </td>
-                          <td className="px-3 py-2.5 font-mono text-[11px] font-semibold text-secondary">
-                            {c.ky_hieu || '-'}
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <div className="font-semibold text-main text-xs">{c.ten_tai_lieu}</div>
-                            {c.ghi_chu && (
-                              <div className="text-[11px] text-muted line-clamp-1">{c.ghi_chu}</div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5 text-secondary">{c.nguoi_lap_name || '-'}</td>
-                          <td className="px-3 py-2.5 text-center text-secondary font-mono text-[11px]">
-                            {c.ngay_lap || '-'}
-                          </td>
-                          <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditCat(c)}
-                                className="p-1 text-secondary hover:text-primary rounded hover:bg-surface cursor-pointer"
-                                title="Chỉnh sửa"
-                              >
-                                <i className="fa-solid fa-pen text-xs" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (
-                                    window.confirm(
-                                      `Bạn có chắc chắn muốn xóa danh mục: "${c.ten_tai_lieu}"?`
-                                    )
-                                  ) {
-                                    onDeleteCategory(c.id);
+                      filteredCategories.map((cat) => {
+                        const childCount = types.filter((t) => t.dm_tai_lieu === cat.id).length;
+                        return (
+                          <tr key={cat.id} className="hover:bg-surface-elevated transition-colors">
+                            <td className="px-3 py-3 text-center font-bold text-primary">
+                              {cat.stt_uu_tien}
+                            </td>
+                            <td className="px-3 py-3 font-mono text-secondary">
+                              {cat.ky_hieu || '-'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-semibold text-main block">{cat.ten_tai_lieu}</span>
+                              {cat.ghi_chu && (
+                                <span className="text-[11px] text-muted truncate block max-w-xs mt-0.5">
+                                  {cat.ghi_chu}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-secondary">{cat.ngay_lap || '-'}</td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-surface-elevated text-secondary border border-border-subtle">
+                                {childCount} loại
+                              </span>
+                            </td>
+                            <td
+                              className="px-3 py-3 text-center whitespace-nowrap"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="relative inline-block text-left">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveMenuCatId(activeMenuCatId === cat.id ? null : cat.id)
                                   }
-                                }}
-                                className="p-1 text-secondary hover:text-danger rounded hover:bg-surface cursor-pointer"
-                                title="Xóa"
-                              >
-                                <i className="fa-solid fa-trash text-xs" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                                  className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
+                                  title="Thao tác"
+                                  aria-label={`Thao tác với thư mục ${cat.ten_tai_lieu}`}
+                                >
+                                  <i className="fa-solid fa-ellipsis text-xs" />
+                                </button>
+
+                                {activeMenuCatId === cat.id && (
+                                  <div className="absolute right-0 mt-1 w-32 rounded-xl bg-surface border border-border-subtle shadow-lg z-20 py-1 text-left animate-fade-in">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveMenuCatId(null);
+                                        handleOpenEditCat(cat);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <i className="fa-solid fa-pen-to-square text-muted text-xs" />
+                                      <span>Sửa</span>
+                                    </button>
+                                    <div className="my-1 border-t border-border-subtle" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveMenuCatId(null);
+                                        handleDeleteCategoryWithCheck(cat);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger-subtle flex items-center gap-2 cursor-pointer font-medium"
+                                    >
+                                      <i className="fa-solid fa-trash-can text-danger text-xs" />
+                                      <span>Xóa</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -517,10 +589,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             </div>
           )}
 
-          {/* TAB 2: LOẠI TÀI LIỆU CẤP 2 */}
+          {/* TAB 2: LOẠI TÀI LIỆU */}
           {activeTab === 'type' && (
             <div className="space-y-4">
-              {/* Form Thêm/Sửa Cấp 2 */}
+              {/* Form Thêm / Sửa Loại tài liệu */}
               {isEditingType ? (
                 <form
                   onSubmit={handleSaveType}
@@ -528,8 +600,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                 >
                   <div className="flex items-center justify-between border-b border-border-subtle pb-2.5">
                     <h4 className="text-sm font-bold text-main flex items-center gap-2">
-                      <i className="fa-solid fa-tags text-primary" />
-                      {editingTypeId ? 'Chỉnh sửa Loại biểu mẫu Cấp 2' : 'Thêm mới Loại Cấp 2'}
+                      <i className="fa-solid fa-tag text-primary" />
+                      {editingTypeId ? 'Chỉnh sửa Loại tài liệu' : 'Thêm mới Loại tài liệu'}
                     </h4>
                     <Button
                       variant="ghost"
@@ -537,222 +609,229 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       onClick={() => setIsEditingType(false)}
                       className="text-xs"
                     >
-                      Hủy bỏ
+                      Hủy form
                     </Button>
                   </div>
 
-                  {typeError && (
-                    <div className="p-3 text-xs bg-danger-subtle text-danger rounded-lg flex items-center gap-2">
-                      <i className="fa-solid fa-circle-exclamation shrink-0" />
-                      <span>{typeError}</span>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-secondary mb-1">
-                        Thuộc Danh mục Cấp 1 <span className="text-danger">*</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+                    {/* Thư mục cha (*) */}
+                    <div className="sm:col-span-5">
+                      <label className="text-xs font-semibold text-main block mb-1">
+                        Thư mục cha <span className="text-danger">*</span>
                       </label>
                       <select
                         value={typeForm.dm_tai_lieu}
                         onChange={(e) =>
                           setTypeForm({ ...typeForm, dm_tai_lieu: Number(e.target.value) })
                         }
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer"
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary cursor-pointer"
+                        required
                       >
                         {categories.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.stt_uu_tien}. {c.ten_tai_lieu}
+                            {c.ten_tai_lieu}
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-secondary mb-1">
-                        Tên loại tài liệu/biểu mẫu <span className="text-danger">*</span>
+                    {/* Tên loại (*) */}
+                    <div className="sm:col-span-5">
+                      <label className="text-xs font-semibold text-main block mb-1">
+                        Tên loại tài liệu <span className="text-danger">*</span>
                       </label>
                       <input
                         type="text"
-                        placeholder="VD: Tài liệu bảo hiểm, Biểu mẫu bảo hiểm, Tờ trình"
+                        placeholder="VD: Biểu mẫu bảo hiểm, Tờ trình..."
                         value={typeForm.ten_loai}
-                        onChange={(e) => setTypeForm({ ...typeForm, ten_loai: e.target.value })}
+                        onChange={(e) => {
+                          setTypeForm({ ...typeForm, ten_loai: e.target.value });
+                          setTypeError(null);
+                        }}
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary"
                         required
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary"
+                      />
+                      {typeError && (
+                        <p className="text-danger text-xs mt-1 font-medium">{typeError}</p>
+                      )}
+                    </div>
+
+                    {/* isPublic */}
+                    <div className="sm:col-span-2 flex items-center pt-5">
+                      <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-main select-none">
+                        <input
+                          type="checkbox"
+                          checked={typeForm.is_public}
+                          onChange={(e) =>
+                            setTypeForm({ ...typeForm, is_public: e.target.checked })
+                          }
+                          className="rounded border-border-subtle text-primary focus:ring-0 cursor-pointer"
+                        />
+                        <span>Công khai</span>
+                      </label>
+                    </div>
+
+                    {/* Ghi chú */}
+                    <div className="sm:col-span-12">
+                      <label className="text-xs font-semibold text-main block mb-1">Ghi chú</label>
+                      <input
+                        type="text"
+                        placeholder="Mô tả mục đích sử dụng..."
+                        value={typeForm.ghi_chu}
+                        onChange={(e) => setTypeForm({ ...typeForm, ghi_chu: e.target.value })}
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-secondary mb-1">
-                      Ghi chú
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Mô tả mục đích sử dụng loại biểu mẫu này"
-                      value={typeForm.ghi_chu}
-                      onChange={(e) => setTypeForm({ ...typeForm, ghi_chu: e.target.value })}
-                      className="w-full px-3 py-2 text-xs rounded-lg bg-surface text-main border border-border-subtle focus:outline-none focus:border-primary"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border-subtle">
-                    <input
-                      type="checkbox"
-                      id="isPublicCheck"
-                      checked={typeForm.is_public}
-                      onChange={(e) =>
-                        setTypeForm({ ...typeForm, is_public: e.target.checked })
-                      }
-                      className="w-4 h-4 rounded text-primary border-border-subtle focus:ring-primary cursor-pointer"
-                    />
-                    <label htmlFor="isPublicCheck" className="text-xs text-main cursor-pointer select-none">
-                      <span className="font-semibold">Công khai (isPublic)</span>: Mặc định bật true.
-                      Nếu tắt (false), loại biểu mẫu chỉ hiển thị cho Quản trị viên và tự động đổi màu cảnh báo.
-                    </label>
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setIsEditingType(false)}
-                      type="button"
-                    >
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingType(false)}>
                       Hủy
                     </Button>
                     <Button variant="primary" size="sm" type="submit" icon="fa-check">
-                      {editingTypeId ? 'Cập nhật loại Cấp 2' : 'Thêm loại Cấp 2'}
+                      {editingTypeId ? 'Cập nhật loại' : 'Lưu loại tài liệu'}
                     </Button>
                   </div>
                 </form>
-              ) : (
-                /* Bộ lọc danh sách Cấp 2 */
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
-                    <div className="relative w-full sm:w-56">
-                      <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted" />
-                      <input
-                        type="text"
-                        placeholder="Tìm theo tên loại..."
-                        value={typeSearch}
-                        onChange={(e) => setTypeSearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary"
-                      />
-                    </div>
+              ) : null}
 
-                    <select
-                      value={filterParentCat}
-                      onChange={(e) => setFilterParentCat(e.target.value)}
-                      className="px-3 py-1.5 text-xs rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-none focus:border-primary cursor-pointer w-48"
-                    >
-                      <option value="all">-- Tất cả Cấp 1 --</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.stt_uu_tien}. {c.ten_tai_lieu}
-                        </option>
-                      ))}
-                    </select>
+              {/* Thanh công cụ Tab Loại tài liệu */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1">
+                  {/* Dropdown lọc Thư mục cha */}
+                  <select
+                    value={filterParentCat}
+                    onChange={(e) => setFilterParentCat(e.target.value)}
+                    className="px-3 py-1.5 bg-surface border border-border-subtle rounded-lg text-xs text-main focus:outline-hidden focus:border-primary cursor-pointer shrink-0"
+                  >
+                    <option value="all">Tất cả thư mục</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.ten_tai_lieu}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Ô tìm nhanh theo tên loại */}
+                  <div className="relative flex-1 max-w-xs">
+                    <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs" />
+                    <input
+                      type="text"
+                      placeholder="Tìm tên loại tài liệu..."
+                      value={typeSearch}
+                      onChange={(e) => setTypeSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-surface border border-border-subtle rounded-lg text-xs text-main focus:outline-hidden focus:border-primary"
+                    />
                   </div>
+                </div>
 
+                {!isEditingType && (
                   <Button
                     variant="primary"
                     size="sm"
                     icon="fa-plus"
                     onClick={handleOpenAddType}
-                    className="w-full sm:w-auto"
+                    className="text-xs shrink-0"
                   >
-                    Thêm Loại Cấp 2
+                    + Thêm loại
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Bảng Danh mục Cấp 2 */}
-              <div className="overflow-x-auto rounded-xl border border-border-subtle">
+              {/* Bảng danh sách Loại tài liệu */}
+              <div className="w-full overflow-x-auto rounded-xl border border-border-subtle bg-surface">
                 <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-surface-elevated font-semibold text-muted uppercase tracking-wider border-b border-border-subtle">
+                  <thead className="bg-surface-elevated font-bold text-muted uppercase border-b border-border-subtle">
                     <tr>
-                      <th className="px-3 py-2.5 text-center w-14">ID</th>
-                      <th className="px-3 py-2.5 w-44">Thuộc Cấp 1</th>
-                      <th className="px-4 py-2.5">Tên Loại Tài Liệu / Biểu Mẫu</th>
-                      <th className="px-3 py-2.5 w-32 text-center">Phạm vi (isPublic)</th>
-                      <th className="px-3 py-2.5 text-center w-24">Thao tác</th>
+                      <th className="px-4 py-3 min-w-[200px]">Tên loại tài liệu</th>
+                      <th className="px-3 py-3 w-48">Thư mục cha</th>
+                      <th className="px-3 py-3 w-28 text-center">Công khai</th>
+                      <th className="px-3 py-3 min-w-[160px]">Ghi chú</th>
+                      <th className="px-3 py-3 w-16 text-center">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
                     {filteredTypes.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-muted">
-                          Không tìm thấy loại tài liệu phù hợp
+                          Không tìm thấy loại tài liệu nào phù hợp
                         </td>
                       </tr>
                     ) : (
                       filteredTypes.map((t) => {
                         const parentCat = categories.find((c) => c.id === t.dm_tai_lieu);
-                        // ĐẶC TẢ TỪ THẦY:
-                        // "isPublic(*): mặc định true (nếu false thì vẫn hiển thị cho admin thấy nhưng đổi màu)"
-                        const isNotPublic = !t.is_public;
-
+                        const isNonPublic = !t.is_public;
                         return (
                           <tr
                             key={t.id}
                             className={`transition-colors ${
-                              isNotPublic
-                                ? 'bg-amber-500/10 text-amber-900 dark:text-amber-200 border-l-4 border-l-amber-500'
-                                : 'hover:bg-surface-elevated/60 text-main'
+                              isNonPublic
+                                ? 'bg-amber-500/10 text-amber-900 dark:text-amber-200'
+                                : 'hover:bg-surface-elevated'
                             }`}
                           >
-                            <td className="px-3 py-2.5 text-center font-mono text-[11px] text-muted">
-                              #{t.id}
+                            <td className="px-4 py-3 font-semibold">
+                              <span>{t.ten_loai}</span>
                             </td>
-                            <td className="px-3 py-2.5 font-medium text-secondary">
-                              {parentCat ? parentCat.ten_tai_lieu : `Cấp 1 (#${t.dm_tai_lieu})`}
+                            <td className="px-3 py-3 text-secondary">
+                              {parentCat?.ten_tai_lieu || `Thư mục #${t.dm_tai_lieu}`}
                             </td>
-                            <td className="px-4 py-2.5">
-                              <div className="font-semibold text-xs">{t.ten_loai}</div>
-                              {t.ghi_chu && (
-                                <div className="text-[11px] text-muted line-clamp-1">
-                                  {t.ghi_chu}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                            <td className="px-3 py-3 text-center">
                               {t.is_public ? (
-                                <Badge variant="success" size="sm" withDot>
+                                <Badge variant="success" size="sm">
                                   Công khai
                                 </Badge>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                                  <i className="fa-solid fa-lock text-[9px]" /> Nội bộ (Đổi màu)
-                                </span>
+                                <Badge variant="warning" size="sm">
+                                  Nội bộ
+                                </Badge>
                               )}
                             </td>
-                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center gap-1">
+                            <td className="px-3 py-3 text-muted">{t.ghi_chu || '-'}</td>
+                            <td
+                              className="px-3 py-3 text-center whitespace-nowrap"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="relative inline-block text-left">
                                 <button
                                   type="button"
-                                  onClick={() => handleOpenEditType(t)}
-                                  className="p-1 text-secondary hover:text-primary rounded hover:bg-surface cursor-pointer"
-                                  title="Chỉnh sửa"
+                                  onClick={() =>
+                                    setActiveMenuTypeId(activeMenuTypeId === t.id ? null : t.id)
+                                  }
+                                  className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
+                                  title="Thao tác"
+                                  aria-label={`Thao tác với loại ${t.ten_loai}`}
                                 >
-                                  <i className="fa-solid fa-pen text-xs" />
+                                  <i className="fa-solid fa-ellipsis text-xs" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (
-                                      window.confirm(
-                                        `Bạn có chắc chắn muốn xóa loại: "${t.ten_loai}"?`
-                                      )
-                                    ) {
-                                      onDeleteType(t.id);
-                                    }
-                                  }}
-                                  className="p-1 text-secondary hover:text-danger rounded hover:bg-surface cursor-pointer"
-                                  title="Xóa"
-                                >
-                                  <i className="fa-solid fa-trash text-xs" />
-                                </button>
+
+                                {activeMenuTypeId === t.id && (
+                                  <div className="absolute right-0 mt-1 w-32 rounded-xl bg-surface border border-border-subtle shadow-lg z-20 py-1 text-left animate-fade-in">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveMenuTypeId(null);
+                                        handleOpenEditType(t);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <i className="fa-solid fa-pen-to-square text-muted text-xs" />
+                                      <span>Sửa</span>
+                                    </button>
+                                    <div className="my-1 border-t border-border-subtle" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveMenuTypeId(null);
+                                        handleDeleteTypeConfirm(t);
+                                      }}
+                                      className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger-subtle flex items-center gap-2 cursor-pointer font-medium"
+                                    >
+                                      <i className="fa-solid fa-trash-can text-danger text-xs" />
+                                      <span>Xóa</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -767,13 +846,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
 
         {/* Footer Modal */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-border-subtle bg-surface-elevated text-xs text-muted">
-          <span>
-            <i className="fa-solid fa-circle-info mr-1 text-primary" />
-            Dữ liệu cấu trúc cấp 1 &amp; cấp 2 sẽ tự động đồng bộ vào các bộ lọc và mẫu thêm mới
-          </span>
-          <Button variant="secondary" size="sm" onClick={onClose}>
-            Đóng cửa sổ
+        <div className="px-6 py-3.5 border-t border-border-subtle bg-surface-elevated flex items-center justify-end shrink-0">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
+            Đóng
           </Button>
         </div>
       </div>

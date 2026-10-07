@@ -7,13 +7,17 @@ export interface ResourceDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: ResourceItem | null;
-  onDownloadFile?: (item: ResourceItem) => void;
+  onEdit?: (item: ResourceItem) => void;
+  onDelete?: (item: ResourceItem) => void;
+  onDownloadFile?: (item: ResourceItem, fileName?: string, filePath?: string) => void;
 }
 
 export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   isOpen,
   onClose,
   item,
+  onEdit,
+  onDelete,
   onDownloadFile,
 }) => {
   // Lắng nghe phím ESC để đóng Modal
@@ -45,34 +49,43 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
     }
   };
 
-  // Trích xuất tên tệp
-  const getFileName = (url?: string) => {
-    if (!url) return 'Tệp đính kèm';
-    const cleanUrl = url.split('?')[0];
-    const parts = cleanUrl.split('/');
-    return parts[parts.length - 1] || 'Tệp đính kèm';
+  // Format dung lượng tệp
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes || bytes <= 0) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
   };
 
-  // Lấy icon tương ứng với đuôi file
-  const getFileIcon = (url?: string) => {
-    if (!url) return 'fa-file';
-    const ext = url.split('.').pop()?.toLowerCase();
+  // Trích xuất đuôi tệp
+  const getFileExt = (urlOrName?: string) => {
+    if (!urlOrName) return 'FILE';
+    const clean = urlOrName.split('?')[0];
+    const parts = clean.split('.');
+    if (parts.length > 1) {
+      return parts[parts.length - 1].toUpperCase();
+    }
+    return 'FILE';
+  };
+
+  // Icon theo loại tệp
+  const getFileIcon = (ext: string) => {
     switch (ext) {
-      case 'pdf':
-        return 'fa-file-pdf text-red-500';
-      case 'doc':
-      case 'docx':
+      case 'PDF':
+        return 'fa-file-pdf text-rose-500';
+      case 'DOC':
+      case 'DOCX':
         return 'fa-file-word text-blue-500';
-      case 'xls':
-      case 'xlsx':
+      case 'XLS':
+      case 'XLSX':
         return 'fa-file-excel text-emerald-500';
-      case 'zip':
-      case 'rar':
-      case '7z':
+      case 'ZIP':
+      case 'RAR':
+      case '7Z':
         return 'fa-file-zipper text-amber-500';
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
+      case 'JPG':
+      case 'JPEG':
+      case 'PNG':
         return 'fa-file-image text-purple-500';
       default:
         return 'fa-file-lines text-secondary';
@@ -90,8 +103,8 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         );
       case 'CON_HIEU_LUC_1_PHAN':
         return (
-          <Badge variant="info" size="md" withDot>
-            Còn hiệu lực một phần
+          <Badge variant="warning" size="md" withDot>
+            Còn hiệu lực 1 phần
           </Badge>
         );
       case 'HET_HIEU_LUC':
@@ -103,7 +116,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
       case 'HET_VA_THAY_THE':
         return (
           <Badge variant="warning" size="md" withDot>
-            Hết hiệu lực và thay thế
+            Hết và thay thế
           </Badge>
         );
       default:
@@ -111,261 +124,284 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
     }
   };
 
-  const fileName = getFileName(item.file_dinh_kem);
-  const fileIcon = getFileIcon(item.file_dinh_kem);
+  // Danh sách tệp cần hiển thị (ưu tiên attachments mảng, nếu không fallback về file_dinh_kem)
+  const filesList = item.attachments && item.attachments.length > 0
+    ? item.attachments
+    : item.file_dinh_kem
+      ? [{ name: item.file_dinh_kem.split('/').pop() || 'Tệp đính kèm', path: item.file_dinh_kem }]
+      : [];
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-3xl max-h-[90vh] bg-surface rounded-2xl border border-border-subtle shadow-xl flex flex-col overflow-hidden animate-slide-in-bottom"
+        className="w-full max-w-3xl max-h-[90vh] bg-surface rounded-2xl border border-border-subtle shadow-2xl flex flex-col overflow-hidden animate-slide-in-bottom"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Modal - Cố định ở trên cùng */}
-        <div className="flex items-center justify-between px-[27px] py-[21px] border-b border-border-subtle bg-surface shrink-0 z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary-subtle text-primary flex items-center justify-center text-base">
-              <i className="fa-solid fa-file-lines" />
+        {/* KHỐI 1: Đầu Popup (Tiêu đề, Ký hiệu, badge Hiệu lực, nút đóng) */}
+        <div className="flex items-start justify-between px-6 py-5 border-b border-border-subtle bg-surface-elevated shrink-0 gap-4">
+          <div className="min-w-0 space-y-1.5 flex-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {item.ky_hieu && (
+                <span className="font-mono text-xs font-semibold text-secondary">
+                  {item.ky_hieu}
+                </span>
+              )}
+              {renderStatusBadge(item.hieu_luc)}
             </div>
-            <div>
-              <h3 className="text-base font-bold text-main leading-tight">
-                Chi tiết Tài liệu & Biểu mẫu
-              </h3>
-              <p className="text-xs text-muted">ID văn bản: #{item.id}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
-            aria-label="Đóng"
-          >
-            <i className="fa-solid fa-xmark text-lg" />
-          </button>
-        </div>
-
-        {/* Nội dung chi tiết - Vùng cuộn riêng */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
-          {/* Tiêu đề chính */}
-          <div className="bg-surface-elevated p-4 rounded-xl border border-border-subtle/80">
-            <span className="text-xs font-semibold text-primary uppercase tracking-wider block mb-1">
-              Tiêu đề tài liệu
-            </span>
-            <h2 className="text-lg font-bold text-main leading-snug">
+            <h2 className="text-base sm:text-lg font-bold text-main leading-snug">
               {item.tieu_de}
             </h2>
           </div>
 
-          {/* Khung 2 cột */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Cột 1: Thông tin phân loại và ban hành */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-2">
-                Thông tin phân loại & Ban hành
-              </h4>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface transition-colors cursor-pointer shrink-0"
+            aria-label="Đóng popup"
+          >
+            <i className="fa-solid fa-xmark text-sm" />
+          </button>
+        </div>
 
+        {/* Nội dung cuộn dọc */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 min-h-0">
+          {/* KHỐI 2: Banner theo hiệu lực ngay đầu nội dung */}
+          {item.hieu_luc === 'HET_VA_THAY_THE' && (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm flex items-start gap-2.5">
+              <i className="fa-solid fa-triangle-exclamation text-base shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-semibold block">Văn bản này đã hết hiệu lực và được thay thế bởi:</span>
+                {item.link_thay_the ? (
+                  <a
+                    href={item.link_thay_the}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 font-bold underline hover:opacity-80"
+                  >
+                    <span>Mở văn bản mới &rarr;</span>
+                    <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
+                  </a>
+                ) : (
+                  <span className="italic">Chưa có liên kết văn bản thay thế</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {item.hieu_luc === 'HET_HIEU_LUC' && (
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs sm:text-sm flex items-center gap-2.5">
+              <i className="fa-solid fa-circle-xmark text-base shrink-0" />
+              <span>Văn bản này hiện đã hết hiệu lực thi hành.</span>
+            </div>
+          )}
+
+          {item.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm flex items-center gap-2.5">
+              <i className="fa-solid fa-circle-info text-base shrink-0" />
+              <span>Văn bản này hiện chỉ còn hiệu lực một phần.</span>
+            </div>
+          )}
+
+          {/* KHỐI 3: Thông tin chung */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-1.5">
+              Thông tin chung
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-6 text-xs sm:text-sm">
+              {/* Thư mục */}
               <div>
-                <label className="text-xs text-muted block mb-0.5">Số ký hiệu:</label>
-                <div className="font-mono text-sm font-semibold text-main">
-                  {item.ky_hieu || <span className="text-muted font-sans font-normal italic">Không có</span>}
-                </div>
+                <span className="text-xs text-muted block mb-0.5">Thư mục</span>
+                <span className="font-semibold text-main">
+                  {item.dm_tai_lieu_name || `Thư mục #${item.dm_tai_lieu}`}
+                </span>
               </div>
 
+              {/* Loại tài liệu (tag) */}
               <div>
-                <label className="text-xs text-muted block mb-0.5">Danh mục Cấp 1:</label>
-                <div className="text-sm font-semibold text-main">
-                  {item.dm_tai_lieu_name || `Danh mục #${item.dm_tai_lieu}`}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-muted block mb-1">Loại tài liệu Cấp 2:</label>
+                <span className="text-xs text-muted block mb-1">Loại tài liệu</span>
                 <div className="flex flex-wrap gap-1.5">
                   {item.loai_tai_lieu_names && item.loai_tai_lieu_names.length > 0 ? (
                     item.loai_tai_lieu_names.map((name, i) => (
                       <span
                         key={i}
-                        className="px-2 py-0.5 text-xs rounded-md bg-surface-elevated border border-border-subtle text-secondary"
+                        className="px-2 py-0.5 text-xs rounded-md bg-surface-elevated border border-border-subtle text-secondary font-medium"
                       >
                         {name}
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-muted italic">Không có phân loại con</span>
+                    <span className="text-muted italic text-xs">Chưa phân loại</span>
                   )}
                 </div>
               </div>
 
+              {/* Nơi ban hành */}
               <div>
-                <label className="text-xs text-muted block mb-0.5">Nơi ban hành:</label>
-                <div className="text-sm text-main">
-                  {item.noi_ban_hanh || <span className="text-muted italic">Không có thông tin</span>}
-                </div>
+                <span className="text-xs text-muted block mb-0.5">Nơi ban hành</span>
+                <span className="text-main font-medium">{item.noi_ban_hanh || '-'}</span>
               </div>
 
+              {/* Ngày đăng */}
               <div>
-                <label className="text-xs text-muted block mb-0.5">Người đăng / Người lập:</label>
-                <div className="text-sm text-main flex items-center gap-1.5">
-                  <i className="fa-solid fa-user-circle text-muted text-xs" />
-                  <span>{item.nguoi_tao_name || 'Hệ thống'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Cột 2: Hiệu lực và Pháp lý */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-2">
-                Hiệu lực & Phạm vi áp dụng
-              </h4>
-
-              <div>
-                <label className="text-xs text-muted block mb-1">Trạng thái hiệu lực:</label>
-                <div>{renderStatusBadge(item.hieu_luc)}</div>
+                <span className="text-xs text-muted block mb-0.5">Ngày đăng</span>
+                <span className="font-mono text-main">{formatDate(item.ngay_dang)}</span>
               </div>
 
-              <div>
-                <label className="text-xs text-muted block mb-0.5">Ngày đăng / Ngày ban hành:</label>
-                <div className="text-sm font-mono text-main">
-                  {formatDate(item.ngay_dang)}
-                </div>
-              </div>
-
+              {/* Ngày hết hiệu lực (nếu có) */}
               {item.ngay_het_hieu_luc && (
                 <div>
-                  <label className="text-xs text-muted block mb-0.5">Ngày hết hiệu lực:</label>
-                  <div className="text-sm font-mono text-danger font-medium">
+                  <span className="text-xs text-muted block mb-0.5">Ngày hết hiệu lực</span>
+                  <span className="font-mono text-danger font-medium">
                     {formatDate(item.ngay_het_hieu_luc)}
-                  </div>
+                  </span>
                 </div>
               )}
 
-              {item.link_thay_the && (
-                <div>
-                  <label className="text-xs text-muted block mb-0.5">Văn bản thay thế:</label>
-                  <a
-                    href={item.link_thay_the}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-primary hover:underline inline-flex items-center gap-1.5 break-all font-medium"
-                  >
-                    <i className="fa-solid fa-arrow-up-right-from-square text-xs" />
-                    <span>{item.link_thay_the}</span>
-                  </a>
-                </div>
-              )}
-
+              {/* Phạm vi hiển thị */}
               <div>
-                <label className="text-xs text-muted block mb-0.5">Phạm vi hiển thị:</label>
-                <div className="text-sm font-medium text-main">
-                  {item.hien_thi === 'TAT_CA' ? (
-                    <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                      <i className="fa-solid fa-globe text-xs" />
-                      Tất cả cán bộ nhân viên
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                      <i className="fa-solid fa-building text-xs" />
-                      Nội bộ phòng ban
-                    </span>
-                  )}
-                </div>
+                <span className="text-xs text-muted block mb-0.5">Phạm vi hiển thị</span>
+                <span className="text-main">
+                  {item.hien_thi === 'TAT_CA' ? 'Tất cả đơn vị' : 'Nội bộ phòng ban'}
+                </span>
+              </div>
+
+              {/* Đơn vị sở hữu */}
+              <div>
+                <span className="text-xs text-muted block mb-0.5">Đơn vị sở hữu</span>
+                <span className="text-main">{item.don_vi_id ? `Đơn vị #${item.don_vi_id}` : 'Tổng công ty'}</span>
+              </div>
+
+              {/* Người tạo */}
+              <div>
+                <span className="text-xs text-muted block mb-0.5">Người tạo</span>
+                <span className="text-main">{item.nguoi_tao_name || 'Hệ thống'}</span>
               </div>
             </div>
+
+            {/* Ghi chú nếu có */}
+            {item.ghi_chu && (
+              <div className="pt-2">
+                <span className="text-xs text-muted block mb-0.5">Ghi chú</span>
+                <p className="text-xs text-secondary bg-surface-elevated p-2.5 rounded-lg border border-border-subtle/60 leading-relaxed">
+                  {item.ghi_chu}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Ghi chú */}
-          {item.ghi_chu && (
-            <div className="p-3.5 bg-surface-elevated/60 rounded-xl border border-border-subtle">
-              <label className="text-xs font-semibold text-muted block mb-1">
-                <i className="fa-solid fa-note-sticky mr-1.5" /> Ghi chú:
-              </label>
-              <p className="text-xs text-main whitespace-pre-wrap leading-relaxed">
-                {item.ghi_chu}
-              </p>
-            </div>
-          )}
+          {/* KHỐI 4: Tệp đính kèm */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-1.5 flex items-center justify-between">
+              <span>Tệp đính kèm</span>
+              <span className="text-[11px] text-secondary font-medium font-mono">
+                {filesList.length} tệp
+              </span>
+            </h3>
 
-          {/* Tệp đính kèm */}
-          <div>
-            <label className="text-xs font-bold text-muted uppercase tracking-wider block mb-2">
-              Tệp tài liệu đính kèm
-            </label>
-            {item.file_dinh_kem ? (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-border-subtle bg-surface-elevated">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-surface border border-border-subtle flex items-center justify-center text-xl shrink-0">
-                    <i className={`fa-solid ${fileIcon}`} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-main truncate max-w-md">
-                      {fileName}
-                    </p>
-                    <p className="text-xs text-muted">
-                      Định dạng chuẩn hệ thống QLVB &amp; TLBM
-                    </p>
-                  </div>
-                </div>
+            {filesList.length > 0 ? (
+              <div className="space-y-2">
+                {filesList.map((file, idx) => {
+                  const ext = getFileExt(file.name || file.path);
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3 text-xs sm:text-sm hover:border-primary/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <i className={`fa-solid ${getFileIcon(ext)} text-lg shrink-0`} />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-main truncate" title={file.name}>
+                            {file.name}
+                          </p>
+                          <p className="text-[11px] text-muted font-mono">
+                            {ext}
+                            {file.file_size ? ` · ${formatFileSize(file.file_size)}` : ''}
+                          </p>
+                        </div>
+                      </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                  <a
-                    href={item.file_dinh_kem}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-main border border-border-subtle transition-all"
-                  >
-                    <i className="fa-solid fa-eye text-xs" />
-                    <span>Xem trực tiếp</span>
-                  </a>
-
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    icon="fa-download"
-                    onClick={() => {
-                      if (onDownloadFile) {
-                        onDownloadFile(item);
-                      } else {
-                        window.open(item.file_dinh_kem, '_blank');
-                      }
-                    }}
-                  >
-                    Tải về máy
-                  </Button>
-                </div>
+                      <button
+                        type="button"
+                        onClick={() => onDownloadFile?.(item, file.name, file.path)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-subtle text-primary hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
+                        title="Tải tệp này về máy"
+                        aria-label={`Tải về ${file.name}`}
+                      >
+                        <i className="fa-solid fa-download text-xs" />
+                        <span>Tải về</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <div className="p-4 text-center rounded-xl border border-dashed border-border-subtle text-xs text-muted">
-                Không có tệp đính kèm cho tài liệu này.
-              </div>
+              <p className="text-xs text-muted italic">Không có tệp đính kèm</p>
             )}
           </div>
         </div>
 
-        {/* Footer Modal - Cố định ở đáy */}
-        <div className="flex items-center justify-end gap-2.5 px-6 py-3.5 border-t border-border-subtle bg-surface-elevated/40 shrink-0 z-10">
-          <Button variant="secondary" size="md" onClick={onClose}>
-            Đóng
-          </Button>
-          {item.file_dinh_kem && (
+        {/* KHỐI 5: Chân Popup ([Tải về] chính, [Sửa], [Xóa], [Đóng]) */}
+        <div className="px-6 py-4 border-t border-border-subtle bg-surface-elevated flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="fa-pen-to-square"
+                onClick={() => {
+                  onClose();
+                  onEdit(item);
+                }}
+                className="text-xs"
+              >
+                Sửa
+              </Button>
+            )}
+
+            {onDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon="fa-trash-can"
+                onClick={() => {
+                  onClose();
+                  onDelete(item);
+                }}
+                className="text-xs text-danger border-danger/30 hover:bg-danger-subtle"
+              >
+                Xóa
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {filesList.length > 0 && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon="fa-download"
+                onClick={() => onDownloadFile?.(item)}
+                className="text-xs shadow-xs"
+              >
+                Tải về tệp
+              </Button>
+            )}
+
             <Button
-              variant="primary"
-              size="md"
-              icon="fa-download"
-              onClick={() => {
-                if (onDownloadFile) {
-                  onDownloadFile(item);
-                } else {
-                  window.open(item.file_dinh_kem, '_blank');
-                }
-              }}
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="text-xs"
             >
-              Tải tệp đính kèm
+              Đóng
             </Button>
-          )}
+          </div>
         </div>
       </div>
     </div>
