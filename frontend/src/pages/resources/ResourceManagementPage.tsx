@@ -12,7 +12,6 @@ import { ResourceFormModal, ResourceFormData } from '@components/resources/Resou
 import { CategoryManagementModal } from '@components/resources/CategoryManagementModal';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
-import LanguageSwitcher from '@components/layout/LanguageSwitcher';
 
 // ============================================================================
 // DỮ LIỆU MẪU CHUẨN ĐẶC TẢ TỪ THẦY HƯỚNG DẪN (IMAGE 1 & IMAGE 2)
@@ -1420,9 +1419,6 @@ export default function ResourceManagementPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          {/* Nút chuyển đổi ngôn ngữ VN / EN ngay trên trang Resources */}
-          <LanguageSwitcher />
-
           {/* Nút Quản lý Danh mục (Thao tác cấu hình phụ) */}
           <Button
             variant="secondary"
