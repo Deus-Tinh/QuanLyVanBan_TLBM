@@ -721,8 +721,8 @@ export default function ResourceManagementPage() {
       <div className="bg-surface rounded-xl border border-border-subtle shadow-xs">
         {/* Hàng tab chính (Row 1 - Danh mục Cấp 1) */}
         <div className="relative z-20 flex items-stretch h-11 border-b border-border-subtle">
-          {/* Cột 1: Tab Tất cả (cố định bên trái, độ rộng w-[210px]) */}
-          <div className="w-[210px] shrink-0 flex items-stretch border-r border-border-subtle">
+          {/* Cột 1: Tab Tất cả (cố định bên trái, độ rộng w-[130px]) */}
+          <div className="w-[130px] shrink-0 flex items-stretch border-r border-border-subtle">
             {(() => {
               const isAll = selectedCategory === 'all';
               return (
@@ -908,18 +908,36 @@ export default function ResourceManagementPage() {
         {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu (đồng bộ 100% với Cấp 1) */}
         {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (
           <div className="relative z-10 flex items-stretch h-11 bg-surface-elevated/40 rounded-b-xl">
-            {/* Cột 1: Nhãn Loại tài liệu + Chip Tất cả (cố định bên trái, cùng độ rộng w-[210px]) */}
-            <div className="w-[210px] shrink-0 flex items-center justify-between px-3 border-r border-border-subtle rounded-bl-xl">
+            {/* Cột 1: Nhãn Loại tài liệu (cố định bên trái, độ rộng w-[130px] thẳng hàng với Cột 1 hàng trên) */}
+            <div className="w-[130px] shrink-0 flex items-center justify-center px-3 border-r border-border-subtle rounded-bl-xl">
               <span className="text-[11px] text-muted font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                 <i className="fa-solid fa-sitemap text-[10px] text-primary" />
                 Loại tài liệu:
               </span>
+            </div>
 
-              {/* Chip "Tất cả" */}
+            {/* Cột 2: Nút cuộn trái loại tài liệu */}
+            <button
+              type="button"
+              onClick={() => scrollTypes('left')}
+              className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
+              aria-label="Cuộn loại tài liệu sang trái"
+              title="Cuộn loại tài liệu sang trái"
+            >
+              <i className="fa-solid fa-chevron-left text-xs" />
+            </button>
+
+            {/* Cột 3: Vùng chips loại tài liệu cuộn ngang (bao gồm chip Tất cả nằm ở đầu) */}
+            <div
+              ref={typeBarRef}
+              className="flex items-center gap-1.5 px-2.5 overflow-x-auto scrollbar-none flex-1 min-w-0"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {/* Chip "Tất cả" loại tài liệu (chuyển sang bên này cùng hàng với các loại) */}
               <button
                 type="button"
                 onClick={() => { setSelectedType('all'); setCurrentPage(1); }}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                   selectedType === 'all'
                     ? 'bg-primary text-white shadow-xs'
                     : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
@@ -932,25 +950,7 @@ export default function ResourceManagementPage() {
                   ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length})
                 </span>
               </button>
-            </div>
 
-            {/* Cột 2: Nút cuộn trái loại tài liệu (nằm ngay bên phải chữ Tất cả) */}
-            <button
-              type="button"
-              onClick={() => scrollTypes('left')}
-              className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
-              aria-label="Cuộn loại tài liệu sang trái"
-              title="Cuộn loại tài liệu sang trái"
-            >
-              <i className="fa-solid fa-chevron-left text-xs" />
-            </button>
-
-            {/* Cột 3: Vùng chips loại tài liệu cuộn ngang */}
-            <div
-              ref={typeBarRef}
-              className="flex items-center gap-1.5 px-2 overflow-x-auto scrollbar-none flex-1 min-w-0"
-              style={{ scrollbarWidth: 'none' }}
-            >
               {availableTypesForFilter.map((t) => {
                 const isActive = selectedType === String(t.id);
                 const docCount = documents.filter(
