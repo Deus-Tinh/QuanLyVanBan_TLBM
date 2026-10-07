@@ -370,15 +370,22 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 onChange={(e) =>
                   handleCategoryChange(e.target.value ? Number(e.target.value) : '')
                 }
-                className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
+                disabled={categories.length === 0}
+                className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <option value="">-- Chọn Thư mục --</option>
+                <option value="">{categories.length === 0 ? '-- Chưa có Thư mục nào --' : '-- Chọn Thư mục --'}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.ten_tai_lieu}
                   </option>
                 ))}
               </select>
+              {categories.length === 0 && (
+                <div className="mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
+                  <i className="fa-solid fa-triangle-exclamation text-amber-500 shrink-0" />
+                  <span>Hệ thống chưa có Thư mục nào. Vui lòng đóng cửa sổ này và tạo Thư mục trong mục <b>Danh mục</b> trước.</span>
+                </div>
+              )}
               {errors.dm_tai_lieu && (
                 <p className="text-danger text-xs mt-1 font-medium">{errors.dm_tai_lieu}</p>
               )}
@@ -818,7 +825,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             icon={isLoading ? 'fa-spinner fa-spin' : 'fa-check'}
             onClick={handleSubmit}
             isLoading={isLoading}
-            disabled={isLoading}
+            disabled={isLoading || categories.length === 0}
             className="text-xs shadow-sm"
           >
             {isEditMode ? t('resourceManagement.saveChanges') : t('resourceManagement.save')}

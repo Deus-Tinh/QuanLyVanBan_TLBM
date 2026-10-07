@@ -806,6 +806,9 @@ const initialMockDocuments: ResourceItem[] = [
 ];
 
 const STORAGE_KEY = 'tlbm_resources_filter_state';
+const STORAGE_CUSTOM_DOCS = 'tlbm_custom_documents_v1';
+const STORAGE_CUSTOM_CATS = 'tlbm_custom_categories_v1';
+const STORAGE_CUSTOM_TYPES = 'tlbm_custom_types_v1';
 
 interface PersistedResourceState {
   category?: string;
@@ -869,9 +872,47 @@ export default function ResourceManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilterState = useMemo(() => getInitialFilterState(searchParams), []);
 
-  const [documents, setDocuments] = useState<ResourceItem[]>(initialMockDocuments);
-  const [categories, setCategories] = useState<ResourceCategory[]>(initialMockCategories);
-  const [types, setTypes] = useState<ResourceType[]>(initialMockTypes);
+  // Khởi tạo từ localStorage (nếu chưa có thì để trống hoàn toàn để người dùng tự tạo test)
+  const [documents, setDocuments] = useState<ResourceItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_CUSTOM_DOCS);
+      if (saved !== null) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+  const [categories, setCategories] = useState<ResourceCategory[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_CUSTOM_CATS);
+      if (saved !== null) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+  const [types, setTypes] = useState<ResourceType[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_CUSTOM_TYPES);
+      if (saved !== null) return JSON.parse(saved);
+    } catch {}
+    return [];
+  });
+
+  // Tự động lưu dữ liệu danh mục, loại và tài liệu vào localStorage khi có thay đổi (chế độ kiểm thử F5)
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_CUSTOM_DOCS, JSON.stringify(documents));
+    } catch {}
+  }, [documents]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_CUSTOM_CATS, JSON.stringify(categories));
+    } catch {}
+  }, [categories]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_CUSTOM_TYPES, JSON.stringify(types));
+    } catch {}
+  }, [types]);
 
   // ============================================================================
   // BỘ LỌC ĐA NĂNG & PHÂN TẦNG:
@@ -1185,8 +1226,38 @@ export default function ResourceManagementPage() {
     setIsDetailOpen(true);
   };
 
+  // Nạp lại bộ dữ liệu mẫu ban đầu để kiểm thử
+  const handleRestoreMockData = () => {
+    setDocuments(initialMockDocuments);
+    setCategories(initialMockCategories);
+    setTypes(initialMockTypes);
+    setSelectedCategory('all');
+    setSelectedType('all');
+    setCurrentPage(1);
+    setToastMessage('Đã nạp lại bộ dữ liệu mẫu thành công!');
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Xóa trắng toàn bộ dữ liệu để kiểm thử tự tạo từ đầu
+  const handleResetToEmpty = () => {
+    setDocuments([]);
+    setCategories([]);
+    setTypes([]);
+    setSelectedCategory('all');
+    setSelectedType('all');
+    setCurrentPage(1);
+    setToastMessage('Đã xóa trắng toàn bộ dữ liệu kho tài liệu!');
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // Hành động Mở Modal Thêm mới
   const handleAddNew = () => {
+    if (categories.length === 0) {
+      setToastMessage('Chưa có Thư mục danh mục nào. Vui lòng tạo Thư mục trước.');
+      setTimeout(() => setToastMessage(null), 3500);
+      setIsCategoryModalOpen(true);
+      return;
+    }
     setFormInitialData(null);
     setIsFormOpen(true);
   };
@@ -1328,6 +1399,8 @@ export default function ResourceManagementPage() {
   const handleDeleteCategory = (id: number) => {
     const cat = categories.find((c) => c.id === id);
     setCategories((prev) => prev.filter((c) => c.id !== id));
+    setTypes((prev) => prev.filter((t) => t.dm_tai_lieu !== id));
+    setDocuments((prev) => prev.filter((d) => d.dm_tai_lieu !== id));
     setToastMessage(`Đã xóa danh mục Cấp 1: "${cat?.ten_tai_lieu || id}"`);
     setTimeout(() => setToastMessage(null), 3500);
     if (selectedCategory === String(id)) {
@@ -1339,6 +1412,18 @@ export default function ResourceManagementPage() {
   const handleSaveType = (typeItem: ResourceType, isEdit: boolean) => {
     if (isEdit) {
       setTypes((prev) => prev.map((t) => (t.id === typeItem.id ? typeItem : t)));
+      setDocuments((prev) =>
+        prev.map((d) => {
+          if (d.loai_tai_lieu?.includes(typeItem.id)) {
+            const updatedTypes = types.map((t) => (t.id === typeItem.id ? typeItem : t));
+            const newNames = updatedTypes
+              .filter((t) => d.loai_tai_lieu.includes(t.id))
+              .map((t) => t.ten_loai);
+            return { ...d, loai_tai_lieu_names: newNames };
+          }
+          return d;
+        })
+      );
     } else {
       setTypes((prev) => [...prev, typeItem]);
     }
@@ -1349,6 +1434,15 @@ export default function ResourceManagementPage() {
   const handleDeleteType = (id: number) => {
     const typeItem = types.find((t) => t.id === id);
     setTypes((prev) => prev.filter((t) => t.id !== id));
+    setDocuments((prev) =>
+      prev.map((d) => ({
+        ...d,
+        loai_tai_lieu: (d.loai_tai_lieu || []).filter((tid) => tid !== id),
+        loai_tai_lieu_names: (d.loai_tai_lieu_names || []).filter(
+          (name) => name !== typeItem?.ten_loai
+        ),
+      }))
+    );
     setToastMessage(`Đã xóa loại Cấp 2: "${typeItem?.ten_loai || id}"`);
     setTimeout(() => setToastMessage(null), 3500);
     if (selectedType === String(id)) {
@@ -1874,13 +1968,45 @@ export default function ResourceManagementPage() {
         )}
 
         {/* Khi ở chế độ Tất cả: hiện gợi ý chọn thư mục để lọc sâu */}
-        {selectedCategory === 'all' && (
+        {selectedCategory === 'all' && categories.length > 0 && (
           <div className="px-4 py-2.5 flex items-center gap-2 bg-primary/3 rounded-b-xl border-t border-border-subtle">
             <i className="fa-solid fa-circle-info text-primary text-[11px] shrink-0" />
             <span className="text-[11px] text-secondary">
               Đang xem toàn bộ <strong className="text-main font-bold">{documents.length} tài liệu</strong> trong kho.
               Chọn một <strong className="text-primary">Thư mục</strong> ở trên để lọc theo phòng ban và xem các <strong className="text-primary">Loại tài liệu</strong> con.
             </span>
+          </div>
+        )}
+
+        {/* Banner hướng dẫn khi kho trống hoàn toàn */}
+        {categories.length === 0 && documents.length === 0 && (
+          <div className="px-4 py-3 bg-amber-500/10 rounded-b-xl border-t border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-200">
+              <i className="fa-solid fa-lightbulb text-base text-amber-500 shrink-0" />
+              <span>
+                <strong>Chế độ kiểm thử dữ liệu trống:</strong> Bạn đang kiểm thử tự tạo dữ liệu từ đầu. Dữ liệu tạo mới sẽ tự động lưu vào trình duyệt (không mất khi F5). Bất cứ lúc nào bạn cũng có thể bấm <strong>Nạp mẫu test</strong> để phục hồi dữ liệu mẫu.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRestoreMockData}
+                className="text-xs font-semibold bg-surface hover:bg-surface-elevated"
+              >
+                <i className="fa-solid fa-rotate-left mr-1.5" />
+                Nạp mẫu test
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="text-xs font-bold"
+              >
+                <i className="fa-solid fa-folder-plus mr-1.5" />
+                Tạo Thư mục Cấp 1
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -2129,6 +2255,8 @@ export default function ResourceManagementPage() {
         onDeleteCategory={handleDeleteCategory}
         onSaveType={handleSaveType}
         onDeleteType={handleDeleteType}
+        onRestoreMockData={handleRestoreMockData}
+        onResetToEmpty={handleResetToEmpty}
       />
 
       {/* MODAL XÁC NHẬN XÓA TÀI LIỆU (MỤC 5) */}

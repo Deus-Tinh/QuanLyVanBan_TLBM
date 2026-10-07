@@ -15,6 +15,8 @@ export interface CategoryManagementModalProps {
   onDeleteCategory: (id: number) => void;
   onSaveType: (type: ResourceType, isEdit: boolean) => void;
   onDeleteType: (id: number) => void;
+  onRestoreMockData?: () => void;
+  onResetToEmpty?: () => void;
 }
 
 export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
@@ -26,6 +28,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   onDeleteCategory,
   onSaveType,
   onDeleteType,
+  onRestoreMockData,
+  onResetToEmpty,
 }) => {
   const { t } = useTranslation();
   // 2 tab chính quản lý: "category" (Thư mục) | "type" (Loại tài liệu)
@@ -73,7 +77,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   // State Loại tài liệu
   const [editingTypeId, setEditingTypeId] = useState<number | null>(null);
   const [typeForm, setTypeForm] = useState({
-    dm_tai_lieu: categories.length > 0 ? categories[0].id : 1,
+    dm_tai_lieu: categories.length > 0 ? categories[0].id : 0,
     ten_loai: '',
     is_public: true,
     ghi_chu: '',
@@ -189,7 +193,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
     // Khởi tạo form Loại tài liệu
     const defaultCatId =
-      filterParentCat !== 'all' ? Number(filterParentCat) : categories[0]?.id || 1;
+      filterParentCat !== 'all'
+        ? Number(filterParentCat)
+        : categories.length > 0
+          ? categories[0].id
+          : 0;
     setTypeForm({
       dm_tai_lieu: defaultCatId,
       ten_loai: '',
@@ -370,6 +378,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       setIsUnifiedModalOpen(false);
     } else {
       // Validate & Lưu Loại tài liệu
+      if (categories.length === 0 || !typeForm.dm_tai_lieu) {
+        setTypeError('Chưa có Thư mục Cấp 1 nào. Vui lòng tạo Thư mục Cấp 1 trước khi tạo Loại tài liệu.');
+        return;
+      }
+
       if (!typeForm.ten_loai.trim()) {
         setTypeError('Vui lòng nhập tên loại tài liệu');
         return;
@@ -604,7 +617,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       <tr>
                         <td colSpan={6} className="py-10 text-center text-muted">
                           <i className="fa-solid fa-folder-open text-2xl mb-2 block opacity-40" />
-                          Không tìm thấy thư mục nào phù hợp
+                          {categories.length === 0
+                            ? 'Chưa có Thư mục Cấp 1 nào. Bấm "Thêm mới" để tạo thư mục đầu tiên.'
+                            : 'Không tìm thấy thư mục nào phù hợp'}
                         </td>
                       </tr>
                     ) : (
@@ -734,7 +749,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       <tr>
                         <td colSpan={5} className="py-10 text-center text-muted">
                           <i className="fa-solid fa-tags text-2xl mb-2 block opacity-40" />
-                          Không tìm thấy loại tài liệu nào phù hợp
+                          {types.length === 0
+                            ? 'Chưa có Loại tài liệu Cấp 2 nào. Bấm "Thêm mới" để tạo loại đầu tiên.'
+                            : 'Không tìm thấy loại tài liệu nào phù hợp'}
                         </td>
                       </tr>
                     ) : (
@@ -801,13 +818,41 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
 
         {/* Footer Modal */}
-        <div className="px-6 py-3.5 border-t border-border-subtle bg-surface-elevated flex items-center justify-between shrink-0">
+        <div className="px-6 py-3.5 border-t border-border-subtle bg-surface-elevated flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           <span className="text-xs text-muted">
             {t('resourceManagement.totalSummary', { catCount: String(categories.length), typeCount: String(types.length) })}
           </span>
-          <Button variant="outline" size="sm" onClick={onClose} className="text-xs font-semibold">
-            {t('resourceManagement.close')}
-          </Button>
+          <div className="flex items-center justify-end gap-2">
+            {onResetToEmpty && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onResetToEmpty}
+                className="text-xs text-danger hover:text-danger-hover hover:bg-danger-subtle cursor-pointer font-medium"
+                title="Xóa trắng toàn bộ thư mục & loại tài liệu để tự tạo lại từ đầu"
+              >
+                <i className="fa-solid fa-trash-can mr-1.5" />
+                Xóa trắng
+              </Button>
+            )}
+            {onRestoreMockData && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onRestoreMockData}
+                className="text-xs text-secondary hover:text-main hover:bg-surface cursor-pointer font-medium"
+                title="Nạp lại bộ dữ liệu mẫu mặc định để kiểm thử giao diện"
+              >
+                <i className="fa-solid fa-rotate-left mr-1.5" />
+                Nạp mẫu test
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={onClose} className="text-xs font-semibold">
+              {t('resourceManagement.close')}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1077,6 +1122,25 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                 {/* NỘI DUNG 2: FORM LOẠI TÀI LIỆU (CẤP 2) */}
                 {unifiedTarget === 'type' && (
                   <div className="space-y-3.5">
+                    {categories.length === 0 && (
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-1">
+                        <div className="flex items-center gap-2">
+                          <i className="fa-solid fa-triangle-exclamation text-base text-amber-500 shrink-0" />
+                          <span>Chưa có Thư mục Cấp 1 nào. Vui lòng tạo Thư mục Cấp 1 trước khi tạo Loại tài liệu.</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setUnifiedTarget('category')}
+                          className="text-xs shrink-0 font-bold"
+                        >
+                          <i className="fa-solid fa-folder-plus mr-1" />
+                          Chuyển sang tạo Thư mục
+                        </Button>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
                       {/* Thư mục cha (*) */}
                       <div className="sm:col-span-8">
@@ -1091,12 +1155,17 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary cursor-pointer shadow-2xs font-medium"
                           required
+                          disabled={categories.length === 0}
                         >
-                          {categories.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.ten_tai_lieu}
-                            </option>
-                          ))}
+                          {categories.length === 0 ? (
+                            <option value="">-- Chưa có thư mục nào --</option>
+                          ) : (
+                            categories.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.ten_tai_lieu}
+                              </option>
+                            ))
+                          )}
                         </select>
                       </div>
 
@@ -1173,6 +1242,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   variant="primary"
                   size="sm"
                   icon="fa-check"
+                  disabled={unifiedTarget === 'type' && categories.length === 0}
                   className="rounded-xl text-xs font-bold shadow-sm hover:shadow-glow px-4"
                 >
                   {unifiedMode === 'create'
