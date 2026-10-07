@@ -682,11 +682,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
             <option value={50}>50 dòng</option>
           </select>
           <span className="font-medium">/ {t('resourceManagement.rowsPerPage')}</span>
-          {totalCount > 0 && (
-            <span className="hidden sm:inline text-muted pl-1">
-              (Bản ghi <strong className="text-main font-semibold">{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalCount)}</strong> trong tổng số <strong className="text-main font-semibold">{totalCount}</strong>)
-            </span>
-          )}
         </div>
 
         {/* Cụm điều hướng phân trang hoàn chỉnh */}
