@@ -138,7 +138,6 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
     >

@@ -478,7 +478,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
@@ -884,7 +883,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       {isUnifiedModalOpen && (
         <div
           className="fixed inset-0 z-[10001] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fade-in"
-          onClick={handleSafeCloseUnified}
         >
           <div
             className="w-full max-w-xl bg-surface rounded-2xl border border-border-subtle shadow-2xl overflow-hidden animate-zoom-in flex flex-col max-h-[90vh]"

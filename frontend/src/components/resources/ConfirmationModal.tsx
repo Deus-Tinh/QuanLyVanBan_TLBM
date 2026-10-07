@@ -74,9 +74,6 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   return createPortal(
     <div
       className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
-      onClick={() => {
-        if (!isLoading) onClose();
-      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
