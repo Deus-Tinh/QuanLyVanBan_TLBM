@@ -1,4 +1,10 @@
 -- =====================================================================
+-- THAY ĐỔI PHASE 10 LÕI TRÌNH KÝ (Nhóm 5; issue #80; đánh dấu [P10] tại vị trí)
+-- Căn cứ: issue #80 mục D; signing-backend-plan.md mục 3.2 "Phẳng hóa"; migration signing 0007_tep_hoan_tat.
+--   signing_attempt thêm trang_thai_tep_hoan_tat (NULL khi lượt chưa hoàn thành; DANG_XU_LY | LOI | THANH_CONG)
+--   và loi_tep_hoan_tat (mã lỗi lần tạo gần nhất): tệp PDF hoàn tất sinh sau khi lượt hoàn thành, lỗi thì
+--   thử lại được, không yêu cầu ký lại. Giá trị trạng thái kiểm ở tầng ứng dụng như các cột trạng thái khác.
+-- =====================================================================
 -- THAY ĐỔI PHASE 7 TRÌNH KÝ (Nhóm 5; issue #80; đánh dấu [P7] tại vị trí)
 -- Căn cứ: signing-backend-plan.md mục 3.2, 3.3; migration signing 0006_ho_so_goc_pham_vi_chuc_vu_muc_do.
 --   1) signing_request thêm ho_so_goc_id (FK tự tham chiếu, RESTRICT) và index: trình lại sau từ chối
@@ -1120,6 +1126,8 @@ CREATE TABLE signing_attempt (
     thoi_diem_huy TIMESTAMPTZ,
     vi_tri_tep_hoan_tat VARCHAR(500) NOT NULL DEFAULT '',
     ma_bam_tep_hoan_tat VARCHAR(64) NOT NULL DEFAULT '',
+    trang_thai_tep_hoan_tat VARCHAR(20), -- [P10] DANG_XU_LY | LOI | THANH_CONG; NULL khi lượt chưa hoàn thành
+    loi_tep_hoan_tat VARCHAR(100) NOT NULL DEFAULT '', -- [P10] mã lỗi lần tạo tệp hoàn tất gần nhất
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
