@@ -613,16 +613,21 @@ class VanBanDiNoiBanHanh(models.Model):
 def document_attachment_path(instance, filename):
     """
     Xác định đường dẫn lưu file đính kèm:
-    02_documents/<loai>/<nam>/<thang>/<ngay>/<filename>
+    02_documents/<loai>/<muc_do>/<nam>/<thang>/<ngay>/<filename>
+    - <loai>: den | di
+    - <muc_do>: thuong | han_che
     """
     doc = getattr(instance, "document", None)
     subfolder = "den"
+    muc_do = "thuong"
     date_val = None
     year = None
 
     if doc:
         loai = getattr(doc, "loai", "DEN")
         subfolder = "di" if loai == "DI" else "den"
+        pham_vi = getattr(doc, "pham_vi", "NOI_BO")
+        muc_do = "han_che" if pham_vi == "HAN_CHE" else "thuong"
         year = getattr(doc, "nam", timezone.now().year)
         if loai == "DEN":
             date_val = getattr(doc, "ngay_den", None) or getattr(doc, "ngay_van_ban", None)
@@ -634,7 +639,7 @@ def document_attachment_path(instance, filename):
     if not year:
         year = date_val.year
 
-    return f"02_documents/{subfolder}/{year}/{date_val.month:02d}/{date_val.day:02d}/{filename}"
+    return f"02_documents/{subfolder}/{muc_do}/{year}/{date_val.month:02d}/{date_val.day:02d}/{filename}"
 
 
 class BaseDocumentAttachment(models.Model):

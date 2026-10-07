@@ -337,8 +337,8 @@ class DocumentAPITests(TestCase):
         self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
 
     def test_attachment_upload_path_by_document_type(self):
-        """Kiểm tra file đính kèm được tự động phân vào folder: den, di, mat."""
-        # 1. Văn bản Đến -> 02_documents/den/
+        """Kiểm tra file đính kèm được tự động phân vào folder: den, di theo phân loại: thuong, han_che."""
+        # 1. Văn bản Đến -> 02_documents/den/thuong/
         file_den = SimpleUploadedFile("congvan_den.pdf", b"Test content den", content_type="application/pdf")
         att_den = VanBanDenAttachment.objects.create(
             document=self.doc,
@@ -346,12 +346,13 @@ class DocumentAPITests(TestCase):
             name="congvan_den.pdf",
             file_size=16,
         )
-        self.assertTrue(att_den.file.name.startswith("02_documents/den/"))
+        self.assertTrue(att_den.file.name.startswith("02_documents/den/thuong/"))
         parts_den = att_den.file.name.split("/")
-        self.assertEqual(len(parts_den), 6)
+        self.assertEqual(len(parts_den), 7)
         self.assertEqual(parts_den[1], "den")
+        self.assertEqual(parts_den[2], "thuong")
 
-        # 2. Văn bản Đi -> 02_documents/di/
+        # 2. Văn bản Đi -> 02_documents/di/thuong/
         doc_di = VanBanDi.objects.create(
             nam=2026, so_hieu="10/TB-TLBM", trich_yeu="Thông báo đi", nguoi_tao=self.user
         )
@@ -362,10 +363,11 @@ class DocumentAPITests(TestCase):
             name="thongbao_di.pdf",
             file_size=15,
         )
-        self.assertTrue(att_di.file.name.startswith("02_documents/di/"))
+        self.assertTrue(att_di.file.name.startswith("02_documents/di/thuong/"))
         parts_di = att_di.file.name.split("/")
-        self.assertEqual(len(parts_di), 6)
+        self.assertEqual(len(parts_di), 7)
         self.assertEqual(parts_di[1], "di")
+        self.assertEqual(parts_di[2], "thuong")
 
     def test_dedicated_endpoints(self):
         """Kiểm tra các endpoint chuyên biệt /api/documents/den/, /di/."""
