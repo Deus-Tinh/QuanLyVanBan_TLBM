@@ -227,6 +227,14 @@ export default function ResourceManagementPage() {
     el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
   };
 
+  // Ref cho thanh loại tài liệu ngang — dùng để cuộn bằng nút mũi tên khi nhiều loại
+  const typeBarRef = useRef<HTMLDivElement>(null);
+  const scrollTypes = (direction: 'left' | 'right') => {
+    const el = typeBarRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+  };
+
   const [selectedCategory, setSelectedCategory] = useState<string>('1');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState<string>('all');
@@ -709,28 +717,12 @@ export default function ResourceManagementPage() {
         </div>
       </div>
 
-      {/* 1. THANH TAB THƯ MỤC NGANG (CẤP 1) — Tab sạch không dropdown, nút dropdown nằm góc phải */}
+      {/* 1. THANH TAB THƯ MỤC NGANG (CẤP 1) — Thiết kế 5 cột đối xứng, đường kẻ căn chỉnh 100% */}
       <div className="bg-surface rounded-xl border border-border-subtle shadow-xs">
-        {/* Hàng tab chính */}
-        <div className="relative z-20 flex items-stretch border-b border-border-subtle">
-          {/* Nút cuộn trái */}
-          <button
-            type="button"
-            onClick={() => scrollTabs('left')}
-            className="shrink-0 px-2.5 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer rounded-tl-xl"
-            aria-label="Cuộn tab sang trái"
-            title="Cuộn sang trái"
-          >
-            <i className="fa-solid fa-chevron-left text-xs" />
-          </button>
-
-          {/* Vùng tab cuộn ngang */}
-          <div
-            ref={tabBarRef}
-            className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {/* Tab đặc biệt: Tất cả thư mục */}
+        {/* Hàng tab chính (Row 1 - Danh mục Cấp 1) */}
+        <div className="relative z-20 flex items-stretch h-11 border-b border-border-subtle">
+          {/* Cột 1: Tab Tất cả (cố định bên trái, độ rộng w-[210px]) */}
+          <div className="w-[210px] shrink-0 flex items-stretch border-r border-border-subtle">
             {(() => {
               const isAll = selectedCategory === 'all';
               return (
@@ -738,10 +730,10 @@ export default function ResourceManagementPage() {
                   key="all"
                   type="button"
                   onClick={() => handleCategorySelect('all')}
-                  className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
+                  className={`w-full flex items-center justify-center gap-2 px-3 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer rounded-tl-xl ${
                     isAll
-                      ? 'border-primary text-primary bg-primary/5 font-bold'
-                      : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
+                      ? 'border-b-2 border-primary text-primary bg-primary/5 font-bold'
+                      : 'border-b-2 border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
                   }`}
                   aria-current={isAll ? 'page' : undefined}
                 >
@@ -759,11 +751,25 @@ export default function ResourceManagementPage() {
                 </button>
               );
             })()}
+          </div>
 
-            {/* Dải phân cách sau tab Tất cả */}
-            <div className="w-px bg-border-subtle self-stretch my-2 shrink-0" />
+          {/* Cột 2: Nút cuộn trái (nằm ngay bên phải chữ Tất cả) */}
+          <button
+            type="button"
+            onClick={() => scrollTabs('left')}
+            className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
+            aria-label="Cuộn tab sang trái"
+            title="Cuộn danh mục sang trái"
+          >
+            <i className="fa-solid fa-chevron-left text-xs" />
+          </button>
 
-            {/* Tab từng Thư mục Cấp 1 — Tab thuần không dropdown, bấm để chọn */}
+          {/* Cột 3: Vùng danh mục cuộn ngang */}
+          <div
+            ref={tabBarRef}
+            className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1 min-w-0"
+            style={{ scrollbarWidth: 'none' }}
+          >
             {sortedCategories.map((cat) => {
               const isSelected = selectedCategory === String(cat.id);
               const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
@@ -773,7 +779,7 @@ export default function ResourceManagementPage() {
                   key={cat.id}
                   type="button"
                   onClick={() => handleCategorySelect(String(cat.id))}
-                  className={`flex items-center gap-1.5 px-3.5 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
+                  className={`flex items-center gap-1.5 px-3.5 h-full text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
                     isSelected
                       ? 'border-primary text-primary bg-primary/5 font-bold'
                       : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
@@ -797,31 +803,31 @@ export default function ResourceManagementPage() {
             })}
           </div>
 
-          {/* Nút cuộn phải */}
+          {/* Cột 4: Nút cuộn phải */}
           <button
             type="button"
             onClick={() => scrollTabs('right')}
-            className="shrink-0 px-2.5 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
+            className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
             aria-label="Cuộn tab sang phải"
-            title="Cuộn sang phải"
+            title="Cuộn danh mục sang phải"
           >
             <i className="fa-solid fa-chevron-right text-xs" />
           </button>
 
-          {/* Nút dropdown chọn Danh mục trực tiếp ở góc phải */}
-          <div className="relative shrink-0 flex items-stretch border-l border-border-subtle" ref={categoryDropdownRef}>
+          {/* Cột 5: Nút dropdown chọn Danh mục trực tiếp ở góc phải (cố định w-36) */}
+          <div className="relative w-36 shrink-0 flex items-stretch border-l border-border-subtle" ref={categoryDropdownRef}>
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen((prev) => !prev);
                 setIsTypeDropdownOpen(false);
               }}
-              className="px-3.5 py-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center gap-1.5 cursor-pointer rounded-tr-xl"
+              className="w-full px-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap rounded-tr-xl"
               title="Mở danh sách tất cả Danh mục"
               aria-label="Danh sách tất cả Danh mục"
             >
               <i className="fa-solid fa-folder-tree text-xs text-primary" />
-              <span className="hidden sm:inline">Danh mục</span>
+              <span>Danh mục</span>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
 
@@ -899,12 +905,12 @@ export default function ResourceManagementPage() {
           </div>
         </div>
 
-        {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu tương tự Cấp 1 */}
+        {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu (đồng bộ 100% với Cấp 1) */}
         {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (
-          <div className="relative z-10 flex items-stretch justify-between bg-surface-elevated/40 rounded-b-xl">
-            {/* Phía trái: Nhãn phân cấp + danh sách chips cuộn ngang */}
-            <div className="flex items-center gap-2 px-3.5 py-2.5 overflow-x-auto scrollbar-none flex-1 min-w-0" style={{ scrollbarWidth: 'none' }}>
-              <span className="text-[11px] text-muted font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5 mr-1">
+          <div className="relative z-10 flex items-stretch h-11 bg-surface-elevated/40 rounded-b-xl">
+            {/* Cột 1: Nhãn Loại tài liệu + Chip Tất cả (cố định bên trái, cùng độ rộng w-[210px]) */}
+            <div className="w-[210px] shrink-0 flex items-center justify-between px-3 border-r border-border-subtle rounded-bl-xl">
+              <span className="text-[11px] text-muted font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                 <i className="fa-solid fa-sitemap text-[10px] text-primary" />
                 Loại tài liệu:
               </span>
@@ -913,7 +919,7 @@ export default function ResourceManagementPage() {
               <button
                 type="button"
                 onClick={() => { setSelectedType('all'); setCurrentPage(1); }}
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                   selectedType === 'all'
                     ? 'bg-primary text-white shadow-xs'
                     : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
@@ -926,8 +932,25 @@ export default function ResourceManagementPage() {
                   ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length})
                 </span>
               </button>
+            </div>
 
-              {/* Chips từng loại Cấp 2 */}
+            {/* Cột 2: Nút cuộn trái loại tài liệu (nằm ngay bên phải chữ Tất cả) */}
+            <button
+              type="button"
+              onClick={() => scrollTypes('left')}
+              className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
+              aria-label="Cuộn loại tài liệu sang trái"
+              title="Cuộn loại tài liệu sang trái"
+            >
+              <i className="fa-solid fa-chevron-left text-xs" />
+            </button>
+
+            {/* Cột 3: Vùng chips loại tài liệu cuộn ngang */}
+            <div
+              ref={typeBarRef}
+              className="flex items-center gap-1.5 px-2 overflow-x-auto scrollbar-none flex-1 min-w-0"
+              style={{ scrollbarWidth: 'none' }}
+            >
               {availableTypesForFilter.map((t) => {
                 const isActive = selectedType === String(t.id);
                 const docCount = documents.filter(
@@ -962,21 +985,32 @@ export default function ResourceManagementPage() {
               })}
             </div>
 
-            {/* Phía phải: Nút dropdown Loại tài liệu ở góc phải */}
-            <div className="relative shrink-0 flex items-stretch border-l border-border-subtle" ref={typeDropdownRef}>
+            {/* Cột 4: Nút cuộn phải loại tài liệu */}
+            <button
+              type="button"
+              onClick={() => scrollTypes('right')}
+              className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
+              aria-label="Cuộn loại tài liệu sang phải"
+              title="Cuộn loại tài liệu sang phải"
+            >
+              <i className="fa-solid fa-chevron-right text-xs" />
+            </button>
+
+            {/* Cột 5: Nút dropdown Loại tài liệu ở góc phải (cố định w-36) */}
+            <div className="relative w-36 shrink-0 flex items-stretch border-l border-border-subtle" ref={typeDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
                   setIsTypeDropdownOpen((prev) => !prev);
                   setIsCategoryDropdownOpen(false);
                 }}
-                className="px-3.5 py-2.5 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap rounded-br-xl"
+                className="w-full px-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap rounded-br-xl"
                 title="Mở danh sách tất cả Loại tài liệu"
                 aria-haspopup="listbox"
                 aria-expanded={isTypeDropdownOpen}
               >
                 <i className="fa-solid fa-tags text-xs text-primary" />
-                <span className="hidden sm:inline">Loại tài liệu</span>
+                <span>Loại tài liệu</span>
                 <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
 
