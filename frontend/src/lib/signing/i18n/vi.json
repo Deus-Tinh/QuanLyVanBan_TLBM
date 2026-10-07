@@ -44,6 +44,12 @@
     "THU_HOI": "Đã thu hồi",
     "HET_HAN": "Hết hạn"
   },
+  "trangThaiCap": {
+    "CHUA_MO": "Chưa đến lượt",
+    "DANG_KY": "Đang ký",
+    "TAM_DUNG": "Tạm dừng",
+    "HOAN_THANH": "Đã xong"
+  },
   "mucDo": {
     "THUONG": "Thường",
     "KHAN": "Khẩn",

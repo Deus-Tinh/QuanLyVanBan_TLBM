@@ -44,6 +44,12 @@
     "THU_HOI": "Revoked",
     "HET_HAN": "Expired"
   },
+  "trangThaiCap": {
+    "CHUA_MO": "Not yet open",
+    "DANG_KY": "Signing",
+    "TAM_DUNG": "Paused",
+    "HOAN_THANH": "Done"
+  },
   "mucDo": {
     "THUONG": "Normal",
     "KHAN": "Urgent",

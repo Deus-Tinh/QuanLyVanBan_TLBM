@@ -38,7 +38,7 @@ function KhungKy({ k, onKeo }: { k: KhungHienThi; onKeo?: Props['onKeo'] }) {
   const coTheKeo = k.kieu === 'dat' && onKeo;
   const mau = {
     dat: 'border-primary bg-primary-subtle text-primary cursor-move',
-    da_ky: 'border-success bg-surface/70 text-success',
+    da_ky: 'border-success bg-success-subtle text-success',
     cho: 'border-dashed border-warning bg-warning-subtle text-warning-text',
   }[k.kieu];
   return (

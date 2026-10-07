@@ -25,7 +25,7 @@ export default function TienTrinh({ luot, toiId }: { luot: LuotTrinh; toiId?: nu
                     {t('chiTiet.han')}: {dinhDangNgay(cap.han_xu_ly, lang)}
                   </span>
                 )}
-                <TrangThaiBadge trangThai={cap.trang_thai} />
+                <TrangThaiBadge trangThai={cap.trang_thai} nhom="trangThaiCap" />
               </div>
             </div>
             <ul className="mt-2 space-y-1.5">

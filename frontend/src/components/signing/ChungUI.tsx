@@ -14,11 +14,12 @@ const MAU_TRANG_THAI: Record<string, BadgeProps['variant']> = {
   HET_HAN: 'secondary',
 };
 
-export function TrangThaiBadge({ trangThai }: { trangThai: string }) {
+/** `nhom = 'trangThaiCap'` cho trạng thái cấp ký (HOAN_THANH của cấp là "Đã xong", khác hồ sơ hoàn tất). */
+export function TrangThaiBadge({ trangThai, nhom = 'trangThai' }: { trangThai: string; nhom?: 'trangThai' | 'trangThaiCap' }) {
   const { t } = useSigningT();
   return (
     <Badge variant={MAU_TRANG_THAI[trangThai] || 'secondary'} size="sm" withDot>
-      {t(`trangThai.${trangThai}`)}
+      {t(`${nhom}.${trangThai}`)}
     </Badge>
   );
 }
