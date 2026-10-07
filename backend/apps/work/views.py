@@ -1,6 +1,8 @@
 import datetime
 import logging
 
+import django
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import get_connection, send_mass_mail
@@ -391,10 +393,14 @@ def work_mail_connection():
     """
     Kết nối gửi mail theo cấu hình MAILERS["default"] trong settings.py.
 
-    Dự án đang ghim Django 5.2, bản này chưa hiểu setting MAILERS (có từ Django 6.1) nên
-    mặc định dùng SMTP. Đọc backend trực tiếp từ MAILERS để đúng cấu hình đã khai báo
-    (console khi phát triển: thư được in ra cửa sổ chạy runserver).
+    - Django >= 6.1 tự đọc MAILERS, và get_connection(backend=...) đã bị bỏ (báo RuntimeError),
+      nên trả None để dùng kết nối mặc định.
+    - Django 5.2 (bản ghim trong requirements) chưa hiểu MAILERS, mặc định là SMTP, nên phải
+      tạo kết nối theo backend khai báo trong MAILERS (console khi phát triển).
     """
+    if django.VERSION >= (6, 1):
+        return None
+
     mailers = getattr(settings, "MAILERS", None)
     backend = None
     if isinstance(mailers, dict):
