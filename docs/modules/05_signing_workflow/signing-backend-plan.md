@@ -692,8 +692,14 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 
 ### 7.3. Hành động người ký
 
-- `POST /signing/attempts/{id}/ky`: nhận `khoa_ky`, `hash_tai_lieu`, `chu_ky_so`, `ghi_chu_ky` (tùy chọn). Server verify, snapshot ảnh chữ ký, không sửa tệp.
-- `POST /signing/attempts/{id}/tu-choi`: `ly_do_tu_choi` bắt buộc.
+Đã triển khai ở Phase 8 (#80), đường dẫn theo hồ sơ (người ký được xác định từ tài khoản đăng nhập; cấp mở tuần tự nên mỗi người có tối đa một dòng đang mở). Quyền `sign_trinhky`, bắt buộc `Idempotency-Key`:
+- `POST /signing/trinh-ky/{id}/ky/`: `khoa_ky`, `hash_tai_lieu` (hex 64), `chu_ky_so` (Base64 Ed25519 trên raw bytes của SHA-256), `ghi_chu_ky` (tùy chọn). Kiểm: lượt `CHO_KY`, người ký đã mở và chờ ký, mã băm khớp lượt, khóa thuộc người ký và đang hoạt động trong hiệu lực, chữ ký verify được. Ghi chữ ký `HOP_LE`, `ky_tre_han`/`so_giay_tre` theo `han_xu_ly` của cấp; mở ký chính khi ký nháy chặn ký đủ; đóng cấp khi mọi người ký trong cấp đã ký; mở cấp sau hoặc hoàn thành lượt và hồ sơ.
+- `POST /signing/trinh-ky/{id}/tu-choi/`: "Không đồng ý ban hành", `ly_do_tu_choi` bắt buộc; chỉ người ký đang được mở; lượt và hồ sơ `TU_CHOI` (kết thúc).
+- `POST /signing/trinh-ky/{id}/thu-hoi/`: khi cấp của người ký còn `DANG_KY`; ký nháy chặn không thu hồi khi ký chính cùng cấp đã ký; thu hồi ký nháy chặn khóa lại ký chính đã mở mà chưa ký. Chữ ký cũ giữ nguyên, ký lại tạo bản ghi mới.
+- Đồng thời: mọi hành động khóa dòng lượt trình trước khi xử lý; thao tác lặp cùng khóa trả kết quả lần trước.
+- Ảnh chữ ký cá nhân chưa có nguồn (#67 mục 2), `vi_tri_anh_chu_ky` để trống ở MVP.
+
+Dự kiến cho phần còn lại:
 - `POST /signing/attempts/{id}/yeu-cau-sua`: `tieu_de`, `ly_do` bắt buộc; mở thread.
 - `POST /signing/attempts/{id}/uy-quyen`: ủy quyền khẩn cấp; `nguoi_ky` mới, `ly_do_uy_quyen`, `hinh_thuc_ky` bắt buộc; chỉ cấp trên trực tiếp hoặc quản trị.
 - `POST /signing/attempts/{id}/thu-hoi`: khi cấp của người ký còn mở, trước khi hoàn thành.

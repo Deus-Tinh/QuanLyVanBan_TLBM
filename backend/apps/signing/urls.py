@@ -36,4 +36,9 @@ urlpatterns = [
     path("trinh-ky/<int:pk>/huy/", views.TrinhKyActionView.as_view(action="huy"), name="trinh-ky-huy"),
     path("trinh-ky/<int:pk>/trinh-lai/", views.TrinhKyActionView.as_view(action="trinh-lai"),
          name="trinh-ky-trinh-lai"),
+
+    # Hành động người ký (Phase 8, #80)
+    path("trinh-ky/<int:pk>/ky/", views.HanhDongKyView.as_view(action="ky"), name="trinh-ky-ky"),
+    path("trinh-ky/<int:pk>/tu-choi/", views.HanhDongKyView.as_view(action="tu-choi"), name="trinh-ky-tu-choi"),
+    path("trinh-ky/<int:pk>/thu-hoi/", views.HanhDongKyView.as_view(action="thu-hoi"), name="trinh-ky-thu-hoi"),
 ]

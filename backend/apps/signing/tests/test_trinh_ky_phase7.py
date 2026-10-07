@@ -96,7 +96,7 @@ class TrinhKyBase(TestCase):
     def ho_so_da_gui(self):
         r = self.tao_nhap()
         self.assertEqual(r.status_code, 201, r.data)
-        r = self.gui(r.data["id"])
+        r = self.gui(r.data["id"], khoa=f"gui-{r.data['id']}")  # mỗi hồ sơ một khóa chống trùng
         self.assertEqual(r.status_code, 200, r.data)
         return r.data
 

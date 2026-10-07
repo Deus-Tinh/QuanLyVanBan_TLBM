@@ -24,7 +24,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 6b | Kiểm quyền API quy trình và khóa ký theo codename DDL (issue #64); quản trị mở lại PIN bị khóa cứng | RBAC Nhóm 7 (`require_permission`) | Hoàn thành phần kiểm quyền API (`4690de7`); mở lại PIN khóa cứng chưa làm |
 | 6c | Điều chỉnh theo đánh giá nghiệp vụ: bỏ `kieu_ky*`, xoay vòng `k_srv` khi đổi PIN, đồng bộ DDL | Duyệt `danh-gia-nghiep-vu-va-de-xuat.md`; PR DDL #91 merge trước | Đang review (#79): PR DDL #91, sau đó PR backend |
 | 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; `trinh-lai` | Văn bản đi (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) qua lớp tích hợp `signing/tich_hop/` | Lõi API xong trên máy (#80); quyền quy trình theo đơn vị chờ Nhóm 7 |
-| 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
+| 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Ký/từ chối/thu hồi xong trên máy (#80); manifest ở Phase 10 |
 | 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Chờ Phase 8 |
 | 10 | Phẳng hóa PDF theo thể thức; ký số từ xa (adapter); cấp số qua hệ thống Nhóm 2 và ký số cơ quan; frontend | Phase 8; chốt hệ tọa độ vị trí ký; contract cấp số với Nhóm 2 | Chờ |
 
@@ -102,6 +102,12 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
   - `tich_hop/to_chuc.py` (Nhóm 7): tên hiển thị, chức vụ cho snapshot; ứng viên theo chức vụ trong phạm vi `pham_vi_chuc_vu`. Chưa có `Employee` thì không có ứng viên (chặn gửi, lỗi rõ). Đổi `chuc_vu_id`, `don_vi_id` sang FK khi Nhóm 7 lên staging.
 - Chưa làm (chờ Nhóm 7): `signing_process.don_vi_ap_dung` và quyền quản lý/xem quy trình `PHONG_BAN` theo đơn vị.
 - Test: `tests/test_trinh_ky_phase7.py` (văn bản giả lập qua `_doc_van_ban_di`); kiểm thử tích hợp trên PostgreSQL dựng từ DDL với bảng `documents_vanbandi` thật.
+
+### Phase 8 — Hành động người ký (xong trên máy, #80)
+- `services/hanh_dong_ky.py`: `ky`, `tu_choi`, `thu_hoi`; API ở `signing-backend-plan.md` mục 7.3.
+- Quy tắc: cấp mở tuần tự, người trong cấp ký song song, cấp đóng khi mọi người ký (ký nháy và ký chính) đã ký; ký chính chờ ký nháy chặn; từ chối là kết thúc; thu hồi chỉ khi cấp còn mở.
+- Đồng thời: khóa dòng lượt trình; chống lặp bằng `khoa_chong_trung_thao_tac` của dòng người ký. Test PostgreSQL: ký trùng hai khóa chỉ tạo một chữ ký; ký cạnh tranh với hủy cho một kết quả nhất quán.
+- Test: `tests/test_hanh_dong_ky_phase8.py`.
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
 - Văn bản mật đã bỏ (GVHD chốt, DDL #81); trình ký chỉ nhận `vanbandi` thường. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) là văn bản gửi đi chọn người xem và lưu log xem (Nhóm 2), không ký, không đi qua trình ký: Phase 7 từ chối ở API tạo hồ sơ khi #82 có `pham_vi`. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.

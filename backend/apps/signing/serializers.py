@@ -160,10 +160,20 @@ class TrinhLaiSerializer(serializers.Serializer):
 
 
 class NguoiKyLuotSerializer(serializers.ModelSerializer):
+    chu_ky = serializers.SerializerMethodField()
+
     class Meta:
         model = SigningRequestStepSigner
         fields = ["id", "nguoi_ky", "ten_nguoi_ky", "ten_chuc_vu", "vai_tro_ky", "chan_ky_chinh", "trang_thai",
-                  "thoi_diem_mo", "ngay_ky", "ngay_tu_choi", "ly_do_tu_choi", "uy_quyen_tu"]
+                  "thoi_diem_mo", "ngay_ky", "ngay_tu_choi", "ly_do_tu_choi", "uy_quyen_tu", "chu_ky"]
+
+    def get_chu_ky(self, obj):
+        """Chữ ký hiện hành (ghi chú, trễ hạn, kết quả xác minh); không trả nội dung chữ ký."""
+        ck = obj.chu_ky_hien_hanh
+        if ck is None:
+            return None
+        return {"id": ck.pk, "ngay_ky": ck.ngay_ky, "ghi_chu_ky": ck.ghi_chu_ky, "ky_tre_han": ck.ky_tre_han,
+                "so_giay_tre": ck.so_giay_tre, "trang_thai_xac_minh": ck.trang_thai_xac_minh}
 
 
 class CapLuotSerializer(serializers.ModelSerializer):
@@ -230,3 +240,18 @@ class TrinhKyChiTietSerializer(TrinhKySerializer):
 
     def get_lich_su(self, obj):
         return NhatKyTrinhKySerializer(SigningAuditLog.objects.filter(trinh_ky=obj).order_by("id"), many=True).data
+
+
+# ── Hành động người ký (Phase 8, #80) ────────────────────────────────────────
+
+
+class KySerializer(serializers.Serializer):
+    khoa_ky = serializers.IntegerField(min_value=1)
+    hash_tai_lieu = serializers.RegexField(r"^[0-9a-f]{64}$")
+    chu_ky_so = serializers.CharField()
+    ghi_chu_ky = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class TuChoiSerializer(serializers.Serializer):
+    ly_do_tu_choi = serializers.CharField()
+

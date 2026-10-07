@@ -15,10 +15,11 @@ from .permissions import (
 )
 from .serializers import (
     DatPinSerializer, DoiPinSerializer, GuiTrinhKySerializer, HuyTrinhKySerializer, KhoaDangKySerializer,
-    KhoaSerializer, MoKhoaKySerializer, QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer,
+    KhoaSerializer, KySerializer, MoKhoaKySerializer, QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer,
     TrinhKyChiTietSerializer, TrinhKySerializer, TrinhKySuaSerializer, TrinhKyTaoSerializer, TrinhLaiSerializer,
-    XacMinhSoHuuSerializer, XoayVongSerializer,
+    TuChoiSerializer, XacMinhSoHuuSerializer, XoayVongSerializer,
 )
+from .services import hanh_dong_ky as hanh_dong_service
 from .services import keys as key_service
 from .services import pin as pin_service
 from .services import process as process_service
@@ -308,3 +309,32 @@ class TrinhKyTepView(SigningAPIView):
         response["Content-Disposition"] = f'inline; filename="trinh-ky-{ho_so.pk}.pdf"'
         response["Cache-Control"] = "no-store"
         return response
+
+
+# ── Hành động người ký (Phase 8, #80; plan mục 6.2) ─────────────────────────
+# Người ký của cấp đang mở (sign_trinhky); bắt buộc Idempotency-Key.
+
+
+class HanhDongKyView(SigningAPIView):
+    """POST /trinh-ky/<pk>/<action>/ với action = ky | tu-choi | thu-hoi."""
+
+    action = None
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        yeu_cau_quyen(request.user, KY_TRINH_KY)
+        khoa = _khoa_chong_trung(request)
+        ip = _ip(request)
+        if self.action == "ky":
+            data = KySerializer(data=request.data)
+            data.is_valid(raise_exception=True)
+            ket_qua = hanh_dong_service.ky(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip,
+                                           **data.validated_data)
+        elif self.action == "tu-choi":
+            data = TuChoiSerializer(data=request.data)
+            data.is_valid(raise_exception=True)
+            ket_qua = hanh_dong_service.tu_choi(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip,
+                                                ly_do_tu_choi=data.validated_data["ly_do_tu_choi"])
+        else:  # thu-hoi
+            ket_qua = hanh_dong_service.thu_hoi(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip)
+        return Response(TrinhKyChiTietSerializer(ket_qua).data)
