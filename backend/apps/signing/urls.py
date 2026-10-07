@@ -27,4 +27,13 @@ urlpatterns = [
     path("khoa/<int:pk>/dat-pin/", views.KhoaPinView.as_view(action="dat-pin"), name="khoa-dat-pin"),
     path("khoa/<int:pk>/mo-khoa-ky/", views.KhoaPinView.as_view(action="mo-khoa-ky"), name="khoa-mo-khoa-ky"),
     path("khoa/<int:pk>/doi-pin/", views.KhoaPinView.as_view(action="doi-pin"), name="khoa-doi-pin"),
+
+    # Hồ sơ trình ký (Phase 7, #80)
+    path("trinh-ky/", views.TrinhKyListCreateView.as_view(), name="trinh-ky-list"),
+    path("trinh-ky/<int:pk>/", views.TrinhKyDetailView.as_view(), name="trinh-ky-detail"),
+    path("trinh-ky/<int:pk>/tep/", views.TrinhKyTepView.as_view(), name="trinh-ky-tep"),
+    path("trinh-ky/<int:pk>/gui/", views.TrinhKyActionView.as_view(action="gui"), name="trinh-ky-gui"),
+    path("trinh-ky/<int:pk>/huy/", views.TrinhKyActionView.as_view(action="huy"), name="trinh-ky-huy"),
+    path("trinh-ky/<int:pk>/trinh-lai/", views.TrinhKyActionView.as_view(action="trinh-lai"),
+         name="trinh-ky-trinh-lai"),
 ]

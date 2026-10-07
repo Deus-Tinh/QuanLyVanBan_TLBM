@@ -27,3 +27,15 @@ def kiem_tra_bi_mat_pin(app_configs, **kwargs):
             id="signing.E002",
         )]
     return []
+
+
+@register(Tags.security, deploy=True)
+def kiem_tra_thu_muc_tep(app_configs, **kwargs):
+    """Production lưu tệp trình ký ở thư mục cấu hình riêng (storage.py); dev dùng backend/media/signing."""
+    if not getattr(settings, "SIGNING_DOCUMENT_ROOT", ""):
+        return [Error(
+            "Chưa đặt SIGNING_DOCUMENT_ROOT cho môi trường production.",
+            hint="Đặt biến môi trường SIGNING_DOCUMENT_ROOT là thư mục lưu tệp trình ký (ngoài thư mục mã nguồn).",
+            id="signing.E003",
+        )]
+    return []

@@ -119,6 +119,8 @@ class SigningProcessStepSigner(models.Model):
     buoc_quy_trinh = models.ForeignKey(SigningProcessStep, on_delete=models.CASCADE, related_name="nguoi_ky_set")
     nguoi_ky = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     chuc_vu_id = models.BigIntegerField(null=True, blank=True)
+    # Chỉ dùng khi cấu hình theo chức vụ; rỗng khi cấu hình theo tài khoản (#80 Phase 7)
+    pham_vi_chuc_vu = models.CharField(max_length=20, choices=enums.PhamViChucVu.choices, null=True, blank=True)
     vai_tro_ky = models.CharField(max_length=20, choices=enums.VaiTroKy.choices, default=enums.VaiTroKy.KY_CHINH)
     chan_ky_chinh = models.BooleanField(default=True)
     thu_tu = models.PositiveSmallIntegerField()
@@ -144,7 +146,9 @@ class SigningRequest(models.Model):
     ma_bam_tai_lieu = models.CharField(max_length=64, null=True, blank=True)
     quy_trinh = models.ForeignKey(SigningProcess, on_delete=models.PROTECT, related_name="+")
     phien_ban_quy_trinh = models.PositiveSmallIntegerField()
-    muc_do = models.CharField(max_length=20)
+    muc_do = models.CharField(max_length=20, choices=enums.MucDoTrinhKy.choices)
+    # Trình lại sau từ chối tạo yêu cầu mới trỏ về yêu cầu bị từ chối (#80 Phase 7)
+    ho_so_goc = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="trinh_lai_set")
     trang_thai = models.CharField(
         max_length=20, choices=enums.TrangThaiYeuCau.choices, default=enums.TrangThaiYeuCau.NHAP
     )

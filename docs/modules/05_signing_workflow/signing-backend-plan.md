@@ -678,13 +678,17 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 
 ### 7.2. Yêu cầu trình ký
 
-- `GET /signing/requests`: lọc theo người tạo, người được giao ký, quản trị, kiểm toán; mặc định theo phòng ban người tạo.
-- `POST /signing/requests`: tạo `NHAP` từ văn bản và quy trình, kèm vị trí ký của từng người ký.
-- `GET /signing/requests/{id}`: tổng quan, cấp, người ký, hạn, lịch sử, vị trí ký.
-- `POST /signing/requests/{id}/gui`: khóa snapshot văn bản/quy trình, tạo lượt trình. Nhận `chon_nguoi_ky` khi người ký theo chức vụ có nhiều ứng viên; thiếu thì trả lỗi kèm danh sách ứng viên.
-- `POST /signing/requests/{id}/huy`
-- `POST /signing/requests/{id}/trinh-lai`: chỉ khi yêu cầu `TU_CHOI`; tạo yêu cầu mới `NHAP` sao chép văn bản, quy trình, vị trí ký, `ho_so_goc` trỏ về yêu cầu cũ.
-- `POST /signing/requests/{id}/phat-hanh`: khâu phát hành pháp lý; chỉ khi lượt trình hiện hành `HOAN_THANH` và đã có tệp hoàn tất.
+Đã triển khai ở Phase 7 (#80), đường dẫn `/signing/trinh-ky/`:
+- `GET /signing/trinh-ky/?hop=can_toi_ky|toi_gui|tat_ca&trang_thai=&muc_do=`: `can_toi_ky` = người ký đã được mở, đang chờ ký, trên lượt `CHO_KY`; `tat_ca` = hồ sơ người dùng được xem (người tạo, người ký của hồ sơ; `view_signing_audit` xem tất cả).
+- `POST /signing/trinh-ky/` (multipart): `document_type` (`vanbandi`), `van_ban_id`, `quy_trinh` (đang hoạt động), `muc_do` (`THUONG`, `KHAN`, `HOA_TOC`), `han_chot`, `ghi_chu`, `tep` (PDF ≤ 20 MB). Server tự lưu tệp và tính SHA-256; tạo `NHAP`. Quyền `add_trinhky`.
+- `GET /signing/trinh-ky/{id}/`: tổng quan, các lượt trình (cấp, người ký, hạn), người đang chờ, lịch sử. Không trả đường dẫn lưu tệp.
+- `PATCH /signing/trinh-ky/{id}/`: chỉ khi `NHAP`, chỉ người tạo; thay tệp tăng `phien_ban_van_ban`.
+- `GET /signing/trinh-ky/{id}/tep/`: tệp của lượt trình hiện hành (hoặc dự thảo khi còn nháp), kiểm quyền xem.
+- `POST /signing/trinh-ky/{id}/gui/`: khóa tệp/mã băm, snapshot cấp và người ký, mở cấp đầu. Nhận `chon_nguoi_ky` (`{id người ký cấu hình: id tài khoản}`) khi chức vụ có nhiều ứng viên; thiếu thì lỗi `can_chon_nguoi_ky` kèm ứng viên. Quyền `send_trinhky` + người tạo.
+- `POST /signing/trinh-ky/{id}/huy/`: người tạo; hoặc `cancel_trinhky` hủy thay (bắt buộc `ly_do`).
+- `POST /signing/trinh-ky/{id}/trinh-lai/`: chỉ khi `TU_CHOI`; tạo hồ sơ `NHAP` mới (văn bản, tệp lượt cuối, mức độ; phiên bản đang hoạt động của cùng mã quy trình), `ho_so_goc` trỏ về hồ sơ cũ. Quyền `send_trinhky` + người tạo.
+- `gui`, `huy`, `trinh-lai` bắt buộc header `Idempotency-Key`; gửi lặp cùng khóa trả kết quả lần trước.
+- Phát hành pháp lý (`phat-hanh`): ngoài MVP, đã gỡ khỏi roadmap #80.
 
 ### 7.3. Hành động người ký
 

@@ -2,7 +2,10 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from . import enums
-from .models import SigningKey, SigningKeyUnlock, SigningProcess, SigningProcessStep, SigningProcessStepSigner
+from .models import (
+    SigningAttempt, SigningAuditLog, SigningKey, SigningKeyUnlock, SigningProcess, SigningProcessStep,
+    SigningProcessStepSigner, SigningRequest, SigningRequestStep, SigningRequestStepSigner,
+)
 
 
 # ── Đầu vào: quy trình ───────────────────────────────────────────────────────
@@ -14,6 +17,7 @@ class NguoiKyInputSerializer(serializers.Serializer):
         queryset=get_user_model().objects.filter(is_active=True), required=False, allow_null=True
     )
     chuc_vu_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    pham_vi_chuc_vu = serializers.ChoiceField(choices=enums.PhamViChucVu.choices, required=False, allow_null=True)
     vai_tro_ky = serializers.ChoiceField(choices=enums.VaiTroKy.choices, default=enums.VaiTroKy.KY_CHINH)
     chan_ky_chinh = serializers.BooleanField(default=True)
 
@@ -43,7 +47,7 @@ class QuyTrinhInputSerializer(serializers.Serializer):
 class NguoiKyCauHinhSerializer(serializers.ModelSerializer):
     class Meta:
         model = SigningProcessStepSigner
-        fields = ["id", "nguoi_ky", "chuc_vu_id", "vai_tro_ky", "chan_ky_chinh", "thu_tu"]
+        fields = ["id", "nguoi_ky", "chuc_vu_id", "pham_vi_chuc_vu", "vai_tro_ky", "chan_ky_chinh", "thu_tu"]
 
 
 class CapKyQuyTrinhSerializer(serializers.ModelSerializer):
@@ -119,3 +123,110 @@ class DoiPinSerializer(serializers.Serializer):
     xac_minh_pin_cu = serializers.CharField()
     xac_minh_pin_moi = serializers.CharField()
     tham_so_kdf = serializers.JSONField()
+
+
+# ── Hồ sơ trình ký (Phase 7, #80) ────────────────────────────────────────────
+# Không trả `vi_tri_luu_tep` (đường dẫn nội bộ); tệp tải qua API có kiểm quyền.
+
+
+class TrinhKyTaoSerializer(serializers.Serializer):
+    document_type = serializers.ChoiceField(choices=enums.LoaiVanBan.choices)
+    van_ban_id = serializers.IntegerField(min_value=1)
+    quy_trinh = serializers.PrimaryKeyRelatedField(queryset=SigningProcess.objects.all())
+    muc_do = serializers.ChoiceField(choices=enums.MucDoTrinhKy.choices)
+    han_chot = serializers.DateTimeField(required=False, allow_null=True)
+    ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
+    tep = serializers.FileField()
+
+
+class TrinhKySuaSerializer(serializers.Serializer):
+    muc_do = serializers.ChoiceField(choices=enums.MucDoTrinhKy.choices, required=False)
+    han_chot = serializers.DateTimeField(required=False, allow_null=True)
+    ghi_chu = serializers.CharField(required=False, allow_blank=True)
+    tep = serializers.FileField(required=False)
+
+
+class GuiTrinhKySerializer(serializers.Serializer):
+    # {id người ký cấu hình: id tài khoản được chọn} khi chức vụ có nhiều ứng viên
+    chon_nguoi_ky = serializers.DictField(child=serializers.IntegerField(min_value=1), required=False, default=dict)
+
+
+class HuyTrinhKySerializer(serializers.Serializer):
+    ly_do = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class TrinhLaiSerializer(serializers.Serializer):
+    han_chot = serializers.DateTimeField(required=False, allow_null=True)
+
+
+class NguoiKyLuotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SigningRequestStepSigner
+        fields = ["id", "nguoi_ky", "ten_nguoi_ky", "ten_chuc_vu", "vai_tro_ky", "chan_ky_chinh", "trang_thai",
+                  "thoi_diem_mo", "ngay_ky", "ngay_tu_choi", "ly_do_tu_choi", "uy_quyen_tu"]
+
+
+class CapLuotSerializer(serializers.ModelSerializer):
+    nguoi_ky = NguoiKyLuotSerializer(source="nguoi_ky_set", many=True, read_only=True)
+
+    class Meta:
+        model = SigningRequestStep
+        fields = ["id", "cap_ky", "ten_cap_ky", "thu_tu", "trang_thai", "han_xu_ly", "thoi_diem_mo",
+                  "thoi_diem_hoan_thanh", "nguoi_ky"]
+
+
+class LuotTrinhSerializer(serializers.ModelSerializer):
+    cap_ky = CapLuotSerializer(source="cap_ky_set", many=True, read_only=True)
+
+    class Meta:
+        model = SigningAttempt
+        fields = ["id", "so_luot", "luot_truoc", "phien_ban_van_ban", "ma_bam_tai_lieu", "trang_thai", "ly_do",
+                  "thoi_diem_gui", "thoi_diem_hoan_thanh", "thoi_diem_tu_choi", "thoi_diem_huy",
+                  "ma_bam_tep_hoan_tat", "cap_ky"]
+
+
+class NhatKyTrinhKySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SigningAuditLog
+        fields = ["id", "hanh_dong", "nguoi_thuc_hien", "trang_thai_truoc", "trang_thai_sau", "chi_tiet",
+                  "luot_trinh", "created_at"]
+
+
+class TrinhKySerializer(serializers.ModelSerializer):
+    ma_quy_trinh = serializers.CharField(source="quy_trinh.ma_quy_trinh", read_only=True)
+    ten_quy_trinh = serializers.CharField(source="quy_trinh.ten_quy_trinh", read_only=True)
+    dang_cho = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SigningRequest
+        fields = ["id", "document_type", "van_ban_id", "quy_trinh", "ma_quy_trinh", "ten_quy_trinh",
+                  "phien_ban_quy_trinh", "muc_do", "trang_thai", "han_chot", "ngay_gui", "ngay_hoan_thanh",
+                  "ngay_tu_choi", "ly_do_tu_choi", "ngay_huy", "ly_do_huy", "ghi_chu", "ho_so_goc",
+                  "phien_ban_van_ban", "ma_bam_tai_lieu", "create_by", "created_at", "update_at", "dang_cho"]
+        read_only_fields = fields
+
+    def get_dang_cho(self, obj):
+        """Người ký đang được mở và chờ ký trên lượt trình hiện hành."""
+        if obj.trang_thai != enums.TrangThaiYeuCau.CHO_KY:
+            return []
+        return list(SigningRequestStepSigner.objects.filter(
+            buoc_ky__luot_trinh__trinh_ky=obj, buoc_ky__luot_trinh__trang_thai=enums.TrangThaiLuotTrinh.CHO_KY,
+            buoc_ky__trang_thai=enums.TrangThaiCapKy.DANG_KY, trang_thai=enums.TrangThaiNguoiKy.CHO_KY,
+            thoi_diem_mo__isnull=False,
+        ).values("id", "nguoi_ky", "ten_nguoi_ky", "vai_tro_ky"))
+
+
+class TrinhKyChiTietSerializer(TrinhKySerializer):
+    luot_trinh = serializers.SerializerMethodField()
+    lich_su = serializers.SerializerMethodField()
+
+    class Meta(TrinhKySerializer.Meta):
+        fields = TrinhKySerializer.Meta.fields + ["luot_trinh", "lich_su"]
+        read_only_fields = fields
+
+    def get_luot_trinh(self, obj):
+        luot = obj.luot_trinh_set.order_by("-so_luot").prefetch_related("cap_ky_set__nguoi_ky_set")
+        return LuotTrinhSerializer(luot, many=True).data
+
+    def get_lich_su(self, obj):
+        return NhatKyTrinhKySerializer(SigningAuditLog.objects.filter(trinh_ky=obj).order_by("id"), many=True).data

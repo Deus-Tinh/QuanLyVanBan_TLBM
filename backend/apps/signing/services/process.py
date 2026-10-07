@@ -67,7 +67,7 @@ def them_cap_ky(process, nguoi_thuc_hien, *, cap_ky, ten_cap_ky, thu_tu, nguoi_k
 
 
 @transaction.atomic
-def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=None,
+def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=None, pham_vi_chuc_vu=None,
                   vai_tro_ky=enums.VaiTroKy.KY_CHINH, chan_ky_chinh=True):
     process = _khoa(step.quy_trinh_id)
     _yeu_cau_ban_nhap(process)
@@ -76,8 +76,19 @@ def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=No
             code="nguoi_ky_hoac_chuc_vu",
             detail="Phải nhập đúng một trong hai: người ký hoặc chức vụ ký.",
         )
+    if nguoi_ky is not None:
+        if pham_vi_chuc_vu:
+            raise SigningError(code="pham_vi_chuc_vu_khong_ap_dung",
+                               detail="Phạm vi chức vụ chỉ dùng cho người ký cấu hình theo chức vụ.",
+                               fields={"pham_vi_chuc_vu": ["Bỏ trống khi chọn người ký cụ thể."]})
+    else:
+        pham_vi_chuc_vu = pham_vi_chuc_vu or enums.PhamViChucVu.DON_VI_NGUOI_TAO
+        if pham_vi_chuc_vu == enums.PhamViChucVu.DON_VI_CO_DINH and step.don_vi_id is None:
+            raise SigningError(code="cap_ky_thieu_don_vi",
+                               detail="Phạm vi 'đơn vị cố định' cần cấp ký có đơn vị.",
+                               fields={"pham_vi_chuc_vu": ["Cấp ký chưa có don_vi_id."]})
     return SigningProcessStepSigner.objects.create(
-        buoc_quy_trinh=step, nguoi_ky=nguoi_ky, chuc_vu_id=chuc_vu_id,
+        buoc_quy_trinh=step, nguoi_ky=nguoi_ky, chuc_vu_id=chuc_vu_id, pham_vi_chuc_vu=pham_vi_chuc_vu,
         vai_tro_ky=vai_tro_ky, chan_ky_chinh=chan_ky_chinh, thu_tu=thu_tu,
     )
 
@@ -163,6 +174,7 @@ def nhan_ban(process, nguoi_thuc_hien):
         for nk in step.nguoi_ky_set.all():
             SigningProcessStepSigner.objects.create(
                 buoc_quy_trinh=step_moi, nguoi_ky=nk.nguoi_ky, chuc_vu_id=nk.chuc_vu_id,
+                pham_vi_chuc_vu=nk.pham_vi_chuc_vu,
                 vai_tro_ky=nk.vai_tro_ky, chan_ky_chinh=nk.chan_ky_chinh, thu_tu=nk.thu_tu,
             )
     ghi_nhat_ky(nguoi_thuc_hien, LOAI, moi.pk, "NHAN_BAN_QUY_TRINH", trang_thai_sau=moi.trang_thai,

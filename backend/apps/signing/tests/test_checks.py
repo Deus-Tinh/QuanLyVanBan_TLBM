@@ -33,6 +33,17 @@ class SigningPinSecretCheckTests(SimpleTestCase):
         self.assertNotIn("signing.E001", [e.id for e in checks.run_checks()])
 
 
+class SigningDocumentRootCheckTests(SimpleTestCase):
+    @override_settings(SIGNING_DOCUMENT_ROOT="")
+    def test_missing_document_root_is_deploy_error(self):
+        self.assertIn("signing.E003", [e.id for e in checks.run_checks(include_deployment_checks=True)])
+        self.assertNotIn("signing.E003", [e.id for e in checks.run_checks()])
+
+    @override_settings(SIGNING_DOCUMENT_ROOT="/srv/signing")
+    def test_configured_document_root_passes(self):
+        self.assertNotIn("signing.E003", [e.id for e in checks.run_checks(include_deployment_checks=True)])
+
+
 class PinSecretRuntimeTests(SimpleTestCase):
     @override_settings(DEBUG=False, SIGNING_PIN_SECRET="")
     def test_production_without_secret_refuses_pin_operations(self):

@@ -1,22 +1,29 @@
 import base64
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from . import enums
-from .errors import SigningAPIView
-from .models import SigningKey, SigningProcess
-from .permissions import KY_TRINH_KY, QUAN_LY_QUY_TRINH, XEM_TRINH_KY, co_quyen, yeu_cau_quyen
+from .errors import SigningAPIView, SigningError
+from .models import SigningKey, SigningProcess, SigningRequest
+from .permissions import (
+    GUI_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_TRINH_KY, co_quyen, yeu_cau_quyen,
+)
 from .serializers import (
-    DatPinSerializer, DoiPinSerializer, KhoaDangKySerializer, KhoaSerializer, MoKhoaKySerializer,
-    QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer, XacMinhSoHuuSerializer,
-    XoayVongSerializer,
+    DatPinSerializer, DoiPinSerializer, GuiTrinhKySerializer, HuyTrinhKySerializer, KhoaDangKySerializer,
+    KhoaSerializer, MoKhoaKySerializer, QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer,
+    TrinhKyChiTietSerializer, TrinhKySerializer, TrinhKySuaSerializer, TrinhKyTaoSerializer, TrinhLaiSerializer,
+    XacMinhSoHuuSerializer, XoayVongSerializer,
 )
 from .services import keys as key_service
 from .services import pin as pin_service
 from .services import process as process_service
+from .services import trinh_ky as trinh_ky_service
+from .storage import StorageError, get_storage
 
 
 @api_view(["GET"])
@@ -186,5 +193,118 @@ class KhoaPinView(SigningAPIView):
         if manh_bi_mat_cu is not None:
             body["manh_bi_mat_cu"] = base64.b64encode(manh_bi_mat_cu).decode()
         response = Response(body, status=http_status)
+        response["Cache-Control"] = "no-store"
+        return response
+
+
+# ── Hồ sơ trình ký (Phase 7, #80; plan mục 3.3, 6.1, 7.2) ────────────────────
+# Xem: người tạo, người ký của hồ sơ, kiểm toán (view_signing_audit). Tạo: add_trinhky.
+# Gửi, trình lại: send_trinhky + là người tạo. Hủy: người tạo, hoặc cancel_trinhky (bắt buộc lý do).
+# Thao tác đổi trạng thái bắt buộc header Idempotency-Key (plan mục 7.5).
+
+MAX_KHOA_CHONG_TRUNG = 200
+
+
+def _khoa_chong_trung(request):
+    khoa = request.headers.get("Idempotency-Key", "").strip()
+    if not khoa or len(khoa) > MAX_KHOA_CHONG_TRUNG:
+        raise SigningError(code="thieu_khoa_chong_trung",
+                           detail=f"Cần header Idempotency-Key (1–{MAX_KHOA_CHONG_TRUNG} ký tự).")
+    # Gắn với người gửi để khóa của hai người không trùng nhau
+    return f"{request.user.pk}:{khoa}"
+
+
+def _ho_so_xem_duoc(request, pk):
+    return get_object_or_404(trinh_ky_service.trinh_ky_xem_duoc(request.user), pk=pk)
+
+
+class TrinhKyListCreateView(SigningAPIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        hop = request.query_params.get("hop", "tat_ca")
+        if hop == "can_toi_ky":
+            queryset = trinh_ky_service.dang_cho_toi_ky(request.user)
+        elif hop == "toi_gui":
+            queryset = SigningRequest.objects.filter(create_by=request.user)
+        elif hop == "tat_ca":
+            queryset = trinh_ky_service.trinh_ky_xem_duoc(request.user)
+        else:
+            raise SigningError(code="tham_so_khong_hop_le", detail="hop phải là can_toi_ky, toi_gui hoặc tat_ca.",
+                               fields={"hop": ["Giá trị không hợp lệ."]})
+        for ten in ("trang_thai", "muc_do"):
+            if request.query_params.get(ten):
+                queryset = queryset.filter(**{ten: request.query_params[ten]})
+        queryset = queryset.select_related("quy_trinh").order_by("-created_at")
+        return Response(TrinhKySerializer(queryset, many=True).data)
+
+    def post(self, request):
+        yeu_cau_quyen(request.user, TAO_TRINH_KY)
+        data = TrinhKyTaoSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        ho_so = trinh_ky_service.tao_nhap(request.user, dia_chi_ip=_ip(request), **data.validated_data)
+        return Response(TrinhKyChiTietSerializer(ho_so).data, status=status.HTTP_201_CREATED)
+
+
+class TrinhKyDetailView(SigningAPIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request, pk):
+        return Response(TrinhKyChiTietSerializer(_ho_so_xem_duoc(request, pk)).data)
+
+    def patch(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        data = TrinhKySuaSerializer(data=request.data, partial=True)
+        data.is_valid(raise_exception=True)
+        ho_so = trinh_ky_service.cap_nhat_nhap(ho_so, request.user, dia_chi_ip=_ip(request), **data.validated_data)
+        return Response(TrinhKyChiTietSerializer(ho_so).data)
+
+
+class TrinhKyActionView(SigningAPIView):
+    """POST /trinh-ky/<pk>/<action>/ với action = gui | huy | trinh-lai."""
+
+    action = None
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        khoa = _khoa_chong_trung(request)
+        ip = _ip(request)
+        if self.action == "gui":
+            yeu_cau_quyen(request.user, GUI_TRINH_KY)
+            data = GuiTrinhKySerializer(data=request.data)
+            data.is_valid(raise_exception=True)
+            ket_qua = trinh_ky_service.gui(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip,
+                                           chon_nguoi_ky=data.validated_data["chon_nguoi_ky"])
+            code = status.HTTP_200_OK
+        elif self.action == "huy":
+            data = HuyTrinhKySerializer(data=request.data)
+            data.is_valid(raise_exception=True)
+            ket_qua = trinh_ky_service.huy(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip,
+                                           ly_do=data.validated_data["ly_do"])
+            code = status.HTTP_200_OK
+        else:  # trinh-lai
+            yeu_cau_quyen(request.user, GUI_TRINH_KY)
+            data = TrinhLaiSerializer(data=request.data)
+            data.is_valid(raise_exception=True)
+            ket_qua = trinh_ky_service.trinh_lai(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip,
+                                                 han_chot=data.validated_data.get("han_chot"))
+            code = status.HTTP_201_CREATED
+        return Response(TrinhKyChiTietSerializer(ket_qua).data, status=code)
+
+
+class TrinhKyTepView(SigningAPIView):
+    """GET /trinh-ky/<pk>/tep/: tệp của lượt trình hiện hành (hoặc dự thảo khi còn nháp), kiểm quyền xem."""
+
+    def get(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        luot = trinh_ky_service.luot_hien_hanh(ho_so)
+        vi_tri = luot.vi_tri_luu_tep if luot else ho_so.vi_tri_luu_tep
+        try:
+            data = get_storage().read_bytes(vi_tri)
+        except StorageError:
+            raise SigningError(code="khong_doc_duoc_tep", detail="Không đọc được tệp của hồ sơ.",
+                               status_code=status.HTTP_404_NOT_FOUND)
+        response = HttpResponse(data, content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="trinh-ky-{ho_so.pk}.pdf"'
         response["Cache-Control"] = "no-store"
         return response

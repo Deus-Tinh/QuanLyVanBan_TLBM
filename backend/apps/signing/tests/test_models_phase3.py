@@ -81,7 +81,7 @@ class RequestAttemptTests(Base):
             "phien_ban", "ten_quy_trinh", "trang_thai", "update_at", "update_by",
         ])
         self.assertEqual(sorted(f.name for f in SigningRequest._meta.concrete_fields), [
-            "create_by", "created_at", "document_type", "ghi_chu", "han_chot", "id", "ly_do_huy",
+            "create_by", "created_at", "document_type", "ghi_chu", "han_chot", "ho_so_goc", "id", "ly_do_huy",
             "ly_do_tu_choi", "ma_bam_tai_lieu", "muc_do", "ngay_gui", "ngay_hoan_thanh", "ngay_huy",
             "ngay_tu_choi", "phien_ban_quy_trinh", "phien_ban_van_ban", "quy_trinh", "trang_thai",
             "update_at", "update_by", "van_ban_id", "vi_tri_luu_tep",

@@ -12,6 +12,22 @@ class PhamViQuyTrinh(models.TextChoices):
     CONG_TY = "CONG_TY", "Công ty"
 
 
+class PhamViChucVu(models.TextChoices):
+    """Chức vụ của người ký cấu hình được hiểu tương đối (plan mục 3.2, #80 Phase 7)."""
+
+    DON_VI_NGUOI_TAO = "DON_VI_NGUOI_TAO", "Trong đơn vị người tạo"
+    DON_VI_CO_DINH = "DON_VI_CO_DINH", "Trong đơn vị cố định của cấp"
+    TOAN_CO_QUAN = "TOAN_CO_QUAN", "Toàn cơ quan"
+
+
+class MucDoTrinhKy(models.TextChoices):
+    """Mức độ ưu tiên xử lý hồ sơ (spec bộ lọc "mức độ"); tạm dùng đến khi có danh mục mức độ chung."""
+
+    THUONG = "THUONG", "Thường"
+    KHAN = "KHAN", "Khẩn"
+    HOA_TOC = "HOA_TOC", "Hỏa tốc"
+
+
 class VaiTroKy(models.TextChoices):
     KY_NHAY = "KY_NHAY", "Ký nháy"
     KY_CHINH = "KY_CHINH", "Ký chính"
