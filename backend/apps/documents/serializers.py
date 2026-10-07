@@ -83,7 +83,7 @@ class DocumentListSerializer(serializers.Serializer):
     """
     Serializer cho danh sách văn bản (GET list).
     Trả về định dạng chuẩn cho bảng hiển thị trên frontend.
-    Hỗ trợ đồng nhất dữ liệu từ VanBanDen, VanBanDi, VanBanMat.
+    Hỗ trợ đồng nhất dữ liệu từ VanBanDen và VanBanDi.
     """
 
     id = serializers.IntegerField(read_only=True)
@@ -223,7 +223,7 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
     """
     Serializer cho tạo mới / cập nhật văn bản (POST, PUT, PATCH).
     Nhận dữ liệu từ request, validate nghiệp vụ, và lưu vào đúng model tương ứng
-    (VanBanDen, VanBanDi, hoặc VanBanMat).
+    (VanBanDen hoặc VanBanDi).
     """
 
     id = serializers.IntegerField(read_only=True)

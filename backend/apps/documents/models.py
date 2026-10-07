@@ -32,7 +32,7 @@ Lịch sử & Nhật ký:
 import os
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 
 
@@ -234,17 +234,33 @@ class VanBanDen(BaseVanBan):
     )
 
     def save(self, *args, **kwargs):
-        if self._state.adding or not self.pk:
-            if not self.so_thu_tu or self.so_thu_tu == 1:
-                from .services import generate_so_thu_tu
-                next_stt = generate_so_thu_tu("DEN", self.nam or timezone.now().year)
-                if next_stt:
-                    self.so_thu_tu = next_stt
         if not self.ngay_den:
             self.ngay_den = timezone.now()
         if not self.ngay_van_ban:
             self.ngay_van_ban = self.ngay_den
-        super().save(*args, **kwargs)
+
+        is_new = self._state.adding or not self.pk
+        if not is_new:
+            return super().save(*args, **kwargs)
+
+        # Với bản ghi mới: cấp số và retry nếu gặp IntegrityError (concurrency race condition - Issue B-1)
+        from .services import generate_so_thu_tu
+        max_retries = 3
+        for attempt in range(max_retries):
+            if not self.so_thu_tu or self.so_thu_tu == 1 or attempt > 0:
+                next_stt = generate_so_thu_tu("DEN", self.nam or timezone.now().year)
+                if next_stt:
+                    self.so_thu_tu = next_stt
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError as exc:
+                err_str = str(exc).lower()
+                if "so_thu_tu" in err_str or "stt" in err_str or "unique" in err_str:
+                    if attempt == max_retries - 1:
+                        raise
+                    continue
+                raise
 
     class Meta:
         db_table = "documents_vanbanden"
@@ -285,6 +301,7 @@ class VanBanDenNguoiNhan(models.Model):
     Khớp DDL: vanbanden_id, employee_id, PK (vanbanden_id, employee_id).
     """
 
+    pk = models.CompositePrimaryKey("vanbanden", "employee")
     vanbanden = models.ForeignKey(
         VanBanDen,
         on_delete=models.CASCADE,
@@ -300,7 +317,6 @@ class VanBanDenNguoiNhan(models.Model):
 
     class Meta:
         db_table = "documents_vanbanden_nguoinhan"
-        unique_together = (("vanbanden", "employee"),)
         verbose_name = "Người nhận văn bản đến"
         verbose_name_plural = "Người nhận văn bản đến"
 
@@ -314,6 +330,7 @@ class VanBanDenHoSo(models.Model):
     Khớp DDL: vanbanden_id, hoso_id.
     """
 
+    pk = models.CompositePrimaryKey("vanbanden", "hoso_id")
     vanbanden = models.ForeignKey(
         VanBanDen,
         on_delete=models.CASCADE,
@@ -324,7 +341,6 @@ class VanBanDenHoSo(models.Model):
 
     class Meta:
         db_table = "documents_vanbanden_hoso"
-        unique_together = (("vanbanden", "hoso_id"),)
         verbose_name = "Hồ sơ văn bản đến"
         verbose_name_plural = "Hồ sơ văn bản đến"
         indexes = [
@@ -341,6 +357,7 @@ class VanBanDenDanhmuc(models.Model):
     Khớp DDL: vanbanden_id, loaivanban_id.
     """
 
+    pk = models.CompositePrimaryKey("vanbanden", "loaivanban_id")
     vanbanden = models.ForeignKey(
         VanBanDen,
         on_delete=models.CASCADE,
@@ -351,7 +368,6 @@ class VanBanDenDanhmuc(models.Model):
 
     class Meta:
         db_table = "documents_vanbanden_danhmuc"
-        unique_together = (("vanbanden", "loaivanban_id"),)
         verbose_name = "Danh mục loại văn bản đến"
         verbose_name_plural = "Danh mục loại văn bản đến"
         indexes = [
@@ -368,6 +384,7 @@ class VanBanDenDonViNhan(models.Model):
     Khớp DDL: vanbanden_id, donvi_id.
     """
 
+    pk = models.CompositePrimaryKey("vanbanden", "donvi_id")
     vanbanden = models.ForeignKey(
         VanBanDen,
         on_delete=models.CASCADE,
@@ -378,7 +395,6 @@ class VanBanDenDonViNhan(models.Model):
 
     class Meta:
         db_table = "documents_vanbanden_donvinhan"
-        unique_together = (("vanbanden", "donvi_id"),)
         verbose_name = "Đơn vị nhận văn bản đến"
         verbose_name_plural = "Đơn vị nhận văn bản đến"
 
@@ -427,17 +443,33 @@ class VanBanDi(BaseVanBan):
         self._noi_ban_hanh = val
 
     def save(self, *args, **kwargs):
-        if self._state.adding or not self.pk:
-            if not self.so_thu_tu or self.so_thu_tu == 1:
-                from .services import generate_so_thu_tu
-                next_stt = generate_so_thu_tu("DI", self.nam or timezone.now().year)
-                if next_stt:
-                    self.so_thu_tu = next_stt
         if not self.ngay_ban_hanh:
             self.ngay_ban_hanh = timezone.now()
         if not self.ngay_van_ban:
             self.ngay_van_ban = self.ngay_ban_hanh
-        super().save(*args, **kwargs)
+
+        is_new = self._state.adding or not self.pk
+        if not is_new:
+            return super().save(*args, **kwargs)
+
+        # Với bản ghi mới: cấp số và retry nếu gặp IntegrityError (concurrency race condition - Issue B-1)
+        from .services import generate_so_thu_tu
+        max_retries = 3
+        for attempt in range(max_retries):
+            if not self.so_thu_tu or self.so_thu_tu == 1 or attempt > 0:
+                next_stt = generate_so_thu_tu("DI", self.nam or timezone.now().year)
+                if next_stt:
+                    self.so_thu_tu = next_stt
+            try:
+                with transaction.atomic():
+                    return super().save(*args, **kwargs)
+            except IntegrityError as exc:
+                err_str = str(exc).lower()
+                if "so_thu_tu" in err_str or "stt" in err_str or "unique" in err_str:
+                    if attempt == max_retries - 1:
+                        raise
+                    continue
+                raise
 
     class Meta:
         db_table = "documents_vanbandi"
@@ -478,6 +510,7 @@ class VanBanDiNguoiNhan(models.Model):
     Khớp DDL: vanbandi_id, employee_id, PK (vanbandi_id, employee_id).
     """
 
+    pk = models.CompositePrimaryKey("vanbandi", "employee")
     vanbandi = models.ForeignKey(
         VanBanDi,
         on_delete=models.CASCADE,
@@ -493,7 +526,6 @@ class VanBanDiNguoiNhan(models.Model):
 
     class Meta:
         db_table = "documents_vanbandi_nguoinhan"
-        unique_together = (("vanbandi", "employee"),)
         verbose_name = "Người nhận văn bản đi"
         verbose_name_plural = "Người nhận văn bản đi"
 
@@ -507,6 +539,7 @@ class VanBanDiHoSo(models.Model):
     Khớp DDL: vanbandi_id, hoso_id.
     """
 
+    pk = models.CompositePrimaryKey("vanbandi", "hoso_id")
     vanbandi = models.ForeignKey(
         VanBanDi,
         on_delete=models.CASCADE,
@@ -517,7 +550,6 @@ class VanBanDiHoSo(models.Model):
 
     class Meta:
         db_table = "documents_vanbandi_hoso"
-        unique_together = (("vanbandi", "hoso_id"),)
         verbose_name = "Hồ sơ văn bản đi"
         verbose_name_plural = "Hồ sơ văn bản đi"
         indexes = [
@@ -534,6 +566,7 @@ class VanBanDiDanhmuc(models.Model):
     Khớp DDL: vanbandi_id, loaivanban_id.
     """
 
+    pk = models.CompositePrimaryKey("vanbandi", "loaivanban_id")
     vanbandi = models.ForeignKey(
         VanBanDi,
         on_delete=models.CASCADE,
@@ -544,7 +577,6 @@ class VanBanDiDanhmuc(models.Model):
 
     class Meta:
         db_table = "documents_vanbandi_danhmuc"
-        unique_together = (("vanbandi", "loaivanban_id"),)
         verbose_name = "Danh mục loại văn bản đi"
         verbose_name_plural = "Danh mục loại văn bản đi"
         indexes = [
@@ -561,6 +593,7 @@ class VanBanDiDonViNhan(models.Model):
     Khớp DDL: vanbandi_id, donvi_id.
     """
 
+    pk = models.CompositePrimaryKey("vanbandi", "donvi_id")
     vanbandi = models.ForeignKey(
         VanBanDi,
         on_delete=models.CASCADE,
@@ -571,7 +604,6 @@ class VanBanDiDonViNhan(models.Model):
 
     class Meta:
         db_table = "documents_vanbandi_donvinhan"
-        unique_together = (("vanbandi", "donvi_id"),)
         verbose_name = "Đơn vị nhận văn bản đi"
         verbose_name_plural = "Đơn vị nhận văn bản đi"
 
@@ -585,6 +617,7 @@ class VanBanDiNoiBanHanh(models.Model):
     Khớp DDL: vanbandi_id, donvi_id.
     """
 
+    pk = models.CompositePrimaryKey("vanbandi", "donvi_id")
     vanbandi = models.ForeignKey(
         VanBanDi,
         on_delete=models.CASCADE,
@@ -595,7 +628,6 @@ class VanBanDiNoiBanHanh(models.Model):
 
     class Meta:
         db_table = "documents_vanbandi_noibanhanh"
-        unique_together = (("vanbandi", "donvi_id"),)
         verbose_name = "Nơi ban hành văn bản đi"
         verbose_name_plural = "Nơi ban hành văn bản đi"
         indexes = [

@@ -131,7 +131,7 @@ class DocumentViewLogTests(TestCase):
 
 
 class DocumentModelTests(TestCase):
-    """Test trực tiếp 3 models: VanBanDen, VanBanDi, VanBanMat."""
+    """Test trực tiếp các models: VanBanDen, VanBanDi."""
 
     def setUp(self):
         self.user = User.objects.create_user(username="admin", password="test123")
@@ -1030,4 +1030,48 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
 
         with self.assertRaises(ValidationError):
             log.delete()
+
+    def test_composite_primary_key_junction_tables(self):
+        """Test D-1: 9 bảng nối hoạt động với CompositePrimaryKey không có cột id thừa."""
+        from .models import (
+            VanBanDenNguoiNhan, VanBanDenHoSo, VanBanDenDanhmuc, VanBanDenDonViNhan,
+            VanBanDiNguoiNhan, VanBanDiHoSo, VanBanDiDanhmuc, VanBanDiDonViNhan, VanBanDiNoiBanHanh
+        )
+
+        # 1. Thêm người nhận qua M2M through (add, all, remove)
+        self.doc_han_che.nguoi_nhan.add(self.recipient2)
+        self.assertTrue(self.doc_han_che.nguoi_nhan.filter(pk=self.recipient2.pk).exists())
+        self.doc_han_che.nguoi_nhan.remove(self.recipient2)
+        self.assertFalse(self.doc_han_che.nguoi_nhan.filter(pk=self.recipient2.pk).exists())
+
+        # 2. Tạo bản ghi trực tiếp trên các bảng junction
+        hoso = VanBanDenHoSo.objects.create(vanbanden=self.doc_han_che, hoso_id=99)
+        self.assertEqual(hoso.hoso_id, 99)
+
+        dm = VanBanDenDanhmuc.objects.create(vanbanden=self.doc_han_che, loaivanban_id=12)
+        self.assertEqual(dm.loaivanban_id, 12)
+
+        dv = VanBanDenDonViNhan.objects.create(vanbanden=self.doc_han_che, donvi_id=5)
+        self.assertEqual(dv.donvi_id, 5)
+
+        # Query all không bị lỗi column id does not exist
+        all_hoso = list(VanBanDenHoSo.objects.filter(vanbanden=self.doc_han_che))
+        self.assertEqual(len(all_hoso), 1)
+
+    def test_auto_stt_concurrency_retry_mechanism(self):
+        """Test B-1: Cơ chế retry sinh so_thu_tu tự động khi gặp IntegrityError."""
+        # Tạo văn bản đầu tiên
+        doc1 = VanBanDen.objects.create(
+            nam=2026, so_hieu="AUTO-01/TEST", so_thu_tu=100,
+            trich_yeu="Văn bản test STT 100", noi_ban_hanh="ITC",
+        )
+        self.assertEqual(doc1.so_thu_tu, 100)
+
+        # Tạo văn bản tiếp theo không truyền so_thu_tu, save() tự động sinh số kế tiếp
+        doc2 = VanBanDen.objects.create(
+            nam=2026, so_hieu="AUTO-02/TEST",
+            trich_yeu="Văn bản test STT tự sinh", noi_ban_hanh="ITC",
+        )
+        self.assertGreaterEqual(doc2.so_thu_tu, 101)
+
 

@@ -113,15 +113,14 @@ def can_edit_document(user, instance):
     model_name = instance._meta.model_name
     if (
         user.has_perm(f"documents.change_{model_name}")
-        or user.has_perm("documents.change_document")
-        or user.has_perm("documents.change_vanbanden")
+        or user.has_perm(f"change_{model_name}")
     ):
         return True
     return False
 
 
 def can_create_document(user, loai="DEN"):
-    """Kiểm tra quyền tạo văn bản (RBAC add_vanbanden, add_vanbandi, add_vanbanmat)."""
+    """Kiểm tra quyền tạo văn bản (RBAC add_vanbanden, add_vanbandi)."""
     if not user or not user.is_authenticated:
         return False
     if is_admin_user(user):
@@ -132,8 +131,7 @@ def can_create_document(user, loai="DEN"):
 
     if (
         user.has_perm(f"documents.add_{model_name}")
-        or user.has_perm("documents.add_document")
-        or user.has_perm("documents.add_vanbanden")
+        or user.has_perm(f"add_{model_name}")
     ):
         return True
     return False
@@ -272,7 +270,7 @@ def handle_attachments(document, request):
 
 class DocumentViewSet(viewsets.ViewSet):
     """
-    API endpoint hợp nhất quản lý Văn bản (Đến / Đi / Mật).
+    API endpoint hợp nhất quản lý Văn bản (Đến / Đi).
     Đảm bảo 100% tương thích ngược với React frontend và các unit tests.
     """
 
@@ -421,9 +419,6 @@ class DocumentViewSet(viewsets.ViewSet):
         if getattr(instance, "pham_vi", None) == PhamVi.HAN_CHE and not is_admin and instance.nguoi_tao != user:
             raise PermissionDenied("Chỉ người tạo mới có quyền chỉnh sửa văn bản hạn chế.")
 
-        if getattr(instance, "loai", "") == "MAT" and not is_admin and instance.nguoi_tao != user:
-            raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền chỉnh sửa văn bản này.")
-
         if not can_edit_document(user, instance):
             raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản này. Chỉ Quản trị viên, Người tạo hoặc Cán bộ được cấp quyền mới được phép chỉnh sửa.")
 
@@ -468,9 +463,6 @@ class DocumentViewSet(viewsets.ViewSet):
 
         user = request.user
         is_admin = is_admin_user(user)
-
-        if getattr(instance, "loai", "") == "MAT" and not is_admin and instance.nguoi_tao != user:
-            raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền xóa văn bản này.")
 
         if not can_delete_document(user, instance):
             raise PermissionDenied("Bạn không có quyền xóa văn bản này. Quyền xóa chỉ dành cho Quản trị viên (Admin) hoặc Cán bộ được phân quyền.")

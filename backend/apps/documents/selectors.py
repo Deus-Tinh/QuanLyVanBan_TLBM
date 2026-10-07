@@ -34,8 +34,8 @@ def van_ban_xem_duoc(user, loai="DEN"):
     # Tuyệt đối KHÔNG có ngoại lệ cho superuser hay quyền view_*
     q_han_che_user = Q(nguoi_tao=user) | Q(nguoi_nhan=user)
     user_don_vi_id = getattr(user, "don_vi_id", None)
-    if user_don_vi_id is None and hasattr(user, "profile"):
-        user_don_vi_id = getattr(user.profile, "don_vi_id", None)
+    if user_don_vi_id is None and hasattr(user, "don_vi"):
+        user_don_vi_id = getattr(user.don_vi, "id", None)
 
     if user_don_vi_id is not None:
         q_han_che = q_han_che_user | Q(donvinhan__donvi_id=user_don_vi_id)
@@ -44,13 +44,12 @@ def van_ban_xem_duoc(user, loai="DEN"):
 
     cond_han_che = Q(pham_vi=PhamVi.HAN_CHE) & q_han_che
 
-    # Điều kiện xem NOI_BO:
+    # Điều kiện xem NOI_BO: Phân quyền theo mã chuẩn trong seed DDL (view_vanbanden, view_vanbandi)
     has_view_perm = (
         user.is_staff
         or user.is_superuser
         or user.has_perm(f"documents.view_{model_name}")
-        or user.has_perm("documents.view_document")
-        or getattr(getattr(user, "profile", None), "role", None) in ("admin", "lanh_dao", "van_thu")
+        or user.has_perm(f"view_{model_name}")
     )
     if has_view_perm:
         cond_noi_bo = Q(pham_vi=PhamVi.NOI_BO)
@@ -65,6 +64,7 @@ def la_nguoi_xem_duoc(user, van_ban):
     """
     Kiểm tra người dùng có quyền xem văn bản này hay không.
     Nhóm 6 (Công việc) và các phân hệ khác gọi hàm này trước khi giao việc từ văn bản hạn chế.
+    Trả về True nếu được phép xem, False nếu không được phép hoặc chưa đăng nhập.
     """
     if not user or not user.is_authenticated or not getattr(user, "is_active", True):
         return False
@@ -76,8 +76,8 @@ def la_nguoi_xem_duoc(user, van_ban):
         if hasattr(van_ban, "nguoi_nhan") and van_ban.nguoi_nhan.filter(pk=user.pk).exists():
             return True
         user_don_vi_id = getattr(user, "don_vi_id", None)
-        if user_don_vi_id is None and hasattr(user, "profile"):
-            user_don_vi_id = getattr(user.profile, "don_vi_id", None)
+        if user_don_vi_id is None and hasattr(user, "don_vi"):
+            user_don_vi_id = getattr(user.don_vi, "id", None)
         if user_don_vi_id is not None and hasattr(van_ban, "donvinhan"):
             if van_ban.donvinhan.filter(donvi_id=user_don_vi_id).exists():
                 return True
@@ -92,7 +92,10 @@ def la_nguoi_xem_duoc(user, van_ban):
 
     model_name = getattr(van_ban, "document_kind", "vanbanden")
     try:
-        return user.has_perm(f"documents.view_{model_name}") or user.has_perm("documents.view_document")
+        return (
+            user.has_perm(f"documents.view_{model_name}")
+            or user.has_perm(f"view_{model_name}")
+        )
     except Exception:
         return False
 
