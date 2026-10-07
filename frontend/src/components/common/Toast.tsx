@@ -20,7 +20,7 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
   useEffect(() => {
     if (!toast) return;
     setProgress(100);
-    const duration = toast.duration || 3800;
+    const duration = toast.duration || 2600;
     const interval = 50;
     const step = (interval / duration) * 100;
 

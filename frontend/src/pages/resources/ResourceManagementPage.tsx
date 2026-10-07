@@ -267,17 +267,27 @@ export default function ResourceManagementPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   // Toast thông báo nổi trên cùng (z-[999999] trên tất cả modal và màn đen)
   const [toast, setToast] = useState<ToastNotification | null>(null);
+  const lastToastRef = useRef<{ message: string; time: number } | null>(null);
 
   const showToast = (
     message: string,
     type: 'success' | 'danger' | 'warning' | 'info' = 'success',
-    title?: string
+    title?: string,
+    duration?: number
   ) => {
+    // Chống spam: Không hiện lại cùng 1 thông báo nếu vừa hiển thị trong vòng 2.5s
+    const now = Date.now();
+    if (lastToastRef.current && lastToastRef.current.message === message && now - lastToastRef.current.time < 2500) {
+      return;
+    }
+    lastToastRef.current = { message, time: now };
+
     setToast({
-      id: Date.now(),
+      id: now,
       message,
       type,
       title,
+      duration: duration || 2500,
     });
   };
 
@@ -497,7 +507,8 @@ export default function ResourceManagementPage() {
   // Hành động Mở Modal Thêm mới
   const handleAddNew = () => {
     if (categories.length === 0) {
-      showToast('Chưa có Thư mục danh mục nào. Vui lòng tạo Thư mục trước.', 'warning', 'Chưa có Thư mục');
+      // Mở trực tiếp màn Quản lý thư mục để người dùng tạo thư mục trước, không hiện toast cảnh báo gây spam
+      setToast(null);
       setIsCategoryModalOpen(true);
       return;
     }
@@ -1514,7 +1525,10 @@ export default function ResourceManagementPage() {
       {/* MODAL QUẢN LÝ CẤU TRÚC DANH MỤC CẤP 1 & LOẠI BIỂU MẪU CẤP 2 (MỤC 8) */}
       <CategoryManagementModal
         isOpen={isCategoryModalOpen}
-        onClose={() => setIsCategoryModalOpen(false)}
+        onClose={() => {
+          setIsCategoryModalOpen(false);
+          setToast(null);
+        }}
         categories={categories}
         types={types}
         onSaveCategory={handleSaveCategory}
