@@ -1,4 +1,12 @@
 -- =====================================================================
+-- THAY ĐỔI PHASE 7 TRÌNH KÝ (Nhóm 5; issue #80; đánh dấu [P7] tại vị trí)
+-- Căn cứ: signing-backend-plan.md mục 3.2, 3.3; migration signing 0006_ho_so_goc_pham_vi_chuc_vu_muc_do.
+--   1) signing_request thêm ho_so_goc_id (FK tự tham chiếu, RESTRICT) và index: trình lại sau từ chối
+--      tạo hồ sơ mới trỏ về hồ sơ bị từ chối; hồ sơ TU_CHOI là trạng thái kết thúc.
+--   2) signing_process_step_signer thêm pham_vi_chuc_vu (NULL khi cấu hình theo tài khoản): chức vụ
+--      hiểu tương đối trong đơn vị người tạo, đơn vị cố định của cấp hoặc toàn cơ quan.
+--   3) signing_request.muc_do giữ VARCHAR(20); giá trị THUONG | KHAN | HOA_TOC kiểm ở tầng ứng dụng.
+-- =====================================================================
 -- THAY ĐỔI PHASE 6c TRÌNH KÝ (Nhóm 5; issue #79; đánh dấu [6c] tại vị trí)
 -- Căn cứ: docs/modules/05_signing_workflow/danh-gia-nghiep-vu-va-de-xuat.md mục 2 (đã chốt ở PR #78),
 --   plan-trien-khai-theo-phase.md Phase 6c; migration signing 0005_bo_kieu_ky_chi_nhan_van_ban_di.
@@ -1040,6 +1048,7 @@ CREATE TABLE signing_process_step_signer (
     buoc_quy_trinh_id BIGINT NOT NULL REFERENCES signing_process_step (id) ON DELETE CASCADE,
     nguoi_ky_id BIGINT REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     chuc_vu_id BIGINT REFERENCES accounts_position (id) ON DELETE RESTRICT,
+    pham_vi_chuc_vu VARCHAR(20), -- [P7] DON_VI_NGUOI_TAO | DON_VI_CO_DINH | TOAN_CO_QUAN; chỉ dùng khi cấu hình theo chức vụ
     vai_tro_ky VARCHAR(20) NOT NULL DEFAULT 'KY_CHINH',
     chan_ky_chinh BOOLEAN NOT NULL DEFAULT true,
     thu_tu SMALLINT NOT NULL CHECK (thu_tu >= 0),
@@ -1081,6 +1090,7 @@ CREATE TABLE signing_request (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     nguoi_cap_nhat_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    ho_so_goc_id BIGINT REFERENCES signing_request (id) ON DELETE RESTRICT, -- [P7] trình lại sau từ chối trỏ về hồ sơ gốc
     CONSTRAINT chk_signing_request_ma_bam_sha256 CHECK (ma_bam_tai_lieu IS NULL OR ma_bam_tai_lieu ~ '^[0-9a-f]{64}$')
 );
 
@@ -1090,6 +1100,7 @@ CREATE INDEX idx_signing_request_nguoi_tao ON signing_request (nguoi_tao_id);
 CREATE INDEX idx_signing_request_quy_trinh ON signing_request (quy_trinh_id);
 CREATE INDEX idx_signing_request_nguoi_cap_nhat ON signing_request (nguoi_cap_nhat_id);
 CREATE INDEX idx_signing_request_hanchot ON signing_request (han_chot); -- Issue #47 P2.12
+CREATE INDEX idx_signing_request_ho_so_goc ON signing_request (ho_so_goc_id); -- [P7]
 
 -- 9.5. Lượt trình ký (mỗi lần nộp lại tài liệu sinh 1 lượt mới)
 -- Issue #47 P1.9: Cho phép NULL ở phien_ban_van_ban; GIỮ NOT NULL cho vi_tri_luu_tep và ma_bam_tai_lieu
