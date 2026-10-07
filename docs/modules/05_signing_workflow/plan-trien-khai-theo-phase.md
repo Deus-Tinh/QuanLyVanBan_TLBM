@@ -25,7 +25,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 6c | Điều chỉnh theo đánh giá nghiệp vụ: bỏ `kieu_ky*`, xoay vòng `k_srv` khi đổi PIN, đồng bộ DDL | Duyệt `danh-gia-nghiep-vu-va-de-xuat.md`; PR DDL #91 merge trước | Đang review (#79): PR DDL #91, sau đó PR backend |
 | 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; `trinh-lai` | Văn bản đi (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) qua lớp tích hợp `signing/tich_hop/` | Lõi API xong trên máy (#80); quyền quy trình theo đơn vị chờ Nhóm 7 |
 | 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Ký/từ chối/thu hồi xong trên máy (#80); manifest ở Phase 10 |
-| 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Chờ Phase 8 |
+| 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Lõi trả lại để sửa xong trên máy (#80); ủy quyền, nhắc, leo thang ngoài MVP (#80 mục 8) |
 | 10 | Phẳng hóa PDF theo thể thức; ký số từ xa (adapter); cấp số qua hệ thống Nhóm 2 và ký số cơ quan; frontend | Phase 8; chốt hệ tọa độ vị trí ký; contract cấp số với Nhóm 2 | Chờ |
 
 ## 3. Chi tiết các phase
@@ -109,6 +109,14 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - Đồng thời: khóa dòng lượt trình; chống lặp bằng `khoa_chong_trung_thao_tac` của dòng người ký. Test PostgreSQL: ký trùng hai khóa chỉ tạo một chữ ký; ký cạnh tranh với hủy cho một kết quả nhất quán.
 - Test: `tests/test_hanh_dong_ky_phase8.py`.
 
+### Phase 9 lõi — Trả lại để sửa (xong trên máy, #80)
+- `services/yeu_cau_sua.py`: `yeu_cau_sua`, `gui_tin_nhan`, `giai_quyet`; API ở `signing-backend-plan.md` mục 7.3. Không đổi model/DDL (dùng `signing_change_thread`, `signing_change_message` đã có).
+- Trả sửa: lượt `YEU_CAU_SUA`, cấp đang ký `TAM_DUNG`, mọi thao tác ký trên lượt bị chặn; hồ sơ vẫn `CHO_KY`. Trao đổi chỉ giữa người tạo hồ sơ và người yêu cầu sửa; kiểm toán chỉ đọc.
+- Giải quyết: người tạo tải bản sửa; kiểm người ký còn hoạt động trước khi lưu tệp; tạo lượt mới (`luot_truoc`) cùng cấp và người ký của lượt cũ, mọi cấp ký lại. Nhật ký `GIAI_QUYET_YEU_CAU_SUA` ghi trước `MO_CAP_KY` của lượt mới. Hủy hồ sơ khi đang chờ sửa thì chặn trao đổi và giải quyết (thread giữ `DANG_MO` vì trạng thái thread chỉ có `DANG_MO`, `DA_GIAI_QUYET`).
+- Đồng thời: chống lặp `giai-quyet` bằng `signing_attempt.khoa_chong_trung`, kiểm lại sau khi khóa dòng hồ sơ. Test PostgreSQL: ký cạnh tranh với trả sửa không ghi chữ ký trên lượt đã dừng; trả sửa cạnh tranh với không đồng ý chỉ một bên thắng.
+- Ngoài MVP: ủy quyền, `hinh_thuc_ky`, nhắc, leo thang, báo cáo trễ hạn (giữ ở mục "Phần phụ thuộc bên ngoài").
+- Test: `tests/test_yeu_cau_sua_phase9.py`.
+
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
 - Văn bản mật đã bỏ (GVHD chốt, DDL #81); trình ký chỉ nhận `vanbandi` thường. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) là văn bản gửi đi chọn người xem và lưu log xem (Nhóm 2), không ký, không đi qua trình ký: Phase 7 từ chối ở API tạo hồ sơ khi #82 có `pham_vi`. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
 - Phase 7:
@@ -117,7 +125,7 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
   - Thêm `signing_process_step_signer.pham_vi_chuc_vu`; `gui` resolve chức vụ tương đối, nhận `chon_nguoi_ky` khi nhiều ứng viên.
   - Thêm `signing_request.ho_so_goc`; API `trinh-lai` thay `xem-xet-lai`; `TU_CHOI` là trạng thái kết thúc.
 - Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL. Thu hồi chữ ký theo điều kiện "cấp còn mở".
-- Phase 9:
+- Phase 9 (ngoài MVP #80):
   - Bảng `signing_delegation`, cột `hinh_thuc_ky`, `uy_quyen_theo`; áp ủy quyền khi mở cấp; ủy quyền khẩn cấp chỉ cấp trên trực tiếp/quản trị, người nhận thuộc danh sách hợp lệ.
   - Nhắc hạn, nhắc lặp, leo thang 48 giờ cho cấp trên trực tiếp; báo cáo trễ hạn. Cần cấu hình tác vụ định kỳ và dữ liệu cấp trên trực tiếp (Nhóm 7).
 - Phase 10:

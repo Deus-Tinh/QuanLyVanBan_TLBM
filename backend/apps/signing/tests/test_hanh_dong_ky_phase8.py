@@ -51,6 +51,26 @@ def ky_so(private, hash_hex=HASH):
     return base64.b64encode(private.sign(bytes.fromhex(hash_hex))).decode()
 
 
+def chay_song_song(*viec):
+    """Chạy các thao tác trên luồng riêng (mỗi luồng một kết nối DB); trả về lỗi của luồng thua."""
+    loi = []
+
+    def bao(fn):
+        try:
+            fn()
+        except Exception as exc:  # noqa: BLE001 — ghi nhận lỗi nghiệp vụ của luồng thua
+            loi.append(exc)
+        finally:
+            connection.close()
+
+    luong = [threading.Thread(target=bao, args=(fn,)) for fn in viec]
+    for t in luong:
+        t.start()
+    for t in luong:
+        t.join()
+    return loi
+
+
 class KyBase(TrinhKyBase):
     def setUp(self):
         super().setUp()
@@ -248,35 +268,17 @@ class DongThoiTests(TransactionTestCase):
         self.ho_so = trinh_ky_service.gui(self.ho_so, self.tao, khoa_chong_trung="g")
         self.private, self.key = khoa_hoat_dong(self.ky1, "K-DT")
 
-    def chay_song_song(self, *viec):
-        loi = []
-
-        def bao(fn):
-            try:
-                fn()
-            except Exception as exc:  # noqa: BLE001 — ghi nhận lỗi nghiệp vụ của luồng thua
-                loi.append(exc)
-            finally:
-                connection.close()
-
-        luong = [threading.Thread(target=bao, args=(fn,)) for fn in viec]
-        for t in luong:
-            t.start()
-        for t in luong:
-            t.join()
-        return loi
-
     def test_double_sign_with_different_keys_creates_one_signature(self):
         def ky(khoa):
             return lambda: hanh_dong_service.ky(self.ho_so, self.ky1, khoa_ky=self.key.pk, hash_tai_lieu=HASH,
                                                 chu_ky_so=ky_so(self.private), khoa_chong_trung=khoa)
-        loi = self.chay_song_song(ky("a"), ky("b"))
+        loi = chay_song_song(ky("a"), ky("b"))
         self.assertEqual(SigningSignature.objects.count(), 1)
         self.assertEqual(len(loi), 1)
         self.assertEqual(SigningRequest.objects.get(pk=self.ho_so.pk).trang_thai, "HOAN_THANH")
 
     def test_sign_racing_cancel_has_single_consistent_outcome(self):
-        loi = self.chay_song_song(
+        loi = chay_song_song(
             lambda: hanh_dong_service.ky(self.ho_so, self.ky1, khoa_ky=self.key.pk, hash_tai_lieu=HASH,
                                          chu_ky_so=ky_so(self.private), khoa_chong_trung="ky"),
             lambda: trinh_ky_service.huy(self.ho_so, self.tao, khoa_chong_trung="huy"),

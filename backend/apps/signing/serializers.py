@@ -3,8 +3,9 @@ from rest_framework import serializers
 
 from . import enums
 from .models import (
-    SigningAttempt, SigningAuditLog, SigningKey, SigningKeyUnlock, SigningProcess, SigningProcessStep,
-    SigningProcessStepSigner, SigningRequest, SigningRequestStep, SigningRequestStepSigner,
+    SigningAttempt, SigningAuditLog, SigningChangeMessage, SigningChangeThread, SigningKey, SigningKeyUnlock,
+    SigningProcess, SigningProcessStep, SigningProcessStepSigner, SigningRequest, SigningRequestStep,
+    SigningRequestStepSigner,
 )
 
 
@@ -185,14 +186,28 @@ class CapLuotSerializer(serializers.ModelSerializer):
                   "thoi_diem_hoan_thanh", "nguoi_ky"]
 
 
+class YeuCauSuaThreadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SigningChangeThread
+        fields = ["id", "nguoi_yeu_cau", "tieu_de", "ly_do", "trang_thai", "created_at", "thoi_diem_giai_quyet"]
+
+
+class TinNhanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SigningChangeMessage
+        fields = ["id", "nguoi_viet", "noi_dung", "created_at"]
+        read_only_fields = ["id", "nguoi_viet", "created_at"]
+
+
 class LuotTrinhSerializer(serializers.ModelSerializer):
     cap_ky = CapLuotSerializer(source="cap_ky_set", many=True, read_only=True)
+    yeu_cau_sua = YeuCauSuaThreadSerializer(source="yeu_cau_sua_set", many=True, read_only=True)
 
     class Meta:
         model = SigningAttempt
         fields = ["id", "so_luot", "luot_truoc", "phien_ban_van_ban", "ma_bam_tai_lieu", "trang_thai", "ly_do",
                   "thoi_diem_gui", "thoi_diem_hoan_thanh", "thoi_diem_tu_choi", "thoi_diem_huy",
-                  "ma_bam_tep_hoan_tat", "cap_ky"]
+                  "ma_bam_tep_hoan_tat", "cap_ky", "yeu_cau_sua"]
 
 
 class NhatKyTrinhKySerializer(serializers.ModelSerializer):
@@ -254,4 +269,17 @@ class KySerializer(serializers.Serializer):
 
 class TuChoiSerializer(serializers.Serializer):
     ly_do_tu_choi = serializers.CharField()
+
+
+class YeuCauSuaSerializer(serializers.Serializer):
+    tieu_de = serializers.CharField(max_length=255)
+    ly_do = serializers.CharField()
+
+
+class TinNhanInputSerializer(serializers.Serializer):
+    noi_dung = serializers.CharField()
+
+
+class GiaiQuyetSerializer(serializers.Serializer):
+    tep = serializers.FileField()
 

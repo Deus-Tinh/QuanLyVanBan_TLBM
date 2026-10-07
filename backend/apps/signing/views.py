@@ -11,19 +11,23 @@ from . import enums
 from .errors import SigningAPIView, SigningError
 from .models import SigningKey, SigningProcess, SigningRequest
 from .permissions import (
-    GUI_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_TRINH_KY, co_quyen, yeu_cau_quyen,
+    GUI_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
+    yeu_cau_quyen,
 )
 from .serializers import (
-    DatPinSerializer, DoiPinSerializer, GuiTrinhKySerializer, HuyTrinhKySerializer, KhoaDangKySerializer,
+    DatPinSerializer, DoiPinSerializer, GiaiQuyetSerializer, GuiTrinhKySerializer, HuyTrinhKySerializer,
+    KhoaDangKySerializer,
     KhoaSerializer, KySerializer, MoKhoaKySerializer, QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer,
     TrinhKyChiTietSerializer, TrinhKySerializer, TrinhKySuaSerializer, TrinhKyTaoSerializer, TrinhLaiSerializer,
-    TuChoiSerializer, XacMinhSoHuuSerializer, XoayVongSerializer,
+    TinNhanInputSerializer, TinNhanSerializer, TuChoiSerializer, XacMinhSoHuuSerializer, XoayVongSerializer,
+    YeuCauSuaSerializer, YeuCauSuaThreadSerializer,
 )
 from .services import hanh_dong_ky as hanh_dong_service
 from .services import keys as key_service
 from .services import pin as pin_service
 from .services import process as process_service
 from .services import trinh_ky as trinh_ky_service
+from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
 
 
@@ -337,4 +341,65 @@ class HanhDongKyView(SigningAPIView):
                                                 ly_do_tu_choi=data.validated_data["ly_do_tu_choi"])
         else:  # thu-hoi
             ket_qua = hanh_dong_service.thu_hoi(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip)
+        return Response(TrinhKyChiTietSerializer(ket_qua).data)
+
+
+# ── Trả lại để sửa (lõi Phase 9, #80; plan mục 3.3 "Nhánh 2") ───────────────
+
+
+class YeuCauSuaView(SigningAPIView):
+    """POST /trinh-ky/<pk>/yeu-cau-sua/: người ký đang được mở trả lại để sửa (sign_trinhky)."""
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        yeu_cau_quyen(request.user, KY_TRINH_KY)
+        khoa = _khoa_chong_trung(request)
+        data = YeuCauSuaSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        ket_qua = yeu_cau_sua_service.yeu_cau_sua(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=_ip(request),
+                                                  **data.validated_data)
+        return Response(TrinhKyChiTietSerializer(ket_qua).data)
+
+
+class TraoDoiView(SigningAPIView):
+    """
+    GET /trinh-ky/<pk>/trao-doi/: thread yêu cầu sửa gần nhất của lượt hiện hành và tin nhắn.
+    POST: gửi tin nhắn vào thread đang mở. Người tạo hồ sơ và người yêu cầu sửa trao đổi;
+    kiểm toán (view_signing_audit) chỉ đọc.
+    """
+
+    def get(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        luot = trinh_ky_service.luot_hien_hanh(ho_so)
+        thread = luot.yeu_cau_sua_set.order_by("-id").first() if luot else None
+        if thread is None:
+            return Response({"thread": None, "tin_nhan": []})
+        if not (yeu_cau_sua_service.duoc_trao_doi(thread, request.user) or co_quyen(request.user, XEM_NHAT_KY)):
+            raise SigningError(code="khong_co_quyen", detail="Chỉ người tạo hồ sơ và người yêu cầu sửa xem trao đổi.",
+                               status_code=status.HTTP_403_FORBIDDEN)
+        tin_nhan = thread.tin_nhan_set.order_by("id")
+        return Response({"thread": YeuCauSuaThreadSerializer(thread).data,
+                         "tin_nhan": TinNhanSerializer(tin_nhan, many=True).data})
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        data = TinNhanInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        tin = yeu_cau_sua_service.gui_tin_nhan(ho_so, request.user, noi_dung=data.validated_data["noi_dung"])
+        return Response(TinNhanSerializer(tin).data, status=status.HTTP_201_CREATED)
+
+
+class GiaiQuyetView(SigningAPIView):
+    """POST /trinh-ky/<pk>/giai-quyet/ (multipart `tep`): người tạo tải bản sửa, tạo lượt trình mới."""
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        yeu_cau_quyen(request.user, GUI_TRINH_KY)
+        khoa = _khoa_chong_trung(request)
+        data = GiaiQuyetSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        ket_qua = yeu_cau_sua_service.giai_quyet(ho_so, request.user, tep=data.validated_data["tep"],
+                                                 khoa_chong_trung=khoa, dia_chi_ip=_ip(request))
         return Response(TrinhKyChiTietSerializer(ket_qua).data)

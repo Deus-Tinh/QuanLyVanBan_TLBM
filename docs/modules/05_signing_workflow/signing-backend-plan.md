@@ -644,7 +644,8 @@ TU_CHOI, HOAN_THANH, HUY: kết thúc (trình lại sau TU_CHOI = tạo yêu c�
 Lượt trình (signing_attempt.trang_thai):
 NHAP        -> CHO_KY      (gui)
 CHO_KY      -> YEU_CAU_SUA | TU_CHOI | HOAN_THANH | HUY
-YEU_CAU_SUA -> (kết thúc; thread DA_GIAI_QUYET thì tạo lượt trình mới)
+YEU_CAU_SUA -> HUY         (hủy hồ sơ khi đang chờ sửa)
+YEU_CAU_SUA: giữ nguyên làm lịch sử khi thread DA_GIAI_QUYET; tạo lượt trình mới (luot_truoc trỏ về)
 TU_CHOI     -> (kết thúc)
 ```
 
@@ -699,13 +700,15 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - Đồng thời: mọi hành động khóa dòng lượt trình trước khi xử lý; thao tác lặp cùng khóa trả kết quả lần trước.
 - Ảnh chữ ký cá nhân chưa có nguồn (#67 mục 2), `vi_tri_anh_chu_ky` để trống ở MVP.
 
-Dự kiến cho phần còn lại:
-- `POST /signing/attempts/{id}/yeu-cau-sua`: `tieu_de`, `ly_do` bắt buộc; mở thread.
-- `POST /signing/attempts/{id}/uy-quyen`: ủy quyền khẩn cấp; `nguoi_ky` mới, `ly_do_uy_quyen`, `hinh_thuc_ky` bắt buộc; chỉ cấp trên trực tiếp hoặc quản trị.
-- `POST /signing/attempts/{id}/thu-hoi`: khi cấp của người ký còn mở, trước khi hoàn thành.
+Trả lại để sửa, đã triển khai ở lõi Phase 9 (#80):
+- `POST /signing/trinh-ky/{id}/yeu-cau-sua/`: "Trả lại để sửa", `tieu_de` và `ly_do` bắt buộc; chỉ người ký đang được mở (quyền `sign_trinhky`, `Idempotency-Key`). Người ký và lượt `YEU_CAU_SUA`, cấp đang ký `TAM_DUNG`, mở thread; hồ sơ vẫn `CHO_KY` nhưng không ai ký tiếp trên lượt này.
+- `GET /signing/trinh-ky/{id}/trao-doi/`: thread gần nhất của lượt hiện hành và tin nhắn; người tạo hồ sơ, người yêu cầu sửa, hoặc `view_signing_audit` (chỉ đọc).
+- `POST /signing/trinh-ky/{id}/trao-doi/`: `noi_dung`; chỉ người tạo hồ sơ và người yêu cầu sửa, khi thread đang mở và hồ sơ còn `CHO_KY`.
+- `POST /signing/trinh-ky/{id}/giai-quyet/` (multipart `tep`): người tạo hồ sơ (quyền `send_trinhky`, `Idempotency-Key`) tải bản sửa; server băm, tăng `phien_ban_van_ban`, thread `DA_GIAI_QUYET`, tạo lượt mới (`luot_truoc`) cùng cấp và người ký của lượt cũ, mở cấp đầu; toàn bộ các cấp ký lại. Chữ ký lượt cũ giữ làm lịch sử, không dùng cho tệp mới (mã băm khác). Có người ký không còn hoạt động thì lỗi `khong_xac_dinh_duoc_nguoi_ky`, chưa lưu tệp.
+
+Ngoài MVP (#80 mục 8), giữ trong roadmap:
+- `POST /signing/trinh-ky/{id}/uy-quyen/`: ủy quyền khẩn cấp; `nguoi_ky` mới, `ly_do_uy_quyen`, `hinh_thuc_ky` bắt buộc; chỉ cấp trên trực tiếp hoặc quản trị.
 - `GET|POST /signing/uy-quyen/`, `POST /signing/uy-quyen/{id}/huy/`: ủy quyền theo thời gian.
-- `GET|POST /signing/change-threads/{id}/messages`: trao đổi trong thread.
-- `POST /signing/change-threads/{id}/giai-quyet`: tải bản mới, đóng thread, tạo lượt trình mới.
 
 ### 7.4. Khóa, nhật ký, bằng chứng tổng hợp
 
@@ -726,7 +729,7 @@ Dự kiến cho phần còn lại:
 ### 7.5. Quy tắc chung
 
 - Lỗi validation trả theo field, kèm mã lỗi nghiệp vụ ổn định.
-- Hành động chuyển trạng thái của yêu cầu/lượt trình (`gui`, `ky`, `tu-choi`, `yeu-cau-sua`, `uy-quyen`, `thu-hoi`, `huy`, `trinh-lai`) bắt buộc header `Idempotency-Key`, áp dụng từ Phase 8. Endpoint quy trình và khóa (Phase 5) chưa áp dụng.
+- Hành động chuyển trạng thái của yêu cầu/lượt trình (`gui`, `ky`, `tu-choi`, `yeu-cau-sua`, `giai-quyet`, `uy-quyen`, `thu-hoi`, `huy`, `trinh-lai`) bắt buộc header `Idempotency-Key`, áp dụng từ Phase 7–9. Endpoint quy trình và khóa (Phase 5) chưa áp dụng.
 - Không trả dữ liệu nhạy cảm ngoài contract; không log chữ ký/khóa ở dạng không kiểm soát.
 - Phân trang và lọc giới hạn theo quyền sở hữu, phân công, phạm vi ở server, không chỉ ẩn ở UI.
 - Ảnh chữ ký cá nhân đọc qua contract của Nhóm 7; module này không định nghĩa API hồ sơ.
