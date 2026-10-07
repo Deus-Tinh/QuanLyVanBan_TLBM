@@ -13,7 +13,7 @@ from . import crypto
 from .errors import ConflictError, SigningAPIView, SigningError
 from .models import SigningKey, SigningRequest, SigningSignature
 from .permissions import (
-    GUI_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
+    GUI_TRINH_KY, HUY_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
     yeu_cau_quyen,
 )
 from .serializers import (
@@ -34,6 +34,7 @@ from .services import trinh_ky as trinh_ky_service
 from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
 from .tich_hop import to_chuc
+from .tich_hop.van_ban import tim_van_ban_di
 
 
 @api_view(["GET"])
@@ -501,3 +502,25 @@ class NguoiDungView(SigningAPIView):
              "chuc_vu": to_chuc.ten_chuc_vu(u) or None, "don_vi_id": to_chuc.don_vi_cua(u)}
             for u in queryset.order_by("pk")[: self.TOI_DA]
         ])
+
+
+class ToiView(SigningAPIView):
+    """GET /toi/: người dùng hiện tại và quyền Trình ký để UI ẩn/hiện thao tác (server vẫn kiểm từng thao tác)."""
+
+    def get(self, request):
+        u = request.user
+        don_vi = to_chuc.don_vi_cua(u)
+        return Response({
+            "id": u.pk, "ten": to_chuc.ten_hien_thi(u), "don_vi_id": don_vi,
+            "quyen": {ma: co_quyen(u, ma) for ma in (XEM_TRINH_KY, TAO_TRINH_KY, GUI_TRINH_KY, KY_TRINH_KY,
+                                                     HUY_TRINH_KY, XEM_NHAT_KY, QUAN_LY_QUY_TRINH)},
+            "la_quan_tri": to_chuc.la_quan_tri(u), "la_lanh_dao_don_vi": to_chuc.la_lanh_dao_don_vi(u, don_vi),
+        })
+
+
+class VanBanDiView(SigningAPIView):
+    """GET /van-ban-di/?q=: văn bản đi (thường, xem được) để chọn khi tạo hồ sơ (add_trinhky)."""
+
+    def get(self, request):
+        yeu_cau_quyen(request.user, TAO_TRINH_KY)
+        return Response(tim_van_ban_di(request.user, request.query_params.get("q", "").strip()[:100]))

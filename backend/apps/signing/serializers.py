@@ -8,6 +8,7 @@ from .models import (
     SigningRequestStepSigner,
 )
 from .tich_hop import to_chuc
+from .tich_hop.van_ban import mo_ta_van_ban
 
 
 # ── Đầu vào: quy trình ───────────────────────────────────────────────────────
@@ -273,15 +274,25 @@ class NhatKyTrinhKySerializer(serializers.ModelSerializer):
 class TrinhKySerializer(serializers.ModelSerializer):
     ma_quy_trinh = serializers.CharField(source="quy_trinh.ma_quy_trinh", read_only=True)
     ten_quy_trinh = serializers.CharField(source="quy_trinh.ten_quy_trinh", read_only=True)
+    ten_nguoi_tao = serializers.SerializerMethodField()
+    van_ban = serializers.SerializerMethodField()
     dang_cho = serializers.SerializerMethodField()
 
     class Meta:
         model = SigningRequest
-        fields = ["id", "document_type", "van_ban_id", "quy_trinh", "ma_quy_trinh", "ten_quy_trinh",
+        fields = ["id", "document_type", "van_ban_id", "van_ban", "quy_trinh", "ma_quy_trinh", "ten_quy_trinh",
                   "phien_ban_quy_trinh", "muc_do", "trang_thai", "han_chot", "ngay_gui", "ngay_hoan_thanh",
                   "ngay_tu_choi", "ly_do_tu_choi", "ngay_huy", "ly_do_huy", "ghi_chu", "ho_so_goc",
-                  "phien_ban_van_ban", "ma_bam_tai_lieu", "create_by", "created_at", "update_at", "dang_cho"]
+                  "phien_ban_van_ban", "ma_bam_tai_lieu", "create_by", "ten_nguoi_tao", "created_at", "update_at",
+                  "dang_cho"]
         read_only_fields = fields
+
+    def get_ten_nguoi_tao(self, obj):
+        return to_chuc.ten_hien_thi(obj.create_by)
+
+    def get_van_ban(self, obj):
+        """Số hiệu, trích yếu để hiển thị (đọc qua lớp tích hợp Nhóm 2; rỗng khi chưa đọc được)."""
+        return mo_ta_van_ban(obj.document_type, obj.van_ban_id)
 
     def get_dang_cho(self, obj):
         """Người ký đang được mở và chờ ký trên lượt trình hiện hành."""

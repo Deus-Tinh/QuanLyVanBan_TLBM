@@ -90,9 +90,36 @@ def mo_ta_van_ban(document_type, van_ban_id):
     try:
         with transaction.atomic():  # savepoint: lỗi đọc không làm hỏng transaction hoàn tất duyệt
             van_ban = _doc_van_ban_di(van_ban_id)
-    except (SigningError, DatabaseError):
-        logger.warning("Không đọc được mô tả văn bản %s #%s cho bằng chứng", document_type, van_ban_id)
+    except SigningError:  # chưa có bảng văn bản (Nhóm 2 chưa triển khai): không có mô tả, không phải lỗi
+        return {}
+    except DatabaseError:
+        logger.warning("Không đọc được mô tả văn bản %s #%s", document_type, van_ban_id)
         return {}
     if van_ban is None:
         return {}
     return {"so_hieu": van_ban.so_hieu, "trich_yeu": van_ban.trich_yeu}
+
+
+TOI_DA_TIM = 20
+
+
+def tim_van_ban_di(nguoi_dung, tu_khoa=""):
+    """
+    Văn bản đi người dùng được chọn khi tạo hồ sơ (#80 mục E): văn bản thường (không HAN_CHE), người dùng xem
+    được; tìm theo số hiệu hoặc trích yếu. Chưa có bảng văn bản thì trả rỗng.
+    Cài đặt tạm đọc bảng DDL; thay bằng hàm "văn bản xem được" của Nhóm 2 (#68 mục C5).
+    """
+    if BANG_VAN_BAN_DI not in connection.introspection.table_names():
+        return []
+    sql = f"SELECT id, so_hieu, trich_yeu FROM {BANG_VAN_BAN_DI} WHERE pham_vi <> %s"
+    tham_so = [PHAM_VI_HAN_CHE]
+    if not co_quyen(nguoi_dung, "view_vanbandi"):
+        sql += " AND nguoi_tao = %s"
+        tham_so.append(nguoi_dung.pk)
+    if tu_khoa:
+        sql += " AND (UPPER(so_hieu) LIKE UPPER(%s) OR UPPER(trich_yeu) LIKE UPPER(%s))"
+        tham_so += [f"%{tu_khoa}%", f"%{tu_khoa}%"]
+    sql += f" ORDER BY id DESC LIMIT {TOI_DA_TIM}"
+    with connection.cursor() as cursor:
+        cursor.execute(sql, tham_so)
+        return [{"id": r[0], "so_hieu": r[1] or "", "trich_yeu": r[2] or ""} for r in cursor.fetchall()]

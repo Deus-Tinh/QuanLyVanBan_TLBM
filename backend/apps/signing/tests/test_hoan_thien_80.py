@@ -237,3 +237,16 @@ class GiaiQuyetViTriTests(KyBase):
         self.assertEqual(r.status_code, 200, r.data)
         moi = SigningRequestStepSigner.objects.get(buoc_ky__luot_trinh__so_luot=2, nguoi_ky=self.ky1)
         self.assertEqual((moi.trang_ky, float(moi.toa_do_x)), (1, 50.0))
+
+
+class HoTroGiaoDienTests(TrinhKyBase):
+    def test_current_user_permissions_and_document_lookup(self):
+        r = self.c.get("/api/v1/signing/toi/")
+        self.assertEqual((r.data["id"], r.data["ten"]), (self.tao.pk, "chuyen_vien"))
+        self.assertEqual({k for k, v in r.data["quyen"].items() if v}, {"add_trinhky", "send_trinhky"})
+        self.assertFalse(r.data["la_quan_tri"])
+        self.assertEqual(self.c.get("/api/v1/signing/van-ban-di/", {"q": "QD"}).status_code, 200)
+        self.assertEqual(self.client_cua(self.la).get("/api/v1/signing/van-ban-di/").status_code, 403)
+        d = self.c.get(f"{BASE}/{self.tao_nhap().data['id']}/").data
+        self.assertEqual((d["ten_nguoi_tao"], d["van_ban"]),
+                         ("chuyen_vien", {"so_hieu": "10/QD", "trich_yeu": "Mua sắm"}))
