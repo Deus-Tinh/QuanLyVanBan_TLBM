@@ -41,40 +41,40 @@ class DashboardAPITests(TestCase):
             birthday=date(1990, self.tomorrow.month, self.tomorrow.day),
         )
 
-        # 3. Tạo văn bản thường và văn bản mật
+        # 3. Tạo văn bản thường (NOI_BO) và văn bản hạn chế (HAN_CHE) theo chuẩn DDL v0
         self.doc_normal = IncomingDocument.objects.create(
-            code="VB-THUONG-01",
-            title="Văn bản thông thường công khai",
-            issued_date=self.today,
-            sender="Sở Giáo Dục",
-            is_confidential=False,
+            so_hieu="VB-THUONG-01",
+            trich_yeu="Văn bản thông thường công khai",
+            ngay_den=self.today,
+            noi_ban_hanh="Sở Giáo Dục",
+            pham_vi=IncomingDocument.PhamVi.NOI_BO,
         )
         self.doc_secret = IncomingDocument.objects.create(
-            code="VB-MAT-01",
-            title="Văn bản tuyệt mật nội bộ",
-            issued_date=self.today,
-            sender="Ban Cơ Yếu",
-            is_confidential=True,
+            so_hieu="VB-MAT-01",
+            trich_yeu="Văn bản hạn chế nội bộ",
+            ngay_den=self.today,
+            noi_ban_hanh="Ban Cơ Yếu",
+            pham_vi=IncomingDocument.PhamVi.HAN_CHE,
         )
         self.out_normal = OutgoingDocument.objects.create(
-            code="VBD-THUONG-01",
-            title="Văn bản đi công khai",
-            issued_date=self.today,
-            recipient="UBND TP.HCM",
-            is_confidential=False,
+            so_hieu="VBD-THUONG-01",
+            trich_yeu="Văn bản đi công khai",
+            ngay_ban_hanh=self.today,
+            noi_ban_hanh="UBND TP.HCM",
+            pham_vi=OutgoingDocument.PhamVi.NOI_BO,
         )
         self.out_secret = OutgoingDocument.objects.create(
-            code="VBD-MAT-01",
-            title="Văn bản đi mật",
-            issued_date=self.today,
-            recipient="Thủ trưởng đơn vị",
-            is_confidential=True,
+            so_hieu="VBD-MAT-01",
+            trich_yeu="Văn bản đi hạn chế",
+            ngay_ban_hanh=self.today,
+            noi_ban_hanh="Thủ trưởng đơn vị",
+            pham_vi=OutgoingDocument.PhamVi.HAN_CHE,
         )
 
-        # 4. Phòng họp
+        # 4. Phòng họp theo chuẩn DDL meetings_meetingroom / booking
         MeetingRoom.objects.create(
-            room_name="Phòng họp A1 - Khu A",
-            meeting_title="Họp giao ban định kỳ",
+            name="Phòng họp A1 - Khu A",
+            title="Họp giao ban định kỳ",
             date=self.today,
             start_time=time(8, 30),
             end_time=time(11, 30),

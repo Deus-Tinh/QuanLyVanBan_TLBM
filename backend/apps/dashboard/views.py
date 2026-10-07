@@ -63,18 +63,18 @@ def overview_view(request):
     is_admin = user.is_superuser or (profile and profile.role == "admin")
 
     current_year = today.year
-    incoming_qs = IncomingDocument.objects.filter(issued_date__year=current_year)
-    outgoing_qs = OutgoingDocument.objects.filter(issued_date__year=current_year)
+    incoming_qs = IncomingDocument.objects.filter(ngay_den__year=current_year)
+    outgoing_qs = OutgoingDocument.objects.filter(ngay_ban_hanh__year=current_year)
 
     if not is_admin:
-        # Cán bộ thường không được phép xem hoặc thống kê văn bản mật
-        incoming_qs = incoming_qs.filter(is_confidential=False)
-        outgoing_qs = outgoing_qs.filter(is_confidential=False)
+        # Cán bộ thường không được phép xem hoặc thống kê văn bản phạm vi hạn chế
+        incoming_qs = incoming_qs.filter(pham_vi=IncomingDocument.PhamVi.NOI_BO)
+        outgoing_qs = outgoing_qs.filter(pham_vi=OutgoingDocument.PhamVi.NOI_BO)
         confidential_total = 0
     else:
         confidential_total = (
-            incoming_qs.filter(is_confidential=True).count()
-            + outgoing_qs.filter(is_confidential=True).count()
+            incoming_qs.filter(pham_vi=IncomingDocument.PhamVi.HAN_CHE).count()
+            + outgoing_qs.filter(pham_vi=OutgoingDocument.PhamVi.HAN_CHE).count()
         )
 
     incoming_total = incoming_qs.count()
@@ -98,15 +98,20 @@ def overview_view(request):
     # ── 2. Top 5 văn bản đến mới nhất ──────────────────────────────────────
     recent_incoming_qs = IncomingDocument.objects.all()
     if not is_admin:
-        recent_incoming_qs = recent_incoming_qs.filter(is_confidential=False)
+        recent_incoming_qs = recent_incoming_qs.filter(pham_vi=IncomingDocument.PhamVi.NOI_BO)
 
     recent_incoming = [
         {
             "id": doc.id,
-            "code": doc.code,
-            "title": doc.title,
-            "date": doc.issued_date.strftime("%d/%m/%Y"),
-            "sender": doc.sender,
+            "code": doc.so_hieu,
+            "so_hieu": doc.so_hieu,
+            "title": doc.trich_yeu,
+            "trich_yeu": doc.trich_yeu,
+            "date": doc.ngay_den.strftime("%d/%m/%Y"),
+            "ngay_den": doc.ngay_den.strftime("%d/%m/%Y"),
+            "sender": doc.noi_ban_hanh,
+            "noi_ban_hanh": doc.noi_ban_hanh,
+            "pham_vi": doc.pham_vi,
         }
         for doc in recent_incoming_qs[:5]
     ]
@@ -114,15 +119,20 @@ def overview_view(request):
     # ── 3. Top 5 văn bản đi mới nhất ───────────────────────────────────────
     recent_outgoing_qs = OutgoingDocument.objects.all()
     if not is_admin:
-        recent_outgoing_qs = recent_outgoing_qs.filter(is_confidential=False)
+        recent_outgoing_qs = recent_outgoing_qs.filter(pham_vi=OutgoingDocument.PhamVi.NOI_BO)
 
     recent_outgoing = [
         {
             "id": doc.id,
-            "code": doc.code,
-            "title": doc.title,
-            "date": doc.issued_date.strftime("%d/%m/%Y"),
-            "recipient": doc.recipient,
+            "code": doc.so_hieu,
+            "so_hieu": doc.so_hieu,
+            "title": doc.trich_yeu,
+            "trich_yeu": doc.trich_yeu,
+            "date": doc.ngay_ban_hanh.strftime("%d/%m/%Y"),
+            "ngay_ban_hanh": doc.ngay_ban_hanh.strftime("%d/%m/%Y"),
+            "recipient": doc.noi_ban_hanh,
+            "noi_ban_hanh": doc.noi_ban_hanh,
+            "pham_vi": doc.pham_vi,
         }
         for doc in recent_outgoing_qs[:5]
     ]
@@ -131,10 +141,10 @@ def overview_view(request):
     today_meetings = [
         {
             "id": f"room-{m.id}",
-            "room_name": m.room_name,
-            "roomName": m.room_name,
-            "meeting_title": m.meeting_title,
-            "topic": m.meeting_title,
+            "room_name": m.name,
+            "roomName": m.name,
+            "meeting_title": m.title,
+            "topic": m.title,
             "start_time": m.start_time.strftime("%H:%M"),
             "end_time": m.end_time.strftime("%H:%M"),
             "time": f"{m.start_time.strftime('%H:%M')} - {m.end_time.strftime('%H:%M')}",
