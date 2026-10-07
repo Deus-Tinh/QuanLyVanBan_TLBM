@@ -994,29 +994,62 @@ export default function ResourceManagementPage() {
     return types.filter((t) => t.dm_tai_lieu === Number(selectedCategory));
   }, [types, selectedCategory]);
 
-  // Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột (Mouse Wheel) thay cho 2 nút mũi tên
+  // Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột (Mouse Wheel), cách ly hoàn toàn không làm trôi trang
   useEffect(() => {
     const attachWheelScroll = (el: HTMLDivElement | null) => {
       if (!el) return undefined;
-      const onWheel = (e: WheelEvent) => {
-        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-          const maxScrollLeft = el.scrollWidth - el.clientWidth;
-          if (maxScrollLeft > 0) {
-            const canScrollLeft = el.scrollLeft > 0;
-            const canScrollRight = el.scrollLeft < maxScrollLeft - 1;
-            const isScrollingLeft = e.deltaY < 0;
-            const isScrollingRight = e.deltaY > 0;
 
-            if ((isScrollingLeft && canScrollLeft) || (isScrollingRight && canScrollRight)) {
-              e.preventDefault();
-              el.scrollLeft += e.deltaY;
-            }
-          }
+      let isAnimating = false;
+      let targetScrollLeft = el.scrollLeft;
+      let animationFrameId: number | null = null;
+
+      const smoothScroll = () => {
+        const maxScrollLeft = el.scrollWidth - el.clientWidth;
+        targetScrollLeft = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+        const diff = targetScrollLeft - el.scrollLeft;
+
+        if (Math.abs(diff) > 0.5) {
+          el.scrollLeft += diff * 0.16;
+          animationFrameId = requestAnimationFrame(smoothScroll);
+        } else {
+          el.scrollLeft = targetScrollLeft;
+          isAnimating = false;
+          animationFrameId = null;
         }
       };
+
+      const onWheel = (e: WheelEvent) => {
+        // Luôn chặn cuộn trang dọc khi trỏ chuột trên thanh này (cách ly hoàn toàn 2 bên và độc lập với trang)
+        e.preventDefault();
+        e.stopPropagation();
+
+        const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+        if (delta === 0) return;
+
+        const maxScrollLeft = el.scrollWidth - el.clientWidth;
+        if (maxScrollLeft <= 0) return;
+
+        // Đồng bộ vị trí xuất phát nếu trước đó animation đã dừng
+        if (!isAnimating) {
+          targetScrollLeft = el.scrollLeft;
+        }
+
+        // Tích lũy bước trượt mượt mà (hệ số 1.15 giúp lướt nhạy và êm)
+        targetScrollLeft = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft + delta * 1.15));
+
+        if (!isAnimating) {
+          isAnimating = true;
+          animationFrameId = requestAnimationFrame(smoothScroll);
+        }
+      };
+
       el.addEventListener('wheel', onWheel, { passive: false });
+
       return () => {
         el.removeEventListener('wheel', onWheel);
+        if (animationFrameId !== null) {
+          cancelAnimationFrame(animationFrameId);
+        }
       };
     };
 
@@ -1504,16 +1537,11 @@ export default function ResourceManagementPage() {
             })()}
           </div>
 
-          {/* Vùng danh mục cuộn ngang (Hỗ trợ con lăn chuột di chuyển qua lại) */}
+          {/* Vùng danh mục cuộn ngang (Hỗ trợ con lăn chuột mượt mà, cách ly hoàn toàn) */}
           <div
             ref={tabBarRef}
-            onWheel={(e) => {
-              if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                e.currentTarget.scrollLeft += e.deltaY;
-              }
-            }}
             className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1 min-w-0"
-            style={{ scrollbarWidth: 'none' }}
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
           >
             {sortedCategories.map((cat) => {
               const isSelected = selectedCategory === String(cat.id);
@@ -1670,16 +1698,11 @@ export default function ResourceManagementPage() {
               </span>
             </div>
 
-            {/* Vùng chips loại tài liệu cuộn ngang (Hỗ trợ con lăn chuột di chuyển qua lại) */}
+            {/* Vùng chips loại tài liệu cuộn ngang (Hỗ trợ con lăn chuột mượt mà, cách ly hoàn toàn) */}
             <div
               ref={typeBarRef}
-              onWheel={(e) => {
-                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                  e.currentTarget.scrollLeft += e.deltaY;
-                }
-              }}
               className="flex items-center gap-1.5 px-3 overflow-x-auto scrollbar-none flex-1 min-w-0"
-              style={{ scrollbarWidth: 'none' }}
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
             >
               {/* Chip "Tất cả" loại tài liệu (chuyển sang bên này cùng hàng với các loại) */}
               <button
