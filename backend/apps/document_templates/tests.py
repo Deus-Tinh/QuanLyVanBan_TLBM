@@ -58,12 +58,17 @@ class DocumentTemplatesModelAndAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-        # Tạo người dùng
+        extra_user = {}
+        if hasattr(User, 'ho_ten'):
+            extra_user['ho_ten'] = 'Nguyen Chi Tin'
+        else:
+            extra_user['first_name'] = 'Chi Tin'
+            extra_user['last_name'] = 'Nguyen'
+
         self.user = User.objects.create_user(
             username='chitin',
             password='password123',
-            first_name='Chi Tin',
-            last_name='Nguyen'
+            **extra_user
         )
         self.admin = User.objects.create_superuser(
             username='admin',

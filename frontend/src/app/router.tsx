@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
@@ -8,8 +8,13 @@ import AiAssistantPage from '@pages/ai/AiAssistantPage';
 import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
+import OrganizationsPage from '@pages/organizations/OrganizationsPage';
+import EmployeesPage from '@pages/employees/EmployeesPage';
+import PositionsPage from '@pages/positions/PositionsPage';
+import RolesPage from '@pages/roles/RolesPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
 import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
+import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -86,13 +91,13 @@ export default function AppRouter({
         <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
         <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
         <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
-        <Route path="/birthdays" element={<SyllabusPreview activePage="birthdays" />} />
+        <Route path="/birthdays" element={<BirthdayPage />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
-        <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
-        <Route path="/employees" element={<SyllabusPreview activePage="employees" />} />
-        <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
-        <Route path="/roles" element={<SyllabusPreview activePage="roles" />} />
+        <Route path="/organizations" element={<OrganizationsPage />} />
+        <Route path="/employees" element={<EmployeesPage />} />
+        <Route path="/positions" element={<PositionsPage />} />
+        <Route path="/roles" element={<RolesPage />} />
 
         {/* Tiện ích Cá nhân & Trợ lý AI (Nhóm 1 phụ trách) */}
         <Route path="/ai-assistant" element={<AiAssistantPage />} />

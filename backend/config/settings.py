@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Tự động nạp file cấu hình .env (ở thư mục backend hoặc thư mục gốc)
+# Tải biến môi trường từ .env
 load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR.parent / ".env")
 
@@ -58,7 +58,15 @@ INSTALLED_APPS = [
     "dashboard",
     "birthdays",
     "document_templates",
+    "organizations",
+    "authorization",
 ]
+
+# Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo SQL_Fix4: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -100,16 +108,28 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-        "NAME": os.getenv("DB_NAME", "quanlyvanban_db"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "102107"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+TESTING = "test" in sys.argv
+
+DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
+
+if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "qlvb_db"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
