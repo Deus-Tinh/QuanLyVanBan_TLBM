@@ -7,8 +7,8 @@
 --   3) documents_vanbanden, documents_vanbandi thêm cột pham_vi ('NOI_BO' | 'HAN_CHE'), mặc định 'NOI_BO';
 --      CHECK văn bản HAN_CHE không gửi mail toàn hệ thống (chuyển từ CHECK B2 của bảng mật).
 --   4) Bỏ 4 quyền view/add/change/delete_vanbanmat và các lượt phân quyền tương ứng.
---   5) Trợ lý AI (role qlvb_readonly) chỉ đọc văn bản qua view ai_* đã loại văn bản HAN_CHE,
---      không còn quyền SELECT trên bảng văn bản gốc.
+--   5) Trợ lý AI (role qlvb_readonly) chỉ đọc metadata qua view ai_*; view văn bản loại HAN_CHE,
+--      bỏ cột/bảng đính kèm, và role không có SELECT trên bảng nghiệp vụ gốc.
 -- Quy tắc xem văn bản HAN_CHE (tầng ứng dụng, queryset dùng chung của Nhóm 2):
 --   chỉ người tạo, người nhận, thành viên đơn vị nhận; không ngoại lệ cho superuser hay quyền view_*;
 --   mọi lượt mở ghi documents_view_log.
@@ -20,6 +20,21 @@
 --   pham_vi không đổi sau khi tạo; văn bản HAN_CHE không được xóa (MVP). Văn bản NOI_BO chỉ ghi documents_view_log.
 --   Mã hóa nội dung: sau MVP.
 -- Quy mô sau thay đổi: 55 bảng vật lý | 21 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
+-- =====================================================================
+-- =====================================================================
+-- CHUẨN HÓA TÊN CỘT (quy ước ở #68; các nhóm cập nhật model và migration theo tên mới)
+--   1) update_at -> updated_at: signing_process, signing_request, signing_attempt, signing_change_thread.
+--   2) create_by_id -> nguoi_tao_id: signing_process, signing_request, signing_attempt, signing_manifest;
+--      update_by_id -> nguoi_cap_nhat_id: signing_process, signing_request, signing_attempt;
+--      chỉ mục idx_signing_*_create_by -> idx_signing_*_nguoi_tao, idx_signing_*_update_by -> idx_signing_*_nguoi_cap_nhat.
+--   3) created_time -> created_at, created_user_id -> nguoi_tao_id: records_chitiettailieu_attachment,
+--      documents_vanbanden_attachment, documents_vanbandi_attachment, task_attachment.
+--   4) nguoi_tao -> nguoi_tao_id: records_chitiettailieu, documents_vanbanden, documents_vanbandi, task_congviec.
+--   5) status -> trang_thai: meetings_meetingroom, meetings_meetingbooking, birthdays_birthdaywish,
+--      birthdays_birthdayemaillog (giá trị ENUM giữ nguyên).
+--   6) signing_request.van_ban_id -> document_id (cùng tên với document_id ở các bảng dùng quan hệ đa hình khác).
+-- Giữ nguyên: nguoi_lap_id (records_hoso, records_tailieu), các cột tiếng Anh/viết tắt của task_*,
+--   meetings_meetingbooking.organizer_id (tên theo nghiệp vụ, không phải xung đột giữa các nhóm).
 -- =====================================================================
 -- =====================================================================
 -- RELEASE_DDL_v1 — trạng thái đích của Issue #53, sinh từ RELEASE_DDL_v0
@@ -104,7 +119,7 @@
 -- Xóa cột đơn file_dinh_kem trong 4 bảng chính (documents_vanbanden, documents_vanbandi,
 -- documents_vanbanmat, records_chitiettailieu) chuyển sang 4 bảng con 1-N chuẩn 7 trường.
 -- Đồng thời bảng task_attachment của Nhóm 6 được nâng cấp lên 9 trường chuẩn (thêm name, path,
--- is_deleted, created_time, created_user_id nhưng bảo toàn nguyên vẹn 2 cột nghiệp vụ loai và y_kien_id).
+-- is_deleted, created_at, nguoi_tao_id nhưng bảo toàn nguyên vẹn 2 cột nghiệp vụ loai và y_kien_id).
 -- 12) [Lê Thành Tài & Lê Thanh Hậu — Nhóm 5 29/09/2026] Đồng bộ 100% 14 bảng signing_* theo Django model:
 -- Chuẩn hóa tên cột thuần Việt (so_luot, phien_ban_van_ban, vi_tri_luu_tep, ma_bam_tai_lieu...),
 -- bổ sung đầy đủ trường tọa độ box ký trên PDF (trang_ky, toa_do_x, toa_do_y, chieu_rong_khung, chieu_cao_khung),
@@ -117,7 +132,7 @@
 -- - Trigger tự động dọn dẹp documents_view_log khi xóa cứng văn bản: trg_cleanup_viewlog_on_doc_delete
 -- loại bỏ triệt để bản ghi mồ côi sinh ra do quan hệ đa hình Generic Relation.
 -- 14) [Lê Thanh Hậu — Nhóm 5 Issue #47 30/09/2026] Chuẩn hóa chuyên sâu Phân hệ Trình ký (signing_*):
--- - [P0] Bổ sung document_type document_kind NOT NULL cho signing_request và index (document_type, van_ban_id).
+-- - [P0] Bổ sung document_type document_kind NOT NULL cho signing_request và index (document_type, document_id).
 -- - [P0] Trigger bảo toàn bằng chứng số: chặn UPDATE trên signing_signature (chỉ cho phép cập nhật thẩm định),
 -- chặn UPDATE/DELETE trên signing_manifest khi DA_CHOT, biến signing_audit_log thành chuẩn WORM (chặn cả UPDATE và DELETE).
 -- - [P0] Chuyển 3 FK của signing_audit_log sang ON DELETE RESTRICT (tránh UPDATE ngầm làm mất dấu vết).
@@ -496,7 +511,7 @@ CREATE TABLE records_chitiettailieu (
     ghi_chu TEXT,
     hien_thi chitiettailieu_hienthi NOT NULL,
     don_vi_id BIGINT REFERENCES organizations_donvi (id) ON DELETE RESTRICT, -- [v1] Đơn vị sở hữu; phục vụ lọc NOI_BO_PHONG_BAN (Nhóm 4, Nhóm 8)
-    nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    nguoi_tao_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -525,8 +540,8 @@ CREATE TABLE records_chitiettailieu_attachment (
     file_size BIGINT CHECK (file_size >= 0), -- [v1] Dung lượng (byte); NULL với bản ghi cũ (Nhóm 4)
     mime_type VARCHAR(255), -- [v1] Kiểu MIME; NULL với bản ghi cũ (Nhóm 4)
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE, -- Cờ xóa mềm
-    created_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_user_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    nguoi_tao_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_chitiettailieu_attachment_doc ON records_chitiettailieu_attachment (document_id);
@@ -554,7 +569,7 @@ CREATE TABLE documents_vanbanden (
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
     pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
-    nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    nguoi_tao_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_vanbanden_nam_stt UNIQUE (nam, so_thu_tu), -- Nghị định 30/2020/NĐ-CP: chống trùng số đến trong năm
@@ -669,8 +684,8 @@ CREATE TABLE documents_vanbanden_attachment (
     name VARCHAR(255) NOT NULL, -- Tên gốc file (vd: To_trinh_01.pdf)
     path VARCHAR(500) NOT NULL, -- Đường dẫn lưu file trên server/storage
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE, -- Cờ xóa mềm
-    created_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_user_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    nguoi_tao_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_vanbanden_attachment_doc ON documents_vanbanden_attachment (document_id);
@@ -699,7 +714,7 @@ CREATE TABLE documents_vanbandi (
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
     pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
-    nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    nguoi_tao_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_vanbandi_nam_stt UNIQUE (nam, so_thu_tu), -- Nghị định 30/2020/NĐ-CP: chống trùng số đi trong năm
@@ -823,8 +838,8 @@ CREATE TABLE documents_vanbandi_attachment (
     name VARCHAR(255) NOT NULL,
     path VARCHAR(500) NOT NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    created_time TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_user_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    nguoi_tao_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_vanbandi_attachment_doc ON documents_vanbandi_attachment (document_id);
@@ -956,7 +971,7 @@ CREATE TRIGGER trg_vanbandi_pham_vi_bat_bien BEFORE UPDATE OF pham_vi ON documen
 -- =====================================================================
 -- 9. PHÂN HỆ TRÌNH KÝ (signing_*) — ĐỒNG BỘ 100% DJANGO MODEL & CHUẨN HÓA THEO ISSUE #47 (LÊ THANH HẬU & LÊ THÀNH TÀI)
 -- Quy mô: 14 bảng vật lý | Khóa ngoại accounts_employee(id), organizations_donvi(id), accounts_position(id)
--- Hỗ trợ đầy đủ: Generic Relation (document_type, van_ban_id), box ký PDF, ủy quyền, outbox nhắc hạn, WORM audit log
+-- Hỗ trợ đầy đủ: Generic Relation (document_type, document_id), box ký PDF, ủy quyền, outbox nhắc hạn, WORM audit log
 -- =====================================================================
 
 -- 9.1. Quy trình trình ký chuẩn mẫu
@@ -971,14 +986,14 @@ CREATE TABLE signing_process (
     kieu_ky_mac_dinh VARCHAR(20) NOT NULL,
     cau_hinh_nhac_han JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    update_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    create_by_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
-    update_by_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    nguoi_cap_nhat_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     CONSTRAINT uq_signing_process_ma_phien_ban UNIQUE (ma_quy_trinh, phien_ban)
 );
 
-CREATE INDEX idx_signing_process_create_by ON signing_process (create_by_id);
-CREATE INDEX idx_signing_process_update_by ON signing_process (update_by_id);
+CREATE INDEX idx_signing_process_nguoi_tao ON signing_process (nguoi_tao_id);
+CREATE INDEX idx_signing_process_nguoi_cap_nhat ON signing_process (nguoi_cap_nhat_id);
 
 -- 9.2. Cấp ký trong quy trình mẫu
 CREATE TABLE signing_process_step (
@@ -1018,13 +1033,13 @@ CREATE INDEX idx_signing_process_step_signer_buoc ON signing_process_step_signer
 CREATE INDEX idx_signing_process_step_signer_nguoi ON signing_process_step_signer (nguoi_ky_id);
 
 -- 9.4. Phiếu yêu cầu trình ký
--- Issue #47 P0.1: Bổ sung document_type document_kind NOT NULL và index (document_type, van_ban_id)
+-- Issue #47 P0.1: Bổ sung document_type document_kind NOT NULL và index (document_type, document_id)
 -- Issue #47 P1.9: Cho phép NULL ở phien_ban_van_ban, vi_tri_luu_tep, ma_bam_tai_lieu khi tạo bản nháp
 -- Issue #47 P2.12: Bổ sung index signing_request (han_chot)
 CREATE TABLE signing_request (
     id BIGSERIAL PRIMARY KEY,
     document_type document_kind NOT NULL, -- Phân định văn bản đến, đi (Generic Relation); bắt buộc truyền tường minh, không có giá trị mặc định
-    van_ban_id BIGINT NOT NULL,
+    document_id BIGINT NOT NULL,
     phien_ban_van_ban VARCHAR(50), -- Cho phép NULL ở bản nháp ban đầu
     vi_tri_luu_tep VARCHAR(500), -- Cho phép NULL ở bản nháp ban đầu
     ma_bam_tai_lieu VARCHAR(64), -- Cho phép NULL ở bản nháp ban đầu
@@ -1042,17 +1057,17 @@ CREATE TABLE signing_request (
     ly_do_huy TEXT NOT NULL DEFAULT '',
     ghi_chu TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    update_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    create_by_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
-    update_by_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    nguoi_cap_nhat_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     CONSTRAINT chk_signing_request_ma_bam_sha256 CHECK (ma_bam_tai_lieu IS NULL OR ma_bam_tai_lieu ~ '^[0-9a-f]{64}$')
 );
 
-CREATE INDEX idx_signing_request_document ON signing_request (document_type, van_ban_id);
+CREATE INDEX idx_signing_request_document ON signing_request (document_type, document_id);
 CREATE INDEX idx_signing_request_trang_thai ON signing_request (trang_thai);
-CREATE INDEX idx_signing_request_create_by ON signing_request (create_by_id);
+CREATE INDEX idx_signing_request_nguoi_tao ON signing_request (nguoi_tao_id);
 CREATE INDEX idx_signing_request_quy_trinh ON signing_request (quy_trinh_id);
-CREATE INDEX idx_signing_request_update_by ON signing_request (update_by_id);
+CREATE INDEX idx_signing_request_nguoi_cap_nhat ON signing_request (nguoi_cap_nhat_id);
 CREATE INDEX idx_signing_request_hanchot ON signing_request (han_chot); -- Issue #47 P2.12
 
 -- 9.5. Lượt trình ký (mỗi lần nộp lại tài liệu sinh 1 lượt mới)
@@ -1074,18 +1089,18 @@ CREATE TABLE signing_attempt (
     vi_tri_tep_hoan_tat VARCHAR(500) NOT NULL DEFAULT '',
     ma_bam_tep_hoan_tat VARCHAR(64) NOT NULL DEFAULT '',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    update_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    create_by_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     luot_truoc_id BIGINT REFERENCES signing_attempt (id) ON DELETE RESTRICT,
-    update_by_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    nguoi_cap_nhat_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     CONSTRAINT uq_signing_attempt_so_luot UNIQUE (trinh_ky_id, so_luot),
     CONSTRAINT chk_signing_attempt_ma_bam_sha256 CHECK (ma_bam_tai_lieu ~ '^[0-9a-f]{64}$')
 );
 
 CREATE INDEX idx_signing_attempt_trinh_ky ON signing_attempt (trinh_ky_id);
-CREATE INDEX idx_signing_attempt_create_by ON signing_attempt (create_by_id);
+CREATE INDEX idx_signing_attempt_nguoi_tao ON signing_attempt (nguoi_tao_id);
 CREATE INDEX idx_signing_attempt_luot_truoc ON signing_attempt (luot_truoc_id);
-CREATE INDEX idx_signing_attempt_update_by ON signing_attempt (update_by_id);
+CREATE INDEX idx_signing_attempt_nguoi_cap_nhat ON signing_attempt (nguoi_cap_nhat_id);
 
 -- 9.6. Cấp ký thực tế trong một lượt trình
 -- Issue #47 P2.12: Bổ sung index signing_request_step (han_xu_ly)
@@ -1255,11 +1270,11 @@ CREATE TABLE signing_manifest (
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'NHAP',
     thoi_diem_chot TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    create_by_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     CONSTRAINT chk_signing_manifest_ma_bam_sha256 CHECK (ma_bam_bang_chung ~ '^[0-9a-f]{64}$')
 );
 
-CREATE INDEX idx_signing_manifest_create_by ON signing_manifest (create_by_id);
+CREATE INDEX idx_signing_manifest_nguoi_tao ON signing_manifest (nguoi_tao_id);
 CREATE INDEX idx_signing_manifest_luot_trinh ON signing_manifest (luot_trinh_id);
 
 -- Trigger bảo vệ bằng chứng: Chặn xóa và chặn sửa manifest đã chốt (DA_CHOT / CHOT / FINAL)
@@ -1313,7 +1328,7 @@ CREATE TABLE signing_change_thread (
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'DANG_MO',
     thoi_diem_giai_quyet TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    update_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_signing_change_thread_luot_trinh ON signing_change_thread (luot_trinh_id);
@@ -1404,7 +1419,7 @@ CREATE TABLE task_congviec (
     ngay_tao_cv DATE NOT NULL,
     ngay_xu_ly DATE NOT NULL, -- hạn xử lý
     yeu_cau_xu_ly TEXT NOT NULL,
-    nguoi_tao BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     document_type document_kind, -- văn bản liên quan (có thể trống)
     document_id BIGINT,
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
@@ -1423,7 +1438,9 @@ CREATE TABLE task_congviec (
             document_type IS NOT NULL
             AND document_id IS NOT NULL
         )
-    )
+    ),
+    -- [Nhóm 6] Hạn xử lý không trước ngày tạo (trước đó chỉ kiểm ở tầng ứng dụng)
+    CONSTRAINT chk_task_due_after_created CHECK (ngay_xu_ly >= ngay_tao_cv)
 );
 
 CREATE TRIGGER trg_congviec_updated_at BEFORE UPDATE ON task_congviec
@@ -1451,6 +1468,8 @@ CREATE TABLE task_participant (
 );
 
 CREATE INDEX idx_participant_congviec ON task_participant (cong_viec);
+-- [Nhóm 6] Mỗi công việc có tối đa một chủ trì (đủ một chủ trì kiểm ở tầng ứng dụng)
+CREATE UNIQUE INDEX uq_task_participant_one_host ON task_participant (cong_viec) WHERE vai_tro = 'CHU_TRI';
 
 -- Bảng liên kết Many-to-Many giữa Công việc và Đơn vị/Phòng ban (theo chỉ đạo của GVHD ngày 25/09/2026)
 CREATE TABLE task_congviec_donvi (
@@ -1484,8 +1503,13 @@ CREATE TABLE task_attachment (
     y_kien_id BIGINT REFERENCES task_comment (id) ON DELETE CASCADE, -- Trống nếu là file giao việc ban đầu
     loai task_attachment_loai NOT NULL,                             -- GIAO_VIEC hoặc BANG_CHUNG hoàn thành
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,                      -- Xóa mềm (soft-delete) theo chuẩn GVHD
-    created_time TIMESTAMPTZ NOT NULL DEFAULT now(),                -- Thời điểm tải lên
-    created_user_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT -- Người tải file
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),                -- Thời điểm tải lên
+    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT, -- Người tải file
+    -- [Nhóm 6] File bằng chứng phải gắn một ý kiến; file giao việc ban đầu thì không
+    CONSTRAINT chk_task_attachment_evidence CHECK (
+        (loai = 'GIAO_VIEC' AND y_kien_id IS NULL)
+        OR (loai = 'BANG_CHUNG' AND y_kien_id IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_task_attachment_congviec ON task_attachment (cong_viec_id);
@@ -1501,7 +1525,7 @@ CREATE TABLE meetings_meetingroom (
     capacity INTEGER NOT NULL CHECK (capacity > 0),
     amenities TEXT,
     is_public BOOLEAN NOT NULL DEFAULT TRUE, -- Hiển thị công khai cho CBNV đặt (nếu False chỉ Admin/Lễ tân thấy)
-    status meetingroom_status NOT NULL DEFAULT 'AVAILABLE',
+    trang_thai meetingroom_status NOT NULL DEFAULT 'AVAILABLE',
     ghi_chu TEXT, -- Ghi chú thiết bị, hướng dẫn sử dụng
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -1521,7 +1545,7 @@ CREATE TABLE meetings_meetingbooking (
     end_time TIME NOT NULL,
     attendees_count INTEGER NOT NULL DEFAULT 1 CHECK (attendees_count > 0),
     purpose TEXT,
-    status meetingbooking_status NOT NULL DEFAULT 'CONFIRMED',
+    trang_thai meetingbooking_status NOT NULL DEFAULT 'CONFIRMED',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT chk_booking_time CHECK (end_time > start_time)
 );
@@ -1543,7 +1567,7 @@ ADD CONSTRAINT excl_room_time EXCLUDE USING gist (
     WITH
         &&
 )
-WHERE (status <> 'CANCELLED');
+WHERE (trang_thai <> 'CANCELLED');
 
 CREATE TABLE birthdays_birthdaywish (
     id BIGSERIAL PRIMARY KEY,
@@ -1552,7 +1576,7 @@ CREATE TABLE birthdays_birthdaywish (
     message TEXT NOT NULL,
     card_template VARCHAR(50) NOT NULL DEFAULT 'GOLDEN',
     is_anonymous BOOLEAN NOT NULL DEFAULT FALSE,
-    status birthdaywish_status NOT NULL DEFAULT 'APPROVED',
+    trang_thai birthdaywish_status NOT NULL DEFAULT 'APPROVED',
     sticker_url VARCHAR(500),
     likes_count INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -1572,7 +1596,7 @@ CREATE TABLE birthdays_birthdayemaillog (
     recipient_email VARCHAR(254) NOT NULL,
     subject VARCHAR(255) NOT NULL,
     card_template VARCHAR(50) NOT NULL DEFAULT 'GOLDEN',
-    status emaillog_status NOT NULL DEFAULT 'PENDING',
+    trang_thai emaillog_status NOT NULL DEFAULT 'PENDING',
     error_message TEXT,
     retry_count INTEGER NOT NULL DEFAULT 0,
     next_retry_at TIMESTAMPTZ, -- Hẹn thời điểm thử lại tiếp theo cho Celery worker
@@ -2512,56 +2536,92 @@ COMMIT;
 -- - Role được tạo ngoài DDL (kèm mật khẩu từ biến môi trường); khối dưới chỉ cấp quyền khi role đã tồn tại.
 -- - Cấp theo bảng/cột cần dùng; KHÔNG cấp bảng khóa ký/PIN/nhật ký, cột password;
 --   KHÔNG dùng ALTER DEFAULT PRIVILEGES.
--- - [BỎ MẬT] Văn bản đến/đi chỉ đọc qua view ai_* đã loại văn bản pham_vi = 'HAN_CHE';
---   không cấp SELECT trên bảng văn bản gốc. View dùng security_barrier để điều kiện lọc
---   được áp trước mọi điều kiện do truy vấn của AI đưa vào.
--- - Quyền "ai được xem văn bản nào" lấy từ lớp dùng chung của Nhóm 2/Nhóm 7, không viết lại bằng SQL thô.
+-- - AI chỉ được cấp SELECT trên ai_vanbanden, ai_vanbandi, ai_tailieu.
+--   Các view văn bản chỉ trả về NOI_BO đang hiển thị; cột/bảng đính kèm không nằm trong view.
+-- - Quyền dùng AI và quyền xem từng loại được kiểm tra ở ứng dụng theo codename.
+--   View ai_tailieu tự giới hạn TAT_CA / NOI_BO_PHONG_BAN theo employee_id của phiên DB.
 -- =====================================================================
 CREATE VIEW ai_vanbanden WITH (security_barrier) AS
-    SELECT * FROM documents_vanbanden WHERE pham_vi = 'NOI_BO';
+    SELECT id, so_hieu, so_thu_tu, nam, ngay_den, trich_yeu, noi_ban_hanh,
+           ngay_van_ban, nguoi_ky, chuc_vu, hieu_luc, ngay_het_hieu_luc,
+           ghi_chu, updated_at
+    FROM documents_vanbanden
+    WHERE pham_vi = 'NOI_BO' AND hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbanden_nguoinhan WITH (security_barrier) AS
     SELECT nn.* FROM documents_vanbanden_nguoinhan nn
     JOIN documents_vanbanden vb ON vb.id = nn.vanbanden_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbanden_donvinhan WITH (security_barrier) AS
     SELECT dv.* FROM documents_vanbanden_donvinhan dv
     JOIN documents_vanbanden vb ON vb.id = dv.vanbanden_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi WITH (security_barrier) AS
-    SELECT * FROM documents_vanbandi WHERE pham_vi = 'NOI_BO';
+    SELECT vb.id, vb.so_hieu, vb.so_thu_tu, vb.nam, vb.ngay_ban_hanh,
+           vb.trich_yeu,
+           (
+               SELECT string_agg(dv.ten, ', ' ORDER BY dv.ten)
+               FROM documents_vanbandi_noibanhanh nb
+               JOIN organizations_donvi dv ON dv.id = nb.donvi_id
+               WHERE nb.vanbandi_id = vb.id
+           ) AS noi_ban_hanh,
+           vb.ngay_van_ban, vb.nguoi_ky, vb.chuc_vu, vb.hieu_luc,
+           vb.ngay_het_hieu_luc, vb.ghi_chu, vb.updated_at
+    FROM documents_vanbandi vb
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi_noibanhanh WITH (security_barrier) AS
     SELECT nb.* FROM documents_vanbandi_noibanhanh nb
     JOIN documents_vanbandi vb ON vb.id = nb.vanbandi_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi_nguoinhan WITH (security_barrier) AS
     SELECT nn.* FROM documents_vanbandi_nguoinhan nn
     JOIN documents_vanbandi vb ON vb.id = nn.vanbandi_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi_donvinhan WITH (security_barrier) AS
     SELECT dv.* FROM documents_vanbandi_donvinhan dv
     JOIN documents_vanbandi vb ON vb.id = dv.vanbandi_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
+
+CREATE VIEW ai_tailieu WITH (security_barrier) AS
+    SELECT t.id, t.ky_hieu, t.tieu_de, t.ngay_dang, t.noi_ban_hanh,
+           t.hieu_luc, t.ngay_het_hieu_luc, t.ghi_chu, t.updated_at
+    FROM records_chitiettailieu t
+    WHERE t.hien_thi::text = 'TAT_CA'
+       OR (
+           t.hien_thi::text = 'NOI_BO_PHONG_BAN'
+           AND t.don_vi_id = (
+               SELECT e.don_vi_id
+               FROM accounts_employee e
+               WHERE e.id = NULLIF(current_setting('qlvb.employee_id', true), '')::bigint
+                 AND e.is_active IS TRUE
+                 AND e.trang_thai::text = 'LAM_VIEC'
+           )
+       );
 
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'qlvb_readonly') THEN
-        GRANT SELECT (id, don_vi_id, is_active, trang_thai, is_superuser) ON accounts_employee TO qlvb_readonly;
-        GRANT SELECT (id, ten) ON organizations_donvi TO qlvb_readonly;
-        GRANT SELECT ON
-            ai_vanbanden,
+        -- Remove grants from the previous raw-table implementation before
+        -- granting the view-only contract.
+        REVOKE SELECT (id, don_vi_id, is_active, trang_thai, is_superuser) ON accounts_employee FROM qlvb_readonly;
+        REVOKE SELECT (id, ten) ON organizations_donvi FROM qlvb_readonly;
+        REVOKE SELECT ON accounts_employee, organizations_donvi, records_chitiettailieu FROM qlvb_readonly;
+        REVOKE SELECT ON
             ai_vanbanden_nguoinhan,
             ai_vanbanden_donvinhan,
-            ai_vanbandi,
             ai_vanbandi_noibanhanh,
             ai_vanbandi_nguoinhan,
-            ai_vanbandi_donvinhan,
-            records_chitiettailieu
+            ai_vanbandi_donvinhan
+        FROM qlvb_readonly;
+        GRANT SELECT ON
+            ai_vanbanden,
+            ai_vanbandi,
+            ai_tailieu
         TO qlvb_readonly;
     ELSE
         RAISE NOTICE 'Role qlvb_readonly chưa tồn tại: bỏ qua cấp quyền chỉ đọc cho trợ lý AI';
