@@ -46,4 +46,10 @@ urlpatterns = [
     path("trinh-ky/<int:pk>/yeu-cau-sua/", views.YeuCauSuaView.as_view(), name="trinh-ky-yeu-cau-sua"),
     path("trinh-ky/<int:pk>/trao-doi/", views.TraoDoiView.as_view(), name="trinh-ky-trao-doi"),
     path("trinh-ky/<int:pk>/giai-quyet/", views.GiaiQuyetView.as_view(), name="trinh-ky-giai-quyet"),
+
+    # Bằng chứng và tệp hoàn tất (lõi Phase 10, #80)
+    path("trinh-ky/<int:pk>/bang-chung/", views.BangChungView.as_view(), name="trinh-ky-bang-chung"),
+    path("trinh-ky/<int:pk>/tep-hoan-tat/", views.TepHoanTatView.as_view(), name="trinh-ky-tep-hoan-tat"),
+    path("trinh-ky/<int:pk>/tao-lai-tep-hoan-tat/", views.TaoLaiTepHoanTatView.as_view(),
+         name="trinh-ky-tao-lai-tep-hoan-tat"),
 ]

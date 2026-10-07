@@ -89,6 +89,14 @@ class TrangThaiManifest(models.TextChoices):
     DA_CHOT = "DA_CHOT", "Đã chốt"
 
 
+class TrangThaiTepHoanTat(models.TextChoices):
+    """Trạng thái sinh tệp PDF hoàn tất của lượt trình (Phase 10 lõi, #80); NULL khi lượt chưa hoàn thành."""
+
+    DANG_XU_LY = "DANG_XU_LY", "Đang xử lý"
+    LOI = "LOI", "Lỗi"
+    THANH_CONG = "THANH_CONG", "Thành công"
+
+
 class TrangThaiThread(models.TextChoices):
     DANG_MO = "DANG_MO", "Đang mở"
     DA_GIAI_QUYET = "DA_GIAI_QUYET", "Đã giải quyết"

@@ -1,7 +1,7 @@
 """System check của phân hệ Trình ký (issue #79): bí mật PIN riêng ở môi trường production."""
 
 from django.conf import settings
-from django.core.checks import Error, Tags, register
+from django.core.checks import Error, Tags, Warning, register
 
 
 @register(Tags.security, deploy=True)
@@ -37,5 +37,20 @@ def kiem_tra_thu_muc_tep(app_configs, **kwargs):
             "Chưa đặt SIGNING_DOCUMENT_ROOT cho môi trường production.",
             hint="Đặt biến môi trường SIGNING_DOCUMENT_ROOT là thư mục lưu tệp trình ký (ngoài thư mục mã nguồn).",
             id="signing.E003",
+        )]
+    return []
+
+
+@register(Tags.compatibility, deploy=True)
+def kiem_tra_phong_chu_pdf(app_configs, **kwargs):
+    """Tệp PDF hoàn tất cần phông có dấu tiếng Việt (Phase 10); thiếu thì việc ký vẫn chạy, tạo tệp báo lỗi."""
+    from .pdf_hoan_tat import tim_phong_chu
+
+    if tim_phong_chu() is None:
+        return [Warning(
+            "Không tìm thấy phông chữ tiếng Việt để tạo tệp PDF hoàn tất của Trình ký.",
+            hint="Cài fonts-dejavu-core (hoặc Noto Sans) hoặc đặt SIGNING_PDF_FONT là đường dẫn tệp .ttf "
+                 "có dấu tiếng Việt.",
+            id="signing.W001",
         )]
     return []

@@ -6,6 +6,7 @@ TU_CHOI là kết thúc; trình lại tạo yêu cầu mới có `ho_so_goc` tr�
 Cấp ký mở tuần tự theo `thu_tu`; người trong cùng cấp ký song song (ký chính chờ ký nháy chặn).
 """
 
+import io
 from datetime import timedelta
 
 from django.db import transaction
@@ -51,6 +52,19 @@ def luot_hien_hanh(yeu_cau):
     return yeu_cau.luot_trinh_set.order_by("-so_luot").first()
 
 
+def _loi_doc_pdf(data):
+    """Mã lỗi nếu PDF không đọc được trang hoặc có mật khẩu (tệp hoàn tất ở Phase 10 dựng từ tệp này)."""
+    from pypdf import PdfReader
+
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        if reader.is_encrypted and not reader.decrypt(""):
+            return "tep_pdf_co_mat_khau"
+        return None if len(reader.pages) > 0 else "tep_khong_phai_pdf"
+    except Exception:  # noqa: BLE001 — pypdf ném nhiều loại lỗi với tệp hỏng
+        return "tep_khong_phai_pdf"
+
+
 def luu_tep_pdf(tep):
     """Kiểm tra và lưu PDF dự thảo; server tự tính SHA-256 trên bytes đã lưu. Trả (vị trí, mã băm)."""
     if tep is None:
@@ -60,6 +74,11 @@ def luu_tep_pdf(tep):
     data = tep.read()
     if not data.startswith(CHU_KY_PDF):
         raise _loi("tep_khong_phai_pdf", "Chỉ nhận tệp PDF.", tep=["Không phải tệp PDF."])
+    loi_pdf = _loi_doc_pdf(data)
+    if loi_pdf == "tep_pdf_co_mat_khau":
+        raise _loi(loi_pdf, "Không nhận PDF có mật khẩu.", tep=["Gỡ mật khẩu trước khi tải lên."])
+    if loi_pdf:
+        raise _loi(loi_pdf, "Tệp PDF hỏng hoặc không có trang.", tep=["Không đọc được tệp PDF."])
     try:
         meta = get_storage().save_bytes(data, THU_MUC_TEP, "pdf")
     except StorageError as exc:

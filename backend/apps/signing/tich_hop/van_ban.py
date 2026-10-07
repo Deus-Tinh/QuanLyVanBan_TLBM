@@ -12,11 +12,15 @@ Cài đặt tạm (chờ hàm "văn bản xem được" dùng chung của Nhóm 
 - đọc trực tiếp bảng DDL `documents_vanbandi`, chỉ các cột `id`, `pham_vi`, `nguoi_tao`, `trich_yeu`, `so_hieu`;
 - quyền xem: người tạo văn bản hoặc có quyền `view_vanbandi`.
 Khi Nhóm 2 có hàm dùng chung, thay thân `_doc_van_ban_di` và `_xem_duoc` bằng lời gọi hàm đó.
+
+`mo_ta_van_ban(document_type, van_ban_id)`: số hiệu, trích yếu để ghi vào bằng chứng và trang phê duyệt
+của tệp hoàn tất (Phase 10); không kiểm quyền, đọc lỗi thì trả rỗng để không chặn việc hoàn tất duyệt.
 """
 
+import logging
 from dataclasses import dataclass
 
-from django.db import connection
+from django.db import DatabaseError, connection, transaction
 from rest_framework import status
 
 from .. import enums
@@ -25,6 +29,8 @@ from ..permissions import co_quyen
 
 BANG_VAN_BAN_DI = "documents_vanbandi"
 PHAM_VI_HAN_CHE = "HAN_CHE"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -75,3 +81,18 @@ def kiem_tra_van_ban_trinh_ky(nguoi_dung, document_type, van_ban_id):
         raise SigningError(code="khong_tim_thay_van_ban", detail="Không tìm thấy văn bản đi.",
                            status_code=status.HTTP_404_NOT_FOUND, fields={"van_ban_id": ["Không tồn tại."]})
     return van_ban
+
+
+def mo_ta_van_ban(document_type, van_ban_id):
+    """{"so_hieu", "trich_yeu"} của văn bản; rỗng khi không đọc được (bảng chưa có, văn bản đã xóa)."""
+    if document_type != enums.LoaiVanBan.VAN_BAN_DI:
+        return {}
+    try:
+        with transaction.atomic():  # savepoint: lỗi đọc không làm hỏng transaction hoàn tất duyệt
+            van_ban = _doc_van_ban_di(van_ban_id)
+    except (SigningError, DatabaseError):
+        logger.warning("Không đọc được mô tả văn bản %s #%s cho bằng chứng", document_type, van_ban_id)
+        return {}
+    if van_ban is None:
+        return {}
+    return {"so_hieu": van_ban.so_hieu, "trich_yeu": van_ban.trich_yeu}

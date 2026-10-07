@@ -8,7 +8,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from . import enums
-from .errors import SigningAPIView, SigningError
+from .errors import ConflictError, SigningAPIView, SigningError
 from .models import SigningKey, SigningProcess, SigningRequest
 from .permissions import (
     GUI_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
@@ -22,10 +22,12 @@ from .serializers import (
     TinNhanInputSerializer, TinNhanSerializer, TuChoiSerializer, XacMinhSoHuuSerializer, XoayVongSerializer,
     YeuCauSuaSerializer, YeuCauSuaThreadSerializer,
 )
+from .services import bang_chung as bang_chung_service
 from .services import hanh_dong_ky as hanh_dong_service
 from .services import keys as key_service
 from .services import pin as pin_service
 from .services import process as process_service
+from .services import tep_hoan_tat as tep_hoan_tat_service
 from .services import trinh_ky as trinh_ky_service
 from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
@@ -403,3 +405,44 @@ class GiaiQuyetView(SigningAPIView):
         ket_qua = yeu_cau_sua_service.giai_quyet(ho_so, request.user, tep=data.validated_data["tep"],
                                                  khoa_chong_trung=khoa, dia_chi_ip=_ip(request))
         return Response(TrinhKyChiTietSerializer(ket_qua).data)
+
+
+# ── Bằng chứng tổng hợp và tệp hoàn tất (lõi Phase 10, #80 mục D) ──────────
+# Người xem được hồ sơ (người tạo, người ký, kiểm toán) xem bằng chứng và tải tệp hoàn tất.
+
+
+class BangChungView(SigningAPIView):
+    """GET /trinh-ky/<pk>/bang-chung/: bằng chứng đã chốt của lượt hiện hành và kết quả xác minh lại."""
+
+    def get(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        manifest = bang_chung_service.bang_chung_cua(trinh_ky_service.luot_hien_hanh(ho_so))
+        if manifest is None:
+            raise ConflictError(code="chua_co_bang_chung", detail="Hồ sơ chưa hoàn tất duyệt, chưa có bằng chứng.")
+        return Response({
+            "luot_trinh": manifest.luot_trinh_id, "phien_ban_bang_chung": manifest.phien_ban_bang_chung,
+            "ma_bam_bang_chung": manifest.ma_bam_bang_chung, "thoi_diem_chot": manifest.thoi_diem_chot,
+            "noi_dung_chuan_hoa": manifest.noi_dung_chuan_hoa, "xac_minh": bang_chung_service.xac_minh(manifest),
+        })
+
+
+class TepHoanTatView(SigningAPIView):
+    """GET /trinh-ky/<pk>/tep-hoan-tat/: tệp PDF hoàn tất (bản duyệt nội bộ, chưa phát hành), kiểm mã băm."""
+
+    def get(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        data = tep_hoan_tat_service.doc_tep_hoan_tat(trinh_ky_service.luot_hien_hanh(ho_so))
+        response = HttpResponse(data, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="trinh-ky-{ho_so.pk}-ban-duyet-noi-bo.pdf"'
+        response["Cache-Control"] = "no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class TaoLaiTepHoanTatView(SigningAPIView):
+    """POST /trinh-ky/<pk>/tao-lai-tep-hoan-tat/: thử lại khi tạo tệp lỗi; người tạo hồ sơ hoặc kiểm toán."""
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        tep_hoan_tat_service.tao_lai_tep_hoan_tat(ho_so, request.user)
+        return Response(TrinhKyChiTietSerializer(SigningRequest.objects.get(pk=ho_so.pk)).data)

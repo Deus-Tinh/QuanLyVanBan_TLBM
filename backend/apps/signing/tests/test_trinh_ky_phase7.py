@@ -26,7 +26,25 @@ from .helpers import cap_quyen
 
 User = get_user_model()
 BASE = "/api/v1/signing/trinh-ky"
-PDF = b"%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+
+
+def pdf_mau(so_trang=1):
+    """PDF hợp lệ tối thiểu (trang A4 trống, bảng xref đúng offset) để upload và dựng tệp hoàn tất."""
+    kids = " ".join(f"{3 + i} 0 R" for i in range(so_trang))
+    doi_tuong = [b"<</Type/Catalog/Pages 2 0 R>>", f"<</Type/Pages/Kids[{kids}]/Count {so_trang}>>".encode()]
+    doi_tuong += [b"<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>"] * so_trang
+    out, vi_tri = bytearray(b"%PDF-1.4\n"), []
+    for i, noi_dung in enumerate(doi_tuong, start=1):
+        vi_tri.append(len(out))
+        out += f"{i} 0 obj\n".encode() + noi_dung + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(doi_tuong) + 1}\n0000000000 65535 f \n".encode()
+    out += b"".join(f"{v:010d} 00000 n \n".encode() for v in vi_tri)
+    out += f"trailer\n<</Size {len(doi_tuong) + 1}/Root 1 0 R>>\nstartxref\n{xref}\n%%EOF\n".encode()
+    return bytes(out)
+
+
+PDF = pdf_mau()
 VAN_BAN = {
     10: VanBanDi(id=10, pham_vi="NOI_BO", nguoi_tao_id=None, so_hieu="10/QD", trich_yeu="Mua sắm"),
     11: VanBanDi(id=11, pham_vi="HAN_CHE", nguoi_tao_id=None, so_hieu="11/QD", trich_yeu="Hạn chế"),

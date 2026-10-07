@@ -26,7 +26,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; `trinh-lai` | Văn bản đi (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) qua lớp tích hợp `signing/tich_hop/` | Lõi API xong trên máy (#80); quyền quy trình theo đơn vị chờ Nhóm 7 |
 | 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Ký/từ chối/thu hồi xong trên máy (#80); manifest ở Phase 10 |
 | 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Lõi trả lại để sửa xong trên máy (#80); ủy quyền, nhắc, leo thang ngoài MVP (#80 mục 8) |
-| 10 | Phẳng hóa PDF theo thể thức; ký số từ xa (adapter); cấp số qua hệ thống Nhóm 2 và ký số cơ quan; frontend | Phase 8; chốt hệ tọa độ vị trí ký; contract cấp số với Nhóm 2 | Chờ |
+| 10 | Bằng chứng tổng hợp, tệp PDF hoàn tất (bản duyệt nội bộ, chưa phát hành); dán ảnh chữ ký theo tọa độ; frontend | Phase 8; ảnh chữ ký cá nhân (Nhóm 7); chốt hệ tọa độ vị trí ký | Lõi bằng chứng và tệp hoàn tất xong trên máy (#80); dán ảnh chữ ký chờ Nhóm 7; CA/phát hành gỡ khỏi MVP (#80 mục 8) |
 
 ## 3. Chi tiết các phase
 
@@ -117,6 +117,16 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - Ngoài MVP: ủy quyền, `hinh_thuc_ky`, nhắc, leo thang, báo cáo trễ hạn (giữ ở mục "Phần phụ thuộc bên ngoài").
 - Test: `tests/test_yeu_cau_sua_phase9.py`.
 
+### Phase 10 lõi — Bằng chứng và tệp hoàn tất (xong trên máy, #80)
+- Cấp cuối ký đủ: cùng transaction hoàn tất, `services/bang_chung.py` chốt `signing_manifest` `DA_CHOT` (JSON chuẩn hóa: hồ sơ, văn bản, quy trình, lượt, mã băm tệp gốc, cấp, người ký, chữ ký hiện hành, dấu vân tay và khóa công khai để xác minh ngoại tuyến; mã băm SHA-256 trên JSON sắp xếp khóa) và đặt `signing_attempt.trang_thai_tep_hoan_tat = DANG_XU_LY`.
+- Sau commit, `services/tep_hoan_tat.py` kiểm lại mã băm tệp gốc rồi dựng tệp mới bằng `pdf_hoan_tat.py` (pypdf + reportlab): giữ nguyên nội dung các trang gốc, thêm dòng "BẢN DUYỆT NỘI BỘ, CHƯA PHÁT HÀNH" ở chân trang, nối trang phê duyệt, đính kèm `bang-chung-<lượt>.json`. Tệp gốc không đổi; tệp hoàn tất ghi một lần.
+- Trạng thái `DANG_XU_LY` / `LOI` (kèm mã lỗi `loi_tep_hoan_tat`) / `THANH_CONG`. Lỗi không ảnh hưởng chữ ký, không cần ký lại; người tạo hồ sơ hoặc kiểm toán thử lại; đang xử lý quá 10 phút coi là treo, được thử lại. Đã thành công thì không sinh lại (không có hai bản kết quả).
+- Kiểm tra PDF đọc được (có trang, không mật khẩu) ngay khi tải lên ở Phase 7/9 để không hỏng ở bước cuối.
+- Phông có dấu tiếng Việt: `SIGNING_PDF_FONT` (`SIGNING_PDF_FONT_BOLD`) hoặc tự dò DejaVu Sans, Noto Sans, Liberation Sans, Arial; thiếu thì `LOI` mã `thieu_phong_chu` và check `--deploy` `signing.W001`.
+- Model: `signing_attempt.trang_thai_tep_hoan_tat`, `loi_tep_hoan_tat` (migration `0007_tep_hoan_tat`; DDL `[P10]` cùng nhánh DDL với `[P7]`).
+- Chưa làm (chờ phụ thuộc): dán ảnh chữ ký theo tọa độ (`vi_tri_anh_chu_ky`, `trang_ky`, `toa_do_*`) khi Nhóm 7 có ảnh chữ ký và chốt hệ tọa độ; chuyển sinh tệp sang Celery khi dự án có worker.
+- Test: `tests/test_hoan_tat_phase10.py`; kiểm thử tích hợp trên PostgreSQL dựng từ DDL (trigger chặn sửa manifest đã chốt).
+
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
 - Văn bản mật đã bỏ (GVHD chốt, DDL #81); trình ký chỉ nhận `vanbandi` thường. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) là văn bản gửi đi chọn người xem và lưu log xem (Nhóm 2), không ký, không đi qua trình ký: Phase 7 từ chối ở API tạo hồ sơ khi #82 có `pham_vi`. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
 - Phase 7:
@@ -128,11 +138,10 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - Phase 9 (ngoài MVP #80):
   - Bảng `signing_delegation`, cột `hinh_thuc_ky`, `uy_quyen_theo`; áp ủy quyền khi mở cấp; ủy quyền khẩn cấp chỉ cấp trên trực tiếp/quản trị, người nhận thuộc danh sách hợp lệ.
   - Nhắc hạn, nhắc lặp, leo thang 48 giờ cho cấp trên trực tiếp; báo cáo trễ hạn. Cần cấu hình tác vụ định kỳ và dữ liệu cấp trên trực tiếp (Nhóm 7).
-- Phase 10:
-  - Phẳng hóa in khối chữ ký theo `hinh_thuc_ky`, chừa ô số/ngày.
-  - `LegalSignerAdapter` theo mô hình ký số từ xa; khi có CA, ký chính cấp cuối dùng adapter thay Ed25519.
-  - Hệ thống sổ văn bản đi của Nhóm 2 cấp số, thời gian ban hành (NĐ 30/2020 Điều 15); văn thư ký số cơ quan, chuyển trạng thái phát hành.
-  - Cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF); dòng nhận diện "bản duyệt nội bộ, chưa phát hành" trên tệp hoàn tất; màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
+- Phase 10 (phần còn lại):
+  - Dán ảnh chữ ký theo tọa độ khi có ảnh chữ ký cá nhân (Nhóm 7) và chốt hệ tọa độ (tỷ lệ % hoặc điểm PDF); khối chữ ký theo `hinh_thuc_ky` thuộc phần ủy quyền, ngoài MVP.
+  - Frontend: màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
+  - Ngoài MVP, đã gỡ khỏi roadmap #80 (mục 8): `LegalSignerAdapter`/CA, cấp số qua sổ văn bản đi Nhóm 2, ký số cơ quan, phát hành pháp lý.
 
 ## 4. Đối chiếu CSDL chung sau issue #47
 

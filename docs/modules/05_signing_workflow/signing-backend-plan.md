@@ -121,7 +121,7 @@ Hệ thống tách hai giai đoạn:
 - Giao diện (React PDF viewer) hiển thị ảnh chữ ký như một lớp phủ CSS/Canvas đè lên bản xem trước theo tọa độ; không tạo tệp trung gian.
 - **Phẳng hóa (Stamping & Flattening):** chỉ khi lượt trình chuyển `HOAN_THANH`, tác vụ nền đọc tệp gốc, lấy snapshot ảnh và tọa độ của toàn bộ chữ ký hiện hành, dán một lần và sinh tệp PDF hoàn tất. Vị trí và mã băm tệp này lưu tại `signing_attempt.vi_tri_tep_hoan_tat`, `signing_attempt.ma_bam_tep_hoan_tat`.
 - Không sinh tệp theo từng người ký.
-- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành" cho tới khi hoàn tất phát hành pháp lý (mục 1.4). `[ĐỀ XUẤT]`, chốt ở Phase 10.
+- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành". Đã làm ở lõi Phase 10 (#80): dòng nhận diện ở chân mọi trang, trang phê duyệt và bằng chứng JSON đính kèm; MVP chưa dán ảnh chữ ký (chưa có nguồn ảnh, chưa chốt tọa độ).
 - Tệp hoàn tất là đầu vào của giai đoạn phát hành pháp lý (mục 1.4).
 
 ### 3.3. Yêu cầu, lượt trình và nội dung văn bản
@@ -723,8 +723,12 @@ Ngoài MVP (#80 mục 8), giữ trong roadmap:
   - `POST /signing/khoa/{id}/mo-khoa-ky/`: `xac_minh_pin` → 200 kèm `manh_bi_mat`; sai → 400 `pin_khong_dung`; bị khóa → 423 `pin_tam_khoa` / `pin_khoa_cung`.
   - `POST /signing/khoa/{id}/doi-pin/`: `xac_minh_pin_cu`, `xac_minh_pin_moi`, `tham_so_kdf` (salt mới) → 200 kèm `manh_bi_mat_cu` (mở bản bọc hiện có) và `manh_bi_mat` mới để client bọc lại private key (xoay vòng `k_srv` từ Phase 6c, mục 3.4).
   - Response có `Cache-Control: no-store`.
-- `GET /signing/requests/{id}/audit`
-- `GET /signing/attempts/{id}/manifest`: bằng chứng chuẩn hóa và trạng thái xác minh.
+- Lịch sử hồ sơ trả trong `GET /signing/trinh-ky/{id}/` (`lich_su`).
+- Lõi Phase 10 (#80), người xem được hồ sơ (người tạo, người ký, `view_signing_audit`):
+  - `GET /signing/trinh-ky/{id}/bang-chung/`: bằng chứng đã chốt của lượt hiện hành (`noi_dung_chuan_hoa`, `ma_bam_bang_chung`, `thoi_diem_chot`) và `xac_minh` (băm lại, verify lại từng chữ ký bằng khóa công khai trong bằng chứng, đối chiếu tệp gốc và tệp hoàn tất đang lưu). Chưa hoàn tất: 409 `chua_co_bang_chung`.
+  - `GET /signing/trinh-ky/{id}/tep-hoan-tat/`: tải tệp PDF hoàn tất (kiểm mã băm trước khi trả, `no-store`). Chưa sẵn sàng: 409 `tep_hoan_tat_chua_san_sang`; tệp bị đổi: 409 `tep_hoan_tat_bi_thay_doi`.
+  - `POST /signing/trinh-ky/{id}/tao-lai-tep-hoan-tat/`: người tạo hồ sơ hoặc `view_signing_audit`; khi `LOI` hoặc đang xử lý quá 10 phút; đã `THANH_CONG` thì không sinh lại; đang xử lý: 409 `dang_tao_tep_hoan_tat`.
+  - Chi tiết hồ sơ trả thêm theo lượt: `trang_thai_tep_hoan_tat`, `loi_tep_hoan_tat`, `ma_bam_tep_hoan_tat`, `ma_bam_bang_chung`.
 
 ### 7.5. Quy tắc chung
 

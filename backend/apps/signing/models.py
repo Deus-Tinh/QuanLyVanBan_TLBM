@@ -197,6 +197,10 @@ class SigningAttempt(models.Model):
     thoi_diem_huy = models.DateTimeField(null=True, blank=True)
     vi_tri_tep_hoan_tat = models.CharField(max_length=500, blank=True, default="")
     ma_bam_tep_hoan_tat = models.CharField(max_length=64, blank=True, default="")
+    trang_thai_tep_hoan_tat = models.CharField(
+        max_length=20, choices=enums.TrangThaiTepHoanTat.choices, null=True, blank=True
+    )
+    loi_tep_hoan_tat = models.CharField(max_length=100, blank=True, default="")
     create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     update_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")

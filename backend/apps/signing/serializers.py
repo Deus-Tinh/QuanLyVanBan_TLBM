@@ -202,12 +202,18 @@ class TinNhanSerializer(serializers.ModelSerializer):
 class LuotTrinhSerializer(serializers.ModelSerializer):
     cap_ky = CapLuotSerializer(source="cap_ky_set", many=True, read_only=True)
     yeu_cau_sua = YeuCauSuaThreadSerializer(source="yeu_cau_sua_set", many=True, read_only=True)
+    ma_bam_bang_chung = serializers.SerializerMethodField()
 
     class Meta:
         model = SigningAttempt
         fields = ["id", "so_luot", "luot_truoc", "phien_ban_van_ban", "ma_bam_tai_lieu", "trang_thai", "ly_do",
                   "thoi_diem_gui", "thoi_diem_hoan_thanh", "thoi_diem_tu_choi", "thoi_diem_huy",
-                  "ma_bam_tep_hoan_tat", "cap_ky", "yeu_cau_sua"]
+                  "trang_thai_tep_hoan_tat", "loi_tep_hoan_tat", "ma_bam_tep_hoan_tat", "ma_bam_bang_chung",
+                  "cap_ky", "yeu_cau_sua"]
+
+    def get_ma_bam_bang_chung(self, obj):
+        manifest = obj.manifest_set.filter(trang_thai=enums.TrangThaiManifest.DA_CHOT).order_by("-id").first()
+        return manifest.ma_bam_bang_chung if manifest else None
 
 
 class NhatKyTrinhKySerializer(serializers.ModelSerializer):

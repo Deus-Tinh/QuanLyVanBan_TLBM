@@ -123,7 +123,7 @@ class LuongKyTests(KyBase):
         self.assertTrue(all(c.trang_thai_xac_minh == "HOP_LE" and c.hash_tai_lieu == HASH for c in chu_ky))
         hanh_dong = list(SigningAuditLog.objects.filter(trinh_ky_id=self.pk).values_list("hanh_dong", flat=True))
         self.assertEqual(hanh_dong.count("KY"), 3)
-        self.assertEqual(hanh_dong[-1], "HOAN_THANH_TRINH_KY")
+        self.assertEqual(hanh_dong[-2:], ["HOAN_THANH_TRINH_KY", "CHOT_BANG_CHUNG"])  # tệp PDF sinh sau commit
 
     def test_parallel_signers_in_same_level_close_only_when_all_signed(self):
         self.process = self.tao_quy_trinh("SS", [

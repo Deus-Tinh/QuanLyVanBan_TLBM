@@ -21,7 +21,9 @@ from ..errors import ConflictError, SigningError
 from ..models import (
     SigningAttempt, SigningKey, SigningRequest, SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
+from . import tep_hoan_tat
 from .audit import ghi_nhat_ky
+from .bang_chung import chot_bang_chung
 from .trinh_ky import luot_hien_hanh, mo_cap, mo_nguoi_ky_trong_cap
 
 LOAI = "signing_request_step_signer"
@@ -75,13 +77,17 @@ def _hoan_tat_neu_du(luot, cap, nguoi, thoi_diem):
         return
     luot.trang_thai = enums.TrangThaiLuotTrinh.HOAN_THANH
     luot.thoi_diem_hoan_thanh = thoi_diem
-    luot.save(update_fields=["trang_thai", "thoi_diem_hoan_thanh", "update_at"])
+    luot.trang_thai_tep_hoan_tat = enums.TrangThaiTepHoanTat.DANG_XU_LY
+    luot.save(update_fields=["trang_thai", "thoi_diem_hoan_thanh", "trang_thai_tep_hoan_tat", "update_at"])
     yeu_cau = SigningRequest.objects.select_for_update().get(pk=luot.trinh_ky_id)
     yeu_cau.trang_thai = enums.TrangThaiYeuCau.HOAN_THANH
     yeu_cau.ngay_hoan_thanh = thoi_diem
     yeu_cau.save(update_fields=["trang_thai", "ngay_hoan_thanh", "update_at"])
     ghi_nhat_ky(nguoi, "signing_request", yeu_cau.pk, "HOAN_THANH_TRINH_KY", trinh_ky=yeu_cau, luot_trinh=luot,
                 trang_thai_truoc=enums.TrangThaiYeuCau.CHO_KY, trang_thai_sau=yeu_cau.trang_thai)
+    # Phase 10 lõi: chốt bằng chứng cùng transaction; tệp PDF hoàn tất sinh sau commit, lỗi thì thử lại được
+    chot_bang_chung(luot, nguoi, thoi_diem)
+    tep_hoan_tat.bat_dau_sau_commit(luot, nguoi)
 
 
 def _kiem_tra_khoa(nguoi, khoa_ky_id, thoi_diem):
