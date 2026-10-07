@@ -520,6 +520,23 @@
     "toastDeletedType": "Document type deleted",
     "toastExportExcel": "Exporting data to Excel file...",
     "deleteFolderHasChildren": "Cannot delete because folder still contains {count} document types",
-    "orderExists": "Display order already exists"
+    "orderExists": "Display order already exists",
+    "confirmDiscardTitle": "Confirm Discard Changes",
+    "confirmDiscardMsg": "Are you sure you want to discard unsaved changes?",
+    "confirmDiscardSub": "All information you have entered or edited will not be saved.",
+    "confirmDiscardBtn": "Discard Changes",
+    "continueEditingBtn": "Continue Editing",
+    "confirmDeleteFolderTitle": "Confirm Delete Folder",
+    "confirmDeleteFolderMsg": "Are you sure you want to delete folder \"{name}\"?",
+    "confirmDeleteFolderSub": "This action cannot be undone once completed.",
+    "deleteFolderBtn": "Delete Folder",
+    "cannotDeleteFolderTitle": "Cannot Delete Folder",
+    "cannotDeleteFolderMsg": "Folder \"{name}\" currently contains {count} document types.",
+    "cannotDeleteFolderSub": "Please move or delete all document types in this folder before deleting.",
+    "confirmDeleteTypeTitle": "Confirm Delete Document Type",
+    "confirmDeleteTypeMsg": "Are you sure you want to delete document type \"{name}\"?",
+    "confirmDeleteTypeSub": "This action cannot be undone once completed.",
+    "deleteTypeBtn": "Delete Type",
+    "understood": "Understood"
   }
 }

@@ -520,6 +520,23 @@
     "toastDeletedType": "Đã xóa loại tài liệu",
     "toastExportExcel": "Đang xuất dữ liệu ra tệp Excel...",
     "deleteFolderHasChildren": "Không thể xóa vì thư mục còn {count} loại tài liệu",
-    "orderExists": "STT ưu tiên đã tồn tại"
+    "orderExists": "STT ưu tiên đã tồn tại",
+    "confirmDiscardTitle": "Xác nhận hủy thay đổi",
+    "confirmDiscardMsg": "Bạn có chắc muốn hủy các thay đổi chưa lưu?",
+    "confirmDiscardSub": "Tất cả các thông tin vừa nhập hoặc chỉnh sửa trên biểu mẫu sẽ không được lưu lại.",
+    "confirmDiscardBtn": "Hủy thay đổi",
+    "continueEditingBtn": "Tiếp tục chỉnh sửa",
+    "confirmDeleteFolderTitle": "Xác nhận xóa thư mục",
+    "confirmDeleteFolderMsg": "Bạn có chắc chắn muốn xóa thư mục \"{name}\"?",
+    "confirmDeleteFolderSub": "Hành động này không thể hoàn tác sau khi thực hiện.",
+    "deleteFolderBtn": "Xóa thư mục",
+    "cannotDeleteFolderTitle": "Không thể xóa thư mục",
+    "cannotDeleteFolderMsg": "Thư mục \"{name}\" hiện đang chứa {count} loại tài liệu.",
+    "cannotDeleteFolderSub": "Vui lòng chuyển hoặc xóa hết các loại tài liệu thuộc thư mục này trước khi xóa thư mục.",
+    "confirmDeleteTypeTitle": "Xác nhận xóa loại tài liệu",
+    "confirmDeleteTypeMsg": "Bạn có chắc chắn muốn xóa loại tài liệu \"{name}\"?",
+    "confirmDeleteTypeSub": "Hành động này không thể hoàn tác sau khi thực hiện.",
+    "deleteTypeBtn": "Xóa loại tài liệu",
+    "understood": "Đã hiểu"
   }
 }

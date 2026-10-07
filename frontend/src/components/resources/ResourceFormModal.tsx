@@ -9,6 +9,7 @@ import {
 } from '@app-types/resource';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
+import { ConfirmationModal } from './ConfirmationModal';
 
 export interface ResourceFormData {
   dm_tai_lieu: number | '';
@@ -75,6 +76,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const [fileError, setFileError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [isConfirmDiscardOpen, setIsConfirmDiscardOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,16 +123,15 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       setErrors({});
       setFileError(null);
       setIsDirty(false);
+      setIsConfirmDiscardOpen(false);
     }
   }, [isOpen, initialData, categories]);
 
   // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
   const handleSafeClose = () => {
     if (isDirty) {
-      const confirmLeave = window.confirm(
-        'Bạn có chắc muốn hủy các thay đổi chưa lưu?'
-      );
-      if (!confirmLeave) return;
+      setIsConfirmDiscardOpen(true);
+      return;
     }
     onClose();
   };
@@ -139,12 +140,13 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
+        if (isConfirmDiscardOpen) return;
         handleSafeClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isDirty]);
+  }, [isOpen, isDirty, isConfirmDiscardOpen]);
 
   // Danh sách Loại tài liệu theo Thư mục đã chọn (Cascading)
   const availableTypes = useMemo(() => {
@@ -822,6 +824,25 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             {isEditMode ? t('resourceManagement.saveChanges') : t('resourceManagement.save')}
           </Button>
         </div>
+
+        {/* Modal xác nhận hủy các thay đổi chưa lưu */}
+        <ConfirmationModal
+          isOpen={isConfirmDiscardOpen}
+          onClose={() => setIsConfirmDiscardOpen(false)}
+          onConfirm={() => {
+            setIsConfirmDiscardOpen(false);
+            setIsDirty(false);
+            onClose();
+          }}
+          title={t('resourceManagement.confirmDiscardTitle')}
+          message={t('resourceManagement.confirmDiscardMsg')}
+          subMessage={t('resourceManagement.confirmDiscardSub')}
+          confirmText={t('resourceManagement.confirmDiscardBtn')}
+          cancelText={t('resourceManagement.continueEditingBtn')}
+          variant="warning"
+          headerIcon="fa-triangle-exclamation"
+          confirmIcon="fa-arrow-rotate-left"
+        />
       </div>
     </div>,
     document.body

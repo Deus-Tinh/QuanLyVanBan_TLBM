@@ -65,7 +65,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  // Mở menu ⋯ với vị trí fixed (không bị cắt bởi overflow)
+  // Mở menu ⋯ với vị trí fixed (không bị cắt bởi overflow và lật lên trên nếu gần đáy)
   const openActionMenu = (e: React.MouseEvent<HTMLButtonElement>, itemId: number) => {
     e.stopPropagation();
     if (activeMenuId === itemId) {
@@ -74,9 +74,11 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
       return;
     }
     const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < 120 ? Math.max(10, rect.top - 116) : rect.bottom + 4;
     setMenuPos({
-      top: rect.bottom + window.scrollY + 4,
-      right: window.innerWidth - rect.right,
+      top,
+      right: Math.max(10, window.innerWidth - rect.right),
     });
     setActiveMenuId(itemId);
   };
@@ -359,7 +361,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                   item.hieu_luc === 'HET_HIEU_LUC' || item.hieu_luc === 'HET_VA_THAY_THE';
 
                 const rowClass = isExpired
-                  ? 'bg-slate-100/70 dark:bg-slate-800/60 opacity-60 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/80'
+                  ? 'bg-slate-100/70 dark:bg-slate-800/60 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/80'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-main';
 
                 const ext = getFileExt(item.file_dinh_kem);
@@ -378,15 +380,15 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     className={`transition-colors duration-fast cursor-pointer select-none ${rowClass}`}
                     title="Bấm để đi vào thư mục của tài liệu"
                   >
-                    {/* Cột 1: Ký hiệu (monospace thường, không viền/pill) */}
-                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
-                      <span className="font-mono text-xs text-secondary font-medium">
+                    {/* Cột 1: Ký hiệu (thống nhất font sans chuẩn hệ thống, ngay hàng thẳng lối) */}
+                    <td className="px-4 py-3.5 align-top whitespace-nowrap">
+                      <span className="text-xs font-semibold text-main tracking-tight">
                         {item.ky_hieu || '-'}
                       </span>
                     </td>
 
                     {/* Cột 2: Tiêu đề + Loại tài liệu + Link thay thế */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-4 py-3.5 align-top">
                       <div className="font-semibold text-sm text-main hover:text-primary transition-colors leading-snug line-clamp-2">
                         {item.tieu_de}
                       </div>
@@ -424,23 +426,23 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     </td>
 
                     {/* Cột 3: Nơi ban hành */}
-                    <td className="px-4 py-3.5 align-middle text-xs text-secondary">
+                    <td className="px-4 py-3.5 align-top text-xs text-secondary leading-snug">
                       {item.noi_ban_hanh || '-'}
                     </td>
 
-                    {/* Cột 4: Ngày đăng (dd/mm/yyyy thường, bỏ icon) */}
-                    <td className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary">
+                    {/* Cột 4: Ngày đăng (dd/mm/yyyy thường, thẳng hàng đầu) */}
+                    <td className="px-3.5 py-3.5 text-center align-top whitespace-nowrap text-xs text-secondary leading-snug">
                       {formatDate(item.ngay_dang)}
                     </td>
 
-                    {/* Cột 5: Hiệu lực (Badge giữ độ nét 100%) */}
-                    <td className="px-4 py-3.5 text-center align-middle whitespace-nowrap opacity-100">
+                    {/* Cột 5: Hiệu lực (Badge giữ độ nét 100%, thẳng hàng đầu) */}
+                    <td className="px-4 py-3.5 text-center align-top whitespace-nowrap opacity-100">
                       {renderStatusBadge(item.hieu_luc)}
                     </td>
 
-                    {/* Cột 6: Tệp đính kèm */}
+                    {/* Cột 6: Tệp đính kèm (Icon & Nút tải về cố định độ rộng để thẳng hàng tuyệt đối) */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      className="px-3.5 py-3.5 text-center align-top whitespace-nowrap opacity-100"
                       onClick={(e) => e.stopPropagation()}
                       data-dropdown-root
                     >
@@ -497,19 +499,19 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                           )}
                         </div>
                       ) : item.file_dinh_kem ? (
-                        // Trường hợp 1 tệp: hiện icon + Ext + nút Tải về
-                        <div className="inline-flex items-center gap-1.5 text-xs">
-                          <i className={`fa-solid ${getFileIcon(ext)} text-sm`} />
-                          <span className="font-semibold text-secondary text-[11px]">{ext}</span>
+                        // Trường hợp 1 tệp: hiện icon + Ext + nút Tải về với chiều rộng cố định để thẳng hàng
+                        <div className="inline-flex items-center justify-center gap-1.5 text-xs">
+                          <i className={`fa-solid ${getFileIcon(ext)} text-sm shrink-0`} />
+                          <span className="font-semibold text-secondary text-[11px] w-9 inline-block text-left">{ext}</span>
                           <button
                             type="button"
                             onClick={() => onDownloadFile?.(item)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-primary hover:text-primary-hover hover:bg-primary-subtle rounded-md transition-colors cursor-pointer ml-1"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-primary hover:text-primary-hover hover:bg-primary-subtle rounded-md transition-colors cursor-pointer"
                             title="Tải về tệp đính kèm"
                             aria-label={`Tải về tệp ${ext}`}
                           >
                             <i className="fa-solid fa-download text-[11px]" />
-                            <span>Tải về</span>
+                            <span>{t('resourceManagement.download')}</span>
                           </button>
                         </div>
                       ) : (
@@ -519,7 +521,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
                     {/* Cột 7: Thao tác — Menu "⋯": Xem chi tiết, Chỉnh sửa, Xóa */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      className="px-3.5 py-3.5 text-center align-top whitespace-nowrap opacity-100"
                       onClick={(e) => e.stopPropagation()}
                       data-dropdown-root
                     >
@@ -527,7 +529,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                         <button
                           type="button"
                           onClick={(e) => openActionMenu(e, item.id)}
-                          className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
+                          className="w-8 h-7 rounded-lg inline-flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
                           title="Thao tác"
                           aria-label={`Thao tác với tài liệu ${item.ky_hieu || item.tieu_de}`}
                           aria-haspopup="true"

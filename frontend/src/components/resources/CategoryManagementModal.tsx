@@ -4,6 +4,7 @@ import { ResourceCategory, ResourceType } from '@app-types/resource';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
 import { useTranslation } from '@i18n/translate';
+import { ConfirmationModal } from './ConfirmationModal';
 
 export interface CategoryManagementModalProps {
   isOpen: boolean;
@@ -39,6 +40,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [typeSearch, setTypeSearch] = useState('');
   const [filterParentCat, setFilterParentCat] = useState<string>('all');
   const [catDeleteBlockedMsg, setCatDeleteBlockedMsg] = useState<string | null>(null);
+
+  // States cho Modal thông báo/xác nhận UI chuẩn
+  const [deleteCatTarget, setDeleteCatTarget] = useState<ResourceCategory | null>(null);
+  const [deleteTypeTarget, setDeleteTypeTarget] = useState<ResourceType | null>(null);
+  const [deleteBlockedCat, setDeleteBlockedCat] = useState<{ cat: ResourceCategory; count: number } | null>(null);
 
   // ============================================================================
   // UNIFIED SUB-MODAL STATE: Dùng chung cho Tạo mới & Chỉnh sửa
@@ -299,25 +305,16 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     const childTypes = types.filter((t) => t.dm_tai_lieu === cat.id);
     if (childTypes.length > 0) {
       setCatDeleteBlockedMsg(`Không thể xóa vì thư mục còn ${childTypes.length} loại tài liệu`);
+      setDeleteBlockedCat({ cat, count: childTypes.length });
       return;
     }
 
-    const confirmDelete = window.confirm(
-      `Xóa thư mục "${cat.ten_tai_lieu}"? Hành động này không thể hoàn tác.`
-    );
-    if (confirmDelete) {
-      onDeleteCategory(cat.id);
-    }
+    setDeleteCatTarget(cat);
   };
 
   // Xóa Loại tài liệu có xác nhận
   const handleDeleteTypeConfirm = (typeItem: ResourceType) => {
-    const confirmDelete = window.confirm(
-      `Xóa loại tài liệu "${typeItem.ten_loai}"? Hành động này không thể hoàn tác.`
-    );
-    if (confirmDelete) {
-      onDeleteType(typeItem.id);
-    }
+    setDeleteTypeTarget(typeItem);
   };
 
   // Thư mục đã lọc và sắp xếp theo STT ưu tiên
@@ -1141,6 +1138,60 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           </button>
         </div>
       )}
+
+      {/* Modal xác nhận xóa Thư mục */}
+      <ConfirmationModal
+        isOpen={deleteCatTarget !== null}
+        onClose={() => setDeleteCatTarget(null)}
+        onConfirm={() => {
+          if (deleteCatTarget) {
+            onDeleteCategory(deleteCatTarget.id);
+            setDeleteCatTarget(null);
+          }
+        }}
+        variant="danger"
+        title={t('resourceManagement.confirmDeleteFolderTitle')}
+        message={t('resourceManagement.confirmDeleteFolderMsg', { name: deleteCatTarget?.ten_tai_lieu || '' })}
+        subMessage={t('resourceManagement.confirmDeleteFolderSub')}
+        confirmText={t('resourceManagement.deleteFolderBtn')}
+        cancelText={t('resourceManagement.cancel')}
+      />
+
+      {/* Modal thông báo chặn xóa thư mục khi còn loại con */}
+      <ConfirmationModal
+        isOpen={deleteBlockedCat !== null}
+        onClose={() => setDeleteBlockedCat(null)}
+        onConfirm={() => setDeleteBlockedCat(null)}
+        variant="warning"
+        title={t('resourceManagement.cannotDeleteFolderTitle')}
+        message={t('resourceManagement.cannotDeleteFolderMsg', {
+          name: deleteBlockedCat?.cat.ten_tai_lieu || '',
+          count: String(deleteBlockedCat?.count || 0),
+        })}
+        subMessage={t('resourceManagement.cannotDeleteFolderSub')}
+        confirmText={t('resourceManagement.understood')}
+        cancelText={t('resourceManagement.close')}
+        headerIcon="fa-triangle-exclamation"
+        confirmIcon=""
+      />
+
+      {/* Modal xác nhận xóa Loại tài liệu */}
+      <ConfirmationModal
+        isOpen={deleteTypeTarget !== null}
+        onClose={() => setDeleteTypeTarget(null)}
+        onConfirm={() => {
+          if (deleteTypeTarget) {
+            onDeleteType(deleteTypeTarget.id);
+            setDeleteTypeTarget(null);
+          }
+        }}
+        variant="danger"
+        title={t('resourceManagement.confirmDeleteTypeTitle')}
+        message={t('resourceManagement.confirmDeleteTypeMsg', { name: deleteTypeTarget?.ten_loai || '' })}
+        subMessage={t('resourceManagement.confirmDeleteTypeSub')}
+        confirmText={t('resourceManagement.deleteTypeBtn')}
+        cancelText={t('resourceManagement.cancel')}
+      />
     </div>,
     document.body
   );
