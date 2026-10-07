@@ -11,6 +11,7 @@ class TaiLieuChiTietFilter(django_filters.FilterSet):
     - nam: Lọc theo năm của ngày đăng (ngay_dang__year)
     - hieu_luc: Lọc theo trạng thái hiệu lực
     - hien_thi: Lọc theo phạm vi hiển thị
+    - don_vi_id: Lọc theo đơn vị phòng ban sở hữu
     - search: Tìm kiếm theo tiêu đề, ký hiệu, nơi ban hành
     """
     dm_tai_lieu = django_filters.NumberFilter(field_name='dm_tai_lieu_id')
@@ -18,11 +19,12 @@ class TaiLieuChiTietFilter(django_filters.FilterSet):
     nam = django_filters.NumberFilter(field_name='ngay_dang', lookup_expr='year')
     hieu_luc = django_filters.CharFilter(field_name='hieu_luc')
     hien_thi = django_filters.CharFilter(field_name='hien_thi')
+    don_vi_id = django_filters.NumberFilter(field_name='don_vi_id')
     search = django_filters.CharFilter(method='filter_search')
 
     class Meta:
         model = TaiLieuChiTiet
-        fields = ['dm_tai_lieu', 'loai_tai_lieu', 'nam', 'hieu_luc', 'hien_thi', 'search']
+        fields = ['dm_tai_lieu', 'loai_tai_lieu', 'nam', 'hieu_luc', 'hien_thi', 'don_vi_id', 'search']
 
     def filter_search(self, queryset, name, value):
         if not value:

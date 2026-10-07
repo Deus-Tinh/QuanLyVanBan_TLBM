@@ -88,6 +88,12 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             Còn hiệu lực
           </Badge>
         );
+      case 'CON_HIEU_LUC_1_PHAN':
+        return (
+          <Badge variant="info" size="md" withDot>
+            Còn hiệu lực một phần
+          </Badge>
+        );
       case 'HET_HIEU_LUC':
         return (
           <Badge variant="danger" size="md" withDot>

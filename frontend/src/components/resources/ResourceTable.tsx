@@ -73,6 +73,12 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
             Còn hiệu lực
           </Badge>
         );
+      case 'CON_HIEU_LUC_1_PHAN':
+        return (
+          <Badge variant="info" size="sm" withDot>
+            Còn hiệu lực 1 phần
+          </Badge>
+        );
       case 'HET_HIEU_LUC':
         return (
           <Badge variant="danger" size="sm" withDot>

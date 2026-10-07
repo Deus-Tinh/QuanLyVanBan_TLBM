@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet
+from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment, validate_document_file
 
 
 class DanhMucTaiLieuSerializer(serializers.ModelSerializer):
@@ -48,6 +48,32 @@ class LoaiTaiLieuSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
+class ChiTietTaiLieuAttachmentSerializer(serializers.ModelSerializer):
+    """Serializer cho Tệp đính kèm (records_chitiettailieu_attachment)"""
+    created_user_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChiTietTaiLieuAttachment
+        fields = [
+            'id',
+            'document',
+            'name',
+            'path',
+            'file_size',
+            'mime_type',
+            'is_deleted',
+            'created_time',
+            'created_user',
+            'created_user_name',
+        ]
+        read_only_fields = ['id', 'created_time', 'created_user']
+
+    def get_created_user_name(self, obj):
+        if not obj.created_user:
+            return None
+        return obj.created_user.get_full_name() or obj.created_user.username
+
+
 class TaiLieuChiTietSerializer(serializers.ModelSerializer):
     """
     Serializer cho Chi tiết tài liệu chung (khớp interface ResourceItem của frontend)
@@ -60,6 +86,8 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
     )
     loai_tai_lieu_names = serializers.SerializerMethodField()
     nguoi_tao_name = serializers.SerializerMethodField()
+    attachments = ChiTietTaiLieuAttachmentSerializer(many=True, read_only=True)
+    file_dinh_kem = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = TaiLieuChiTiet
@@ -78,7 +106,9 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
             'link_thay_the',
             'ghi_chu',
             'file_dinh_kem',
+            'attachments',
             'hien_thi',
+            'don_vi_id',
             'nguoi_tao',
             'nguoi_tao_name',
             'created_at',
@@ -94,6 +124,11 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
             return None
         return obj.nguoi_tao.get_full_name() or obj.nguoi_tao.username
 
+    def validate_file_dinh_kem(self, value):
+        if value:
+            validate_document_file(value)
+        return value
+
     def validate(self, attrs):
         hieu_luc = attrs.get('hieu_luc') or (self.instance.hieu_luc if self.instance else 'CON_HIEU_LUC')
         link_thay_the = attrs.get('link_thay_the') or (self.instance.link_thay_the if self.instance else '')
@@ -102,3 +137,52 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
                 'link_thay_the': 'Vui lòng cung cấp link văn bản thay thế khi chọn trạng thái Hết hiệu lực và thay thế.'
             })
         return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        first_att = instance.attachments.filter(is_deleted=False).last()
+        data['file_dinh_kem'] = first_att.path if first_att else ''
+        return data
+
+    def create(self, validated_data):
+        loai_tai_lieu = validated_data.pop('loai_tai_lieu', [])
+        file_dinh_kem = validated_data.pop('file_dinh_kem', None)
+        instance = TaiLieuChiTiet.objects.create(**validated_data)
+        if loai_tai_lieu:
+            instance.loai_tai_lieu.set(loai_tai_lieu)
+        if file_dinh_kem:
+            from django.core.files.storage import default_storage
+            file_path = default_storage.save(f"documents/templates/{file_dinh_kem.name}", file_dinh_kem)
+            storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
+            ChiTietTaiLieuAttachment.objects.create(
+                document=instance,
+                name=file_dinh_kem.name,
+                path=storage_path,
+                file_size=getattr(file_dinh_kem, 'size', None),
+                mime_type=getattr(file_dinh_kem, 'content_type', None),
+                created_user=instance.nguoi_tao
+            )
+        return instance
+
+    def update(self, instance, validated_data):
+        loai_tai_lieu = validated_data.pop('loai_tai_lieu', None)
+        file_dinh_kem = validated_data.pop('file_dinh_kem', None)
+        validated_data.pop('nguoi_tao', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if loai_tai_lieu is not None:
+            instance.loai_tai_lieu.set(loai_tai_lieu)
+        if file_dinh_kem:
+            from django.core.files.storage import default_storage
+            file_path = default_storage.save(f"documents/templates/{file_dinh_kem.name}", file_dinh_kem)
+            storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
+            ChiTietTaiLieuAttachment.objects.create(
+                document=instance,
+                name=file_dinh_kem.name,
+                path=storage_path,
+                file_size=getattr(file_dinh_kem, 'size', None),
+                mime_type=getattr(file_dinh_kem, 'content_type', None),
+                created_user=instance.nguoi_tao
+            )
+        return instance

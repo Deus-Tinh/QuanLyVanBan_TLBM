@@ -13,11 +13,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .filters import TaiLieuChiTietFilter
-from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet
+from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment
 from .serializers import (
     DanhMucTaiLieuSerializer,
     LoaiTaiLieuSerializer,
     TaiLieuChiTietSerializer,
+    ChiTietTaiLieuAttachmentSerializer,
 )
 
 
@@ -148,7 +149,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = TaiLieuChiTiet.objects.select_related(
             'dm_tai_lieu', 'nguoi_tao'
-        ).prefetch_related('loai_tai_lieu').all()
+        ).prefetch_related('loai_tai_lieu', 'attachments').all()
 
         user = self.request.user
         # Người dùng chưa đăng nhập: chỉ thấy tài liệu công khai (TAT_CA)
@@ -159,12 +160,15 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
         if user.is_superuser or user.is_staff:
             return qs
 
-        # Người dùng đăng nhập: thấy tài liệu TAT_CA, hoặc do chính mình tạo, hoặc cùng phòng ban
+        # Người dùng đăng nhập: thấy tài liệu TAT_CA, hoặc do chính mình tạo, hoặc cùng đơn vị/phòng ban
         user_dept = ""
         if hasattr(user, "profile"):
             user_dept = getattr(user.profile, "department", "")
+        user_don_vi_id = getattr(user, "don_vi_id", None)
 
         q_filter = Q(hien_thi='TAT_CA') | Q(nguoi_tao=user)
+        if user_don_vi_id:
+            q_filter |= Q(hien_thi='NOI_BO_PHONG_BAN', don_vi_id=user_don_vi_id)
         if user_dept:
             q_filter |= Q(hien_thi='NOI_BO_PHONG_BAN', nguoi_tao__profile__department=user_dept)
 
@@ -174,6 +178,8 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
         kwargs = {}
         if self.request.user and self.request.user.is_authenticated:
             kwargs['nguoi_tao'] = self.request.user
+            if 'don_vi_id' not in serializer.validated_data and hasattr(self.request.user, 'don_vi_id'):
+                kwargs['don_vi_id'] = getattr(self.request.user, 'don_vi_id')
         serializer.save(**kwargs)
 
     @action(detail=True, methods=['post'], url_path='toggle-validity')
@@ -354,3 +360,27 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         response["Content-Disposition"] = f'attachment; filename="Danh_sach_tai_lieu_{date_str}.xlsx"'
         return response
+
+
+class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet cho Tệp đính kèm tài liệu (1-N Hướng A):
+    - Quản lý danh sách, upload, xóa mềm tệp đính kèm theo DDL Base
+    """
+    queryset = ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).select_related('document', 'created_user')
+    serializer_class = ChiTietTaiLieuAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['document']
+    search_fields = ['name']
+
+    def perform_create(self, serializer):
+        kwargs = {}
+        if self.request.user and self.request.user.is_authenticated:
+            kwargs['created_user'] = self.request.user
+        serializer.save(**kwargs)
+
+    def perform_destroy(self, instance):
+        instance.is_deleted = True
+        instance.save()
+

@@ -35,6 +35,21 @@ const mockItems: ResourceItem[] = [
     hien_thi: 'TAT_CA',
     nguoi_tao_name: 'Admin',
   },
+  {
+    id: 3,
+    dm_tai_lieu: 1,
+    dm_tai_lieu_name: 'Tài liệu chung',
+    loai_tai_lieu: [1],
+    loai_tai_lieu_names: ['Quy chế'],
+    ky_hieu: 'HD-03',
+    tieu_de: 'Hướng dẫn một phần 2026',
+    ngay_dang: '2026-03-01',
+    noi_ban_hanh: 'Ban Giám Đốc',
+    hieu_luc: 'CON_HIEU_LUC_1_PHAN',
+    file_dinh_kem: '/media/documents/templates/hd03.pdf',
+    hien_thi: 'TAT_CA',
+    nguoi_tao_name: 'Admin',
+  },
 ];
 
 describe('ResourceTable Component', () => {
@@ -73,7 +88,7 @@ describe('ResourceTable Component', () => {
     );
 
     const rows = container.querySelectorAll('tbody tr');
-    expect(rows.length).toBe(2);
+    expect(rows.length).toBe(3);
 
     // Dòng 1: Còn hiệu lực -> không chứa class tối màu
     expect(rows[0].className).not.toContain('bg-slate-100/70');
@@ -81,6 +96,9 @@ describe('ResourceTable Component', () => {
     // Dòng 2: Hết hiệu lực -> PHẢI chứa class đổi màu tối theo quy chuẩn
     expect(rows[1].className).toContain('bg-slate-100/70');
     expect(rows[1].className).toContain('dark:bg-slate-800/60');
+
+    // Dòng 3: Còn hiệu lực 1 phần -> không chứa class tối màu
+    expect(rows[2].className).not.toContain('bg-slate-100/70');
   });
 
   it('calls onViewDetail when clicking on title or view button', () => {
@@ -115,5 +133,21 @@ describe('ResourceTable Component', () => {
     );
 
     expect(screen.getByText('Chưa có tài liệu nào')).toBeInTheDocument();
+  });
+
+  it('renders CON_HIEU_LUC_1_PHAN badge correctly', () => {
+    render(
+      <ResourceTable
+        items={[mockItems[2]]}
+        currentPage={1}
+        totalPages={1}
+        pageSize={10}
+        totalCount={1}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('Còn hiệu lực 1 phần')).toBeInTheDocument();
   });
 });
