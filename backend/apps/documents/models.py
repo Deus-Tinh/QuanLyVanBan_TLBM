@@ -1,22 +1,32 @@
 """
-Models cho Module Văn Bản (Đến / Đi / Mật) — Kiến trúc 3 Model theo chuẩn CSDL QLVB&TL.
+Models cho Module Văn Bản (Đến / Đi) — Kiến trúc theo chuẩn CSDL QLVB&TL.
 
 Kiến trúc:
 1. VanBanDen  (db_table: 'documents_vanbanden')   — Văn bản Đến
 2. VanBanDi   (db_table: 'documents_vanbandi')    — Văn bản Đi
-3. VanBanMat  (db_table: 'documents_vanbanmat')   — Văn bản Mật
-Cả 3 model kế thừa từ abstract model BaseVanBan chứa các trường chung, tránh trùng lặp mã.
+Cả 2 model kế thừa từ abstract model BaseVanBan chứa các trường chung, tránh trùng lặp mã.
+Văn bản hạn chế được quản lý qua cờ pham_vi = 'HAN_CHE' (theo Issue #82 & DDL chuẩn hóa).
 
 Tệp đính kèm (Attachment - Hướng A: 7 trường):
 - VanBanDenAttachment  (db_table: 'documents_vanbanden_attachment')
 - VanBanDiAttachment   (db_table: 'documents_vanbandi_attachment')
-- VanBanMatAttachment  (db_table: 'documents_vanbanmat_attachment')
 
-Lịch sử người xem (View Log):
-- DocumentViewLog      (db_table: 'documents_view_log')
+Bảng liên kết & M2M Through models (Khớp 100% DDL):
+- documents_vanbanden_nguoinhan  (VanBanDenNguoiNhan)
+- documents_vanbanden_hoso       (VanBanDenHoSo)
+- documents_vanbanden_danhmuc     (VanBanDenDanhmuc)
+- documents_vanbanden_donvinhan  (VanBanDenDonViNhan)
+- documents_vanbandi_nguoinhan   (VanBanDiNguoiNhan)
+- documents_vanbandi_hoso        (VanBanDiHoSo)
+- documents_vanbandi_danhmuc      (VanBanDiDanhmuc)
+- documents_vanbandi_noibanhanh  (VanBanDiNoiBanHanh)
+- documents_vanbandi_donvinhan   (VanBanDiDonViNhan)
 
-Đồng thời cung cấp Facade / Helper `Document` và `DocumentAttachment` để đảm bảo tương thích ngược
-hoàn toàn với các endpoint API chung và code hiện hữu.
+Lịch sử & Nhật ký:
+- DocumentViewLog    (db_table: 'documents_view_log')
+- DocumentAccessLog  (db_table: 'documents_access_log')
+
+Đồng thời cung cấp Facade / Helper `Document` và `DocumentAttachment` để đảm bảo tương thích ngược.
 """
 
 import os
@@ -38,7 +48,6 @@ class PhamVi(models.TextChoices):
 class LoaiVanBan(models.TextChoices):
     DEN = "DEN", "Văn bản Đến"
     DI = "DI", "Văn bản Đi"
-    MAT = "MAT", "Văn bản Mật"
 
 
 class HieuLuc(models.TextChoices):
@@ -54,8 +63,7 @@ class HieuLuc(models.TextChoices):
 
 class BaseVanBan(models.Model):
     """
-    Model cơ sở trừu tượng chứa các trường dùng chung cho cả 3 phân hệ văn bản:
-    Đến, Đi, Mật.
+    Model cơ sở trừu tượng chứa các trường dùng chung cho các phân hệ văn bản (Đến, Đi).
     """
 
     PhamVi = PhamVi
@@ -84,12 +92,11 @@ class BaseVanBan(models.Model):
         max_length=255,
     )
 
-    # ── Nội dung & Ngày ─────────────────────────────────────────────
+    # ── Nội dung & Ngày (NOT NULL per DDL & NĐ 30/2020) ───────────
     trich_yeu = models.TextField("Trích yếu nội dung")
     ngay_van_ban = models.DateTimeField(
         "Ngày văn bản",
-        null=True,
-        blank=True,
+        default=timezone.now,
         help_text="Dùng để lọc/sắp xếp danh sách.",
     )
     nguoi_ky = models.CharField(
@@ -203,14 +210,11 @@ class VanBanDen(BaseVanBan):
 
     so_thu_tu = models.PositiveIntegerField(
         "Số đến",
-        null=True,
-        blank=True,
+        default=1,
         help_text="Tự động tăng theo năm (Số đến).",
     )
     ngay_den = models.DateTimeField(
         "Ngày đến",
-        null=True,
-        blank=True,
         default=timezone.now,
         help_text="Lấy đầy đủ ngày giờ phút giây.",
     )
@@ -222,12 +226,22 @@ class VanBanDen(BaseVanBan):
     )
     nguoi_nhan = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
+        through="VanBanDenNguoiNhan",
         verbose_name="Người nhận",
         related_name="vanbanden_received",
         blank=True,
-        db_table="documents_vanbanden_nguoinhan",
         help_text="Cán bộ nhân viên nhận văn bản đến.",
     )
+
+    def save(self, *args, **kwargs):
+        if not self.so_thu_tu:
+            from .services import generate_so_thu_tu
+            self.so_thu_tu = generate_so_thu_tu("DEN", self.nam or timezone.now().year) or 1
+        if not self.ngay_den:
+            self.ngay_den = timezone.now()
+        if not self.ngay_van_ban:
+            self.ngay_van_ban = self.ngay_den
+        super().save(*args, **kwargs)
 
     class Meta:
         db_table = "documents_vanbanden"
@@ -237,6 +251,8 @@ class VanBanDen(BaseVanBan):
         indexes = [
             models.Index(fields=["nam", "so_thu_tu"], name="idx_vbden_nam_stt"),
             models.Index(fields=["ngay_den"], name="idx_vbden_ngay_den"),
+            models.Index(fields=["so_hieu"], name="idx_vanbanden_sohieu"),
+            models.Index(fields=["nam"], name="idx_vanbanden_nam"),
         ]
         constraints = [
             models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbanden_nam_stt"),
@@ -258,6 +274,115 @@ class VanBanDen(BaseVanBan):
         return f"[Văn bản Đến] {label}"
 
 
+# ── M2M Through & Junction Models cho Văn bản Đến ────────────────
+
+class VanBanDenNguoiNhan(models.Model):
+    """
+    Bảng liên kết người nhận văn bản đến (documents_vanbanden_nguoinhan).
+    Khớp DDL: vanbanden_id, employee_id, PK (vanbanden_id, employee_id).
+    """
+
+    vanbanden = models.ForeignKey(
+        VanBanDen,
+        on_delete=models.CASCADE,
+        db_column="vanbanden_id",
+        related_name="+",
+    )
+    employee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.RESTRICT,
+        db_column="employee_id",
+        related_name="+",
+    )
+
+    class Meta:
+        db_table = "documents_vanbanden_nguoinhan"
+        unique_together = (("vanbanden", "employee"),)
+        verbose_name = "Người nhận văn bản đến"
+        verbose_name_plural = "Người nhận văn bản đến"
+
+    def __str__(self):
+        return f"{self.vanbanden_id} - {self.employee_id}"
+
+
+class VanBanDenHoSo(models.Model):
+    """
+    Bảng liên kết Hồ sơ văn bản đến (documents_vanbanden_hoso).
+    Khớp DDL: vanbanden_id, hoso_id.
+    """
+
+    vanbanden = models.ForeignKey(
+        VanBanDen,
+        on_delete=models.CASCADE,
+        db_column="vanbanden_id",
+        related_name="hoso",
+    )
+    hoso_id = models.BigIntegerField("ID Hồ sơ", db_index=True)
+
+    class Meta:
+        db_table = "documents_vanbanden_hoso"
+        unique_together = (("vanbanden", "hoso_id"),)
+        verbose_name = "Hồ sơ văn bản đến"
+        verbose_name_plural = "Hồ sơ văn bản đến"
+        indexes = [
+            models.Index(fields=["hoso_id"], name="idx_vanbanden_hoso_hoso"),
+        ]
+
+    def __str__(self):
+        return f"{self.vanbanden_id} - {self.hoso_id}"
+
+
+class VanBanDenDanhmuc(models.Model):
+    """
+    Bảng liên kết Loại văn bản / Danh mục văn bản đến (documents_vanbanden_danhmuc).
+    Khớp DDL: vanbanden_id, loaivanban_id.
+    """
+
+    vanbanden = models.ForeignKey(
+        VanBanDen,
+        on_delete=models.CASCADE,
+        db_column="vanbanden_id",
+        related_name="danhmuc",
+    )
+    loaivanban_id = models.BigIntegerField("ID Loại văn bản", db_index=True)
+
+    class Meta:
+        db_table = "documents_vanbanden_danhmuc"
+        unique_together = (("vanbanden", "loaivanban_id"),)
+        verbose_name = "Danh mục loại văn bản đến"
+        verbose_name_plural = "Danh mục loại văn bản đến"
+        indexes = [
+            models.Index(fields=["loaivanban_id"], name="idx_vanbanden_danhmuc_loai"),
+        ]
+
+    def __str__(self):
+        return f"{self.vanbanden_id} - {self.loaivanban_id}"
+
+
+class VanBanDenDonViNhan(models.Model):
+    """
+    Bảng liên kết đơn vị nhận văn bản đến (documents_vanbanden_donvinhan).
+    Khớp DDL: vanbanden_id, donvi_id.
+    """
+
+    vanbanden = models.ForeignKey(
+        VanBanDen,
+        on_delete=models.CASCADE,
+        db_column="vanbanden_id",
+        related_name="donvinhan",
+    )
+    donvi_id = models.BigIntegerField("ID Đơn vị nhận", db_index=True)
+
+    class Meta:
+        db_table = "documents_vanbanden_donvinhan"
+        unique_together = (("vanbanden", "donvi_id"),)
+        verbose_name = "Đơn vị nhận văn bản đến"
+        verbose_name_plural = "Đơn vị nhận văn bản đến"
+
+    def __str__(self):
+        return f"{self.vanbanden_id} - {self.donvi_id}"
+
+
 # ═══════════════════════════════════════════════════════════════════
 # 2. Văn bản Đi (documents_vanbandi)
 # ═══════════════════════════════════════════════════════════════════
@@ -273,23 +398,20 @@ class VanBanDi(BaseVanBan):
 
     so_thu_tu = models.PositiveIntegerField(
         "Số đi",
-        null=True,
-        blank=True,
+        default=1,
         help_text="Tự động tăng theo năm (Số đi).",
     )
     ngay_ban_hanh = models.DateTimeField(
         "Ngày ban hành",
-        null=True,
-        blank=True,
         default=timezone.now,
         help_text="Ngày ban hành cho Văn bản Đi.",
     )
     nguoi_nhan = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
+        through="VanBanDiNguoiNhan",
         verbose_name="Người nhận",
         related_name="vanbandi_received",
         blank=True,
-        db_table="documents_vanbandi_nguoinhan",
         help_text="Cán bộ nhân viên nhận văn bản đi.",
     )
 
@@ -302,8 +424,13 @@ class VanBanDi(BaseVanBan):
         self._noi_ban_hanh = val
 
     def save(self, *args, **kwargs):
+        if not self.so_thu_tu:
+            from .services import generate_so_thu_tu
+            self.so_thu_tu = generate_so_thu_tu("DI", self.nam or timezone.now().year) or 1
+        if not self.ngay_ban_hanh:
+            self.ngay_ban_hanh = timezone.now()
         if not self.ngay_van_ban:
-            self.ngay_van_ban = self.ngay_ban_hanh or timezone.now()
+            self.ngay_van_ban = self.ngay_ban_hanh
         super().save(*args, **kwargs)
 
     class Meta:
@@ -314,6 +441,8 @@ class VanBanDi(BaseVanBan):
         indexes = [
             models.Index(fields=["nam", "so_thu_tu"], name="idx_vbdi_nam_stt"),
             models.Index(fields=["ngay_ban_hanh"], name="idx_vbdi_ngay_ban_hanh"),
+            models.Index(fields=["so_hieu"], name="idx_vanbandi_sohieu"),
+            models.Index(fields=["nam"], name="idx_vanbandi_nam"),
         ]
         constraints = [
             models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbandi_nam_stt"),
@@ -335,61 +464,140 @@ class VanBanDi(BaseVanBan):
         return f"[Văn bản Đi] {label}"
 
 
-# ═══════════════════════════════════════════════════════════════════
-# 3. Văn bản Mật (documents_vanbanmat)
-# ═══════════════════════════════════════════════════════════════════
+# ── M2M Through & Junction Models cho Văn bản Đi ─────────────────
 
-class VanBanMat(BaseVanBan):
+class VanBanDiNguoiNhan(models.Model):
     """
-    Model quản lý Văn bản Mật.
-    Khớp 100% với bảng vật lý `documents_vanbanmat`.
-    Lưu ý: VB Mật KHÔNG CÓ trường `so_thu_tu`.
+    Bảng liên kết người nhận văn bản đi (documents_vanbandi_nguoinhan).
+    Khớp DDL: vanbandi_id, employee_id, PK (vanbandi_id, employee_id).
     """
 
-    loai = "MAT"
-    document_kind = "vanbanmat"
-    so_thu_tu = None
-
-    ngay_ban_hanh = models.DateTimeField(
-        "Ngày ban hành",
-        null=True,
-        blank=True,
-        help_text="Ngày ban hành cho Văn bản Mật (tuỳ chọn).",
+    vanbandi = models.ForeignKey(
+        VanBanDi,
+        on_delete=models.CASCADE,
+        db_column="vanbandi_id",
+        related_name="+",
     )
-    nguoi_nhan = models.ManyToManyField(
+    employee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name="Người nhận",
-        related_name="vanbanmat_received",
-        blank=True,
-        db_table="documents_vanbanmat_nguoinhan",
-        help_text="VB Mật: Quyết định ai được xem (Access Control List).",
+        on_delete=models.RESTRICT,
+        db_column="employee_id",
+        related_name="+",
     )
-
-    @property
-    def noi_ban_hanh(self):
-        return getattr(self, "_noi_ban_hanh", "") or ""
-
-    @noi_ban_hanh.setter
-    def noi_ban_hanh(self, val):
-        self._noi_ban_hanh = val
-
-    def save(self, *args, **kwargs):
-        # Mục B2 Issue #53: Văn bản mật luôn bị ép gui_mail_toan_he_thong = False
-        self.gui_mail_toan_he_thong = False
-        super().save(*args, **kwargs)
 
     class Meta:
-        db_table = "documents_vanbanmat"
-        verbose_name = "Văn bản Mật"
-        verbose_name_plural = "Văn bản Mật"
-        ordering = ["-created_at"]
-
-    def get_loai_display(self):
-        return "Văn bản Mật"
+        db_table = "documents_vanbandi_nguoinhan"
+        unique_together = (("vanbandi", "employee"),)
+        verbose_name = "Người nhận văn bản đi"
+        verbose_name_plural = "Người nhận văn bản đi"
 
     def __str__(self):
-        label = self.so_hieu or f"#{self.pk}"
-        return f"[Văn bản Mật] {label}"
+        return f"{self.vanbandi_id} - {self.employee_id}"
+
+
+class VanBanDiHoSo(models.Model):
+    """
+    Bảng liên kết Hồ sơ văn bản đi (documents_vanbandi_hoso).
+    Khớp DDL: vanbandi_id, hoso_id.
+    """
+
+    vanbandi = models.ForeignKey(
+        VanBanDi,
+        on_delete=models.CASCADE,
+        db_column="vanbandi_id",
+        related_name="hoso",
+    )
+    hoso_id = models.BigIntegerField("ID Hồ sơ", db_index=True)
+
+    class Meta:
+        db_table = "documents_vanbandi_hoso"
+        unique_together = (("vanbandi", "hoso_id"),)
+        verbose_name = "Hồ sơ văn bản đi"
+        verbose_name_plural = "Hồ sơ văn bản đi"
+        indexes = [
+            models.Index(fields=["hoso_id"], name="idx_vanbandi_hoso_hoso"),
+        ]
+
+    def __str__(self):
+        return f"{self.vanbandi_id} - {self.hoso_id}"
+
+
+class VanBanDiDanhmuc(models.Model):
+    """
+    Bảng liên kết Loại văn bản / Danh mục văn bản đi (documents_vanbandi_danhmuc).
+    Khớp DDL: vanbandi_id, loaivanban_id.
+    """
+
+    vanbandi = models.ForeignKey(
+        VanBanDi,
+        on_delete=models.CASCADE,
+        db_column="vanbandi_id",
+        related_name="danhmuc",
+    )
+    loaivanban_id = models.BigIntegerField("ID Loại văn bản", db_index=True)
+
+    class Meta:
+        db_table = "documents_vanbandi_danhmuc"
+        unique_together = (("vanbandi", "loaivanban_id"),)
+        verbose_name = "Danh mục loại văn bản đi"
+        verbose_name_plural = "Danh mục loại văn bản đi"
+        indexes = [
+            models.Index(fields=["loaivanban_id"], name="idx_vanbandi_danhmuc_loai"),
+        ]
+
+    def __str__(self):
+        return f"{self.vanbandi_id} - {self.loaivanban_id}"
+
+
+class VanBanDiDonViNhan(models.Model):
+    """
+    Bảng liên kết đơn vị nhận văn bản đi (documents_vanbandi_donvinhan).
+    Khớp DDL: vanbandi_id, donvi_id.
+    """
+
+    vanbandi = models.ForeignKey(
+        VanBanDi,
+        on_delete=models.CASCADE,
+        db_column="vanbandi_id",
+        related_name="donvinhan",
+    )
+    donvi_id = models.BigIntegerField("ID Đơn vị nhận", db_index=True)
+
+    class Meta:
+        db_table = "documents_vanbandi_donvinhan"
+        unique_together = (("vanbandi", "donvi_id"),)
+        verbose_name = "Đơn vị nhận văn bản đi"
+        verbose_name_plural = "Đơn vị nhận văn bản đi"
+
+    def __str__(self):
+        return f"{self.vanbandi_id} - {self.donvi_id}"
+
+
+class VanBanDiNoiBanHanh(models.Model):
+    """
+    Bảng liên kết nơi ban hành văn bản đi (documents_vanbandi_noibanhanh).
+    Khớp DDL: vanbandi_id, donvi_id.
+    """
+
+    vanbandi = models.ForeignKey(
+        VanBanDi,
+        on_delete=models.CASCADE,
+        db_column="vanbandi_id",
+        related_name="noibanhanh_links",
+    )
+    donvi_id = models.BigIntegerField("ID Đơn vị ban hành", db_index=True)
+
+    class Meta:
+        db_table = "documents_vanbandi_noibanhanh"
+        unique_together = (("vanbandi", "donvi_id"),)
+        verbose_name = "Nơi ban hành văn bản đi"
+        verbose_name_plural = "Nơi ban hành văn bản đi"
+        indexes = [
+            models.Index(fields=["donvi_id"], name="idx_vanbandi_noibanhanh_donvi"),
+        ]
+
+    def __str__(self):
+        return f"{self.vanbandi_id} - {self.donvi_id}"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -398,7 +606,7 @@ class VanBanMat(BaseVanBan):
 
 def document_attachment_path(instance, filename):
     """
-    Xác định đường dẫn lưu file đính kèm theo từng phân hệ:
+    Xác định đường dẫn lưu file đính kèm:
     02_documents/<loai>/<nam>/<thang>/<ngay>/<filename>
     """
     doc = getattr(instance, "document", None)
@@ -408,12 +616,11 @@ def document_attachment_path(instance, filename):
 
     if doc:
         loai = getattr(doc, "loai", "DEN")
-        loai_map = {"DEN": "den", "DI": "di", "MAT": "mat"}
-        subfolder = loai_map.get(loai, "den")
+        subfolder = "di" if loai == "DI" else "den"
         year = getattr(doc, "nam", timezone.now().year)
         if loai == "DEN":
             date_val = getattr(doc, "ngay_den", None) or getattr(doc, "ngay_van_ban", None)
-        elif loai in ("DI", "MAT"):
+        else:
             date_val = getattr(doc, "ngay_ban_hanh", None) or getattr(doc, "ngay_van_ban", None)
 
     if not date_val:
@@ -433,13 +640,12 @@ class BaseDocumentAttachment(models.Model):
         upload_to=document_attachment_path,
         db_column="path",
         max_length=500,
-        null=True,
-        blank=True,
+        default="",
         help_text="Chấp nhận: PDF, DOC, DOCX, JPG, JPEG, PNG. Tối đa 20MB.",
     )
     is_deleted = models.BooleanField("Cờ xóa mềm", default=False)
-    created_time = models.DateTimeField("Ngày upload", default=timezone.now, db_column="created_at")
-    created_user = models.ForeignKey(
+    created_at = models.DateTimeField("Ngày upload", default=timezone.now, db_column="created_at")
+    nguoi_tao = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Người tải lên",
         on_delete=models.SET_NULL,
@@ -449,30 +655,33 @@ class BaseDocumentAttachment(models.Model):
         related_name="%(class)s_uploaded",
     )
 
+    # ── Backward-compatibility properties cho created_time & created_user ──
     @property
-    def created_at(self):
-        return self.created_time
+    def created_time(self):
+        return self.created_at
 
-    @created_at.setter
-    def created_at(self, val):
-        self.created_time = val
+    @created_time.setter
+    def created_time(self, val):
+        self.created_at = val
 
     @property
-    def nguoi_tao(self):
-        return self.created_user
+    def created_user(self):
+        return self.nguoi_tao
 
-    @nguoi_tao.setter
-    def nguoi_tao(self, val):
-        self.created_user = val
+    @created_user.setter
+    def created_user(self, val):
+        self.nguoi_tao = val
 
     class Meta:
         abstract = True
-        ordering = ["created_time"]
+        ordering = ["created_at"]
 
     def __init__(self, *args, **kwargs):
         path_val = kwargs.pop("path", None)
         file_size_val = kwargs.pop("file_size", None)
         file_name_val = kwargs.pop("file_name", None)
+        created_time_val = kwargs.pop("created_time", None)
+        created_user_val = kwargs.pop("created_user", None)
         super().__init__(*args, **kwargs)
         if path_val and not self.file:
             self.file = path_val
@@ -480,6 +689,10 @@ class BaseDocumentAttachment(models.Model):
             self._file_size = file_size_val
         if file_name_val and not self.name:
             self.name = file_name_val
+        if created_time_val and not self.created_at:
+            self.created_at = created_time_val
+        if created_user_val and not self.nguoi_tao:
+            self.nguoi_tao = created_user_val
 
     @property
     def path(self):
@@ -506,7 +719,7 @@ class BaseDocumentAttachment(models.Model):
 
     @property
     def uploaded_at(self):
-        return self.created_time
+        return self.created_at
 
     def save(self, *args, **kwargs):
         if self.file and not self.name:
@@ -529,7 +742,11 @@ class VanBanDenAttachment(BaseDocumentAttachment):
         db_table = "documents_vanbanden_attachment"
         verbose_name = "Tệp đính kèm VB Đến"
         verbose_name_plural = "Tệp đính kèm VB Đến"
-        ordering = ["created_time"]
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["document"], name="idx_vbden_att_doc"),
+            models.Index(fields=["is_deleted"], name="idx_vbden_att_del"),
+        ]
 
 
 class VanBanDiAttachment(BaseDocumentAttachment):
@@ -544,22 +761,11 @@ class VanBanDiAttachment(BaseDocumentAttachment):
         db_table = "documents_vanbandi_attachment"
         verbose_name = "Tệp đính kèm VB Đi"
         verbose_name_plural = "Tệp đính kèm VB Đi"
-        ordering = ["created_time"]
-
-
-class VanBanMatAttachment(BaseDocumentAttachment):
-    document = models.ForeignKey(
-        VanBanMat,
-        on_delete=models.CASCADE,
-        related_name="attachments",
-        verbose_name="Văn bản mật",
-    )
-
-    class Meta:
-        db_table = "documents_vanbanmat_attachment"
-        verbose_name = "Tệp đính kèm VB Mật"
-        verbose_name_plural = "Tệp đính kèm VB Mật"
-        ordering = ["created_time"]
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["document"], name="idx_vbdi_att_doc"),
+            models.Index(fields=["is_deleted"], name="idx_vbdi_att_del"),
+        ]
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -575,7 +781,6 @@ class DocumentViewLog(models.Model):
     class DocumentKind(models.TextChoices):
         VANBANDEN = "vanbanden", "Văn bản Đến"
         VANBANDI = "vanbandi", "Văn bản Đi"
-        VANBANMAT = "vanbanmat", "Văn bản Mật"
 
     document_type = models.CharField(
         "Loại văn bản",
@@ -685,28 +890,20 @@ class DocumentAccessLog(models.Model):
 # ═══════════════════════════════════════════════════════════════════
 
 def get_document_model(loai: str):
-    """Trả về Model Class tương ứng với loại văn bản."""
+    """Trả về Model Class tương ứng với loại văn bản (DEN hoặc DI)."""
     loai_str = str(loai).strip().upper()
     if loai_str in ("DI", "VANBANDI"):
         return VanBanDi
-    if loai_str in ("MAT", "VANBANMAT"):
-        return VanBanMat
     return VanBanDen
 
 
 def get_attachment_model(loai_or_doc):
-    """Trả về Attachment Model tương ứng."""
-    if isinstance(loai_or_doc, VanBanDen) or getattr(loai_or_doc, "loai", "") == "DEN":
-        return VanBanDenAttachment
+    """Trả về Attachment Model tương ứng (DEN hoặc DI)."""
     if isinstance(loai_or_doc, VanBanDi) or getattr(loai_or_doc, "loai", "") == "DI":
         return VanBanDiAttachment
-    if isinstance(loai_or_doc, VanBanMat) or getattr(loai_or_doc, "loai", "") == "MAT":
-        return VanBanMatAttachment
     loai_str = str(loai_or_doc).strip().upper()
     if loai_str in ("DI", "VANBANDI"):
         return VanBanDiAttachment
-    if loai_str in ("MAT", "VANBANMAT"):
-        return VanBanMatAttachment
     return VanBanDenAttachment
 
 
@@ -716,9 +913,6 @@ class DocumentManager:
     def create(self, **kwargs):
         loai = kwargs.pop("loai", "DEN")
         model = get_document_model(loai)
-        # Bỏ qua so_thu_tu nếu là MAT
-        if str(loai).upper() in ("MAT", "VANBANMAT") and "so_thu_tu" in kwargs:
-            kwargs.pop("so_thu_tu", None)
         return model.objects.create(**kwargs)
 
     def filter(self, *args, **kwargs):
@@ -726,14 +920,13 @@ class DocumentManager:
         if loai:
             model = get_document_model(loai)
             return model.objects.filter(*args, **kwargs)
-        # Mặc định kết hợp hoặc trả về VanBanDen
         return VanBanDen.objects.filter(*args, **kwargs)
 
     def get(self, *args, **kwargs):
         loai = kwargs.pop("loai", None)
         if loai:
             return get_document_model(loai).objects.get(*args, **kwargs)
-        for model in (VanBanDen, VanBanDi, VanBanMat):
+        for model in (VanBanDen, VanBanDi):
             try:
                 return model.objects.get(*args, **kwargs)
             except model.DoesNotExist:
@@ -744,11 +937,7 @@ class DocumentManager:
         return VanBanDen.objects.all()
 
     def count(self):
-        return (
-            VanBanDen.objects.count()
-            + VanBanDi.objects.count()
-            + VanBanMat.objects.count()
-        )
+        return VanBanDen.objects.count() + VanBanDi.objects.count()
 
 
 class DocumentFacade:
@@ -774,7 +963,6 @@ class DocumentAttachmentFacade:
         def create(self, **kwargs):
             doc = kwargs.get("document")
             att_model = get_attachment_model(doc)
-            # Chuyển đổi file_name -> name nếu truyền theo cú pháp cũ
             if "file_name" in kwargs and "name" not in kwargs:
                 kwargs["name"] = kwargs.pop("file_name")
             return att_model.objects.create(**kwargs)

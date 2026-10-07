@@ -1,9 +1,9 @@
 """
-Services cho Module Văn Bản — Kiến trúc 3 Model (VanBanDen, VanBanDi, VanBanMat).
+Services cho Module Văn Bản — Kiến trúc 2 Model (VanBanDen, VanBanDi).
 
 Bao gồm:
 1. Tự sinh số thứ tự (Số đến / Số đi) an toàn concurrency (select_for_update)
-2. Tự động chuyển hết hiệu lực khi quá hạn (quét trên cả 3 model)
+2. Tự động chuyển hết hiệu lực khi quá hạn (quét trên cả 2 model Đến & Đi)
 3. Ghi log người xem (upsert vào documents_view_log theo document_type + document_id)
 4. Sinh file Excel mẫu trực tiếp từ DB
 5. Import dữ liệu từ Excel vào đúng model tương ứng
@@ -26,8 +26,6 @@ from .models import (
     VanBanDenAttachment,
     VanBanDi,
     VanBanDiAttachment,
-    VanBanMat,
-    VanBanMatAttachment,
     DocumentViewLog,
     get_document_model,
 )
@@ -37,19 +35,15 @@ from .models import (
 # 1. TỰ SINH SỐ THỨ TỰ — An toàn concurrency (select_for_update)
 # ═══════════════════════════════════════════════════════════════════
 
-def generate_so_thu_tu(loai: str, nam: int) -> int | None:
+def generate_so_thu_tu(loai: str, nam: int) -> int:
     """
     Sinh số thứ tự tự động tăng dần theo năm + loại văn bản.
     An toàn race-condition bằng select_for_update() trong transaction.
 
     - VB Đến: loai='DEN' → Số đến (1, 2, 3, ...)
     - VB Đi:  loai='DI'  → Số đi  (1, 2, 3, ...)
-    - VB Mật: KHÔNG có số thứ tự → trả về None
     """
     loai_str = str(loai).strip().upper()
-    if loai_str in ("MAT", "VANBANMAT"):
-        return None
-
     model = VanBanDi if loai_str in ("DI", "VANBANDI") else VanBanDen
 
     with transaction.atomic():
@@ -69,7 +63,7 @@ def generate_so_thu_tu(loai: str, nam: int) -> int | None:
 def check_and_update_expired_documents() -> int:
     """
     Quét và tự động chuyển trạng thái các văn bản đã tới hoặc quá ngày hết hiệu lực
-    sang 'HET_HIEU_LUC' trên cả 3 model: Đến, Đi, Mật.
+    sang 'HET_HIEU_LUC' trên cả 2 model: Đến và Đi.
     Áp dụng cho cả CON_HIEU_LUC và CON_HIEU_LUC_1_PHAN.
     """
     now = timezone.now()
@@ -87,13 +81,7 @@ def check_and_update_expired_documents() -> int:
         ngay_het_hieu_luc__lte=now,
     ).update(hieu_luc=HieuLuc.HET_HIEU_LUC)
 
-    count_mat = VanBanMat.objects.filter(
-        hieu_luc__in=active_statuses,
-        ngay_het_hieu_luc__isnull=False,
-        ngay_het_hieu_luc__lte=now,
-    ).update(hieu_luc=HieuLuc.HET_HIEU_LUC)
-
-    return count_den + count_di + count_mat
+    return count_den + count_di
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -104,7 +92,7 @@ def get_dynamic_replacements(doc) -> list[str]:
     """
     Truy vấn động quan hệ thay thế 2 chiều:
     1. Lấy danh sách số hiệu trong doc.link_thay_the (hỗ trợ phân tách bằng dấu phẩy).
-    2. Quét ngược trong DB: Tìm các văn bản (Đến, Đi, Mật) có link_thay_the chứa doc.so_hieu.
+    2. Quét ngược trong DB: Tìm các văn bản (Đến, Đi) có link_thay_the chứa doc.so_hieu.
     3. Hợp nhất danh sách và loại bỏ trùng lặp.
     """
     results: list[str] = []
@@ -119,8 +107,8 @@ def get_dynamic_replacements(doc) -> list[str]:
                 results.append(s)
 
     if so_hieu:
-        from .models import VanBanDen, VanBanDi, VanBanMat
-        for model in (VanBanDen, VanBanDi, VanBanMat):
+        from .models import VanBanDen, VanBanDi
+        for model in (VanBanDen, VanBanDi):
             try:
                 pk_val = getattr(doc, "pk", None)
                 qs = model.objects.filter(link_thay_the__icontains=so_hieu)
@@ -137,8 +125,8 @@ def get_dynamic_replacements(doc) -> list[str]:
                 pass
 
     return results
- 
- 
+
+
 # ═══════════════════════════════════════════════════════════════════
 # 2.2 QUERYSET DÙNG CHUNG / KIỂM QUYỀN TRUY CẬP (Mục B4 & B5 Issue #53)
 # ═══════════════════════════════════════════════════════════════════
@@ -156,7 +144,6 @@ def get_accessible_documents(user, doc_type: str = "vanbanden", strict_need_to_k
     return van_ban_xem_duoc(user, doc_type)
 
 
-
 # ═══════════════════════════════════════════════════════════════════
 # 3. GHI LOG NGƯỜI XEM — Upsert vào documents_view_log
 # ═══════════════════════════════════════════════════════════════════
@@ -172,12 +159,7 @@ def log_document_view(document, user):
     doc_type = getattr(document, "document_kind", None)
     if not doc_type:
         loai = getattr(document, "loai", "DEN")
-        if loai == "DI":
-            doc_type = "vanbandi"
-        elif loai == "MAT":
-            doc_type = "vanbanmat"
-        else:
-            doc_type = "vanbanden"
+        doc_type = "vanbandi" if loai == "DI" else "vanbanden"
 
     doc_id = document.pk if hasattr(document, "pk") else document.id
 
@@ -216,17 +198,6 @@ EXCEL_COLUMNS = {
         ("hieu_luc", "Hiệu lực", 20),
         ("ghi_chu", "Ghi chú", 30),
     ],
-    LoaiVanBan.MAT: [
-        ("so_hieu", "Số, ký hiệu VB", 20),
-        ("ngay_ban_hanh", "Ngày ban hành", 18),
-        ("ngay_van_ban", "Ngày văn bản", 18),
-        ("trich_yeu", "Trích yếu nội dung", 50),
-        ("noi_ban_hanh", "Nơi ban hành", 30),
-        ("nguoi_ky", "Người ký", 20),
-        ("chuc_vu", "Chức vụ", 20),
-        ("hieu_luc", "Hiệu lực", 20),
-        ("ghi_chu", "Ghi chú", 30),
-    ],
 }
 
 SAMPLE_DATA = {
@@ -252,17 +223,6 @@ SAMPLE_DATA = {
         "hieu_luc": "CON_HIEU_LUC",
         "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
     },
-    LoaiVanBan.MAT: {
-        "so_hieu": "01/QD-MAT",
-        "ngay_ban_hanh": "15/09/2026",
-        "ngay_van_ban": "15/09/2026",
-        "trich_yeu": "Quyết định kỷ luật nội bộ",
-        "noi_ban_hanh": "Trường ITC",
-        "nguoi_ky": "Lê Văn C",
-        "chuc_vu": "Hiệu trưởng",
-        "hieu_luc": "CON_HIEU_LUC",
-        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
-    },
 }
 
 _header_font = Font(name="Arial", bold=True, size=11, color="FFFFFF")
@@ -283,12 +243,7 @@ _thin_border = Border(
 def generate_excel_template(loai: str) -> io.BytesIO:
     """Sinh file Excel mẫu trực tiếp từ cấu hình DB."""
     loai_str = str(loai).strip().upper()
-    if loai_str in ("DI", "VANBANDI"):
-        norm_loai = LoaiVanBan.DI
-    elif loai_str in ("MAT", "VANBANMAT"):
-        norm_loai = LoaiVanBan.MAT
-    else:
-        norm_loai = LoaiVanBan.DEN
+    norm_loai = LoaiVanBan.DI if loai_str in ("DI", "VANBANDI") else LoaiVanBan.DEN
 
     columns = EXCEL_COLUMNS.get(norm_loai, EXCEL_COLUMNS[LoaiVanBan.DEN])
     sample = SAMPLE_DATA.get(norm_loai, SAMPLE_DATA[LoaiVanBan.DEN])
@@ -435,11 +390,8 @@ def import_from_excel(file_obj, loai: str, user) -> dict:
         if "nam" not in doc_data:
             doc_data["nam"] = nam
 
-        # Sinh số thứ tự nếu không phải VB Mật
-        if loai_str not in ("MAT", "VANBANMAT"):
-            doc_data["so_thu_tu"] = generate_so_thu_tu(loai_str, nam)
-        else:
-            doc_data.pop("so_thu_tu", None)
+        # Sinh số thứ tự
+        doc_data["so_thu_tu"] = generate_so_thu_tu(loai_str, nam)
 
         # Gán ngày mặc định theo loại nếu thiếu
         if loai_str in ("DEN", "VANBANDEN") and not doc_data.get("ngay_den"):
@@ -464,12 +416,7 @@ def import_from_excel(file_obj, loai: str, user) -> dict:
 def export_to_excel(queryset, loai: str) -> io.BytesIO:
     """Xuất danh sách văn bản ra file Excel theo bộ lọc hiện tại."""
     loai_str = str(loai).strip().upper()
-    if loai_str in ("DI", "VANBANDI"):
-        norm_loai = LoaiVanBan.DI
-    elif loai_str in ("MAT", "VANBANMAT"):
-        norm_loai = LoaiVanBan.MAT
-    else:
-        norm_loai = LoaiVanBan.DEN
+    norm_loai = LoaiVanBan.DI if loai_str in ("DI", "VANBANDI") else LoaiVanBan.DEN
 
     columns = EXCEL_COLUMNS.get(norm_loai, EXCEL_COLUMNS[LoaiVanBan.DEN])
 
@@ -486,17 +433,15 @@ def export_to_excel(queryset, loai: str) -> io.BytesIO:
     stt_cell.border = _thin_border
     ws.column_dimensions["A"].width = 6
 
-    # Cột Số đến/Số đi (nếu không phải Mật)
-    col_offset = 2
-    if norm_loai != LoaiVanBan.MAT:
-        so_label = "Số đến" if norm_loai == LoaiVanBan.DEN else "Số"
-        so_cell = ws.cell(row=1, column=2, value=so_label)
-        so_cell.font = _header_font
-        so_cell.fill = _header_fill
-        so_cell.alignment = _header_alignment
-        so_cell.border = _thin_border
-        ws.column_dimensions["B"].width = 10
-        col_offset = 3
+    # Cột Số đến / Số đi
+    so_label = "Số đến" if norm_loai == LoaiVanBan.DEN else "Số đi"
+    so_cell = ws.cell(row=1, column=2, value=so_label)
+    so_cell.font = _header_font
+    so_cell.fill = _header_fill
+    so_cell.alignment = _header_alignment
+    so_cell.border = _thin_border
+    ws.column_dimensions["B"].width = 10
+    col_offset = 3
 
     for col_idx, (_, col_title, col_width) in enumerate(columns, start=col_offset):
         cell = ws.cell(row=1, column=col_idx, value=col_title)
@@ -519,11 +464,10 @@ def export_to_excel(queryset, loai: str) -> io.BytesIO:
         cell_stt.alignment = Alignment(horizontal="center", vertical="center")
         cell_stt.border = _thin_border
 
-        if norm_loai != LoaiVanBan.MAT:
-            cell_so = ws.cell(row=row_idx, column=2, value=getattr(doc, "so_thu_tu", ""))
-            cell_so.font = _cell_font
-            cell_so.alignment = Alignment(horizontal="center", vertical="center")
-            cell_so.border = _thin_border
+        cell_so = ws.cell(row=row_idx, column=2, value=getattr(doc, "so_thu_tu", ""))
+        cell_so.font = _cell_font
+        cell_so.alignment = Alignment(horizontal="center", vertical="center")
+        cell_so.border = _thin_border
 
         for col_idx, (field_name, _, _) in enumerate(columns, start=col_offset):
             val = getattr(doc, field_name, "")

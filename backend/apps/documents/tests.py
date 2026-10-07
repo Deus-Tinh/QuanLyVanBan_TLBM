@@ -1,4 +1,4 @@
-"""Tests cho Module Văn Bản — Kiến trúc 3 Model (VanBanDen, VanBanDi, VanBanMat)."""
+"""Tests cho Module Văn Bản — Kiến trúc 2 Model (VanBanDen, VanBanDi)."""
 
 import io
 import tempfile
@@ -16,10 +16,17 @@ from .models import (
     PhamVi,
     VanBanDen,
     VanBanDenAttachment,
+    VanBanDenNguoiNhan,
+    VanBanDenHoSo,
+    VanBanDenDanhmuc,
+    VanBanDenDonViNhan,
     VanBanDi,
     VanBanDiAttachment,
-    VanBanMat,
-    VanBanMatAttachment,
+    VanBanDiNguoiNhan,
+    VanBanDiHoSo,
+    VanBanDiDanhmuc,
+    VanBanDiDonViNhan,
+    VanBanDiNoiBanHanh,
     DocumentViewLog,
     DocumentAccessLog,
     Document,
@@ -76,10 +83,14 @@ class GenerateSoThuTuTests(TestCase):
         result = generate_so_thu_tu("DI", 2026)
         self.assertEqual(result, 1)
 
-    def test_mat_returns_none(self):
-        """VB Mật không có số thứ tự."""
-        result = generate_so_thu_tu("MAT", 2026)
-        self.assertIsNone(result)
+    def test_di_increment_so_thu_tu(self):
+        """Văn bản Đi cũng tự tăng số thứ tự độc lập."""
+        VanBanDi.objects.create(
+            nam=2026, so_hieu="01/TB", so_thu_tu=1,
+            trich_yeu="Test DI 1", nguoi_tao=self.user,
+        )
+        result = generate_so_thu_tu("DI", 2026)
+        self.assertEqual(result, 2)
 
 
 class DocumentViewLogTests(TestCase):
@@ -151,15 +162,16 @@ class DocumentModelTests(TestCase):
         self.assertEqual(doc.so_thu_tu, 1)
         self.assertFalse(doc.is_expired)
 
-    def test_create_van_ban_mat(self):
-        """Tạo VB Mật thành công (không có trường so_thu_tu)."""
-        doc = VanBanMat.objects.create(
-            nam=2026, so_hieu="01/QD-MAT",
-            trich_yeu="Văn bản mật nội bộ",
+    def test_create_van_ban_han_che(self):
+        """Tạo VB Hạn chế nội bộ thành công với pham_vi=HAN_CHE."""
+        doc = VanBanDen.objects.create(
+            nam=2026, so_hieu="01/QD-HAN-CHE", so_thu_tu=1,
+            trich_yeu="Văn bản hạn chế nội bộ",
+            pham_vi=PhamVi.HAN_CHE,
             nguoi_tao=self.user,
         )
-        self.assertEqual(doc.loai, "MAT")
-        self.assertIsNone(doc.so_thu_tu)
+        self.assertEqual(doc.pham_vi, PhamVi.HAN_CHE)
+        self.assertEqual(doc.loai, "DEN")
 
     def test_is_expired_property(self):
         """Property is_expired hoạt động đúng."""
@@ -255,7 +267,7 @@ class DocumentAPITests(TestCase):
 
     def tearDown(self):
         super().tearDown()
-        for att in list(VanBanDenAttachment.objects.all()) + list(VanBanDiAttachment.objects.all()) + list(VanBanMatAttachment.objects.all()):
+        for att in list(VanBanDenAttachment.objects.all()) + list(VanBanDiAttachment.objects.all()):
             if att.file:
                 att.file.delete(save=False)
 
@@ -355,32 +367,13 @@ class DocumentAPITests(TestCase):
         self.assertEqual(len(parts_di), 6)
         self.assertEqual(parts_di[1], "di")
 
-        # 3. Văn bản Mật -> 02_documents/mat/
-        doc_mat = VanBanMat.objects.create(
-            nam=2026, so_hieu="01/CV-MAT", trich_yeu="Văn bản mật", nguoi_tao=self.user
-        )
-        file_mat = SimpleUploadedFile("mat.pdf", b"Test content mat", content_type="application/pdf")
-        att_mat = VanBanMatAttachment.objects.create(
-            document=doc_mat,
-            file=file_mat,
-            name="mat.pdf",
-            file_size=16,
-        )
-        self.assertTrue(att_mat.file.name.startswith("02_documents/mat/"))
-        parts_mat = att_mat.file.name.split("/")
-        self.assertEqual(len(parts_mat), 6)
-        self.assertEqual(parts_mat[1], "mat")
-
     def test_dedicated_endpoints(self):
-        """Kiểm tra các endpoint chuyên biệt /api/documents/den/, /di/, /mat/."""
+        """Kiểm tra các endpoint chuyên biệt /api/documents/den/, /di/."""
         res_den = self.client.get("/api/documents/den/")
         self.assertEqual(res_den.status_code, status.HTTP_200_OK)
 
         res_di = self.client.get("/api/documents/di/")
         self.assertEqual(res_di.status_code, status.HTTP_200_OK)
-
-        res_mat = self.client.get("/api/documents/mat/")
-        self.assertEqual(res_mat.status_code, status.HTTP_200_OK)
 
     def test_create_without_permission_denied(self):
         """Issue #61 Lỗi 1: User không có quyền tạo văn bản bị chặn 403 Forbidden."""
@@ -434,95 +427,90 @@ class DocumentAPITests(TestCase):
         self.assertIsNotNone(response.data["id"])
 
 
-class ConfidentialDocumentSecurityTests(TestCase):
-    """Kiểm thử bảo mật Văn bản Mật."""
+class JunctionAndThroughModelTests(TestCase):
+    """Kiểm thử các bảng liên kết qua trung gian và M2M through models khớp DDL."""
 
     def setUp(self):
-        self.creator = User.objects.create_user(username="creator", password="pwd")
-        self.recipient = User.objects.create_user(username="recipient", password="pwd")
-        self.stranger = User.objects.create_user(username="stranger", password="pwd")
-        self.admin = User.objects.create_superuser(username="admin_user", password="pwd", email="admin@test.com")
-
-        self.doc_mat = VanBanMat.objects.create(
+        self.user = User.objects.create_user(username="test_emp", password="pwd")
+        self.doc_den = VanBanDen.objects.create(
             nam=2026,
-            so_hieu="01/MAT-BGDDT",
-            trich_yeu="Văn bản mật về an ninh mạng",
-            hieu_luc=HieuLuc.CON_HIEU_LUC,
-            nguoi_tao=self.creator,
+            so_hieu="10/CV-DEN",
+            so_thu_tu=1,
+            trich_yeu="Văn bản đến test junction",
+            nguoi_tao=self.user,
         )
-        self.doc_mat.nguoi_nhan.add(self.recipient)
-
-    def test_confidential_visible_to_creator_and_recipient(self):
-        """Người tạo và người nhận được chỉ định đích danh xem được văn bản mật."""
-        client = APIClient()
-
-        # 1. Người tạo
-        client.force_authenticate(user=self.creator)
-        res_creator_list = client.get("/api/documents/?loai=MAT")
-        self.assertEqual(res_creator_list.status_code, status.HTTP_200_OK)
-        self.assertEqual(res_creator_list.data["count"], 1)
-
-        res_creator_detail = client.get(f"/api/documents/{self.doc_mat.id}/")
-        self.assertEqual(res_creator_detail.status_code, status.HTTP_200_OK)
-
-        # 2. Người nhận được chỉ định
-        client.force_authenticate(user=self.recipient)
-        res_recipient_list = client.get("/api/documents/?loai=MAT")
-        self.assertEqual(res_recipient_list.status_code, status.HTTP_200_OK)
-        self.assertEqual(res_recipient_list.data["count"], 1)
-
-        res_recipient_detail = client.get(f"/api/documents/{self.doc_mat.id}/")
-        self.assertEqual(res_recipient_detail.status_code, status.HTTP_200_OK)
-
-    def test_confidential_hidden_from_unauthorized_user(self):
-        """Người không được chỉ định KHÔNG THẤY văn bản mật."""
-        client = APIClient()
-        client.force_authenticate(user=self.stranger)
-
-        res_list = client.get("/api/documents/?loai=MAT")
-        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
-        self.assertEqual(res_list.data["count"], 0)
-
-        res_detail = client.get(f"/api/documents/{self.doc_mat.id}/")
-        self.assertEqual(res_detail.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_confidential_recipient_is_read_only(self):
-        """Người nhận được chỉ định CHỈ CÓ QUYỀN ĐỌC."""
-        client = APIClient()
-        client.force_authenticate(user=self.recipient)
-
-        res_patch = client.patch(
-            f"/api/documents/{self.doc_mat.id}/",
-            {"trich_yeu": "Sửa lén văn bản mật"},
-            format="json",
+        self.doc_di = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="20/TB-DI",
+            so_thu_tu=1,
+            trich_yeu="Văn bản đi test junction",
+            nguoi_tao=self.user,
         )
-        self.assertEqual(res_patch.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("chỉ có quyền đọc", str(res_patch.data))
 
-        res_delete = client.delete(f"/api/documents/{self.doc_mat.id}/")
-        self.assertEqual(res_delete.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("chỉ có quyền đọc", str(res_delete.data))
-
-    def test_confidential_creator_and_admin_can_update_and_delete(self):
-        """Chỉ Người tạo hoặc Admin mới được phép Sửa hoặc Xóa văn bản mật."""
-        client = APIClient()
-
-        # Người tạo sửa thành công
-        client.force_authenticate(user=self.creator)
-        res_creator_patch = client.patch(
-            f"/api/documents/{self.doc_mat.id}/",
-            {"trich_yeu": "Cập nhật trích yếu hợp lệ bởi người tạo"},
-            format="json",
+    def test_m2m_through_nguoi_nhan_den_and_di(self):
+        """M2M nguoi_nhan sử dụng through model với employee_id khớp DDL."""
+        self.doc_den.nguoi_nhan.add(self.user)
+        self.assertTrue(
+            VanBanDenNguoiNhan.objects.filter(vanbanden=self.doc_den, employee=self.user).exists()
         )
-        self.assertEqual(res_creator_patch.status_code, status.HTTP_200_OK)
-        self.doc_mat.refresh_from_db()
-        self.assertEqual(self.doc_mat.trich_yeu, "Cập nhật trích yếu hợp lệ bởi người tạo")
+        self.assertEqual(self.doc_den.nguoi_nhan.count(), 1)
 
-        # Admin xóa thành công
-        client.force_authenticate(user=self.admin)
-        res_admin_delete = client.delete(f"/api/documents/{self.doc_mat.id}/")
-        self.assertEqual(res_admin_delete.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(VanBanMat.objects.filter(id=self.doc_mat.id).exists())
+        self.doc_di.nguoi_nhan.add(self.user)
+        self.assertTrue(
+            VanBanDiNguoiNhan.objects.filter(vanbandi=self.doc_di, employee=self.user).exists()
+        )
+        self.assertEqual(self.doc_di.nguoi_nhan.count(), 1)
+
+    def test_junction_danhmuc_filter(self):
+        """Bảng documents_vanbanden_danhmuc và documents_vanbandi_danhmuc kết nối thành công với filter loai_van_ban."""
+        VanBanDenDanhmuc.objects.create(vanbanden=self.doc_den, loaivanban_id=99)
+        VanBanDiDanhmuc.objects.create(vanbandi=self.doc_di, loaivanban_id=99)
+
+        f_den = DocumentFilter({"loai_van_ban": "99"}, queryset=VanBanDen.objects.all())
+        self.assertIn(self.doc_den, f_den.qs)
+
+        f_den_miss = DocumentFilter({"loai_van_ban": "888"}, queryset=VanBanDen.objects.all())
+        self.assertNotIn(self.doc_den, f_den_miss.qs)
+
+    def test_junction_hoso_and_donvinhan(self):
+        """Bảng hoso, donvinhan, noibanhanh lưu trữ và truy vấn chính xác."""
+        hs = VanBanDenHoSo.objects.create(vanbanden=self.doc_den, hoso_id=12)
+        dvn = VanBanDenDonViNhan.objects.create(vanbanden=self.doc_den, donvi_id=34)
+        self.assertEqual(self.doc_den.hoso.first(), hs)
+        self.assertEqual(self.doc_den.donvinhan.first(), dvn)
+
+        hs_di = VanBanDiHoSo.objects.create(vanbandi=self.doc_di, hoso_id=56)
+        dvn_di = VanBanDiDonViNhan.objects.create(vanbandi=self.doc_di, donvi_id=78)
+        nbh_di = VanBanDiNoiBanHanh.objects.create(vanbandi=self.doc_di, donvi_id=90)
+        self.assertEqual(self.doc_di.hoso.first(), hs_di)
+        self.assertEqual(self.doc_di.donvinhan.first(), dvn_di)
+        self.assertEqual(self.doc_di.noibanhanh_links.first(), nbh_di)
+
+    def test_restricted_document_visible_to_recipient_department(self):
+        """Văn bản hạn chế xem được bởi CBNV thuộc đơn vị nhận (donvinhan)."""
+        from .selectors import van_ban_xem_duoc
+        user_dept = User.objects.create_user(username="dept_user", password="pwd")
+        user_dept.don_vi_id = 999  # Giả lập employee thuộc đơn vị 999
+
+        doc_restricted = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="30/HC-DEPT",
+            so_thu_tu=2,
+            trich_yeu="Văn bản hạn chế cho phòng ban",
+            pham_vi=PhamVi.HAN_CHE,
+            nguoi_tao=self.user,
+        )
+        VanBanDenDonViNhan.objects.create(vanbanden=doc_restricted, donvi_id=999)
+
+        # CBNV thuộc đơn vị nhận xem được
+        qs = van_ban_xem_duoc(user_dept, "DEN")
+        self.assertIn(doc_restricted, qs)
+
+        # Người lạ không thuộc đơn vị nhận không xem được
+        stranger = User.objects.create_user(username="dept_stranger", password="pwd")
+        stranger.don_vi_id = 111
+        qs_stranger = van_ban_xem_duoc(stranger, "DEN")
+        self.assertNotIn(doc_restricted, qs_stranger)
 
 
 class DocumentAutoExpireTests(TestCase):

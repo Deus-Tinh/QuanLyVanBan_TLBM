@@ -1,11 +1,10 @@
 """
-API Views cho Module Văn Bản — Kiến trúc 3 Model (VanBanDen, VanBanDi, VanBanMat).
+API Views cho Module Văn Bản — Kiến trúc 2 Model (VanBanDen, VanBanDi).
 
 Hỗ trợ 2 tầng ViewSets:
 1. ViewSet chuyên biệt:
    - VanBanDenViewSet:  /api/documents/den/  (hoặc /api/van-ban-den/)
    - VanBanDiViewSet:   /api/documents/di/   (hoặc /api/van-ban-di/)
-   - VanBanMatViewSet:  /api/documents/mat/  (hoặc /api/van-ban-mat/)
 2. ViewSet hợp nhất (Unified Facade):
    - DocumentViewSet:   /api/documents/      (Hỗ trợ nguyên vẹn 100% frontend React và test suite)
 """
@@ -25,7 +24,6 @@ from .filters import (
     DocumentFilter,
     VanBanDenFilter,
     VanBanDiFilter,
-    VanBanMatFilter,
     ViewerFilter,
     get_filter_class_for_model,
 )
@@ -37,8 +35,6 @@ from .models import (
     VanBanDenAttachment,
     VanBanDi,
     VanBanDiAttachment,
-    VanBanMat,
-    VanBanMatAttachment,
     DocumentViewLog,
     DocumentAccessLog,
     get_document_model,
@@ -56,7 +52,6 @@ from .serializers import (
     DocumentViewLogSerializer,
     VanBanDenSerializer,
     VanBanDiSerializer,
-    VanBanMatSerializer,
 )
 from .services import (
     check_and_update_expired_documents,
@@ -134,8 +129,6 @@ def can_create_document(user, loai="DEN"):
     model_name = "vanbanden"
     if str(loai).upper() in ("DI", "VANBANDI"):
         model_name = "vanbandi"
-    elif str(loai).upper() in ("MAT", "VANBANMAT"):
-        model_name = "vanbanmat"
 
     if (
         user.has_perm(f"documents.add_{model_name}")
@@ -175,7 +168,7 @@ def cleanup_replacement_links_on_delete(instance):
     if link_target:
         query |= Q(so_hieu__iexact=link_target)
 
-    for model in (VanBanDen, VanBanDi, VanBanMat):
+    for model in (VanBanDen, VanBanDi):
         for doc in model.objects.filter(query).exclude(pk=instance.pk):
             updated_fields = []
             if so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == so_hieu.lower():
@@ -200,7 +193,7 @@ def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu):
         return
 
     query = Q(so_hieu__iexact=old_target_so_hieu) | Q(link_thay_the__iexact=current_so_hieu)
-    for model in (VanBanDen, VanBanDi, VanBanMat):
+    for model in (VanBanDen, VanBanDi):
         for doc in model.objects.filter(query):
             updated_fields = []
             if current_so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == current_so_hieu.lower():
@@ -234,7 +227,7 @@ def sync_replacement_document(doc):
 
     for target in targets:
         other_doc = None
-        for model in (VanBanDen, VanBanDi, VanBanMat):
+        for model in (VanBanDen, VanBanDi):
             found = model.objects.filter(so_hieu__iexact=target).exclude(pk=doc.pk).first()
             if found:
                 other_doc = found
@@ -304,7 +297,7 @@ class DocumentViewSet(viewsets.ViewSet):
             found_doc = model.objects.filter(pk=pk).first()
 
         if not found_doc:
-            for model in (VanBanDen, VanBanDi, VanBanMat):
+            for model in (VanBanDen, VanBanDi):
                 obj = model.objects.filter(pk=pk).first()
                 if obj:
                     found_doc = obj
@@ -315,16 +308,15 @@ class DocumentViewSet(viewsets.ViewSet):
 
         user = self.request.user
         if not la_nguoi_xem_duoc(user, found_doc):
-            if getattr(found_doc, "pham_vi", None) == PhamVi.HAN_CHE or getattr(found_doc, "document_kind", None) == "vanbanmat":
-                if getattr(found_doc, "pham_vi", None) == PhamVi.HAN_CHE:
-                    log_access(
-                        document_type=found_doc.document_kind,
-                        document_id=found_doc.pk,
-                        user=user,
-                        hanh_dong=DocumentAccessLog.HanhDong.BI_TU_CHOI,
-                        tep_id=tep_id,
-                        dia_chi_ip=get_client_ip(self.request),
-                    )
+            if getattr(found_doc, "pham_vi", None) == PhamVi.HAN_CHE:
+                log_access(
+                    document_type=found_doc.document_kind,
+                    document_id=found_doc.pk,
+                    user=user,
+                    hanh_dong=DocumentAccessLog.HanhDong.BI_TU_CHOI,
+                    tep_id=tep_id,
+                    dia_chi_ip=get_client_ip(self.request),
+                )
                 raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
             raise PermissionDenied("Bạn không có quyền truy cập văn bản này.")
 
@@ -390,13 +382,13 @@ class DocumentViewSet(viewsets.ViewSet):
 
         extra_kwargs = {
             "nguoi_tao": request.user,
+            "so_thu_tu": generate_so_thu_tu(loai, nam),
         }
-
-        if str(loai).upper() not in ("MAT", "VANBANMAT"):
-            extra_kwargs["so_thu_tu"] = generate_so_thu_tu(loai, nam)
 
         if str(loai).upper() in ("DEN", "VANBANDEN") and not serializer.validated_data.get("ngay_den"):
             extra_kwargs["ngay_den"] = timezone.now()
+        elif str(loai).upper() in ("DI", "VANBANDI") and not serializer.validated_data.get("ngay_ban_hanh"):
+            extra_kwargs["ngay_ban_hanh"] = timezone.now()
 
         instance = serializer.save(**extra_kwargs)
         handle_attachments(instance, request)
@@ -725,20 +717,4 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
         so_thu_tu = generate_so_thu_tu("DI", nam)
         ngay_ban_hanh = serializer.validated_data.get("ngay_ban_hanh") or timezone.now()
         doc = serializer.save(nguoi_tao=self.request.user, so_thu_tu=so_thu_tu, ngay_ban_hanh=ngay_ban_hanh)
-        handle_attachments(doc, self.request)
-
-
-class VanBanMatViewSet(viewsets.ModelViewSet):
-    """API ViewSet riêng biệt cho Văn bản Mật."""
-    serializer_class = VanBanMatSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    pagination_class = DocumentPagination
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = VanBanMatFilter
-
-    def get_queryset(self):
-        return get_accessible_documents(self.request.user, "vanbanmat")
-
-    def perform_create(self, serializer):
-        doc = serializer.save(nguoi_tao=self.request.user)
         handle_attachments(doc, self.request)

@@ -19,7 +19,6 @@ from .models import (
     LoaiVanBan,
     VanBanDen,
     VanBanDi,
-    VanBanMat,
     DocumentViewLog,
 )
 
@@ -206,22 +205,12 @@ class VanBanDiFilter(BaseDocumentFilter):
         ]
 
 
-class VanBanMatFilter(BaseDocumentFilter):
-    class Meta:
-        model = VanBanMat
-        fields = [
-            "nam", "year", "hien_thi", "is_public"
-        ]
-
-
 DocumentFilter = VanBanDenFilter
 
 
 def get_filter_class_for_model(model):
     if model == VanBanDi:
         return VanBanDiFilter
-    elif model == VanBanMat:
-        return VanBanMatFilter
     return VanBanDenFilter
 
 

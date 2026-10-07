@@ -19,12 +19,11 @@ from django.db import connection
 from django.utils import timezone
 from documents.models import (
     HieuLuc,
+    PhamVi,
     VanBanDen,
     VanBanDenAttachment,
     VanBanDi,
     VanBanDiAttachment,
-    VanBanMat,
-    VanBanMatAttachment,
     DocumentViewLog,
 )
 
@@ -153,15 +152,16 @@ if has_old_table:
             )
             print(f"  [VB Di] ID {doc.id} ({doc.so_hieu}): {'Tao moi' if created else 'Cap nhat'}")
         elif loai == 'MAT':
-            doc, created = VanBanMat.objects.update_or_create(
+            doc, created = VanBanDen.objects.update_or_create(
                 id=r[0],
                 defaults={
                     **common_data,
-                    'ngay_ban_hanh': r[6],
+                    'pham_vi': PhamVi.HAN_CHE,
+                    'ngay_den': r[6] or timezone.now(),
                     'noi_ban_hanh': r[9] or '',
                 }
             )
-            print(f"  [VB Mat] ID {doc.id} ({doc.so_hieu}): {'Tao moi' if created else 'Cap nhat'}")
+            print(f"  [VB Han che] ID {doc.id} ({doc.so_hieu}): {'Tao moi' if created else 'Cap nhat'}")
 
 # Seed mau cho VB Di neu chua co
 if VanBanDi.objects.count() == 0:
@@ -194,25 +194,6 @@ if VanBanDi.objects.count() == 0:
         hien_thi=True,
         nguoi_tao=admin_user,
     )
-
-# Seed mau cho VB Mat neu chua co
-if VanBanMat.objects.count() == 0:
-    print("[*] Khoi tao du lieu mau cho Van ban Mat (documents_vanbanmat)...")
-    doc_mat = VanBanMat.objects.create(
-        nam=2026,
-        so_hieu="01/QD-MAT",
-        ngay_ban_hanh=timezone.now(),
-        ngay_van_ban=timezone.now(),
-        trich_yeu="Quyet dinh phe duyet phuong an dam bao an ninh mang va bao ve du lieu noi bo.",
-        noi_ban_hanh="Truong Cao dang Cong nghe Thong tin TP.HCM (ITC)",
-        nguoi_ky="TS. Le Van B",
-        chuc_vu="Hieu truong",
-        hieu_luc=HieuLuc.CON_HIEU_LUC,
-        hien_thi=True,
-        nguoi_tao=admin_user,
-    )
-    if admin_user:
-        doc_mat.nguoi_nhan.add(admin_user)
 
 # 4. Dong bo tep dinh kem (Attachments)
 print("[4] Dong bo tep dinh kem...")
@@ -276,7 +257,7 @@ if has_vl_table:
 # 6. Dong bo cot nguoi_nhan M2M (employee_id <-> user_id)
 print("[6] Dong bo cot user_id cho cac bang M2M nguoi nhan...")
 with connection.cursor() as cur:
-    for tbl in ['documents_vanbanden_nguoinhan', 'documents_vanbandi_nguoinhan', 'documents_vanbanmat_nguoinhan']:
+    for tbl in ['documents_vanbanden_nguoinhan', 'documents_vanbandi_nguoinhan']:
         cur.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS user_id BIGINT;")
         cur.execute(f"UPDATE {tbl} SET user_id = employee_id WHERE user_id IS NULL AND employee_id IS NOT NULL;")
         cur.execute(f"UPDATE {tbl} SET employee_id = user_id WHERE employee_id IS NULL AND user_id IS NOT NULL;")
@@ -299,7 +280,6 @@ with connection.cursor() as cur:
     for tbl, trg in [
         ('documents_vanbanden_nguoinhan', 'trg_sync_vbden_nguoinhan'),
         ('documents_vanbandi_nguoinhan', 'trg_sync_vbdi_nguoinhan'),
-        ('documents_vanbanmat_nguoinhan', 'trg_sync_vbmat_nguoinhan')
     ]:
         cur.execute(f"DROP TRIGGER IF EXISTS {trg} ON {tbl};")
         cur.execute(f"""
@@ -315,10 +295,8 @@ with connection.cursor() as cur:
         ('auth_user', 'auth_user_id_seq'),
         ('documents_vanbanden', 'documents_vanbanden_id_seq'),
         ('documents_vanbandi', 'documents_vanbandi_id_seq'),
-        ('documents_vanbanmat', 'documents_vanbanmat_id_seq'),
         ('documents_vanbanden_attachment', 'documents_vanbanden_attachment_id_seq'),
         ('documents_vanbandi_attachment', 'documents_vanbandi_attachment_id_seq'),
-        ('documents_vanbanmat_attachment', 'documents_vanbanmat_attachment_id_seq'),
         ('documents_view_log', 'documents_view_log_id_seq'),
     ]:
         try:
@@ -331,7 +309,6 @@ print("DONG BO HOAN TAT VOI POSTGRESQL CHAU KIET (SQL_Fix3)!")
 print(f"  - Nguoi dung auth_user              : {User.objects.count()} tai khoan")
 print(f"  - Van ban Den (documents_vanbanden) : {VanBanDen.objects.count()} ban ghi")
 print(f"  - Van ban Di  (documents_vanbandi)  : {VanBanDi.objects.count()} ban ghi")
-print(f"  - Van ban Mat (documents_vanbanmat) : {VanBanMat.objects.count()} ban ghi")
 print(f"  - Tep dinh kem Van ban Den          : {VanBanDenAttachment.objects.count()} tep")
 print(f"  - Nhat ky xem van ban (view log)    : {DocumentViewLog.objects.count()} luot")
 print("="*50)

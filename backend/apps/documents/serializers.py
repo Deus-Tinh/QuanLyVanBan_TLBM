@@ -1,8 +1,8 @@
 """
-Serializers cho Module Văn Bản (Đến / Đi / Mật) — Kiến trúc 3 Model.
+Serializers cho Module Văn Bản (Đến / Đi) — Kiến trúc 2 Model.
 
 Hỗ trợ:
-- Serializer riêng biệt cho từng phân hệ: VanBanDen, VanBanDi, VanBanMat
+- Serializer riêng biệt cho từng phân hệ: VanBanDen, VanBanDi
 - Serializer hợp nhất cho API facade (DocumentListSerializer, DocumentDetailSerializer, DocumentCreateUpdateSerializer)
 - Serializer tệp đính kèm và lịch sử người xem
 """
@@ -18,8 +18,6 @@ from .models import (
     VanBanDenAttachment,
     VanBanDi,
     VanBanDiAttachment,
-    VanBanMat,
-    VanBanMatAttachment,
     DocumentViewLog,
     DocumentAccessLog,
     get_document_model,
@@ -46,36 +44,34 @@ class TolerantPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
 # ═══════════════════════════════════════════════════════════════════
 
 class DocumentAttachmentSerializer(serializers.ModelSerializer):
-    """Serializer dùng chung cho file đính kèm của cả 3 loại văn bản."""
+    """Serializer dùng chung cho file đính kèm."""
 
     file_name = serializers.CharField(source="name", read_only=True)
-    uploaded_at = serializers.DateTimeField(source="created_time", read_only=True)
+    uploaded_at = serializers.DateTimeField(source="created_at", read_only=True)
+    created_time = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
         model = VanBanDenAttachment
-        fields = ["id", "file", "name", "file_name", "path", "file_size", "is_deleted", "uploaded_at", "created_time"]
-        read_only_fields = ["id", "name", "file_name", "path", "file_size", "uploaded_at", "created_time"]
+        fields = ["id", "file", "name", "file_name", "path", "file_size", "is_deleted", "uploaded_at", "created_at", "created_time"]
+        read_only_fields = ["id", "name", "file_name", "path", "file_size", "uploaded_at", "created_at", "created_time"]
 
 
 class VanBanDenAttachmentSerializer(serializers.ModelSerializer):
+    created_time = serializers.DateTimeField(source="created_at", read_only=True)
+
     class Meta:
         model = VanBanDenAttachment
-        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_time"]
-        read_only_fields = ["id", "name", "path", "file_size", "created_time"]
+        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_at", "created_time"]
+        read_only_fields = ["id", "name", "path", "file_size", "created_at", "created_time"]
 
 
 class VanBanDiAttachmentSerializer(serializers.ModelSerializer):
+    created_time = serializers.DateTimeField(source="created_at", read_only=True)
+
     class Meta:
         model = VanBanDiAttachment
-        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_time"]
-        read_only_fields = ["id", "name", "path", "file_size", "created_time"]
-
-
-class VanBanMatAttachmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VanBanMatAttachment
-        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_time"]
-        read_only_fields = ["id", "name", "path", "file_size", "created_time"]
+        fields = ["id", "file", "name", "path", "file_size", "is_deleted", "created_at", "created_time"]
+        read_only_fields = ["id", "name", "path", "file_size", "created_at", "created_time"]
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -311,13 +307,10 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         loai = validated_data.pop("loai", LoaiVanBan.DEN)
         model = get_document_model(loai)
 
-        # VB Mật hoặc VB hạn chế không gửi mail toàn trường
+        # VB hạn chế không gửi mail toàn trường
         pham_vi = validated_data.get("pham_vi", PhamVi.NOI_BO)
-        if pham_vi == PhamVi.HAN_CHE or str(loai).upper() in ("MAT", "VANBANMAT"):
+        if pham_vi == PhamVi.HAN_CHE:
             validated_data["gui_mail_toan_he_thong"] = False
-
-        if str(loai).upper() in ("MAT", "VANBANMAT"):
-            validated_data.pop("so_thu_tu", None)
 
         instance = model.objects.create(**validated_data)
         if nguoi_nhan:
@@ -432,24 +425,6 @@ class VanBanDiSerializer(serializers.ModelSerializer):
         model = VanBanDi
         fields = "__all__"
         read_only_fields = ["id", "so_thu_tu", "created_at", "updated_at"]
-
-
-class VanBanMatSerializer(serializers.ModelSerializer):
-    loai_display = serializers.CharField(source="get_loai_display", read_only=True)
-    hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
-    attachments = VanBanMatAttachmentSerializer(many=True, read_only=True)
-
-    def validate(self, attrs):
-        attrs = super().validate(attrs)
-        # Mục B2 Issue #53: Văn bản mật không gửi email toàn hệ thống
-        attrs["gui_mail_toan_he_thong"] = False
-        _validate_replacement_link(attrs, self.instance)
-        return attrs
-
-    class Meta:
-        model = VanBanMat
-        fields = "__all__"
-        read_only_fields = ["id", "created_at", "updated_at"]
 
 
 # ═══════════════════════════════════════════════════════════════════
