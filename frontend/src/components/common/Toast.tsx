@@ -19,20 +19,18 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
 
   useEffect(() => {
     if (!toast) return;
-    setProgress(100);
     const duration = toast.duration || 2600;
     const interval = 50;
-    const step = (interval / duration) * 100;
+    const startTime = Date.now();
 
     const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev <= step) {
-          clearInterval(timer);
-          onClose();
-          return 0;
-        }
-        return prev - step;
-      });
+      const elapsed = Date.now() - startTime;
+      const remainingPercent = Math.max(0, 100 - (elapsed / duration) * 100);
+      setProgress(remainingPercent);
+      if (remainingPercent <= 0) {
+        clearInterval(timer);
+        onClose();
+      }
     }, interval);
 
     return () => clearInterval(timer);

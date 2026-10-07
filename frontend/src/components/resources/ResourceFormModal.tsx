@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, ChangeEvent, FormEvent } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, ChangeEvent, FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ResourceItem,
@@ -90,6 +90,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
 
   // Khởi tạo form khi mở modal
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (isOpen) {
       if (initialData) {
         setFormData({
@@ -137,16 +138,16 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       setIsDirty(false);
       setIsConfirmDiscardOpen(false);
     }
-  }, [isOpen, initialData, categories]);
+  }, [isOpen, initialData, categories, defaultAuthor]);
 
   // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
-  const handleSafeClose = () => {
+  const handleSafeClose = useCallback(() => {
     if (isDirty) {
       setIsConfirmDiscardOpen(true);
       return;
     }
     onClose();
-  };
+  }, [isDirty, onClose]);
 
   // Lắng nghe phím ESC
   useEffect(() => {
@@ -158,7 +159,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isDirty, isConfirmDiscardOpen]);
+  }, [isOpen, isConfirmDiscardOpen, handleSafeClose]);
 
   // Danh sách Loại tài liệu theo Thư mục đã chọn (Cascading)
   const availableTypes = useMemo(() => {

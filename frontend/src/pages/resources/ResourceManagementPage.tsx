@@ -40,7 +40,7 @@ const getInitialFilterState = (searchParams: URLSearchParams): PersistedResource
       if (navEntries.length > 0) {
         return (navEntries[0] as PerformanceNavigationTiming).type === 'reload';
       }
-      return (performance as any).navigation?.type === 1;
+      return (performance as unknown as { navigation?: { type?: number } }).navigation?.type === 1;
     } catch {
       return false;
     }
@@ -75,14 +75,16 @@ const getInitialFilterState = (searchParams: URLSearchParams): PersistedResource
   // 3. Mặc định mới vào: Xóa sạch cache cũ để đảm bảo bắt đầu ở "Tất cả" & 5 dòng
   try {
     sessionStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  } catch {
+    /* ignore */
+  }
   return {};
 };
 
 export default function ResourceManagementPage() {
   const { t, currentLang } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialFilterState = useMemo(() => getInitialFilterState(searchParams), []);
+  const initialFilterState = useMemo(() => getInitialFilterState(searchParams), [searchParams]);
 
   // Khởi tạo từ localStorage (mặc định để trống hoàn toàn)
   const [documents, setDocuments] = useState<ResourceItem[]>(() => {
@@ -96,7 +98,9 @@ export default function ResourceManagementPage() {
       if (saved !== null) {
         return JSON.parse(saved);
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return [];
   });
 
@@ -104,7 +108,9 @@ export default function ResourceManagementPage() {
     try {
       const saved = localStorage.getItem(STORAGE_CATS);
       if (saved !== null) return JSON.parse(saved);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return [];
   });
 
@@ -112,7 +118,9 @@ export default function ResourceManagementPage() {
     try {
       const saved = localStorage.getItem(STORAGE_TYPES);
       if (saved !== null) return JSON.parse(saved);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return [];
   });
 
@@ -146,6 +154,7 @@ export default function ResourceManagementPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchResources();
   }, [fetchResources]);
 
@@ -153,19 +162,25 @@ export default function ResourceManagementPage() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_DOCS, JSON.stringify(documents));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [documents]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_CATS, JSON.stringify(categories));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [categories]);
 
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_TYPES, JSON.stringify(types));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [types]);
 
   // ============================================================================
@@ -176,6 +191,20 @@ export default function ResourceManagementPage() {
   // - statusFilter: Lọc theo trạng thái hiệu lực
   // - searchTerm: Tìm theo tiêu đề, ký hiệu, nơi ban hành
   // ============================================================================
+  // Mặc định mới vào: hiện ở Tất cả ('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialFilterState.category || 'all');
+  const [selectedType, setSelectedType] = useState<string>(initialFilterState.type || 'all');
+  const [selectedYear, setSelectedYear] = useState<string>(initialFilterState.year || 'all');
+  const [statusFilter, setStatusFilter] = useState<string>(initialFilterState.status || 'all');
+
+  // Phân trang: Mặc định mới vào hiển thị 5 dòng
+  const [currentPage, setCurrentPage] = useState<number>(
+    initialFilterState.page && initialFilterState.page > 0 ? initialFilterState.page : 1
+  );
+  const [pageSize, setPageSize] = useState<number>(
+    initialFilterState.pageSize && initialFilterState.pageSize > 0 ? initialFilterState.pageSize : 5
+  );
+
   // Bộ lọc: Search debounced 300ms
   const [searchInput, setSearchInput] = useState(initialFilterState.q || '');
   const [searchTerm, setSearchTerm] = useState(initialFilterState.q || '');
@@ -202,20 +231,6 @@ export default function ResourceManagementPage() {
   const tabBarRef = useRef<HTMLDivElement>(null);
   const typeBarRef = useRef<HTMLDivElement>(null);
 
-  // Mặc định mới vào: hiện ở Tất cả ('all')
-  const [selectedCategory, setSelectedCategory] = useState<string>(initialFilterState.category || 'all');
-  const [selectedType, setSelectedType] = useState<string>(initialFilterState.type || 'all');
-  const [selectedYear, setSelectedYear] = useState<string>(initialFilterState.year || 'all');
-  const [statusFilter, setStatusFilter] = useState<string>(initialFilterState.status || 'all');
-
-  // Phân trang: Mặc định mới vào hiển thị 5 dòng
-  const [currentPage, setCurrentPage] = useState<number>(
-    initialFilterState.page && initialFilterState.page > 0 ? initialFilterState.page : 1
-  );
-  const [pageSize, setPageSize] = useState<number>(
-    initialFilterState.pageSize && initialFilterState.pageSize > 0 ? initialFilterState.pageSize : 5
-  );
-
   // Tự động lưu trạng thái vào sessionStorage và đồng bộ URL Query Parameters
   // Khi reload lại trang (F5), toàn bộ mục đang chọn, trang và dòng hiển thị vẫn được giữ nguyên
   useEffect(() => {
@@ -231,7 +246,9 @@ export default function ResourceManagementPage() {
 
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
 
     const newParams = new URLSearchParams();
     if (selectedCategory !== 'all') newParams.set('category', selectedCategory);
@@ -417,18 +434,6 @@ export default function ResourceManagementPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const currentCategoryLabel = useMemo(() => {
-    if (selectedCategory === 'all') return 'Tất cả danh mục';
-    const found = categories.find((c) => String(c.id) === selectedCategory);
-    return found ? found.ten_tai_lieu : 'Chọn danh mục';
-  }, [selectedCategory, categories]);
-
-  const currentTypeLabel = useMemo(() => {
-    if (selectedType === 'all') return 'Tất cả loại';
-    const found = types.find((t) => String(t.id) === selectedType);
-    return found ? found.ten_loai : 'Chọn loại';
-  }, [selectedType, types]);
 
   // Xóa toàn bộ bộ lọc
   const handleClearFilters = () => {

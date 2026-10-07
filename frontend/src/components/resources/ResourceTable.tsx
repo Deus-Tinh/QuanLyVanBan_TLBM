@@ -31,7 +31,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   currentPage,
   totalPages,
   pageSize,
-  totalCount,
   onPageChange,
   onViewDetail,
   onEdit,
@@ -84,12 +83,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     };
   }, []);
 
-  // Tự động đóng menu khi danh sách items thay đổi (lọc, tìm kiếm), chuyển trang, đổi số dòng, loading
-  useEffect(() => {
-    setActiveMenuId(null);
-    setMenuPos(null);
-    setActiveFileMenuId(null);
-  }, [items, currentPage, pageSize, isLoading]);
 
   // Mở menu ⋯ với vị trí fixed (không bị cắt bởi overflow và lật lên trên nếu gần đáy)
   const openActionMenu = (e: React.MouseEvent<HTMLButtonElement>, itemId: number) => {
@@ -125,13 +118,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     }
   };
 
-  // Format dung lượng tệp
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes || bytes <= 0) return '';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1).replace('.', ',')} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
-  };
 
   // Trích xuất đuôi tệp
   const getFileExt = (urlOrName?: string, attachments?: ResourceAttachment[]) => {

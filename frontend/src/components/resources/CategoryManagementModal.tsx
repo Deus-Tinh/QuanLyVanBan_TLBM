@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ResourceCategory, ResourceType } from '@app-types/resource';
 import { Button } from '@components/common/Button';
@@ -123,10 +123,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     };
   }, []);
 
-  // Tự động đóng menu thao tác khi chuyển tab hoặc thay đổi tìm kiếm/bộ lọc
-  useEffect(() => {
-    closeAllMenus();
-  }, [activeTab, catSearch, typeSearch, filterParentCat, isOpen]);
 
   const handleOpenCatMenu = (e: React.MouseEvent<HTMLButtonElement>, catId: number) => {
     e.stopPropagation();
@@ -259,7 +255,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   };
 
   // Đóng an toàn Popup Thêm/Sửa Danh mục & Loại tài liệu có xác nhận nếu có dữ liệu/đã chỉnh sửa
-  const handleSafeCloseUnified = () => {
+  const handleSafeCloseUnified = useCallback(() => {
     const hasData =
       isUnifiedDirty ||
       Boolean(
@@ -277,7 +273,16 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       return;
     }
     setIsUnifiedModalOpen(false);
-  };
+  }, [
+    isUnifiedDirty,
+    catForm.ten_tai_lieu,
+    catForm.ky_hieu,
+    catForm.ghi_chu,
+    catChildTypes.length,
+    childTypeInput,
+    typeForm.ten_loai,
+    typeForm.ghi_chu,
+  ]);
 
   // Người dùng bấm trực tiếp nút "Hủy" trên footer form -> Luôn bật xác nhận hủy
   const handleCancelBtnClick = () => {
@@ -303,11 +308,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     isOpen,
     isUnifiedModalOpen,
     isConfirmDiscardUnifiedOpen,
-    isUnifiedDirty,
-    catForm,
-    typeForm,
-    catChildTypes,
-    childTypeInput,
+    handleSafeCloseUnified,
     deleteCatTarget,
     deleteBlockedCat,
     deleteTypeTarget,
