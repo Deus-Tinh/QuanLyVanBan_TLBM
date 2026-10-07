@@ -18,6 +18,10 @@ Thư mục này lưu trữ các quy chuẩn kiến trúc, tài liệu tích hợ
 3. **[Đặc Tả Dự Án Toàn Diện (`ITC - Django - QLVB&TL.md`)](./ITC%20-%20Django%20-%20QLVB&TL.md)**:
    - Bảng phân công 8 nhóm, độ khó, cơ cấu tổ chức, danh sách lớp và báo cáo tiến độ.
 
+4. **[Quy Ước Quản Lý Dự Án (`guidelines/quy-uoc-quan-ly-du-an.md`)](./guidelines/quy-uoc-quan-ly-du-an.md)**:
+   - Người merge `staging`/`ddl_base_v0`, quy trình sửa CSDL (DDL trước, migration sau), gắn issue + label nhóm + milestone cho mọi PR.
+   - Label `nhom-1`…`nhom-8`, `P0`, `P1`, `blocked`, `ddl`; milestone `Base staging`, `MVP`; bảng GitHub Project.
+
 ## 📂 Cấu Trúc Tài Liệu Theo Phân Hệ
 - `docs/modules/01_layout_dashboard/`: Bàn giao App Shell, Header, Sidebar, Footer, Router URL, Theme Nhóm 1.
 - `docs/modules/02_documents/`: Tài liệu Phân hệ Văn bản đến / đi / mật.
