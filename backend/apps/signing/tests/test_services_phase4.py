@@ -38,8 +38,7 @@ class ProcessServiceTests(TestCase):
              "nguoi_ky": [{"chuc_vu_id": 7, "thu_tu": 1, "vai_tro_ky": enums.VaiTroKy.KY_NHAY}]},
         ]
         return process_service.tao_quy_trinh(
-            self.u1, ma_quy_trinh=ma, ten_quy_trinh="Quy trình", pham_vi=enums.PhamViQuyTrinh.CONG_TY,
-            kieu_ky_mac_dinh=enums.KieuKy.TUAN_TU, cap_ky=cap_ky,
+            self.u1, ma_quy_trinh=ma, ten_quy_trinh="Quy trình", pham_vi=enums.PhamViQuyTrinh.CONG_TY, cap_ky=cap_ky,
         )
 
     def actions(self, process):

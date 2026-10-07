@@ -33,7 +33,6 @@ class QuyTrinhInputSerializer(serializers.Serializer):
     ten_quy_trinh = serializers.CharField(max_length=255)
     mo_ta = serializers.CharField(required=False, allow_blank=True, default="")
     pham_vi = serializers.ChoiceField(choices=enums.PhamViQuyTrinh.choices)
-    kieu_ky_mac_dinh = serializers.ChoiceField(choices=enums.KieuKy.choices)
     cau_hinh_nhac_han = serializers.JSONField(required=False, allow_null=True)
     cap_ky = CapKyInputSerializer(many=True, required=False)
 
@@ -62,7 +61,7 @@ class QuyTrinhSerializer(serializers.ModelSerializer):
     class Meta:
         model = SigningProcess
         fields = ["id", "ma_quy_trinh", "ten_quy_trinh", "mo_ta", "phien_ban", "trang_thai", "pham_vi",
-                  "kieu_ky_mac_dinh", "cau_hinh_nhac_han", "create_by", "created_at", "update_by",
+                  "cau_hinh_nhac_han", "create_by", "created_at", "update_by",
                   "update_at", "cap_ky"]
 
 

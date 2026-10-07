@@ -12,18 +12,14 @@ class PhamViQuyTrinh(models.TextChoices):
     CONG_TY = "CONG_TY", "Công ty"
 
 
-class KieuKy(models.TextChoices):
-    TUAN_TU = "TUAN_TU", "Tuần tự"
-    SONG_SONG = "SONG_SONG", "Song song"
-
-
 class VaiTroKy(models.TextChoices):
     KY_NHAY = "KY_NHAY", "Ký nháy"
     KY_CHINH = "KY_CHINH", "Ký chính"
 
 
 class LoaiVanBan(models.TextChoices):
-    VAN_BAN_DEN = "vanbanden", "Văn bản đến"
+    # Trình ký chỉ nhận dự thảo văn bản đi (Phase 6c). Văn bản đến thuộc luồng chỉ đạo của Nhóm 2;
+    # văn bản mật đã bỏ khỏi hệ thống. Cột document_type giữ để mở rộng sau.
     VAN_BAN_DI = "vanbandi", "Văn bản đi"
 
 

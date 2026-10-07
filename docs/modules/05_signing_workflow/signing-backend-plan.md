@@ -185,9 +185,17 @@ GVHD đã chốt bỏ văn bản mật hành chính. Tài liệu nội bộ hạ
 - Mở khóa ký: client gửi `verifier` kèm phiên đăng nhập; server so khớp, đếm số lần sai rồi mới trả `k_srv`. Sai 5 lần khóa 15 phút; sai 10 lần khóa cứng, quản trị mở lại sau khi xác minh danh tính. Bộ đếm lưu ở CSDL và cập nhật dưới `select_for_update`.
 - Sự kiện nhật ký: `DAT_PIN`, `DOI_PIN`, `MO_KHOA_KY`, `PIN_SAI`, `PIN_KHOA`.
 - Tham số Argon2id: `m=64 MiB, t=3, p=1` làm mức sàn, đo trên thiết bị yếu nhất được hỗ trợ (mục tiêu 300–500 ms); lưu tham số và phiên bản cùng bản bọc để nâng cấp. Dùng Argon2id (RFC 9106), không dùng PBKDF2/bcrypt.
+- **Contract salt Argon2id (#79):**
+  - Cách sinh: client sinh 16 byte ngẫu nhiên bằng CSPRNG của trình duyệt (`crypto.getRandomValues`), không suy ra từ tài khoản, khóa hay PIN.
+  - Phạm vi: một salt cho **một khóa ký trong một lần đặt PIN**. Đặt PIN lần đầu sinh salt; đổi PIN sinh salt mới. Không dùng chung giữa tài khoản, giữa khóa ký, giữa các lần đặt/đổi PIN.
+  - Quan hệ: `master_pin = Argon2id(PIN, salt, m, t, p)`; `verifier = HKDF(master_pin, "verify")` gửi server; khóa bọc `HKDF(master_pin, k_srv, "wrap")` chỉ ở client. Salt khác thì `master_pin`, `verifier`, `ma_bam_xac_minh_pin` và khóa bọc đều khác.
+  - Lưu trữ: salt nằm trong `tham_so_kdf` (Base64, cùng `thuat_toan`, `m`, `t`, `p`, `phien_ban`) trên `signing_key_unlock`; server trả lại `tham_so_kdf` trong response `dat-pin`, `mo-khoa-ky`, `doi-pin` để client dẫn xuất lại. Client cũng lưu kèm bản bọc trong IndexedDB. Salt không bí mật.
+  - Kiểm tra ở server: `tham_so_kdf` thiếu `salt`, không phải Base64 hoặc khác 16 byte bị từ chối (`tham_so_kdf_khong_hop_le`); `doi-pin` gửi salt trùng salt hiện tại bị từ chối (`salt_trung_salt_cu`).
+  - Lý do: dùng chung salt thì hai tài khoản cùng PIN có cùng `verifier` nên cùng `ma_bam_xac_minh_pin`, lộ việc trùng PIN khi đọc được CSDL và cho phép tính sẵn một lần cho mọi tài khoản.
+- **Bí mật máy chủ (#79):** `SIGNING_PIN_SECRET` bắt buộc khi `DEBUG = False`; dev được dùng `SECRET_KEY`. Hai lớp: `manage.py check --deploy` báo `signing.E001` (thiếu) hoặc `signing.E002` (trùng `SECRET_KEY`); lúc chạy, thao tác PIN trả 503 `chua_cau_hinh_bi_mat_pin` và ghi log lỗi nếu production thiếu biến (gunicorn không chạy system check). Không đăng ký thành check thường vì `manage.py test` luôn đặt `DEBUG = False`, sẽ chặn test của mọi nhóm.
 - Chính sách PIN: 8 chữ số; chặn dãy tăng/giảm, lặp một chữ số, dạng ngày `ddmmyyyy`, PIN phổ biến.
 - Mất PIN: không khôi phục. Thu hồi khóa cũ, cấp khóa mới sau khi quản trị xác minh danh tính; khóa cũ giữ để xác minh chữ ký lịch sử. Đổi PIN: bọc lại private key (cần PIN cũ), không sinh khóa mới.
-- Đổi PIN xoay vòng `k_srv` (Phase 6c): server sinh `k_srv` mới, trả cả `k_srv` cũ (mở bản bọc cũ) và mới (bọc lại) trong cùng response. Lý do: `k_srv` được trả ở mọi lần mở khóa; nếu không xoay vòng thì lộ `k_srv` một lần là đoán PIN offline được mãi, và đổi PIN khi nghi lộ không khôi phục được an toàn. Hiện tại (Phase 6a) `doi_pin` vẫn giữ nguyên `k_srv`.
+- Đổi PIN xoay vòng `k_srv` (Phase 6c): server sinh `k_srv` mới, trả cả `k_srv` cũ (mở bản bọc cũ) và mới (bọc lại) trong cùng response. Lý do: `k_srv` được trả ở mọi lần mở khóa; nếu không xoay vòng thì lộ `k_srv` một lần là đoán PIN offline được mãi, và đổi PIN khi nghi lộ không khôi phục được an toàn. Đã triển khai ở Phase 6c; đổi PIN thất bại không đổi `k_srv`.
 - MVP: một khóa `HOAT_DONG` trên một thiết bị. Đổi thiết bị là đăng ký khóa mới qua `xoay-vong`. Quy tắc cứng: bản bọc private key không lưu và không đồng bộ lên server; nếu sau này đồng bộ đa thiết bị thì thiết kế này mất tác dụng.
 - Giới hạn (`[FACT]` về phạm vi bảo vệ): PIN không chống XSS/malware ghi phím lúc nhập; không nâng giá trị pháp lý của chữ ký nội bộ. Giảm XSS bằng CSP chặt, không script bên thứ ba, màn hình ký hiển thị tên tệp và mã băm để người ký xác nhận.
 - Ước tính (`[ĐỀ XUẤT]`, chưa đo): với 8 chữ số (~26,6 bit) nếu chỉ bọc bằng PIN thì bản bọc bị đoán offline trong vài giờ với vài trăm core; vì vậy cần `k_srv` và khóa theo số lần sai.
@@ -698,9 +706,9 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - `POST /signing/khoa/{id}/xoay-vong/`
 - `POST /signing/khoa/{id}/thu-hoi/`
 - Phase 6a (bảo vệ khóa bằng PIN, mục 3.4). Payload dùng `xac_minh_pin` = Base64 của verifier 32 byte (không có field CSDL tương ứng; server chỉ lưu HMAC):
-  - `POST /signing/khoa/{id}/dat-pin/`: `xac_minh_pin`, `tham_so_kdf` → 201, trả `manh_bi_mat` (k_srv, Base64) một lần.
+  - `POST /signing/khoa/{id}/dat-pin/`: `xac_minh_pin`, `tham_so_kdf` (`thuat_toan`, `m`, `t`, `p`, `phien_ban`, `salt`) → 201, trả `manh_bi_mat` (k_srv, Base64) một lần.
   - `POST /signing/khoa/{id}/mo-khoa-ky/`: `xac_minh_pin` → 200 kèm `manh_bi_mat`; sai → 400 `pin_khong_dung`; bị khóa → 423 `pin_tam_khoa` / `pin_khoa_cung`.
-  - `POST /signing/khoa/{id}/doi-pin/`: `xac_minh_pin_cu`, `xac_minh_pin_moi`, `tham_so_kdf` → 200 kèm `manh_bi_mat` (hiện tại không đổi) để client bọc lại private key. Phase 6c: trả `manh_bi_mat_cu` và `manh_bi_mat` mới (xoay vòng `k_srv`, mục 3.4).
+  - `POST /signing/khoa/{id}/doi-pin/`: `xac_minh_pin_cu`, `xac_minh_pin_moi`, `tham_so_kdf` (salt mới) → 200 kèm `manh_bi_mat_cu` (mở bản bọc hiện có) và `manh_bi_mat` mới để client bọc lại private key (xoay vòng `k_srv` từ Phase 6c, mục 3.4).
   - Response có `Cache-Control: no-store`.
 - `GET /signing/requests/{id}/audit`
 - `GET /signing/attempts/{id}/manifest`: bằng chứng chuẩn hóa và trạng thái xác minh.

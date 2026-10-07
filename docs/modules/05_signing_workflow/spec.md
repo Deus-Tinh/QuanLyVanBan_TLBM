@@ -123,7 +123,7 @@ Prefix `/api/v1/`. Payload dùng đúng tên field CSDL. Tên đoạn đường 
 | `POST` | `/signing/khoa/{id}/thu-hoi/` | Thu hồi khóa | Chủ khóa / Quản trị |
 | `POST` | `/signing/khoa/{id}/dat-pin/` | Đặt PIN bảo vệ khóa ký (đã triển khai, Phase 6a) | Chủ khóa (`sign_trinhky`) |
 | `POST` | `/signing/khoa/{id}/mo-khoa-ky/` | Xác minh PIN, trả mảnh bí mật máy chủ (đã triển khai, Phase 6a) | Chủ khóa (`sign_trinhky`) |
-| `POST` | `/signing/khoa/{id}/doi-pin/` | Đổi PIN; Phase 6c xoay vòng mảnh bí mật máy chủ | Chủ khóa (`sign_trinhky`) |
+| `POST` | `/signing/khoa/{id}/doi-pin/` | Đổi PIN, xoay vòng mảnh bí mật máy chủ (Phase 6c) | Chủ khóa (`sign_trinhky`) |
 | `GET` | `/signing/requests/{id}/audit/` | Nhật ký hồ sơ | `view_signing_audit` |
 | `GET` | `/signing/attempts/{id}/manifest/` | Bằng chứng tổng hợp và trạng thái xác minh | `view_trinhky` |
 

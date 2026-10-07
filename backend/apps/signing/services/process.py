@@ -24,7 +24,7 @@ def _yeu_cau_ban_nhap(process):
 
 
 @transaction.atomic
-def tao_quy_trinh(nguoi_tao, *, ma_quy_trinh, ten_quy_trinh, pham_vi, kieu_ky_mac_dinh,
+def tao_quy_trinh(nguoi_tao, *, ma_quy_trinh, ten_quy_trinh, pham_vi,
                   mo_ta="", cau_hinh_nhac_han=None, cap_ky=()):
     """Tạo quy trình nháp (phiên bản 1) kèm các cấp và người ký cấu hình sẵn.
 
@@ -34,8 +34,7 @@ def tao_quy_trinh(nguoi_tao, *, ma_quy_trinh, ten_quy_trinh, pham_vi, kieu_ky_ma
     try:
         with transaction.atomic():
             process = SigningProcess.objects.create(
-                ma_quy_trinh=ma_quy_trinh, ten_quy_trinh=ten_quy_trinh, mo_ta=mo_ta,
-                pham_vi=pham_vi, kieu_ky_mac_dinh=kieu_ky_mac_dinh,
+                ma_quy_trinh=ma_quy_trinh, ten_quy_trinh=ten_quy_trinh, mo_ta=mo_ta, pham_vi=pham_vi,
                 cau_hinh_nhac_han=cau_hinh_nhac_han or CAU_HINH_NHAC_HAN_MAC_DINH,
                 phien_ban=1, create_by=nguoi_tao,
             )
@@ -152,8 +151,7 @@ def nhan_ban(process, nguoi_thuc_hien):
     ).aggregate(m=Max("phien_ban"))["m"]
     moi = SigningProcess.objects.create(
         ma_quy_trinh=nguon.ma_quy_trinh, ten_quy_trinh=nguon.ten_quy_trinh, mo_ta=nguon.mo_ta,
-        pham_vi=nguon.pham_vi, kieu_ky_mac_dinh=nguon.kieu_ky_mac_dinh,
-        cau_hinh_nhac_han=nguon.cau_hinh_nhac_han, phien_ban=ban_moi_nhat + 1,
+        pham_vi=nguon.pham_vi, cau_hinh_nhac_han=nguon.cau_hinh_nhac_han, phien_ban=ban_moi_nhat + 1,
         create_by=nguoi_thuc_hien,
     )
     for step in nguon.cap_ky_set.prefetch_related("nguoi_ky_set"):

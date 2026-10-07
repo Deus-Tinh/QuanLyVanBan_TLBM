@@ -149,6 +149,7 @@ class KhoaPinView(SigningAPIView):
     """
     POST /khoa/<pk>/<action>/ với action = dat-pin | mo-khoa-ky | doi-pin.
     Trả `manh_bi_mat` (k_srv, Base64) chỉ sau khi xác minh; không trả PIN, verifier hay bản bọc.
+    `doi-pin` trả thêm `manh_bi_mat_cu` (k_srv trước khi xoay vòng) để client mở bản bọc hiện có.
     """
 
     action = None
@@ -158,6 +159,7 @@ class KhoaPinView(SigningAPIView):
         key = get_object_or_404(_khoa_cua_toi(request), pk=pk)
         ip = _ip(request)
         http_status = status.HTTP_200_OK
+        manh_bi_mat_cu = None
         if self.action == "dat-pin":
             data = DatPinSerializer(data=request.data)
             data.is_valid(raise_exception=True)
@@ -172,13 +174,17 @@ class KhoaPinView(SigningAPIView):
         else:  # doi-pin
             data = DoiPinSerializer(data=request.data)
             data.is_valid(raise_exception=True)
-            unlock, manh_bi_mat = pin_service.doi_pin(
+            unlock, manh_bi_mat_cu, manh_bi_mat = pin_service.doi_pin(
                 key, request.user, data.validated_data["xac_minh_pin_cu"], data.validated_data["xac_minh_pin_moi"],
                 data.validated_data["tham_so_kdf"], ip,
             )
-        response = Response(
-            {"khoa": key.pk, "manh_bi_mat": base64.b64encode(manh_bi_mat).decode(), "tham_so_kdf": unlock.tham_so_kdf},
-            status=http_status,
-        )
+        body = {
+            "khoa": key.pk,
+            "manh_bi_mat": base64.b64encode(manh_bi_mat).decode(),
+            "tham_so_kdf": unlock.tham_so_kdf,
+        }
+        if manh_bi_mat_cu is not None:
+            body["manh_bi_mat_cu"] = base64.b64encode(manh_bi_mat_cu).decode()
+        response = Response(body, status=http_status)
         response["Cache-Control"] = "no-store"
         return response

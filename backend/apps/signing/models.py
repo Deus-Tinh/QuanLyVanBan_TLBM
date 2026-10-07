@@ -69,7 +69,6 @@ class SigningProcess(models.Model):
         max_length=20, choices=enums.TrangThaiQuyTrinh.choices, default=enums.TrangThaiQuyTrinh.NHAP
     )
     pham_vi = models.CharField(max_length=20, choices=enums.PhamViQuyTrinh.choices)
-    kieu_ky_mac_dinh = models.CharField(max_length=20, choices=enums.KieuKy.choices)
     cau_hinh_nhac_han = models.JSONField(null=True, blank=True)
     create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -146,7 +145,6 @@ class SigningRequest(models.Model):
     quy_trinh = models.ForeignKey(SigningProcess, on_delete=models.PROTECT, related_name="+")
     phien_ban_quy_trinh = models.PositiveSmallIntegerField()
     muc_do = models.CharField(max_length=20)
-    kieu_ky = models.CharField(max_length=20, choices=enums.KieuKy.choices)
     trang_thai = models.CharField(
         max_length=20, choices=enums.TrangThaiYeuCau.choices, default=enums.TrangThaiYeuCau.NHAP
     )
