@@ -7,8 +7,8 @@
 --   3) documents_vanbanden, documents_vanbandi thêm cột pham_vi ('NOI_BO' | 'HAN_CHE'), mặc định 'NOI_BO';
 --      CHECK văn bản HAN_CHE không gửi mail toàn hệ thống (chuyển từ CHECK B2 của bảng mật).
 --   4) Bỏ 4 quyền view/add/change/delete_vanbanmat và các lượt phân quyền tương ứng.
---   5) Trợ lý AI (role qlvb_readonly) chỉ đọc văn bản qua view ai_* đã loại văn bản HAN_CHE,
---      không còn quyền SELECT trên bảng văn bản gốc.
+--   5) Trợ lý AI (role qlvb_readonly) chỉ đọc metadata qua view ai_*; view văn bản loại HAN_CHE,
+--      bỏ cột/bảng đính kèm, và role không có SELECT trên bảng nghiệp vụ gốc.
 -- Quy tắc xem văn bản HAN_CHE (tầng ứng dụng, queryset dùng chung của Nhóm 2):
 --   chỉ người tạo, người nhận, thành viên đơn vị nhận; không ngoại lệ cho superuser hay quyền view_*;
 --   mọi lượt mở ghi documents_view_log.
@@ -2536,56 +2536,92 @@ COMMIT;
 -- - Role được tạo ngoài DDL (kèm mật khẩu từ biến môi trường); khối dưới chỉ cấp quyền khi role đã tồn tại.
 -- - Cấp theo bảng/cột cần dùng; KHÔNG cấp bảng khóa ký/PIN/nhật ký, cột password;
 --   KHÔNG dùng ALTER DEFAULT PRIVILEGES.
--- - [BỎ MẬT] Văn bản đến/đi chỉ đọc qua view ai_* đã loại văn bản pham_vi = 'HAN_CHE';
---   không cấp SELECT trên bảng văn bản gốc. View dùng security_barrier để điều kiện lọc
---   được áp trước mọi điều kiện do truy vấn của AI đưa vào.
--- - Quyền "ai được xem văn bản nào" lấy từ lớp dùng chung của Nhóm 2/Nhóm 7, không viết lại bằng SQL thô.
+-- - AI chỉ được cấp SELECT trên ai_vanbanden, ai_vanbandi, ai_tailieu.
+--   Các view văn bản chỉ trả về NOI_BO đang hiển thị; cột/bảng đính kèm không nằm trong view.
+-- - Quyền dùng AI và quyền xem từng loại được kiểm tra ở ứng dụng theo codename.
+--   View ai_tailieu tự giới hạn TAT_CA / NOI_BO_PHONG_BAN theo employee_id của phiên DB.
 -- =====================================================================
 CREATE VIEW ai_vanbanden WITH (security_barrier) AS
-    SELECT * FROM documents_vanbanden WHERE pham_vi = 'NOI_BO';
+    SELECT id, so_hieu, so_thu_tu, nam, ngay_den, trich_yeu, noi_ban_hanh,
+           ngay_van_ban, nguoi_ky, chuc_vu, hieu_luc, ngay_het_hieu_luc,
+           ghi_chu, updated_at
+    FROM documents_vanbanden
+    WHERE pham_vi = 'NOI_BO' AND hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbanden_nguoinhan WITH (security_barrier) AS
     SELECT nn.* FROM documents_vanbanden_nguoinhan nn
     JOIN documents_vanbanden vb ON vb.id = nn.vanbanden_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbanden_donvinhan WITH (security_barrier) AS
     SELECT dv.* FROM documents_vanbanden_donvinhan dv
     JOIN documents_vanbanden vb ON vb.id = dv.vanbanden_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi WITH (security_barrier) AS
-    SELECT * FROM documents_vanbandi WHERE pham_vi = 'NOI_BO';
+    SELECT vb.id, vb.so_hieu, vb.so_thu_tu, vb.nam, vb.ngay_ban_hanh,
+           vb.trich_yeu,
+           (
+               SELECT string_agg(dv.ten, ', ' ORDER BY dv.ten)
+               FROM documents_vanbandi_noibanhanh nb
+               JOIN organizations_donvi dv ON dv.id = nb.donvi_id
+               WHERE nb.vanbandi_id = vb.id
+           ) AS noi_ban_hanh,
+           vb.ngay_van_ban, vb.nguoi_ky, vb.chuc_vu, vb.hieu_luc,
+           vb.ngay_het_hieu_luc, vb.ghi_chu, vb.updated_at
+    FROM documents_vanbandi vb
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi_noibanhanh WITH (security_barrier) AS
     SELECT nb.* FROM documents_vanbandi_noibanhanh nb
     JOIN documents_vanbandi vb ON vb.id = nb.vanbandi_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi_nguoinhan WITH (security_barrier) AS
     SELECT nn.* FROM documents_vanbandi_nguoinhan nn
     JOIN documents_vanbandi vb ON vb.id = nn.vanbandi_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
 
 CREATE VIEW ai_vanbandi_donvinhan WITH (security_barrier) AS
     SELECT dv.* FROM documents_vanbandi_donvinhan dv
     JOIN documents_vanbandi vb ON vb.id = dv.vanbandi_id
-    WHERE vb.pham_vi = 'NOI_BO';
+    WHERE vb.pham_vi = 'NOI_BO' AND vb.hien_thi IS TRUE;
+
+CREATE VIEW ai_tailieu WITH (security_barrier) AS
+    SELECT t.id, t.ky_hieu, t.tieu_de, t.ngay_dang, t.noi_ban_hanh,
+           t.hieu_luc, t.ngay_het_hieu_luc, t.ghi_chu, t.updated_at
+    FROM records_chitiettailieu t
+    WHERE t.hien_thi::text = 'TAT_CA'
+       OR (
+           t.hien_thi::text = 'NOI_BO_PHONG_BAN'
+           AND t.don_vi_id = (
+               SELECT e.don_vi_id
+               FROM accounts_employee e
+               WHERE e.id = NULLIF(current_setting('qlvb.employee_id', true), '')::bigint
+                 AND e.is_active IS TRUE
+                 AND e.trang_thai::text = 'LAM_VIEC'
+           )
+       );
 
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'qlvb_readonly') THEN
-        GRANT SELECT (id, don_vi_id, is_active, trang_thai, is_superuser) ON accounts_employee TO qlvb_readonly;
-        GRANT SELECT (id, ten) ON organizations_donvi TO qlvb_readonly;
-        GRANT SELECT ON
-            ai_vanbanden,
+        -- Remove grants from the previous raw-table implementation before
+        -- granting the view-only contract.
+        REVOKE SELECT (id, don_vi_id, is_active, trang_thai, is_superuser) ON accounts_employee FROM qlvb_readonly;
+        REVOKE SELECT (id, ten) ON organizations_donvi FROM qlvb_readonly;
+        REVOKE SELECT ON accounts_employee, organizations_donvi, records_chitiettailieu FROM qlvb_readonly;
+        REVOKE SELECT ON
             ai_vanbanden_nguoinhan,
             ai_vanbanden_donvinhan,
-            ai_vanbandi,
             ai_vanbandi_noibanhanh,
             ai_vanbandi_nguoinhan,
-            ai_vanbandi_donvinhan,
-            records_chitiettailieu
+            ai_vanbandi_donvinhan
+        FROM qlvb_readonly;
+        GRANT SELECT ON
+            ai_vanbanden,
+            ai_vanbandi,
+            ai_tailieu
         TO qlvb_readonly;
     ELSE
         RAISE NOTICE 'Role qlvb_readonly chưa tồn tại: bỏ qua cấp quyền chỉ đọc cho trợ lý AI';
