@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -270,29 +271,66 @@
   box-shadow: var(--shadow-clay-btn) !important;
 }
 
-/* Ô nhập liệu dạng rãnh đất sét chìm mềm mại (Clay Inset Fields) */
-[data-ui-style='modern'] input,
-[data-ui-style='modern'] select,
-[data-ui-style='modern'] textarea {
+/* Ô nhập liệu dạng rãnh đất sét chìm mềm mại (Clay Inset Fields) - chỉ áp dụng cho input thuần */
+[data-ui-style='modern'] input:not(.MuiInputBase-input),
+[data-ui-style='modern'] select:not(.MuiSelect-select):not(.MuiNativeSelect-select),
+[data-ui-style='modern'] textarea:not(.MuiInputBase-input) {
   background: var(--bg-surface) !important;
   border: 1.5px solid var(--border-subtle) !important;
   box-shadow: var(--shadow-clay-inset) !important;
-  border-radius: 14px !important;
+  border-radius: 12px !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
-[data-ui-style='modern'] input:focus,
-[data-ui-style='modern'] select:focus,
-[data-ui-style='modern'] textarea:focus {
+[data-ui-style='modern'] input:not(.MuiInputBase-input):focus,
+[data-ui-style='modern'] select:not(.MuiSelect-select):not(.MuiNativeSelect-select):focus,
+[data-ui-style='modern'] textarea:not(.MuiInputBase-input):focus {
   border-color: var(--color-primary) !important;
   box-shadow: var(--shadow-clay-inset), 0 0 0 3px var(--color-primary-subtle) !important;
 }
 
-/* Bảng dữ liệu Claymorphism */
+/* MUI OutlinedInput & Floating Label fix */
+.MuiInputBase-input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.MuiInputLabel-root {
+  font-family: var(--font-sans) !important;
+}
+
+.MuiInputLabel-outlined.MuiInputLabel-shrink {
+  background: #ffffff !important;
+  padding: 0 6px !important;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+[data-theme='dark'] .MuiInputLabel-outlined.MuiInputLabel-shrink {
+  background: #121827 !important;
+}
+
+.MuiOutlinedInput-notchedOutline legend {
+  max-width: 100% !important;
+}
+
+.MuiDialogContent-root {
+  overflow-y: auto;
+}
+
+/* Bảng dữ liệu Claymorphism & Fast Row Hover */
 [data-ui-style='modern'] th {
   background: var(--bg-surface-hover) !important;
   font-weight: 700;
   border-bottom: 1.5px solid var(--border-subtle) !important;
+}
+
+.MuiTableContainer-root table tr,
+.MuiTableContainer-root table td,
+.MuiTableRow-root,
+.MuiTableCell-root {
+  transition: background-color 0.08s ease, border-color 0.08s ease, color 0.08s ease !important;
 }
 
 /* Viewport nội dung */
@@ -434,6 +472,7 @@ i {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  font-family: inherit;
 }
 
 /* Base Root Font-Size: Đặt chuẩn 16px web standard để tất cả rem units hiển thị cân đối, sắc nét */
@@ -476,8 +515,22 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Đồng bộ toàn bộ các thành phần UI, form controls, nút bấm, Typography sang font chuẩn hệ thống */
+button,
+input,
+select,
+textarea,
+.MuiTypography-root,
+.MuiButton-root,
+.MuiInputBase-root,
+.MuiTableCell-root,
+.MuiChip-root,
+.MuiTab-root,
+.MuiDialog-root {
+  font-family: var(--font-sans) !important;
+}
+
 button {
-  font-family: inherit;
   cursor: pointer;
   border: none;
   background: transparent;
@@ -485,7 +538,6 @@ button {
 }
 
 input, select, textarea {
-  font-family: inherit;
   font-size: inherit;
   outline: none;
 }

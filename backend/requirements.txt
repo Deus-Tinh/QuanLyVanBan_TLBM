@@ -20,6 +20,7 @@ openpyxl>=3.1.0
 # Utilities
 python-dotenv>=1.2,<2
 pytz>=2024.1
-
 # PostgreSQL Database Driver
-psycopg[binary]>=3.2.0
+psycopg[cffi]>=3.2.0
+
+

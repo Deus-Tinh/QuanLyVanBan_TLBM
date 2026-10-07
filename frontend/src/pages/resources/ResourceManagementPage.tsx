@@ -482,6 +482,40 @@ export default function ResourceManagementPage() {
     }
   };
 
+  // --- Nút Quick-Add: Thêm nhanh Danh mục (Cấp 1) từ trong Modal ---
+  const handleQuickAddCategory = async (data: { ten_tai_lieu: string; ky_hieu?: string; ghi_chu?: string }) => {
+    const newId = categories.length > 0 ? Math.max(...categories.map((c) => c.id)) + 1 : 1;
+    const newCategory: ResourceCategory = {
+      id: newId,
+      stt_uu_tien: newId,
+      ten_tai_lieu: data.ten_tai_lieu,
+      ky_hieu: data.ky_hieu,
+      ghi_chu: data.ghi_chu,
+      ngay_lap: new Date().toISOString().split('T')[0],
+      nguoi_lap_name: 'Người dùng hiện tại',
+    };
+    setCategories((prev) => [...prev, newCategory]);
+    setToastMessage(`Đã thêm nhanh Danh mục Cấp 1: "${newCategory.ten_tai_lieu}"`);
+    setTimeout(() => setToastMessage(null), 3000);
+    return newCategory;
+  };
+
+  // --- Nút Quick-Add: Thêm nhanh Loại văn bản (Cấp 2) từ trong Modal ---
+  const handleQuickAddType = async (data: { dm_tai_lieu: number; ten_loai: string; ghi_chu?: string }) => {
+    const newId = types.length > 0 ? Math.max(...types.map((t) => t.id)) + 1 : 1;
+    const newType: ResourceType = {
+      id: newId,
+      dm_tai_lieu: data.dm_tai_lieu,
+      ten_loai: data.ten_loai,
+      is_public: true,
+      ghi_chu: data.ghi_chu,
+    };
+    setTypes((prev) => [...prev, newType]);
+    setToastMessage(`Đã thêm nhanh Loại Cấp 2: "${newType.ten_loai}"`);
+    setTimeout(() => setToastMessage(null), 3000);
+    return newType;
+  };
+
   // Xuất Excel: Liên kết API Backend để tải file về máy (theo đặc tả phân hệ của Nguyễn Chí Tín)
   const [isExporting, setIsExporting] = useState(false);
 
@@ -925,6 +959,8 @@ export default function ResourceManagementPage() {
         initialData={formInitialData}
         categories={categories}
         types={types}
+        onQuickAddCategory={handleQuickAddCategory}
+        onQuickAddType={handleQuickAddType}
       />
 
       {/* MODAL QUẢN LÝ CẤU TRÚC DANH MỤC CẤP 1 & LOẠI BIỂU MẪU CẤP 2 (HUỲNH THỊ KIM TRANG PHỤ TRÁCH) */}

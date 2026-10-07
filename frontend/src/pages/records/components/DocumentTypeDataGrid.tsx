@@ -48,17 +48,21 @@ export default function DocumentTypeDataGrid({ rows }: DocumentTypeDataGridProps
                 Không tìm thấy loại văn bản phù hợp
               </TableCell>
             </TableRow>
-          ) : rows.map((row, idx) => (
+          ) : rows.map((row) => (
             <TableRow
               key={row.id}
+              hover
               sx={{
-                bgcolor: idx % 2 === 0 ? 'background.paper' : 'action.hover',
-                '&:hover': { bgcolor: 'action.selected' },
-                transition: 'background-color 0.15s',
+                cursor: 'pointer',
+                bgcolor: 'background.paper',
+                '&:hover, &.MuiTableRow-hover:hover': {
+                  bgcolor: 'rgba(37, 99, 235, 0.06) !important',
+                },
+                transition: 'background-color 0.08s ease',
               }}
             >
               <TableCell>
-                <Typography variant="body2" color="primary" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
+                <Typography variant="body2" color="primary" sx={{ fontWeight: 700 }}>
                   {row.code}
                 </Typography>
               </TableCell>
@@ -78,7 +82,7 @@ export default function DocumentTypeDataGrid({ rows }: DocumentTypeDataGridProps
 
               <TableCell>
                 <Typography variant="body2" color="text.secondary"
-                  sx={{ fontFamily: 'monospace', fontSize: '0.78rem' }}
+                  sx={{ fontSize: '0.78rem' }}
                 >
                   {row.created_at}
                 </Typography>

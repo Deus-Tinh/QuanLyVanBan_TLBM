@@ -34,6 +34,8 @@ export interface ResourceFormModalProps {
   categories?: ResourceCategory[];
   types?: ResourceType[];
   isLoading?: boolean;
+  onQuickAddCategory?: (data: { ten_tai_lieu: string; ky_hieu?: string; ghi_chu?: string }) => Promise<ResourceCategory> | ResourceCategory;
+  onQuickAddType?: (data: { dm_tai_lieu: number; ten_loai: string; ghi_chu?: string }) => Promise<ResourceType> | ResourceType;
 }
 
 const MAX_FILE_SIZE_MB = 20;
@@ -47,17 +49,42 @@ interface FormContentProps {
   categories: ResourceCategory[];
   types: ResourceType[];
   isLoading: boolean;
+  onQuickAddCategory?: (data: { ten_tai_lieu: string; ky_hieu?: string; ghi_chu?: string }) => Promise<ResourceCategory> | ResourceCategory;
+  onQuickAddType?: (data: { dm_tai_lieu: number; ten_loai: string; ghi_chu?: string }) => Promise<ResourceType> | ResourceType;
 }
 
 const FormContent: React.FC<FormContentProps> = ({
   onClose,
   onSubmit,
   initialData,
-  categories,
-  types,
+  categories: initialCategories,
+  types: initialTypes,
   isLoading,
+  onQuickAddCategory,
+  onQuickAddType,
 }) => {
   const isEditMode = Boolean(initialData);
+
+  // Local state danh mục và loại để có thể cập nhật tức thời khi Quick-Add
+  const [localCategories, setLocalCategories] = useState<ResourceCategory[]>(initialCategories);
+  const [localTypes, setLocalTypes] = useState<ResourceType[]>(initialTypes);
+
+  // Sub-modal state for Quick-Add
+  const [isQuickAddCategoryOpen, setIsQuickAddCategoryOpen] = useState(false);
+  const [isQuickAddTypeOpen, setIsQuickAddTypeOpen] = useState(false);
+
+  // Form state cho Quick-Add Danh mục
+  const [quickCategoryName, setQuickCategoryName] = useState('');
+  const [quickCategoryCode, setQuickCategoryCode] = useState('');
+  const [quickCategoryNote, setQuickCategoryNote] = useState('');
+  const [quickCategoryError, setQuickCategoryError] = useState('');
+  const [isSavingQuickCategory, setIsSavingQuickCategory] = useState(false);
+
+  // Form state cho Quick-Add Loại tài liệu
+  const [quickTypeName, setQuickTypeName] = useState('');
+  const [quickTypeNote, setQuickTypeNote] = useState('');
+  const [quickTypeError, setQuickTypeError] = useState('');
+  const [isSavingQuickType, setIsSavingQuickType] = useState(false);
 
   // Khởi tạo state trực tiếp từ initialData mà không cần useEffect (React 19 pattern)
   const [formData, setFormData] = useState<ResourceFormData>(() => {
@@ -78,7 +105,7 @@ const FormContent: React.FC<FormContentProps> = ({
       };
     }
     return {
-      dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
+      dm_tai_lieu: initialCategories.length > 0 ? initialCategories[0].id : '',
       loai_tai_lieu: [],
       ky_hieu: '',
       tieu_de: '',
@@ -99,14 +126,14 @@ const FormContent: React.FC<FormContentProps> = ({
   // Danh sách Loại Cấp 2 tương ứng với Danh mục Cấp 1 đã chọn (Cascading)
   const availableTypes = useMemo(() => {
     if (!formData.dm_tai_lieu) return [];
-    return types.filter((t) => t.dm_tai_lieu === Number(formData.dm_tai_lieu));
-  }, [formData.dm_tai_lieu, types]);
+    return localTypes.filter((t) => t.dm_tai_lieu === Number(formData.dm_tai_lieu));
+  }, [formData.dm_tai_lieu, localTypes]);
 
   // Khi đổi Danh mục Cấp 1, tự động lọc lại Loại Cấp 2 đã chọn
   const handleCategoryChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const newDmId = e.target.value ? Number(e.target.value) : '';
     setFormData((prev) => {
-      const validTypes = types
+      const validTypes = localTypes
         .filter((t) => t.dm_tai_lieu === newDmId)
         .map((t) => t.id);
       const filteredSelected = prev.loai_tai_lieu.filter((id) => validTypes.includes(id));
@@ -135,6 +162,119 @@ const FormContent: React.FC<FormContentProps> = ({
 
     if (errors.loai_tai_lieu) {
       setErrors((prev) => ({ ...prev, loai_tai_lieu: '' }));
+    }
+  };
+
+  // --- Xử lý Lưu Nhanh Danh Mục (Cấp 1) via Quick-Add Modal ---
+  const handleSaveQuickCategory = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!quickCategoryName.trim()) {
+      setQuickCategoryError('Vui lòng nhập tên danh mục.');
+      return;
+    }
+
+    try {
+      setIsSavingQuickCategory(true);
+      setQuickCategoryError('');
+
+      let createdCat: ResourceCategory;
+      if (onQuickAddCategory) {
+        createdCat = await onQuickAddCategory({
+          ten_tai_lieu: quickCategoryName.trim(),
+          ky_hieu: quickCategoryCode.trim() || undefined,
+          ghi_chu: quickCategoryNote.trim() || undefined,
+        });
+      } else {
+        // Fallback tạo local object nếu không có callback API
+        const newId = localCategories.length > 0 ? Math.max(...localCategories.map((c) => c.id)) + 1 : 1;
+        createdCat = {
+          id: newId,
+          stt_uu_tien: newId,
+          ten_tai_lieu: quickCategoryName.trim(),
+          ky_hieu: quickCategoryCode.trim() || undefined,
+          ghi_chu: quickCategoryNote.trim() || undefined,
+        };
+      }
+
+      // Cập nhật danh sách Danh mục và tự động chọn Danh mục vừa tạo mà KHÔNG MẤT DỮ LIỆU ĐANG NHẬP DỞ
+      setLocalCategories((prev) => {
+        if (prev.some((c) => c.id === createdCat.id)) return prev;
+        return [...prev, createdCat];
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        dm_tai_lieu: createdCat.id,
+        loai_tai_lieu: [], // reset loại vì vừa chọn sang danh mục mới
+      }));
+
+      // Reset & Đóng Sub-modal
+      setQuickCategoryName('');
+      setQuickCategoryCode('');
+      setQuickCategoryNote('');
+      setIsQuickAddCategoryOpen(false);
+    } catch (err: any) {
+      setQuickCategoryError(err?.message || 'Có lỗi khi thêm danh mục.');
+    } finally {
+      setIsSavingQuickCategory(false);
+    }
+  };
+
+  // --- Xử lý Lưu Nhanh Loại Văn Bản (Cấp 2) via Quick-Add Modal ---
+  const handleSaveQuickType = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!formData.dm_tai_lieu) {
+      setQuickTypeError('Vui lòng chọn Danh mục Cấp 1 trước.');
+      return;
+    }
+    if (!quickTypeName.trim()) {
+      setQuickTypeError('Vui lòng nhập tên loại tài liệu.');
+      return;
+    }
+
+    try {
+      setIsSavingQuickType(true);
+      setQuickTypeError('');
+
+      let createdType: ResourceType;
+      if (onQuickAddType) {
+        createdType = await onQuickAddType({
+          dm_tai_lieu: Number(formData.dm_tai_lieu),
+          ten_loai: quickTypeName.trim(),
+          ghi_chu: quickTypeNote.trim() || undefined,
+        });
+      } else {
+        const newId = localTypes.length > 0 ? Math.max(...localTypes.map((t) => t.id)) + 1 : 1;
+        createdType = {
+          id: newId,
+          dm_tai_lieu: Number(formData.dm_tai_lieu),
+          ten_loai: quickTypeName.trim(),
+          is_public: true,
+          ghi_chu: quickTypeNote.trim() || undefined,
+        };
+      }
+
+      // Cập nhật danh sách Loại và tự động chọn Loại vừa tạo
+      setLocalTypes((prev) => {
+        if (prev.some((t) => t.id === createdType.id)) return prev;
+        return [...prev, createdType];
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        loai_tai_lieu: prev.loai_tai_lieu.includes(createdType.id)
+          ? prev.loai_tai_lieu
+          : [...prev.loai_tai_lieu, createdType.id],
+      }));
+
+      // Reset & Đóng Sub-modal
+      setQuickTypeName('');
+      setQuickTypeNote('');
+      setIsQuickAddTypeOpen(false);
+    } catch (err: any) {
+      setQuickTypeError(err?.message || 'Có lỗi khi thêm loại tài liệu.');
+    } finally {
+      setIsSavingQuickType(false);
     }
   };
 
@@ -290,23 +430,45 @@ const FormContent: React.FC<FormContentProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-surface-elevated/40 border border-border-subtle/70">
             {/* Danh mục Cấp 1 */}
             <div>
-              <label htmlFor="dm_tai_lieu" className="text-xs font-bold text-main block mb-1.5">
-                Danh mục Cấp 1 <span className="text-danger">*</span>
-              </label>
-              <select
-                id="dm_tai_lieu"
-                value={formData.dm_tai_lieu}
-                onChange={handleCategoryChange}
-                className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary transition-colors ${errors.dm_tai_lieu ? 'border-danger' : 'border-border-subtle'
-                  }`}
-              >
-                <option value="">-- Chọn danh mục Cấp 1 --</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.ten_tai_lieu} {c.ky_hieu ? `(${c.ky_hieu})` : ''}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="dm_tai_lieu" className="text-xs font-bold text-main">
+                  Danh mục Cấp 1 <span className="text-danger">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddCategoryOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:text-primary-hover hover:underline cursor-pointer bg-primary-subtle/50 px-2 py-0.5 rounded-md transition-colors"
+                  title="Thêm nhanh Danh mục Cấp 1"
+                >
+                  <i className="fa-solid fa-plus text-[10px]" />
+                  <span>Thêm nhanh</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <select
+                  id="dm_tai_lieu"
+                  value={formData.dm_tai_lieu}
+                  onChange={handleCategoryChange}
+                  className={`flex-1 px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary transition-colors ${errors.dm_tai_lieu ? 'border-danger' : 'border-border-subtle'
+                    }`}
+                >
+                  <option value="">-- Chọn danh mục Cấp 1 --</option>
+                  {localCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.ten_tai_lieu} {c.ky_hieu ? `(${c.ky_hieu})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddCategoryOpen(true)}
+                  className="w-9 h-9 rounded-lg border border-primary text-primary hover:bg-primary hover:text-white flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                  title="Thêm nhanh Danh mục mới"
+                >
+                  <i className="fa-solid fa-plus" />
+                </button>
+              </div>
               {errors.dm_tai_lieu && (
                 <p className="text-xs text-danger mt-1">{errors.dm_tai_lieu}</p>
               )}
@@ -314,37 +476,66 @@ const FormContent: React.FC<FormContentProps> = ({
 
             {/* Loại Cấp 2 (Tự động lọc theo Cấp 1) */}
             <div>
-              <label className="text-xs font-bold text-main block mb-1.5">
-                Loại tài liệu Cấp 2 <span className="text-danger">*</span>
-                <span className="text-xs text-muted font-normal ml-1">
-                  ({availableTypes.length} loại tương ứng)
-                </span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-main">
+                  Loại văn bản Cấp 2 <span className="text-danger">*</span>
+                  <span className="text-xs text-muted font-normal ml-1">
+                    ({availableTypes.length} loại)
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  disabled={!formData.dm_tai_lieu}
+                  onClick={() => setIsQuickAddTypeOpen(true)}
+                  className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md transition-colors ${formData.dm_tai_lieu
+                      ? 'text-primary hover:text-primary-hover hover:underline cursor-pointer bg-primary-subtle/50'
+                      : 'text-muted bg-surface-elevated cursor-not-allowed opacity-60'
+                    }`}
+                  title={formData.dm_tai_lieu ? "Thêm nhanh Loại tài liệu Cấp 2" : "Chọn Danh mục Cấp 1 trước"}
+                >
+                  <i className="fa-solid fa-plus text-[10px]" />
+                  <span>Thêm nhanh</span>
+                </button>
+              </div>
+
               {availableTypes.length === 0 ? (
-                <div className="text-xs text-muted italic py-2 px-3 bg-surface rounded-lg border border-border-subtle">
-                  {formData.dm_tai_lieu
-                    ? 'Danh mục này chưa có Loại Cấp 2 nào.'
-                    : 'Vui lòng chọn Danh mục Cấp 1 trước.'}
+                <div className="flex items-center justify-between text-xs text-muted italic py-2 px-3 bg-surface rounded-lg border border-border-subtle">
+                  <span>
+                    {formData.dm_tai_lieu
+                      ? 'Danh mục này chưa có Loại Cấp 2 nào.'
+                      : 'Vui lòng chọn Danh mục Cấp 1 trước.'}
+                  </span>
+                  {Boolean(formData.dm_tai_lieu) && (
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickAddTypeOpen(true)}
+                      className="not-italic text-primary font-bold text-xs hover:underline cursor-pointer ml-2"
+                    >
+                      + Thêm ngay
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div className="max-h-28 overflow-y-auto p-2 bg-surface rounded-lg border border-border-subtle space-y-1.5">
-                  {availableTypes.map((type) => {
-                    const checked = formData.loai_tai_lieu.includes(type.id);
-                    return (
-                      <label
-                        key={type.id}
-                        className="flex items-center gap-2 text-xs text-main cursor-pointer hover:bg-surface-elevated p-1 rounded transition-colors select-none"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => handleToggleType(type.id)}
-                          className="rounded text-primary focus:ring-0 cursor-pointer"
-                        />
-                        <span>{type.ten_loai}</span>
-                      </label>
-                    );
-                  })}
+                <div className="relative">
+                  <div className="max-h-28 overflow-y-auto p-2 bg-surface rounded-lg border border-border-subtle space-y-1.5">
+                    {availableTypes.map((type) => {
+                      const checked = formData.loai_tai_lieu.includes(type.id);
+                      return (
+                        <label
+                          key={type.id}
+                          className="flex items-center gap-2 text-xs text-main cursor-pointer hover:bg-surface-elevated p-1 rounded transition-colors select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleToggleType(type.id)}
+                            className="rounded text-primary focus:ring-0 cursor-pointer"
+                          />
+                          <span>{type.ten_loai}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               {errors.loai_tai_lieu && (
@@ -570,6 +761,201 @@ const FormContent: React.FC<FormContentProps> = ({
           </Button>
         </div>
       </form>
+
+      {/* ==================================================================== */}
+      {/* SUB-MODAL 1: THÊM NHANH DANH MỤC (CẤP 1)                             */}
+      {/* ==================================================================== */}
+      {isQuickAddCategoryOpen && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsQuickAddCategoryOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-surface rounded-2xl border border-primary/30 shadow-2xl overflow-hidden animate-slide-in-bottom"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle bg-primary-subtle/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center text-sm">
+                  <i className="fa-solid fa-folder-plus" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-main">Thêm nhanh Danh mục (Cấp 1)</h4>
+                  <p className="text-[11px] text-muted">Tự động chọn ngay sau khi lưu</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickAddCategoryOpen(false)}
+                className="text-muted hover:text-main cursor-pointer"
+              >
+                <i className="fa-solid fa-xmark text-base" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickCategory} className="p-5 space-y-4">
+              {quickCategoryError && (
+                <div className="p-2 rounded-lg bg-danger-subtle border border-danger-border text-xs text-danger">
+                  {quickCategoryError}
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-bold text-main block mb-1">
+                  Tên danh mục <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={quickCategoryName}
+                  onChange={(e) => setQuickCategoryName(e.target.value)}
+                  placeholder="VD: Tài liệu Pháp lý & Tuân thủ"
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-main block mb-1">
+                  Số ký hiệu
+                </label>
+                <input
+                  type="text"
+                  value={quickCategoryCode}
+                  onChange={(e) => setQuickCategoryCode(e.target.value)}
+                  placeholder="VD: TL-PL"
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-main block mb-1">
+                  Ghi chú
+                </label>
+                <textarea
+                  rows={2}
+                  value={quickCategoryNote}
+                  onChange={(e) => setQuickCategoryNote(e.target.value)}
+                  placeholder="Ghi chú thêm về danh mục..."
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddCategoryOpen(false)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface-elevated text-muted hover:text-main cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingQuickCategory}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  {isSavingQuickCategory && <i className="fa-solid fa-spinner fa-spin" />}
+                  <span>Lưu & Chọn ngay</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* SUB-MODAL 2: THÊM NHANH LOẠI VĂN BẢN (CẤP 2)                         */}
+      {/* ==================================================================== */}
+      {isQuickAddTypeOpen && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsQuickAddTypeOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-md bg-surface rounded-2xl border border-primary/30 shadow-2xl overflow-hidden animate-slide-in-bottom"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle bg-primary-subtle/30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center text-sm">
+                  <i className="fa-solid fa-file-circle-plus" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-main">Thêm nhanh Loại văn bản (Cấp 2)</h4>
+                  <p className="text-[11px] text-muted">
+                    Thuộc danh mục: <strong className="text-primary">{localCategories.find(c => c.id === Number(formData.dm_tai_lieu))?.ten_tai_lieu || 'Đang chọn'}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickAddTypeOpen(false)}
+                className="text-muted hover:text-main cursor-pointer"
+              >
+                <i className="fa-solid fa-xmark text-base" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickType} className="p-5 space-y-4">
+              {quickTypeError && (
+                <div className="p-2 rounded-lg bg-danger-subtle border border-danger-border text-xs text-danger">
+                  {quickTypeError}
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-bold text-main block mb-1">
+                  Tên loại văn bản <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={quickTypeName}
+                  onChange={(e) => setQuickTypeName(e.target.value)}
+                  placeholder="VD: Quyết định, Tờ trình, Hướng dẫn..."
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-main block mb-1">
+                  Ghi chú
+                </label>
+                <textarea
+                  rows={2}
+                  value={quickTypeNote}
+                  onChange={(e) => setQuickTypeNote(e.target.value)}
+                  placeholder="Ghi chú thêm về loại văn bản..."
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickAddTypeOpen(false)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface-elevated text-muted hover:text-main cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingQuickType}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  {isSavingQuickType && <i className="fa-solid fa-spinner fa-spin" />}
+                  <span>Lưu & Chọn ngay</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -582,6 +968,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   categories = [],
   types = [],
   isLoading = false,
+  onQuickAddCategory,
+  onQuickAddType,
 }) => {
   // Lắng nghe phím ESC để đóng modal
   useEffect(() => {
@@ -614,7 +1002,10 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
         categories={categories}
         types={types}
         isLoading={isLoading}
+        onQuickAddCategory={onQuickAddCategory}
+        onQuickAddType={onQuickAddType}
       />
     </div>
   );
 };
+

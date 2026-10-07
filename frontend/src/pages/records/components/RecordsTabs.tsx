@@ -5,9 +5,6 @@ import {
   Tab,
   TextField,
   InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
   MenuItem,
   IconButton,
   Tooltip,
@@ -15,7 +12,6 @@ import {
   Pagination,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -28,8 +24,11 @@ interface RecordsTabsProps {
   onTabChange: (index: number) => void;
   searchText: string;
   onSearchChange: (value: string) => void;
+  yearFilter: string;
+  onYearFilterChange: (value: string) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
+  availableYears: string[];
   page: number;
   onPageChange: (page: number) => void;
   totalPages: number;
@@ -38,6 +37,8 @@ interface RecordsTabsProps {
   pagedDocTypes: DocumentType[];
   onEditRecord?: (record: RecordItem) => void;
   onViewRecord?: (record: RecordItem) => void;
+  onDeleteRecord?: (record: RecordItem) => void;
+  onResetFilters: () => void;
 }
 
 export default function RecordsTabs({
@@ -45,8 +46,11 @@ export default function RecordsTabs({
   onTabChange,
   searchText,
   onSearchChange,
+  yearFilter,
+  onYearFilterChange,
   statusFilter,
   onStatusFilterChange,
+  availableYears,
   page,
   onPageChange,
   totalPages,
@@ -55,6 +59,8 @@ export default function RecordsTabs({
   pagedDocTypes,
   onEditRecord,
   onViewRecord,
+  onDeleteRecord,
+  onResetFilters,
 }: RecordsTabsProps) {
   return (
     <>
@@ -63,22 +69,23 @@ export default function RecordsTabs({
         <Tabs
           value={tabIndex}
           onChange={(_, v: number) => onTabChange(v)}
-          sx={{ '& .MuiTab-root': { fontWeight: 600, fontSize: '0.875rem', minHeight: 48 } }}
+          sx={{ '& .MuiTab-root': { fontWeight: 600, fontSize: '0.875rem', minHeight: 48, textTransform: 'none' } }}
         >
-          <Tab icon={<FolderOpenIcon fontSize="small" />} iconPosition="start" label="Hồ Sơ" />
+          <Tab icon={<FolderOpenIcon fontSize="small" />} iconPosition="start" label="Danh Mục Tài Liệu" />
           <Tab icon={<DescriptionIcon fontSize="small" />} iconPosition="start" label="Loại Văn Bản" />
         </Tabs>
       </Box>
 
       <Box sx={{ p: { xs: 2, sm: 3 } }}>
-        {/* Toolbar */}
+        {/* Toolbar & Filters */}
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2.5, alignItems: 'center' }}>
+          {/* Ô tìm kiếm theo Tên tài liệu hoặc Số ký hiệu */}
           <TextField
             size="small"
             placeholder={
               tabIndex === 0
-                ? 'Tìm theo mã, tên hồ sơ, người phụ trách...'
-                : 'Tìm theo mã hoặc tên loại...'
+                ? 'Tìm kiếm theo Tên tài liệu hoặc Số ký hiệu hồ sơ...'
+                : 'Tìm theo mã hoặc tên loại văn bản...'
             }
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -91,32 +98,47 @@ export default function RecordsTabs({
                 ),
               },
             }}
-            sx={{ flex: '1 1 260px', '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+            sx={{ flex: '1 1 280px', '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
           />
 
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <FilterListIcon fontSize="small" />
-                Trạng thái
-              </Box>
-            </InputLabel>
-            <Select
-              value={statusFilter}
-              label="Trạng thái"
-              onChange={(e) => onStatusFilterChange(e.target.value)}
-              sx={{ borderRadius: 2.5 }}
+          {/* Bộ lọc theo Năm (cho Danh mục tài liệu) */}
+          {tabIndex === 0 && (
+            <TextField
+              select
+              size="small"
+              label="Năm"
+              value={yearFilter}
+              onChange={(e) => onYearFilterChange(e.target.value)}
+              sx={{ minWidth: 135, '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
             >
-              <MenuItem value="all">Tất cả</MenuItem>
-              <MenuItem value="active">Đang hoạt động</MenuItem>
-              <MenuItem value="pending">Chờ xử lý</MenuItem>
-              <MenuItem value="archived">Đã lưu trữ</MenuItem>
-            </Select>
-          </FormControl>
+              <MenuItem value="all">Tất cả năm</MenuItem>
+              {availableYears.map((yr) => (
+                <MenuItem key={yr} value={yr}>
+                  Năm {yr}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
 
-          <Tooltip title="Làm mới bộ lọc">
+          {/* Bộ lọc Trạng thái */}
+          <TextField
+            select
+            size="small"
+            label="Trạng thái"
+            value={statusFilter}
+            onChange={(e) => onStatusFilterChange(e.target.value)}
+            sx={{ minWidth: 160, '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+          >
+            <MenuItem value="all">Tất cả trạng thái</MenuItem>
+            <MenuItem value="active">Đang lưu hành</MenuItem>
+            <MenuItem value="pending">Chờ xử lý</MenuItem>
+            <MenuItem value="archived">Đã lưu trữ</MenuItem>
+          </TextField>
+
+          {/* Nút Làm mới bộ lọc */}
+          <Tooltip title="Làm mới tất cả bộ lọc">
             <IconButton
-              onClick={() => { onSearchChange(''); onStatusFilterChange('all'); }}
+              onClick={onResetFilters}
               size="small"
               sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}
             >
@@ -124,27 +146,36 @@ export default function RecordsTabs({
             </IconButton>
           </Tooltip>
 
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto', alignSelf: 'center' }}>
-            {totalItems} kết quả
+          <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto', alignSelf: 'center', fontWeight: 500 }}>
+            Tổng số: <b>{totalItems}</b> danh mục
           </Typography>
         </Box>
 
-        {/* Tab 0: Hồ Sơ */}
-        {tabIndex === 0 && <CategoryDataGrid rows={pagedRecords} onEdit={onEditRecord} onView={onViewRecord} />}
+        {/* Tab 0: Danh mục tài liệu */}
+        {tabIndex === 0 && (
+          <CategoryDataGrid
+            rows={pagedRecords}
+            onEdit={onEditRecord}
+            onView={onViewRecord}
+            onDelete={onDeleteRecord}
+          />
+        )}
 
         {/* Tab 1: Loại Văn Bản */}
         {tabIndex === 1 && <DocumentTypeDataGrid rows={pagedDocTypes} />}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 3, gap: 2 }}>
             <Pagination
               count={totalPages}
               page={page}
               onChange={(_, v) => onPageChange(v)}
               color="primary"
               shape="rounded"
-              size="small"
+              size="medium"
+              showFirstButton
+              showLastButton
             />
           </Box>
         )}

@@ -20,12 +20,14 @@ interface ViewCategoryDialogProps {
   open: boolean;
   record: RecordItem | null;
   onClose: () => void;
+  onEdit?: (record: RecordItem) => void;
 }
 
 export default function ViewCategoryDialog({
   open,
   record,
   onClose,
+  onEdit,
 }: ViewCategoryDialogProps) {
   if (!record) return null;
 
@@ -38,27 +40,28 @@ export default function ViewCategoryDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       slotProps={{ paper: { sx: { borderRadius: 3 } } }}
     >
       {/* ── Header ── */}
-      <DialogTitle sx={{ pb: 1 }}>
+      <DialogTitle sx={{ pb: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
             <Box sx={{
-              width: 36, height: 36, borderRadius: 2, flexShrink: 0,
+              width: 38, height: 38, borderRadius: 2.5, flexShrink: 0,
               background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(37,99,235,0.3)',
             }}>
-              <VisibilityIcon sx={{ color: '#fff', fontSize: 18 }} />
+              <VisibilityIcon sx={{ color: '#fff', fontSize: 20 }} />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.3 }}>
-                Chi tiết danh mục hồ sơ
+              <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.3 }}>
+                Chi Tiết Danh Mục Tài Liệu
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Xem thông tin chi tiết hồ sơ lưu trữ
+                Xem toàn bộ thông tin chi tiết của danh mục tài liệu
               </Typography>
             </Box>
           </Box>
@@ -69,112 +72,156 @@ export default function ViewCategoryDialog({
       </DialogTitle>
 
       {/* ── Content ── */}
-      <DialogContent dividers sx={{ pt: 2.5 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-
-          {/* Số ký hiệu */}
-          <TextField
-            label="Số ký hiệu"
-            value={record.code || ''}
-            size="small"
-            fullWidth
-            slotProps={{
-              input: {
-                readOnly: true,
-                sx: { borderRadius: 2, bgcolor: 'action.hover' },
-              },
-            }}
-          />
+      <DialogContent sx={{ pt: '32px !important', pb: 2.5 }}>
+        <Box sx={{
+          mt: 1,
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          gap: 2.5,
+        }}>
 
           {/* Tên tài liệu */}
-          <TextField
-            label="Tên tài liệu"
-            value={record.title || ''}
-            size="small"
-            fullWidth
-            slotProps={{
-              input: {
-                readOnly: true,
-                sx: { borderRadius: 2, bgcolor: 'action.hover' },
-              },
-            }}
-          />
+          <Box sx={{ gridColumn: '1 / -1', pt: 0.5 }}>
+            <TextField
+              label="Tên Tài Liệu / Danh Mục"
+              value={record.title || ''}
+              size="small"
+              fullWidth
+              slotProps={{
+                input: {
+                  readOnly: true,
+                  sx: { borderRadius: 2, bgcolor: 'action.hover', fontWeight: 600 },
+                },
+              }}
+            />
+          </Box>
 
-          {/* Danh mục */}
-          <TextField
-            label="Danh mục"
-            value={record.category || '—'}
-            size="small"
-            fullWidth
-            slotProps={{
-              input: {
-                readOnly: true,
-                sx: { borderRadius: 2, bgcolor: 'action.hover' },
-              },
-            }}
-          />
+          {/* Số ký hiệu */}
+          <Box>
+            <TextField
+              label="Số Ký Hiệu Hồ Sơ"
+              value={record.code || ''}
+              size="small"
+              fullWidth
+              slotProps={{
+                input: {
+                  readOnly: true,
+                  sx: { borderRadius: 2, bgcolor: 'action.hover', fontWeight: 600 },
+                },
+              }}
+            />
+          </Box>
 
-          {/* Người lập */}
-          <TextField
-            label="Người lập"
-            value={record.owner || '—'}
-            size="small"
-            fullWidth
-            slotProps={{
-              input: {
-                readOnly: true,
-                sx: { borderRadius: 2, bgcolor: 'action.hover' },
-              },
-            }}
-          />
+          {/* Số TT */}
+          <Box>
+            <TextField
+              label="Số TT (Ưu tiên hiển thị)"
+              value={record.order ?? 1}
+              size="small"
+              fullWidth
+              slotProps={{
+                input: {
+                  readOnly: true,
+                  sx: { borderRadius: 2, bgcolor: 'action.hover' },
+                },
+              }}
+            />
+          </Box>
 
           {/* Ngày lập */}
-          <TextField
-            label="Ngày lập"
-            value={record.created_at || '—'}
-            size="small"
-            fullWidth
-            slotProps={{
-              input: {
-                readOnly: true,
-                sx: { borderRadius: 2, bgcolor: 'action.hover' },
-              },
-            }}
-          />
+          <Box>
+            <TextField
+              label="Ngày Lập"
+              value={record.created_at || '—'}
+              size="small"
+              fullWidth
+              slotProps={{
+                input: {
+                  readOnly: true,
+                  sx: { borderRadius: 2, bgcolor: 'action.hover' },
+                },
+              }}
+            />
+          </Box>
 
           {/* Trạng thái */}
           <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75, fontWeight: 500 }}>
-              Trạng thái
-            </Typography>
-            <Chip
-              label={statusInfo.label}
-              color={statusInfo.color}
+            <Box sx={{
+              p: 1.2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minHeight: 40,
+            }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                Trạng thái lưu trữ:
+              </Typography>
+              <Chip
+                label={statusInfo.label}
+                color={statusInfo.color}
+                size="small"
+                sx={{ fontWeight: 700, fontSize: '0.75rem', borderRadius: 1.5, px: 0.5 }}
+              />
+            </Box>
+          </Box>
+
+          {/* Danh mục */}
+          <Box>
+            <TextField
+              label="Phân Nhóm / Danh Mục"
+              value={record.category || '—'}
               size="small"
-              sx={{ fontWeight: 700, fontSize: '0.75rem', borderRadius: 1.5, px: 0.5 }}
+              fullWidth
+              slotProps={{
+                input: {
+                  readOnly: true,
+                  sx: { borderRadius: 2, bgcolor: 'action.hover' },
+                },
+              }}
+            />
+          </Box>
+
+          {/* Người lập */}
+          <Box>
+            <TextField
+              label="Người Lập / Phụ Trách"
+              value={record.owner || '—'}
+              size="small"
+              fullWidth
+              slotProps={{
+                input: {
+                  readOnly: true,
+                  sx: { borderRadius: 2, bgcolor: 'action.hover' },
+                },
+              }}
             />
           </Box>
 
           {/* Ghi chú */}
-          <TextField
-            label="Ghi chú"
-            value={record.description || 'Không có ghi chú'}
-            size="small"
-            fullWidth
-            multiline
-            minRows={2}
-            slotProps={{
-              input: {
-                readOnly: true,
-                sx: { borderRadius: 2, bgcolor: 'action.hover' },
-              },
-            }}
-          />
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <TextField
+              label="Ghi Chú / Mô Tả"
+              value={record.description || 'Không có ghi chú.'}
+              size="small"
+              fullWidth
+              multiline
+              minRows={3}
+              slotProps={{
+                input: {
+                  readOnly: true,
+                  sx: { borderRadius: 2, bgcolor: 'action.hover' },
+                },
+              }}
+            />
+          </Box>
         </Box>
       </DialogContent>
 
       {/* ── Actions ── */}
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider', gap: 1 }}>
         <Button
           onClick={onClose}
           variant="outlined"
@@ -182,6 +229,21 @@ export default function ViewCategoryDialog({
         >
           Đóng
         </Button>
+        {onEdit && (
+          <Button
+            onClick={() => {
+              onClose();
+              onEdit(record);
+            }}
+            variant="contained"
+            sx={{
+              borderRadius: 2, fontWeight: 700, px: 2.5,
+              background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+            }}
+          >
+            Chỉnh Sửa
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

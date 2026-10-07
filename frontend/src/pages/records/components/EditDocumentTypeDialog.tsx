@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -38,17 +38,6 @@ interface EditDocumentTypeDialogProps {
   onSubmit: (docType: DocumentType) => void;
 }
 
-// ─── Defaults ─────────────────────────────────────────────────────────────────
-
-const EMPTY_FORM: FormData = {
-  code: '',
-  name: '',
-  description: '',
-  is_active: true,
-};
-
-const EMPTY_ERRORS: FormErrors = {};
-
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 function validate(data: FormData): FormErrors {
@@ -58,31 +47,24 @@ function validate(data: FormData): FormErrors {
   return errors;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Form Content Component ───────────────────────────────────────────────────
 
-export default function EditDocumentTypeDialog({
-  open,
+function EditDocumentTypeFormContent({
   documentType,
   onClose,
   onSubmit,
-}: EditDocumentTypeDialogProps) {
-  const [form, setForm]     = useState<FormData>(EMPTY_FORM);
-  const [errors, setErrors] = useState<FormErrors>(EMPTY_ERRORS);
-
-  useEffect(() => {
-    if (documentType) {
-      setForm({
-        code: documentType.code || '',
-        name: documentType.name || '',
-        description: documentType.description || '',
-        is_active: documentType.is_active ?? true,
-      });
-      setErrors(EMPTY_ERRORS);
-    } else {
-      setForm(EMPTY_FORM);
-      setErrors(EMPTY_ERRORS);
-    }
-  }, [documentType, open]);
+}: {
+  documentType: DocumentType;
+  onClose: () => void;
+  onSubmit: (docType: DocumentType) => void;
+}) {
+  const [form, setForm] = useState<FormData>(() => ({
+    code: documentType.code || '',
+    name: documentType.name || '',
+    description: documentType.description || '',
+    is_active: documentType.is_active ?? true,
+  }));
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const handleChange = (field: 'code' | 'name' | 'description') => (
     e: React.ChangeEvent<HTMLInputElement>
@@ -102,10 +84,8 @@ export default function EditDocumentTypeDialog({
     const newErrors = validate(form);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      return; // Không đóng dialog nếu validation lỗi
+      return;
     }
-
-    if (!documentType) return;
 
     const updatedDocType: DocumentType = {
       ...documentType,
@@ -116,18 +96,12 @@ export default function EditDocumentTypeDialog({
     };
 
     onSubmit(updatedDocType);
-    handleClose();
-  };
-
-  const handleClose = () => {
-    setErrors(EMPTY_ERRORS);
-    onClose();
   };
 
   return (
     <Dialog
-      open={open}
-      onClose={handleClose}
+      open={true}
+      onClose={onClose}
       maxWidth="sm"
       fullWidth
       slotProps={{ paper: { sx: { borderRadius: 3 } } }}
@@ -145,14 +119,14 @@ export default function EditDocumentTypeDialog({
             </Box>
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: '1rem', lineHeight: 1.3 }}>
-                Sửa loại văn bản
+                Chỉnh Sửa Loại Văn Bản
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Cập nhật thông tin loại văn bản
               </Typography>
             </Box>
           </Box>
-          <IconButton size="small" onClick={handleClose} sx={{ color: 'text.secondary' }}>
+          <IconButton size="small" onClick={onClose} sx={{ color: 'text.secondary' }}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
@@ -162,9 +136,9 @@ export default function EditDocumentTypeDialog({
       <DialogContent dividers sx={{ pt: 2.5 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
 
-          {/* Mã loại */}
+          {/* Mã loại văn bản */}
           <TextField
-            label="Mã loại"
+            label="Mã loại văn bản"
             placeholder="VD: VB-DEN"
             value={form.code}
             onChange={handleChange('code')}
@@ -193,7 +167,7 @@ export default function EditDocumentTypeDialog({
           {/* Mô tả */}
           <TextField
             label="Mô tả"
-            placeholder="VD: Các văn bản nhận từ bên ngoài"
+            placeholder="Không bắt buộc"
             value={form.description}
             onChange={handleChange('description')}
             size="small"
@@ -203,28 +177,22 @@ export default function EditDocumentTypeDialog({
             slotProps={{ input: { sx: { borderRadius: 2 } } }}
           />
 
-          {/* Ngày tạo (Read-only) */}
-          <TextField
-            label="Ngày tạo"
-            value={documentType?.created_at || '—'}
-            size="small"
-            fullWidth
-            slotProps={{
-              input: {
-                readOnly: true,
-                sx: { borderRadius: 2, bgcolor: 'action.hover' },
-              },
-            }}
-          />
-
-          {/* Trạng thái */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 0.5 }}>
+          {/* Trạng thái hoạt động */}
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            p: 1.5,
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+          }}>
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Trạng thái sử dụng
+                Trạng thái áp dụng
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {form.is_active ? 'Loại văn bản đang hoạt động' : 'Loại văn bản đã ngừng sử dụng'}
+                Cho phép sử dụng loại văn bản này trong hệ thống
               </Typography>
             </Box>
             <FormControlLabel
@@ -245,7 +213,7 @@ export default function EditDocumentTypeDialog({
       {/* ── Actions ── */}
       <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
         <Button
-          onClick={handleClose}
+          onClick={onClose}
           variant="outlined"
           sx={{ borderRadius: 2, fontWeight: 600 }}
         >
@@ -265,5 +233,23 @@ export default function EditDocumentTypeDialog({
         </Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+export default function EditDocumentTypeDialog({
+  open,
+  documentType,
+  onClose,
+  onSubmit,
+}: EditDocumentTypeDialogProps) {
+  if (!open || !documentType) return null;
+
+  return (
+    <EditDocumentTypeFormContent
+      key={documentType.id}
+      documentType={documentType}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
   );
 }
