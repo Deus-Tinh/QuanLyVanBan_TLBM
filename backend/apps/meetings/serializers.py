@@ -491,7 +491,13 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                 booking_start_dt = timezone.localtime(booking_start_dt)
 
             is_creating = not self.instance
-            is_rescheduling = bool(self.instance and ("date" in attrs or "start_time" in attrs))
+            is_rescheduling = bool(
+                self.instance
+                and (
+                    attrs.get("date", self.instance.date) != self.instance.date
+                    or attrs.get("start_time", self.instance.start_time) != self.instance.start_time
+                )
+            )
             if (is_creating or is_rescheduling) and booking_start_dt < now_local:
                 raise serializers.ValidationError({
                     "start_time": "meetings.messages.bookingInPast",

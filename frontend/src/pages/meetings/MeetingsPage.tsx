@@ -49,6 +49,7 @@ export const MeetingsPage: React.FC = () => {
   // Bộ lọc danh mục phòng
   const [roomSearchTerm, setRoomSearchTerm] = useState('');
   const [roomStatusFilter, setRoomStatusFilter] = useState<string>('all');
+  const [roomVisibilityFilter, setRoomVisibilityFilter] = useState<string>('all');
 
   // Trạng thái tải & lỗi
   const [loadingRooms, setLoadingRooms] = useState(true);
@@ -246,14 +247,20 @@ export const MeetingsPage: React.FC = () => {
       (r.vi_tri && r.vi_tri.toLowerCase().includes(roomSearchTerm.toLowerCase())) ||
       (r.thiet_bi && r.thiet_bi.toLowerCase().includes(roomSearchTerm.toLowerCase()));
 
+    const currentStatus = r.status || 'AVAILABLE';
     const matchesStatus =
       roomStatusFilter === 'all'
         ? true
-        : roomStatusFilter === 'public'
+        : currentStatus === roomStatusFilter;
+
+    const matchesVisibility =
+      !canChangeRoom || roomVisibilityFilter === 'all'
+        ? true
+        : roomVisibilityFilter === 'public'
         ? r.is_public
         : !r.is_public;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesVisibility;
   });
 
   // Thống kê nhanh trong ngày
@@ -683,16 +690,31 @@ export const MeetingsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
               <select
                 value={roomStatusFilter}
                 onChange={(e) => setRoomStatusFilter(e.target.value)}
                 className="px-3.5 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                aria-label="Lọc theo trạng thái phòng"
               >
                 <option value="all">{t('meetings.allStatuses')}</option>
-                <option value="public">{t('meetings.publicOnly')}</option>
-                <option value="hidden">{t('meetings.privateOnly')}</option>
+                <option value="AVAILABLE">{t('meetings.status.available')}</option>
+                <option value="MAINTENANCE">{t('meetings.status.maintenance')}</option>
+                <option value="UNAVAILABLE">{t('meetings.status.unavailable')}</option>
               </select>
+
+              {canChangeRoom && (
+                <select
+                  value={roomVisibilityFilter}
+                  onChange={(e) => setRoomVisibilityFilter(e.target.value)}
+                  className="px-3.5 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                  aria-label="Lọc theo chế độ hiển thị"
+                >
+                  <option value="all">{t('meetings.allRooms')}</option>
+                  <option value="public">{t('meetings.status.public')}</option>
+                  <option value="private">{t('meetings.status.private')}</option>
+                </select>
+              )}
             </div>
           </div>
 
@@ -737,15 +759,26 @@ export const MeetingsPage: React.FC = () => {
                           {room.vi_tri || t('meetings.table.notUpdated')}
                         </p>
                       </div>
-                      {room.is_public ? (
-                        <Badge variant="success" size="sm" withDot>
-                          {t('meetings.status.public')}
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" size="sm">
-                          {t('meetings.status.private')}
-                        </Badge>
-                      )}
+                      <div className="flex flex-col items-end gap-1.5">
+                        {room.status === 'MAINTENANCE' ? (
+                          <Badge variant="warning" size="sm" withDot>
+                            {t('meetings.status.maintenance')}
+                          </Badge>
+                        ) : room.status === 'UNAVAILABLE' ? (
+                          <Badge variant="danger" size="sm" withDot>
+                            {t('meetings.status.unavailable')}
+                          </Badge>
+                        ) : (
+                          <Badge variant="success" size="sm" withDot>
+                            {t('meetings.status.available')}
+                          </Badge>
+                        )}
+                        {canChangeRoom && (
+                          <Badge variant="secondary" size="sm">
+                            {room.is_public ? t('meetings.status.public') : t('meetings.status.private')}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     {/* Sức chứa */}
@@ -774,7 +807,7 @@ export const MeetingsPage: React.FC = () => {
 
                   {/* Actions */}
                   <div className="pt-4 mt-4 border-t border-border-subtle flex items-center justify-between">
-                    {canAddBooking ? (
+                    {canAddBooking && (room.status || 'AVAILABLE') === 'AVAILABLE' ? (
                       <Button
                         variant="outline"
                         size="sm"

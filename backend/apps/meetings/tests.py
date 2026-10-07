@@ -970,6 +970,52 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertIn(admin_booking.id, ids_admin)
         self.assertIn(user1_booking.id, ids_admin)
 
+    def test_status_fields_db_column_is_trang_thai(self):
+        """Cột status trong database của MeetingRoom và MeetingBooking phải có db_column là trang_thai."""
+        self.assertEqual(MeetingRoom._meta.get_field("status").column, "trang_thai")
+        self.assertEqual(MeetingBooking._meta.get_field("status").column, "trang_thai")
+
+    def test_cancel_already_cancelled_booking_returns_400(self):
+        """Hủy lại lịch họp đã bị hủy phải trả về 400 kèm key bookingAlreadyCancelled."""
+        self.client.force_authenticate(user=self.user1)
+        self.booking1.status = DatPhongHop.Status.CANCELLED
+        self.booking1.save(update_fields=["status"])
+        res = self.client.post(f"/api/meeting-bookings/{self.booking1.id}/cancel/")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.bookingAlreadyCancelled", str(res.data))
+
+    def test_ongoing_meeting_can_update_title_without_reschedule_error(self):
+        """Cuộc họp đang diễn ra có thể cập nhật tiêu đề/ghi chú bằng PUT mà không bị coi là dời lịch về quá khứ."""
+        now_local = timezone.localtime(timezone.now())
+        today = now_local.date()
+        start_time = (now_local - timedelta(minutes=15)).time().replace(microsecond=0)
+        end_time = (now_local + timedelta(minutes=45)).time().replace(microsecond=0)
+
+        ongoing_booking = DatPhongHop.objects.create(
+            room=self.room1,
+            organizer=self.user1,
+            title="Cuộc họp đang diễn ra",
+            date=today,
+            start_time=start_time,
+            end_time=end_time,
+            status=DatPhongHop.Status.CONFIRMED,
+            attendees_count=5,
+        )
+
+        self.client.force_authenticate(user=self.user1)
+        payload = {
+            "phong_hop": self.room1.id,
+            "tieu_de": "Cuộc họp đang diễn ra - Đã cập nhật tiêu đề",
+            "thoi_gian_bat_dau": datetime.combine(today, start_time).isoformat(),
+            "thoi_gian_ket_thuc": datetime.combine(today, end_time).isoformat(),
+            "so_nguoi_tham_gia": 5,
+        }
+        res = self.client.put(f"/api/meeting-bookings/{ongoing_booking.id}/", payload)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        ongoing_booking.refresh_from_db()
+        self.assertEqual(ongoing_booking.title, "Cuộc họp đang diễn ra - Đã cập nhật tiêu đề")
+
+
 
 
 

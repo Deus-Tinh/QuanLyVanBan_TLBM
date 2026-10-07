@@ -47,6 +47,7 @@ describe('MeetingsPage Component (Issue #22)', () => {
       suc_chua: 30,
       thiet_bi: 'Máy chiếu 4K, 2 Micro không dây',
       is_public: true,
+      status: 'AVAILABLE',
       ghi_chu: '',
       created_at: '2026-09-20T08:00:00Z',
       updated_at: '2026-09-20T08:00:00Z',
@@ -58,6 +59,7 @@ describe('MeetingsPage Component (Issue #22)', () => {
       suc_chua: 10,
       thiet_bi: 'Bảng trắng',
       is_public: false,
+      status: 'MAINTENANCE',
       ghi_chu: 'Bảo trì',
       created_at: '2026-09-20T08:00:00Z',
       updated_at: '2026-09-20T08:00:00Z',
@@ -277,6 +279,43 @@ describe('MeetingsPage Component (Issue #22)', () => {
     // For completed bookings, neither "Chỉnh sửa" nor "Hủy lịch" buttons should be rendered
     expect(screen.queryByText('Hủy lịch')).not.toBeInTheDocument();
     expect(screen.queryByText('Chỉnh sửa')).not.toBeInTheDocument();
+  });
+
+  it('phòng MAINTENANCE hiện đúng huy hiệu Bảo trì và không có nút Đặt phòng này', async () => {
+    render(
+      <MemoryRouter>
+        <MeetingsPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Họp giao ban tuần 40')).toBeInTheDocument();
+    });
+
+    // Chuyển sang Tab Danh mục phòng họp
+    const roomsTabBtn = screen.getByText('Danh mục phòng họp');
+    fireEvent.click(roomsTabBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Phòng Hội thảo A')).toBeInTheDocument();
+      expect(screen.getByText('Phòng Họp B')).toBeInTheDocument();
+    });
+
+    // Thẻ Phòng 1 (AVAILABLE): có huy hiệu "Sẵn sàng" và nút "Đặt phòng này"
+    const room1Title = screen.getByText('Phòng Hội thảo A');
+    const room1Card = room1Title.closest('.p-5');
+    expect(room1Card).toHaveTextContent('Sẵn sàng');
+    expect(room1Card).toHaveTextContent('Đặt phòng này');
+
+    // Thẻ Phòng 2 (MAINTENANCE): có huy hiệu "Bảo trì" và KHÔNG có nút "Đặt phòng này"
+    const room2Title = screen.getByText('Phòng Họp B');
+    const room2Card = room2Title.closest('.p-5');
+    expect(room2Card).toHaveTextContent('Bảo trì');
+    expect(room2Card).not.toHaveTextContent('Đặt phòng này');
+
+    // Toàn bộ trang chỉ có 1 nút "Đặt phòng này"
+    const bookButtons = screen.getAllByText('Đặt phòng này');
+    expect(bookButtons).toHaveLength(1);
   });
 });
 

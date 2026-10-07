@@ -90,8 +90,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
       return `${now.getFullYear()}-${padZero(now.getMonth() + 1)}-${padZero(now.getDate())}`;
     })();
 
-    // Mặc định chọn phòng đầu tiên đang hoạt động
-    const defaultRoom = rooms.find((r) => r.is_public) || rooms[0];
+    // Mặc định chọn phòng đầu tiên có trạng thái sẵn sàng (AVAILABLE)
+    const defaultRoom = rooms.find((r) => (r.status || 'AVAILABLE') === 'AVAILABLE') || rooms[0];
 
     return {
       roomId: defaultRoom ? defaultRoom.id : '',
@@ -313,11 +313,25 @@ const BookingForm: React.FC<BookingFormProps> = ({
             }`}
           >
             <option value="" disabled>{t('meetings.modalBooking.roomPlaceholder')}</option>
-            {rooms.map((r) => (
-              <option key={r.id} value={r.id} disabled={!r.is_public && r.id !== bookingToEdit?.phong_hop}>
-                {r.ten_phong} ({t('meetings.fields.capacity')}: {r.suc_chua} {t('meetings.fields.people')}) {r.vi_tri ? `- ${r.vi_tri}` : ''} {!r.is_public ? `[${t('meetings.fields.privateBadge')}]` : ''}
-              </option>
-            ))}
+            {rooms.map((r) => {
+              const isAvailable = (r.status || 'AVAILABLE') === 'AVAILABLE';
+              const isDisabled = !isAvailable && r.id !== bookingToEdit?.phong_hop;
+
+              let statusLabel = '';
+              if (r.status === 'MAINTENANCE') {
+                statusLabel = ` [${t('meetings.status.maintenance')}]`;
+              } else if (r.status === 'UNAVAILABLE') {
+                statusLabel = ` [${t('meetings.status.unavailable')}]`;
+              }
+
+              const visibilityLabel = !r.is_public ? ` [${t('meetings.status.private')}]` : '';
+
+              return (
+                <option key={r.id} value={r.id} disabled={isDisabled}>
+                  {r.ten_phong} ({t('meetings.fields.capacity')}: {r.suc_chua} {t('meetings.fields.people')}) {r.vi_tri ? `- ${r.vi_tri}` : ''}{statusLabel}{visibilityLabel}
+                </option>
+              );
+            })}
           </select>
           {fieldErrors.phong_hop && (
             <p className="mt-1 text-xs text-danger">{fieldErrors.phong_hop}</p>

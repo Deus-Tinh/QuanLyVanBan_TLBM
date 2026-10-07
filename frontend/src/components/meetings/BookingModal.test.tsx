@@ -197,4 +197,62 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
       ).toBeInTheDocument();
     });
   });
+
+  it('option của phòng MAINTENANCE bị disabled, còn phòng nội bộ AVAILABLE chọn được bình thường', () => {
+    const testRooms: MeetingRoom[] = [
+      {
+        id: 1,
+        ten_phong: 'Phòng Hội thảo A',
+        vi_tri: 'Tầng 2',
+        suc_chua: 20,
+        thiet_bi: 'Máy chiếu',
+        is_public: true,
+        status: 'AVAILABLE',
+        ghi_chu: '',
+        created_at: '2026-09-20T08:00:00Z',
+        updated_at: '2026-09-20T08:00:00Z',
+      },
+      {
+        id: 2,
+        ten_phong: 'Phòng Bảo Trì B',
+        vi_tri: 'Tầng 3',
+        suc_chua: 10,
+        thiet_bi: 'Bảng trắng',
+        is_public: true,
+        status: 'MAINTENANCE',
+        ghi_chu: 'Đang sửa chữa',
+        created_at: '2026-09-20T08:00:00Z',
+        updated_at: '2026-09-20T08:00:00Z',
+      },
+      {
+        id: 3,
+        ten_phong: 'Phòng Ban Giám Đốc',
+        vi_tri: 'Tầng 5',
+        suc_chua: 8,
+        thiet_bi: 'Màn hình LED',
+        is_public: false,
+        status: 'AVAILABLE',
+        ghi_chu: 'Nội bộ',
+        created_at: '2026-09-20T08:00:00Z',
+        updated_at: '2026-09-20T08:00:00Z',
+      },
+    ];
+
+    render(<BookingModal {...defaultProps} rooms={testRooms} />);
+
+    const select = screen.getByRole('combobox', { name: /^phòng họp/i }) as HTMLSelectElement;
+    const options = Array.from(select.options);
+
+    // Option của phòng MAINTENANCE bị disabled và có nhãn [Bảo trì]
+    const maintenanceOption = options.find((o) => o.value === '2');
+    expect(maintenanceOption).toBeDefined();
+    expect(maintenanceOption?.disabled).toBe(true);
+    expect(maintenanceOption?.textContent).toContain('[Bảo trì]');
+
+    // Option của phòng nội bộ AVAILABLE chọn được bình thường (không bị disabled) và có nhãn [Nội bộ]
+    const internalOption = options.find((o) => o.value === '3');
+    expect(internalOption).toBeDefined();
+    expect(internalOption?.disabled).toBe(false);
+    expect(internalOption?.textContent).toContain('[Nội bộ]');
+  });
 });

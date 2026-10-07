@@ -125,6 +125,7 @@ class MeetingRoom(models.Model):
         max_length=20,
         choices=Status.choices,
         default=Status.AVAILABLE,
+        db_column="trang_thai",
         verbose_name="Trạng thái phòng",
     )
     ghi_chu = models.TextField(
@@ -273,6 +274,7 @@ class MeetingBooking(models.Model):
         max_length=20,
         choices=Status.choices,
         default=Status.CONFIRMED,
+        db_column="trang_thai",
         verbose_name="Trạng thái",
     )
     created_at = models.DateTimeField(

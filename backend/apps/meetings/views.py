@@ -558,10 +558,11 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         if booking.status == MeetingBooking.Status.CANCELLED:
             return Response(
                 {
+                    "error": "meetings.messages.bookingAlreadyCancelled",
                     "detail": "meetings.messages.bookingAlreadyCancelled",
                     "code": "meetings.messages.bookingAlreadyCancelled",
                 },
-                status=status.HTTP_200_OK,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         booking.status = MeetingBooking.Status.CANCELLED

@@ -791,8 +791,8 @@
     "filterCancelled": "Đã hủy (Giải phóng)",
     "filterCompleted": "Đã hoàn thành",
     "searchRoomPlaceholder": "Tìm phòng theo tên, vị trí, thiết bị...",
-    "publicOnly": "Đang hoạt động (Công khai)",
-    "privateOnly": "Tạm ẩn (Bảo trì/Khóa)",
+    "publicOnly": "Công khai",
+    "privateOnly": "Nội bộ",
     "totalToday": "Tổng cuộc họp",
     "confirmedToday": "Có hiệu lực",
     "completedToday": "Đã hoàn thành",
@@ -833,7 +833,7 @@
       "people": "người",
       "location": "Vị trí",
       "amenities": "Thiết bị",
-      "privateBadge": "Tạm ẩn"
+      "privateBadge": "Nội bộ"
     },
     "status": {
       "confirmed": "Đã giữ chỗ",
@@ -842,8 +842,8 @@
       "available": "Sẵn sàng",
       "maintenance": "Bảo trì",
       "unavailable": "Không khả dụng",
-      "public": "Hoạt động",
-      "private": "Tạm ẩn"
+      "public": "Công khai",
+      "private": "Nội bộ"
     },
     "actions": {
       "edit": "Sửa",

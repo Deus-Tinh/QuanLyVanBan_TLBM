@@ -791,8 +791,8 @@
     "filterCancelled": "Cancelled (Released)",
     "filterCompleted": "Completed",
     "searchRoomPlaceholder": "Search room by name, location, amenities...",
-    "publicOnly": "Active (Public)",
-    "privateOnly": "Hidden (Maintenance)",
+    "publicOnly": "Public",
+    "privateOnly": "Internal",
     "totalToday": "Total meetings",
     "confirmedToday": "Active",
     "completedToday": "Completed",
@@ -833,7 +833,7 @@
       "people": "people",
       "location": "Location",
       "amenities": "Amenities",
-      "privateBadge": "Private"
+      "privateBadge": "Internal"
     },
     "status": {
       "confirmed": "Reserved",
@@ -842,8 +842,8 @@
       "available": "Available",
       "maintenance": "Maintenance",
       "unavailable": "Unavailable",
-      "public": "Active",
-      "private": "Hidden"
+      "public": "Public",
+      "private": "Internal"
     },
     "actions": {
       "edit": "Edit",
