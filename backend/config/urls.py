@@ -32,5 +32,9 @@ urlpatterns = [
     # ── Module Nhóm 7 — Tân + Hiếu (Issue #21) ─────────────────────────────
     # API Phân quyền (Issue #21): /api/roles/, /api/permissions/, /api/auth/me/permissions/
     path("api/", include("authorization.urls", namespace="authorization")),
+
+    # ── Module Nhóm 7 — Tình (Issue #23) ──────────────────────────────────
+    # API Sinh nhật: GET /api/birthdays/calendar/, /api/birthdays/day/, ...
+    path("api/birthdays/", include("birthdays.urls", namespace="birthdays")),
 ]
 

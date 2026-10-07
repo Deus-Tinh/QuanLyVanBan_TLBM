@@ -14,6 +14,7 @@ import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
 interface RouterProps {
   currentTheme: ThemeMode;

@@ -2,7 +2,7 @@
 
 Hợp đồng phân quyền dùng chung cho toàn dự án. Các nhóm kiểm quyền theo tài liệu này, không tự tạo role hay permission riêng.
 
-Nguồn chuẩn: `csdl_qlvbtl_schema_final.sql` (SQL_Fix4). Mã quyền, nhóm quyền và ánh xạ nhóm-quyền lấy từ DDL; các quyền SQL_Fix4 chưa có mà Issue #20/#21/#22 yêu cầu được thêm bằng migration `authorization.0002` (đánh dấu "bổ sung" bên dưới).
+Nguồn chuẩn: DDL base của đồ án, nhánh `ddl_base_v0`, file `docs/common/database/release_DDL.sql` (61 bảng, 21 ENUM, 81 quyền, 206 dòng gán quyền; chốt ở Issue #53). Mã quyền, nhóm quyền và ánh xạ nhóm-quyền lấy từ DDL. Tám quyền mà Issue #20/#21/#22 yêu cầu nhưng SQL_Fix4 chưa có (đánh dấu "bổ sung" bên dưới) nay đã nằm trong DDL base; migration `authorization.0002` vẫn thêm chúng một cách idempotent để DB dựng từ bản DDL cũ không thiếu quyền.
 
 ## 1. Cơ chế
 
@@ -49,7 +49,7 @@ Lỗi trả key i18n (`roles.messages.*`), không trả chuỗi cứng. Không A
 
 ## 4. Danh sách codename chính thức
 
-Tổng cộng __TOTAL__ quyền. "Bổ sung" = không có trong SQL_Fix4, thêm bằng migration.
+Tổng cộng 81 quyền. "Bổ sung" = không có trong SQL_Fix4 (8 quyền), hiện đã có trong DDL base và vẫn được `authorization.0002` thêm idempotent.
 
 
 ### Đơn vị, phòng ban
@@ -215,7 +215,7 @@ Tổng cộng __TOTAL__ quyền. "Bổ sung" = không có trong SQL_Fix4, thêm 
 
 ### Đối chiếu tên trong Issue #21 với DDL
 
-Khi Issue và DDL khác tên, **DDL là chuẩn** (đồ án chung chốt theo SQL_Fix4):
+Khi Issue và DDL khác tên, **DDL là chuẩn** (đồ án chung chốt theo DDL base ở Issue #53):
 
 | Tên trong Issue #21 | Dùng trong hệ thống |
 |---|---|
@@ -235,7 +235,7 @@ Khi Issue và DDL khác tên, **DDL là chuẩn** (đồ án chung chốt theo S
 - `BGD`: Ban Giám đốc
 - `ADMIN`: Quản trị hệ thống
 
-Ánh xạ nhóm-quyền mặc định lấy từ DDL (198 dòng) cộng các quyền bổ sung gán cho `ADMIN`. Quản trị chỉnh lại qua trang Nhóm quyền (`/roles`).
+Ánh xạ nhóm-quyền mặc định lấy từ DDL base (206 dòng, gồm các quyền bổ sung gán cho `ADMIN`). Quản trị chỉnh lại qua trang Nhóm quyền (`/roles`).
 
 ## 6. Thêm quyền mới cho model của nhóm mình
 
@@ -247,7 +247,7 @@ def add_permissions(apps, schema_editor):
         cursor.execute(
             "INSERT INTO auth_permission (name, codename, module_ten) "
             "SELECT %s, %s, %s WHERE NOT EXISTS (SELECT 1 FROM auth_permission WHERE codename = %s)",
-            ["Hủy lịch họp", "cancel_datphonghop", "Đặt phòng họp", "cancel_datphonghop"],
+            ["Tên hiển thị của quyền", "export_vidu", "Tên module", "export_vidu"],
         )
         # Gán cho nhóm ADMIN để quản trị hệ thống dùng được quyền mới
         cursor.execute(
@@ -256,19 +256,19 @@ def add_permissions(apps, schema_editor):
             "WHERE g.ma_nhom_quyen = 'ADMIN' AND p.codename = %s "
             "AND NOT EXISTS (SELECT 1 FROM auth_group_permissions x "
             "WHERE x.group_id = g.id AND x.permission_id = p.id)",
-            ["cancel_datphonghop"],
+            ["export_vidu"],
         )
 ```
 
-Migration phải khai báo `dependencies = [("authorization", "0002_rbac_standard_data")]` để nhóm `ADMIN` đã tồn tại khi chạy. Ánh xạ cho các nhóm khác (`VT`, `CV`, `TP`, `BGD`) làm tương tự theo nhu cầu nghiệp vụ.
+Mã `export_vidu` ở trên chỉ là tên minh họa, không phải quyền có thật; thay bằng codename của model nhóm mình. Migration phải khai báo `dependencies = [("authorization", "0002_rbac_standard_data")]` để nhóm `ADMIN` đã tồn tại khi chạy. Ánh xạ cho các nhóm khác (`VT`, `CV`, `TP`, `BGD`) làm tương tự theo nhu cầu nghiệp vụ.
 
-`codename` phải duy nhất toàn hệ thống. Đặt tên theo quy ước `<hành động>_<đối tượng>` tiếng Việt không dấu viết liền, và báo Nhóm 7 để đưa vào DDL base.
+`codename` phải duy nhất toàn hệ thống. Đặt tên theo quy ước `<hành động>_<đối tượng>` tiếng Việt không dấu viết liền, và đưa vào DDL base bằng PR vào nhánh `ddl_base_v0` (ghi `Refs #53`, merge khi workflow `DDL Check` pass), vì thay đổi DDL chỉ đi qua nhánh đó (Issue #68).
 
 ## 7. Dựng CSDL
 
-Quy trình đã kiểm chứng trên PostgreSQL dựng từ SQL_Fix4:
+Quy trình đã kiểm chứng trên PostgreSQL dựng từ DDL base (và trước đó trên SQL_Fix4); cũng là quy trình ở Issue #68 mục 2:
 
-1. Tạo CSDL từ `csdl_qlvbtl_schema_final.sql`.
+1. Tạo CSDL từ `docs/common/database/release_DDL.sql` (nhánh `ddl_base_v0`).
 2. `python manage.py migrate contenttypes`
 3. `python manage.py migrate auth --fake`
 4. `python manage.py migrate accounts --fake` và `python manage.py migrate organizations --fake`

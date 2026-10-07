@@ -6,6 +6,8 @@ interface PermissionMatrixProps {
   permissions: Permission[];
   selectedIds: Set<number>;
   onToggle: (permId: number) => void;
+  /** Chỉ xem: người dùng không có quyền sửa nhóm quyền thì không bật/tắt được ô nào (backend vẫn chặn thật). */
+  readOnly?: boolean;
 }
 
 interface ModuleGroup {
@@ -43,7 +45,7 @@ function matchesQuery(perm: Permission, normalizedQuery: string): boolean {
   return [perm.name, perm.codename, perm.module_ten].some((field) => normalizeText(field || '').includes(normalizedQuery));
 }
 
-export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ permissions, selectedIds, onToggle }) => {
+export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ permissions, selectedIds, onToggle, readOnly = false }) => {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const normalizedQuery = normalizeText(query.trim());
@@ -88,7 +90,9 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ permissions,
             {group.items.map((perm) => (
               <label
                 key={perm.id}
-                className="flex items-center justify-between gap-3 py-1 px-2 -mx-2 text-sm text-main cursor-pointer select-none hover:bg-surface-hover rounded-lg transition-colors"
+                className={`flex items-center justify-between gap-3 py-1 px-2 -mx-2 text-sm text-main select-none hover:bg-surface-hover rounded-lg transition-colors ${
+                  readOnly ? 'cursor-default' : 'cursor-pointer'
+                }`}
               >
                 <span className="flex items-center gap-2">
                   <i className="fa-solid fa-arrow-right-long text-muted text-xs" />
@@ -97,8 +101,11 @@ export const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ permissions,
                 <input
                   type="checkbox"
                   checked={selectedIds.has(perm.id)}
-                  onChange={() => onToggle(perm.id)}
-                  className="h-4 w-4 rounded border-border-subtle text-primary focus:ring-primary cursor-pointer shrink-0"
+                  onChange={() => {
+                    if (!readOnly) onToggle(perm.id);
+                  }}
+                  disabled={readOnly}
+                  className="h-4 w-4 rounded border-border-subtle text-primary focus:ring-primary cursor-pointer shrink-0 disabled:cursor-default"
                 />
               </label>
             ))}
