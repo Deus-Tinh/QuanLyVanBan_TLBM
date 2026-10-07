@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
@@ -74,7 +74,7 @@ export default function AppRouter({
         {/* Phân hệ Văn bản (Nhóm 2 phụ trách theo đề cương) */}
         <Route path="/documents/incoming" element={<SyllabusPreview activePage="documents_incoming" />} />
         <Route path="/documents/outgoing" element={<SyllabusPreview activePage="documents_outgoing" />} />
-        <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
+        <Route path="/documents/confidential" element={<Navigate to="/documents/incoming" replace />} />
 
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
         <Route path="/records" element={<SyllabusPreview activePage="records" />} />

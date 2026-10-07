@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ActivePageId } from '@app-types/navigation';
 
 interface FloatingAIBoxProps {
@@ -72,8 +72,8 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
       return `**Quy Trình Tiếp Nhận Văn Bản Đến:**\n1. **Tiếp nhận & Vào sổ:** Văn thư tiếp nhận văn bản giấy hoặc điện tử, kiểm tra dấu và tính hợp lệ.\n2. **Số hóa & Phân loại:** Quét scan tài liệu PDF đính kèm, gắn số đến, phân loại độ khẩn (Thường/Khẩn/Hỏa tốc).\n3. **Trình Bút phê:** Chuyển Ban Giám Hiệu duyệt phân công đơn vị chủ trì xử lý qua hệ thống.`;
     }
 
-    if (q.includes('mật') || q.includes('tuyệt mật') || q.includes('bảo mật')) {
-      return `**Quy Chế Xử Lý Văn Bản Mật & Tuyệt Mật (TLBM):**\n- Phân định rõ 3 mức độ bảo mật: **Mật, Tối mật, Tuyệt mật**.\n- Văn bản Tuyệt mật được mã hóa đầu cuối, phân phối đích danh CBNV có thẩm quyền.\n- Hệ thống ghi vết nhật ký truy cập (Audit Log) theo tiêu chuẩn an toàn an ninh dữ liệu số.`;
+    if (q.includes('mật') || q.includes('tuyệt mật') || q.includes('bảo mật') || q.includes('hạn chế')) {
+      return `**Quy Chế Xử Lý Văn Bản Bảo Mật & Phạm Vi Hạn Chế (TLBM):**\n- Phân định phạm vi văn bản: **Công khai** hoặc **Hạn chế** (được quản lý trực tiếp trên phân hệ Văn bản đến / Văn bản đi).\n- Văn bản Hạn chế chỉ phân phối đích danh CBNV và đơn vị chủ trì có thẩm quyền được xem nội dung.\n- Hệ thống ghi vết nhật ký truy cập (Audit Log) theo tiêu chuẩn an toàn an ninh dữ liệu số.`;
     }
 
     if (q.includes('ký số') || q.includes('trình ký') || q.includes('phê duyệt')) {

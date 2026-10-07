@@ -6,7 +6,6 @@ export interface LoginFormProps {
   isSuccess: boolean;
   error?: string;
   onSubmit: (credentials: { username: string; password: string }) => void;
-  onDemoLogin?: () => void;
   onUsernameFocusChange: (focused: boolean) => void;
   onPasswordFocusChange: (focused: boolean) => void;
   onShowPasswordChange: (show: boolean) => void;
@@ -18,7 +17,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   isSuccess,
   error,
   onSubmit,
-  onDemoLogin,
   onUsernameFocusChange,
   onPasswordFocusChange,
   onShowPasswordChange,
@@ -130,33 +128,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         <button
           type="submit"
           disabled={isLoading || isSuccess}
-          className="w-full py-2.5 px-4 rounded-md bg-primary hover:bg-primary-hover active:translate-y-0 text-white text-sm font-bold shadow-md hover:shadow-glow transition-normal flex items-center justify-center gap-2 disabled:opacity-60 mt-1 cursor-pointer"
+          className="w-full py-2.5 px-4 rounded-md bg-primary hover:bg-primary-hover active:translate-y-0 text-white text-sm font-bold shadow-md hover:shadow-glow transition-normal flex items-center justify-center gap-2 disabled:opacity-60 mt-1"
         >
           {isSuccess && <i className="fa-solid fa-check text-xs" />}
           <span>{isSuccess ? t('auth.loginSuccess') : isLoading ? t('auth.loggingIn') : t('auth.loginBtn')}</span>
           {!isSuccess && <i className="fa-solid fa-arrow-right text-xs" />}
         </button>
-
-        {onDemoLogin && (
-          <>
-            <div className="relative flex py-1.5 items-center">
-              <div className="flex-grow border-t border-border-subtle" />
-              <span className="flex-shrink mx-3 text-[11px] text-muted uppercase font-medium">
-                {t('auth.demoDivider')}
-              </span>
-              <div className="flex-grow border-t border-border-subtle" />
-            </div>
-
-            <button
-              type="button"
-              onClick={onDemoLogin}
-              className="w-full py-2.5 px-4 rounded-md border border-border-subtle hover:border-primary/40 bg-surface-subtle hover:bg-surface-hover text-main text-xs sm:text-sm font-semibold transition-normal flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-            >
-              <i className="fa-solid fa-wand-magic-sparkles text-primary text-xs" />
-              <span>{t('auth.demoPreview')}</span>
-            </button>
-          </>
-        )}
       </form>
     </div>
   );

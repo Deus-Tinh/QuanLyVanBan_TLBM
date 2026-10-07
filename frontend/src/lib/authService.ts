@@ -132,24 +132,6 @@ export const authService = {
   getRefreshToken(): string | null {
     return localStorage.getItem('tlbm_refresh_token');
   },
-  /**
-   * Tạo phiên đăng nhập thử nghiệm (Demo Preview Mode)
-   * Sử dụng để xem trước giao diện trên môi trường tĩnh (Netlify) khi chưa có Backend live.
-   */
-  setDemoSession(role: 'admin' | 'staff' = 'staff'): UserSession {
-    const isRoleAdmin = role === 'admin';
-    const session: UserSession = {
-      username: isRoleAdmin ? 'admin' : 'canbo_nghiepvu',
-      fullName: isRoleAdmin ? 'Châu Tuấn Kiệt (PM / Admin)' : 'Nguyễn Văn An (Cán bộ)',
-      role,
-      roleTitle: isRoleAdmin ? 'Quản Trị Viên Hệ Thống' : 'Chuyên Viên Nghiệp Vụ',
-      token: 'demo_preview_token',
-    };
-    localStorage.setItem('tlbm_session', JSON.stringify(session));
-    localStorage.setItem('tlbm_access_token', session.token || 'demo_preview_token');
-    window.dispatchEvent(new Event('tlbm_auth_changed'));
-    return session;
-  },
 };
 
 export default authService;

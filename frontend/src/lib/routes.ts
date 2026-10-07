@@ -1,4 +1,4 @@
-﻿import { ActivePageId } from '@app-types/navigation';
+import { ActivePageId } from '@app-types/navigation';
 
 export const pageIdToPath = (pageId: ActivePageId): string => {
   switch (pageId) {
@@ -19,7 +19,7 @@ export const pageIdToPath = (pageId: ActivePageId): string => {
     case 'documents_outgoing':
       return '/documents/outgoing';
     case 'documents_confidential':
-      return '/documents/confidential';
+      return '/documents/incoming';
     case 'records':
       return '/records';
     case 'resources':
@@ -54,7 +54,7 @@ export const pathToPageId = (pathname: string): ActivePageId => {
   if (clean === '/ai-assistant') return 'ai_assistant';
   if (clean.startsWith('/documents/incoming')) return 'documents_incoming';
   if (clean.startsWith('/documents/outgoing')) return 'documents_outgoing';
-  if (clean.startsWith('/documents/confidential')) return 'documents_confidential';
+  if (clean.startsWith('/documents/confidential')) return 'documents_incoming';
   if (clean.startsWith('/records')) return 'records';
   if (clean.startsWith('/resources')) return 'resources';
   if (clean.startsWith('/approvals')) return 'approvals';

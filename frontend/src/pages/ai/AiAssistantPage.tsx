@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ActivePageId } from '@app-types/navigation';
 import '@styles/ai-chat.css';
 
@@ -42,10 +42,10 @@ const PROMPT_TEMPLATES = [
   },
   {
     icon: 'fa-shield-halved',
-    iconClass: 'text-danger bg-danger-subtle border-danger/30',
-    title: 'Xử lý Văn bản Mật',
-    desc: 'Quy chuẩn mã hóa, xác thực 2FA và quyền xem tài liệu Tuyệt Mật.',
-    query: 'Quy định bảo mật và quy trình chuyển giao văn bản tuyệt mật?',
+    iconClass: 'text-primary bg-primary-subtle border-primary/30',
+    title: 'Phân quyền & Bảo mật Văn bản',
+    desc: 'Quy chuẩn bảo mật, phân quyền truy cập và văn bản phạm vi hạn chế.',
+    query: 'Quy định bảo mật và phân quyền truy cập văn bản trên hệ thống?',
   },
   {
     icon: 'fa-file-signature',
@@ -174,7 +174,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         time: 'Vừa xong',
         quickPrompts: [
           'Văn bản đến hôm nay',
-          'Văn bản mật cần xử lý',
+          'Văn bản khẩn cần xử lý',
           'Tờ trình chờ ký số',
         ],
       },
@@ -205,15 +205,15 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       };
     }
 
-    if (q.includes('mật') || q.includes('tuyệt mật') || q.includes('bảo mật')) {
+    if (q.includes('mật') || q.includes('tuyệt mật') || q.includes('bảo mật') || q.includes('hạn chế')) {
       return {
-        text: `**Quy Định Bảo Vệ Bí Mật Nhà Nước & Tài Liệu Mật (TLBM · Phân hệ Mật):**\n\n- **Phân loại cấp độ:** Hệ thống hỗ trợ 3 cấp độ: *Mật*, *Tối Mật*, *Tuyệt Mật* theo đúng quy chuẩn Bộ Công An.\n- **Kiểm soát truy cập:** Chỉ tài khoản có thẩm quyền và được giao đích danh mới được mở tệp nội dung.\n- **Mã hóa & Xác thực:** Toàn bộ tệp mật được mã hóa AES-256 trên cơ sở dữ liệu. Truy cập tài liệu Tuyệt Mật yêu cầu mã xác thực 2 bước (2FA).\n- **Nhật ký truy vết (Audit Trail):** Mọi hành vi đọc, tải hoặc in ấn đều được ghi nhận vào sổ nhật ký không thể xóa sửa.\n\n**Liên kết phân hệ tài liệu mật:**`,
+        text: `**Quy Định Bảo Mật & Phân Quyền Văn Bản (TLBM):**\n\n- **Đồng bộ DDL v0:** Hệ thống quản lý tính bảo mật thông qua cờ **Phạm vi: Hạn chế** trực tiếp trên phân hệ **Văn bản đến** và **Văn bản đi**.\n- **Kiểm soát truy cập:** Chỉ tài khoản có thẩm quyền và đơn vị chủ trì được giao đích danh mới được xem tệp nội dung.\n- **Mã hóa & Xác thực:** Toàn bộ tệp đính kèm được bảo vệ phân quyền trên hệ thống lưu trữ.\n- **Nhật ký truy vết (Audit Trail):** Mọi hành vi tiếp nhận, chuyển giao và xử lý đều được ghi nhận vào nhật ký hệ thống.\n\n**Liên kết phân hệ văn bản:**`,
         citations: [
           {
-            label: 'Phân hệ Quản lý Tài liệu Mật',
-            code: 'DOCS-CONFIDENTIAL',
-            targetPage: 'documents_confidential',
-            type: 'confidential',
+            label: 'Danh mục Văn bản Đến',
+            code: 'DOCS-INCOMING',
+            targetPage: 'documents_incoming',
+            type: 'incoming',
           },
         ],
       };

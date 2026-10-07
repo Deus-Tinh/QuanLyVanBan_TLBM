@@ -1,4 +1,4 @@
-﻿import { NavGroup, MainModule } from '@app-types/navigation';
+import { NavGroup, MainModule } from '@app-types/navigation';
 import { ThemeOption, ThemeMode } from '@app-types/theme';
 import { StreamData } from '@app-types/notification';
 
@@ -66,11 +66,6 @@ export const NAV_GROUPS: NavGroup[] = [
         id: 'documents_outgoing',
         label: 'Văn Bản Đi',
         icon: 'fa-paper-plane',
-      },
-      {
-        id: 'documents_confidential',
-        label: 'Văn Bản Mật',
-        icon: 'fa-shield-halved',
       },
     ],
   },
@@ -214,12 +209,6 @@ export const MAIN_MODULES: MainModule[] = [
         icon: 'fa-paper-plane',
         description: 'Văn bản phát hành nội bộ công ty',
       },
-      {
-        id: 'documents_confidential',
-        label: 'Văn Bản Mật',
-        icon: 'fa-shield-halved',
-        description: 'Văn bản bảo mật gửi đích danh phòng ban',
-      },
     ],
   },
   {
@@ -344,14 +333,6 @@ export const SAMPLE_STREAMS: StreamData[] = [
     label: 'Văn Bản Đi',
     icon: 'fa-paper-plane',
     color: 'emerald',
-    unreadCount: 0,
-    items: [],
-  },
-  {
-    type: 'confidential',
-    label: 'Văn Bản Mật',
-    icon: 'fa-shield-halved',
-    color: 'rose',
     unreadCount: 0,
     items: [],
   },

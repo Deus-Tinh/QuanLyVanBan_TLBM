@@ -11,6 +11,10 @@ from dashboard.models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 class DashboardAPITests(TestCase):
     def setUp(self):
+        IncomingDocument.objects.all().delete()
+        OutgoingDocument.objects.all().delete()
+        MeetingRoom.objects.all().delete()
+
         self.client = APIClient()
         self.today = timezone.localdate()
         self.tomorrow = self.today + timedelta(days=1)

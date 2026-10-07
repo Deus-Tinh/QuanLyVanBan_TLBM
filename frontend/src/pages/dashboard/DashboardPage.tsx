@@ -97,59 +97,6 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     };
   }, [reloadTrigger]);
 
-  const handleLoadDemoData = () => {
-    setData({
-      kpis: {
-        incomingCount: 142,
-        outgoingCount: 86,
-        confidentialCount: 12,
-        tasksCount: 5,
-      },
-      recentIncoming: [
-        {
-          code: '56/NQ-HĐND',
-          title: 'Nghị quyết quy định chính sách hỗ trợ phát triển giáo dục mầm non và bồi dưỡng chuyên môn nghiệp vụ viên chức trên địa bàn.',
-          date: '29/09/2026',
-        },
-        {
-          code: '215/TB-STC',
-          title: 'Thông báo hướng dẫn xây dựng dự toán ngân sách nhà nước năm 2027 và kế hoạch tài chính - ngân sách nhà nước 03 năm 2027 - 2029.',
-          date: '28/09/2026',
-        },
-        {
-          code: '102/KH-SGDĐT',
-          title: 'Kế hoạch triển khai kiểm tra công tác cải cách hành chính và chuyển đổi số trong quản lý văn thư hồ sơ năm 2026.',
-          date: '27/09/2026',
-        },
-        {
-          code: '126',
-          title: 'Thông báo lịch tiếp nhận và bàn giao hồ sơ lưu trữ điện tử khối phòng ban chuyên môn.',
-          date: '01/10/2026',
-        },
-        {
-          code: '78/QĐ-BTTTT',
-          title: 'Quyết định ban hành tiêu chuẩn kỹ thuật an toàn thông tin và phân loại văn bản lưu trữ hồ sơ số.',
-          date: '26/09/2026',
-        },
-      ],
-      recentOutgoing: [
-        {
-          code: '125/TB-BL',
-          title: 'Thông báo phát hành quy chuẩn biểu mẫu nghiệp vụ quý IV năm 2026.',
-          date: '01/10/2026',
-        },
-        {
-          code: '78/QĐ-BL',
-          title: 'Quyết định kiện toàn tổ công tác số hóa tài liệu hồ sơ lưu trữ và bảo vệ bí mật công vụ.',
-          date: '28/09/2026',
-        },
-      ],
-      tasks: [],
-      birthdays: [],
-    });
-    setError(null);
-  };
-
   // 1. Trạng thái Đang tải (Loading Skeleton)
   if (isLoading) {
     return (
@@ -182,24 +129,14 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
           <h3 className="text-lg font-bold text-main mb-1">Không thể tải dữ liệu Bảng điều khiển</h3>
           <p className="text-sm text-secondary">{error}</p>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={handleRetry}
-            className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl font-medium text-sm transition-all shadow-sm cursor-pointer"
-            data-testid="dashboard-retry-btn"
-          >
-            Thử lại
-          </button>
-          <button
-            type="button"
-            onClick={handleLoadDemoData}
-            className="px-5 py-2.5 bg-surface hover:bg-surface-hover border border-border-subtle text-main rounded-xl font-medium text-sm transition-all shadow-xs cursor-pointer flex items-center gap-2"
-          >
-            <i className="fa-solid fa-wand-magic-sparkles text-primary text-xs" />
-            <span>Xem giao diện Demo (Netlify Preview)</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleRetry}
+          className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl font-medium text-sm transition-all shadow-sm cursor-pointer"
+          data-testid="dashboard-retry-btn"
+        >
+          Thử lại
+        </button>
       </div>
     );
   }

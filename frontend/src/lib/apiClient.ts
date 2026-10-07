@@ -58,23 +58,10 @@ async function handleResponse<T>(res: Response): Promise<T> {
   }
 
   if (!res.ok) {
-    let errorObj: ApiErrorResponse;
-    if (typeof data === 'object' && data !== null) {
-      errorObj = data as ApiErrorResponse;
-    } else {
-      const text = String(data).trim();
-      if (text.startsWith('<') || res.status === 404) {
-        errorObj = {
-          error:
-            res.status === 404
-              ? 'Không tìm thấy máy chủ Backend API (HTTP 404). Backend Django chưa được triển khai trên môi trường này.'
-              : `Máy chủ phản hồi lỗi HTTP ${res.status}. Vui lòng kiểm tra lại dịch vụ Backend.`,
-        };
-      } else {
-        errorObj = { error: text };
-      }
-    }
-    throw new ApiError(res.status, errorObj);
+    throw new ApiError(
+      res.status,
+      typeof data === 'object' && data !== null ? (data as ApiErrorResponse) : { error: String(data) }
+    );
   }
 
   return data as T;

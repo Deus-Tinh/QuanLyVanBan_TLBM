@@ -100,21 +100,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
     }
   };
 
-  const handleDemoLogin = () => {
-    setIsLoading(true);
-    const session = authService.setDemoSession('staff');
-    setIsSuccess(true);
-    setTimeout(() => {
-      if (onLoginSuccess) {
-        onLoginSuccess(session);
-      }
-      if (onNavigate) {
-        onNavigate('dashboard');
-      }
-      navigate('/dashboard', { replace: true });
-    }, 400);
-  };
-
   const activeError = errorKey ? (t(errorKey) as string) : customError;
 
   return (
@@ -124,7 +109,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
         <button
           type="button"
           onClick={() => onNavigate('dashboard')}
-          className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-surface-elevated/80 backdrop-blur-md border border-border-subtle px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold text-main hover:bg-surface transition-fast flex items-center gap-2 z-20 shadow-sm cursor-pointer"
+          className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-surface-elevated/80 backdrop-blur-md border border-border-subtle px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold text-main hover:bg-surface transition-fast flex items-center gap-2 z-20 shadow-sm"
         >
           <i className="fa-solid fa-arrow-left" />
           <span>{t('auth.backToDashboard')}</span>
@@ -154,7 +139,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
           isSuccess={isSuccess}
           error={activeError}
           onSubmit={handleLoginSubmit}
-          onDemoLogin={handleDemoLogin}
           onUsernameFocusChange={setIsUsernameFocused}
           onPasswordFocusChange={setIsPasswordFocused}
           onShowPasswordChange={setShowPassword}
