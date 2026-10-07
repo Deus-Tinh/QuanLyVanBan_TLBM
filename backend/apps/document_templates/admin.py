@@ -1,10 +1,23 @@
 from django.contrib import admin
-from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuLoaiTaiLieu
+from .models import (
+    DanhMucTaiLieu,
+    LoaiTaiLieu,
+    TaiLieuChiTiet,
+    ChiTietTaiLieuLoaiTaiLieu,
+    ChiTietTaiLieuAttachment,
+)
 
 
 class ChiTietTaiLieuLoaiTaiLieuInline(admin.TabularInline):
     model = ChiTietTaiLieuLoaiTaiLieu
     extra = 1
+
+
+class ChiTietTaiLieuAttachmentInline(admin.TabularInline):
+    model = ChiTietTaiLieuAttachment
+    extra = 1
+    fields = ('name', 'path', 'file_size', 'mime_type', 'is_deleted', 'created_user', 'created_time')
+    readonly_fields = ('created_time',)
 
 
 @admin.register(DanhMucTaiLieu)
@@ -24,8 +37,16 @@ class LoaiTaiLieuAdmin(admin.ModelAdmin):
 
 @admin.register(TaiLieuChiTiet)
 class TaiLieuChiTietAdmin(admin.ModelAdmin):
-    list_display = ('id', 'ky_hieu', 'tieu_de', 'dm_tai_lieu', 'hieu_luc', 'ngay_dang', 'hien_thi', 'nguoi_tao')
+    list_display = ('id', 'ky_hieu', 'tieu_de', 'dm_tai_lieu', 'hieu_luc', 'ngay_dang', 'hien_thi', 'don_vi_id', 'nguoi_tao')
     list_filter = ('hieu_luc', 'hien_thi', 'dm_tai_lieu', 'ngay_dang')
     search_fields = ('tieu_de', 'ky_hieu', 'noi_ban_hanh', 'ghi_chu')
-    inlines = [ChiTietTaiLieuLoaiTaiLieuInline]
+    inlines = [ChiTietTaiLieuLoaiTaiLieuInline, ChiTietTaiLieuAttachmentInline]
     ordering = ('-ngay_dang', '-id')
+
+
+@admin.register(ChiTietTaiLieuAttachment)
+class ChiTietTaiLieuAttachmentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'document', 'file_size', 'mime_type', 'is_deleted', 'created_time', 'created_user')
+    list_filter = ('is_deleted', 'created_time')
+    search_fields = ('name', 'path', 'document__tieu_de')
+    ordering = ('-created_time',)

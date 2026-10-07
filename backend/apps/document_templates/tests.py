@@ -8,7 +8,13 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from document_templates.models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, validate_document_file
+from document_templates.models import (
+    DanhMucTaiLieu,
+    LoaiTaiLieu,
+    TaiLieuChiTiet,
+    ChiTietTaiLieuAttachment,
+    validate_document_file,
+)
 
 
 class DocumentTemplatesValidationTests(TestCase):
@@ -310,4 +316,54 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         })
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('link_thay_the', res.data)
+
+    def test_don_vi_id_and_con_hieu_luc_1_phan(self):
+        """Kiểm tra trường don_vi_id và giá trị hiệu lực CON_HIEU_LUC_1_PHAN chuẩn DDL Base v1"""
+        self.client.force_authenticate(user=self.user)
+        doc = TaiLieuChiTiet.objects.create(
+            dm_tai_lieu=self.cat1,
+            ky_hieu='05/HD-2026',
+            tieu_de='Hướng dẫn nghiệp vụ một phần',
+            ngay_dang=date(2026, 3, 1),
+            hieu_luc='CON_HIEU_LUC_1_PHAN',
+            don_vi_id=10,
+            hien_thi='NOI_BO_PHONG_BAN',
+            nguoi_tao=self.user,
+        )
+        self.assertEqual(doc.hieu_luc, 'CON_HIEU_LUC_1_PHAN')
+        self.assertEqual(doc.don_vi_id, 10)
+
+        # Kiểm tra qua API detail
+        res = self.client.get(f'/api/resources/documents/{doc.id}/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['hieu_luc'], 'CON_HIEU_LUC_1_PHAN')
+        self.assertEqual(res.data['don_vi_id'], 10)
+
+    def test_attachment_model_and_api(self):
+        """Kiểm tra bảng records_chitiettailieu_attachment và API quản lý tệp đính kèm chuẩn DDL Base v1"""
+        self.client.force_authenticate(user=self.user)
+        # Tạo tệp đính kèm trực tiếp
+        att = ChiTietTaiLieuAttachment.objects.create(
+            document=self.doc1,
+            name='phu_luc_01.pdf',
+            path='/media/documents/templates/phu_luc_01.pdf',
+            file_size=102400,
+            mime_type='application/pdf',
+            created_user=self.user,
+        )
+        self.assertEqual(att.document_id, self.doc1.id)
+        self.assertFalse(att.is_deleted)
+
+        # Truy vấn danh sách attachment qua API
+        res = self.client.get(f'/api/resources/attachments/?document={self.doc1.id}')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        items = res.data if isinstance(res.data, list) else res.data.get('results', [])
+        self.assertTrue(any(item['name'] == 'phu_luc_01.pdf' for item in items))
+
+        # Kiểm tra xóa mềm (soft delete)
+        del_res = self.client.delete(f'/api/resources/attachments/{att.id}/')
+        self.assertEqual(del_res.status_code, status.HTTP_204_NO_CONTENT)
+        att.refresh_from_db()
+        self.assertTrue(att.is_deleted)
+
 
