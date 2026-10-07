@@ -580,6 +580,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
             className="px-2 py-1 bg-surface border border-border-subtle rounded-md text-main text-xs focus:outline-hidden focus:border-primary cursor-pointer"
             aria-label="Chọn số dòng hiển thị trên mỗi trang"
           >
+            <option value={5}>5 dòng</option>
             <option value={10}>10 dòng</option>
             <option value={20}>20 dòng</option>
             <option value={50}>50 dòng</option>

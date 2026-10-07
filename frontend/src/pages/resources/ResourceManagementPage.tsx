@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ResourceItem,
   ResourceCategory,
@@ -189,7 +190,69 @@ const initialMockDocuments: ResourceItem[] = [
   },
 ];
 
+const STORAGE_KEY = 'tlbm_resources_filter_state';
+
+interface PersistedResourceState {
+  category?: string;
+  type?: string;
+  year?: string;
+  status?: string;
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+const getInitialFilterState = (searchParams: URLSearchParams): PersistedResourceState => {
+  // Kiểm tra xem lần tải trang này có phải là Reload (F5 / Refresh) của trình duyệt hay không
+  const isReload = (() => {
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0) {
+        return (navEntries[0] as PerformanceNavigationTiming).type === 'reload';
+      }
+      return (performance as any).navigation?.type === 1;
+    } catch {
+      return false;
+    }
+  })();
+
+  // 1. Nếu trên URL có query params, luôn ưu tiên đọc trực tiếp từ URL
+  const hasUrlParams = searchParams.toString().length > 0;
+  if (hasUrlParams) {
+    return {
+      category: searchParams.get('category') || undefined,
+      type: searchParams.get('type') || undefined,
+      year: searchParams.get('year') || undefined,
+      status: searchParams.get('status') || undefined,
+      q: searchParams.get('q') || undefined,
+      page: searchParams.get('page') ? Number(searchParams.get('page')) : undefined,
+      pageSize: searchParams.get('pageSize') ? Number(searchParams.get('pageSize')) : undefined,
+    };
+  }
+
+  // 2. Nếu là Reload (F5 / Refresh) mà URL không có param, phục hồi từ sessionStorage
+  if (isReload) {
+    try {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Không thể đọc trạng thái kho tài liệu từ sessionStorage', e);
+    }
+  }
+
+  // 3. Mặc định mới vào: Xóa sạch cache cũ để đảm bảo bắt đầu ở "Tất cả" & 5 dòng
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {}
+  return {};
+};
+
 export default function ResourceManagementPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialFilterState = useMemo(() => getInitialFilterState(searchParams), []);
+
   const [documents, setDocuments] = useState<ResourceItem[]>(initialMockDocuments);
   const [categories, setCategories] = useState<ResourceCategory[]>(initialMockCategories);
   const [types, setTypes] = useState<ResourceType[]>(initialMockTypes);
@@ -203,10 +266,15 @@ export default function ResourceManagementPage() {
   // - searchTerm: Tìm theo tiêu đề, ký hiệu, nơi ban hành
   // ============================================================================
   // Bộ lọc: Search debounced 300ms
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(initialFilterState.q || '');
+  const [searchTerm, setSearchTerm] = useState(initialFilterState.q || '');
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       setSearchTerm(searchInput);
       setCurrentPage(1);
@@ -214,7 +282,7 @@ export default function ResourceManagementPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Sắp xếp Thư mục (Cấp 1) theo STT ưu tiên, mặc định chọn STT = 1
+  // Sắp xếp Thư mục (Cấp 1) theo STT ưu tiên (Mặc định mới vào hiển thị tab 'all' - Tất cả)
   const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => (a.stt_uu_tien || 0) - (b.stt_uu_tien || 0));
   }, [categories]);
@@ -235,14 +303,57 @@ export default function ResourceManagementPage() {
     el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
   };
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('1');
-  const [selectedType, setSelectedType] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  // Mặc định mới vào: hiện ở Tất cả ('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialFilterState.category || 'all');
+  const [selectedType, setSelectedType] = useState<string>(initialFilterState.type || 'all');
+  const [selectedYear, setSelectedYear] = useState<string>(initialFilterState.year || 'all');
+  const [statusFilter, setStatusFilter] = useState<string>(initialFilterState.status || 'all');
 
-  // Phân trang
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  // Phân trang: Mặc định mới vào hiển thị 5 dòng
+  const [currentPage, setCurrentPage] = useState<number>(
+    initialFilterState.page && initialFilterState.page > 0 ? initialFilterState.page : 1
+  );
+  const [pageSize, setPageSize] = useState<number>(
+    initialFilterState.pageSize && initialFilterState.pageSize > 0 ? initialFilterState.pageSize : 5
+  );
+
+  // Tự động lưu trạng thái vào sessionStorage và đồng bộ URL Query Parameters
+  // Khi reload lại trang (F5), toàn bộ mục đang chọn, trang và dòng hiển thị vẫn được giữ nguyên
+  useEffect(() => {
+    const stateToSave: PersistedResourceState = {
+      category: selectedCategory,
+      type: selectedType,
+      year: selectedYear,
+      status: statusFilter,
+      q: searchTerm || undefined,
+      page: currentPage > 1 ? currentPage : undefined,
+      pageSize: pageSize !== 5 ? pageSize : undefined,
+    };
+
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch {}
+
+    const newParams = new URLSearchParams();
+    if (selectedCategory !== 'all') newParams.set('category', selectedCategory);
+    if (selectedType !== 'all') newParams.set('type', selectedType);
+    if (selectedYear !== 'all') newParams.set('year', selectedYear);
+    if (statusFilter !== 'all') newParams.set('status', statusFilter);
+    if (searchTerm.trim()) newParams.set('q', searchTerm.trim());
+    if (currentPage > 1) newParams.set('page', String(currentPage));
+    if (pageSize !== 5) newParams.set('pageSize', String(pageSize));
+
+    setSearchParams(newParams, { replace: true });
+  }, [
+    selectedCategory,
+    selectedType,
+    selectedYear,
+    statusFilter,
+    searchTerm,
+    currentPage,
+    pageSize,
+    setSearchParams,
+  ]);
 
   // Modal State
   const [detailItem, setDetailItem] = useState<ResourceItem | null>(null);
@@ -338,7 +449,6 @@ export default function ResourceManagementPage() {
     setCurrentPage(1);
     setIsCategoryDropdownOpen(false);
     setIsTypeDropdownOpen(false);
-    setActiveTabDropdownId(null);
   };
 
   const hasActiveFilters = Boolean(
