@@ -1,10 +1,21 @@
 -- =====================================================================
--- THAY ĐỔI PHASE 6c TRÌNH KÝ (Nhóm 5; đánh dấu [6c] tại vị trí)
--- Căn cứ: docs/modules/05_signing_workflow/danh-gia-nghiep-vu-va-de-xuat.md mục 2 (đã chốt),
+-- THAY ĐỔI PHASE 6c TRÌNH KÝ (Nhóm 5; issue #79; đánh dấu [6c] tại vị trí)
+-- Căn cứ: docs/modules/05_signing_workflow/danh-gia-nghiep-vu-va-de-xuat.md mục 2 (đã chốt ở PR #78),
 --   plan-trien-khai-theo-phase.md Phase 6c; migration signing 0004_bo_kieu_ky_chi_nhan_van_ban_di.
 --   1) signing_process bỏ cột kieu_ky_mac_dinh; signing_request bỏ cột kieu_ky.
 --      Cấp ký luôn tuần tự theo thu_tu, người trong cùng cấp ký song song.
---   2) Bỏ ENUM signing_kieuky (không cột nào dùng).
+--      Lý do bỏ cách thức TUAN_TU/SONG_SONG cho toàn hồ sơ:
+--      - SONG_SONG mở mọi cấp cùng lúc, tương đương quy trình một cấp: người ký cuối có thể ký trước
+--        khi cấp kiểm tra (nội dung, pháp chế) xem xong, việc chia cấp mất nghĩa.
+--      - Người trình được chọn cách thức, tức tự quyết lãnh đạo có phải chờ cấp dưới; thứ tự kiểm duyệt
+--        thuộc người thiết kế quy trình.
+--      - Mọi quy tắc (mở cấp, hạn xử lý, thu hồi chữ ký) phải rẽ nhánh theo cách thức mà không thêm giá trị.
+--      Căn cứ thực tiễn: ký điện tử định tuyến theo thứ tự (cùng thứ tự ký song song, thứ tự sau chờ
+--      thứ tự trước); văn phòng điện tử đi theo cấp. Tham khảo NĐ 30/2020 Điều 12: kiểm tra nội dung,
+--      thể thức trước khi trình người có thẩm quyền ký.
+--   2) Bỏ ENUM signing_kieuky: không cột, hàm hay đối tượng nào dùng. Bằng chứng trên bản trước thay đổi:
+--      tên chỉ xuất hiện ở dòng CREATE TYPE; information_schema.columns không có cột udt_name =
+--      'signing_kieuky' (kieu_ky, kieu_ky_mac_dinh là VARCHAR); pg_depend không có đối tượng phụ thuộc.
 --   3) Không đổi document_kind: trình ký chỉ nhận 'vanbandi', kiểm ở tầng ứng dụng; giữ ENUM chung
 --      vì documents_view_log và task_congviec vẫn dùng 'vanbanden'.
 -- Quy mô sau thay đổi: 54 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
