@@ -1438,7 +1438,9 @@ CREATE TABLE task_congviec (
             document_type IS NOT NULL
             AND document_id IS NOT NULL
         )
-    )
+    ),
+    -- [Nhóm 6] Hạn xử lý không trước ngày tạo (trước đó chỉ kiểm ở tầng ứng dụng)
+    CONSTRAINT chk_task_due_after_created CHECK (ngay_xu_ly >= ngay_tao_cv)
 );
 
 CREATE TRIGGER trg_congviec_updated_at BEFORE UPDATE ON task_congviec
@@ -1466,6 +1468,8 @@ CREATE TABLE task_participant (
 );
 
 CREATE INDEX idx_participant_congviec ON task_participant (cong_viec);
+-- [Nhóm 6] Mỗi công việc có tối đa một chủ trì (đủ một chủ trì kiểm ở tầng ứng dụng)
+CREATE UNIQUE INDEX uq_task_participant_one_host ON task_participant (cong_viec) WHERE vai_tro = 'CHU_TRI';
 
 -- Bảng liên kết Many-to-Many giữa Công việc và Đơn vị/Phòng ban (theo chỉ đạo của GVHD ngày 25/09/2026)
 CREATE TABLE task_congviec_donvi (
@@ -1500,7 +1504,12 @@ CREATE TABLE task_attachment (
     loai task_attachment_loai NOT NULL,                             -- GIAO_VIEC hoặc BANG_CHUNG hoàn thành
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,                      -- Xóa mềm (soft-delete) theo chuẩn GVHD
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),                -- Thời điểm tải lên
-    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT -- Người tải file
+    nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT, -- Người tải file
+    -- [Nhóm 6] File bằng chứng phải gắn một ý kiến; file giao việc ban đầu thì không
+    CONSTRAINT chk_task_attachment_evidence CHECK (
+        (loai = 'GIAO_VIEC' AND y_kien_id IS NULL)
+        OR (loai = 'BANG_CHUNG' AND y_kien_id IS NOT NULL)
+    )
 );
 
 CREATE INDEX idx_task_attachment_congviec ON task_attachment (cong_viec_id);
