@@ -87,6 +87,9 @@ export interface EmployeeUpdatePayload {
 
 export interface ExcelImportError {
   row: number;
+  field?: string;
+  code?: string;
+  value?: string;
   message: string;
 }
 

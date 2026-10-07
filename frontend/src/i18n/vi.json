@@ -556,7 +556,8 @@
       "statusNotice": "Lưu ý: Chuyển sang 'Nghỉ việc' sẽ tự động vô hiệu hóa tài khoản đăng nhập.",
       "birthdayMaskedTooltip": "Năm sinh được che bảo mật (yêu cầu quyền view_sensitive_cbnv để xem đầy đủ)",
       "masked": "Đã che năm",
-      "groupsHidden": "Danh sách nhóm quyền bị ẩn theo quyền riêng tư bảo mật."
+      "groupsHidden": "Danh sách nhóm quyền bị ẩn theo quyền riêng tư bảo mật.",
+      "selfEditNotice": "Bạn đang cập nhật hồ sơ của chính mình. Chỉ có thể chỉnh sửa thông tin liên hệ và ngày sinh; các thông tin tổ chức do Quản trị viên quản lý."
     },
     "modal": {
       "createTitle": "Thêm Mới Cán Bộ Nhân Viên",
@@ -594,7 +595,26 @@
       "startImport": "Tiến hành nạp dữ liệu",
       "errorListHeader": "Phát hiện {count} dòng dữ liệu lỗi:",
       "row": "Dòng",
-      "errorDetail": "Chi tiết lỗi"
+      "field": "Cột",
+      "errorDetail": "Chi tiết lỗi",
+      "fields": {
+        "ho_ten": "Họ và tên",
+        "ngay_sinh": "Ngày sinh",
+        "email": "Email",
+        "sdt": "Số điện thoại",
+        "don_vi": "Đơn vị / Phòng ban",
+        "chuc_vu": "Chức vụ",
+        "file": "Tệp tin"
+      },
+      "errors": {
+        "invalidFile": "Tệp tải lên không phải định dạng Excel hợp lệ (.xlsx).",
+        "emptyFile": "Tệp Excel trống hoặc không có dòng dữ liệu nào.",
+        "invalidBirthday": "Ngày sinh '{value}' không đúng định dạng (hỗ trợ YYYY-MM-DD hoặc DD/MM/YYYY).",
+        "invalidEmail": "Email '{value}' không đúng định dạng.",
+        "duplicateEmailInFile": "Email '{value}' bị trùng lặp trong chính tệp Excel tải lên.",
+        "unitRequired": "Tên Đơn vị / Phòng ban không được để trống.",
+        "positionRequired": "Tên Chức vụ không được để trống."
+      }
     },
     "validation": {
       "nameRequired": "Họ và tên nhân viên không được để trống.",
@@ -610,7 +630,25 @@
       "updateSuccess": "Cập nhật hồ sơ thành công!",
       "deleteSuccess": "Đã xóa cán bộ nhân viên thành công!",
       "deleteError": "Không thể xóa cán bộ nhân viên này.",
-      "importSuccess": "Nhập thành công {count} cán bộ nhân viên từ Excel!",
+      "cannotDeleteSelf": "Bạn không thể tự xóa tài khoản của chính mình.",
+      "cannotDeleteSuperuser": "Không có quyền xóa tài khoản Quản trị viên tối cao (Superuser).",
+      "cannotDeleteLastSuperuser": "Không thể xóa tài khoản Quản trị viên tối cao đang hoạt động cuối cùng.",
+      "cannotDeleteProtected": "Không thể xóa cán bộ nhân viên này do đang có dữ liệu liên kết khác trong hệ thống.",
+      "cannotDeactivateSelf": "Bạn không thể tự khóa hoặc đặt trạng thái nghỉ việc cho chính mình.",
+      "cannotDeactivateSuperuser": "Không có quyền khóa hoặc đặt trạng thái nghỉ việc cho tài khoản Quản trị viên tối cao.",
+      "cannotDeactivateLastSuperuser": "Không thể khóa hoặc đặt trạng thái nghỉ việc cho Quản trị viên tối cao đang hoạt động cuối cùng.",
+      "invalidDataFormat": "Dữ liệu yêu cầu phải là một JSON object.",
+      "invalidOrdering": "Tham số sắp xếp không hợp lệ.",
+      "invalidFilterParam": "Tham số bộ lọc phải là số nguyên hợp lệ.",
+      "emailExists": "Địa chỉ email đã tồn tại trong hệ thống.",
+      "usernameExists": "Tên đăng nhập đã tồn tại trong hệ thống.",
+      "unitNotFound": "Không tìm thấy Đơn vị có tên '{value}' trong hệ thống.",
+      "unitAmbiguous": "Tên Đơn vị '{value}' trùng lặp giữa nhiều Khối/Khu vực. Vui lòng ghi rõ hoặc chọn đơn vị chính xác.",
+      "positionNotFound": "Không tìm thấy Chức vụ có tên '{value}' trong hệ thống.",
+      "fileRequired": "Vui lòng chọn tệp Excel (.xlsx) để tải lên.",
+      "fileInvalidType": "Định dạng tệp không được hỗ trợ. Vui lòng sử dụng tệp có đuôi .xlsx.",
+      "importHasErrors": "Dữ liệu tệp Excel chứa lỗi. Vui lòng kiểm tra lại theo danh sách bên dưới.",
+      "importSuccess": "Nhập thành công cán bộ nhân viên từ Excel!",
       "saveError": "Không thể lưu thông tin cán bộ nhân viên.",
       "loading": "Đang tải dữ liệu...",
       "noData": "Không tìm thấy cán bộ nhân viên nào",

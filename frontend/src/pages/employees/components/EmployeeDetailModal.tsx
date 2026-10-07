@@ -32,7 +32,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
   const isWorking = employee.trang_thai === 'dang_lam_viec';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fade-in">
       <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-elevated">
@@ -45,7 +45,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-secondary hover:text-main p-2 rounded-lg hover:bg-hover transition-colors"
+            className="text-secondary hover:text-main p-2 rounded-lg hover:bg-surface-hover transition-colors"
           >
             <i className="fa-solid fa-xmark text-lg" />
           </button>
@@ -55,7 +55,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Header Card with Avatar */}
           <div className="flex items-center gap-4 p-4 bg-surface-elevated border border-border rounded-xl">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-accent text-white flex items-center justify-center text-xl font-bold shrink-0 shadow-md">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-primary-hover text-white flex items-center justify-center text-xl font-bold shrink-0 shadow-md">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -118,7 +118,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
                 </span>
                 {employee.is_birthday_masked && (
                   <span
-                    className="inline-flex items-center gap-1 text-[11px] text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full"
+                    className="inline-flex items-center gap-1 text-[11px] text-warning bg-warning-subtle px-2 py-0.5 rounded-full"
                     title={t('employees.hints.birthdayMaskedTooltip')}
                   >
                     <i className="fa-solid fa-lock text-[10px]" />
@@ -161,7 +161,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
                 {employee.nhom_quyen.map((group) => (
                   <span
                     key={group.id}
-                    className="px-2.5 py-1 text-xs font-medium rounded-md bg-primary/10 text-primary border border-primary/20"
+                    className="px-2.5 py-1 text-xs font-medium rounded-md bg-primary-subtle text-primary border border-primary-border"
                   >
                     <i className="fa-solid fa-shield-halved mr-1.5" />
                     {group.name}
