@@ -46,6 +46,7 @@ interface FormState {
   ngay_het_hieu_luc: string;
   link_thay_the: string;
   ghi_chu: string;
+  pham_vi: 'NOI_BO' | 'HAN_CHE';
   hien_thi: boolean;
   gui_mail_toan_he_thong: boolean;
   nguoi_nhan: (number | string)[];
@@ -162,6 +163,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         ngay_het_hieu_luc: '',
         link_thay_the: '',
         ghi_chu: '',
+        pham_vi: 'NOI_BO',
         hien_thi: true,
         gui_mail_toan_he_thong: false,
         nguoi_nhan: [],
@@ -192,6 +194,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       ngay_het_hieu_luc: toLocalDateString(initDoc.ngay_het_hieu_luc ?? initDoc.ngayHetHieuLuc),
       link_thay_the: initDoc.link_thay_the ?? initDoc.linkThayThe ?? '',
       ghi_chu: initDoc.ghi_chu ?? initDoc.ghiChu ?? '',
+      pham_vi: (initDoc.pham_vi === 'HAN_CHE' ? 'HAN_CHE' : 'NOI_BO'),
       hien_thi: initDoc.hien_thi !== undefined ? Boolean(initDoc.hien_thi) : true,
       gui_mail_toan_he_thong: Boolean(initDoc.gui_mail_toan_he_thong ?? initDoc.guiMailToanHeThong),
       nguoi_nhan: recipients,
@@ -408,6 +411,11 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       setAlertOpen(true);
       return;
     }
+    if (form.pham_vi === 'HAN_CHE' && (!form.nguoi_nhan || form.nguoi_nhan.length === 0)) {
+      setAlertMsg('Văn bản hạn chế bắt buộc phải chọn ít nhất một cán bộ nhận / xử lý (*)');
+      setAlertOpen(true);
+      return;
+    }
 
     setLoading(true);
     try {
@@ -418,8 +426,9 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       payload.append('noi_ban_hanh', form.noi_ban_hanh.trim());
       payload.append('trich_yeu', form.trich_yeu.trim());
       payload.append('hieu_luc', form.hieu_luc);
+      payload.append('pham_vi', form.pham_vi || 'NOI_BO');
       payload.append('hien_thi', form.hien_thi ? 'true' : 'false');
-      payload.append('gui_mail_toan_he_thong', form.gui_mail_toan_he_thong ? 'true' : 'false');
+      payload.append('gui_mail_toan_he_thong', form.pham_vi === 'HAN_CHE' ? 'false' : (form.gui_mail_toan_he_thong ? 'true' : 'false'));
 
       if (form.ngay_den) {
         payload.append('ngay_den', form.ngay_den);
@@ -676,6 +685,31 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   <option value="Báo cáo" />
                   <option value="Hướng dẫn" />
                 </datalist>
+              </div>
+
+              {/* Phạm vi lưu hành (Issue #82) */}
+              <div className="col-span-12 sm:col-span-4">
+                <label className="block text-xs font-semibold text-secondary mb-1.5 flex items-center justify-between">
+                  <span>Phạm vi lưu hành</span>
+                  {form.pham_vi === 'HAN_CHE' && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 font-bold uppercase">
+                      Hạn chế
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={form.pham_vi}
+                  disabled={Boolean(initial?.id)}
+                  onChange={e => setForm({
+                    ...form,
+                    pham_vi: e.target.value as 'NOI_BO' | 'HAN_CHE',
+                    gui_mail_toan_he_thong: e.target.value === 'HAN_CHE' ? false : form.gui_mail_toan_he_thong,
+                  })}
+                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="NOI_BO">Nội bộ (Toàn cơ quan)</option>
+                  <option value="HAN_CHE">Hạn chế (Chỉ người nhận xem)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1084,6 +1118,15 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
               <span className="text-xs text-muted">Điều phối đơn vị & Tải lên tệp</span>
             </div>
 
+            {form.pham_vi === 'HAN_CHE' && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-2.5 text-xs text-amber-600 dark:text-amber-400">
+                <i className="fa-solid fa-shield-halved text-sm shrink-0" />
+                <span>
+                  <strong>Văn bản hạn chế (Mật nội bộ):</strong> Bắt buộc chọn ít nhất một cán bộ nhận / xử lý. Hệ thống tự động vô hiệu hóa tính năng gửi email toàn trường và chỉ người nhận cùng người tạo mới có quyền xem.
+                </span>
+              </div>
+            )}
+
             {/* Phân phối đơn vị & cán bộ */}
             <div className="grid grid-cols-12 gap-3.5">
               <div className="col-span-12 sm:col-span-6">
@@ -1302,8 +1345,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   </div>
                 </label>
 
-                {/* Gửi mail (Chỉ cho Văn bản Đến / Đi, Văn bản Mật lưu hành nội bộ khép kín) */}
-                {form.loai !== 'MAT' ? (
+                {/* Gửi mail (Chỉ cho Văn bản thông thường, Văn bản Hạn chế không gửi mail toàn trường) */}
+                {form.pham_vi !== 'HAN_CHE' ? (
                   <label className="flex items-start gap-3 p-3 rounded-xl border border-border-subtle bg-surface hover:bg-hover/50 cursor-pointer transition-fast">
                     <input
                       type="checkbox"
@@ -1319,12 +1362,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                     </div>
                   </label>
                 ) : (
-                  <div className="flex items-start gap-3 p-3 rounded-xl border border-purple-500/20 bg-purple-500/5 text-purple-700 dark:text-purple-300">
+                  <div className="flex items-start gap-3 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-700 dark:text-rose-300">
                     <span className="text-base leading-none">🔒</span>
                     <div>
-                      <span className="text-xs font-bold block">Văn bản Mật lưu hành nội bộ</span>
+                      <span className="text-xs font-bold block">
+                        {form.pham_vi === 'HAN_CHE' ? 'Văn bản Hạn chế (Mật nội bộ)' : 'Văn bản Mật lưu hành nội bộ'}
+                      </span>
                       <span className="text-xs text-muted block leading-snug">
-                        Không gửi email diện rộng toàn trường. Chỉ cán bộ/đơn vị nhận được chỉ định mới có quyền tiếp cận.
+                        Không gửi email diện rộng toàn trường. Chỉ cán bộ nhận được chỉ định mới có quyền tiếp cận.
                       </span>
                     </div>
                   </div>

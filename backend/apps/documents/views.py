@@ -32,6 +32,7 @@ from .filters import (
 from .models import (
     HieuLuc,
     LoaiVanBan,
+    PhamVi,
     VanBanDen,
     VanBanDenAttachment,
     VanBanDi,
@@ -39,8 +40,14 @@ from .models import (
     VanBanMat,
     VanBanMatAttachment,
     DocumentViewLog,
+    DocumentAccessLog,
     get_document_model,
     get_attachment_model,
+)
+from .selectors import (
+    van_ban_xem_duoc,
+    la_nguoi_xem_duoc,
+    log_access,
 )
 from .serializers import (
     DocumentCreateUpdateSerializer,
@@ -60,6 +67,17 @@ from .services import (
     import_from_excel,
     log_document_view,
 )
+
+
+def get_client_ip(request):
+    """Lấy địa chỉ IP của client từ request headers."""
+    if not request:
+        return None
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        return x_forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -102,6 +120,27 @@ def can_edit_document(user, instance):
         user.has_perm(f"documents.change_{model_name}")
         or user.has_perm("documents.change_document")
         or user.has_perm("documents.change_vanbanden")
+    ):
+        return True
+    return False
+
+
+def can_create_document(user, loai="DEN"):
+    """Kiểm tra quyền tạo văn bản (RBAC add_vanbanden, add_vanbandi, add_vanbanmat)."""
+    if not user or not user.is_authenticated:
+        return False
+    if is_admin_user(user):
+        return True
+    model_name = "vanbanden"
+    if str(loai).upper() in ("DI", "VANBANDI"):
+        model_name = "vanbandi"
+    elif str(loai).upper() in ("MAT", "VANBANMAT"):
+        model_name = "vanbanmat"
+
+    if (
+        user.has_perm(f"documents.add_{model_name}")
+        or user.has_perm("documents.add_document")
+        or user.has_perm("documents.add_vanbanden")
     ):
         return True
     return False
@@ -255,22 +294,55 @@ class DocumentViewSet(viewsets.ViewSet):
     def _get_queryset_for_model(self, model):
         check_and_update_expired_documents()
         doc_type = getattr(model, "document_kind", "vanbanden")
-        return get_accessible_documents(self.request.user, doc_type)
+        return van_ban_xem_duoc(self.request.user, doc_type)
 
-    def _get_object_across_models(self, pk):
+    def _get_object_across_models(self, pk, record_log=True, action_type="XEM", tep_id=None):
         loai = self.request.query_params.get("loai") or self.request.query_params.get("type")
+        found_doc = None
         if loai:
             model = get_document_model(loai)
-            obj = self._get_queryset_for_model(model).filter(pk=pk).first()
-            if obj:
-                return obj
+            found_doc = model.objects.filter(pk=pk).first()
 
-        for model in (VanBanDen, VanBanDi, VanBanMat):
-            obj = self._get_queryset_for_model(model).filter(pk=pk).first()
-            if obj:
-                return obj
+        if not found_doc:
+            for model in (VanBanDen, VanBanDi, VanBanMat):
+                obj = model.objects.filter(pk=pk).first()
+                if obj:
+                    found_doc = obj
+                    break
 
-        raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not found_doc:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+
+        user = self.request.user
+        if not la_nguoi_xem_duoc(user, found_doc):
+            if getattr(found_doc, "pham_vi", None) == PhamVi.HAN_CHE or getattr(found_doc, "document_kind", None) == "vanbanmat":
+                if getattr(found_doc, "pham_vi", None) == PhamVi.HAN_CHE:
+                    log_access(
+                        document_type=found_doc.document_kind,
+                        document_id=found_doc.pk,
+                        user=user,
+                        hanh_dong=DocumentAccessLog.HanhDong.BI_TU_CHOI,
+                        tep_id=tep_id,
+                        dia_chi_ip=get_client_ip(self.request),
+                    )
+                raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+            raise PermissionDenied("Bạn không có quyền truy cập văn bản này.")
+
+        if record_log:
+            if getattr(found_doc, "pham_vi", None) == PhamVi.HAN_CHE:
+                if action_type in (DocumentAccessLog.HanhDong.XEM, DocumentAccessLog.HanhDong.TAI_FILE):
+                    log_access(
+                        document_type=found_doc.document_kind,
+                        document_id=found_doc.pk,
+                        user=user,
+                        hanh_dong=action_type,
+                        tep_id=tep_id,
+                        dia_chi_ip=get_client_ip(self.request),
+                    )
+            else:
+                log_document_view(found_doc, user)
+
+        return found_doc
 
     def list(self, request):
         """GET /api/documents/?loai=DEN&nam=...&q=..."""
@@ -297,17 +369,23 @@ class DocumentViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         """GET /api/documents/{id}/"""
-        instance = self._get_object_across_models(pk)
-        log_document_view(instance, request.user)
+        instance = self._get_object_across_models(
+            pk,
+            record_log=True,
+            action_type=DocumentAccessLog.HanhDong.XEM,
+        )
         serializer = DocumentDetailSerializer(instance)
         return Response(serializer.data)
 
     def create(self, request):
         """POST /api/documents/"""
-        serializer = DocumentCreateUpdateSerializer(data=request.data)
+        serializer = DocumentCreateUpdateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
         loai = serializer.validated_data.get("loai", LoaiVanBan.DEN)
+        if not can_create_document(request.user, loai):
+            raise PermissionDenied("Bạn không có quyền tạo văn bản mới. Vui lòng liên hệ Quản trị viên để được cấp quyền.")
+
         nam = serializer.validated_data.get("nam", timezone.now().year)
 
         extra_kwargs = {
@@ -344,9 +422,12 @@ class DocumentViewSet(viewsets.ViewSet):
 
     def update(self, request, pk=None, partial=False):
         """PUT /api/documents/{id}/"""
-        instance = self._get_object_across_models(pk)
+        instance = self._get_object_across_models(pk, record_log=False)
         user = request.user
         is_admin = is_admin_user(user)
+
+        if getattr(instance, "pham_vi", None) == PhamVi.HAN_CHE and not is_admin and instance.nguoi_tao != user:
+            raise PermissionDenied("Chỉ người tạo mới có quyền chỉnh sửa văn bản hạn chế.")
 
         if getattr(instance, "loai", "") == "MAT" and not is_admin and instance.nguoi_tao != user:
             raise PermissionDenied("Văn bản mật chỉ có quyền đọc. Bạn không có quyền chỉnh sửa văn bản này.")
@@ -357,7 +438,12 @@ class DocumentViewSet(viewsets.ViewSet):
         old_link = (instance.link_thay_the or "").strip()
         old_so_hieu = (instance.so_hieu or "").strip()
 
-        serializer = DocumentCreateUpdateSerializer(instance, data=request.data, partial=partial)
+        serializer = DocumentCreateUpdateSerializer(
+            instance,
+            data=request.data,
+            partial=partial,
+            context={"request": request},
+        )
         serializer.is_valid(raise_exception=True)
         doc = serializer.save()
 
@@ -384,7 +470,10 @@ class DocumentViewSet(viewsets.ViewSet):
 
     def destroy(self, request, pk=None):
         """DELETE /api/documents/{id}/"""
-        instance = self._get_object_across_models(pk)
+        instance = self._get_object_across_models(pk, record_log=False)
+        if getattr(instance, "pham_vi", None) == PhamVi.HAN_CHE:
+            raise PermissionDenied("Văn bản hạn chế không được phép xóa.")
+
         user = request.user
         is_admin = is_admin_user(user)
 
@@ -397,6 +486,27 @@ class DocumentViewSet(viewsets.ViewSet):
         cleanup_replacement_links_on_delete(instance)
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["get"], url_path=r"attachments/(?P<tep_id>[0-9]+)/download")
+    def download_attachment(self, request, pk=None, tep_id=None):
+        """GET /api/documents/{id}/attachments/{tep_id}/download/"""
+        tep_int = int(tep_id) if tep_id and str(tep_id).isdigit() else None
+        instance = self._get_object_across_models(
+            pk,
+            record_log=True,
+            action_type=DocumentAccessLog.HanhDong.TAI_FILE,
+            tep_id=tep_int,
+        )
+        att = instance.attachments.filter(pk=tep_int, is_deleted=False).first()
+        if not att:
+            raise NotFound(f"Không tìm thấy tệp đính kèm với ID {tep_id}.")
+        response = HttpResponse(att.file.read(), content_type="application/octet-stream")
+        response["Content-Disposition"] = f'attachment; filename="{att.name}"'
+        return response
+
+    @action(detail=True, methods=["get"], url_path=r"download/(?P<tep_id>[0-9]+)")
+    def download_attachment_alias(self, request, pk=None, tep_id=None):
+        return self.download_attachment(request, pk, tep_id)
 
     # ───────────────────────────────────────────────────────────────
     # Custom Actions
@@ -525,7 +635,39 @@ class VanBanDenViewSet(viewsets.ModelViewSet):
     filterset_class = VanBanDenFilter
 
     def get_queryset(self):
-        return get_accessible_documents(self.request.user, "vanbanden")
+        return van_ban_xem_duoc(self.request.user, "vanbanden")
+
+    def retrieve(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDen.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not la_nguoi_xem_duoc(request.user, obj):
+            if obj.pham_vi == PhamVi.HAN_CHE:
+                log_access("vanbanden", obj.pk, request.user, DocumentAccessLog.HanhDong.BI_TU_CHOI, dia_chi_ip=get_client_ip(request))
+                raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+            raise PermissionDenied("Bạn không có quyền xem văn bản này.")
+        if obj.pham_vi == PhamVi.HAN_CHE:
+            log_access("vanbanden", obj.pk, request.user, DocumentAccessLog.HanhDong.XEM, dia_chi_ip=get_client_ip(request))
+        else:
+            log_document_view(obj, request.user)
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDen.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not la_nguoi_xem_duoc(request.user, obj):
+            if obj.pham_vi == PhamVi.HAN_CHE:
+                log_access("vanbanden", obj.pk, request.user, DocumentAccessLog.HanhDong.BI_TU_CHOI, dia_chi_ip=get_client_ip(request))
+                raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+            raise PermissionDenied("Bạn không có quyền xóa văn bản này.")
+        if obj.pham_vi == PhamVi.HAN_CHE:
+            raise PermissionDenied("Văn bản hạn chế không được phép xóa.")
+        cleanup_replacement_links_on_delete(obj)
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         nam = serializer.validated_data.get("nam", timezone.now().year)
@@ -544,7 +686,39 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
     filterset_class = VanBanDiFilter
 
     def get_queryset(self):
-        return get_accessible_documents(self.request.user, "vanbandi")
+        return van_ban_xem_duoc(self.request.user, "vanbandi")
+
+    def retrieve(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDi.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not la_nguoi_xem_duoc(request.user, obj):
+            if obj.pham_vi == PhamVi.HAN_CHE:
+                log_access("vanbandi", obj.pk, request.user, DocumentAccessLog.HanhDong.BI_TU_CHOI, dia_chi_ip=get_client_ip(request))
+                raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+            raise PermissionDenied("Bạn không có quyền xem văn bản này.")
+        if obj.pham_vi == PhamVi.HAN_CHE:
+            log_access("vanbandi", obj.pk, request.user, DocumentAccessLog.HanhDong.XEM, dia_chi_ip=get_client_ip(request))
+        else:
+            log_document_view(obj, request.user)
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDi.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not la_nguoi_xem_duoc(request.user, obj):
+            if obj.pham_vi == PhamVi.HAN_CHE:
+                log_access("vanbandi", obj.pk, request.user, DocumentAccessLog.HanhDong.BI_TU_CHOI, dia_chi_ip=get_client_ip(request))
+                raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+            raise PermissionDenied("Bạn không có quyền xóa văn bản này.")
+        if obj.pham_vi == PhamVi.HAN_CHE:
+            raise PermissionDenied("Văn bản hạn chế không được phép xóa.")
+        cleanup_replacement_links_on_delete(obj)
+        return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         nam = serializer.validated_data.get("nam", timezone.now().year)

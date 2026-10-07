@@ -1,88 +1,82 @@
-# Tài Liệu Đặc Tả Kỹ Thuật — Module 02: Quản Lý Văn Bản (Nhóm 2)
+# Tài Liệu Đặc Tả Kỹ Thuật & Kế Hoạch Nghiệp Vụ — Module 02: Quản Lý Văn Bản (Nhóm 2)
 
-> **Đơn vị phụ trách**: Nhóm 2 — Module Văn Bản (Đến, Đi, Mật)  
+> **Đơn vị phụ trách**: Nhóm 2 — Module Quản Lý Văn Bản (Văn bản Đến, Văn bản Đi)  
 > **Trưởng nhóm**: Lê Trí Kiệt  
 > **Thành viên**: Nguyễn Anh Đô, Nguyễn Tấn Lộc Khiêm, Trần Nhật Tân  
-> **Thư mục module**: `docs/modules/02_documents/`  
-> **Căn cứ tham chiếu**: `docs/common/ITC - Django - QLVB&TL.md` & `docs/common/FRONTEND_BASELINE_GUIDE.md`
+> **Thư mục tài liệu**: `docs/modules/02_documents/`  
+> **Căn cứ tham chiếu**: `docs/common/database/release_DDL.sql` (PR #92), Issue #82, Issue #83, Plan tổng #68.
 
 ---
 
-## 🏛️ 1. Kiến Trúc Dữ Liệu Cốt Lõi (Database Architecture)
+## 🏛️ 1. Kiến Trúc Dữ Liệu Cốt Lõi (Database Architecture chuẩn DDL)
 
-Cả 3 phân hệ Văn bản (Đến, Đi, Mật) **dùng chung duy nhất một bảng thực thể chính `Document`** (`documents_document`), phân biệt bằng trường `loai = 'DEN' | 'DI' | 'MAT'`:
+Theo quyết định thống nhất từ GVHD (PR #92, Issue #82, Issue #83), phân hệ đã **bỏ văn bản mật hành chính và bỏ độ khẩn**. CSDL được chuẩn hóa thành 2 bảng thực thể chính tương ứng với 2 luồng nghiệp vụ Đến / Đi:
 
-1. **`Document` (Bảng chính):**
+1. **`VanBanDen` (`documents_vanbanden`):**
+   - Quản lý toàn bộ văn bản từ ngoài gửi đến trường.
    - Định danh: `id` (BigAutoField).
-   - Phân loại: `loai` (`DEN`, `DI`, `MAT`).
-   - Chuỗi số ký hiệu: `so_hieu` (VD: `01/QĐ-TLBM`, `12/CV-UBND`).
-   - Số thứ tự tự tăng: `so_thu_tu` (Số đến tự tăng theo từng năm `nam`).
-   - Mốc thời gian: `ngay_den` (đầy đủ ngày giờ phút giây), `ngay_van_ban`, `ngay_het_hieu_luc`.
-   - Nội dung: `trich_yeu`, `noi_ban_hanh` (Text cho VB Đến, liên kết Đơn vị cho VB Đi), `ghi_chu`.
-   - Hiệu lực: `hieu_luc` (`CON_HIEU_LUC`, `HET_HIEU_LUC`, `THAY_THE`), `link_thay_the`.
-   - Liên kết nghiệp vụ: `ho_so` (ManyToMany `records_hoso`), `loai_van_ban` (ManyToMany `records_loaivanban`), `don_vi_nhan` (ManyToMany `organizations_donvi`), `nguoi_nhan` (ManyToMany `auth_user`).
-   - Cán bộ ký: `nguoi_ky`, `chuc_vu_nguoi_ky`.
-   - Cán bộ tạo: `nguoi_tao` (ForeignKey `auth_user`).
+   - Số thứ tự tự tăng: `so_thu_tu` ("Số đến" tự tăng theo năm `nam`, khóa cứng khi cập nhật).
+   - Mốc thời gian: `ngay_den` (DateTimeField), `ngay_van_ban`, `ngay_het_hieu_luc`.
+   - Thuộc tính phạm vi: `pham_vi` (`NOI_BO` | `HAN_CHE`), mặc định `NOI_BO`.
+   - Check constraints: `chk_vanbanden_pham_vi`, `chk_vanbanden_han_che_khong_mail_toan_he_thong`.
 
-2. **`DocumentAttachment` (Tệp đính kèm):**
-   - File đính kèm lưu động theo loại văn bản:
-     * Văn bản Đến: `media/02_documents/den/%Y/%m/<filename>`
-     * Văn bản Đi: `media/02_documents/di/%Y/%m/<filename>`
-     * Văn bản Mật: `media/02_documents/mat/%Y/%m/<filename>`
-   - Hỗ trợ định dạng: PDF, DOC, DOCX, JPG, JPEG, PNG (tối đa 20MB).
+2. **`VanBanDi` (`documents_vanbandi`):**
+   - Quản lý toàn bộ văn bản nội bộ trường phát hành.
+   - Định danh: `id` (BigAutoField).
+   - Số thứ tự tự tăng: `so_thu_tu` ("Số đi" tự tăng theo năm `nam`, concurrency-safe lock, khóa cứng khi cập nhật).
+   - Mốc thời gian: `ngay_ban_hanh` (DateTimeField bắt buộc), `ngay_van_ban`, `ngay_het_hieu_luc`.
+   - Thuộc tính phạm vi: `pham_vi` (`NOI_BO` | `HAN_CHE`), mặc định `NOI_BO`.
+   - Check constraints: `chk_vanbandi_pham_vi`, `chk_vanbandi_han_che_khong_mail_toan_he_thong`.
 
-3. **`DocumentViewLog` (Bảng phụ theo dõi lịch sử người xem):**
-   - Quan hệ: `document_id` và `user_id`.
-   - Ràng buộc: `unique_together = ('document', 'user')` — ghi nhận mốc thời gian xem gần nhất (`viewed_at`).
-   - Phục vụ API tra cứu lịch sử đọc văn bản, lọc theo họ tên và phòng ban.
+3. **`DocumentAccessLog` (`documents_access_log`) — Bảng nhật ký kiểm toán WORM:**
+   - Ghi nhận truy vết đối với văn bản có `pham_vi = 'HAN_CHE'`.
+   - Các hành động: `XEM`, `TAI_FILE`, `BI_TU_CHOI`, `THEM_NGUOI_XEM`, `BOT_NGUOI_XEM`.
+   - Nguyên tắc WORM (Write-Once-Read-Many): Cấm sửa và cấm xóa dòng nhật ký.
+
+4. **`DocumentViewLog` (`documents_view_log`):**
+   - Ghi nhận và đếm lượt đọc đối với các văn bản nội bộ thông thường (`pham_vi = 'NOI_BO'`).
 
 ---
 
-## 📡 2. Danh Sách API Endpoints (`/api/documents/`)
+## 🔒 2. Quy Tắc Nghiệp Vụ Chuẩn Văn Bản Hạn Chế (Issue #82 & #83)
 
+| Nội dung | Văn bản thường (`NOI_BO`) | Văn bản hạn chế (`HAN_CHE`) |
+|---|---|---|
+| **Người xem** | Có quyền `view_vanbanden` / `view_vanbandi` hoặc admin/staff | **CHỈ người tạo + người nhận được chọn đích danh (`nguoi_nhan`)**. Superuser và quyền `view_*` không có ngoại lệ. |
+| **Không có quyền** | Trả về theo phân quyền | **404 Not Found** (như văn bản không tồn tại). Ghi log `BI_TU_CHOI`. |
+| **Tài khoản bị khóa** | Theo quyền | `is_active = FALSE` mất quyền xem toàn bộ. |
+| **Gửi mail toàn trường** | Được phép | **Cấm tuyệt đối**. Form ẩn lựa chọn gửi mail. |
+| **Trình ký** | Có luồng ký nháy / ký chính | **Không đi qua trình ký**. |
+| **Đổi phạm vi, Xóa** | Không đổi `pham_vi` | Không đổi `pham_vi`, **cấm xóa** (DDL và Model chặn). |
+| **Danh sách người xem** | Không áp dụng | Chỉ người tạo được thêm/bớt người xem. Tự động ghi log `THEM_NGUOI_XEM` / `BOT_NGUOI_XEM`. |
+
+---
+
+## 📡 3. Hàm Dùng Chung & API Endpoints (`selectors.py` & `/api/documents/`)
+
+### 3.1. Hàm dùng chung cho các phân hệ khác (`apps/documents/selectors.py`)
+- `van_ban_xem_duoc(user, loai)`: Điểm kiểm soát duy nhất cho Nhóm 1 (Dashboard), Nhóm 3 (Hồ sơ), Nhóm 6 (Công việc) để lấy danh sách văn bản người dùng được phép xem.
+- `la_nguoi_xem_duoc(user, van_ban)`: Hàm kiểm tra boolean cho Nhóm 6 trước khi giao việc từ văn bản hạn chế.
+
+### 3.2. Danh sách API Endpoints
 | Method | Endpoint | Quyền hạn | Mô tả |
 | :---: | :--- | :---: | :--- |
-| `GET` | `/api/documents/?loai=DEN` | Đăng nhập | Lấy danh sách văn bản (phân trang, lọc theo năm, từ ngày - đến ngày, hiệu lực, tìm kiếm từ khóa `q`) |
-| `POST` | `/api/documents/` | Đăng nhập | Tạo mới văn bản (tự sinh Số đến an toàn đa luồng) |
-| `GET` | `/api/documents/{id}/` | Đăng nhập / Phân quyền Mật | Xem chi tiết văn bản (tự động ghi log vào `DocumentViewLog`) |
-| `PUT/PATCH` | `/api/documents/{id}/` | Người tạo / Admin | Cập nhật văn bản (khóa không cho sửa trường Số đến) |
-| `DELETE` | `/api/documents/{id}/` | Người tạo / Admin | Xóa văn bản |
-| `GET` | `/api/documents/{id}/viewers/` | Đăng nhập | Xem danh sách cán bộ đã đọc văn bản (hỗ trợ lọc `search`, `don_vi`) |
-| `GET` | `/api/documents/template/?loai=DEN` | Đăng nhập | Sinh file Excel mẫu trực tiếp từ DB |
-| `POST` | `/api/documents/import/` | Đăng nhập | Import danh sách văn bản từ file Excel |
-| `GET` | `/api/documents/export/?loai=DEN` | Đăng nhập | Export danh sách văn bản ra Excel theo bộ lọc tìm kiếm |
-
----
-
-## 💻 3. Tích Hợp Frontend (Chuẩn App Shell & Layout Staging)
-
-Tuân thủ cấu trúc phẳng theo `docs/common/FRONTEND_BASELINE_GUIDE.md`:
-
-### 3.1. Định tuyến Route (`frontend/src/app/router.tsx`)
-```tsx
-<Route element={<MainLayout />}>
-  {/* Phân hệ Văn bản Nhóm 2 */}
-  <Route path="/documents/incoming" element={<DocumentsIncomingPage />} />
-  <Route path="/documents/outgoing" element={<DocumentsOutgoingPage />} />
-  <Route path="/documents/confidential" element={<DocumentsConfidentialPage />} />
-</Route>
-```
-
-### 3.2. Thành phần Giao diện & Component
-1. **`DocumentTable.tsx`**: Bảng danh sách văn bản, phân trang, tự động đổi màu dòng tối cho văn bản hết hiệu lực, menu 3 chấm `⋮` chứa các tác vụ (Xem chi tiết, Sửa, Xóa, Người đã đọc).
-2. **`FilterBar.tsx`**: Thanh tìm kiếm từ khóa, lọc theo khoảng thời gian (`ngay_den`), năm, trạng thái hiệu lực.
-3. **`DocumentDetailModal.tsx`**: Popup hiển thị chi tiết toàn bộ trường văn bản + nút tải file scan.
-4. **`DocumentViewersModal.tsx`**: Popup hiển thị danh sách người đã đọc kèm thanh tìm kiếm tên CBNV và lọc theo phòng ban.
-5. **`DocumentFormModal.tsx`**: Popup thêm mới và cập nhật văn bản:
-   - Tự động hiển thị Số đến tăng dần.
-   - Gợi ý chuỗi số ký hiệu tự động.
-   - Cascading dropdown: Chọn Đơn vị nhận ➔ Tự động tải danh sách Cán bộ nhận.
-   - Kéo thả upload file đính kèm.
+| `GET` | `/api/documents/?loai=DEN` (hoặc `DI`) | Đăng nhập | Danh sách văn bản được phép xem theo `van_ban_xem_duoc` |
+| `POST` | `/api/documents/` | `add_vanbanden`/`add_vanbandi` | Tạo mới văn bản (tự sinh STT, ghi log người xem ban đầu nếu `HAN_CHE`) |
+| `GET` | `/api/documents/{id}/` | Đăng nhập | Xem chi tiết văn bản (404 nếu không được xem văn bản `HAN_CHE`, ghi log tương ứng) |
+| `PUT/PATCH` | `/api/documents/{id}/` | Người tạo / Admin | Cập nhật văn bản (chặn đổi `pham_vi`, diff ghi log thêm/bớt người xem) |
+| `DELETE` | `/api/documents/{id}/` | Quyền xóa | Xóa văn bản thường (chặn xóa văn bản `HAN_CHE`) |
+| `GET` | `/api/documents/{id}/attachments/{tep_id}/download/` | Đăng nhập | Tải file đính kèm (ghi log `TAI_FILE` hoặc `BI_TU_CHOI`) |
+| `GET` | `/api/documents/{id}/viewers/` | Đăng nhập | Xem danh sách cán bộ đã đọc văn bản nội bộ |
+| `GET` | `/api/documents/template/?loai=...` | Đăng nhập | Xuất file Excel mẫu trực tiếp từ DB |
+| `POST` | `/api/documents/import/` | `add_*` | Import văn bản từ file Excel |
+| `GET` | `/api/documents/export/?loai=...` | Đăng nhập | Export danh sách văn bản theo bộ lọc |
 
 ---
 
 ## 🧪 4. Trạng Thái Kiểm Thử (Quality Gate)
 
-- **Backend Django Check**: `python manage.py check` ➔ **0 issues**
-- **Unit Tests Module Văn Bản**: `python manage.py test documents` ➔ **23/23 tests PASS (100%)**
-- **Test File Upload Phân Vùng Động**: Đạt chuẩn `02_documents/den/`, `di/`, `mat/`.
+- **Backend Django Check**: `python manage.py check` ➔ **0 issues (OK)**
+- **Backend Unit Tests**: `python manage.py test documents` ➔ **54/54 tests PASS (100%)**
+- **Frontend Vitest**: `npm test` ➔ **67/67 tests PASS (100%)**
+- **Đồng bộ mã nguồn**: Đã đồng bộ hoàn chỉnh giữa upstream và nhánh phát triển của nhóm.

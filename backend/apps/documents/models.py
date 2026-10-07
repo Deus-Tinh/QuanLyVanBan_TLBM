@@ -21,6 +21,7 @@ hoàn toàn với các endpoint API chung và code hiện hữu.
 
 import os
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -28,6 +29,11 @@ from django.utils import timezone
 # ═══════════════════════════════════════════════════════════════════
 # ENUM & Choices
 # ═══════════════════════════════════════════════════════════════════
+
+class PhamVi(models.TextChoices):
+    NOI_BO = "NOI_BO", "Nội bộ"
+    HAN_CHE = "HAN_CHE", "Hạn chế"
+
 
 class LoaiVanBan(models.TextChoices):
     DEN = "DEN", "Văn bản Đến"
@@ -52,8 +58,19 @@ class BaseVanBan(models.Model):
     Đến, Đi, Mật.
     """
 
+    PhamVi = PhamVi
     HieuLuc = HieuLuc
     LoaiVanBan = LoaiVanBan
+
+    # ── Phạm vi lưu hành (Issue #82: NOI_BO / HAN_CHE) ────────────
+    pham_vi = models.CharField(
+        "Phạm vi",
+        max_length=20,
+        choices=PhamVi.choices,
+        default=PhamVi.NOI_BO,
+        db_index=True,
+        help_text="NOI_BO: Văn bản nội bộ; HAN_CHE: Văn bản hạn chế (mật nội bộ).",
+    )
 
     # ── Năm & Ký hiệu ──────────────────────────────────────────────
     nam = models.PositiveSmallIntegerField(
@@ -136,6 +153,27 @@ class BaseVanBan(models.Model):
     class Meta:
         abstract = True
 
+    def clean(self):
+        super().clean()
+        if self.pham_vi == self.PhamVi.HAN_CHE and self.gui_mail_toan_he_thong:
+            raise ValidationError(
+                {"gui_mail_toan_he_thong": "Văn bản hạn chế không được phép gửi email toàn hệ thống."}
+            )
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old_inst = self.__class__.objects.filter(pk=self.pk).values("pham_vi").first()
+            if old_inst and old_inst["pham_vi"] != self.pham_vi:
+                raise ValidationError("Phạm vi văn bản không được đổi sau khi tạo.")
+        if self.pham_vi == self.PhamVi.HAN_CHE:
+            self.gui_mail_toan_he_thong = False
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.pham_vi == self.PhamVi.HAN_CHE:
+            raise ValidationError("Văn bản hạn chế không được phép xóa.")
+        return super().delete(*args, **kwargs)
+
     @property
     def is_expired(self):
         """Kiểm tra văn bản đã hết hiệu lực chưa."""
@@ -201,7 +239,15 @@ class VanBanDen(BaseVanBan):
             models.Index(fields=["ngay_den"], name="idx_vbden_ngay_den"),
         ]
         constraints = [
-            models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbanden_nam_stt")
+            models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbanden_nam_stt"),
+            models.CheckConstraint(
+                condition=models.Q(pham_vi__in=["NOI_BO", "HAN_CHE"]),
+                name="chk_vanbanden_pham_vi",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(pham_vi="HAN_CHE") | models.Q(gui_mail_toan_he_thong=False),
+                name="chk_vanbanden_han_che_khong_mail_toan_he_thong",
+            ),
         ]
 
     def get_loai_display(self):
@@ -270,7 +316,15 @@ class VanBanDi(BaseVanBan):
             models.Index(fields=["ngay_ban_hanh"], name="idx_vbdi_ngay_ban_hanh"),
         ]
         constraints = [
-            models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbandi_nam_stt")
+            models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbandi_nam_stt"),
+            models.CheckConstraint(
+                condition=models.Q(pham_vi__in=["NOI_BO", "HAN_CHE"]),
+                name="chk_vanbandi_pham_vi",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(pham_vi="HAN_CHE") | models.Q(gui_mail_toan_he_thong=False),
+                name="chk_vanbandi_han_che_khong_mail_toan_he_thong",
+            ),
         ]
 
     def get_loai_display(self):
@@ -531,6 +585,83 @@ class DocumentViewLog(models.Model):
 
     def __str__(self):
         return f"{self.user} xem {self.document_type}#{self.document_id} lúc {self.viewed_at}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# DocumentAccessLog (documents_access_log - Issue #82 & PR #92 DDL)
+# ═══════════════════════════════════════════════════════════════════
+
+class DocumentAccessLog(models.Model):
+    """
+    Nhật ký truy cập văn bản hạn chế (documents_access_log).
+    Chỉ ghi cho văn bản pham_vi = 'HAN_CHE'. WORM (Write-Once-Read-Many): Không sửa/xóa.
+    hanh_dong: XEM | TAI_FILE | BI_TU_CHOI | THEM_NGUOI_XEM | BOT_NGUOI_XEM.
+    """
+
+    class HanhDong(models.TextChoices):
+        XEM = "XEM", "Xem"
+        TAI_FILE = "TAI_FILE", "Tải file"
+        BI_TU_CHOI = "BI_TU_CHOI", "Bị từ chối"
+        THEM_NGUOI_XEM = "THEM_NGUOI_XEM", "Thêm người xem"
+        BOT_NGUOI_XEM = "BOT_NGUOI_XEM", "Bớt người xem"
+
+    document_type = models.CharField("Loại văn bản", max_length=20)
+    document_id = models.BigIntegerField("ID văn bản")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Người thực hiện",
+        on_delete=models.RESTRICT,
+        related_name="document_access_logs",
+        db_column="user_id",
+    )
+    hanh_dong = models.CharField(
+        "Hành động",
+        max_length=20,
+        choices=HanhDong.choices,
+    )
+    doi_tuong_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Người bị thêm/bớt",
+        on_delete=models.RESTRICT,
+        null=True,
+        blank=True,
+        related_name="document_access_target_logs",
+        db_column="doi_tuong_user_id",
+    )
+    tep_id = models.BigIntegerField("ID tệp tin", null=True, blank=True)
+    dia_chi_ip = models.CharField("Địa chỉ IP", max_length=45, null=True, blank=True)
+    created_at = models.DateTimeField("Thời điểm", auto_now_add=True)
+
+    class Meta:
+        db_table = "documents_access_log"
+        verbose_name = "Nhật ký truy cập văn bản hạn chế"
+        verbose_name_plural = "Nhật ký truy cập văn bản hạn chế"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["document_type", "document_id", "created_at"], name="idx_access_log_doc"),
+            models.Index(fields=["user", "created_at"], name="idx_access_log_user"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(hanh_dong__in=["XEM", "TAI_FILE", "BI_TU_CHOI", "THEM_NGUOI_XEM", "BOT_NGUOI_XEM"]),
+                name="chk_access_log_hanh_dong",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(hanh_dong__in=["THEM_NGUOI_XEM", "BOT_NGUOI_XEM"]) | models.Q(doi_tuong_user__isnull=False),
+                name="chk_access_log_doi_tuong",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("Nhật ký truy cập văn bản hạn chế không được phép chỉnh sửa.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Nhật ký truy cập văn bản hạn chế không được phép xóa.")
+
+    def __str__(self):
+        return f"[{self.hanh_dong}] {self.user} - {self.document_type}#{self.document_id} lúc {self.created_at}"
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -13,6 +13,7 @@ from .filters import DocumentFilter, ViewerFilter
 from .models import (
     HieuLuc,
     LoaiVanBan,
+    PhamVi,
     VanBanDen,
     VanBanDenAttachment,
     VanBanDi,
@@ -20,6 +21,7 @@ from .models import (
     VanBanMat,
     VanBanMatAttachment,
     DocumentViewLog,
+    DocumentAccessLog,
     Document,
     DocumentAttachment,
 )
@@ -380,6 +382,57 @@ class DocumentAPITests(TestCase):
         res_mat = self.client.get("/api/documents/mat/")
         self.assertEqual(res_mat.status_code, status.HTTP_200_OK)
 
+    def test_create_without_permission_denied(self):
+        """Issue #61 Lỗi 1: User không có quyền tạo văn bản bị chặn 403 Forbidden."""
+        response = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "99/CV-TEST",
+                "trich_yeu": "Test không quyền",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_het_va_thay_the_without_link_rejected(self):
+        """Issue #61 Lỗi 2: HET_VA_THAY_THE bắt buộc phải có link_thay_the."""
+        self.user.is_staff = True
+        self.user.save()
+        response = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "100/CV-TEST",
+                "trich_yeu": "Test thay thế rỗng",
+                "hieu_luc": HieuLuc.HET_VA_THAY_THE,
+                "link_thay_the": "",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("link_thay_the", response.data)
+
+    def test_create_returns_id_in_response(self):
+        """Issue #61 Lỗi 3: Tạo văn bản thành công phải trả về trường id trong response."""
+        self.user.is_staff = True
+        self.user.save()
+        response = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "101/CV-TEST",
+                "trich_yeu": "Test có id",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("id", response.data)
+        self.assertIsNotNone(response.data["id"])
+
 
 class ConfidentialDocumentSecurityTests(TestCase):
     """Kiểm thử bảo mật Văn bản Mật."""
@@ -702,3 +755,289 @@ class DocumentPermissionOption2Tests(TestCase):
         doc_b.refresh_from_db()
         self.assertEqual(doc_b.hieu_luc, HieuLuc.CON_HIEU_LUC)
         self.assertEqual(doc_b.link_thay_the, "")
+
+
+class RestrictedDocumentSecurityIssue82Tests(TestCase):
+    """
+    Bộ kiểm thử toàn diện cho Issue #82 & PR #92:
+    Văn bản hạn chế (pham_vi = 'HAN_CHE'), hàm xem dùng chung, và nhật ký truy cập (DocumentAccessLog).
+    """
+
+    def setUp(self):
+        self.creator = User.objects.create_user(username="creator_user", password="pwd", is_staff=True)
+        self.recipient1 = User.objects.create_user(username="recipient_1", password="pwd")
+        self.recipient2 = User.objects.create_user(username="recipient_2", password="pwd")
+        self.stranger = User.objects.create_user(username="stranger_user", password="pwd")
+        self.other_staff = User.objects.create_user(username="other_staff", password="pwd", is_staff=True)
+        self.superuser = User.objects.create_superuser(username="admin_super", password="pwd", email="admin@corp.vn")
+
+        # Tạo văn bản hạn chế mẫu
+        self.doc_han_che = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="01/HC-2026",
+            so_thu_tu=1,
+            trich_yeu="Văn bản hạn chế mật nội bộ công ty",
+            pham_vi=PhamVi.HAN_CHE,
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.creator,
+        )
+        self.doc_han_che.nguoi_nhan.add(self.recipient1)
+
+    def test_restricted_document_requires_at_least_one_recipient_on_create(self):
+        """Văn bản hạn chế bắt buộc phải có ít nhất một người nhận khi tạo mới."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        response = client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "02/HC-FAIL",
+                "trich_yeu": "Thử tạo không người nhận",
+                "pham_vi": "HAN_CHE",
+                "nguoi_nhan": [],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("nguoi_nhan", response.data)
+
+    def test_restricted_document_rejects_system_wide_mail(self):
+        """Văn bản hạn chế không được phép bật gửi mail toàn hệ thống."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        response = client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "03/HC-MAIL",
+                "trich_yeu": "Thử gửi mail toàn hệ thống",
+                "pham_vi": "HAN_CHE",
+                "gui_mail_toan_he_thong": True,
+                "nguoi_nhan": [self.recipient1.id],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("gui_mail_toan_he_thong", response.data)
+
+    def test_create_restricted_document_logs_them_nguoi_xem(self):
+        """Khi tạo mới văn bản hạn chế, hệ thống tự động ghi log THEM_NGUOI_XEM cho các người nhận ban đầu."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        response = client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "04/HC-SUCCESS",
+                "trich_yeu": "Tạo văn bản hạn chế thành công",
+                "pham_vi": "HAN_CHE",
+                "nguoi_nhan": [self.recipient1.id, self.recipient2.id],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_id = response.data["id"]
+
+        logs = DocumentAccessLog.objects.filter(document_id=new_id, hanh_dong="THEM_NGUOI_XEM")
+        self.assertEqual(logs.count(), 2)
+        target_ids = set(logs.values_list("doi_tuong_user_id", flat=True))
+        self.assertEqual(target_ids, {self.recipient1.id, self.recipient2.id})
+
+    def test_creator_and_recipient_can_view_and_logs_xem(self):
+        """Người tạo và người nhận trong danh sách xem được văn bản hạn chế và được ghi log XEM."""
+        client = APIClient()
+
+        # 1. Người tạo xem
+        client.force_authenticate(user=self.creator)
+        res_list = client.get("/api/documents/?loai=DEN")
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+        ids = [doc["id"] for doc in res_list.data.get("results", res_list.data)]
+        self.assertIn(self.doc_han_che.id, ids)
+
+        res_detail = client.get(f"/api/documents/{self.doc_han_che.id}/")
+        self.assertEqual(res_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_detail.data["pham_vi"], "HAN_CHE")
+        self.assertEqual(res_detail.data["pham_vi_display"], "Hạn chế")
+
+        # 2. Người nhận xem
+        client.force_authenticate(user=self.recipient1)
+        res_rec_detail = client.get(f"/api/documents/{self.doc_han_che.id}/")
+        self.assertEqual(res_rec_detail.status_code, status.HTTP_200_OK)
+
+        # Kiểm tra nhật ký XEM
+        view_logs = DocumentAccessLog.objects.filter(
+            document_id=self.doc_han_che.id,
+            hanh_dong="XEM",
+        )
+        self.assertTrue(view_logs.filter(user=self.creator).exists())
+        self.assertTrue(view_logs.filter(user=self.recipient1).exists())
+
+    def test_unauthorized_user_and_superuser_get_404_and_logs_bi_tu_choi(self):
+        """
+        Tài khoản không thuộc danh sách, KỂ CẢ SUPERUSER, nhận 404 như không tồn tại,
+        và mỗi lần thử truy cập đều bị ghi log BI_TU_CHOI.
+        """
+        client = APIClient()
+
+        # 1. Người lạ (stranger)
+        client.force_authenticate(user=self.stranger)
+        res_stranger_list = client.get("/api/documents/?loai=DEN")
+        stranger_ids = [doc["id"] for doc in res_stranger_list.data.get("results", res_stranger_list.data)]
+        self.assertNotIn(self.doc_han_che.id, stranger_ids)
+
+        res_stranger_detail = client.get(f"/api/documents/{self.doc_han_che.id}/")
+        self.assertEqual(res_stranger_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+        # 2. Superuser (Tuyệt đối KHÔNG có ngoại lệ)
+        client.force_authenticate(user=self.superuser)
+        res_super_list = client.get("/api/documents/?loai=DEN")
+        super_ids = [doc["id"] for doc in res_super_list.data.get("results", res_super_list.data)]
+        self.assertNotIn(self.doc_han_che.id, super_ids)
+
+        res_super_detail = client.get(f"/api/documents/{self.doc_han_che.id}/")
+        self.assertEqual(res_super_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Kiểm tra nhật ký BI_TU_CHOI
+        rejected_logs = DocumentAccessLog.objects.filter(
+            document_id=self.doc_han_che.id,
+            hanh_dong="BI_TU_CHOI",
+        )
+        self.assertTrue(rejected_logs.filter(user=self.stranger).exists())
+        self.assertTrue(rejected_logs.filter(user=self.superuser).exists())
+
+    def test_inactive_user_cannot_view_restricted_document(self):
+        """Tài khoản bị khóa (is_active = False) mất hoàn toàn quyền xem, kể cả đã là người nhận."""
+        self.recipient1.is_active = False
+        self.recipient1.save()
+
+        client = APIClient()
+        client.force_authenticate(user=self.recipient1)
+
+        res_detail = client.get(f"/api/documents/{self.doc_han_che.id}/")
+        self.assertEqual(res_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cannot_delete_restricted_document(self):
+        """Văn bản hạn chế KHÔNG ĐƯỢC PHÉP XÓA (bị chặn ở cả API và Model level)."""
+        client = APIClient()
+
+        # Thử xóa bằng người tạo
+        client.force_authenticate(user=self.creator)
+        res_del_creator = client.delete(f"/api/documents/{self.doc_han_che.id}/")
+        self.assertEqual(res_del_creator.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("không được phép xóa", str(res_del_creator.data))
+
+        # Thử xóa bằng superuser
+        client.force_authenticate(user=self.superuser)
+        res_del_super = client.delete(f"/api/documents/{self.doc_han_che.id}/")
+        # Superuser nhận 404 (vì không xem được) hoặc 403
+        self.assertIn(res_del_super.status_code, [status.HTTP_404_NOT_FOUND, status.HTTP_403_FORBIDDEN])
+
+        # Đảm bảo văn bản vẫn còn nguyên trong DB
+        self.assertTrue(VanBanDen.objects.filter(id=self.doc_han_che.id).exists())
+
+    def test_cannot_change_pham_vi_after_creation(self):
+        """Không được phép đổi phạm vi văn bản sau khi tạo (API từ chối)."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        response = client.patch(
+            f"/api/documents/{self.doc_han_che.id}/",
+            {"pham_vi": "NOI_BO"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("pham_vi", response.data)
+
+        self.doc_han_che.refresh_from_db()
+        self.assertEqual(self.doc_han_che.pham_vi, PhamVi.HAN_CHE)
+
+    def test_update_recipients_logs_them_and_bot_nguoi_xem(self):
+        """Thêm / bớt người xem văn bản hạn chế ghi log đúng THEM_NGUOI_XEM và BOT_NGUOI_XEM."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        # Cập nhật: bớt recipient1, thêm recipient2
+        response = client.patch(
+            f"/api/documents/{self.doc_han_che.id}/",
+            {"nguoi_nhan": [self.recipient2.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Kiểm tra nhật ký
+        added_log = DocumentAccessLog.objects.filter(
+            document_id=self.doc_han_che.id,
+            hanh_dong="THEM_NGUOI_XEM",
+            doi_tuong_user=self.recipient2,
+        ).first()
+        self.assertIsNotNone(added_log)
+        self.assertEqual(added_log.user, self.creator)
+
+        removed_log = DocumentAccessLog.objects.filter(
+            document_id=self.doc_han_che.id,
+            hanh_dong="BOT_NGUOI_XEM",
+            doi_tuong_user=self.recipient1,
+        ).first()
+        self.assertIsNotNone(removed_log)
+        self.assertEqual(removed_log.user, self.creator)
+
+    def test_download_attachment_access_control_and_logging(self):
+        """Tải file đính kèm văn bản hạn chế: Người được cấp tải được (ghi TAI_FILE), người lạ nhận 404 (ghi BI_TU_CHOI)."""
+        simple_file = SimpleUploadedFile("mat_noi_bo.pdf", b"Secret PDF content", content_type="application/pdf")
+        att = VanBanDenAttachment.objects.create(
+            document=self.doc_han_che,
+            file=simple_file,
+            name="mat_noi_bo.pdf",
+            file_size=18,
+            created_user=self.creator,
+        )
+
+        client = APIClient()
+
+        # 1. Người lạ tải file -> nhận 404 và ghi BI_TU_CHOI
+        client.force_authenticate(user=self.stranger)
+        res_stranger = client.get(f"/api/documents/{self.doc_han_che.id}/attachments/{att.id}/download/")
+        self.assertEqual(res_stranger.status_code, status.HTTP_404_NOT_FOUND)
+
+        rej_log = DocumentAccessLog.objects.filter(
+            document_id=self.doc_han_che.id,
+            hanh_dong="BI_TU_CHOI",
+            tep_id=att.id,
+            user=self.stranger,
+        ).first()
+        self.assertIsNotNone(rej_log)
+
+        # 2. Người nhận tải file -> nhận 200 và ghi TAI_FILE
+        client.force_authenticate(user=self.recipient1)
+        res_recipient = client.get(f"/api/documents/{self.doc_han_che.id}/attachments/{att.id}/download/")
+        self.assertEqual(res_recipient.status_code, status.HTTP_200_OK)
+
+        down_log = DocumentAccessLog.objects.filter(
+            document_id=self.doc_han_che.id,
+            hanh_dong="TAI_FILE",
+            tep_id=att.id,
+            user=self.recipient1,
+        ).first()
+        self.assertIsNotNone(down_log)
+
+    def test_document_access_log_is_worm_immutable(self):
+        """Nhật ký DocumentAccessLog tuân thủ WORM: Không được sửa và không được xóa."""
+        log = DocumentAccessLog.objects.create(
+            document_type="vanbanden",
+            document_id=self.doc_han_che.id,
+            user=self.creator,
+            hanh_dong=DocumentAccessLog.HanhDong.XEM,
+        )
+        from django.core.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            log.save()
+
+        with self.assertRaises(ValidationError):
+            log.delete()
+
