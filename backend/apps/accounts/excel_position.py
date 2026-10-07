@@ -10,7 +10,7 @@ import openpyxl
 from django.db import IntegrityError, transaction
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-from .models import Position
+from .models import MAX_DISPLAY_ORDER, Position
 
 HEADERS = ["STT ưu tiên", "Tên chức vụ (*)", "Hiển thị công khai (Có/Không)", "Ghi chú"]
 MAX_ROWS = 1000
@@ -94,6 +94,8 @@ def _parse_stt(raw):
             return None, "positions.import.errors.invalidStt"
     if not isinstance(raw, int) or raw < 1:
         return None, "positions.import.errors.invalidStt"
+    if raw > MAX_DISPLAY_ORDER:
+        return None, "positions.messages.sttTooLarge"
     return raw, None
 
 
@@ -196,6 +198,9 @@ def import_positions_from_excel(file_obj) -> dict:
     # Dòng không có STT lấy số lớn nhất + 1, tránh cả các STT khai báo tường minh trong file.
     reserved = existing_stt | set(seen_stt)
     next_stt = max(reserved, default=0) + 1
+    if next_stt > MAX_DISPLAY_ORDER:
+        # STT lớn nhất đã chạm trần cột INTEGER: bắt đầu tìm số trống từ 1 (vòng while bên dưới bỏ qua số đã dùng).
+        next_stt = 1
     imported = 0
     for row_number, stt, name, is_public, note in candidates:
         if stt is None:

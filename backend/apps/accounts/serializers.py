@@ -11,7 +11,7 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from organizations.models import DonVi
-from .models import Employee, Position, vietnam_phone_regex
+from .models import MAX_DISPLAY_ORDER, Employee, Position, vietnam_phone_regex
 
 # Giao diện dùng 'dang_lam_viec' / 'nghi_viec'; CSDL (ENUM employee_work_status) dùng 'LAM_VIEC' / 'NGHI_VIEC'.
 STATUS_API_TO_DB = {
@@ -63,8 +63,10 @@ class PositionSerializer(serializers.ModelSerializer):
         source="display_order",
         required=False,
         min_value=1,
+        max_value=MAX_DISPLAY_ORDER,
         error_messages={
             "min_value": "positions.messages.sttInvalid",
+            "max_value": "positions.messages.sttTooLarge",
             "invalid": "positions.messages.sttInvalid",
         },
     )
@@ -79,7 +81,8 @@ class PositionSerializer(serializers.ModelSerializer):
         },
     )
     ghi_chu = serializers.CharField(source="note", required=False, allow_blank=True, allow_null=True)
-    is_public = serializers.BooleanField(required=False, default=True)
+    # Không đặt default: cập nhật (PUT) thiếu trường này không được âm thầm đổi chức vụ Nội bộ thành Công khai; tạo mới dùng default của model (True).
+    is_public = serializers.BooleanField(required=False)
 
     class Meta:
         model = Position

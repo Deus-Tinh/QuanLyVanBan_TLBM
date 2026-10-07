@@ -667,6 +667,7 @@
       "nameTooLong": "Position name must be at most 255 characters.",
       "nameExists": "This position name already exists.",
       "sttInvalid": "Priority number must be a positive integer.",
+      "sttTooLarge": "Priority number must be at most 2147483647.",
       "sttExists": "This priority number is already in use. Please choose another.",
       "notFound": "Position not found.",
       "inUse": "This position cannot be deleted because it is assigned to staff members.",
