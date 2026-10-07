@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
@@ -11,13 +11,15 @@ from signing.models import (
     SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
 
+User = get_user_model()
+
 H1, H2 = "a" * 64, "b" * 64
 
 
 class Base(TestCase):
     def setUp(self):
-        self.u1 = User.objects.create_user("u1", password="p")
-        self.u2 = User.objects.create_user("u2", password="p")
+        self.u1 = User.objects.create_user("u1")
+        self.u2 = User.objects.create_user("u2")
         self.process = SigningProcess.objects.create(
             ma_quy_trinh="QT", ten_quy_trinh="QT", pham_vi=enums.PhamViQuyTrinh.CONG_TY,
             kieu_ky_mac_dinh=enums.KieuKy.TUAN_TU, create_by=self.u1,

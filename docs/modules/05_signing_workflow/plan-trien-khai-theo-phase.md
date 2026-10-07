@@ -20,11 +20,13 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 3 | 11 model còn lại + bất biến ở tầng model | Phase 2 | Hoàn thành (`e51cfda`) |
 | 4 | Service quy trình và khóa ký, ghi nhật ký | Phase 3 | Hoàn thành (`97e5950`) |
 | 5 | API quy trình và khóa ký, giới hạn theo quyền sở hữu | Phase 4 | Hoàn thành (`64ea1cd`) |
-| 6 | Phân quyền theo 8 quyền của phân hệ; bảo vệ khóa ký bằng PIN (Argon2id + `k_srv`) | Chốt model người dùng và cách gán quyền | Chờ quyết định |
-| 7 | Yêu cầu trình ký, lượt trình, snapshot người ký | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) | Chờ nhóm liên quan |
-| 8 | Hành động ký, từ chối, thu hồi; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
-| 9 | Yêu cầu chỉnh sửa, ủy quyền, hạn xử lý, thông báo | Phase 8 | Chờ Phase 8 |
-| 10 | Phẳng hóa PDF, adapter pháp lý, frontend | Phase 8; chốt hệ tọa độ vị trí ký | Chờ |
+| 6a | Bảo vệ khóa ký bằng PIN (Argon2id + `k_srv`): model, service, API, nhật ký | Phase 5 | Hoàn thành (nhánh `feat/signing-phase6-pin`) |
+| 6b | Kiểm quyền API quy trình và khóa ký theo codename DDL (issue #64); quản trị mở lại PIN bị khóa cứng | RBAC Nhóm 7 (`require_permission`) | Hoàn thành phần kiểm quyền API; mở lại PIN khóa cứng chưa làm |
+| 6c | Điều chỉnh theo đánh giá nghiệp vụ: bỏ `kieu_ky*`, xoay vòng `k_srv` khi đổi PIN, đồng bộ DDL | Duyệt `danh-gia-nghiep-vu-va-de-xuat.md` | Chưa làm |
+| 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; `trinh-lai` | Bảng văn bản (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7); pháp chế xác nhận văn bản mật | Chờ nhóm liên quan |
+| 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Chờ Phase 7 |
+| 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Chờ Phase 8 |
+| 10 | Phẳng hóa PDF theo thể thức; ký số từ xa (adapter); cấp số qua hệ thống Nhóm 2 và ký số cơ quan; frontend | Phase 8; chốt hệ tọa độ vị trí ký; contract cấp số với Nhóm 2 | Chờ |
 
 ## 3. Chi tiết các phase
 
@@ -40,7 +42,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 
 ### Phase 3 — Các model còn lại
 - `SigningProcessStepSigner`, `SigningRequest`, `SigningAttempt`, `SigningRequestStep`, `SigningRequestStepSigner`, `SigningSignature`, `SigningManifest`, `SigningChangeThread`, `SigningChangeMessage`, `SigningAuditLog`, `SigningNotification`.
-- Văn bản: `document_type` (đến/đi) + `van_ban_id`, không FK.
+- Văn bản: `document_type` (đến/đi/mật) + `van_ban_id`, không FK.
 - Chức vụ: `chuc_vu_id` số nguyên cho phép rỗng tạm thời; CHECK "người ký hoặc chức vụ" khai báo ngay.
 - Ràng buộc unique, CHECK SHA-256, CHECK nhật ký luồng ký, CHECK lý do ủy quyền theo `signing-backend-plan.md` mục 5.2, 5.3.
 - Bất biến ở tầng model (môi trường SQLite chưa có trigger): chặn sửa chữ ký (trừ trường xác minh), chặn sửa/xóa manifest `DA_CHOT`, nhật ký chỉ ghi thêm.
@@ -56,19 +58,53 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 - Challenge chứng minh sở hữu khóa là chuỗi cố định gắn dấu vân tay khóa, chưa có TTL/dùng một lần (xem `signing-backend-plan.md` mục 3.4).
 - Xác thực bắt buộc; giới hạn theo người sở hữu/người tạo ở server. Phân quyền chi tiết để Phase 6.
 
-### Phase 6 — Phân quyền (chờ quyết định)
-- 8 quyền theo CSDL chung: `view_trinhky`, `add_trinhky`, `sign_trinhky`, `manage_signing_process`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit`.
-- Cần chốt: model người dùng của hệ thống (`accounts_employee` hay `auth.User`) và cách kiểm tra quyền ở tầng API.
-- Bảo vệ khóa ký bằng PIN theo `signing-backend-plan.md` mục 3.4: bảng `signing_key_unlock`, endpoint `dat-pin`, `mo-khoa-ky`, `doi-pin`, khóa theo số lần sai (5 lần: 15 phút; 10 lần: khóa cứng), nhật ký sự kiện PIN. Service và model nằm ở backend; phần Argon2id WASM nằm ở frontend (Phase 10).
-- Test: sai PIN quá ngưỡng bị khóa; bộ đếm đúng khi gọi đồng thời; `k_srv` chỉ trả sau khi xác minh; không có endpoint nào trả bản bọc hoặc PIN.
+### Phase 6a — Bảo vệ khóa ký bằng PIN (hoàn thành)
+- Model `SigningKeyUnlock` (bảng `signing_key_unlock`, migration `0003_mo_khoa_ky_bang_pin`).
+- `services/pin.py`: `dat_pin`, `mo_khoa_ky`, `doi_pin`. Server nhận `xac_minh_pin` = Base64 của verifier 32 byte, không nhận PIN.
+- Lưu HMAC-SHA256(verifier) và `k_srv` mã hóa AES-256-GCM (gắn với id + dấu vân tay khóa); khóa dẫn xuất HKDF từ `SIGNING_PIN_SECRET` (dev: `SECRET_KEY`).
+- Sai 5 lần khóa 15 phút; sai 10 lần khóa cứng (HTTP 423). Bộ đếm cập nhật dưới `select_for_update` và commit trước khi trả lỗi.
+- Tham số Argon2id kiểm tra mức sàn `m >= 65536 KiB, t >= 3, p >= 1`. Chính sách PIN 8 chữ số kiểm tra ở frontend (server không thấy PIN).
+- Test: `tests/test_pin_phase6.py` (khóa theo ngưỡng, đếm đồng thời trên PostgreSQL, `k_srv` chỉ trả sau xác minh, không trả PIN/hash/bản bọc).
+
+### Phase 6b — Phân quyền (kiểm quyền API hoàn thành, issue #64)
+- Mô hình người dùng đã chốt ở #53: `accounts.Employee` qua `settings.AUTH_USER_MODEL`; kiểm quyền bằng codename trần theo DDL (RBAC Nhóm 7).
+- `signing/permissions.py`: `co_quyen(user, codename)` và `yeu_cau_quyen(...)` (403 `khong_co_quyen`, `fields.quyen` là codename thiếu). Có `authorization.backends.RbacBackend` thì dùng `user.has_perm(codename)`; chưa có thì tra quyền riêng và quyền theo nhóm. Superuser luôn được phép; tài khoản `is_active = False` không có quyền.
+- Ánh xạ quyền cho API đã có:
+
+| API | Quyền |
+|---|---|
+| `GET /quy-trinh/`, `GET /quy-trinh/{id}/` | `view_trinhky` (chỉ thấy `HOAT_DONG`) hoặc `manage_signing_process` (thấy mọi trạng thái) |
+| `POST /quy-trinh/`, `kich-hoat`, `ngung`, `nhan-ban` | `manage_signing_process`; người có quyền thao tác được trên mọi quy trình (cấu hình chung của cơ quan, không giới hạn người tạo) |
+| `POST /khoa/`, `xac-minh`, `kich-hoat`, `xoay-vong`, `dat-pin`, `mo-khoa-ky`, `doi-pin` | `sign_trinhky` |
+| `GET /khoa/`, `GET thach-thuc`, `POST thu-hoi` | Chỉ cần đăng nhập, giới hạn khóa của chính mình (người bị gỡ quyền ký vẫn thu hồi được khóa) |
+
+- Kích hoạt phiên bản mới tự ngừng phiên bản đang hoạt động cùng mã (`signing-backend-plan.md` mục 3.1); khóa mọi phiên bản cùng mã theo thứ tự `pk`.
+- Chưa làm: quản trị mở lại PIN bị khóa cứng (người dùng vẫn tự thu hồi khóa và đăng ký khóa mới được); `add_trinhky`, `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` áp dụng khi có API ở Phase 7–9.
+- Test: `PermissionApiTests` trong `tests/test_api_phase5.py`, `test_pin_endpoints_require_sign_permission` trong `tests/test_pin_phase6.py`. Test tạo người dùng qua `get_user_model()`, không import `auth.User` (#68 mục C3).
+
+### Phase 6c — Điều chỉnh theo đánh giá nghiệp vụ (chưa làm)
+Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng model đã có.
+- Bỏ `signing_process.kieu_ky_mac_dinh`, `signing_request.kieu_ky` và enum `KieuKy` (migration `0004`); sửa `services/process.py`, serializer, test Phase 4–5. Cấp luôn tuần tự, song song là nhiều người trong một cấp.
+- Thu hẹp `LoaiVanBan` về `vanbandi` cho MVP (giữ cột `document_type`).
+- `doi-pin` xoay vòng `k_srv`: sinh mảnh mới, trả `manh_bi_mat_cu` và `manh_bi_mat`; nhật ký `DOI_PIN` ghi cờ xoay vòng. Test: sau đổi PIN, `k_srv` cũ không còn mở được bản bọc mới.
+- Đề xuất nhóm CSDL sửa DDL base đồng bộ: bỏ `kieu_ky*`, bỏ default `vanbanden`, thêm các cột/bảng mới của Phase 7–9 (dưới đây).
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
-- Văn bản mật hành chính đã bỏ; văn bản hạn chế `HAN_CHE` không đi qua trình ký (từ chối ở API tạo phiếu khi #82 có `pham_vi`).
-- Trước Phase 7 cần xác nhận pháp chế: hình thức ký thay (KT., TL., TUQ.) và thời hạn ủy quyền.
-- Phase 7: cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
-- Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL.
-- Phase 9: nhắc hạn cần cấu hình tác vụ định kỳ.
-- Phase 10: cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF); dòng nhận diện "bản duyệt nội bộ, chưa phát hành" trên tệp hoàn tất; màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
+- Văn bản mật đã bỏ (GVHD chốt, DDL #81); trình ký chỉ nhận `vanbandi` thường. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) không đi qua trình ký: Phase 7 từ chối ở API tạo hồ sơ khi #82 có `pham_vi`. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
+- Phase 7:
+  - Cần bảng văn bản, `Chức vụ`, `Đơn vị`; thay các trường số nguyên tạm bằng FK.
+  - Thêm `signing_process.don_vi_ap_dung`; kiểm quyền quy trình `PHONG_BAN` theo lãnh đạo đơn vị.
+  - Thêm `signing_process_step_signer.pham_vi_chuc_vu`; `gui` resolve chức vụ tương đối, nhận `chon_nguoi_ky` khi nhiều ứng viên.
+  - Thêm `signing_request.ho_so_goc`; API `trinh-lai` thay `xem-xet-lai`; `TU_CHOI` là trạng thái kết thúc.
+- Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL. Thu hồi chữ ký theo điều kiện "cấp còn mở".
+- Phase 9:
+  - Bảng `signing_delegation`, cột `hinh_thuc_ky`, `uy_quyen_theo`; áp ủy quyền khi mở cấp; ủy quyền khẩn cấp chỉ cấp trên trực tiếp/quản trị, người nhận thuộc danh sách hợp lệ.
+  - Nhắc hạn, nhắc lặp, leo thang 48 giờ cho cấp trên trực tiếp; báo cáo trễ hạn. Cần cấu hình tác vụ định kỳ và dữ liệu cấp trên trực tiếp (Nhóm 7).
+- Phase 10:
+  - Phẳng hóa in khối chữ ký theo `hinh_thuc_ky`, chừa ô số/ngày.
+  - `LegalSignerAdapter` theo mô hình ký số từ xa; khi có CA, ký chính cấp cuối dùng adapter thay Ed25519.
+  - Hệ thống sổ văn bản đi của Nhóm 2 cấp số, thời gian ban hành (NĐ 30/2020 Điều 15); văn thư ký số cơ quan, chuyển trạng thái phát hành.
+  - Cần chốt hệ tọa độ vị trí ký (tỷ lệ % hoặc điểm PDF); dòng nhận diện "bản duyệt nội bộ, chưa phát hành" trên tệp hoàn tất; màn hình ký hiển thị tên tệp và mã băm cùng ô nhập PIN; module Argon2id WASM.
 
 ## 4. Đối chiếu CSDL chung sau issue #47
 
@@ -76,9 +112,22 @@ Bản `csdl_qlvbtl_schema_final.sql` đính kèm phản hồi issue #47 đã đ�
 
 Các điểm lệch còn lại cần xác nhận:
 
-1. `signing_request.document_type` có `DEFAULT 'vanbanden'`. Khi dữ liệu thiếu, văn bản đi bị ghi nhầm thành văn bản đến. Đề xuất bỏ giá trị mặc định.
+1. `signing_request.document_type` có `DEFAULT 'vanbanden'`. Khi dữ liệu thiếu, văn bản đi hoặc mật bị ghi nhầm thành văn bản đến. Đề xuất bỏ giá trị mặc định.
 2. Kiểu enum `signing_key_status` (`PENDING`, `ROTATED`...) không khớp trạng thái khóa dùng ở phân hệ (`CHO_KICH_HOAT`, `DA_XOAY_VONG`...), và cột `signing_key.trang_thai` không dùng kiểu này. Đề xuất bỏ kiểu enum thừa hoặc đồng bộ giá trị.
 3. Tổng số lượt phân quyền: tiêu đề file ghi 178, phản hồi issue ghi 198. Header file ghi 73 quyền nhưng tiêu đề mục seed ghi 66. Danh sách quyền `send_trinhky`, `delegate_trinhky`, `cancel_trinhky`, `view_signing_audit` xuất hiện lặp hai lần trong danh sách quyền của nhóm `BGD` ở phần seed (không gây lỗi do `ON CONFLICT DO NOTHING`, nhưng làm sai lệch cách đếm).
 4. Trigger `prevent_delete_or_tamper_signing_signature` chỉ so 9 cột; `ghi_chu_ky`, `ky_tre_han`, `so_giay_tre`, `created_at` vẫn sửa được ở DB, trong khi model chỉ cho đổi `trang_thai_xac_minh` và `thoi_diem_xac_minh`. Đề xuất chặn mọi cột trừ hai cột xác minh.
 5. `ON DELETE` của DDL lệch model (PROTECT) ở `signing_attempt.trinh_ky_id` (CASCADE), `signing_attempt.luot_truoc_id` (SET NULL), `signing_request_step.luot_trinh_id` (CASCADE), `signing_request_step_signer.buoc_ky_id` (CASCADE), `signing_request_step_signer.uy_quyen_tu_id` (SET NULL), `signing_key.khoa_thay_the_id` (SET NULL). Đề xuất đổi sang `RESTRICT`.
 6. DDL trỏ FK người dùng tới `accounts_employee`, còn migration nhánh 5 trỏ `auth_user`; DDL thêm FK cho `don_vi_id`, `chuc_vu_id` trong khi model là số nguyên. Chốt cùng Phase 6–7.
+
+## 5. Đối chiếu DDL base v1 (`ddl_base_v0`, commit `407b134`)
+
+Đối chiếu tự động trên PostgreSQL 18: một DB nạp `docs/common/database/release_DDL.sql`, một DB chạy migration của nhánh; so cột, kiểu, null, khóa ngoại, CHECK/UNIQUE theo tên của 15 bảng `signing_*`.
+
+- Đủ 15 bảng; CHECK/UNIQUE trùng tên và định nghĩa.
+- `signing_key_unlock`: DDL dùng `updated_at` (trigger `set_updated_at`); model đã đổi theo (#67 mục 6).
+- Cột người dùng là `integer` khi chạy trên `auth.User`, `bigint` trong DDL: hết lệch khi `AUTH_USER_MODEL = "accounts.Employee"` (#68 C1).
+- `signing_request.document_type` là ENUM `document_kind` trong DDL, `varchar(20)` trong model: ORM ghi và lọc chuỗi được trên cột ENUM; không chặn `--fake`.
+- `chuc_vu_id`, `don_vi_id` là FK trong DDL, số nguyên trong model: đổi sang FK ở Phase 7.
+- `ON DELETE`: Django luôn tạo FK `NO ACTION` và xử lý xóa ở ứng dụng; DDL dùng `RESTRICT`/`CASCADE`/`SET NULL`. Riêng `signing_key_unlock.khoa_id` là `CASCADE` trong DDL, `PROTECT` trong model: khóa ký không bị xóa (chỉ thu hồi) nên không ảnh hưởng nghiệp vụ.
+- Quy trình migrate trên DB dựng từ DDL (#68 mục 2): `migrate signing --fake`.
+

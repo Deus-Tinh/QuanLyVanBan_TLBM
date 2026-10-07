@@ -2,7 +2,7 @@ import base64
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
@@ -11,6 +11,8 @@ from signing.errors import ConflictError, SigningError
 from signing.models import SigningAuditLog, SigningKey, SigningProcess
 from signing.services import keys as key_service
 from signing.services import process as process_service
+
+User = get_user_model()
 
 
 def new_keypair():
@@ -25,8 +27,8 @@ def sign_challenge(private, key):
 
 class ProcessServiceTests(TestCase):
     def setUp(self):
-        self.u1 = User.objects.create_user("u1", password="p")
-        self.u2 = User.objects.create_user("u2", password="p")
+        self.u1 = User.objects.create_user("u1")
+        self.u2 = User.objects.create_user("u2")
 
     def create(self, ma="QT1", cap_ky=None):
         cap_ky = cap_ky if cap_ky is not None else [
@@ -105,6 +107,22 @@ class ProcessServiceTests(TestCase):
         self.assertEqual(p.trang_thai, enums.TrangThaiQuyTrinh.NGUNG)
         self.assertEqual(self.actions(p)[-2:], ["KICH_HOAT_QUY_TRINH", "NGUNG_QUY_TRINH"])
 
+    def test_activating_new_version_stops_previous_active_version(self):
+        v1 = process_service.kich_hoat(self.create(), self.u1)
+        v2 = process_service.nhan_ban(v1, self.u1)
+        v3 = process_service.nhan_ban(v1, self.u1)
+        process_service.kich_hoat(v2, self.u1)
+        trang_thai = dict(SigningProcess.objects.filter(ma_quy_trinh="QT1").values_list("phien_ban", "trang_thai"))
+        self.assertEqual(trang_thai, {1: "NGUNG", 2: "HOAT_DONG", 3: "NHAP"})
+        log = SigningAuditLog.objects.filter(ma_doi_tuong=v1.pk, hanh_dong="NGUNG_QUY_TRINH").get()
+        self.assertEqual(log.du_lieu_kem_theo, {"thay_the_boi": v2.pk, "phien_ban_moi": 2})
+        process_service.kich_hoat(v3, self.u1)
+        self.assertEqual(SigningProcess.objects.filter(ma_quy_trinh="QT1", trang_thai="HOAT_DONG").get().pk, v3.pk)
+        # mã khác không bị ảnh hưởng
+        khac = process_service.kich_hoat(self.create("QT2"), self.u1)
+        self.assertEqual(SigningProcess.objects.get(pk=khac.pk).trang_thai, "HOAT_DONG")
+        self.assertEqual(SigningProcess.objects.get(pk=v3.pk).trang_thai, "HOAT_DONG")
+
     def test_clone_increments_version_and_copies_structure(self):
         p = process_service.kich_hoat(self.create(), self.u1)
         moi = process_service.nhan_ban(p, self.u2)
@@ -122,8 +140,8 @@ class ProcessServiceTests(TestCase):
 
 class KeyServiceTests(TestCase):
     def setUp(self):
-        self.u1 = User.objects.create_user("u1", password="p")
-        self.u2 = User.objects.create_user("u2", password="p")
+        self.u1 = User.objects.create_user("u1")
+        self.u2 = User.objects.create_user("u2")
 
     def register(self, user=None, ma="k1"):
         private, public = new_keypair()

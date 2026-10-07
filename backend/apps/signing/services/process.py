@@ -99,10 +99,27 @@ def kiem_tra_truoc_khi_kich_hoat(process):
 
 @transaction.atomic
 def kich_hoat(process, nguoi_thuc_hien):
-    process = _khoa(process.pk)
+    """
+    Kích hoạt một phiên bản nháp. Mỗi mã quy trình chỉ có một phiên bản HOAT_DONG: phiên bản đang
+    hoạt động khác cùng mã chuyển NGUNG trong cùng transaction (giữ lại để tra cứu; yêu cầu đã tạo
+    từ phiên bản cũ không bị ảnh hưởng). Khóa mọi phiên bản cùng mã theo thứ tự pk để hai lượt
+    kích hoạt đồng thời không cùng để lại hai bản hoạt động.
+    """
+    ma = SigningProcess.objects.values_list("ma_quy_trinh", flat=True).get(pk=process.pk)
+    cung_ma = list(SigningProcess.objects.select_for_update().filter(ma_quy_trinh=ma).order_by("pk"))
+    process = next(p for p in cung_ma if p.pk == process.pk)
     if process.trang_thai != enums.TrangThaiQuyTrinh.NHAP:
         raise ConflictError(code="quy_trinh_khong_o_trang_thai_nhap", detail="Chỉ kích hoạt được quy trình nháp.")
     kiem_tra_truoc_khi_kich_hoat(process)
+    for cu in cung_ma:
+        if cu.pk != process.pk and cu.trang_thai == enums.TrangThaiQuyTrinh.HOAT_DONG:
+            cu.trang_thai = enums.TrangThaiQuyTrinh.NGUNG
+            cu.update_by = nguoi_thuc_hien
+            cu.save(update_fields=["trang_thai", "update_by", "update_at"])
+            ghi_nhat_ky(nguoi_thuc_hien, LOAI, cu.pk, "NGUNG_QUY_TRINH",
+                        trang_thai_truoc=enums.TrangThaiQuyTrinh.HOAT_DONG, trang_thai_sau=cu.trang_thai,
+                        chi_tiet=f"Thay bằng phiên bản {process.phien_ban}",
+                        du_lieu_kem_theo={"thay_the_boi": process.pk, "phien_ban_moi": process.phien_ban})
     truoc = process.trang_thai
     process.trang_thai = enums.TrangThaiQuyTrinh.HOAT_DONG
     process.update_by = nguoi_thuc_hien

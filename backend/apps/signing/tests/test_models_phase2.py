@@ -1,10 +1,12 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
 from signing import enums
 from signing.models import SigningKey, SigningProcess, SigningProcessStep
+
+User = get_user_model()
 
 
 def make_key(user, ma="k1", fp="a" * 64, **kw):
@@ -16,8 +18,8 @@ def make_key(user, ma="k1", fp="a" * 64, **kw):
 
 class SigningKeyConstraintTests(TestCase):
     def setUp(self):
-        self.u1 = User.objects.create_user("u1", password="p")
-        self.u2 = User.objects.create_user("u2", password="p")
+        self.u1 = User.objects.create_user("u1")
+        self.u2 = User.objects.create_user("u2")
 
     def test_default_state_is_pending_activation(self):
         self.assertEqual(make_key(self.u1).trang_thai, enums.TrangThaiKhoa.CHO_KICH_HOAT)
@@ -52,7 +54,7 @@ class SigningKeyConstraintTests(TestCase):
 
 class SigningProcessConstraintTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user("u1", password="p")
+        self.user = User.objects.create_user("u1")
 
     def _process(self, ma="QT1", phien_ban=1):
         return SigningProcess.objects.create(
