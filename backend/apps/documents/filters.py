@@ -112,6 +112,21 @@ class BaseDocumentFilter(django_filters.FilterSet):
         label="Bao gồm văn bản hết hiệu lực",
     )
 
+    # ── Liên kết Loại văn bản (URL route từ Nhóm 3: ?loai_van_ban=<id>) ──
+    loai_van_ban = django_filters.CharFilter(
+        method="filter_loai_van_ban",
+        label="Loại văn bản",
+        help_text="Lọc theo loại văn bản ID (Nhóm 3 liên kết)",
+    )
+
+    def filter_loai_van_ban(self, queryset, name, value):
+        if not value:
+            return queryset
+        if hasattr(queryset.model, "danhmuc"):
+            if str(value).isdigit():
+                return queryset.filter(danhmuc__loaivanban_id=int(value))
+        return queryset
+
     def filter_search(self, queryset, name, value):
         """Tìm kiếm từ khóa trên nhiều trường (icontains)."""
         if not value:

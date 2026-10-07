@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DocumentItem, DocumentFilterParams, PaginatedResponse } from '@app-types/document';
 import FilterBar from '@components/documents/FilterBar';
 import DocumentTable from '@components/documents/DocumentTable';
@@ -12,6 +13,9 @@ import { Button } from '@components/common/Button';
 import apiClient from '@lib/apiClient';
 
 export const InboundDocumentPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const loaiVanBanParam = searchParams.get('loai_van_ban');
+
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -27,7 +31,14 @@ export const InboundDocumentPage: React.FC = () => {
     page: 1,
     page_size: 10,
     loai: 'DEN',
+    loai_van_ban: loaiVanBanParam || undefined,
   });
+
+  useEffect(() => {
+    if (loaiVanBanParam) {
+      setFilters(prev => ({ ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+    }
+  }, [loaiVanBanParam]);
 
   // Quản lý modal xem chi tiết & modal danh sách người đọc
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);

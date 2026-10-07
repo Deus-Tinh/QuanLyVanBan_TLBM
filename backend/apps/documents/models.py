@@ -144,7 +144,7 @@ class BaseVanBan(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        db_column="nguoi_tao",
+        db_column="nguoi_tao_id",
         related_name="%(class)s_created",
     )
     created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
@@ -438,16 +438,32 @@ class BaseDocumentAttachment(models.Model):
         help_text="Chấp nhận: PDF, DOC, DOCX, JPG, JPEG, PNG. Tối đa 20MB.",
     )
     is_deleted = models.BooleanField("Cờ xóa mềm", default=False)
-    created_time = models.DateTimeField("Ngày upload", default=timezone.now)
+    created_time = models.DateTimeField("Ngày upload", default=timezone.now, db_column="created_at")
     created_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Người tải lên",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        db_column="created_user_id",
+        db_column="nguoi_tao_id",
         related_name="%(class)s_uploaded",
     )
+
+    @property
+    def created_at(self):
+        return self.created_time
+
+    @created_at.setter
+    def created_at(self, val):
+        self.created_time = val
+
+    @property
+    def nguoi_tao(self):
+        return self.created_user
+
+    @nguoi_tao.setter
+    def nguoi_tao(self, val):
+        self.created_user = val
 
     class Meta:
         abstract = True

@@ -102,6 +102,7 @@ export interface DocumentFilterParams {
   page?: number;
   page_size?: number;
   loai?: DocumentType;
+  loai_van_ban?: string | number;
 }
 
 /**
