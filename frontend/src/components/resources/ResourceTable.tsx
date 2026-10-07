@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ResourceItem, HieuLucType } from '@app-types/resource';
+import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { useTranslation } from '@i18n/translate';
 
@@ -134,14 +134,46 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   };
 
   // Trích xuất đuôi tệp
-  const getFileExt = (urlOrName?: string) => {
-    if (!urlOrName) return 'FILE';
-    const clean = urlOrName.split('?')[0];
-    const parts = clean.split('.');
-    if (parts.length > 1) {
-      return parts[parts.length - 1].toUpperCase();
+  const getFileExt = (urlOrName?: string, attachments?: ResourceAttachment[]) => {
+    if (attachments && attachments.length > 0) {
+      const first = attachments[0];
+      if (first.name) {
+        const cleanName = first.name.split('?')[0].split('#')[0];
+        const nameParts = cleanName.split('.');
+        if (nameParts.length > 1) {
+          const ext = nameParts.pop()?.toUpperCase() || '';
+          if (/^[A-Z0-9]{1,6}$/.test(ext)) {
+            return ext;
+          }
+        }
+      }
+      if (first.mime_type) {
+        if (first.mime_type.includes('pdf')) return 'PDF';
+        if (first.mime_type.includes('word') || first.mime_type.includes('officedocument.wordprocessingml')) return 'DOCX';
+        if (first.mime_type.includes('sheet') || first.mime_type.includes('excel')) return 'XLSX';
+        if (first.mime_type.includes('presentation') || first.mime_type.includes('powerpoint')) return 'PPTX';
+        if (first.mime_type.includes('image')) return 'IMG';
+        if (first.mime_type.includes('zip') || first.mime_type.includes('compressed')) return 'ZIP';
+      }
     }
-    return 'FILE';
+
+    if (!urlOrName) return 'FILE';
+
+    // Xử lý an toàn blob URL (không split dấu chấm của 127.0.0.1 hay port)
+    if (urlOrName.startsWith('blob:')) {
+      return 'PDF';
+    }
+
+    const clean = urlOrName.split('?')[0].split('#')[0];
+    const fileNameOnly = clean.split('/').pop() || '';
+    const parts = fileNameOnly.split('.');
+    if (parts.length > 1) {
+      const ext = parts.pop()?.toUpperCase() || '';
+      if (/^[A-Z0-9]{1,6}$/.test(ext)) {
+        return ext;
+      }
+    }
+    return 'PDF';
   };
 
   // Lấy icon font-awesome theo đuôi file
@@ -411,7 +443,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                   ? 'bg-slate-100/70 dark:bg-slate-800/60 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/80'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-main';
 
-                const ext = getFileExt(item.file_dinh_kem);
+                const ext = getFileExt(item.file_dinh_kem, item.attachments);
                 const hasMultipleFiles = Boolean(item.attachments && item.attachments.length > 1);
 
                 return (

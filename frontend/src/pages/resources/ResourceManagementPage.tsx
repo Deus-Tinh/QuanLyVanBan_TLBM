@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   ResourceItem,
+  ResourceAttachment,
   ResourceCategory,
   ResourceType,
 } from '@app-types/resource';
@@ -877,7 +878,28 @@ export default function ResourceManagementPage() {
   const [documents, setDocuments] = useState<ResourceItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_CUSTOM_DOCS);
-      if (saved !== null) return JSON.parse(saved);
+      if (saved !== null) {
+        const parsed: ResourceItem[] = JSON.parse(saved);
+        return parsed.map((item) => {
+          if (item.file_dinh_kem && (!item.attachments || item.attachments.length === 0)) {
+            const isBlob = item.file_dinh_kem.startsWith('blob:');
+            const cleanName = isBlob
+              ? `${item.tieu_de || 'tai_lieu'}.pdf`
+              : (item.file_dinh_kem.split('?')[0].split('/').pop() || 'tai_lieu.pdf');
+            return {
+              ...item,
+              attachments: [
+                {
+                  id: Date.now(),
+                  name: cleanName,
+                  path: item.file_dinh_kem,
+                },
+              ],
+            };
+          }
+          return item;
+        });
+      }
     } catch {}
     return [];
   });
@@ -1336,6 +1358,34 @@ export default function ResourceManagementPage() {
       .filter((t) => payload.loai_tai_lieu.includes(t.id))
       .map((t) => t.ten_loai);
 
+    const fileUrl = payload.file
+      ? URL.createObjectURL(payload.file)
+      : (formInitialData?.file_dinh_kem || '');
+
+    const attachments: ResourceAttachment[] = payload.file
+      ? [
+          {
+            id: Date.now(),
+            name: payload.file.name,
+            path: fileUrl,
+            file_size: payload.file.size,
+            mime_type: payload.file.type,
+          },
+        ]
+      : (formInitialData?.attachments && formInitialData.attachments.length > 0
+          ? formInitialData.attachments
+          : fileUrl
+            ? [
+                {
+                  id: Date.now(),
+                  name: fileUrl.startsWith('blob:')
+                    ? `${payload.tieu_de || 'tai_lieu'}.pdf`
+                    : (fileUrl.split('?')[0].split('/').pop() || 'tai_lieu.pdf'),
+                  path: fileUrl,
+                },
+              ]
+            : []);
+
     if (formInitialData) {
       // Cập nhật
       setDocuments((prev) =>
@@ -1356,9 +1406,8 @@ export default function ResourceManagementPage() {
               link_thay_the: payload.link_thay_the,
               ghi_chu: payload.ghi_chu,
               hien_thi: payload.hien_thi,
-              file_dinh_kem: payload.file
-                ? URL.createObjectURL(payload.file)
-                : d.file_dinh_kem,
+              file_dinh_kem: fileUrl,
+              attachments: attachments,
             }
             : d
         )
@@ -1380,7 +1429,8 @@ export default function ResourceManagementPage() {
         link_thay_the: payload.link_thay_the,
         ghi_chu: payload.ghi_chu,
         hien_thi: payload.hien_thi,
-        file_dinh_kem: payload.file ? URL.createObjectURL(payload.file) : '',
+        file_dinh_kem: fileUrl,
+        attachments: attachments,
         nguoi_tao_name: 'Đỗ Trung Phong',
       };
       setDocuments((prev) => [newDoc, ...prev]);
@@ -1561,13 +1611,19 @@ export default function ResourceManagementPage() {
   };
 
   // Xử lý tải tệp đính kèm về máy
-  const handleDownloadFile = (item: ResourceItem) => {
-    if (!item.file_dinh_kem) return;
+  const handleDownloadFile = (item: ResourceItem, fileName?: string, filePath?: string) => {
+    const targetPath = filePath || item.file_dinh_kem;
+    if (!targetPath) return;
     const a = document.createElement('a');
-    a.href = item.file_dinh_kem;
+    a.href = targetPath;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.download = item.file_dinh_kem.split('/').pop() || 'tai_lieu';
+    const suggestedName =
+      fileName ||
+      item.attachments?.[0]?.name ||
+      (targetPath.startsWith('blob:') ? `${item.tieu_de || 'tai_lieu'}.pdf` : targetPath.split('?')[0].split('/').pop()) ||
+      'tai_lieu.pdf';
+    a.download = suggestedName;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1616,23 +1672,30 @@ export default function ResourceManagementPage() {
       {/* 1. THANH TAB THƯ MỤC NGANG (CẤP 1) — Thiết kế 5 cột đối xứng, đường kẻ căn chỉnh 100% */}
       <div className="bg-surface rounded-xl border border-border-subtle shadow-xs">
         {/* Hàng tab chính (Row 1 - Danh mục Cấp 1) */}
-        <div className="relative z-20 flex items-stretch h-11 border-b border-border-subtle">
-          {/* Cột 1: Tab Tất cả (cố định bên trái, độ rộng w-[130px]) */}
-          <div className="w-[130px] shrink-0 flex items-stretch border-r border-border-subtle">
-            {(() => {
-              const isAll = selectedCategory === 'all';
-              return (
-                <button
-                  key="all"
-                  type="button"
-                  onClick={() => handleCategorySelect('all')}
-                  className={`w-full flex items-center justify-center gap-2 px-3 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer rounded-tl-xl ${
-                    isAll
-                      ? 'border-b-2 border-primary text-primary bg-primary/5 font-bold'
-                      : 'border-b-2 border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
-                  }`}
-                  aria-current={isAll ? 'page' : undefined}
-                >
+        {(() => {
+          const hasBottomRow =
+            (selectedCategory !== 'all' && availableTypesForFilter.length > 0) ||
+            (selectedCategory === 'all' && categories.length > 0);
+          return (
+            <div className={`relative z-20 flex items-stretch h-11 ${hasBottomRow ? 'border-b border-border-subtle' : ''}`}>
+              {/* Cột 1: Tab Tất cả (cố định bên trái, độ rộng w-[130px]) */}
+              <div className={`w-[130px] shrink-0 flex items-stretch border-r border-border-subtle ${!hasBottomRow ? 'rounded-bl-xl' : ''}`}>
+                {(() => {
+                  const isAll = selectedCategory === 'all';
+                  return (
+                    <button
+                      key="all"
+                      type="button"
+                      onClick={() => handleCategorySelect('all')}
+                      className={`w-full flex items-center justify-center gap-2 px-3 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer rounded-tl-xl ${
+                        !hasBottomRow ? 'rounded-bl-xl' : ''
+                      } ${
+                        isAll
+                          ? 'border-b-2 border-primary text-primary bg-primary/5 font-bold'
+                          : 'border-b-2 border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
+                      }`}
+                      aria-current={isAll ? 'page' : undefined}
+                    >
                   <i className={`fa-solid fa-layer-group text-xs ${isAll ? 'text-primary' : 'text-muted'}`} />
                   <span>{t('resourceManagement.all')}</span>
                   <span
@@ -1689,14 +1752,14 @@ export default function ResourceManagementPage() {
           </div>
 
           {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (cố định w-36) */}
-          <div className="relative w-36 shrink-0 flex items-stretch border-l border-border-subtle" ref={categoryDropdownRef}>
+          <div className={`relative w-36 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen((prev) => !prev);
                 setIsTypeDropdownOpen(false);
               }}
-              className="w-full px-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap rounded-tr-xl"
+              className={`w-full px-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
               title="Mở danh sách tất cả Danh mục"
               aria-label="Danh sách tất cả Danh mục"
             >
@@ -1798,32 +1861,31 @@ export default function ResourceManagementPage() {
             )}
           </div>
         </div>
+      );
+    })()}
 
-        {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu (đồng bộ 100% với Cấp 1) */}
+        {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu */}
         {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (
-          <div className="relative z-10 flex items-stretch h-11 bg-surface-elevated/40 rounded-b-xl">
-            {/* Cột 1: Nhãn Loại tài liệu (cố định bên trái, độ rộng w-[130px] thẳng hàng với Cột 1 hàng trên) */}
-            <div className="w-[130px] shrink-0 flex items-center justify-center px-3 border-r border-border-subtle rounded-bl-xl">
-              <span className="text-[11px] text-muted font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5">
-                <i className="fa-solid fa-sitemap text-[10px] text-primary" />
-                {t('resourceManagement.fieldType')}:
-              </span>
-            </div>
-
-            {/* Vùng chips loại tài liệu cuộn ngang (Hỗ trợ con lăn chuột mượt mà, cách ly hoàn toàn) */}
+          <div className="relative z-10 px-4 py-2 bg-slate-50/70 dark:bg-slate-800/40 border-t border-border-subtle rounded-b-xl flex items-center justify-between gap-3">
+            {/* Vùng phân loại bên trái: Label icon + Chips */}
             <div
               ref={typeBarRef}
-              className="flex items-center gap-1.5 px-3 overflow-x-auto scrollbar-none flex-1 min-w-0"
+              className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 py-0.5"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
             >
-              {/* Chip "Tất cả" loại tài liệu (chuyển sang bên này cùng hàng với các loại) */}
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted shrink-0 mr-1 select-none">
+                <i className="fa-solid fa-tags text-[11px] text-primary" />
+                <span>{t('resourceManagement.fieldType')}:</span>
+              </div>
+
+              {/* Chip "Tất cả" loại tài liệu */}
               <button
                 type="button"
                 onClick={() => { setSelectedType('all'); setCurrentPage(1); }}
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                   selectedType === 'all'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
+                    ? 'bg-primary text-white shadow-2xs font-bold'
+                    : 'bg-surface text-secondary border border-border-subtle hover:border-primary/50 hover:text-primary hover:bg-surface'
                 }`}
               >
                 <span>{t('resourceManagement.all')}</span>
@@ -1847,10 +1909,10 @@ export default function ResourceManagementPage() {
                     key={t.id}
                     type="button"
                     onClick={() => { setSelectedType(String(t.id)); setCurrentPage(1); }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                       isActive
-                        ? 'bg-primary text-white shadow-xs'
-                        : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
+                        ? 'bg-primary text-white shadow-2xs font-bold'
+                        : 'bg-surface text-secondary border border-border-subtle hover:border-primary/50 hover:text-primary hover:bg-surface'
                     }`}
                     title={t.ghi_chu || t.ten_loai}
                   >
@@ -1868,22 +1930,22 @@ export default function ResourceManagementPage() {
               })}
             </div>
 
-            {/* Cột dropdown Loại tài liệu ở góc phải (cố định w-36) */}
-            <div className="relative w-36 shrink-0 flex items-stretch border-l border-border-subtle" ref={typeDropdownRef}>
+            {/* Cột dropdown Loại tài liệu ở góc phải */}
+            <div className="relative shrink-0" ref={typeDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
                   setIsTypeDropdownOpen((prev) => !prev);
                   setIsCategoryDropdownOpen(false);
                 }}
-                className="w-full px-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap rounded-br-xl"
+                className="px-3 py-1 text-xs font-semibold text-secondary hover:text-primary rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
                 title="Mở danh sách tất cả Loại tài liệu"
                 aria-haspopup="listbox"
                 aria-expanded={isTypeDropdownOpen}
               >
-                <i className="fa-solid fa-tags text-xs text-primary" />
+                <i className="fa-solid fa-tags text-[11px] text-primary" />
                 <span>Loại tài liệu</span>
-                <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+                <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
 
               {isTypeDropdownOpen && (

@@ -280,4 +280,34 @@ describe('ResourceTable Component', () => {
     const spacerRows = container.querySelectorAll('tbody tr[data-spacer="true"]');
     expect(spacerRows.length).toBe(3);
   });
+
+  it('renders safe extension (PDF) and prevents blob URL/IP leakage', () => {
+    const blobItem: ResourceItem = {
+      id: 99,
+      dm_tai_lieu: 1,
+      tieu_de: 'Tài liệu thử nghiệm tải lên tệp blob',
+      ngay_dang: '2026-10-07',
+      hieu_luc: 'CON_HIEU_LUC',
+      hien_thi: 'TAT_CA',
+      loai_tai_lieu: [1],
+      file_dinh_kem: 'blob:http://127.0.0.1:5173/d881270d-8705-4415-a3e4-d514c4dae5ff',
+    };
+
+    render(
+      <ResourceTable
+        items={[blobItem]}
+        currentPage={1}
+        totalPages={1}
+        pageSize={5}
+        totalCount={1}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Không bao giờ được hiển thị IP port hoặc guid trong nhãn extension
+    expect(screen.queryByText(/1:5173/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/d881270d/i)).not.toBeInTheDocument();
+    expect(screen.getByText('PDF')).toBeInTheDocument();
+  });
 });

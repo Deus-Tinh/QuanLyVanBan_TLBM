@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ResourceItem, HieuLucType } from '@app-types/resource';
+import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
@@ -62,14 +62,45 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   };
 
   // Trích xuất đuôi tệp
-  const getFileExt = (urlOrName?: string) => {
-    if (!urlOrName) return 'FILE';
-    const clean = urlOrName.split('?')[0];
-    const parts = clean.split('.');
-    if (parts.length > 1) {
-      return parts[parts.length - 1].toUpperCase();
+  const getFileExt = (urlOrName?: string, attachments?: ResourceAttachment[]) => {
+    if (attachments && attachments.length > 0) {
+      const first = attachments[0];
+      if (first.name) {
+        const cleanName = first.name.split('?')[0].split('#')[0];
+        const nameParts = cleanName.split('.');
+        if (nameParts.length > 1) {
+          const ext = nameParts.pop()?.toUpperCase() || '';
+          if (/^[A-Z0-9]{1,6}$/.test(ext)) {
+            return ext;
+          }
+        }
+      }
+      if (first.mime_type) {
+        if (first.mime_type.includes('pdf')) return 'PDF';
+        if (first.mime_type.includes('word') || first.mime_type.includes('officedocument.wordprocessingml')) return 'DOCX';
+        if (first.mime_type.includes('sheet') || first.mime_type.includes('excel')) return 'XLSX';
+        if (first.mime_type.includes('presentation') || first.mime_type.includes('powerpoint')) return 'PPTX';
+        if (first.mime_type.includes('image')) return 'IMG';
+        if (first.mime_type.includes('zip') || first.mime_type.includes('compressed')) return 'ZIP';
+      }
     }
-    return 'FILE';
+
+    if (!urlOrName) return 'FILE';
+
+    if (urlOrName.startsWith('blob:')) {
+      return 'PDF';
+    }
+
+    const clean = urlOrName.split('?')[0].split('#')[0];
+    const fileNameOnly = clean.split('/').pop() || '';
+    const parts = fileNameOnly.split('.');
+    if (parts.length > 1) {
+      const ext = parts.pop()?.toUpperCase() || '';
+      if (/^[A-Z0-9]{1,6}$/.test(ext)) {
+        return ext;
+      }
+    }
+    return 'PDF';
   };
 
   // Icon theo loại tệp
@@ -132,7 +163,12 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   const filesList = item.attachments && item.attachments.length > 0
     ? item.attachments
     : item.file_dinh_kem
-      ? [{ name: item.file_dinh_kem.split('/').pop() || 'Tệp đính kèm', path: item.file_dinh_kem }]
+      ? [{
+          name: (item.file_dinh_kem.startsWith('blob:')
+            ? `${item.tieu_de || 'Tệp đính kèm'}.pdf`
+            : item.file_dinh_kem.split('?')[0].split('/').pop()) || 'Tệp đính kèm',
+          path: item.file_dinh_kem,
+        }]
       : [];
 
   return createPortal(
@@ -310,7 +346,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             {filesList.length > 0 ? (
               <div className="space-y-2">
                 {filesList.map((file, idx) => {
-                  const ext = getFileExt(file.name || file.path);
+                  const ext = getFileExt(file.name || file.path, item.attachments);
                   return (
                     <div
                       key={idx}

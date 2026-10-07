@@ -100,7 +100,9 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
         });
         setExistingFileName(
           initialData.attachments?.[0]?.name ||
-            initialData.file_dinh_kem?.split('/').pop() ||
+            (initialData.file_dinh_kem?.startsWith('blob:')
+              ? `${initialData.tieu_de || 'Tệp đính kèm'}.pdf`
+              : initialData.file_dinh_kem?.split('?')[0].split('/').pop()) ||
             null
         );
       } else {
