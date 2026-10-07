@@ -763,6 +763,8 @@
       "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
       "groupNotFound": "Không tìm thấy nhóm quyền.",
       "groupHasUsers": "Không thể xóa vì nhóm quyền này vẫn đang được gán cho một hoặc nhiều người dùng.",
+      "groupProtected": "Đây là nhóm quyền chuẩn của hệ thống: không đổi tên và không xóa được.",
+      "adminPermissionsRequired": "Nhóm Quản trị hệ thống phải luôn giữ các quyền quản lý nhóm quyền (xem, thêm, sửa, xóa).",
       "nameRequired": "Tên nhóm quyền không được để trống.",
       "nameExists": "Tên nhóm quyền này đã tồn tại.",
       "permissionInvalid": "Một hoặc nhiều quyền được chọn không hợp lệ.",

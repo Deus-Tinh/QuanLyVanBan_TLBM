@@ -7,7 +7,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import PermissionInfo
-from .serializers import GroupSerializer, PermissionSerializer
+from .permissions import require_permission
+from .serializers import GroupSerializer, PermissionSerializer, standard_code
+
+# Quyền theo method, kiểm bằng helper chung trước khi view chạy (kể cả trước khi tra bản ghi,
+# nên người thiếu quyền không dò được id nhóm nào tồn tại).
+LIST_PERMS = {"GET": "view_nhomquyen", "POST": "add_nhomquyen"}
+DETAIL_PERMS = {
+    "GET": "view_nhomquyen",
+    "PUT": "change_nhomquyen",
+    "PATCH": "change_nhomquyen",
+    "DELETE": "delete_nhomquyen",
+}
 
 
 class StandardPagination(PageNumberPagination):
@@ -17,12 +28,9 @@ class StandardPagination(PageNumberPagination):
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, require_permission(LIST_PERMS)])
 def group_list_create_view(request):
     if request.method == "GET":
-        if not request.user.has_perm("view_nhomquyen"):
-            return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
-
         queryset = Group.objects.all().order_by("name")
         search = request.query_params.get("search", "").strip()
         if search:
@@ -38,9 +46,6 @@ def group_list_create_view(request):
         return paginator.get_paginated_response(serializer.data)
 
     # POST
-    if not request.user.has_perm("add_nhomquyen"):
-        return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
-
     serializer = GroupSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -55,7 +60,7 @@ def group_list_create_view(request):
 
 
 @api_view(["GET", "PUT", "PATCH", "DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, require_permission(DETAIL_PERMS)])
 def group_detail_view(request, pk):
     try:
         group = Group.objects.get(pk=pk)
@@ -63,14 +68,10 @@ def group_detail_view(request, pk):
         return Response({"detail": "roles.messages.groupNotFound"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "GET":
-        if not request.user.has_perm("view_nhomquyen"):
-            return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
         serializer = GroupSerializer(group)
         return Response(serializer.data)
 
     if request.method in ("PUT", "PATCH"):
-        if not request.user.has_perm("change_nhomquyen"):
-            return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
         serializer = GroupSerializer(group, data=request.data, partial=request.method == "PATCH")
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -83,8 +84,8 @@ def group_detail_view(request, pk):
         return Response(serializer.data)
 
     # DELETE
-    if not request.user.has_perm("delete_nhomquyen"):
-        return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
+    if standard_code(group):
+        return Response({"detail": "roles.messages.groupProtected"}, status=status.HTTP_400_BAD_REQUEST)
     if group.user_set.exists():
         return Response({"detail": "roles.messages.groupHasUsers"}, status=status.HTTP_400_BAD_REQUEST)
     group.delete()
@@ -92,21 +93,16 @@ def group_detail_view(request, pk):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, require_permission("view_nhomquyen")])
 def permission_list_view(request):
-    if not request.user.has_perm("view_nhomquyen"):
-        return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
-
     serializer = PermissionSerializer(PermissionInfo.objects.all(), many=True)
     return Response(serializer.data)
 
 
 @api_view(["PUT"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, require_permission("change_nhomquyen")])
 def group_permissions_view(request, pk):
     """Gán/bỏ quyền cho một nhóm: thay toàn bộ tập quyền bằng `permission_ids`."""
-    if not request.user.has_perm("change_nhomquyen"):
-        return Response({"detail": "roles.messages.permissionDenied"}, status=status.HTTP_403_FORBIDDEN)
     try:
         group = Group.objects.get(pk=pk)
     except Group.DoesNotExist:

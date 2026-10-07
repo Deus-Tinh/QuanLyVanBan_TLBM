@@ -762,6 +762,8 @@
       "permissionDenied": "You do not have permission to perform this action.",
       "groupNotFound": "Role not found.",
       "groupHasUsers": "Cannot delete this role because it is still assigned to one or more users.",
+      "groupProtected": "This is a built-in system role: it cannot be renamed or deleted.",
+      "adminPermissionsRequired": "The System Administrator role must always keep the role-management permissions (view, add, change, delete).",
       "nameRequired": "Role name cannot be empty.",
       "nameExists": "This role name already exists.",
       "permissionInvalid": "One or more selected permissions are invalid.",
