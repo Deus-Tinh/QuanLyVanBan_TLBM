@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import (
+from work.models import (
     AttachmentKind,
     ParticipantRole,
     Task,
@@ -35,7 +35,7 @@ from .models import (
     TaskStatus,
     delete_stored_files_on_commit,
 )
-from .serializers import (
+from work.serializers import (
     CommentSerializer,
     employee_full_name,
     EmployeeSerializer,

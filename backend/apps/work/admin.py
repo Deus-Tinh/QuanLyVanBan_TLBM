@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 
-from .models import AttachmentKind, ParticipantRole, Task, TaskAttachment, TaskComment, TaskParticipant, TaskStatus
+from work.models import AttachmentKind, ParticipantRole, Task, TaskAttachment, TaskComment, TaskParticipant, TaskStatus
 
 
 class TaskParticipantInlineFormSet(BaseInlineFormSet):

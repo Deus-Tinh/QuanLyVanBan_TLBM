@@ -14,7 +14,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import (
+from work.models import (
     AttachmentKind,
     ParticipantRole,
     Task,
@@ -289,7 +289,7 @@ class TaskDepartmentAndDocumentApiTests(WorkTestBase):
 
     def test_chi_con_hai_loai_van_ban(self):
         """Issue #83: GVHD bỏ hẳn văn bản mật, enum chỉ còn văn bản đến và văn bản đi."""
-        from .models import DocumentKind
+        from work.models import DocumentKind
 
         self.assertEqual(list(DocumentKind.values), ["vanbanden", "vanbandi"])
 
