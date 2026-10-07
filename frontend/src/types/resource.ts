@@ -1,4 +1,4 @@
-export type HieuLucType = 'CON_HIEU_LUC' | 'HET_HIEU_LUC' | 'HET_VA_THAY_THE';
+export type HieuLucType = 'CON_HIEU_LUC' | 'CON_HIEU_LUC_1_PHAN' | 'HET_HIEU_LUC' | 'HET_VA_THAY_THE';
 export type HienThiType = 'TAT_CA' | 'NOI_BO_PHONG_BAN';
 
 export interface ResourceItem {
@@ -17,6 +17,7 @@ export interface ResourceItem {
   ghi_chu?: string;
   file_dinh_kem: string;
   hien_thi: HienThiType;
+  don_vi_id?: number;
   nguoi_tao_name?: string;
 }
 
@@ -44,6 +45,7 @@ export interface ResourceFilterState {
   loai_tai_lieu?: number;
   hieu_luc?: HieuLucType;
   nam?: number;
+  don_vi_id?: number;
   search?: string;
   page?: number;
   page_size?: number;

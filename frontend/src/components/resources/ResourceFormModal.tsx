@@ -437,6 +437,7 @@ const FormContent: React.FC<FormContentProps> = ({
                 className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border-subtle text-main focus:outline-none focus:border-primary cursor-pointer"
               >
                 <option value="CON_HIEU_LUC">Còn hiệu lực</option>
+                <option value="CON_HIEU_LUC_1_PHAN">Còn hiệu lực một phần</option>
                 <option value="HET_HIEU_LUC">Hết hiệu lực</option>
                 <option value="HET_VA_THAY_THE">Hết hiệu lực và thay thế</option>
               </select>
@@ -446,12 +447,12 @@ const FormContent: React.FC<FormContentProps> = ({
             <div>
               <label htmlFor="ngay_het_hieu_luc" className="text-xs font-bold text-main block mb-1.5">
                 Ngày hết hiệu lực{' '}
-                {formData.hieu_luc !== 'CON_HIEU_LUC' && <span className="text-danger">*</span>}
+                {(formData.hieu_luc === 'HET_HIEU_LUC' || formData.hieu_luc === 'HET_VA_THAY_THE') && <span className="text-danger">*</span>}
               </label>
               <input
                 id="ngay_het_hieu_luc"
                 type="date"
-                disabled={formData.hieu_luc === 'CON_HIEU_LUC'}
+                disabled={formData.hieu_luc === 'CON_HIEU_LUC' || formData.hieu_luc === 'CON_HIEU_LUC_1_PHAN'}
                 value={formData.ngay_het_hieu_luc}
                 onChange={(e) => setFormData({ ...formData, ngay_het_hieu_luc: e.target.value })}
                 className={`w-full px-3 py-2 text-sm rounded-lg bg-surface border text-main focus:outline-none focus:border-primary font-mono disabled:opacity-50 disabled:bg-surface-elevated ${errors.ngay_het_hieu_luc ? 'border-danger' : 'border-border-subtle'

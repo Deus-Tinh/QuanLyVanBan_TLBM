@@ -550,9 +550,11 @@ export default function ResourceManagementPage() {
         doc.ngay_dang,
         doc.hieu_luc === 'CON_HIEU_LUC'
           ? 'Còn hiệu lực'
-          : doc.hieu_luc === 'HET_HIEU_LUC'
-            ? 'Hết hiệu lực'
-            : 'Hết và thay thế',
+          : doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
+            ? 'Còn hiệu lực một phần'
+            : doc.hieu_luc === 'HET_HIEU_LUC'
+              ? 'Hết hiệu lực'
+              : 'Hết và thay thế',
         doc.hien_thi === 'TAT_CA' ? 'Tất cả' : 'Nội bộ phòng ban',
       ]);
 
@@ -818,6 +820,7 @@ export default function ResourceManagementPage() {
               >
                 <option value="all">-- Tất cả Hiệu lực --</option>
                 <option value="CON_HIEU_LUC">Còn hiệu lực</option>
+                <option value="CON_HIEU_LUC_1_PHAN">Còn hiệu lực một phần</option>
                 <option value="HET_HIEU_LUC">Hết hiệu lực</option>
                 <option value="HET_VA_THAY_THE">Hết và thay thế</option>
               </select>
@@ -848,7 +851,7 @@ export default function ResourceManagementPage() {
               )}
               {statusFilter !== 'all' && (
                 <span className="px-2 py-0.5 bg-surface-elevated rounded border border-border-subtle text-secondary font-medium">
-                  Hiệu lực: {statusFilter === 'CON_HIEU_LUC' ? 'Còn hiệu lực' : statusFilter === 'HET_HIEU_LUC' ? 'Hết hiệu lực' : 'Hết & Thay thế'}
+                  Hiệu lực: {statusFilter === 'CON_HIEU_LUC' ? 'Còn hiệu lực' : statusFilter === 'CON_HIEU_LUC_1_PHAN' ? 'Còn hiệu lực 1 phần' : statusFilter === 'HET_HIEU_LUC' ? 'Hết hiệu lực' : 'Hết & Thay thế'}
                 </span>
               )}
               {searchTerm && (
