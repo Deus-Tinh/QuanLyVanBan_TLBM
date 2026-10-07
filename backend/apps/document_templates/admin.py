@@ -16,8 +16,8 @@ class ChiTietTaiLieuLoaiTaiLieuInline(admin.TabularInline):
 class ChiTietTaiLieuAttachmentInline(admin.TabularInline):
     model = ChiTietTaiLieuAttachment
     extra = 1
-    fields = ('name', 'path', 'file_size', 'mime_type', 'is_deleted', 'created_user', 'created_time')
-    readonly_fields = ('created_time',)
+    fields = ('name', 'path', 'file_size', 'mime_type', 'is_deleted', 'nguoi_tao', 'created_at')
+    readonly_fields = ('created_at',)
 
 
 @admin.register(DanhMucTaiLieu)
@@ -46,7 +46,7 @@ class TaiLieuChiTietAdmin(admin.ModelAdmin):
 
 @admin.register(ChiTietTaiLieuAttachment)
 class ChiTietTaiLieuAttachmentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'document', 'file_size', 'mime_type', 'is_deleted', 'created_time', 'created_user')
-    list_filter = ('is_deleted', 'created_time')
+    list_display = ('id', 'name', 'document', 'file_size', 'mime_type', 'is_deleted', 'created_at', 'nguoi_tao')
+    list_filter = ('is_deleted', 'created_at')
     search_fields = ('name', 'path', 'document__tieu_de')
-    ordering = ('-created_time',)
+    ordering = ('-created_at',)

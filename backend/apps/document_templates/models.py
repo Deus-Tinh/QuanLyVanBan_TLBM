@@ -146,7 +146,7 @@ class TaiLieuChiTiet(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        db_column="nguoi_tao",
+        db_column="nguoi_tao_id",
         verbose_name="Người tạo"
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -194,7 +194,7 @@ class TaiLieuChiTiet(models.Model):
                 path=storage_path,
                 file_size=getattr(file, 'size', None),
                 mime_type=getattr(file, 'content_type', None),
-                created_user=self.nguoi_tao
+                nguoi_tao=self.nguoi_tao
             )
             self._temp_file_dinh_kem = None
 
@@ -228,6 +228,7 @@ class ChiTietTaiLieuAttachment(models.Model):
     """
     4. Tệp đính kèm Chi tiết tài liệu (Khớp bảng records_chitiettailieu_attachment trong DDL Base)
     Chuẩn hóa 1-N Hướng A theo GVHD Thầy Duy chốt.
+    Chuẩn hóa tên cột: created_at, nguoi_tao_id theo PR #96 / PR #101.
     """
     document = models.ForeignKey(
         TaiLieuChiTiet,
@@ -241,15 +242,24 @@ class ChiTietTaiLieuAttachment(models.Model):
     file_size = models.BigIntegerField(null=True, blank=True, verbose_name="Dung lượng (byte)")
     mime_type = models.CharField(max_length=255, null=True, blank=True, verbose_name="Kiểu MIME")
     is_deleted = models.BooleanField(default=False, verbose_name="Xóa mềm")
-    created_time = models.DateTimeField(auto_now_add=True, verbose_name="Thời điểm tải lên")
-    created_user = models.ForeignKey(
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at', verbose_name="Thời điểm tải lên")
+    nguoi_tao = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        db_column='created_user_id',
+        db_column='nguoi_tao_id',
         verbose_name="Người tải file"
     )
+
+    # Property alias hỗ trợ tương thích ngược (backward compatibility)
+    @property
+    def created_time(self):
+        return self.created_at
+
+    @property
+    def created_user(self):
+        return self.nguoi_tao
 
     class Meta:
         db_table = "records_chitiettailieu_attachment"

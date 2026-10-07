@@ -239,7 +239,7 @@ class Command(BaseCommand):
                     "path": f"document_templates/{ddata['file_name']}",
                     "file_size": 1024,
                     "mime_type": "application/pdf",
-                    "created_user": admin_user,
+                    "nguoi_tao": admin_user,
                 }
             )
 
