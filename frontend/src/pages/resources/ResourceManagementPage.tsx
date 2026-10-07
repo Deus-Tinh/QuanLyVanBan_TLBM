@@ -277,16 +277,14 @@ export default function ResourceManagementPage() {
     setSelectedType('all');
     setCurrentPage(1);
     setIsCategoryDropdownOpen(false);
-    setActiveTabDropdownId(null);
+    setIsTypeDropdownOpen(false);
   };
 
-  // Dropdown Popovers State (Nút bấm sổ dropdown cho Danh mục & Loại tài liệu)
+  // Dropdown Popovers State (Nút bấm sổ dropdown bên phải cho Danh mục & Loại tài liệu)
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const [activeTabDropdownId, setActiveTabDropdownId] = useState<number | null>(null);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
-  const tabDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -302,12 +300,6 @@ export default function ResourceManagementPage() {
         !typeDropdownRef.current.contains(target)
       ) {
         setIsTypeDropdownOpen(false);
-      }
-      if (
-        tabDropdownRef.current &&
-        !tabDropdownRef.current.contains(target)
-      ) {
-        setActiveTabDropdownId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -717,15 +709,15 @@ export default function ResourceManagementPage() {
         </div>
       </div>
 
-      {/* 1. THANH TAB THƯ MỤC NGANG (CẤP 1) — có tab "Tất cả" + nút cuộn trái/phải */}
-      <div className="bg-surface rounded-xl border border-border-subtle shadow-xs overflow-hidden">
+      {/* 1. THANH TAB THƯ MỤC NGANG (CẤP 1) — Tab sạch không dropdown, nút dropdown nằm góc phải */}
+      <div className="bg-surface rounded-xl border border-border-subtle shadow-xs">
         {/* Hàng tab chính */}
-        <div className="relative flex items-stretch border-b border-border-subtle">
+        <div className="relative z-20 flex items-stretch border-b border-border-subtle">
           {/* Nút cuộn trái */}
           <button
             type="button"
             onClick={() => scrollTabs('left')}
-            className="shrink-0 px-2 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
+            className="shrink-0 px-2.5 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer rounded-tl-xl"
             aria-label="Cuộn tab sang trái"
             title="Cuộn sang trái"
           >
@@ -746,7 +738,7 @@ export default function ResourceManagementPage() {
                   key="all"
                   type="button"
                   onClick={() => handleCategorySelect('all')}
-                  className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
                     isAll
                       ? 'border-primary text-primary bg-primary/5 font-bold'
                       : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
@@ -771,123 +763,36 @@ export default function ResourceManagementPage() {
             {/* Dải phân cách sau tab Tất cả */}
             <div className="w-px bg-border-subtle self-stretch my-2 shrink-0" />
 
-            {/* Tab từng Thư mục Cấp 1 */}
+            {/* Tab từng Thư mục Cấp 1 — Tab thuần không dropdown, bấm để chọn */}
             {sortedCategories.map((cat) => {
               const isSelected = selectedCategory === String(cat.id);
               const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
-              const isMenuOpen = activeTabDropdownId === cat.id;
-              const childTypes = types.filter((t) => t.dm_tai_lieu === cat.id);
 
               return (
-                <div key={cat.id} className="relative flex items-stretch">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleCategorySelect(String(cat.id));
-                      setActiveTabDropdownId((prev) => (prev === cat.id ? null : cat.id));
-                    }}
-                    className={`flex items-center gap-1.5 px-3.5 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleCategorySelect(String(cat.id))}
+                  className={`flex items-center gap-1.5 px-3.5 py-3 text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
+                    isSelected
+                      ? 'border-primary text-primary bg-primary/5 font-bold'
+                      : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
+                  }`}
+                  aria-current={isSelected ? 'page' : undefined}
+                  title={cat.ghi_chu || cat.ten_tai_lieu}
+                >
+                  <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
+                  <span>{cat.ten_tai_lieu}</span>
+                  <span
+                    className={`px-1.5 py-0.5 text-[11px] rounded-full font-bold ${
                       isSelected
-                        ? 'border-primary text-primary bg-primary/5 font-bold'
-                        : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-elevated text-muted border border-border-subtle'
                     }`}
-                    aria-current={isSelected ? 'page' : undefined}
-                    title={cat.ghi_chu || cat.ten_tai_lieu}
                   >
-                    <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
-                    <span>{cat.ten_tai_lieu}</span>
-                    <span
-                      className={`px-1.5 py-0.5 text-[11px] rounded-full font-bold ${
-                        isSelected
-                          ? 'bg-primary text-white'
-                          : 'bg-surface-elevated text-muted border border-border-subtle'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                    {childTypes.length > 0 && (
-                      <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ml-0.5 ${
-                        isMenuOpen ? 'rotate-180 text-primary' : isSelected ? 'text-primary' : 'text-muted'
-                      }`} />
-                    )}
-                  </button>
-
-                  {/* Menu dropdown của các loại tài liệu tương ứng thuộc Thư mục này */}
-                  {isMenuOpen && childTypes.length > 0 && (
-                    <div
-                      ref={tabDropdownRef}
-                      className="absolute left-0 top-full mt-1 w-64 max-h-72 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100"
-                    >
-                      <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
-                        <span className="truncate">{cat.ten_tai_lieu}</span>
-                        <span className="text-[10px] text-primary lowercase font-medium">Loại con</span>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedType('all');
-                          setCurrentPage(1);
-                          setActiveTabDropdownId(null);
-                        }}
-                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                          selectedType === 'all'
-                            ? 'bg-primary text-white font-bold'
-                            : 'text-main hover:bg-surface-elevated'
-                        }`}
-                      >
-                        <span className="flex items-center gap-2 truncate">
-                          <i className="fa-solid fa-layer-group text-xs" />
-                          <span className="truncate">Tất cả loại ({count})</span>
-                        </span>
-                      </button>
-
-                      <div className="my-1 border-t border-border-subtle" />
-
-                      {childTypes.map((t) => {
-                        const isTypeActive = selectedType === String(t.id);
-                        const docCount = documents.filter(
-                          (d) =>
-                            d.dm_tai_lieu === cat.id &&
-                            Array.isArray(d.loai_tai_lieu) &&
-                            d.loai_tai_lieu.includes(t.id)
-                        ).length;
-
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedType(String(t.id));
-                              setCurrentPage(1);
-                              setActiveTabDropdownId(null);
-                            }}
-                            className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                              isTypeActive
-                                ? 'bg-primary text-white font-bold'
-                                : 'text-main hover:bg-surface-elevated'
-                            }`}
-                            title={t.ghi_chu || t.ten_loai}
-                          >
-                            <span className="flex items-center gap-2 truncate">
-                              {!t.is_public ? (
-                                <i className="fa-solid fa-lock text-[10px] opacity-70" />
-                              ) : (
-                                <i className="fa-solid fa-tag text-xs opacity-70" />
-                              )}
-                              <span className="truncate">{t.ten_loai}</span>
-                            </span>
-                            <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
-                              isTypeActive ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
-                            }`}>
-                              {docCount}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                    {count}
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -896,31 +801,35 @@ export default function ResourceManagementPage() {
           <button
             type="button"
             onClick={() => scrollTabs('right')}
-            className="shrink-0 px-2 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
+            className="shrink-0 px-2.5 py-3 text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
             aria-label="Cuộn tab sang phải"
             title="Cuộn sang phải"
           >
             <i className="fa-solid fa-chevron-right text-xs" />
           </button>
 
-          {/* Nút dropdown chọn Danh mục trực tiếp */}
-          <div className="relative shrink-0 flex items-stretch" ref={categoryDropdownRef}>
+          {/* Nút dropdown chọn Danh mục trực tiếp ở góc phải */}
+          <div className="relative shrink-0 flex items-stretch border-l border-border-subtle" ref={categoryDropdownRef}>
             <button
               type="button"
-              onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
-              className="px-3 py-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors border-l border-border-subtle flex items-center gap-1.5 cursor-pointer"
+              onClick={() => {
+                setIsCategoryDropdownOpen((prev) => !prev);
+                setIsTypeDropdownOpen(false);
+              }}
+              className="px-3.5 py-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center gap-1.5 cursor-pointer rounded-tr-xl"
               title="Mở danh sách tất cả Danh mục"
               aria-label="Danh sách tất cả Danh mục"
             >
               <i className="fa-solid fa-folder-tree text-xs text-primary" />
               <span className="hidden sm:inline">Danh mục</span>
-              <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} />
+              <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
 
             {isCategoryDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-64 max-h-72 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted">
-                  Danh mục tài liệu (Cấp 1)
+              <div className="absolute right-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
+                  <span>Danh mục tài liệu</span>
+                  <span className="text-[10px] text-primary lowercase font-medium">Cấp 1</span>
                 </div>
                 <button
                   type="button"
@@ -938,13 +847,19 @@ export default function ResourceManagementPage() {
                     <i className="fa-solid fa-layer-group text-xs" />
                     <span className="truncate">Tất cả danh mục</span>
                   </span>
-                  <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
-                    selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
-                  }`}>
+                  <span
+                    className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                      selectedCategory === 'all'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-surface-elevated text-secondary border border-border-subtle'
+                    }`}
+                  >
                     {documents.length}
                   </span>
                 </button>
+
                 <div className="my-1 border-t border-border-subtle" />
+
                 {sortedCategories.map((cat) => {
                   const isSelected = selectedCategory === String(cat.id);
                   const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
@@ -967,9 +882,13 @@ export default function ResourceManagementPage() {
                         <i className={`fa-solid ${isSelected ? 'fa-folder-open' : 'fa-folder'} text-xs`} />
                         <span className="truncate">{cat.ten_tai_lieu}</span>
                       </span>
-                      <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
-                      }`}>
+                      <span
+                        className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                          isSelected
+                            ? 'bg-white/20 text-white'
+                            : 'bg-surface-elevated text-secondary border border-border-subtle'
+                        }`}
+                      >
                         {count}
                       </span>
                     </button>
@@ -980,39 +899,92 @@ export default function ResourceManagementPage() {
           </div>
         </div>
 
-        {/* Hàng Cấp 2 — Sub-chips & Dropdown làm rõ mối quan hệ phân cấp Cấp 1 → Cấp 2 */}
+        {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu tương tự Cấp 1 */}
         {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (
-          <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap bg-surface-elevated/40 border-b border-border-subtle">
-            {/* Nhãn cấp phân cấp */}
-            <span className="text-[11px] text-muted font-semibold uppercase tracking-wide shrink-0 flex items-center gap-1">
-              <i className="fa-solid fa-sitemap text-[9px]" />
-              Loại tài liệu:
-            </span>
+          <div className="relative z-10 flex items-stretch justify-between bg-surface-elevated/40 rounded-b-xl">
+            {/* Phía trái: Nhãn phân cấp + danh sách chips cuộn ngang */}
+            <div className="flex items-center gap-2 px-3.5 py-2.5 overflow-x-auto scrollbar-none flex-1 min-w-0" style={{ scrollbarWidth: 'none' }}>
+              <span className="text-[11px] text-muted font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5 mr-1">
+                <i className="fa-solid fa-sitemap text-[10px] text-primary" />
+                Loại tài liệu:
+              </span>
 
-            {/* NÚT BẤM SỔ DROPDOWN LOẠI TÀI LIỆU */}
-            <div className="relative" ref={typeDropdownRef}>
+              {/* Chip "Tất cả" */}
               <button
                 type="button"
-                onClick={() => setIsTypeDropdownOpen((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer border shadow-2xs ${
-                  selectedType !== 'all'
-                    ? 'bg-primary text-white border-primary shadow-xs'
-                    : 'bg-surface text-secondary border-border-subtle hover:border-primary hover:text-primary'
+                onClick={() => { setSelectedType('all'); setCurrentPage(1); }}
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                  selectedType === 'all'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
                 }`}
-                title="Mở menu chọn Loại tài liệu"
+              >
+                <span>Tất cả</span>
+                <span className={`text-[10px] font-bold ${
+                  selectedType === 'all' ? 'text-white/80' : 'text-muted'
+                }`}>
+                  ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length})
+                </span>
+              </button>
+
+              {/* Chips từng loại Cấp 2 */}
+              {availableTypesForFilter.map((t) => {
+                const isActive = selectedType === String(t.id);
+                const docCount = documents.filter(
+                  (d) =>
+                    d.dm_tai_lieu === Number(selectedCategory) &&
+                    Array.isArray(d.loai_tai_lieu) &&
+                    d.loai_tai_lieu.includes(t.id)
+                ).length;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => { setSelectedType(String(t.id)); setCurrentPage(1); }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                      isActive
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
+                    }`}
+                    title={t.ghi_chu || t.ten_loai}
+                  >
+                    {!t.is_public && (
+                      <i className="fa-solid fa-lock text-[9px] opacity-70" />
+                    )}
+                    <span>{t.ten_loai}</span>
+                    <span className={`text-[10px] font-bold ${
+                      isActive ? 'text-white/80' : 'text-muted'
+                    }`}>
+                      ({docCount})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Phía phải: Nút dropdown Loại tài liệu ở góc phải */}
+            <div className="relative shrink-0 flex items-stretch border-l border-border-subtle" ref={typeDropdownRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTypeDropdownOpen((prev) => !prev);
+                  setIsCategoryDropdownOpen(false);
+                }}
+                className="px-3.5 py-2.5 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap rounded-br-xl"
+                title="Mở danh sách tất cả Loại tài liệu"
                 aria-haspopup="listbox"
                 aria-expanded={isTypeDropdownOpen}
               >
-                <i className={`fa-solid fa-tags text-[10px] ${selectedType !== 'all' ? 'text-white' : 'text-primary'}`} />
-                <span>{selectedType !== 'all' ? `Loại: ${currentTypeLabel}` : 'Chọn loại tài liệu'}</span>
-                <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
+                <i className="fa-solid fa-tags text-xs text-primary" />
+                <span className="hidden sm:inline">Loại tài liệu</span>
+                <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
 
               {isTypeDropdownOpen && (
-                <div className="absolute left-0 top-full mt-1.5 w-64 max-h-72 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
                   <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                     <span>Loại tài liệu</span>
-                    <span className="text-[10px] text-muted font-normal">Cấp 2</span>
+                    <span className="text-[10px] text-primary lowercase font-medium">Cấp 2</span>
                   </div>
                   <button
                     type="button"
@@ -1028,13 +1000,13 @@ export default function ResourceManagementPage() {
                     }`}
                   >
                     <span className="flex items-center gap-2 truncate">
-                      <i className="fa-solid fa-tags text-xs" />
+                      <i className="fa-solid fa-layer-group text-xs" />
                       <span className="truncate">Tất cả loại tài liệu</span>
                     </span>
                     <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
                       selectedType === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
                     }`}>
-                      {availableTypesForFilter.length}
+                      {documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length}
                     </span>
                   </button>
 
@@ -1084,67 +1056,12 @@ export default function ResourceManagementPage() {
                 </div>
               )}
             </div>
-
-            {/* Dải phân cách */}
-            <div className="w-px h-4 bg-border-subtle mx-0.5 shrink-0" />
-
-            {/* Chip "Tất cả loại" */}
-            <button
-              type="button"
-              onClick={() => { setSelectedType('all'); setCurrentPage(1); }}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
-                selectedType === 'all'
-                  ? 'bg-primary text-white shadow-xs'
-                  : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
-              }`}
-            >
-              Tất cả
-              <span className={`text-[10px] font-bold ${
-                selectedType === 'all' ? 'text-white/80' : 'text-muted'
-              }`}>
-                ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length})
-              </span>
-            </button>
-
-            {/* Chip từng loại Cấp 2 */}
-            {availableTypesForFilter.map((t) => {
-              const isActive = selectedType === String(t.id);
-              const docCount = documents.filter(
-                (d) =>
-                  d.dm_tai_lieu === Number(selectedCategory) &&
-                  Array.isArray(d.loai_tai_lieu) &&
-                  d.loai_tai_lieu.includes(t.id)
-              ).length;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => { setSelectedType(String(t.id)); setCurrentPage(1); }}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
-                    isActive
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
-                  }`}
-                  title={t.ghi_chu || t.ten_loai}
-                >
-                  {!t.is_public && (
-                    <i className="fa-solid fa-lock text-[9px] opacity-70" />
-                  )}
-                  <span>{t.ten_loai}</span>
-                  <span className={`text-[10px] font-bold ${
-                    isActive ? 'text-white/80' : 'text-muted'
-                  }`}>
-                    ({docCount})
-                  </span>
-                </button>
-              );
-            })}
           </div>
         )}
 
         {/* Khi ở chế độ Tất cả: hiện gợi ý chọn thư mục để lọc sâu */}
         {selectedCategory === 'all' && (
-          <div className="px-4 py-2 flex items-center gap-2 bg-primary/3 border-b border-border-subtle">
+          <div className="px-4 py-2.5 flex items-center gap-2 bg-primary/3 rounded-b-xl border-t border-border-subtle">
             <i className="fa-solid fa-circle-info text-primary text-[11px] shrink-0" />
             <span className="text-[11px] text-secondary">
               Đang xem toàn bộ <strong className="text-main font-bold">{documents.length} tài liệu</strong> trong kho.
