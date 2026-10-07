@@ -30,6 +30,9 @@ LOAI = "signing_request_step_signer"
 
 
 def _khoa_luot_hien_hanh(yeu_cau):
+    # Thứ tự khóa thống nhất: hồ sơ rồi lượt trình (như gui, huy, giai_quyet), tránh deadlock khi
+    # người ký cuối hoàn tất (khóa hồ sơ) cùng lúc với hủy (khóa hồ sơ rồi lượt).
+    SigningRequest.objects.select_for_update().only("pk").get(pk=yeu_cau.pk)
     luot = luot_hien_hanh(yeu_cau)
     if luot is None:
         raise ConflictError(code="ho_so_chua_gui", detail="Hồ sơ chưa được gửi.")

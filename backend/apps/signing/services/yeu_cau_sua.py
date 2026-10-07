@@ -112,8 +112,9 @@ def _sao_chep_luot(luot_cu, cap_cu, yeu_cau, nguoi, khoa_chong_trung, thoi_diem)
 
 
 def _giai_quyet_lap(yeu_cau, khoa_chong_trung):
+    # Lượt do giải quyết tạo luôn có lượt trước; khóa của lần `gui` (lượt đầu) không được coi là thao tác lặp
     da_co = SigningAttempt.objects.filter(khoa_chong_trung=khoa_chong_trung).first()
-    if da_co is not None and da_co.trinh_ky_id != yeu_cau.pk:
+    if da_co is not None and (da_co.trinh_ky_id != yeu_cau.pk or da_co.luot_truoc_id is None):
         raise ConflictError(code="khoa_chong_trung_da_dung", detail="Idempotency-Key đã dùng cho thao tác khác.")
     return da_co is not None
 

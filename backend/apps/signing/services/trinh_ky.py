@@ -127,11 +127,15 @@ def dang_cho_toi_ky(nguoi):
 # ── Chống trùng thao tác (header Idempotency-Key, plan mục 7.5) ─────────────
 
 
-def _thao_tac_da_xu_ly(hanh_dong, khoa_chong_trung):
-    """Trả bản ghi nhật ký của lần xử lý trước cùng khóa, hoặc None."""
-    return SigningAuditLog.objects.filter(
+def _thao_tac_da_xu_ly(hanh_dong, khoa_chong_trung, yeu_cau):
+    """Bản ghi nhật ký của lần xử lý trước cùng khóa trên chính hồ sơ này, hoặc None.
+    Khóa đã dùng cho hồ sơ khác thì báo lỗi, không trả kết quả của hồ sơ khác."""
+    da_co = SigningAuditLog.objects.filter(
         hanh_dong=hanh_dong, du_lieu_kem_theo__khoa_chong_trung=khoa_chong_trung,
     ).order_by("id").first()
+    if da_co is not None and da_co.trinh_ky_id != yeu_cau.pk:
+        raise ConflictError(code="khoa_chong_trung_da_dung", detail="Idempotency-Key đã dùng cho hồ sơ khác.")
+    return da_co
 
 
 # ── Tạo, sửa nháp ───────────────────────────────────────────────────────────
@@ -311,8 +315,9 @@ def tao_luot_trinh(yeu_cau, nguoi, *, chon_nguoi_ky, khoa_chong_trung, luot_truo
 
 
 def _luot_da_gui(yeu_cau, khoa_chong_trung):
+    # Lượt do `gui` tạo không có lượt trước; lượt do giải quyết yêu cầu sửa (Phase 9) luôn có
     da_co = SigningAttempt.objects.filter(khoa_chong_trung=khoa_chong_trung).first()
-    if da_co is not None and da_co.trinh_ky_id != yeu_cau.pk:
+    if da_co is not None and (da_co.trinh_ky_id != yeu_cau.pk or da_co.luot_truoc_id is not None):
         raise ConflictError(code="khoa_chong_trung_da_dung", detail="Idempotency-Key đã dùng cho thao tác khác.")
     return da_co
 
@@ -345,10 +350,10 @@ def gui(yeu_cau, nguoi, *, khoa_chong_trung, chon_nguoi_ky=None, dia_chi_ip=None
 @transaction.atomic
 def huy(yeu_cau, nguoi, *, khoa_chong_trung, ly_do="", dia_chi_ip=None):
     """Người tạo hủy trước khi hoàn thành; quản trị (`cancel_trinhky`) hủy thay, bắt buộc lý do."""
-    if _thao_tac_da_xu_ly("HUY_TRINH_KY", khoa_chong_trung):
+    if _thao_tac_da_xu_ly("HUY_TRINH_KY", khoa_chong_trung, yeu_cau):
         return SigningRequest.objects.get(pk=yeu_cau.pk)
     yeu_cau = _khoa_yeu_cau(yeu_cau.pk)
-    if _thao_tac_da_xu_ly("HUY_TRINH_KY", khoa_chong_trung):
+    if _thao_tac_da_xu_ly("HUY_TRINH_KY", khoa_chong_trung, yeu_cau):
         return yeu_cau
     la_nguoi_tao = yeu_cau.create_by_id == nguoi.pk
     if not la_nguoi_tao:
@@ -384,11 +389,11 @@ def trinh_lai(yeu_cau, nguoi, *, khoa_chong_trung, han_chot=None, dia_chi_ip=Non
     Tạo hồ sơ NHAP mới từ hồ sơ bị từ chối (plan mục 3.3): giữ văn bản, tệp của lượt cuối, mức độ;
     dùng phiên bản đang hoạt động của cùng mã quy trình; `ho_so_goc` trỏ về hồ sơ cũ.
     """
-    da_xu_ly = _thao_tac_da_xu_ly("TRINH_LAI", khoa_chong_trung)
+    da_xu_ly = _thao_tac_da_xu_ly("TRINH_LAI", khoa_chong_trung, yeu_cau)
     if da_xu_ly:
         return SigningRequest.objects.get(pk=da_xu_ly.du_lieu_kem_theo["ho_so_moi"])
     yeu_cau = _khoa_yeu_cau(yeu_cau.pk)
-    da_xu_ly = _thao_tac_da_xu_ly("TRINH_LAI", khoa_chong_trung)
+    da_xu_ly = _thao_tac_da_xu_ly("TRINH_LAI", khoa_chong_trung, yeu_cau)
     if da_xu_ly:
         return SigningRequest.objects.get(pk=da_xu_ly.du_lieu_kem_theo["ho_so_moi"])
     _yeu_cau_nguoi_tao(yeu_cau, nguoi)

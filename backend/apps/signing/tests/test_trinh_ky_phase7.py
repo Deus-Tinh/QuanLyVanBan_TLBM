@@ -310,6 +310,14 @@ class HuyTrinhLaiTests(TrinhKyBase):
         r = self.huy(pk, khoa="h2")
         self.assertEqual((r.status_code, r.data["code"]), (409, "ho_so_da_ket_thuc"))
 
+    def test_cancel_key_reused_on_another_request_is_rejected_not_silently_ignored(self):
+        pk1 = self.ho_so_da_gui()["id"]
+        pk2 = self.ho_so_da_gui()["id"]
+        self.assertEqual(self.huy(pk1, khoa="cung-khoa").status_code, 200)
+        r = self.huy(pk2, khoa="cung-khoa")
+        self.assertEqual((r.status_code, r.data["code"]), (409, "khoa_chong_trung_da_dung"))
+        self.assertEqual(SigningRequest.objects.get(pk=pk2).trang_thai, "CHO_KY")  # không báo "đã hủy" giả
+
     def test_admin_cancel_needs_permission_and_reason(self):
         pk = self.ho_so_da_gui()["id"]
         r = self.huy(pk, client=self.client_cua(self.ky1))

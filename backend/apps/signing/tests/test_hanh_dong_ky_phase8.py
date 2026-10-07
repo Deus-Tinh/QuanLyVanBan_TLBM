@@ -51,6 +51,11 @@ def ky_so(private, hash_hex=HASH):
     return base64.b64encode(private.sign(bytes.fromhex(hash_hex))).decode()
 
 
+def ma_loi(exc):
+    """Mã lỗi nghiệp vụ của ngoại lệ API; lỗi khác (vd. deadlock) trả repr để test báo rõ."""
+    return exc.get_codes() if hasattr(exc, "get_codes") else repr(exc)
+
+
 def chay_song_song(*viec):
     """Chạy các thao tác trên luồng riêng (mỗi luồng một kết nối DB); trả về lỗi của luồng thua."""
     loi = []
@@ -82,8 +87,8 @@ class KyBase(TrinhKyBase):
 
     def hanh_dong(self, user, action, khoa_thao_tac=None, **body):
         client = self.client_cua(User.objects.get(pk=user.pk))
-        return client.post(f"{BASE}/{self.pk}/{action}/", body, format="json",
-                           HTTP_IDEMPOTENCY_KEY=khoa_thao_tac or f"{action}-{user.pk}-{SigningSignature.objects.count()}")
+        khoa = khoa_thao_tac or f"{action}-{user.pk}-{SigningSignature.objects.count()}"
+        return client.post(f"{BASE}/{self.pk}/{action}/", body, format="json", HTTP_IDEMPOTENCY_KEY=khoa)
 
     def ky(self, user, khoa_thao_tac=None, **ghi_de):
         private, key = self.khoa[user.pk]
@@ -275,6 +280,7 @@ class DongThoiTests(TransactionTestCase):
         loi = chay_song_song(ky("a"), ky("b"))
         self.assertEqual(SigningSignature.objects.count(), 1)
         self.assertEqual(len(loi), 1)
+        self.assertIn(ma_loi(loi[0]), ("luot_trinh_khong_cho_ky", "chua_den_luot_ky"))  # lỗi nghiệp vụ, không deadlock
         self.assertEqual(SigningRequest.objects.get(pk=self.ho_so.pk).trang_thai, "HOAN_THANH")
 
     def test_sign_racing_cancel_has_single_consistent_outcome(self):
@@ -290,3 +296,5 @@ class DongThoiTests(TransactionTestCase):
         else:
             self.assertEqual((ho_so.trang_thai, luot.trang_thai, SigningSignature.objects.count()), ("HUY", "HUY", 0))
         self.assertEqual(len(loi), 1)
+        # Bên thua nhận lỗi nghiệp vụ có mã (không phải deadlock do khóa ngược thứ tự)
+        self.assertIn(ma_loi(loi[0]), ("luot_trinh_khong_cho_ky", "ho_so_da_ket_thuc"))

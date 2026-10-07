@@ -269,7 +269,7 @@ class TrinhKyChiTietSerializer(TrinhKySerializer):
 class KySerializer(serializers.Serializer):
     khoa_ky = serializers.IntegerField(min_value=1)
     hash_tai_lieu = serializers.RegexField(r"^[0-9a-f]{64}$")
-    chu_ky_so = serializers.CharField()
+    chu_ky_so = serializers.CharField(max_length=200)  # Ed25519 Base64 là 88 ký tự
     ghi_chu_ky = serializers.CharField(required=False, allow_blank=True, default="")
 
 

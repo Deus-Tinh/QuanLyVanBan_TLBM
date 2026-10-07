@@ -22,16 +22,12 @@ from signing.services import trinh_ky as trinh_ky_service
 from signing.services import yeu_cau_sua as yeu_cau_sua_service
 
 from .helpers import cap_quyen
-from .test_hanh_dong_ky_phase8 import HASH, KyBase, chay_song_song, khoa_hoat_dong, ky_so
+from .test_hanh_dong_ky_phase8 import HASH, KyBase, chay_song_song, khoa_hoat_dong, ky_so, ma_loi
 from .test_trinh_ky_phase7 import BASE, PDF, VAN_BAN, tep_pdf
 
 User = get_user_model()
 PDF_SUA = PDF + b"% ban da sua\n"
 HASH_SUA = hashlib.sha256(PDF_SUA).hexdigest()
-
-
-def ma_loi(exc):
-    return exc.get_codes() if hasattr(exc, "get_codes") else repr(exc)
 
 
 class YeuCauSuaTests(KyBase):
@@ -113,6 +109,9 @@ class YeuCauSuaTests(KyBase):
 
     def test_resolve_is_idempotent_and_cancel_closes_conversation(self):
         self.yeu_cau_sua(self.ky1)
+        r = self.giai_quyet(khoa=f"gui-{self.pk}")  # khóa của lần gửi: không được coi là giải quyết lặp
+        self.assertEqual((r.status_code, r.data["code"]), (409, "khoa_chong_trung_da_dung"))
+        self.assertEqual(SigningAttempt.objects.filter(trinh_ky_id=self.pk).count(), 1)
         self.assertEqual(self.giai_quyet(khoa="lap").status_code, 200)
         self.assertEqual(self.giai_quyet(khoa="lap").status_code, 200)
         self.assertEqual(SigningAttempt.objects.filter(trinh_ky_id=self.pk).count(), 2)
