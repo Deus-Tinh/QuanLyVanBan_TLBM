@@ -1,4 +1,25 @@
 -- =====================================================================
+-- THAY ĐỔI PHASE 6c TRÌNH KÝ (Nhóm 5; issue #79; đánh dấu [6c] tại vị trí)
+-- Căn cứ: docs/modules/05_signing_workflow/danh-gia-nghiep-vu-va-de-xuat.md mục 2 (đã chốt ở PR #78),
+--   plan-trien-khai-theo-phase.md Phase 6c; migration signing 0004_bo_kieu_ky_chi_nhan_van_ban_di.
+--   1) signing_process bỏ cột kieu_ky_mac_dinh; signing_request bỏ cột kieu_ky.
+--      Cấp ký luôn tuần tự theo thu_tu, người trong cùng cấp ký song song.
+--      Lý do bỏ cách thức TUAN_TU/SONG_SONG cho toàn hồ sơ:
+--      - SONG_SONG mở mọi cấp cùng lúc, tương đương quy trình một cấp: người ký cuối có thể ký trước
+--        khi cấp kiểm tra (nội dung, pháp chế) xem xong, việc chia cấp mất nghĩa.
+--      - Người trình được chọn cách thức, tức tự quyết lãnh đạo có phải chờ cấp dưới; thứ tự kiểm duyệt
+--        thuộc người thiết kế quy trình.
+--      - Mọi quy tắc (mở cấp, hạn xử lý, thu hồi chữ ký) phải rẽ nhánh theo cách thức mà không thêm giá trị.
+--      Căn cứ thực tiễn: ký điện tử định tuyến theo thứ tự (cùng thứ tự ký song song, thứ tự sau chờ
+--      thứ tự trước); văn phòng điện tử đi theo cấp. Tham khảo NĐ 30/2020 Điều 12: kiểm tra nội dung,
+--      thể thức trước khi trình người có thẩm quyền ký.
+--   2) Bỏ ENUM signing_kieuky: không cột, hàm hay đối tượng nào dùng. Bằng chứng trên bản trước thay đổi:
+--      tên chỉ xuất hiện ở dòng CREATE TYPE; information_schema.columns không có cột udt_name =
+--      'signing_kieuky' (kieu_ky, kieu_ky_mac_dinh là VARCHAR); pg_depend không có đối tượng phụ thuộc.
+--   3) Không đổi document_kind: trình ký chỉ nhận 'vanbandi', kiểm ở tầng ứng dụng; giữ ENUM chung
+--      vì documents_view_log và task_congviec vẫn dùng 'vanbanden'.
+-- Quy mô sau thay đổi: 54 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
+-- =====================================================================
 -- THAY ĐỔI BỎ VĂN BẢN MẬT (GVHD đã chốt bỏ văn bản mật; đánh dấu [BỎ MẬT] tại vị trí; giữ nhãn phiên bản)
 -- Bối cảnh: khách hàng là doanh nghiệp bảo hiểm; "văn bản mật" được hiểu là tài liệu nội bộ
 --   hạn chế (không phải bí mật nhà nước) và xử lý bằng quyền xem + nhật ký xem trên văn bản đến/đi.
@@ -177,7 +198,7 @@ CREATE TYPE signing_process_status AS ENUM ('DRAFT','HOAT_DONG','NGUNG');
 
 CREATE TYPE signing_scope          AS ENUM ('DEPARTMENT','COMPANY');
 
-CREATE TYPE signing_kieuky         AS ENUM ('TUAN_TU','SONG_SONG');
+-- [6c] Bỏ ENUM signing_kieuky: không cột nào dùng; cách thức ký toàn yêu cầu đã bỏ (cấp luôn tuần tự).
 
 CREATE TYPE signing_request_status AS ENUM ('NHAP','CHO_KY','HOAN_THANH','TU_CHOI','HUY','QUA_HAN');
 
@@ -983,7 +1004,7 @@ CREATE TABLE signing_process (
     phien_ban SMALLINT NOT NULL DEFAULT 1 CHECK (phien_ban >= 0),
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'NHAP',
     pham_vi VARCHAR(20) NOT NULL,
-    kieu_ky_mac_dinh VARCHAR(20) NOT NULL,
+    -- [6c] Bỏ kieu_ky_mac_dinh: cấp ký luôn tuần tự, song song là nhiều người trong một cấp.
     cau_hinh_nhac_han JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -1046,7 +1067,7 @@ CREATE TABLE signing_request (
     quy_trinh_id BIGINT NOT NULL REFERENCES signing_process (id) ON DELETE RESTRICT,
     phien_ban_quy_trinh SMALLINT NOT NULL CHECK (phien_ban_quy_trinh >= 0),
     muc_do VARCHAR(20) NOT NULL,
-    kieu_ky VARCHAR(20) NOT NULL,
+    -- [6c] Bỏ kieu_ky: cấp ký luôn tuần tự (không còn cách thức ký áp dụng cho toàn yêu cầu).
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'NHAP',
     han_chot TIMESTAMPTZ,
     ngay_gui TIMESTAMPTZ,
