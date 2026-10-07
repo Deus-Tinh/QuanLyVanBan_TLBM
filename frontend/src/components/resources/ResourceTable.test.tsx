@@ -211,4 +211,73 @@ describe('ResourceTable Component', () => {
     fireEvent.click(goBtn);
     expect(handlePageChange).toHaveBeenCalledWith(8);
   });
+
+  it('renders only 3 page numbers (1, 2, 3) on page 1 of 9 pages, not 4 or 5', () => {
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={9}
+        pageSize={5}
+        totalCount={42}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Kiểm tra có các nút trang 1, 2, 3 và trang cuối 9
+    expect(screen.getByRole('button', { name: 'Trang 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 3' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 9' })).toBeInTheDocument();
+
+    // Tuyệt đối không hiển thị nút trang 4 và 5 theo yêu cầu người dùng
+    expect(screen.queryByRole('button', { name: 'Trang 4' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang 5' })).not.toBeInTheDocument();
+  });
+
+  it('renders only 3 page numbers (7, 8, 9) on page 9 of 9 pages, not 5 or 6', () => {
+    render(
+      <ResourceTable
+        items={[mockItems[0], mockItems[1]]}
+        currentPage={9}
+        totalPages={9}
+        pageSize={5}
+        totalCount={42}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Kiểm tra có các nút trang 1, 7, 8, 9
+    expect(screen.getByRole('button', { name: 'Trang 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 7' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 8' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 9' })).toBeInTheDocument();
+
+    // Không hiển thị 5 hay 6
+    expect(screen.queryByRole('button', { name: 'Trang 5' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang 6' })).not.toBeInTheDocument();
+  });
+
+  it('renders spacer rows on the last page to stabilize table height', () => {
+    const { container } = render(
+      <ResourceTable
+        items={[mockItems[0], mockItems[1]]}
+        currentPage={9}
+        totalPages={9}
+        pageSize={5}
+        totalCount={42}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Có 2 dòng thực tế + 3 dòng spacer = 5 dòng
+    const allRows = container.querySelectorAll('tbody tr');
+    expect(allRows.length).toBe(5);
+
+    const spacerRows = container.querySelectorAll('tbody tr[data-spacer="true"]');
+    expect(spacerRows.length).toBe(3);
+  });
 });

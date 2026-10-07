@@ -179,13 +179,24 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
   // Ô nhập trang nhảy nhanh khi có nhiều trang
   const [jumpPageInput, setJumpPageInput] = useState('');
+  const paginationRef = useRef<HTMLDivElement>(null);
+
+  const handlePageChange = (targetPage: number) => {
+    onPageChange(targetPage);
+    // Giữ vị trí thanh phân trang và bảng dữ liệu ổn định trong tầm nhìn người dùng
+    requestAnimationFrame(() => {
+      if (typeof paginationRef.current?.scrollIntoView === 'function') {
+        paginationRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  };
 
   const handleJumpPage = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const pageNum = parseInt(jumpPageInput.trim(), 10);
     if (!isNaN(pageNum)) {
       const validPage = Math.max(1, Math.min(pageNum, totalPages));
-      onPageChange(validPage);
+      handlePageChange(validPage);
       setJumpPageInput('');
     }
   };
@@ -194,9 +205,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     | { type: 'page'; num: number }
     | { type: 'ellipsis'; direction: 'prev' | 'next'; targetPage: number };
 
-  // Danh sách phần tử phân trang thông minh (thuật toán rút gọn khi có nhiều trang)
+  // Danh sách phần tử phân trang thông minh: rút gọn chỉ hiện 3 số (ví dụ 1 2 3 ... 9 hoặc 1 ... 7 8 9)
   const getPageElements = (): PageItem[] => {
-    if (totalPages <= 7) {
+    if (totalPages <= 5) {
       return Array.from({ length: totalPages }, (_, i) => ({
         type: 'page',
         num: i + 1,
@@ -205,44 +216,54 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
     const items: PageItem[] = [];
 
-    if (currentPage <= 4) {
-      // Đang ở gần đầu: 1 2 3 4 5 ... totalPages
-      for (let i = 1; i <= 5; i++) {
+    if (currentPage <= 2) {
+      // Đang ở gần đầu: chỉ hiện 3 số đầu 1, 2, 3 ... totalPages
+      for (let i = 1; i <= 3; i++) {
         items.push({ type: 'page', num: i });
       }
       items.push({
         type: 'ellipsis',
         direction: 'next',
-        targetPage: Math.min(totalPages, currentPage + 5),
+        targetPage: Math.min(totalPages, currentPage + 3),
       });
       items.push({ type: 'page', num: totalPages });
-    } else if (currentPage >= totalPages - 3) {
-      // Đang ở gần cuối: 1 ... (totalPages-4) (totalPages-3) (totalPages-2) (totalPages-1) totalPages
+    } else if (currentPage >= totalPages - 1) {
+      // Đang ở gần cuối: 1 ... (totalPages-2) (totalPages-1) totalPages
       items.push({ type: 'page', num: 1 });
       items.push({
         type: 'ellipsis',
         direction: 'prev',
-        targetPage: Math.max(1, currentPage - 5),
+        targetPage: Math.max(1, currentPage - 3),
       });
-      for (let i = totalPages - 4; i <= totalPages; i++) {
+      for (let i = totalPages - 2; i <= totalPages; i++) {
         items.push({ type: 'page', num: i });
       }
     } else {
       // Đang ở giữa: 1 ... (currentPage-1) (currentPage) (currentPage+1) ... totalPages
       items.push({ type: 'page', num: 1 });
-      items.push({
-        type: 'ellipsis',
-        direction: 'prev',
-        targetPage: Math.max(1, currentPage - 5),
-      });
+
+      if (currentPage - 1 > 2) {
+        items.push({
+          type: 'ellipsis',
+          direction: 'prev',
+          targetPage: Math.max(1, currentPage - 3),
+        });
+      }
+
+      // Nếu currentPage === 3 thì currentPage - 1 là 2 (liền kề 1, không cần ellipsis)
       items.push({ type: 'page', num: currentPage - 1 });
       items.push({ type: 'page', num: currentPage });
       items.push({ type: 'page', num: currentPage + 1 });
-      items.push({
-        type: 'ellipsis',
-        direction: 'next',
-        targetPage: Math.min(totalPages, currentPage + 5),
-      });
+
+      // Nếu currentPage === totalPages - 2 thì currentPage + 1 là totalPages - 1 (liền kề totalPages, không cần ellipsis)
+      if (currentPage + 1 < totalPages - 1) {
+        items.push({
+          type: 'ellipsis',
+          direction: 'next',
+          targetPage: Math.min(totalPages, currentPage + 3),
+        });
+      }
+
       items.push({ type: 'page', num: totalPages });
     }
 
@@ -624,12 +645,28 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 );
               })
             )}
+            {/* Giữ độ cao hàng và chân bảng cố định khi trang cuối có ít dòng hơn pageSize */}
+            {totalPages > 1 && !isLoading && !error && items.length > 0 && items.length < pageSize && pageSize <= 10 && (
+              Array.from({ length: pageSize - items.length }).map((_, idx) => (
+                <tr
+                  key={`spacer-${idx}`}
+                  data-spacer="true"
+                  className="h-[52px] pointer-events-none select-none border-b border-transparent"
+                  aria-hidden="true"
+                >
+                  <td colSpan={7} className="px-4 py-3.5">&nbsp;</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Chân bảng: Chọn số dòng hiển thị + Thanh phân trang thông minh */}
-      <div className="flex flex-col xl:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border-subtle text-xs text-secondary bg-surface pr-4 sm:pr-28 lg:pr-32">
+      <div
+        ref={paginationRef}
+        className="flex flex-col xl:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border-subtle text-xs text-secondary bg-surface pr-4 sm:pr-28 lg:pr-32"
+      >
         {/* Bên trái chân bảng: Dropdown chọn số dòng & Thông tin tổng số */}
         <div className="flex items-center gap-2.5 shrink-0 select-none">
           <span className="font-medium">Hiển thị</span>
@@ -661,7 +698,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 <button
                   type="button"
                   disabled={currentPage <= 1 || isLoading}
-                  onClick={() => onPageChange(1)}
+                  onClick={() => handlePageChange(1)}
                   className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                   title="Về trang đầu (Trang 1)"
                   aria-label="Về trang đầu"
@@ -674,7 +711,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
               <button
                 type="button"
                 disabled={currentPage <= 1 || isLoading}
-                onClick={() => onPageChange(currentPage - 1)}
+                onClick={() => handlePageChange(currentPage - 1)}
                 className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title="Trang trước"
                 aria-label="Trang trước"
@@ -690,14 +727,14 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       key={`ellipsis-${idx}`}
                       type="button"
                       disabled={isLoading}
-                      onClick={() => onPageChange(item.targetPage)}
+                      onClick={() => handlePageChange(item.targetPage)}
                       className="group min-w-[32px] h-8 px-1 text-xs font-medium rounded-lg border border-transparent hover:border-border-subtle hover:bg-surface-elevated text-muted hover:text-primary transition-all cursor-pointer flex items-center justify-center"
                       title={
                         item.direction === 'prev'
-                          ? `Lùi 5 trang (Về trang ${item.targetPage})`
-                          : `Tiến 5 trang (Đến trang ${item.targetPage})`
+                          ? `Lùi 3 trang (Về trang ${item.targetPage})`
+                          : `Tiến 3 trang (Đến trang ${item.targetPage})`
                       }
-                      aria-label={item.direction === 'prev' ? 'Lùi 5 trang' : 'Tiến 5 trang'}
+                      aria-label={item.direction === 'prev' ? 'Lùi 3 trang' : 'Tiến 3 trang'}
                     >
                       <span className="group-hover:hidden tracking-widest text-[11px] font-bold">•••</span>
                       <i
@@ -715,7 +752,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     key={`page-${item.num}`}
                     type="button"
                     disabled={isLoading}
-                    onClick={() => onPageChange(item.num)}
+                    onClick={() => handlePageChange(item.num)}
                     className={`min-w-[32px] h-8 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                       isActive
                         ? 'bg-primary text-white shadow-xs font-bold border border-primary'
@@ -733,7 +770,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
               <button
                 type="button"
                 disabled={currentPage >= totalPages || isLoading}
-                onClick={() => onPageChange(currentPage + 1)}
+                onClick={() => handlePageChange(currentPage + 1)}
                 className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title="Trang sau"
                 aria-label="Trang sau"
@@ -746,7 +783,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 <button
                   type="button"
                   disabled={currentPage >= totalPages || isLoading}
-                  onClick={() => onPageChange(totalPages)}
+                  onClick={() => handlePageChange(totalPages)}
                   className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                   title={`Đến trang cuối (Trang ${totalPages})`}
                   aria-label="Đến trang cuối"
