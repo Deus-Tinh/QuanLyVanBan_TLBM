@@ -151,7 +151,7 @@ Hệ thống tách hai giai đoạn:
 
 **Văn bản hạn chế không đi qua trình ký**
 
-GVHD đã chốt bỏ văn bản mật hành chính. Tài liệu nội bộ hạn chế là văn bản có `pham_vi = 'HAN_CHE'` (DDL `ddl_base_v0`, PR #81); loại này chỉ lưu hành, không ký và không đi qua trình ký. Trình ký chỉ xử lý văn bản thường (`pham_vi = 'NOI_BO'`) và vận hành độc lập với quy tắc xem của văn bản hạn chế (#82, #83). Giữ nguyên toàn bộ luồng ký, gồm ký nháy (`KY_NHAY`) và ký chính (`KY_CHINH`), khóa ký Ed25519, PIN và `k_srv`, mã băm, nhật ký chỉ ghi thêm, bằng chứng tổng hợp.
+GVHD đã chốt bỏ văn bản mật hành chính. Tài liệu nội bộ hạn chế là văn bản có `pham_vi = 'HAN_CHE'` (DDL `ddl_base_v0`, PR #81); loại này là văn bản gửi đi, người tạo chọn người xem và hệ thống lưu log xem (bảng `documents_access_log`, thuộc Nhóm 2, #82); không có bước ký và không đi qua trình ký. Trình ký chỉ xử lý văn bản thường (`pham_vi = 'NOI_BO'`) và vận hành độc lập với quy tắc xem của văn bản hạn chế (#82, #83). Giữ nguyên toàn bộ luồng ký, gồm ký nháy (`KY_NHAY`) và ký chính (`KY_CHINH`), khóa ký Ed25519, PIN và `k_srv`, mã băm, nhật ký chỉ ghi thêm, bằng chứng tổng hợp.
 
 - Khi tạo hồ sơ hoặc phiếu trình ký (Phase 7), API từ chối văn bản gốc có `pham_vi = 'HAN_CHE'`, kể cả ở đường tạo từ quy trình mẫu. DDL không cho đổi `pham_vi` sau khi tạo nên không thể vòng qua luật này.
 - Trợ lý AI không đọc bảng `signing_*` (DDL không cấp quyền cho `qlvb_readonly`).

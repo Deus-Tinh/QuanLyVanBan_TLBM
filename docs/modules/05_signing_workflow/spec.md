@@ -36,7 +36,7 @@ Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân ch
      - Khi ký, backend chỉ lưu snapshot ảnh chữ ký vào bản ghi chữ ký, không sửa tệp.
      - Chỉ khi lượt trình `HOAN_THANH`, `PdfStampingService` dán toàn bộ ảnh chữ ký một lần và sinh tệp hoàn tất (`vi_tri_tep_hoan_tat`), làm đầu vào cho khâu phát hành pháp lý.
    - Thiết lập hạn chót (`han_chot`) và số giờ xử lý từng cấp (`so_gio_xu_ly`).
-   - Phạm vi văn bản: chỉ trình ký **văn bản đi** (`vanbandi`). Văn bản đến không trình ký (bút phê/chỉ đạo thuộc Nhóm 2). Văn bản mật đã bỏ (GVHD chốt); văn bản hạn chế (`pham_vi = 'HAN_CHE'`) không ký và không đi qua trình ký; API tạo hồ sơ từ chối loại này (`signing-backend-plan.md` mục 3.3).
+   - Phạm vi văn bản: chỉ trình ký **văn bản đi** (`vanbandi`). Văn bản đến không trình ký (bút phê/chỉ đạo thuộc Nhóm 2). Văn bản mật đã bỏ (GVHD chốt); văn bản hạn chế (`pham_vi = 'HAN_CHE'`) là văn bản gửi đi chọn người xem và lưu log xem, không ký và không đi qua trình ký; API tạo hồ sơ từ chối loại này (`signing-backend-plan.md` mục 3.3).
 4. **Danh sách hồ sơ trình ký:**
    - Tabs: *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Toàn bộ hồ sơ*.
    - Bộ lọc: phòng ban, trạng thái, mức độ, khoảng thời gian.
@@ -159,7 +159,7 @@ API ảnh chữ ký cá nhân thuộc Nhóm 7, không nằm trong phân hệ nà
 - **Lazy Stamping:** không sửa raw bytes tệp PDF trong luồng nội bộ; chỉ dán ảnh chữ ký một lần khi lượt trình `HOAN_THANH`, dùng snapshot ảnh tại thời điểm ký.
 - **Bảo vệ khóa ký bằng PIN (Phase 6):** PIN 8 chữ số, Argon2id ở client; bản bọc private key chỉ ở thiết bị, server giữ mảnh bí mật `k_srv` và hash verifier, khóa theo số lần sai, có nhật ký; đổi PIN xoay vòng `k_srv` (Phase 6c). Chi tiết tại `signing-backend-plan.md` mục 3.4.
 - **Thể thức:** khối chữ ký in theo `hinh_thuc_ky` (ký trực tiếp, KT., TL., TUQ.).
-- **Văn bản hạn chế (`pham_vi = 'HAN_CHE'`):** không đi qua trình ký; API tạo hồ sơ từ chối. Bảo mật trình ký (khóa ký, PIN, mã băm, nhật ký, bằng chứng) giữ nguyên.
+- **Văn bản hạn chế (`pham_vi = 'HAN_CHE'`):** là văn bản gửi đi chọn người xem và lưu log xem (Nhóm 2), không ký và không đi qua trình ký; API tạo hồ sơ từ chối. Bảo mật trình ký (khóa ký, PIN, mã băm, nhật ký, bằng chứng) giữ nguyên.
 - **Ranh giới pháp lý:** người ký phát hành pháp lý bắt buộc có Chứng thư số CA hợp pháp.
 - **Technical Gates:**
   - `python backend/manage.py check` (Pass)
