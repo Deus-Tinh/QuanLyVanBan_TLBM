@@ -1,19 +1,4 @@
 -- =====================================================================
--- CHUẨN HÓA TÊN CỘT (quy ước ở #68; các nhóm cập nhật model và migration theo tên mới)
---   1) update_at -> updated_at: signing_process, signing_request, signing_attempt, signing_change_thread.
---   2) create_by_id -> nguoi_tao_id: signing_process, signing_request, signing_attempt, signing_manifest;
---      update_by_id -> nguoi_cap_nhat_id: signing_process, signing_request, signing_attempt;
---      chỉ mục idx_signing_*_create_by -> idx_signing_*_nguoi_tao, idx_signing_*_update_by -> idx_signing_*_nguoi_cap_nhat.
---   3) created_time -> created_at, created_user_id -> nguoi_tao_id: records_chitiettailieu_attachment,
---      documents_vanbanden_attachment, documents_vanbandi_attachment, task_attachment.
---   4) nguoi_tao -> nguoi_tao_id: records_chitiettailieu, documents_vanbanden, documents_vanbandi, task_congviec.
---   5) status -> trang_thai: meetings_meetingroom, meetings_meetingbooking, birthdays_birthdaywish,
---      birthdays_birthdayemaillog (giá trị ENUM giữ nguyên).
---   6) signing_request.van_ban_id -> document_id (cùng tên với document_id ở các bảng dùng quan hệ đa hình khác).
--- Giữ nguyên: nguoi_lap_id (records_hoso, records_tailieu), các cột tiếng Anh/viết tắt của task_*,
---   meetings_meetingbooking.organizer_id (tên theo nghiệp vụ, không phải xung đột giữa các nhóm).
--- =====================================================================
--- =====================================================================
 -- THAY ĐỔI BỎ VĂN BẢN MẬT (GVHD đã chốt bỏ văn bản mật; đánh dấu [BỎ MẬT] tại vị trí; giữ nhãn phiên bản)
 -- Bối cảnh: khách hàng là doanh nghiệp bảo hiểm; "văn bản mật" được hiểu là tài liệu nội bộ
 --   hạn chế (không phải bí mật nhà nước) và xử lý bằng quyền xem + nhật ký xem trên văn bản đến/đi.
@@ -35,6 +20,21 @@
 --   pham_vi không đổi sau khi tạo; văn bản HAN_CHE không được xóa (MVP). Văn bản NOI_BO chỉ ghi documents_view_log.
 --   Mã hóa nội dung: sau MVP.
 -- Quy mô sau thay đổi: 55 bảng vật lý | 21 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
+-- =====================================================================
+-- =====================================================================
+-- CHUẨN HÓA TÊN CỘT (quy ước ở #68; các nhóm cập nhật model và migration theo tên mới)
+--   1) update_at -> updated_at: signing_process, signing_request, signing_attempt, signing_change_thread.
+--   2) create_by_id -> nguoi_tao_id: signing_process, signing_request, signing_attempt, signing_manifest;
+--      update_by_id -> nguoi_cap_nhat_id: signing_process, signing_request, signing_attempt;
+--      chỉ mục idx_signing_*_create_by -> idx_signing_*_nguoi_tao, idx_signing_*_update_by -> idx_signing_*_nguoi_cap_nhat.
+--   3) created_time -> created_at, created_user_id -> nguoi_tao_id: records_chitiettailieu_attachment,
+--      documents_vanbanden_attachment, documents_vanbandi_attachment, task_attachment.
+--   4) nguoi_tao -> nguoi_tao_id: records_chitiettailieu, documents_vanbanden, documents_vanbandi, task_congviec.
+--   5) status -> trang_thai: meetings_meetingroom, meetings_meetingbooking, birthdays_birthdaywish,
+--      birthdays_birthdayemaillog (giá trị ENUM giữ nguyên).
+--   6) signing_request.van_ban_id -> document_id (cùng tên với document_id ở các bảng dùng quan hệ đa hình khác).
+-- Giữ nguyên: nguoi_lap_id (records_hoso, records_tailieu), các cột tiếng Anh/viết tắt của task_*,
+--   meetings_meetingbooking.organizer_id (tên theo nghiệp vụ, không phải xung đột giữa các nhóm).
 -- =====================================================================
 -- =====================================================================
 -- RELEASE_DDL_v1 — trạng thái đích của Issue #53, sinh từ RELEASE_DDL_v0
