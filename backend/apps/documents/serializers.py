@@ -334,6 +334,10 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                     doi_tuong_user=user_obj,
                 )
 
+        if instance.link_thay_the:
+            from .services import sync_replacement_document
+            sync_replacement_document(instance)
+
         return instance
 
     def update(self, instance, validated_data):
@@ -383,6 +387,10 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                     )
             else:
                 instance.nguoi_nhan.set(nguoi_nhan)
+
+        if instance.link_thay_the:
+            from .services import sync_replacement_document
+            sync_replacement_document(instance)
 
         return instance
 

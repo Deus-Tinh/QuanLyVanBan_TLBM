@@ -153,101 +153,11 @@ def can_delete_document(user, instance):
     return False
 
 
-def cleanup_replacement_links_on_delete(instance):
-    """Dọn dẹp và khôi phục văn bản liên quan khi một văn bản bị xóa."""
-    so_hieu = (instance.so_hieu or "").strip()
-    link_target = (instance.link_thay_the or "").strip()
-    if not so_hieu and not link_target:
-        return
-
-    query = Q()
-    if so_hieu:
-        query |= Q(link_thay_the__iexact=so_hieu)
-    if link_target:
-        query |= Q(so_hieu__iexact=link_target)
-
-    for model in (VanBanDen, VanBanDi):
-        for doc in model.objects.filter(query).exclude(pk=instance.pk):
-            updated_fields = []
-            if so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == so_hieu.lower():
-                doc.link_thay_the = ""
-                updated_fields.append("link_thay_the")
-
-            if doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
-                doc.hieu_luc = HieuLuc.CON_HIEU_LUC
-                doc.ngay_het_hieu_luc = None
-                if "ngay_het_hieu_luc" not in updated_fields:
-                    updated_fields.append("ngay_het_hieu_luc")
-                if "hieu_luc" not in updated_fields:
-                    updated_fields.append("hieu_luc")
-
-            if updated_fields:
-                doc.save(update_fields=updated_fields)
-
-
-def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu):
-    """Dọn dẹp quan hệ thay thế cũ khi văn bản sửa đổi/xóa link_thay_the."""
-    if not old_target_so_hieu:
-        return
-
-    query = Q(so_hieu__iexact=old_target_so_hieu) | Q(link_thay_the__iexact=current_so_hieu)
-    for model in (VanBanDen, VanBanDi):
-        for doc in model.objects.filter(query):
-            updated_fields = []
-            if current_so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == current_so_hieu.lower():
-                doc.link_thay_the = ""
-                updated_fields.append("link_thay_the")
-            if doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
-                doc.hieu_luc = HieuLuc.CON_HIEU_LUC
-                doc.ngay_het_hieu_luc = None
-                if "ngay_het_hieu_luc" not in updated_fields:
-                    updated_fields.append("ngay_het_hieu_luc")
-                if "hieu_luc" not in updated_fields:
-                    updated_fields.append("hieu_luc")
-            if updated_fields:
-                doc.save(update_fields=updated_fields)
-
-
-def sync_replacement_document(doc):
-    """Đồng bộ quan hệ thay thế 2 chiều giữa các văn bản (hỗ trợ nhiều văn bản phân tách bằng dấu phẩy)."""
-    raw_target = (doc.link_thay_the or "").strip()
-    if not raw_target:
-        return
-
-    targets = [t.strip() for t in raw_target.split(",") if t.strip()]
-    now = timezone.now()
-    effective_date = (
-        getattr(doc, "ngay_van_ban", None)
-        or getattr(doc, "ngay_den", None)
-        or getattr(doc, "ngay_ban_hanh", None)
-        or now
-    )
-
-    for target in targets:
-        other_doc = None
-        for model in (VanBanDen, VanBanDi):
-            found = model.objects.filter(so_hieu__iexact=target).exclude(pk=doc.pk).first()
-            if found:
-                other_doc = found
-                break
-
-        if not other_doc:
-            continue
-
-        if doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
-            other_doc.hieu_luc = HieuLuc.HET_VA_THAY_THE
-            existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
-            if doc.so_hieu and doc.so_hieu not in existing_links:
-                existing_links.append(doc.so_hieu)
-            other_doc.link_thay_the = ", ".join(existing_links)
-            other_doc.ngay_het_hieu_luc = effective_date
-            other_doc.save(update_fields=["hieu_luc", "link_thay_the", "ngay_het_hieu_luc"])
-        elif doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
-            existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
-            if doc.so_hieu and doc.so_hieu not in existing_links:
-                existing_links.append(doc.so_hieu)
-            other_doc.link_thay_the = ", ".join(existing_links)
-            other_doc.save(update_fields=["link_thay_the"])
+from .services import (
+    sync_replacement_document,
+    cleanup_old_replacement_link,
+    cleanup_replacement_links_on_delete,
+)
 
 
 def handle_attachments(document, request):
