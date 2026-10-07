@@ -8,7 +8,23 @@ from document_templates.models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTie
 class Command(BaseCommand):
     help = "Khởi tạo dữ liệu mẫu cho Phân hệ Tài liệu & Biểu mẫu (BM) - Nhóm 4"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--clear",
+            action="store_true",
+            help="Xóa sạch toàn bộ dữ liệu tài liệu, loại tài liệu và danh mục trong database",
+        )
+
     def handle(self, *args, **options):
+        if options.get("clear"):
+            self.stdout.write(self.style.WARNING("Dang xoa sach toan bo du lieu Tai lieu & Bieu mau..."))
+            ChiTietTaiLieuAttachment.objects.all().delete()
+            TaiLieuChiTiet.objects.all().delete()
+            LoaiTaiLieu.objects.all().delete()
+            DanhMucTaiLieu.objects.all().delete()
+            self.stdout.write(self.style.SUCCESS("-> Da xoa sach toan bo du lieu mau trong co so du lieu!"))
+            return
+
         self.stdout.write(self.style.NOTICE("Dang khoi tao du lieu mau Tai lieu & Bieu mau..."))
         User = get_user_model()
 
