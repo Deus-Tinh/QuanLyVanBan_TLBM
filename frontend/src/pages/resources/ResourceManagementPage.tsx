@@ -692,25 +692,27 @@ export default function ResourceManagementPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Nút Quản lý Cấp 1 & Cấp 2 */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* Nút Quản lý Danh mục (Thao tác cấu hình phụ) */}
           <Button
-            variant="outline"
+            variant="secondary"
             size="md"
             icon="fa-folder-tree"
             onClick={() => setIsCategoryModalOpen(true)}
-            className="shadow-2xs text-xs sm:text-sm"
+            className="h-10 px-4 rounded-xl text-xs sm:text-sm font-semibold border-border-subtle shadow-2xs hover:border-primary/50 hover:text-primary transition-all"
+            title="Quản lý danh mục thư mục và các loại biểu mẫu dùng chung"
           >
-            Quản lý Danh mục &amp; Cấp 2
+            Quản lý danh mục
           </Button>
 
-          {/* Nút Thêm mới tài liệu */}
+          {/* Nút Thêm mới tài liệu (Thao tác chính nổi bật) */}
           <Button
             variant="primary"
             size="md"
             icon="fa-plus"
             onClick={handleAddNew}
-            className="shadow-sm text-xs sm:text-sm"
+            className="h-10 px-4.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:shadow-glow transition-all"
+            title="Thêm mới văn bản, tài liệu hoặc biểu mẫu mới vào kho"
           >
             Thêm mới tài liệu
           </Button>
@@ -832,7 +834,7 @@ export default function ResourceManagementPage() {
             </button>
 
             {isCategoryDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 w-72 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                   <span>Danh mục tài liệu</span>
                   <span className="text-[10px] text-primary lowercase font-medium">Cấp 1</span>
@@ -866,40 +868,60 @@ export default function ResourceManagementPage() {
 
                 <div className="my-1 border-t border-border-subtle" />
 
-                {sortedCategories.map((cat) => {
-                  const isSelected = selectedCategory === String(cat.id);
-                  const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => {
-                        handleCategorySelect(String(cat.id));
-                        setIsCategoryDropdownOpen(false);
-                      }}
-                      className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                        isSelected
-                          ? 'bg-primary text-white font-bold'
-                          : 'text-main hover:bg-surface-elevated'
-                      }`}
-                      title={cat.ghi_chu || cat.ten_tai_lieu}
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        <i className={`fa-solid ${isSelected ? 'fa-folder-open' : 'fa-folder'} text-xs`} />
-                        <span className="truncate">{cat.ten_tai_lieu}</span>
-                      </span>
-                      <span
-                        className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                  {sortedCategories.map((cat) => {
+                    const isSelected = selectedCategory === String(cat.id);
+                    const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          handleCategorySelect(String(cat.id));
+                          setIsCategoryDropdownOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
                           isSelected
-                            ? 'bg-white/20 text-white'
-                            : 'bg-surface-elevated text-secondary border border-border-subtle'
+                            ? 'bg-primary text-white font-bold'
+                            : 'text-main hover:bg-surface-elevated'
                         }`}
+                        title={cat.ghi_chu || cat.ten_tai_lieu}
                       >
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span className="flex items-center gap-2 truncate">
+                          <i className={`fa-solid ${isSelected ? 'fa-folder-open' : 'fa-folder'} text-xs`} />
+                          <span className="truncate">{cat.ten_tai_lieu}</span>
+                        </span>
+                        <span
+                          className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                            isSelected
+                              ? 'bg-white/20 text-white'
+                              : 'bg-surface-elevated text-secondary border border-border-subtle'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="my-1 border-t border-border-subtle" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCategoryModalOpen(true);
+                    setIsCategoryDropdownOpen(false);
+                  }}
+                  className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-semibold text-primary hover:bg-primary/5 flex items-center justify-between transition-colors cursor-pointer border border-primary/20 hover:border-primary/40 bg-primary/2"
+                  title="Mở bảng cấu hình Quản lý Danh mục & Loại tài liệu"
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <i className="fa-solid fa-folder-tree text-xs text-primary" />
+                    <span className="truncate">Cài đặt &amp; Quản lý danh mục</span>
+                  </span>
+                  <i className="fa-solid fa-arrow-up-right-from-square text-[10px] text-primary/70 shrink-0" />
+                </button>
               </div>
             )}
           </div>
@@ -1015,7 +1037,7 @@ export default function ResourceManagementPage() {
               </button>
 
               {isTypeDropdownOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-72 max-h-80 overflow-y-auto bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-full mt-1.5 w-72 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
                   <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                     <span>Loại tài liệu</span>
                     <span className="text-[10px] text-primary lowercase font-medium">Cấp 2</span>
@@ -1046,47 +1068,67 @@ export default function ResourceManagementPage() {
 
                   <div className="my-1 border-t border-border-subtle" />
 
-                  {availableTypesForFilter.map((t) => {
-                    const isSelected = selectedType === String(t.id);
-                    const docCount = documents.filter(
-                      (d) =>
-                        d.dm_tai_lieu === Number(selectedCategory) &&
-                        Array.isArray(d.loai_tai_lieu) &&
-                        d.loai_tai_lieu.includes(t.id)
-                    ).length;
+                  <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                    {availableTypesForFilter.map((t) => {
+                      const isSelected = selectedType === String(t.id);
+                      const docCount = documents.filter(
+                        (d) =>
+                          d.dm_tai_lieu === Number(selectedCategory) &&
+                          Array.isArray(d.loai_tai_lieu) &&
+                          d.loai_tai_lieu.includes(t.id)
+                      ).length;
 
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedType(String(t.id));
-                          setCurrentPage(1);
-                          setIsTypeDropdownOpen(false);
-                        }}
-                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-primary text-white font-bold'
-                            : 'text-main hover:bg-surface-elevated'
-                        }`}
-                        title={t.ghi_chu || t.ten_loai}
-                      >
-                        <span className="flex items-center gap-2 truncate">
-                          {!t.is_public ? (
-                            <i className="fa-solid fa-lock text-[10px] opacity-70" />
-                          ) : (
-                            <i className="fa-solid fa-tag text-xs opacity-70" />
-                          )}
-                          <span className="truncate">{t.ten_loai}</span>
-                        </span>
-                        <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
-                        }`}>
-                          {docCount}
-                        </span>
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedType(String(t.id));
+                            setCurrentPage(1);
+                            setIsTypeDropdownOpen(false);
+                          }}
+                          className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary text-white font-bold'
+                              : 'text-main hover:bg-surface-elevated'
+                          }`}
+                          title={t.ghi_chu || t.ten_loai}
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            {!t.is_public ? (
+                              <i className="fa-solid fa-lock text-[10px] opacity-70" />
+                            ) : (
+                              <i className="fa-solid fa-tag text-xs opacity-70" />
+                            )}
+                            <span className="truncate">{t.ten_loai}</span>
+                          </span>
+                          <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
+                          }`}>
+                            {docCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="my-1 border-t border-border-subtle" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCategoryModalOpen(true);
+                      setIsTypeDropdownOpen(false);
+                    }}
+                    className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-semibold text-primary hover:bg-primary/5 flex items-center justify-between transition-colors cursor-pointer border border-primary/20 hover:border-primary/40 bg-primary/2"
+                    title="Mở bảng cấu hình Quản lý Danh mục & Loại tài liệu"
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <i className="fa-solid fa-folder-tree text-xs text-primary" />
+                      <span className="truncate">Cài đặt &amp; Quản lý danh mục</span>
+                    </span>
+                    <i className="fa-solid fa-arrow-up-right-from-square text-[10px] text-primary/70 shrink-0" />
+                  </button>
                 </div>
               )}
             </div>
