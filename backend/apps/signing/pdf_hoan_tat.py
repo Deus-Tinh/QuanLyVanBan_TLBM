@@ -95,15 +95,54 @@ def _gio_vn(iso):
     return dt.astimezone(ZoneInfo(settings.TIME_ZONE)).strftime("%d/%m/%Y %H:%M:%S")
 
 
-def _chan_trang(rong, cao, noi_dung, phong):
+def _khoi_chu_ky(c, khung, nguoi_ky, anh, phong, phong_dam):
+    """Dán ảnh chữ ký (snapshot lúc ký) vào khung; chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT"."""
+    from reportlab.lib.colors import Color
+    from reportlab.lib.utils import ImageReader
+
+    x, y, rong, cao = khung
+    ck = nguoi_ky["chu_ky"]
+    co_chu = max(4.5, min(8.0, cao / 6))
+    cao_dong = co_chu * 1.25
+    xanh = Color(0.05, 0.25, 0.6)
+    c.setFillColor(xanh)
+    if anh:
+        # Ảnh ở phần trên khung, hai dòng chú thích (tên, thời điểm) ở đáy khung
+        chu_thich = [nguoi_ky["ten_nguoi_ky"], _gio_vn(ck["ngay_ky"])]
+        cao_chu = cao_dong * len(chu_thich) + co_chu * 0.4
+        c.drawImage(ImageReader(io.BytesIO(anh)), x, y + cao_chu, rong, max(cao - cao_chu, 1),
+                    preserveAspectRatio=True, anchor="c", mask="auto")
+        c.setFont(phong, co_chu)
+        for i, dong in enumerate(chu_thich):
+            c.drawCentredString(x + rong / 2, y + co_chu * 0.4 + cao_dong * (len(chu_thich) - 1 - i), dong[:60])
+        return
+    dong_chu = [d for d in ("ĐÃ KÝ DUYỆT", nguoi_ky["ten_nguoi_ky"], nguoi_ky.get("ten_chuc_vu") or "",
+                            _gio_vn(ck["ngay_ky"])) if d]
+    c.setStrokeColor(xanh)
+    c.setLineWidth(0.6)
+    c.rect(x, y, rong, cao)
+    for i, dong in enumerate(dong_chu):  # từ trên xuống trong khung
+        c.setFont(phong_dam if i == 0 else phong, co_chu)
+        c.drawCentredString(x + rong / 2, y + cao - (i + 1) * cao_dong, dong[:60])
+
+
+def _lop_phu(rong, cao, dong_chan, khoi_ky, phong, phong_dam):
+    """Lớp phủ một trang: dòng nhận diện ở chân trang và các khối chữ ký đặt trên trang đó."""
     from reportlab.lib.colors import Color
     from reportlab.pdfgen import canvas
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(rong, cao))
+    for vi_tri, nguoi_ky, anh in khoi_ky:
+        # Tỷ lệ % theo trang, gốc trên-trái (UI) -> điểm PDF, gốc dưới-trái
+        x = float(vi_tri["toa_do_x"]) / 100 * rong
+        w = float(vi_tri["chieu_rong_khung"]) / 100 * rong
+        h = float(vi_tri["chieu_cao_khung"]) / 100 * cao
+        y = cao - float(vi_tri["toa_do_y"]) / 100 * cao - h
+        _khoi_chu_ky(c, (x, y, w, h), nguoi_ky, anh, phong, phong_dam)
     c.setFont(phong, 7)
     c.setFillColor(Color(0.55, 0.1, 0.1))
-    c.drawCentredString(rong / 2, 10, noi_dung)
+    c.drawCentredString(rong / 2, 10, dong_chan)
     c.save()
     return buf.getvalue()
 
@@ -178,10 +217,12 @@ def _trang_phe_duyet(noi_dung, ma_bam_bang_chung, phong, phong_dam):
     return buf.getvalue()
 
 
-def dung_tep_hoan_tat(tep_goc: bytes, noi_dung: dict, ma_bam_bang_chung: str) -> bytes:
+def dung_tep_hoan_tat(tep_goc: bytes, noi_dung: dict, ma_bam_bang_chung: str, anh_chu_ky=None) -> bytes:
+    """`anh_chu_ky`: {id chữ ký: bytes PNG snapshot} đã kiểm mã băm theo bằng chứng."""
     from pypdf import PdfReader, PdfWriter, Transformation
     from pypdf.errors import PdfReadError
 
+    anh_chu_ky = anh_chu_ky or {}
     phong, phong_dam = _phong_chu()
     try:
         reader = PdfReader(io.BytesIO(tep_goc))
@@ -194,17 +235,20 @@ def dung_tep_hoan_tat(tep_goc: bytes, noi_dung: dict, ma_bam_bang_chung: str) ->
     ho_so, luot = noi_dung["ho_so"], noi_dung["luot_trinh"]
     dong_chan = (f"{noi_dung['nhan_dien']} · Hồ sơ trình ký #{ho_so['id']}, lượt {luot['so_luot']} · "
                  f"Mã bằng chứng {ma_bam_bang_chung[:16]}")
+    khoi_theo_trang = {}
+    for cap in noi_dung["cap_ky"]:
+        for n in cap["nguoi_ky"]:
+            if n.get("vi_tri") and n["chu_ky"]:
+                khoi_theo_trang.setdefault(n["vi_tri"]["trang_ky"], []).append(
+                    (n["vi_tri"], n, anh_chu_ky.get(n["chu_ky"]["id"])))
     writer = PdfWriter()
-    lop_phu = {}
-    for trang in trang_goc:
+    for so, trang in enumerate(trang_goc, start=1):
         trang = writer.add_page(trang)
         trang.transfer_rotation_to_content()
         hop = trang.mediabox
-        kich_thuoc = (round(float(hop.width), 2), round(float(hop.height), 2))
-        if kich_thuoc not in lop_phu:
-            lop_phu[kich_thuoc] = PdfReader(io.BytesIO(_chan_trang(*kich_thuoc, dong_chan, phong))).pages[0]
-        trang.merge_transformed_page(lop_phu[kich_thuoc], Transformation().translate(float(hop.left),
-                                                                                     float(hop.bottom)))
+        lop = _lop_phu(float(hop.width), float(hop.height), dong_chan, khoi_theo_trang.get(so, []), phong, phong_dam)
+        trang.merge_transformed_page(PdfReader(io.BytesIO(lop)).pages[0],
+                                     Transformation().translate(float(hop.left), float(hop.bottom)))
     for trang in PdfReader(io.BytesIO(_trang_phe_duyet(noi_dung, ma_bam_bang_chung, phong, phong_dam))).pages:
         writer.add_page(trang)
     writer.add_attachment(f"bang-chung-{luot['id']}.json", ma_hoa_chuan(noi_dung))

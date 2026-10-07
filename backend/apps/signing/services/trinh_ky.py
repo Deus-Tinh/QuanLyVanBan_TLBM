@@ -23,6 +23,7 @@ from ..permissions import HUY_TRINH_KY, XEM_NHAT_KY, co_quyen
 from ..storage import StorageError, get_storage
 from ..tich_hop import to_chuc
 from ..tich_hop.van_ban import kiem_tra_van_ban_trinh_ky
+from . import process as process_service
 from .audit import ghi_nhat_ky
 
 LOAI = "signing_request"
@@ -52,21 +53,22 @@ def luot_hien_hanh(yeu_cau):
     return yeu_cau.luot_trinh_set.order_by("-so_luot").first()
 
 
-def _loi_doc_pdf(data):
-    """Mã lỗi nếu PDF không đọc được trang hoặc có mật khẩu (tệp hoàn tất ở Phase 10 dựng từ tệp này)."""
+def _so_trang_hoac_loi(data):
+    """(số trang, mã lỗi): lỗi khi PDF không đọc được trang hoặc có mật khẩu (tệp hoàn tất dựng từ tệp này)."""
     from pypdf import PdfReader
 
     try:
         reader = PdfReader(io.BytesIO(data))
         if reader.is_encrypted and not reader.decrypt(""):
-            return "tep_pdf_co_mat_khau"
-        return None if len(reader.pages) > 0 else "tep_khong_phai_pdf"
+            return 0, "tep_pdf_co_mat_khau"
+        so_trang = len(reader.pages)
+        return so_trang, (None if so_trang > 0 else "tep_khong_phai_pdf")
     except Exception:  # noqa: BLE001 — pypdf ném nhiều loại lỗi với tệp hỏng
-        return "tep_khong_phai_pdf"
+        return 0, "tep_khong_phai_pdf"
 
 
-def luu_tep_pdf(tep):
-    """Kiểm tra và lưu PDF dự thảo; server tự tính SHA-256 trên bytes đã lưu. Trả (vị trí, mã băm)."""
+def doc_tep_pdf(tep):
+    """Kiểm tệp PDF tải lên, chưa lưu. Trả (bytes, số trang)."""
     if tep is None:
         raise _loi("thieu_tep", "Cần tải lên tệp PDF dự thảo.", tep=["Bắt buộc."])
     if tep.size > TEP_TOI_DA:
@@ -74,11 +76,16 @@ def luu_tep_pdf(tep):
     data = tep.read()
     if not data.startswith(CHU_KY_PDF):
         raise _loi("tep_khong_phai_pdf", "Chỉ nhận tệp PDF.", tep=["Không phải tệp PDF."])
-    loi_pdf = _loi_doc_pdf(data)
+    so_trang, loi_pdf = _so_trang_hoac_loi(data)
     if loi_pdf == "tep_pdf_co_mat_khau":
         raise _loi(loi_pdf, "Không nhận PDF có mật khẩu.", tep=["Gỡ mật khẩu trước khi tải lên."])
     if loi_pdf:
         raise _loi(loi_pdf, "Tệp PDF hỏng hoặc không có trang.", tep=["Không đọc được tệp PDF."])
+    return data, so_trang
+
+
+def luu_du_lieu_pdf(data):
+    """Lưu bytes PDF đã kiểm; server tự tính SHA-256 trên bytes đã lưu. Trả (vị trí, mã băm)."""
     try:
         meta = get_storage().save_bytes(data, THU_MUC_TEP, "pdf")
     except StorageError as exc:
@@ -86,14 +93,47 @@ def luu_tep_pdf(tep):
     return meta.vi_tri_luu_tep, crypto.sha256_hex(data)
 
 
+def luu_tep_pdf(tep):
+    return luu_du_lieu_pdf(doc_tep_pdf(tep)[0])
+
+
+# ── Vị trí ký (#80 mục A, D; plan mục 3.2) ──────────────────────────────────
+# Hệ tọa độ: tỷ lệ % theo khung trang (MediaBox), gốc ở góc trên-trái như khi hiển thị; khung nằm trọn trong
+# trang. Vị trí được chụp vào dòng người ký của lượt trình lúc gửi (cùng với tệp và mã băm).
+
+TRUONG_VI_TRI = ("trang_ky", "toa_do_x", "toa_do_y", "chieu_rong_khung", "chieu_cao_khung")
+
+
+def so_trang_pdf(vi_tri_luu_tep):
+    from pypdf import PdfReader
+
+    try:
+        return len(PdfReader(io.BytesIO(get_storage().read_bytes(vi_tri_luu_tep))).pages)
+    except StorageError as exc:
+        raise _loi("khong_doc_duoc_tep", str(exc), status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+def kiem_tra_vi_tri_ky(vi_tri_ky, khoa_hop_le, so_trang):
+    """`vi_tri_ky` đã qua serializer (phạm vi 0–100, khung trong trang); kiểm khóa và số trang của tệp."""
+    loi = [{"loai": "khong_co_nguoi_ky", "khoa": k} for k in vi_tri_ky if str(k) not in khoa_hop_le]
+    loi += [{"loai": "ngoai_so_trang", "khoa": k, "so_trang": so_trang}
+            for k, v in vi_tri_ky.items() if v["trang_ky"] > so_trang]
+    if loi:
+        raise _loi("vi_tri_ky_khong_hop_le", "Vị trí ký không hợp lệ với người ký hoặc số trang của tệp.",
+                   vi_tri_ky=loi)
+
+
 def _kiem_tra_han_chot(han_chot):
     if han_chot is not None and han_chot <= timezone.now():
         raise _loi("han_chot_khong_hop_le", "Hạn chót phải sau thời điểm hiện tại.", han_chot=["Đã qua."])
 
 
-def _kiem_tra_quy_trinh(quy_trinh):
+def _kiem_tra_quy_trinh(quy_trinh, nguoi_tao):
     if quy_trinh.trang_thai != enums.TrangThaiQuyTrinh.HOAT_DONG:
         raise ConflictError(code="quy_trinh_khong_hoat_dong", detail="Chỉ trình ký theo quy trình đang hoạt động.")
+    if not SigningProcess.objects.filter(pk=quy_trinh.pk).filter(process_service.dung_duoc(nguoi_tao)).exists():
+        raise _loi("quy_trinh_khong_ap_dung", "Chỉ chọn quy trình công ty hoặc quy trình phòng ban của đơn vị mình.",
+                   status.HTTP_403_FORBIDDEN, quy_trinh=["Quy trình không áp dụng cho đơn vị của người trình."])
 
 
 # ── Phạm vi xem ─────────────────────────────────────────────────────────────
@@ -146,7 +186,7 @@ def tao_nhap(nguoi_tao, *, document_type, van_ban_id, quy_trinh, muc_do, tep, ha
              dia_chi_ip=None):
     kiem_tra_van_ban_trinh_ky(nguoi_tao, document_type, van_ban_id)
     quy_trinh = SigningProcess.objects.get(pk=quy_trinh.pk)
-    _kiem_tra_quy_trinh(quy_trinh)
+    _kiem_tra_quy_trinh(quy_trinh, nguoi_tao)
     _kiem_tra_han_chot(han_chot)
     vi_tri, ma_bam = luu_tep_pdf(tep)
     yeu_cau = SigningRequest.objects.create(
@@ -259,13 +299,19 @@ def mo_cap(luot, cap, thoi_diem, nguoi_thuc_hien):
     return vua_mo
 
 
-def tao_luot_trinh(yeu_cau, nguoi, *, chon_nguoi_ky, khoa_chong_trung, luot_truoc=None):
-    """Khóa tệp/mã băm hiện tại của hồ sơ, snapshot cấp và người ký, mở cấp đầu (dùng cho gửi và lượt mới)."""
+def tao_luot_trinh(yeu_cau, nguoi, *, chon_nguoi_ky, khoa_chong_trung, vi_tri_ky=None, luot_truoc=None):
+    """
+    Khóa tệp/mã băm hiện tại của hồ sơ, snapshot cấp, người ký và vị trí ký, mở cấp đầu.
+    `vi_tri_ky`: {id người ký cấu hình: {trang_ky, toa_do_x, toa_do_y, chieu_rong_khung, chieu_cao_khung}}.
+    """
     cau_hinh_cap = list(
         yeu_cau.quy_trinh.cap_ky_set.filter(dang_ap_dung=True).order_by("thu_tu").prefetch_related("nguoi_ky_set")
     )
     if not cau_hinh_cap or any(not c.nguoi_ky_set.all() for c in cau_hinh_cap):
         raise _loi("quy_trinh_thieu_nguoi_ky", "Quy trình không có cấp ký hoặc có cấp chưa có người ký.")
+    vi_tri_ky = vi_tri_ky or {}
+    cau_hinh_ids = {str(n.pk) for c in cau_hinh_cap for n in c.nguoi_ky_set.all()}
+    kiem_tra_vi_tri_ky(vi_tri_ky, cau_hinh_ids, so_trang_pdf(yeu_cau.vi_tri_luu_tep) if vi_tri_ky else 0)
     xac_dinh, loi = [], []
     for cap in cau_hinh_cap:
         nguoi_cap = []
@@ -306,6 +352,7 @@ def tao_luot_trinh(yeu_cau, nguoi, *, chon_nguoi_ky, khoa_chong_trung, luot_truo
                 ten_nguoi_ky=to_chuc.ten_hien_thi(tai_khoan) or tai_khoan.get_username(),
                 ten_chuc_vu=to_chuc.ten_chuc_vu(tai_khoan) or None,
                 vai_tro_ky=cau_hinh.vai_tro_ky, chan_ky_chinh=cau_hinh.chan_ky_chinh,
+                **vi_tri_ky.get(str(cau_hinh.pk), {}),
             )
     mo_cap(luot, cap_dau, thoi_diem, nguoi)
     return luot
@@ -323,7 +370,7 @@ def _luot_da_gui(yeu_cau, khoa_chong_trung):
 
 
 @transaction.atomic
-def gui(yeu_cau, nguoi, *, khoa_chong_trung, chon_nguoi_ky=None, dia_chi_ip=None):
+def gui(yeu_cau, nguoi, *, khoa_chong_trung, chon_nguoi_ky=None, vi_tri_ky=None, dia_chi_ip=None):
     if _luot_da_gui(yeu_cau, khoa_chong_trung):
         return SigningRequest.objects.get(pk=yeu_cau.pk)  # gửi lặp: trả kết quả lần trước
     yeu_cau = _khoa_yeu_cau(yeu_cau.pk)
@@ -333,9 +380,10 @@ def gui(yeu_cau, nguoi, *, khoa_chong_trung, chon_nguoi_ky=None, dia_chi_ip=None
     if yeu_cau.trang_thai != enums.TrangThaiYeuCau.NHAP:
         raise ConflictError(code="ho_so_khong_o_trang_thai_nhap", detail="Chỉ gửi được hồ sơ nháp.")
     kiem_tra_van_ban_trinh_ky(nguoi, yeu_cau.document_type, yeu_cau.van_ban_id)
-    _kiem_tra_quy_trinh(yeu_cau.quy_trinh)
+    _kiem_tra_quy_trinh(yeu_cau.quy_trinh, nguoi)
     _kiem_tra_han_chot(yeu_cau.han_chot)
-    luot = tao_luot_trinh(yeu_cau, nguoi, chon_nguoi_ky=chon_nguoi_ky or {}, khoa_chong_trung=khoa_chong_trung)
+    luot = tao_luot_trinh(yeu_cau, nguoi, chon_nguoi_ky=chon_nguoi_ky or {}, khoa_chong_trung=khoa_chong_trung,
+                          vi_tri_ky=vi_tri_ky)
     yeu_cau.trang_thai = enums.TrangThaiYeuCau.CHO_KY
     yeu_cau.ngay_gui = luot.thoi_diem_gui
     yeu_cau.update_by = nguoi
@@ -406,6 +454,7 @@ def trinh_lai(yeu_cau, nguoi, *, khoa_chong_trung, han_chot=None, dia_chi_ip=Non
     if quy_trinh is None:
         raise ConflictError(code="quy_trinh_khong_hoat_dong",
                             detail="Mã quy trình của hồ sơ gốc không còn phiên bản đang hoạt động.")
+    _kiem_tra_quy_trinh(quy_trinh, nguoi)
     _kiem_tra_han_chot(han_chot)
     luot = luot_hien_hanh(yeu_cau)
     moi = SigningRequest.objects.create(

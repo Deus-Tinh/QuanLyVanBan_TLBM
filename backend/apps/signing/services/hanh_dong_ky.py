@@ -12,6 +12,8 @@ thời (ký – ký, ký – từ chối, ký – hủy) được xử lý tuầ
 bằng Idempotency-Key lưu ở `khoa_chong_trung_thao_tac` của dòng người ký.
 """
 
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
@@ -21,12 +23,16 @@ from ..errors import ConflictError, SigningError
 from ..models import (
     SigningAttempt, SigningKey, SigningRequest, SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
+from ..storage import StorageError, get_storage
+from ..tich_hop import to_chuc
 from . import tep_hoan_tat
 from .audit import ghi_nhat_ky
 from .bang_chung import chot_bang_chung
 from .trinh_ky import luot_hien_hanh, mo_cap, mo_nguoi_ky_trong_cap
 
+logger = logging.getLogger(__name__)
 LOAI = "signing_request_step_signer"
+THU_MUC_ANH_CHU_KY = "anh_chu_ky"
 
 
 def _khoa_luot_hien_hanh(yeu_cau):
@@ -93,6 +99,22 @@ def _hoan_tat_neu_du(luot, cap, nguoi, thoi_diem):
     tep_hoan_tat.bat_dau_sau_commit(luot, nguoi)
 
 
+def _chup_anh_chu_ky(nguoi):
+    """
+    Snapshot ảnh chữ ký cá nhân tại thời điểm ký (plan mục 3.2): đổi ảnh trong hồ sơ sau đó không làm đổi tệp
+    hoàn tất. Chưa có ảnh (Nhóm 7 chưa cung cấp) hoặc không lưu được thì ký vẫn hợp lệ, tệp hoàn tất in khối chữ.
+    """
+    anh = to_chuc.anh_chu_ky(nguoi)
+    if not anh:
+        return "", ""
+    try:
+        meta = get_storage().save_bytes(anh, THU_MUC_ANH_CHU_KY, "png")
+    except (StorageError, OSError):
+        logger.exception("Không lưu được snapshot ảnh chữ ký của người dùng %s", nguoi.pk)
+        return "", ""
+    return meta.vi_tri_luu_tep, crypto.sha256_hex(anh)
+
+
 def _kiem_tra_khoa(nguoi, khoa_ky_id, thoi_diem):
     khoa = SigningKey.objects.filter(pk=khoa_ky_id, nguoi_so_huu=nguoi).first()
     if khoa is None:
@@ -123,11 +145,13 @@ def ky(yeu_cau, nguoi, *, khoa_ky, hash_tai_lieu, chu_ky_so, khoa_chong_trung, g
                            fields={"chu_ky_so": ["Không xác minh được."]})
     cap = SigningRequestStep.objects.select_for_update().get(pk=dong.buoc_ky_id)
     tre = cap.han_xu_ly is not None and thoi_diem > cap.han_xu_ly
+    vi_tri_anh, ma_bam_anh = _chup_anh_chu_ky(nguoi)
     chu_ky = SigningSignature.objects.create(
         luot_trinh=luot, buoc_ky=dong, khoa_ky=khoa, hash_tai_lieu=hash_tai_lieu, thuat_toan=khoa.thuat_toan,
         chu_ky_so=chu_ky_so, ghi_chu_ky=ghi_chu_ky, ky_tre_han=tre,
         so_giay_tre=int((thoi_diem - cap.han_xu_ly).total_seconds()) if tre else None,
         ngay_ky=thoi_diem, trang_thai_xac_minh=enums.TrangThaiXacMinh.HOP_LE, thoi_diem_xac_minh=thoi_diem,
+        vi_tri_anh_chu_ky=vi_tri_anh, ma_bam_anh_chu_ky=ma_bam_anh,
     )
     dong.trang_thai = enums.TrangThaiNguoiKy.DA_KY
     dong.ngay_ky = thoi_diem

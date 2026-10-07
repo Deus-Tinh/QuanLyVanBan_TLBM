@@ -21,7 +21,7 @@ from ..models import (
 )
 from .audit import ghi_nhat_ky
 from .hanh_dong_ky import _dong_cua_toi, _khoa_luot_hien_hanh, _thao_tac_lap
-from .trinh_ky import luot_hien_hanh, luu_tep_pdf, mo_cap
+from .trinh_ky import TRUONG_VI_TRI, doc_tep_pdf, kiem_tra_vi_tri_ky, luot_hien_hanh, luu_du_lieu_pdf, mo_cap
 
 
 def thread_dang_mo(yeu_cau):
@@ -88,7 +88,16 @@ def _cap_ky_luot_cu(luot_cu):
     return cap_cu
 
 
-def _sao_chep_luot(luot_cu, cap_cu, yeu_cau, nguoi, khoa_chong_trung, thoi_diem):
+def _vi_tri_luot_moi(cap_cu, vi_tri_ky, so_trang):
+    """Vị trí của lượt cũ, ghi đè bằng `vi_tri_ky` (khóa = id dòng người ký lượt cũ); kiểm với số trang tệp mới."""
+    dong_cu = [n for c in cap_cu for n in c.nguoi_ky_set.all()]
+    vi_tri = {str(n.pk): {f: getattr(n, f) for f in TRUONG_VI_TRI} for n in dong_cu if n.trang_ky is not None}
+    vi_tri.update(vi_tri_ky or {})
+    kiem_tra_vi_tri_ky(vi_tri, {str(n.pk) for n in dong_cu}, so_trang)
+    return vi_tri
+
+
+def _sao_chep_luot(luot_cu, cap_cu, yeu_cau, nguoi, khoa_chong_trung, thoi_diem, vi_tri):
     """Lượt mới: cùng cấp và người ký của lượt cũ, mọi trạng thái về ban đầu. Trả về (lượt, cấp đầu)."""
     luot = SigningAttempt.objects.create(
         trinh_ky=yeu_cau, so_luot=luot_cu.so_luot + 1, luot_truoc=luot_cu,
@@ -107,6 +116,7 @@ def _sao_chep_luot(luot_cu, cap_cu, yeu_cau, nguoi, khoa_chong_trung, thoi_diem)
             SigningRequestStepSigner.objects.create(
                 buoc_ky=cap_moi, nguoi_ky=n.nguoi_ky, chuc_vu_id=n.chuc_vu_id, ten_nguoi_ky=n.ten_nguoi_ky,
                 ten_chuc_vu=n.ten_chuc_vu, vai_tro_ky=n.vai_tro_ky, chan_ky_chinh=n.chan_ky_chinh,
+                **vi_tri.get(str(n.pk), {}),
             )
     return luot, cap_dau
 
@@ -120,7 +130,7 @@ def _giai_quyet_lap(yeu_cau, khoa_chong_trung):
 
 
 @transaction.atomic
-def giai_quyet(yeu_cau, nguoi, *, tep, khoa_chong_trung, dia_chi_ip=None):
+def giai_quyet(yeu_cau, nguoi, *, tep, khoa_chong_trung, vi_tri_ky=None, dia_chi_ip=None):
     if _giai_quyet_lap(yeu_cau, khoa_chong_trung):
         return SigningRequest.objects.get(pk=yeu_cau.pk)
     yeu_cau = SigningRequest.objects.select_for_update().get(pk=yeu_cau.pk)
@@ -136,15 +146,17 @@ def giai_quyet(yeu_cau, nguoi, *, tep, khoa_chong_trung, dia_chi_ip=None):
             or luot_cu.trang_thai != enums.TrangThaiLuotTrinh.YEU_CAU_SUA or thread is None):
         raise ConflictError(code="khong_co_yeu_cau_sua_dang_mo", detail="Hồ sơ không có yêu cầu sửa đang mở.")
     cap_cu = _cap_ky_luot_cu(luot_cu)
+    du_lieu, so_trang = doc_tep_pdf(tep)
+    vi_tri = _vi_tri_luot_moi(cap_cu, vi_tri_ky, so_trang)  # kiểm trước khi lưu tệp
     thoi_diem = timezone.now()
-    yeu_cau.vi_tri_luu_tep, yeu_cau.ma_bam_tai_lieu = luu_tep_pdf(tep)
+    yeu_cau.vi_tri_luu_tep, yeu_cau.ma_bam_tai_lieu = luu_du_lieu_pdf(du_lieu)
     yeu_cau.phien_ban_van_ban = str(int(yeu_cau.phien_ban_van_ban or "0") + 1)
     yeu_cau.update_by = nguoi
     yeu_cau.save(update_fields=["vi_tri_luu_tep", "ma_bam_tai_lieu", "phien_ban_van_ban", "update_by", "update_at"])
     thread.trang_thai = enums.TrangThaiThread.DA_GIAI_QUYET
     thread.thoi_diem_giai_quyet = thoi_diem
     thread.save(update_fields=["trang_thai", "thoi_diem_giai_quyet", "update_at"])
-    luot, cap_dau = _sao_chep_luot(luot_cu, cap_cu, yeu_cau, nguoi, khoa_chong_trung, thoi_diem)
+    luot, cap_dau = _sao_chep_luot(luot_cu, cap_cu, yeu_cau, nguoi, khoa_chong_trung, thoi_diem, vi_tri)
     ghi_nhat_ky(nguoi, "signing_request", yeu_cau.pk, "GIAI_QUYET_YEU_CAU_SUA", trinh_ky=yeu_cau, luot_trinh=luot,
                 trang_thai_truoc=enums.TrangThaiLuotTrinh.YEU_CAU_SUA, trang_thai_sau=luot.trang_thai,
                 dia_chi_ip=dia_chi_ip, du_lieu_kem_theo={"thread": thread.pk, "luot_truoc": luot_cu.pk,

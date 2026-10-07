@@ -7,6 +7,7 @@ from .models import (
     SigningProcess, SigningProcessStep, SigningProcessStepSigner, SigningRequest, SigningRequestStep,
     SigningRequestStepSigner,
 )
+from .tich_hop import to_chuc
 
 
 # ── Đầu vào: quy trình ───────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ class QuyTrinhInputSerializer(serializers.Serializer):
     ten_quy_trinh = serializers.CharField(max_length=255)
     mo_ta = serializers.CharField(required=False, allow_blank=True, default="")
     pham_vi = serializers.ChoiceField(choices=enums.PhamViQuyTrinh.choices)
+    don_vi_ap_dung_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     cau_hinh_nhac_han = serializers.JSONField(required=False, allow_null=True)
     cap_ky = CapKyInputSerializer(many=True, required=False)
 
@@ -46,9 +48,16 @@ class QuyTrinhInputSerializer(serializers.Serializer):
 
 
 class NguoiKyCauHinhSerializer(serializers.ModelSerializer):
+    ten_nguoi_ky = serializers.SerializerMethodField()
+
     class Meta:
         model = SigningProcessStepSigner
-        fields = ["id", "nguoi_ky", "chuc_vu_id", "pham_vi_chuc_vu", "vai_tro_ky", "chan_ky_chinh", "thu_tu"]
+        fields = ["id", "nguoi_ky", "ten_nguoi_ky", "chuc_vu_id", "pham_vi_chuc_vu", "vai_tro_ky", "chan_ky_chinh",
+                  "thu_tu"]
+
+    def get_ten_nguoi_ky(self, obj):
+        """Tên để xem trước người ký trước khi gửi (UI); người ký theo chức vụ được xác định lúc gửi."""
+        return to_chuc.ten_hien_thi(obj.nguoi_ky) if obj.nguoi_ky_id else None
 
 
 class CapKyQuyTrinhSerializer(serializers.ModelSerializer):
@@ -66,7 +75,7 @@ class QuyTrinhSerializer(serializers.ModelSerializer):
     class Meta:
         model = SigningProcess
         fields = ["id", "ma_quy_trinh", "ten_quy_trinh", "mo_ta", "phien_ban", "trang_thai", "pham_vi",
-                  "cau_hinh_nhac_han", "create_by", "created_at", "update_by",
+                  "don_vi_ap_dung_id", "cau_hinh_nhac_han", "create_by", "created_at", "update_by",
                   "update_at", "cap_ky"]
 
 
@@ -147,9 +156,45 @@ class TrinhKySuaSerializer(serializers.Serializer):
     tep = serializers.FileField(required=False)
 
 
+class ViTriKySerializer(serializers.Serializer):
+    """Khung ký theo tỷ lệ % của trang, gốc góc trên-trái (plan mục 3.2); khung phải nằm trọn trong trang."""
+
+    trang_ky = serializers.IntegerField(min_value=1)
+    toa_do_x = serializers.DecimalField(max_digits=7, decimal_places=4, min_value=0, max_value=100)
+    toa_do_y = serializers.DecimalField(max_digits=7, decimal_places=4, min_value=0, max_value=100)
+    chieu_rong_khung = serializers.DecimalField(max_digits=7, decimal_places=4, min_value=1, max_value=100)
+    chieu_cao_khung = serializers.DecimalField(max_digits=7, decimal_places=4, min_value=1, max_value=100)
+
+    def validate(self, attrs):
+        if attrs["toa_do_x"] + attrs["chieu_rong_khung"] > 100 or attrs["toa_do_y"] + attrs["chieu_cao_khung"] > 100:
+            raise serializers.ValidationError("Khung ký vượt ra ngoài trang.")
+        return attrs
+
+
+class ViTriKyJSONField(serializers.JSONField):
+    """`vi_tri_ky` trong multipart (giải quyết yêu cầu sửa) gửi dạng chuỗi JSON."""
+
+    def to_internal_value(self, data):
+        data = super().to_internal_value(data)
+        if not isinstance(data, dict):
+            raise serializers.ValidationError("Phải là object {id: vị trí}.")
+        loi, ket_qua = {}, {}
+        for khoa, gia_tri in data.items():
+            vi_tri = ViTriKySerializer(data=gia_tri)
+            if vi_tri.is_valid():
+                ket_qua[str(khoa)] = vi_tri.validated_data
+            else:
+                loi[str(khoa)] = vi_tri.errors
+        if loi:
+            raise serializers.ValidationError(loi)
+        return ket_qua
+
+
 class GuiTrinhKySerializer(serializers.Serializer):
     # {id người ký cấu hình: id tài khoản được chọn} khi chức vụ có nhiều ứng viên
     chon_nguoi_ky = serializers.DictField(child=serializers.IntegerField(min_value=1), required=False, default=dict)
+    # {id người ký cấu hình: khung ký} do người tạo đặt trên bản xem trước
+    vi_tri_ky = ViTriKyJSONField(required=False, default=dict)
 
 
 class HuyTrinhKySerializer(serializers.Serializer):
@@ -166,15 +211,17 @@ class NguoiKyLuotSerializer(serializers.ModelSerializer):
     class Meta:
         model = SigningRequestStepSigner
         fields = ["id", "nguoi_ky", "ten_nguoi_ky", "ten_chuc_vu", "vai_tro_ky", "chan_ky_chinh", "trang_thai",
-                  "thoi_diem_mo", "ngay_ky", "ngay_tu_choi", "ly_do_tu_choi", "uy_quyen_tu", "chu_ky"]
+                  "thoi_diem_mo", "ngay_ky", "ngay_tu_choi", "ly_do_tu_choi", "uy_quyen_tu", "trang_ky", "toa_do_x",
+                  "toa_do_y", "chieu_rong_khung", "chieu_cao_khung", "chu_ky"]
 
     def get_chu_ky(self, obj):
-        """Chữ ký hiện hành (ghi chú, trễ hạn, kết quả xác minh); không trả nội dung chữ ký."""
+        """Chữ ký hiện hành (ghi chú, trễ hạn, kết quả xác minh, có ảnh snapshot); không trả nội dung chữ ký."""
         ck = obj.chu_ky_hien_hanh
         if ck is None:
             return None
         return {"id": ck.pk, "ngay_ky": ck.ngay_ky, "ghi_chu_ky": ck.ghi_chu_ky, "ky_tre_han": ck.ky_tre_han,
-                "so_giay_tre": ck.so_giay_tre, "trang_thai_xac_minh": ck.trang_thai_xac_minh}
+                "so_giay_tre": ck.so_giay_tre, "trang_thai_xac_minh": ck.trang_thai_xac_minh,
+                "co_anh_chu_ky": bool(ck.vi_tri_anh_chu_ky)}
 
 
 class CapLuotSerializer(serializers.ModelSerializer):
@@ -288,4 +335,6 @@ class TinNhanInputSerializer(serializers.Serializer):
 
 class GiaiQuyetSerializer(serializers.Serializer):
     tep = serializers.FileField()
+    # {id dòng người ký của lượt hiện hành: khung ký}; bỏ trống thì giữ vị trí của lượt trước
+    vi_tri_ky = ViTriKyJSONField(required=False, default=dict)
 

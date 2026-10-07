@@ -77,8 +77,8 @@ class RequestAttemptTests(Base):
         # So đúng danh sách cột để phát hiện cả cột thừa lẫn cột thiếu so với DDL.
         self.assertEqual(enums.LoaiVanBan.values, ["vanbandi"])
         self.assertEqual(sorted(f.name for f in SigningProcess._meta.concrete_fields), [
-            "cau_hinh_nhac_han", "create_by", "created_at", "id", "ma_quy_trinh", "mo_ta", "pham_vi",
-            "phien_ban", "ten_quy_trinh", "trang_thai", "update_at", "update_by",
+            "cau_hinh_nhac_han", "create_by", "created_at", "don_vi_ap_dung_id", "id", "ma_quy_trinh", "mo_ta",
+            "pham_vi", "phien_ban", "ten_quy_trinh", "trang_thai", "update_at", "update_by",
         ])
         self.assertEqual(sorted(f.name for f in SigningRequest._meta.concrete_fields), [
             "create_by", "created_at", "document_type", "ghi_chu", "han_chot", "ho_so_goc", "id", "ly_do_huy",

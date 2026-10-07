@@ -16,7 +16,7 @@ from datetime import timezone as dt_timezone
 from django.db.models import Prefetch
 
 from .. import crypto, enums
-from ..models import SigningManifest, SigningRequestStep, SigningRequestStepSigner
+from ..models import SigningManifest, SigningRequestStep, SigningRequestStepSigner, SigningSignature
 from ..storage import StorageError, get_storage
 from ..tich_hop.to_chuc import ten_hien_thi
 from ..tich_hop.van_ban import mo_ta_van_ban
@@ -41,7 +41,16 @@ def _chu_ky(ck):
         "khoa_cong_khai": khoa.khoa_cong_khai, "thuat_toan": ck.thuat_toan, "hash_tai_lieu": ck.hash_tai_lieu,
         "chu_ky_so": ck.chu_ky_so, "ngay_ky": _thoi_diem(ck.ngay_ky), "ky_tre_han": ck.ky_tre_han,
         "so_giay_tre": ck.so_giay_tre, "ghi_chu_ky": ck.ghi_chu_ky,
+        "ma_bam_anh_chu_ky": ck.ma_bam_anh_chu_ky or None,
     }
+
+
+def _vi_tri(n):
+    """Khung ký (tỷ lệ % theo trang, gốc trên-trái); số thập phân ghi dạng chuỗi để băm ổn định."""
+    if n.trang_ky is None:
+        return None
+    return {"trang_ky": n.trang_ky, **{f: str(getattr(n, f)) for f in
+                                        ("toa_do_x", "toa_do_y", "chieu_rong_khung", "chieu_cao_khung")}}
 
 
 def noi_dung_bang_chung(luot):
@@ -72,7 +81,8 @@ def noi_dung_bang_chung(luot):
             "thoi_diem_hoan_thanh": _thoi_diem(cap.thoi_diem_hoan_thanh),
             "nguoi_ky": [{
                 "id": n.pk, "nguoi_ky": n.nguoi_ky_id, "ten_nguoi_ky": n.ten_nguoi_ky, "ten_chuc_vu": n.ten_chuc_vu,
-                "vai_tro_ky": n.vai_tro_ky, "chu_ky": _chu_ky(n.chu_ky_hien_hanh) if n.chu_ky_hien_hanh else None,
+                "vai_tro_ky": n.vai_tro_ky, "vi_tri": _vi_tri(n),
+                "chu_ky": _chu_ky(n.chu_ky_hien_hanh) if n.chu_ky_hien_hanh else None,
             } for n in cap.nguoi_ky_set.all()],
         } for cap in cap_ky],
     }
@@ -112,6 +122,7 @@ def xac_minh(manifest):
     luot = manifest.luot_trinh
     ma_bam_khop = crypto.sha256_hex(ma_hoa_chuan(noi_dung)) == manifest.ma_bam_bang_chung
     hash_tep = noi_dung["luot_trinh"]["ma_bam_tai_lieu"]
+    vi_tri_anh = dict(SigningSignature.objects.filter(luot_trinh=luot).values_list("pk", "vi_tri_anh_chu_ky"))
     chu_ky = []
     for cap in noi_dung["cap_ky"]:
         for n in cap["nguoi_ky"]:
@@ -119,8 +130,9 @@ def xac_minh(manifest):
             hop_le = ck is not None and ck["hash_tai_lieu"] == hash_tep and (
                 crypto.key_fingerprint(ck["khoa_cong_khai"]) == ck["dau_van_tay_khoa"]
             ) and crypto.verify_signature(ck["khoa_cong_khai"], bytes.fromhex(ck["hash_tai_lieu"]), ck["chu_ky_so"])
+            anh_khop = _tep_khop(vi_tri_anh.get(ck["id"]), ck.get("ma_bam_anh_chu_ky")) if ck else None
             chu_ky.append({"nguoi_ky": n["id"], "ten_nguoi_ky": n["ten_nguoi_ky"],
-                           "chu_ky": ck["id"] if ck else None, "hop_le": bool(hop_le)})
+                           "chu_ky": ck["id"] if ck else None, "hop_le": bool(hop_le), "anh_chu_ky_khop": anh_khop})
     tep_goc_khop = _tep_khop(luot.vi_tri_luu_tep, luot.ma_bam_tai_lieu)
     tep_hoan_tat_khop = _tep_khop(luot.vi_tri_tep_hoan_tat, luot.ma_bam_tep_hoan_tat)
     return {
@@ -128,6 +140,7 @@ def xac_minh(manifest):
         "chu_ky": chu_ky,
         "tep_goc_khop": tep_goc_khop,
         "tep_hoan_tat_khop": tep_hoan_tat_khop,
-        "hop_le": ma_bam_khop and bool(chu_ky) and all(c["hop_le"] for c in chu_ky) and tep_goc_khop is True
-        and tep_hoan_tat_khop is not False,
+        "hop_le": ma_bam_khop and bool(chu_ky) and all(c["hop_le"] and c["anh_chu_ky_khop"] is not False
+                                                      for c in chu_ky)
+        and tep_goc_khop is True and tep_hoan_tat_khop is not False,
     }

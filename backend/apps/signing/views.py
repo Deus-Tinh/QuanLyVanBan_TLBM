@@ -1,5 +1,7 @@
 import base64
 
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -7,9 +9,9 @@ from rest_framework.decorators import api_view
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from . import enums
+from . import crypto
 from .errors import ConflictError, SigningAPIView, SigningError
-from .models import SigningKey, SigningProcess, SigningRequest
+from .models import SigningKey, SigningRequest, SigningSignature
 from .permissions import (
     GUI_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
     yeu_cau_quyen,
@@ -31,6 +33,7 @@ from .services import tep_hoan_tat as tep_hoan_tat_service
 from .services import trinh_ky as trinh_ky_service
 from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
+from .tich_hop import to_chuc
 
 
 @api_view(["GET"])
@@ -44,17 +47,16 @@ def _ip(request):
 
 
 # ── Quy trình ────────────────────────────────────────────────────────────────
-# Phase 6b (plan mục 8): xem cần view_trinhky; tạo, kích hoạt, ngừng, nhân bản cần
-# manage_signing_process. Quy trình là cấu hình chung của cơ quan: người có quyền quản lý
-# thấy mọi trạng thái và thao tác được trên mọi quy trình; người khác chỉ thấy HOAT_DONG.
+# Phase 6b + #80 mục A (plan mục 3.1, 8): tạo, kích hoạt, ngừng, nhân bản cần manage_signing_process kèm
+# phạm vi: quy trình CONG_TY do quản trị quản lý, quy trình PHONG_BAN do lãnh đạo đơn vị áp dụng hoặc
+# quản trị. Xem: quản trị thấy mọi quy trình; lãnh đạo đơn vị thấy quy trình đơn vị mình; người có
+# view_trinhky thấy quy trình đang hoạt động mình dùng được (CONG_TY và PHONG_BAN của đơn vị mình).
 
 
 def _quy_trinh_xem_duoc(user):
-    queryset = SigningProcess.objects.prefetch_related("cap_ky_set__nguoi_ky_set")
-    if co_quyen(user, QUAN_LY_QUY_TRINH):
-        return queryset
-    yeu_cau_quyen(user, XEM_TRINH_KY)
-    return queryset.filter(trang_thai=enums.TrangThaiQuyTrinh.HOAT_DONG)
+    if not (co_quyen(user, XEM_TRINH_KY) or co_quyen(user, QUAN_LY_QUY_TRINH)):
+        yeu_cau_quyen(user, XEM_TRINH_KY)
+    return process_service.quy_trinh_xem_duoc(user)
 
 
 class QuyTrinhListCreateView(SigningAPIView):
@@ -69,6 +71,8 @@ class QuyTrinhListCreateView(SigningAPIView):
         yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
         data = QuyTrinhInputSerializer(data=request.data)
         data.is_valid(raise_exception=True)
+        process_service.yeu_cau_quan_ly(request.user, data.validated_data["pham_vi"],
+                                        data.validated_data.get("don_vi_ap_dung_id"))
         process = process_service.tao_quy_trinh(request.user, **data.validated_data)
         process = _quy_trinh_xem_duoc(request.user).get(pk=process.pk)
         return Response(QuyTrinhSerializer(process).data, status=status.HTTP_201_CREATED)
@@ -93,6 +97,7 @@ class QuyTrinhActionView(SigningAPIView):
     def post(self, request, pk):
         yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
         process = get_object_or_404(_quy_trinh_xem_duoc(request.user), pk=pk)
+        process_service.yeu_cau_quan_ly(request.user, process.pham_vi, process.don_vi_ap_dung_id)
         result = self.actions[self.action](process, request.user)
         result = _quy_trinh_xem_duoc(request.user).get(pk=result.pk)
         code = status.HTTP_201_CREATED if self.action == "nhan-ban" else status.HTTP_200_OK
@@ -281,7 +286,8 @@ class TrinhKyActionView(SigningAPIView):
             data = GuiTrinhKySerializer(data=request.data)
             data.is_valid(raise_exception=True)
             ket_qua = trinh_ky_service.gui(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip,
-                                           chon_nguoi_ky=data.validated_data["chon_nguoi_ky"])
+                                           chon_nguoi_ky=data.validated_data["chon_nguoi_ky"],
+                                           vi_tri_ky=data.validated_data["vi_tri_ky"])
             code = status.HTTP_200_OK
         elif self.action == "huy":
             data = HuyTrinhKySerializer(data=request.data)
@@ -403,6 +409,7 @@ class GiaiQuyetView(SigningAPIView):
         data = GiaiQuyetSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         ket_qua = yeu_cau_sua_service.giai_quyet(ho_so, request.user, tep=data.validated_data["tep"],
+                                                 vi_tri_ky=data.validated_data["vi_tri_ky"],
                                                  khoa_chong_trung=khoa, dia_chi_ip=_ip(request))
         return Response(TrinhKyChiTietSerializer(ket_qua).data)
 
@@ -446,3 +453,51 @@ class TaoLaiTepHoanTatView(SigningAPIView):
         ho_so = _ho_so_xem_duoc(request, pk)
         tep_hoan_tat_service.tao_lai_tep_hoan_tat(ho_so, request.user)
         return Response(TrinhKyChiTietSerializer(SigningRequest.objects.get(pk=ho_so.pk)).data)
+
+
+class AnhChuKyView(SigningAPIView):
+    """GET /trinh-ky/<pk>/anh-chu-ky/<chu_ky_id>/: ảnh snapshot lúc ký để UI vẽ lớp phủ (#80 mục D)."""
+
+    def get(self, request, pk, chu_ky_id):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        chu_ky = get_object_or_404(SigningSignature, pk=chu_ky_id, luot_trinh__trinh_ky=ho_so)
+        if not chu_ky.vi_tri_anh_chu_ky:
+            raise SigningError(code="khong_co_anh_chu_ky", detail="Chữ ký không có ảnh snapshot.",
+                               status_code=status.HTTP_404_NOT_FOUND)
+        try:
+            data = get_storage().read_bytes(chu_ky.vi_tri_anh_chu_ky)
+        except StorageError:
+            raise SigningError(code="khong_doc_duoc_tep", detail="Không đọc được ảnh chữ ký.",
+                               status_code=status.HTTP_404_NOT_FOUND)
+        if crypto.sha256_hex(data) != chu_ky.ma_bam_anh_chu_ky:
+            raise ConflictError(code="anh_chu_ky_bi_thay_doi", detail="Ảnh chữ ký không khớp mã băm đã lưu.")
+        response = HttpResponse(data, content_type="image/png")
+        response["Cache-Control"] = "no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class NguoiDungView(SigningAPIView):
+    """
+    GET /nguoi-dung/?q=: tìm tài khoản đang hoạt động để chọn người ký khi cấu hình quy trình (manage_signing_process).
+    Chỉ trả thông tin hiển thị; danh bạ đầy đủ do Nhóm 7 cung cấp.
+    """
+
+    TOI_DA = 20
+
+    def get(self, request):
+        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
+        tu_khoa = request.query_params.get("q", "").strip()
+        User = get_user_model()
+        queryset = User.objects.filter(is_active=True)
+        if tu_khoa:
+            dieu_kien = Q(username__icontains=tu_khoa)
+            for truong in ("ho_ten", "first_name", "last_name"):
+                if any(f.name == truong for f in User._meta.get_fields()):
+                    dieu_kien |= Q(**{f"{truong}__icontains": tu_khoa})
+            queryset = queryset.filter(dieu_kien)
+        return Response([
+            {"id": u.pk, "ten": to_chuc.ten_hien_thi(u), "ten_dang_nhap": u.get_username(),
+             "chuc_vu": to_chuc.ten_chuc_vu(u) or None, "don_vi_id": to_chuc.don_vi_cua(u)}
+            for u in queryset.order_by("pk")[: self.TOI_DA]
+        ])

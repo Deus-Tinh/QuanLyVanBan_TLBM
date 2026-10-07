@@ -52,4 +52,8 @@ urlpatterns = [
     path("trinh-ky/<int:pk>/tep-hoan-tat/", views.TepHoanTatView.as_view(), name="trinh-ky-tep-hoan-tat"),
     path("trinh-ky/<int:pk>/tao-lai-tep-hoan-tat/", views.TaoLaiTepHoanTatView.as_view(),
          name="trinh-ky-tao-lai-tep-hoan-tat"),
+    path("trinh-ky/<int:pk>/anh-chu-ky/<int:chu_ky_id>/", views.AnhChuKyView.as_view(), name="trinh-ky-anh-chu-ky"),
+
+    # Tìm tài khoản để cấu hình người ký (người quản lý quy trình)
+    path("nguoi-dung/", views.NguoiDungView.as_view(), name="nguoi-dung"),
 ]

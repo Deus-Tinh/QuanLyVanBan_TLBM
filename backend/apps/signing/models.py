@@ -69,6 +69,8 @@ class SigningProcess(models.Model):
         max_length=20, choices=enums.TrangThaiQuyTrinh.choices, default=enums.TrangThaiQuyTrinh.NHAP
     )
     pham_vi = models.CharField(max_length=20, choices=enums.PhamViQuyTrinh.choices)
+    # Bắt buộc khi PHONG_BAN, rỗng khi CONG_TY (#80 mục A). Chờ Nhóm 7 (organizations_donvi): đổi sang ForeignKey.
+    don_vi_ap_dung_id = models.BigIntegerField(null=True, blank=True)
     cau_hinh_nhac_han = models.JSONField(null=True, blank=True)
     create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -79,6 +81,11 @@ class SigningProcess(models.Model):
         db_table = "signing_process"
         constraints = [
             models.UniqueConstraint(fields=["ma_quy_trinh", "phien_ban"], name="uq_signing_process_ma_phien_ban"),
+            models.CheckConstraint(
+                condition=(Q(pham_vi=enums.PhamViQuyTrinh.PHONG_BAN) & Q(don_vi_ap_dung_id__isnull=False))
+                | (Q(pham_vi=enums.PhamViQuyTrinh.CONG_TY) & Q(don_vi_ap_dung_id__isnull=True)),
+                name="chk_signing_process_don_vi_ap_dung",
+            ),
         ]
 
     def __str__(self):

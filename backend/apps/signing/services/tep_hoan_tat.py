@@ -19,7 +19,7 @@ from rest_framework import status
 
 from .. import crypto, enums
 from ..errors import ConflictError, SigningError
-from ..models import SigningAttempt, SigningRequest
+from ..models import SigningAttempt, SigningRequest, SigningSignature
 from ..pdf_hoan_tat import LoiTaoTep, dung_tep_hoan_tat
 from ..permissions import XEM_NHAT_KY, co_quyen
 from ..storage import StorageError, get_storage
@@ -54,6 +54,22 @@ def _ket_thuc(luot_id, nguoi_id, *, loi="", vi_tri="", ma_bam=""):
         return luot
 
 
+def _anh_chu_ky_theo_bang_chung(noi_dung, storage):
+    """Ảnh snapshot của các chữ ký trong bằng chứng, kiểm mã băm từng ảnh với mã băm đã chốt."""
+    can = {n["chu_ky"]["id"]: n["chu_ky"]["ma_bam_anh_chu_ky"] for c in noi_dung["cap_ky"] for n in c["nguoi_ky"]
+           if n["chu_ky"] and n["chu_ky"].get("ma_bam_anh_chu_ky")}
+    ket_qua = {}
+    for chu_ky in SigningSignature.objects.filter(pk__in=can):
+        try:
+            anh = storage.read_bytes(chu_ky.vi_tri_anh_chu_ky)
+        except StorageError as exc:
+            raise LoiTaoTep("anh_chu_ky_khong_doc_duoc", str(exc)) from exc
+        if crypto.sha256_hex(anh) != can[chu_ky.pk]:
+            raise LoiTaoTep("anh_chu_ky_khong_khop", f"Ảnh chữ ký {chu_ky.pk} khác bản đã chốt.")
+        ket_qua[chu_ky.pk] = anh
+    return ket_qua
+
+
 def tao_tep_hoan_tat(luot_id, nguoi_id):
     """Sinh tệp cho lượt `DANG_XU_LY`; không ném lỗi (chạy sau commit của thao tác ký cuối)."""
     luot = SigningAttempt.objects.get(pk=luot_id)
@@ -70,7 +86,8 @@ def tao_tep_hoan_tat(luot_id, nguoi_id):
             raise LoiTaoTep("tep_goc_khong_doc_duoc", str(exc)) from exc
         if crypto.sha256_hex(goc) != luot.ma_bam_tai_lieu:
             raise LoiTaoTep("tep_goc_khong_khop", "Mã băm tệp gốc khác bản đã khóa.")
-        du_lieu = dung_tep_hoan_tat(goc, manifest.noi_dung_chuan_hoa, manifest.ma_bam_bang_chung)
+        anh = _anh_chu_ky_theo_bang_chung(manifest.noi_dung_chuan_hoa, storage)
+        du_lieu = dung_tep_hoan_tat(goc, manifest.noi_dung_chuan_hoa, manifest.ma_bam_bang_chung, anh)
         try:
             meta = storage.save_bytes(du_lieu, THU_MUC, "pdf")
         except (StorageError, OSError) as exc:
