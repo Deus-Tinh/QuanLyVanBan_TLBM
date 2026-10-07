@@ -185,12 +185,12 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       }`}
                   >
                     {/* 1. Số đến */}
-                    <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap text-sm">
                       {doc.so_thu_tu ? `#${doc.so_thu_tu}` : '—'}
                     </td>
 
                     {/* 2. Số, ký hiệu */}
-                    <td className="px-4 py-3.5 font-semibold text-main whitespace-nowrap">
+                    <td className="px-4 py-3.5 font-semibold text-main whitespace-nowrap text-sm">
                       <button
                         type="button"
                         onClick={() => onViewDetail(doc.id)}
@@ -204,13 +204,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                     {/* 3. Ngày văn bản (đồng bộ với VB Đi và VB Mật, kèm ngày tiếp nhận đến) */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                      <div className="text-xs font-semibold text-main flex items-center gap-1.5">
-                        <i className="fa-regular fa-calendar text-primary text-[0.7rem]" />
+                      <div className="text-sm font-semibold text-main flex items-center gap-1.5">
+                        <i className="fa-regular fa-calendar text-primary text-xs" />
                         <span>{formatDate(doc.ngay_van_ban || doc.ngay_ban_hanh)}</span>
                       </div>
                       {doc.ngay_den && (
-                        <div className="text-[0.7rem] text-muted flex items-center gap-1.5 mt-0.5" title={`Ngày tiếp nhận đến: ${formatDate(doc.ngay_den)}`}>
-                          <i className="fa-regular fa-calendar-check text-muted text-[0.7rem]" />
+                        <div className="text-xs text-muted flex items-center gap-1.5 mt-0.5" title={`Ngày tiếp nhận đến: ${formatDate(doc.ngay_den)}`}>
+                          <i className="fa-regular fa-calendar-check text-muted text-xs" />
                           <span>Đến: {formatDate(doc.ngay_den)}</span>
                         </div>
                       )}
@@ -219,16 +219,16 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     {/* 4. Trích yếu nội dung */}
                     <td className="px-4 py-3.5">
                       <div
-                        className="line-clamp-2 text-main text-xs leading-relaxed cursor-pointer hover:text-primary transition-colors"
+                        className="line-clamp-2 text-main text-sm leading-relaxed cursor-pointer hover:text-primary transition-colors"
                         title={doc.trich_yeu}
                         onClick={() => onViewDetail(doc.id)}
                       >
                         {doc.trich_yeu}
                       </div>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         {doc.attachment_count > 0 && (
-                          <div className="inline-flex items-center gap-1 text-[0.68rem] text-secondary bg-surface-elevated px-2 py-0.5 rounded-md border border-border-subtle">
-                            <i className="fa-solid fa-paperclip text-primary text-[0.65rem]" />
+                          <div className="inline-flex items-center gap-1 text-xs text-secondary bg-surface-elevated px-2 py-0.5 rounded-md border border-border-subtle">
+                            <i className="fa-solid fa-paperclip text-primary text-xs" />
                             <span>{doc.attachment_count} tệp đính kèm</span>
                           </div>
                         )}
@@ -244,10 +244,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               return (
                                 <div
                                   key={idx}
-                                  className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
                                   title={`Thay thế cho văn bản: ${targetSoHieu}`}
                                 >
-                                  <i className="fa-solid fa-repeat text-emerald-600 dark:text-emerald-400 text-[0.65rem]" />
+                                  <i className="fa-solid fa-repeat text-emerald-600 dark:text-emerald-400 text-xs" />
                                   <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
                                 </div>
                               );
@@ -256,10 +256,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               return (
                                 <div
                                   key={idx}
-                                  className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-purple-700 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20"
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20"
                                   title={`Thay thế cho văn bản: ${targetSoHieu}`}
                                 >
-                                  <i className="fa-solid fa-repeat text-purple-600 dark:text-purple-400 text-[0.65rem]" />
+                                  <i className="fa-solid fa-repeat text-purple-600 dark:text-purple-400 text-xs" />
                                   <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
                                 </div>
                               );
@@ -268,10 +268,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               return (
                                 <div
                                   key={idx}
-                                  className="inline-flex items-center gap-1 text-[0.68rem] font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
+                                  className="inline-flex items-center gap-1 text-xs font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
                                   title={`Bị thay thế bởi văn bản: ${targetSoHieu}`}
                                 >
-                                  <i className="fa-solid fa-triangle-exclamation text-warning text-[0.65rem]" />
+                                  <i className="fa-solid fa-triangle-exclamation text-warning text-xs" />
                                   <span>Bị thay bởi: <strong className="font-mono">{targetSoHieu}</strong></span>
                                 </div>
                               );
@@ -283,9 +283,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     </td>
 
                     {/* 5. Nơi ban hành */}
-                    <td className="px-4 py-3.5 text-xs text-secondary whitespace-nowrap">
+                    <td className="px-4 py-3.5 text-sm text-secondary whitespace-nowrap">
                       <div className="flex items-center gap-1.5" title={doc.noi_ban_hanh || ''}>
-                        <i className="fa-solid fa-building-columns text-muted text-[0.7rem]" />
+                        <i className="fa-solid fa-building-columns text-muted text-xs" />
                         <span className="truncate max-w-[180px]">{doc.noi_ban_hanh || '—'}</span>
                       </div>
                     </td>
@@ -298,7 +298,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             Còn hiệu lực
                           </Badge>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-[0.68rem] text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                            <div className="text-xs text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
                               Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
@@ -310,7 +310,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             Hiệu lực 1 phần
                           </Badge>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-[0.68rem] text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                            <div className="text-xs text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
                               Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
@@ -322,7 +322,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             Hết hiệu lực
                           </Badge>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-[0.68rem] text-danger/80 font-medium mt-0.5" title={`Đã hết hạn từ: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                            <div className="text-xs text-danger/80 font-medium mt-0.5" title={`Đã hết hạn từ: ${formatDate(doc.ngay_het_hieu_luc)}`}>
                               Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
@@ -360,9 +360,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 setActiveMenuId(null);
                                 onViewDetail(doc.id);
                               }}
-                              className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-primary-subtle hover:text-primary flex items-center gap-2.5 transition-colors cursor-pointer"
+                              className="w-full text-left px-3.5 py-2 text-sm text-main hover:bg-primary-subtle hover:text-primary flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
-                              <i className="fa-solid fa-eye text-primary w-4" />
+                              <i className="fa-solid fa-eye text-primary w-4 text-xs" />
                               <span>Xem chi tiết</span>
                             </button>
 
@@ -373,9 +373,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 setActiveMenuId(null);
                                 onViewHistory(doc.id);
                               }}
-                              className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-info-subtle hover:text-info flex items-center gap-2.5 transition-colors cursor-pointer"
+                              className="w-full text-left px-3.5 py-2 text-sm text-main hover:bg-info-subtle hover:text-info flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
-                              <i className="fa-solid fa-clock-rotate-left text-info w-4" />
+                              <i className="fa-solid fa-clock-rotate-left text-info w-4 text-xs" />
                               <span>Lịch sử xem</span>
                             </button>
 
@@ -387,9 +387,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                   setActiveMenuId(null);
                                   onEdit!(doc);
                                 }}
-                                className="w-full text-left px-3.5 py-2 text-xs text-main hover:bg-warning-subtle hover:text-warning-text flex items-center gap-2.5 transition-colors cursor-pointer"
+                                className="w-full text-left px-3.5 py-2 text-sm text-main hover:bg-warning-subtle hover:text-warning-text flex items-center gap-2.5 transition-colors cursor-pointer"
                               >
-                                <i className="fa-solid fa-pen-to-square text-warning-text w-4" />
+                                <i className="fa-solid fa-pen-to-square text-warning-text w-4 text-xs" />
                                 <span>Chỉnh sửa</span>
                               </button>
                             )}
@@ -404,9 +404,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                     setActiveMenuId(null);
                                     onDelete!(doc.id, doc.so_hieu);
                                   }}
-                                  className="w-full text-left px-3.5 py-2 text-xs text-danger hover:bg-danger-subtle flex items-center gap-2.5 transition-colors cursor-pointer"
+                                  className="w-full text-left px-3.5 py-2 text-sm text-danger hover:bg-danger-subtle flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
-                                  <i className="fa-solid fa-trash-can w-4" />
+                                  <i className="fa-solid fa-trash-can w-4 text-xs" />
                                   <span>Xóa văn bản</span>
                                 </button>
                               </>
@@ -424,7 +424,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       </div>
 
       {/* Thanh Phân Trang (Pagination Footer) */}
-      <div className="px-4 py-3 border-t border-border-subtle bg-surface-elevated/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="px-4 py-3 border-t border-border-subtle bg-surface-elevated/40 flex flex-wrap items-center justify-between gap-3 text-sm">
         <div className="text-muted flex items-center gap-2">
           <span>
             Hiển thị <span className="font-semibold text-main">{startIdx}</span> -{' '}
