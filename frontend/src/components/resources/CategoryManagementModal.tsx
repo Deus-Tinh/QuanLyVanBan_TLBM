@@ -369,11 +369,18 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         ghi_chu: catForm.ghi_chu.trim(),
       };
 
+      // Tự động gom các loại con đã thêm qua chip VÀ nội dung đang gõ dở trong ô input nếu người dùng chưa bấm "+ Thêm"
+      const finalChildTypes = [...catChildTypes];
+      const pendingChild = childTypeInput.trim();
+      if (pendingChild && !finalChildTypes.includes(pendingChild)) {
+        finalChildTypes.push(pendingChild);
+      }
+
       onSaveCategory(payload, Boolean(editingCatId));
 
       // Nếu tạo mới thư mục và có thêm kèm các loại con
-      if (!editingCatId && catChildTypes.length > 0) {
-        catChildTypes.forEach((typeName, idx) => {
+      if (!editingCatId && finalChildTypes.length > 0) {
+        finalChildTypes.forEach((typeName, idx) => {
           onSaveType(
             {
               id: Date.now() + idx + 1,
@@ -1087,7 +1094,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
-                            placeholder="Nhập tên loại (VD: Quy chế, Biểu mẫu...) rồi nhấn Enter"
+                            placeholder="Nhập tên loại (VD: Quy chế, Biểu mẫu...) rồi bấm Thêm hoặc Enter"
                             value={childTypeInput}
                             onChange={(e) => setChildTypeInput(e.target.value)}
                             onKeyDown={(e) => {
@@ -1100,11 +1107,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           />
                           <Button
                             type="button"
-                            variant="secondary"
+                            variant={childTypeInput.trim() ? 'primary' : 'secondary'}
                             size="sm"
                             icon="fa-plus"
                             onClick={handleAddChildType}
-                            className="text-xs shrink-0 rounded-xl font-semibold"
+                            className="text-xs shrink-0 rounded-xl font-semibold shadow-2xs"
                           >
                             Thêm
                           </Button>
