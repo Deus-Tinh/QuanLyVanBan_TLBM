@@ -16,6 +16,17 @@ export default function AISettingsModal({ onClose, onSaved }) {
     fetchSettings();
   }, []);
 
+  // Lắng nghe phím Escape để đóng modal thuận tiện
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && !saving) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, saving]);
+
   async function fetchSettings() {
     setLoading(true);
     try {
@@ -68,53 +79,122 @@ export default function AISettingsModal({ onClose, onSaved }) {
     <div
       className="modal fade show d-block"
       tabIndex="-1"
+      onClick={onClose}
       style={{
+        position: "fixed",
+        inset: 0,
         backgroundColor: "rgba(15, 23, 42, 0.72)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
         zIndex: 1060,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1rem",
+        overflowY: "auto",
       }}
     >
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div
+        className="modal-dialog modal-dialog-centered modal-lg"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: "820px",
+          maxHeight: "92vh",
+          display: "flex",
+          flexDirection: "column",
+          margin: "auto",
+        }}
+      >
+        <div
+          className="modal-content border-0 shadow-lg rounded-4 overflow-hidden"
+          style={{
+            maxHeight: "92vh",
+            display: "flex",
+            flexDirection: "column",
+            background: "#ffffff",
+          }}
+        >
           {/* Header */}
           <div
-            className="modal-header text-white p-4"
+            className="modal-header text-white p-3 p-sm-4"
             style={{
               background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+              borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+              flexShrink: 0,
             }}
           >
-            <div className="d-flex align-items-center gap-3">
+            <div className="d-flex align-items-center gap-3" style={{ minWidth: 0 }}>
               <div
-                className="rounded-3 d-flex align-items-center justify-content-center text-white"
+                className="rounded-3 d-flex align-items-center justify-content-center text-white flex-shrink-0"
                 style={{
                   width: "44px",
                   height: "44px",
-                  fontSize: "1.3rem",
+                  fontSize: "1.25rem",
                   background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
                   boxShadow: "0 0 15px rgba(99, 102, 241, 0.5)",
                 }}
               >
-                <i className="bi bi-cpu-fill"></i>
+                <i className="fa-solid fa-microchip" />
               </div>
-              <div>
-                <h5 className="modal-title fw-bold mb-0">Cấu hình Động cơ AI & API</h5>
-                <small className="text-white-50">
+              <div style={{ minWidth: 0 }}>
+                <h5 className="modal-title fw-bold mb-0 text-white" style={{ fontSize: "1.15rem" }}>
+                  Cấu hình Động cơ AI & API
+                </h5>
+                <small className="text-white-50 d-block" style={{ fontSize: "0.82rem" }}>
                   Tùy chỉnh mô hình LLM và Embedding để xử lý truy vấn RAG chính xác nhất
                 </small>
               </div>
             </div>
+
+            {/* Nút đóng rõ ràng và dễ bấm */}
             <button
               type="button"
-              className="btn-close btn-close-white"
               onClick={onClose}
               disabled={saving}
-            ></button>
+              title="Đóng cửa sổ (Esc)"
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255, 255, 255, 0.25)",
+                background: "rgba(255, 255, 255, 0.12)",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                flexShrink: 0,
+                fontSize: "1rem",
+                transition: "all 0.18s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#ef4444";
+                e.currentTarget.style.borderColor = "#ef4444";
+                e.currentTarget.style.transform = "scale(1.06)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255, 255, 255, 0.12)";
+                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.25)";
+                e.currentTarget.style.transform = "none";
+              }}
+            >
+              <i className="fa-solid fa-xmark" />
+            </button>
           </div>
 
           {/* Body */}
-          <div className="modal-body p-4 bg-light">
+          <div
+            className="modal-body p-4 bg-light"
+            style={{
+              overflowY: "auto",
+              flex: 1,
+            }}
+          >
             {loading ? (
               <div className="text-center py-5">
                 <div className="spinner-border text-primary" role="status"></div>
@@ -131,10 +211,10 @@ export default function AISettingsModal({ onClose, onSaved }) {
                   >
                     <div className="d-flex align-items-center gap-2">
                       <i
-                        className={`bi ${
+                        className={`fa-solid ${
                           message.type === "success"
-                            ? "bi-check-circle-fill text-success"
-                            : "bi-exclamation-triangle-fill text-danger"
+                            ? "fa-circle-check text-success"
+                            : "fa-triangle-exclamation text-danger"
                         } fs-5`}
                       ></i>
                       <span className="small fw-semibold">{message.text}</span>
@@ -142,11 +222,13 @@ export default function AISettingsModal({ onClose, onSaved }) {
                   </div>
                 )}
 
-                {/* Status Bar */}
-                <div className="card border-0 bg-white shadow-sm rounded-3 mb-4 p-3">
+                {/* Current Active Engine Status */}
+                <div className="card border-0 shadow-sm rounded-3 p-3 mb-4 bg-white">
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div>
-                      <small className="text-muted d-block mb-1">Engine AI đang kích hoạt:</small>
+                      <span className="text-secondary small fw-semibold d-block mb-1">
+                        Engine AI đang kích hoạt:
+                      </span>
                       <div className="d-flex align-items-center gap-2">
                         <span className="badge bg-primary text-uppercase px-2 py-1">
                           {currentConfig?.provider || "Chưa cấu hình"}
@@ -196,7 +278,7 @@ export default function AISettingsModal({ onClose, onSaved }) {
                               className="rounded-2 p-2 d-flex align-items-center justify-content-center text-white"
                               style={{ background: "linear-gradient(135deg, #2563eb, #38bdf8)" }}
                             >
-                              <i className="bi bi-stars"></i>
+                              <i className="fa-solid fa-wand-magic-sparkles"></i>
                             </span>
                             <div>
                               <strong className="text-dark d-block">Google Gemini</strong>
@@ -206,7 +288,7 @@ export default function AISettingsModal({ onClose, onSaved }) {
                             </div>
                           </div>
                           {provider === "gemini" && (
-                            <i className="bi bi-check-circle-fill text-primary fs-5"></i>
+                            <i className="fa-solid fa-circle-check text-primary fs-5"></i>
                           )}
                         </div>
                         <small className="text-muted">
@@ -238,7 +320,7 @@ export default function AISettingsModal({ onClose, onSaved }) {
                               className="rounded-2 p-2 d-flex align-items-center justify-content-center text-white"
                               style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
                             >
-                              <i className="bi bi-robot"></i>
+                              <i className="fa-solid fa-robot"></i>
                             </span>
                             <div>
                               <strong className="text-dark d-block">OpenAI</strong>
@@ -248,7 +330,7 @@ export default function AISettingsModal({ onClose, onSaved }) {
                             </div>
                           </div>
                           {provider === "openai" && (
-                            <i className="bi bi-check-circle-fill text-primary fs-5"></i>
+                            <i className="fa-solid fa-circle-check text-primary fs-5"></i>
                           )}
                         </div>
                         <small className="text-muted">
@@ -273,13 +355,13 @@ export default function AISettingsModal({ onClose, onSaved }) {
                           rel="noreferrer"
                           className="small text-decoration-none text-primary fw-semibold"
                         >
-                          <i className="bi bi-box-arrow-up-right me-1"></i>
+                          <i className="fa-solid fa-arrow-up-right-from-square me-1"></i>
                           Lấy key miễn phí tại Google AI Studio
                         </a>
                       </div>
                       <div className="input-group">
                         <span className="input-group-text bg-light border-end-0 text-muted">
-                          <i className="bi bi-key-fill"></i>
+                          <i className="fa-solid fa-key"></i>
                         </span>
                         <input
                           type={showKey ? "text" : "password"}
@@ -298,7 +380,7 @@ export default function AISettingsModal({ onClose, onSaved }) {
                           onClick={() => setShowKey(!showKey)}
                           title={showKey ? "Ẩn key" : "Hiện key"}
                         >
-                          <i className={`bi ${showKey ? "bi-eye-slash" : "bi-eye"}`}></i>
+                          <i className={`fa-solid ${showKey ? "fa-eye-slash" : "fa-eye"}`}></i>
                         </button>
                       </div>
                       <div className="form-text small text-muted">
@@ -356,13 +438,13 @@ export default function AISettingsModal({ onClose, onSaved }) {
                           rel="noreferrer"
                           className="small text-decoration-none text-primary fw-semibold"
                         >
-                          <i className="bi bi-box-arrow-up-right me-1"></i>
+                          <i className="fa-solid fa-arrow-up-right-from-square me-1"></i>
                           Lấy key tại OpenAI Platform
                         </a>
                       </div>
                       <div className="input-group">
                         <span className="input-group-text bg-light border-end-0 text-muted">
-                          <i className="bi bi-key-fill"></i>
+                          <i className="fa-solid fa-key"></i>
                         </span>
                         <input
                           type={showKey ? "text" : "password"}
@@ -381,7 +463,7 @@ export default function AISettingsModal({ onClose, onSaved }) {
                           onClick={() => setShowKey(!showKey)}
                           title={showKey ? "Ẩn key" : "Hiện key"}
                         >
-                          <i className={`bi ${showKey ? "bi-eye-slash" : "bi-eye"}`}></i>
+                          <i className={`fa-solid ${showKey ? "fa-eye-slash" : "fa-eye"}`}></i>
                         </button>
                       </div>
                     </div>
@@ -416,19 +498,28 @@ export default function AISettingsModal({ onClose, onSaved }) {
                 )}
 
                 {/* Footer Buttons */}
-                <div className="d-flex justify-content-end gap-2 pt-2">
+                <div
+                  className="d-flex justify-content-end gap-2 pt-3 mt-3"
+                  style={{
+                    borderTop: "1px solid #e2e8f0",
+                  }}
+                >
                   <button
                     type="button"
                     className="btn btn-light px-4 rounded-3 border"
                     onClick={onClose}
                     disabled={saving}
+                    style={{
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
                   >
                     Hủy bỏ
                   </button>
                   <button
                     type="submit"
-                    className="btn btn-primary-gradient px-4 rounded-3 d-inline-flex"
-                    style={{ width: "auto" }}
+                    className="btn btn-primary-gradient px-4 rounded-3 d-inline-flex align-items-center gap-2"
+                    style={{ width: "auto", cursor: "pointer", fontWeight: 600 }}
                     disabled={saving}
                   >
                     {saving ? (
@@ -438,7 +529,7 @@ export default function AISettingsModal({ onClose, onSaved }) {
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-check2-circle"></i>
+                        <i className="fa-solid fa-circle-check" />
                         <span>Lưu & Kích hoạt ngay</span>
                       </>
                     )}

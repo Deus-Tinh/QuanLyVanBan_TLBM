@@ -139,3 +139,28 @@ if os.getenv("DB_ENGINE", "sqlite").lower() in {"postgres", "postgresql"}:
             "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
         }
     }
+
+    # Kết nối CSDL chỉ đọc (Read-Only) phục vụ truy vấn an toàn cho RAG / Chatbox
+    ro_user = os.getenv("DB_READONLY_USER") or os.getenv("DB_USER", "postgres")
+    ro_password = os.getenv("DB_READONLY_PASSWORD") or os.getenv("DB_PASSWORD", "")
+    ro_name = os.getenv("DB_READONLY_NAME") or os.getenv("DB_NAME", "qlvb_tlbm")
+    ro_host = os.getenv("DB_READONLY_HOST") or os.getenv("DB_HOST", "127.0.0.1")
+    ro_port = os.getenv("DB_READONLY_PORT") or os.getenv("DB_PORT", "5432")
+
+    DATABASES["readonly"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": ro_name,
+        "USER": ro_user,
+        "PASSWORD": ro_password,
+        "HOST": ro_host,
+        "PORT": ro_port,
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
+        "OPTIONS": {
+            # Bắt buộc session PostgreSQL ở chế độ chỉ đọc để giảm thiểu rủi ro biến đổi dữ liệu
+            "options": "-c default_transaction_read_only=on",
+        },
+    }
+else:
+    # Ở môi trường SQLite cục bộ, alias 'readonly' trỏ tới CSDL mặc định
+    DATABASES["readonly"] = DATABASES["default"]
+
