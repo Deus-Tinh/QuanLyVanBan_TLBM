@@ -11,6 +11,7 @@ import { ResourceDetailModal } from '@components/resources/ResourceDetailModal';
 import { ResourceFormModal, ResourceFormData } from '@components/resources/ResourceFormModal';
 import { CategoryManagementModal } from '@components/resources/CategoryManagementModal';
 import { Button } from '@components/common/Button';
+import { Toast, ToastNotification } from '@components/common/Toast';
 import { useTranslation } from '@i18n/translate';
 
 // ============================================================================
@@ -1011,7 +1012,21 @@ export default function ResourceManagementPage() {
   const [deleteItem, setDeleteItem] = useState<ResourceItem | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Toast thông báo nổi trên cùng (z-[999999] trên tất cả modal và màn đen)
+  const [toast, setToast] = useState<ToastNotification | null>(null);
+
+  const showToast = (
+    message: string,
+    type: 'success' | 'danger' | 'warning' | 'info' = 'success',
+    title?: string
+  ) => {
+    setToast({
+      id: Date.now(),
+      message,
+      type,
+      title,
+    });
+  };
 
   // Danh sách năm trích xuất từ dữ liệu thực tế
   const availableYears = useMemo(() => {
@@ -1234,8 +1249,7 @@ export default function ResourceManagementPage() {
     setSelectedCategory('all');
     setSelectedType('all');
     setCurrentPage(1);
-    setToastMessage('Đã nạp lại bộ dữ liệu mẫu thành công!');
-    setTimeout(() => setToastMessage(null), 3500);
+    showToast('Đã khôi phục thành công toàn bộ dữ liệu mẫu chuẩn của hệ thống!', 'info', 'Nạp dữ liệu mẫu');
   };
 
   // Xóa trắng toàn bộ dữ liệu để kiểm thử tự tạo từ đầu
@@ -1246,15 +1260,13 @@ export default function ResourceManagementPage() {
     setSelectedCategory('all');
     setSelectedType('all');
     setCurrentPage(1);
-    setToastMessage('Đã xóa trắng toàn bộ dữ liệu kho tài liệu!');
-    setTimeout(() => setToastMessage(null), 3500);
+    showToast('Đã xóa trắng toàn bộ dữ liệu kho tài liệu!', 'warning', 'Xóa trắng dữ liệu');
   };
 
   // Hành động Mở Modal Thêm mới
   const handleAddNew = () => {
     if (categories.length === 0) {
-      setToastMessage('Chưa có Thư mục danh mục nào. Vui lòng tạo Thư mục trước.');
-      setTimeout(() => setToastMessage(null), 3500);
+      showToast('Chưa có Thư mục danh mục nào. Vui lòng tạo Thư mục trước.', 'warning', 'Chưa có Thư mục');
       setIsCategoryModalOpen(true);
       return;
     }
@@ -1303,8 +1315,7 @@ export default function ResourceManagementPage() {
       setDeleteItem(null);
 
       // Hiển thị Toast thông báo thành công
-      setToastMessage(`Đã xóa thành công tài liệu: "${targetTitle}"`);
-      setTimeout(() => setToastMessage(null), 3500);
+      showToast(`Đã xóa thành công tài liệu: "${targetTitle}"`, 'danger', 'Xóa tài liệu');
 
       // Tự động điều chỉnh trang nếu trang hiện tại bị trống
       const remainingDocs = documents.filter((d) => d.id !== targetId);
@@ -1376,12 +1387,15 @@ export default function ResourceManagementPage() {
     }
 
     setIsFormOpen(false);
-    setToastMessage('Đã lưu tài liệu');
-    setTimeout(() => setToastMessage(null), 3500);
+    if (formInitialData) {
+      showToast(`Đã cập nhật thành công tài liệu: "${payload.tieu_de}"`, 'success', 'Cập nhật tài liệu');
+    } else {
+      showToast(`Đã thêm mới thành công tài liệu: "${payload.tieu_de}"`, 'success', 'Thêm mới tài liệu');
+    }
   };
 
   // Quản lý Danh mục Cấp 1
-  const handleSaveCategory = (category: ResourceCategory, isEdit: boolean) => {
+  const handleSaveCategory = (category: ResourceCategory, isEdit: boolean, childCount?: number) => {
     if (isEdit) {
       setCategories((prev) => prev.map((c) => (c.id === category.id ? category : c)));
       setDocuments((prev) =>
@@ -1389,11 +1403,12 @@ export default function ResourceManagementPage() {
           d.dm_tai_lieu === category.id ? { ...d, dm_tai_lieu_name: category.ten_tai_lieu } : d
         )
       );
+      showToast(`Đã cập nhật thành công thư mục: "${category.ten_tai_lieu}"`, 'success', 'Cập nhật Thư mục');
     } else {
       setCategories((prev) => [...prev, category]);
+      const extraMsg = childCount && childCount > 0 ? ` (kèm ${childCount} loại con)` : '';
+      showToast(`Đã thêm mới thành công thư mục: "${category.ten_tai_lieu}"${extraMsg}`, 'success', 'Thêm mới Thư mục');
     }
-    setToastMessage(`Đã ${isEdit ? 'cập nhật' : 'thêm'} danh mục Cấp 1: "${category.ten_tai_lieu}"`);
-    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleDeleteCategory = (id: number) => {
@@ -1401,15 +1416,14 @@ export default function ResourceManagementPage() {
     setCategories((prev) => prev.filter((c) => c.id !== id));
     setTypes((prev) => prev.filter((t) => t.dm_tai_lieu !== id));
     setDocuments((prev) => prev.filter((d) => d.dm_tai_lieu !== id));
-    setToastMessage(`Đã xóa danh mục Cấp 1: "${cat?.ten_tai_lieu || id}"`);
-    setTimeout(() => setToastMessage(null), 3500);
+    showToast(`Đã xóa thành công thư mục Cấp 1: "${cat?.ten_tai_lieu || id}"`, 'danger', 'Xóa Thư mục');
     if (selectedCategory === String(id)) {
       setSelectedCategory('all');
     }
   };
 
   // Quản lý Loại biểu mẫu Cấp 2
-  const handleSaveType = (typeItem: ResourceType, isEdit: boolean) => {
+  const handleSaveType = (typeItem: ResourceType, isEdit: boolean, silent?: boolean) => {
     if (isEdit) {
       setTypes((prev) => prev.map((t) => (t.id === typeItem.id ? typeItem : t)));
       setDocuments((prev) =>
@@ -1424,11 +1438,15 @@ export default function ResourceManagementPage() {
           return d;
         })
       );
+      if (!silent) {
+        showToast(`Đã cập nhật thành công loại tài liệu: "${typeItem.ten_loai}"`, 'success', 'Cập nhật Loại tài liệu');
+      }
     } else {
       setTypes((prev) => [...prev, typeItem]);
+      if (!silent) {
+        showToast(`Đã thêm mới thành công loại tài liệu: "${typeItem.ten_loai}"`, 'success', 'Thêm mới Loại tài liệu');
+      }
     }
-    setToastMessage(`Đã ${isEdit ? 'cập nhật' : 'thêm'} loại Cấp 2: "${typeItem.ten_loai}"`);
-    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleDeleteType = (id: number) => {
@@ -1443,8 +1461,7 @@ export default function ResourceManagementPage() {
         ),
       }))
     );
-    setToastMessage(`Đã xóa loại Cấp 2: "${typeItem?.ten_loai || id}"`);
-    setTimeout(() => setToastMessage(null), 3500);
+    showToast(`Đã xóa thành công loại tài liệu: "${typeItem?.ten_loai || id}"`, 'danger', 'Xóa Loại tài liệu');
     if (selectedType === String(id)) {
       setSelectedType('all');
     }
@@ -1537,6 +1554,7 @@ export default function ResourceManagementPage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
+      showToast('Đã xuất thành công file danh sách tài liệu!', 'success', 'Xuất dữ liệu Excel');
     } finally {
       setIsExporting(false);
     }
@@ -2334,21 +2352,8 @@ export default function ResourceManagementPage() {
         document.body
       )}
 
-      {/* TOAST THÔNG BÁO HOÀN TẤT THAO TÁC */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-600 text-white shadow-lg animate-slide-in-bottom">
-          <i className="fa-solid fa-circle-check text-base shrink-0" />
-          <span className="text-xs sm:text-sm font-medium">{toastMessage}</span>
-          <button
-            type="button"
-            onClick={() => setToastMessage(null)}
-            className="text-white/80 hover:text-white ml-1 cursor-pointer"
-            aria-label="Đóng"
-          >
-            <i className="fa-solid fa-xmark text-sm" />
-          </button>
-        </div>
-      )}
+      {/* TOAST THÔNG BÁO HOÀN TẤT THAO TÁC NỔI TRÊN CÙNG Z-[999999] */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }

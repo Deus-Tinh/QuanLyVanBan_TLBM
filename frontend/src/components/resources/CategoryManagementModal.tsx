@@ -12,9 +12,9 @@ export interface CategoryManagementModalProps {
   onClose: () => void;
   categories: ResourceCategory[];
   types: ResourceType[];
-  onSaveCategory: (category: ResourceCategory, isEdit: boolean) => void;
+  onSaveCategory: (category: ResourceCategory, isEdit: boolean, childCount?: number) => void;
   onDeleteCategory: (id: number) => void;
-  onSaveType: (type: ResourceType, isEdit: boolean) => void;
+  onSaveType: (type: ResourceType, isEdit: boolean, silent?: boolean) => void;
   onDeleteType: (id: number) => void;
   onRestoreMockData?: () => void;
   onResetToEmpty?: () => void;
@@ -376,7 +376,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         finalChildTypes.push(pendingChild);
       }
 
-      onSaveCategory(payload, Boolean(editingCatId));
+      onSaveCategory(payload, Boolean(editingCatId), finalChildTypes.length);
 
       // Nếu tạo mới thư mục và có thêm kèm các loại con
       if (!editingCatId && finalChildTypes.length > 0) {
@@ -390,7 +390,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
               ghi_chu: `Khởi tạo cùng thư mục ${catForm.ten_tai_lieu.trim()}`,
               ngay_lap: catForm.ngay_lap,
             },
-            false
+            false,
+            true
           );
         });
       }
