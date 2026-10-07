@@ -12,11 +12,14 @@
 -- Quy tắc xem văn bản HAN_CHE (tầng ứng dụng, queryset dùng chung của Nhóm 2):
 --   chỉ người tạo, người nhận, thành viên đơn vị nhận; không ngoại lệ cho superuser hay quyền view_*;
 --   mọi lượt mở ghi documents_view_log.
--- Bổ sung độ khẩn (đánh dấu [ĐỘ KHẨN]): documents_vanbanden, documents_vanbandi thêm cột do_khan
---   ('THUONG' | 'KHAN' | 'THUONG_KHAN' | 'HOA_TOC'), mặc định 'THUONG'. GVHD chỉ bỏ độ mật; độ khẩn giữ
---   để ưu tiên xử lý và nhắc hạn. Số đăng ký đã có qua so_thu_tu + UNIQUE (nam, so_thu_tu).
 -- Trợ lý AI không dùng văn bản HAN_CHE trong mọi trường hợp, kể cả khi người hỏi là người nhận.
--- Quy mô sau thay đổi: 54 bảng vật lý | 21 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
+-- Quy tắc văn bản HAN_CHE (văn bản mật nội bộ công ty; không phải mật hành chính do cơ quan nhà nước ban hành):
+--   người xem = người tạo + người nhận do người tạo chọn theo ID nhân viên (documents_*_nguoinhan);
+--   không ngoại lệ cho superuser hay quyền view_*; tài khoản bị khóa (is_active = FALSE) mất quyền xem;
+--   người không có quyền nhận 404 (như văn bản không tồn tại); mọi lượt xem/tải/bị chặn/đổi danh sách ghi documents_access_log.
+--   pham_vi không đổi sau khi tạo; văn bản HAN_CHE không được xóa (MVP). Văn bản NOI_BO chỉ ghi documents_view_log.
+--   Mã hóa nội dung: sau MVP.
+-- Quy mô sau thay đổi: 55 bảng vật lý | 21 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
 -- =====================================================================
 -- =====================================================================
 -- RELEASE_DDL_v1 — trạng thái đích của Issue #53, sinh từ RELEASE_DDL_v0
@@ -29,7 +32,7 @@
 --      add/change/delete_phonghop (Nhóm 7); nhóm ADMIN nhận qua phép CROSS JOIN sẵn có.
 --   6) Thêm bảng signing_key_unlock (Nhóm 5, Phase 6a; mục B7).
 --   7) Cấp quyền chỉ đọc theo bảng/cột cho role qlvb_readonly nếu role tồn tại (Nhóm 8).
--- Không đưa vào DDL: mục B3 (độ khẩn/độ mật/số đăng ký; Nhóm 2 xác nhận bỏ — [ĐỘ KHẨN] độ khẩn đã bổ sung lại), B1 (quy ước tài liệu),
+-- Không đưa vào DDL: mục B3 (độ khẩn/độ mật/số đăng ký; Nhóm 2 xác nhận bỏ), B1 (quy ước tài liệu),
 --   B4/B5 (queryset dùng chung ở tầng ứng dụng), B6 (chưa chốt), bảng dashboard_* và bảng Django hệ thống.
 -- Quy tắc cho nhóm: không tạo lại các thay đổi 2, 3, 5 bằng migration riêng (trùng cột/quyền khi áp dụng).
 -- =====================================================================
@@ -551,7 +554,6 @@ CREATE TABLE documents_vanbanden (
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
     pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
-    do_khan VARCHAR(20) NOT NULL DEFAULT 'THUONG', -- [ĐỘ KHẨN] THUONG | KHAN | THUONG_KHAN | HOA_TOC
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -561,8 +563,6 @@ CREATE TABLE documents_vanbanden (
     ),
     -- [BỎ MẬT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
     CONSTRAINT chk_vanbanden_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
-    -- [ĐỘ KHẨN] Mức độ khẩn theo thể thức văn bản (Nghị định 30/2020, ô 10b)
-    CONSTRAINT chk_vanbanden_do_khan CHECK (do_khan IN ('THUONG', 'KHAN', 'THUONG_KHAN', 'HOA_TOC')),
     -- [BỎ MẬT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
     CONSTRAINT chk_vanbanden_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
@@ -699,7 +699,6 @@ CREATE TABLE documents_vanbandi (
     hien_thi BOOLEAN NOT NULL DEFAULT TRUE,
     gui_mail_toan_he_thong BOOLEAN NOT NULL DEFAULT FALSE,
     pham_vi VARCHAR(20) NOT NULL DEFAULT 'NOI_BO', -- [BỎ MẬT] NOI_BO | HAN_CHE
-    do_khan VARCHAR(20) NOT NULL DEFAULT 'THUONG', -- [ĐỘ KHẨN] THUONG | KHAN | THUONG_KHAN | HOA_TOC
     nguoi_tao BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -709,8 +708,6 @@ CREATE TABLE documents_vanbandi (
     ),
     -- [BỎ MẬT] Phạm vi xem: HAN_CHE chỉ người tạo, người nhận, đơn vị nhận được xem (tầng ứng dụng)
     CONSTRAINT chk_vanbandi_pham_vi CHECK (pham_vi IN ('NOI_BO', 'HAN_CHE')),
-    -- [ĐỘ KHẨN] Mức độ khẩn theo thể thức văn bản (Nghị định 30/2020, ô 10b)
-    CONSTRAINT chk_vanbandi_do_khan CHECK (do_khan IN ('THUONG', 'KHAN', 'THUONG_KHAN', 'HOA_TOC')),
     -- [BỎ MẬT] Văn bản hạn chế không được gửi mail toàn hệ thống (thay CHECK B2 của bảng mật cũ)
     CONSTRAINT chk_vanbandi_han_che_khong_mail_toan_he_thong CHECK (pham_vi <> 'HAN_CHE' OR gui_mail_toan_he_thong = FALSE)
 );
@@ -878,6 +875,82 @@ CREATE TRIGGER trg_del_viewlog_vanbanden AFTER DELETE ON documents_vanbanden
 
 CREATE TRIGGER trg_del_viewlog_vanbandi AFTER DELETE ON documents_vanbandi
     FOR EACH ROW EXECUTE FUNCTION trg_cleanup_viewlog_on_doc_delete('vanbandi');
+
+-- =====================================================================
+-- BẢNG PHỤ: NHẬT KÝ TRUY CẬP VĂN BẢN HẠN CHẾ (documents_access_log)
+-- Chỉ ghi cho văn bản pham_vi = 'HAN_CHE'. Chỉ thêm dòng, không ghi đè (WORM), khác documents_view_log
+-- (mỗi người một dòng, dùng cho văn bản nội bộ). Không có FK tới văn bản (generic relation, cùng cơ chế
+-- documents_view_log); văn bản HAN_CHE không xóa được nên không phát sinh bản ghi mồ côi.
+-- hanh_dong: XEM | TAI_FILE | BI_TU_CHOI (bị chặn quyền, API trả 404) | THEM_NGUOI_XEM | BOT_NGUOI_XEM.
+-- user_id: tài khoản thực hiện, lấy từ phiên đăng nhập phía máy chủ. doi_tuong_user_id: người bị thêm/bớt.
+-- =====================================================================
+CREATE TABLE documents_access_log (
+    id BIGSERIAL PRIMARY KEY,
+    document_type document_kind NOT NULL,
+    document_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    hanh_dong VARCHAR(20) NOT NULL,
+    doi_tuong_user_id BIGINT REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    tep_id BIGINT,
+    dia_chi_ip VARCHAR(45),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_access_log_hanh_dong CHECK (
+        hanh_dong IN ('XEM', 'TAI_FILE', 'BI_TU_CHOI', 'THEM_NGUOI_XEM', 'BOT_NGUOI_XEM')
+    ),
+    CONSTRAINT chk_access_log_doi_tuong CHECK (
+        hanh_dong NOT IN ('THEM_NGUOI_XEM', 'BOT_NGUOI_XEM') OR doi_tuong_user_id IS NOT NULL
+    )
+);
+
+CREATE INDEX idx_access_log_document ON documents_access_log (document_type, document_id, created_at);
+CREATE INDEX idx_access_log_user ON documents_access_log (user_id, created_at);
+
+CREATE OR REPLACE FUNCTION prevent_modify_documents_access_log()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'Nhật ký truy cập văn bản hạn chế (documents_access_log id=%) chỉ được thêm, nghiêm cấm sửa hoặc xóa.', OLD.id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_documents_access_log_immutable
+    BEFORE UPDATE OR DELETE ON documents_access_log
+    FOR EACH ROW EXECUTE FUNCTION prevent_modify_documents_access_log();
+
+-- MVP: văn bản HAN_CHE không được xóa (chưa có cơ chế xóa mềm); chặn xóa để không mất dấu vết truy cập.
+CREATE OR REPLACE FUNCTION prevent_delete_van_ban_han_che()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.pham_vi = 'HAN_CHE' THEN
+        RAISE EXCEPTION 'Văn bản hạn chế (id=%) không được xóa.', OLD.id;
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_vanbanden_no_hard_delete_han_che BEFORE DELETE ON documents_vanbanden
+    FOR EACH ROW EXECUTE FUNCTION prevent_delete_van_ban_han_che();
+
+CREATE TRIGGER trg_vanbandi_no_hard_delete_han_che BEFORE DELETE ON documents_vanbandi
+    FOR EACH ROW EXECUTE FUNCTION prevent_delete_van_ban_han_che();
+
+-- pham_vi bất biến sau khi tạo: không cho hạ HAN_CHE xuống NOI_BO (sẽ lộ văn bản cho quyền view_* và trợ lý AI)
+-- và không cho nâng NOI_BO lên HAN_CHE (log xem cũ không đủ chi tiết).
+CREATE OR REPLACE FUNCTION prevent_change_pham_vi()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.pham_vi IS DISTINCT FROM OLD.pham_vi THEN
+        RAISE EXCEPTION 'Phạm vi văn bản (id=%) không được đổi sau khi tạo.', OLD.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_vanbanden_pham_vi_bat_bien BEFORE UPDATE OF pham_vi ON documents_vanbanden
+    FOR EACH ROW EXECUTE FUNCTION prevent_change_pham_vi();
+
+CREATE TRIGGER trg_vanbandi_pham_vi_bat_bien BEFORE UPDATE OF pham_vi ON documents_vanbandi
+    FOR EACH ROW EXECUTE FUNCTION prevent_change_pham_vi();
+
 
 -- =====================================================================
 -- =====================================================================
