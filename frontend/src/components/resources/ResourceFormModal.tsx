@@ -9,6 +9,7 @@ import {
 } from '@app-types/resource';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
+import { authService } from '@lib/authService';
 import { ConfirmationModal } from './ConfirmationModal';
 
 export interface ResourceFormData {
@@ -18,6 +19,7 @@ export interface ResourceFormData {
   tieu_de: string;
   ngay_dang: string;
   noi_ban_hanh: string;
+  nguoi_tao_name?: string;
   hieu_luc: HieuLucType;
   ngay_het_hieu_luc: string;
   link_thay_the: string;
@@ -55,6 +57,11 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const { t } = useTranslation();
   const isEditMode = Boolean(initialData);
 
+  const defaultAuthor =
+    authService.getSession()?.fullName ||
+    authService.getSession()?.username ||
+    'Thượng Mạnh Quỳnh';
+
   // Form State
   const [formData, setFormData] = useState<ResourceFormData>({
     dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
@@ -63,6 +70,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     tieu_de: '',
     ngay_dang: new Date().toISOString().split('T')[0],
     noi_ban_hanh: '',
+    nguoi_tao_name: defaultAuthor,
     hieu_luc: 'CON_HIEU_LUC',
     ngay_het_hieu_luc: '',
     link_thay_the: '',
@@ -91,6 +99,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           tieu_de: initialData.tieu_de || '',
           ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
           noi_ban_hanh: initialData.noi_ban_hanh || '',
+          nguoi_tao_name: initialData.nguoi_tao_name || defaultAuthor,
           hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
           ngay_het_hieu_luc: initialData.ngay_het_hieu_luc || '',
           link_thay_the: initialData.link_thay_the || '',
@@ -113,6 +122,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           tieu_de: '',
           ngay_dang: new Date().toISOString().split('T')[0],
           noi_ban_hanh: '',
+          nguoi_tao_name: defaultAuthor,
           hieu_luc: 'CON_HIEU_LUC',
           ngay_het_hieu_luc: '',
           link_thay_the: '',
@@ -521,25 +531,49 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               )}
             </div>
 
-            {/* Nơi ban hành */}
-            <div>
-              <label
-                htmlFor="field-noi_ban_hanh"
-                className="text-xs font-semibold text-main block mb-1"
-              >
-                {t('resourceManagement.fieldIssuingAuthority')}
-              </label>
-              <input
-                id="field-noi_ban_hanh"
-                type="text"
-                placeholder="VD: Ban Giám Đốc, Khối Nghiệp Vụ..."
-                value={formData.noi_ban_hanh}
-                onChange={(e) => {
-                  setIsDirty(true);
-                  setFormData((prev) => ({ ...prev, noi_ban_hanh: e.target.value }));
-                }}
-                className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
-              />
+            {/* Grid 2 cột: Nơi ban hành & Người tạo */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Nơi ban hành */}
+              <div>
+                <label
+                  htmlFor="field-noi_ban_hanh"
+                  className="text-xs font-semibold text-main block mb-1"
+                >
+                  {t('resourceManagement.fieldIssuingAuthority')}
+                </label>
+                <input
+                  id="field-noi_ban_hanh"
+                  type="text"
+                  placeholder="VD: Ban Giám Đốc, Khối Nghiệp Vụ..."
+                  value={formData.noi_ban_hanh}
+                  onChange={(e) => {
+                    setIsDirty(true);
+                    setFormData((prev) => ({ ...prev, noi_ban_hanh: e.target.value }));
+                  }}
+                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
+                />
+              </div>
+
+              {/* Người tạo tài liệu */}
+              <div>
+                <label
+                  htmlFor="field-nguoi_tao_name"
+                  className="text-xs font-semibold text-main block mb-1"
+                >
+                  Người tạo tài liệu
+                </label>
+                <input
+                  id="field-nguoi_tao_name"
+                  type="text"
+                  placeholder="Họ tên người tạo..."
+                  value={formData.nguoi_tao_name || ''}
+                  onChange={(e) => {
+                    setIsDirty(true);
+                    setFormData((prev) => ({ ...prev, nguoi_tao_name: e.target.value }));
+                  }}
+                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
+                />
+              </div>
             </div>
           </div>
 

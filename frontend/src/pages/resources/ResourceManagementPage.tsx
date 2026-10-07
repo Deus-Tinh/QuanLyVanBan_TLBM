@@ -14,6 +14,7 @@ import { CategoryManagementModal } from '@components/resources/CategoryManagemen
 import { Button } from '@components/common/Button';
 import { Toast, ToastNotification } from '@components/common/Toast';
 import { useTranslation } from '@i18n/translate';
+import { authService } from '@lib/authService';
 
 // ============================================================================
 // DỮ LIỆU MẪU CHUẨN ĐẶC TẢ TỪ THẦY HƯỚNG DẪN (IMAGE 1 & IMAGE 2)
@@ -880,24 +881,31 @@ export default function ResourceManagementPage() {
       const saved = localStorage.getItem(STORAGE_CUSTOM_DOCS);
       if (saved !== null) {
         const parsed: ResourceItem[] = JSON.parse(saved);
+        const defaultAuthor =
+          authService.getSession()?.fullName ||
+          authService.getSession()?.username ||
+          'Thượng Mạnh Quỳnh';
+
         return parsed.map((item) => {
-          if (item.file_dinh_kem && (!item.attachments || item.attachments.length === 0)) {
-            const isBlob = item.file_dinh_kem.startsWith('blob:');
-            const cleanName = isBlob
-              ? `${item.tieu_de || 'tai_lieu'}.pdf`
-              : (item.file_dinh_kem.split('?')[0].split('/').pop() || 'tai_lieu.pdf');
-            return {
-              ...item,
-              attachments: [
-                {
-                  id: Date.now(),
-                  name: cleanName,
-                  path: item.file_dinh_kem,
-                },
-              ],
-            };
+          let updated = { ...item };
+          // Chuẩn hóa người tạo nếu trước đó bị gán cứng 'Đỗ Trung Phong' trong quá trình tạo thử nghiệm
+          if (updated.nguoi_tao_name === 'Đỗ Trung Phong') {
+            updated.nguoi_tao_name = defaultAuthor;
           }
-          return item;
+          if (updated.file_dinh_kem && (!updated.attachments || updated.attachments.length === 0)) {
+            const isBlob = updated.file_dinh_kem.startsWith('blob:');
+            const cleanName = isBlob
+              ? `${updated.tieu_de || 'tai_lieu'}.pdf`
+              : (updated.file_dinh_kem.split('?')[0].split('/').pop() || 'tai_lieu.pdf');
+            updated.attachments = [
+              {
+                id: Date.now(),
+                name: cleanName,
+                path: updated.file_dinh_kem,
+              },
+            ];
+          }
+          return updated;
         });
       }
     } catch {}
@@ -1386,6 +1394,12 @@ export default function ResourceManagementPage() {
               ]
             : []);
 
+    const creatorName =
+      payload.nguoi_tao_name?.trim() ||
+      authService.getSession()?.fullName ||
+      authService.getSession()?.username ||
+      'Thượng Mạnh Quỳnh';
+
     if (formInitialData) {
       // Cập nhật
       setDocuments((prev) =>
@@ -1408,6 +1422,7 @@ export default function ResourceManagementPage() {
               hien_thi: payload.hien_thi,
               file_dinh_kem: fileUrl,
               attachments: attachments,
+              nguoi_tao_name: payload.nguoi_tao_name?.trim() || d.nguoi_tao_name || creatorName,
             }
             : d
         )
@@ -1431,7 +1446,7 @@ export default function ResourceManagementPage() {
         hien_thi: payload.hien_thi,
         file_dinh_kem: fileUrl,
         attachments: attachments,
-        nguoi_tao_name: 'Đỗ Trung Phong',
+        nguoi_tao_name: creatorName,
       };
       setDocuments((prev) => [newDoc, ...prev]);
     }
