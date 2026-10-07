@@ -50,6 +50,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   // UNIFIED SUB-MODAL STATE: Dùng chung cho Tạo mới & Chỉnh sửa
   // ============================================================================
   const [isUnifiedModalOpen, setIsUnifiedModalOpen] = useState(false);
+  const [isUnifiedDirty, setIsUnifiedDirty] = useState(false);
+  const [isConfirmDiscardUnifiedOpen, setIsConfirmDiscardUnifiedOpen] = useState(false);
   const [unifiedMode, setUnifiedMode] = useState<'create' | 'edit'>('create');
   const [unifiedTarget, setUnifiedTarget] = useState<'category' | 'type'>('category');
 
@@ -150,6 +152,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setCatDeleteBlockedMsg(null);
     setCatChildTypes([]);
     setChildTypeInput('');
+    setIsUnifiedDirty(false);
+    setIsConfirmDiscardUnifiedOpen(false);
 
     // Khởi tạo form Thư mục
     setCatForm({
@@ -184,6 +188,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setCatDeleteBlockedMsg(null);
     setCatChildTypes([]);
     setChildTypeInput('');
+    setIsUnifiedDirty(false);
+    setIsConfirmDiscardUnifiedOpen(false);
 
     setCatForm({
       stt_uu_tien: cat.stt_uu_tien,
@@ -204,6 +210,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setEditingTypeId(typeItem.id);
     setEditingCatId(null);
     setTypeError(null);
+    setIsUnifiedDirty(false);
+    setIsConfirmDiscardUnifiedOpen(false);
 
     setTypeForm({
       dm_tai_lieu: typeItem.dm_tai_lieu,
@@ -215,6 +223,62 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setIsUnifiedModalOpen(true);
   };
 
+  // Đóng an toàn Popup Thêm/Sửa Danh mục & Loại tài liệu có xác nhận nếu có dữ liệu/đã chỉnh sửa
+  const handleSafeCloseUnified = () => {
+    const hasData =
+      isUnifiedDirty ||
+      Boolean(
+        catForm.ten_tai_lieu.trim() ||
+        catForm.ky_hieu.trim() ||
+        catForm.ghi_chu.trim() ||
+        catChildTypes.length > 0 ||
+        childTypeInput.trim() ||
+        typeForm.ten_loai.trim() ||
+        typeForm.ghi_chu.trim()
+      );
+
+    if (hasData) {
+      setIsConfirmDiscardUnifiedOpen(true);
+      return;
+    }
+    setIsUnifiedModalOpen(false);
+  };
+
+  // Người dùng bấm trực tiếp nút "Hủy" trên footer form -> Luôn bật xác nhận hủy
+  const handleCancelBtnClick = () => {
+    setIsConfirmDiscardUnifiedOpen(true);
+  };
+
+  // Lắng nghe phím ESC để đóng an toàn
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isUnifiedModalOpen) {
+          if (isConfirmDiscardUnifiedOpen) return;
+          handleSafeCloseUnified();
+        } else if (!deleteCatTarget && !deleteBlockedCat && !deleteTypeTarget) {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    isOpen,
+    isUnifiedModalOpen,
+    isConfirmDiscardUnifiedOpen,
+    isUnifiedDirty,
+    catForm,
+    typeForm,
+    catChildTypes,
+    childTypeInput,
+    deleteCatTarget,
+    deleteBlockedCat,
+    deleteTypeTarget,
+    onClose,
+  ]);
+
   // Thêm nhanh Loại con vào Thư mục
   const handleAddChildType = () => {
     const trimmed = childTypeInput.trim();
@@ -222,10 +286,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     if (catChildTypes.includes(trimmed)) return;
     setCatChildTypes([...catChildTypes, trimmed]);
     setChildTypeInput('');
+    setIsUnifiedDirty(true);
   };
 
   const handleRemoveChildType = (index: number) => {
     setCatChildTypes(catChildTypes.filter((_, i) => i !== index));
+    setIsUnifiedDirty(true);
   };
 
   // Submit Form hợp nhất
@@ -277,6 +343,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         });
       }
 
+      setIsUnifiedDirty(false);
+      setIsConfirmDiscardUnifiedOpen(false);
       setIsUnifiedModalOpen(false);
     } else {
       // Validate & Lưu Loại tài liệu
@@ -295,6 +363,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       };
 
       onSaveType(payload, Boolean(editingTypeId));
+      setIsUnifiedDirty(false);
+      setIsConfirmDiscardUnifiedOpen(false);
       setIsUnifiedModalOpen(false);
     }
   };
@@ -721,7 +791,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       {isUnifiedModalOpen && (
         <div
           className="fixed inset-0 z-[10001] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fade-in"
-          onClick={() => setIsUnifiedModalOpen(false)}
+          onClick={handleSafeCloseUnified}
         >
           <div
             className="w-full max-w-xl bg-surface rounded-2xl border border-border-subtle shadow-2xl overflow-hidden animate-zoom-in flex flex-col max-h-[90vh]"
@@ -755,7 +825,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
               <button
                 type="button"
-                onClick={() => setIsUnifiedModalOpen(false)}
+                onClick={handleSafeCloseUnified}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface transition-colors cursor-pointer"
                 aria-label="Đóng form"
               >
@@ -771,7 +841,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   <div className="p-1 bg-surface-elevated rounded-xl flex items-center gap-1 border border-border-subtle">
                     <button
                       type="button"
-                      onClick={() => setUnifiedTarget('category')}
+                      onClick={() => {
+                        setUnifiedTarget('category');
+                        setIsUnifiedDirty(true);
+                      }}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                         unifiedTarget === 'category'
                           ? 'bg-primary text-white shadow-xs'
@@ -783,7 +856,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                     </button>
                     <button
                       type="button"
-                      onClick={() => setUnifiedTarget('type')}
+                      onClick={() => {
+                        setUnifiedTarget('type');
+                        setIsUnifiedDirty(true);
+                      }}
                       className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                         unifiedTarget === 'type'
                           ? 'bg-primary text-white shadow-xs'
@@ -812,6 +888,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           onChange={(e) => {
                             setCatForm({ ...catForm, stt_uu_tien: Number(e.target.value) });
                             setCatError(null);
+                            setIsUnifiedDirty(true);
                           }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs font-mono text-main focus:outline-hidden focus:border-primary shadow-2xs"
                           required
@@ -830,7 +907,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           type="text"
                           placeholder="VD: TLBM-CHUNG"
                           value={catForm.ky_hieu}
-                          onChange={(e) => setCatForm({ ...catForm, ky_hieu: e.target.value })}
+                          onChange={(e) => {
+                            setCatForm({ ...catForm, ky_hieu: e.target.value });
+                            setIsUnifiedDirty(true);
+                          }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs font-mono text-main focus:outline-hidden focus:border-primary shadow-2xs"
                         />
                       </div>
@@ -847,6 +927,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           onChange={(e) => {
                             setCatForm({ ...catForm, ten_tai_lieu: e.target.value });
                             if (catError && catError !== 'STT ưu tiên đã tồn tại') setCatError(null);
+                            setIsUnifiedDirty(true);
                           }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
                           required
@@ -864,9 +945,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         <input
                           type="text"
                           value={catForm.nguoi_lap_name}
-                          onChange={(e) =>
-                            setCatForm({ ...catForm, nguoi_lap_name: e.target.value })
-                          }
+                          onChange={(e) => {
+                            setCatForm({ ...catForm, nguoi_lap_name: e.target.value });
+                            setIsUnifiedDirty(true);
+                          }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
                         />
                       </div>
@@ -877,7 +959,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         <input
                           type="date"
                           value={catForm.ngay_lap}
-                          onChange={(e) => setCatForm({ ...catForm, ngay_lap: e.target.value })}
+                          onChange={(e) => {
+                            setCatForm({ ...catForm, ngay_lap: e.target.value });
+                            setIsUnifiedDirty(true);
+                          }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
                         />
                       </div>
@@ -889,7 +974,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           type="text"
                           placeholder="Mô tả phạm vi áp dụng của thư mục..."
                           value={catForm.ghi_chu}
-                          onChange={(e) => setCatForm({ ...catForm, ghi_chu: e.target.value })}
+                          onChange={(e) => {
+                            setCatForm({ ...catForm, ghi_chu: e.target.value });
+                            setIsUnifiedDirty(true);
+                          }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
                         />
                       </div>
@@ -971,9 +1059,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         </label>
                         <select
                           value={typeForm.dm_tai_lieu}
-                          onChange={(e) =>
-                            setTypeForm({ ...typeForm, dm_tai_lieu: Number(e.target.value) })
-                          }
+                          onChange={(e) => {
+                            setTypeForm({ ...typeForm, dm_tai_lieu: Number(e.target.value) });
+                            setIsUnifiedDirty(true);
+                          }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary cursor-pointer shadow-2xs font-medium"
                           required
                         >
@@ -991,9 +1080,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           <input
                             type="checkbox"
                             checked={typeForm.is_public}
-                            onChange={(e) =>
-                              setTypeForm({ ...typeForm, is_public: e.target.checked })
-                            }
+                            onChange={(e) => {
+                              setTypeForm({ ...typeForm, is_public: e.target.checked });
+                              setIsUnifiedDirty(true);
+                            }}
                             className="rounded border-border-subtle text-primary focus:ring-0 cursor-pointer w-4 h-4"
                           />
                           <span>Công khai dùng chung</span>
@@ -1012,6 +1102,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           onChange={(e) => {
                             setTypeForm({ ...typeForm, ten_loai: e.target.value });
                             setTypeError(null);
+                            setIsUnifiedDirty(true);
                           }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
                           required
@@ -1028,7 +1119,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           type="text"
                           placeholder="Mô tả mục đích sử dụng..."
                           value={typeForm.ghi_chu}
-                          onChange={(e) => setTypeForm({ ...typeForm, ghi_chu: e.target.value })}
+                          onChange={(e) => {
+                            setTypeForm({ ...typeForm, ghi_chu: e.target.value });
+                            setIsUnifiedDirty(true);
+                          }}
                           className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
                         />
                       </div>
@@ -1043,7 +1137,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsUnifiedModalOpen(false)}
+                  onClick={handleCancelBtnClick}
                   className="rounded-xl text-xs font-semibold"
                 >
                   Hủy
@@ -1191,6 +1285,25 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         subMessage={t('resourceManagement.confirmDeleteTypeSub')}
         confirmText={t('resourceManagement.deleteTypeBtn')}
         cancelText={t('resourceManagement.cancel')}
+      />
+
+      {/* Modal xác nhận hủy form Thêm mới / Chỉnh sửa Thư mục & Loại tài liệu */}
+      <ConfirmationModal
+        isOpen={isConfirmDiscardUnifiedOpen}
+        onClose={() => setIsConfirmDiscardUnifiedOpen(false)}
+        onConfirm={() => {
+          setIsConfirmDiscardUnifiedOpen(false);
+          setIsUnifiedDirty(false);
+          setIsUnifiedModalOpen(false);
+        }}
+        title={t('resourceManagement.confirmDiscardTitle')}
+        message={t('resourceManagement.confirmDiscardMsg')}
+        subMessage={t('resourceManagement.confirmDiscardSub')}
+        confirmText={t('resourceManagement.confirmDiscardBtn')}
+        cancelText={t('resourceManagement.continueEditingBtn')}
+        variant="warning"
+        headerIcon="fa-triangle-exclamation"
+        confirmIcon="fa-arrow-rotate-left"
       />
     </div>,
     document.body
