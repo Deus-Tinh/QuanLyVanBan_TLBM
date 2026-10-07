@@ -194,12 +194,12 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fade-in">
       <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-scale-up">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-elevated">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-lg">
               <i className={initialData ? 'fa-solid fa-user-pen' : 'fa-solid fa-user-plus'} />
             </div>
             <div>
@@ -214,7 +214,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-secondary hover:text-main p-2 rounded-lg hover:bg-hover transition-colors"
+            className="text-secondary hover:text-main p-2 rounded-lg hover:bg-surface-hover transition-colors"
           >
             <i className="fa-solid fa-xmark text-lg" />
           </button>
@@ -223,7 +223,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
         {/* Modal Content */}
         {createdPassword ? (
           <div className="p-6 space-y-6">
-            <div className="p-5 bg-success/10 border border-success/30 rounded-xl text-center space-y-3">
+            <div className="p-5 bg-success-subtle border border-success-border rounded-xl text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-success text-white flex items-center justify-center mx-auto text-xl">
                 <i className="fa-solid fa-check" />
               </div>
@@ -257,7 +257,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
             {isSelfEditOnly && (
-              <div className="p-3 text-xs bg-primary/10 text-primary border border-primary/20 rounded-lg flex items-center gap-2">
+              <div className="p-3 text-xs bg-primary-subtle text-primary border border-primary-border rounded-lg flex items-center gap-2">
                 <i className="fa-solid fa-circle-info text-sm shrink-0" />
                 <span>{t('employees.hints.selfEditNotice')}</span>
               </div>

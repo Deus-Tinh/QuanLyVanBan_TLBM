@@ -225,7 +225,7 @@ export default function EmployeesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-main flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-base">
+            <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-base">
               <i className="fa-solid fa-users" />
             </span>
             {t('employees.title')}
@@ -431,7 +431,7 @@ export default function EmployeesPage() {
                   const rowNumber = (currentPage - 1) * pageSize + idx + 1;
 
                   return (
-                    <tr key={emp.id} className="hover:bg-hover transition-colors">
+                    <tr key={emp.id} className="hover:bg-surface-hover transition-colors">
                       {/* STT */}
                       <td className="py-3.5 px-4 text-center text-xs text-muted font-mono">
                         {rowNumber}
@@ -440,7 +440,7 @@ export default function EmployeesPage() {
                       {/* Họ tên & Avatar */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary to-accent text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary to-primary-hover text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
                             {initials}
                           </div>
                           <div className="min-w-0">
@@ -490,7 +490,7 @@ export default function EmployeesPage() {
                           <span>{emp.ngay_sinh || emp.birthday || '—'}</span>
                           {emp.is_birthday_masked && (
                             <span
-                              className="text-amber-500 text-[10px]"
+                              className="text-warning text-[10px]"
                               title={t('employees.hints.birthdayMaskedTooltip')}
                             >
                               <i className="fa-solid fa-lock" />
@@ -591,7 +591,7 @@ export default function EmployeesPage() {
               type="button"
               disabled={currentPage <= 1 || isLoading}
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               <i className="fa-solid fa-chevron-left" />
             </button>
@@ -604,7 +604,7 @@ export default function EmployeesPage() {
               type="button"
               disabled={currentPage >= totalPages || isLoading}
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               <i className="fa-solid fa-chevron-right" />
             </button>

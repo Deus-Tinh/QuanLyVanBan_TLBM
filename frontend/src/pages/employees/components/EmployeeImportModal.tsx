@@ -126,12 +126,12 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fade-in">
       <div className="bg-surface border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-up">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-elevated">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-success/10 text-success flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-lg bg-success-subtle text-success flex items-center justify-center text-lg">
               <i className="fa-solid fa-file-excel" />
             </div>
             <div>
@@ -146,7 +146,7 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-secondary hover:text-main p-2 rounded-lg hover:bg-hover transition-colors"
+            className="text-secondary hover:text-main p-2 rounded-lg hover:bg-surface-hover transition-colors"
           >
             <i className="fa-solid fa-xmark text-lg" />
           </button>
@@ -186,8 +186,8 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
               isDragging
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50 bg-surface-elevated/50'
+                ? 'border-primary bg-primary-subtle'
+                : 'border-border hover:border-primary bg-surface-elevated'
             }`}
           >
             <input
@@ -197,7 +197,7 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
               onChange={handleFileChange}
               className="hidden"
             />
-            <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto text-2xl mb-3">
+            <div className="w-14 h-14 rounded-full bg-primary-subtle text-primary flex items-center justify-center mx-auto text-2xl mb-3">
               <i className="fa-solid fa-cloud-arrow-up" />
             </div>
             <p className="text-sm font-semibold text-main">
@@ -234,7 +234,7 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
                       <th className="py-2 px-3">{t('employees.import.errorDetail')}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-danger-border/30 bg-surface">
+                  <tbody className="divide-y divide-danger-border bg-surface">
                     {errorList.map((err, idx) => {
                       const fieldLabel = err.field
                         ? t(`employees.import.fields.${err.field}`)
@@ -245,7 +245,7 @@ export const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({
                         : err.message;
 
                       return (
-                        <tr key={idx} className="hover:bg-danger-subtle/20">
+                        <tr key={idx} className="hover:bg-danger-subtle">
                           <td className="py-2 px-3 text-center font-mono font-semibold text-danger">
                             {err.row > 0 ? `#${err.row}` : '-'}
                           </td>
