@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, ChangeEvent, FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ResourceItem,
   ResourceCategory,
@@ -150,6 +151,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   }, [types, formData.dm_tai_lieu]);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
   // Xử lý thay đổi Thư mục (reset Loại tài liệu)
   const handleCategoryChange = (catId: number | '') => {
@@ -305,9 +307,9 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     await onSubmit({ formData: data, payload: formData });
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
       onClick={handleSafeClose}
       role="dialog"
       aria-modal="true"
@@ -819,6 +821,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

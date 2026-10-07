@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ResourceCategory, ResourceType } from '@app-types/resource';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
@@ -69,15 +70,59 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   });
   const [typeError, setTypeError] = useState<string | null>(null);
 
-  // Đóng dropdown khi click ngoài
+  // Vị trí fixed của dropdown menu Thao tác — không bị cắt bởi overflow và lật lên khi ở đáy
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  // Đóng dropdown khi click ngoài hoặc resize cửa sổ
   useEffect(() => {
     const handleOutside = () => {
       setActiveMenuCatId(null);
       setActiveMenuTypeId(null);
+      setMenuPos(null);
     };
     document.addEventListener('click', handleOutside);
-    return () => document.removeEventListener('click', handleOutside);
+    window.addEventListener('resize', handleOutside);
+    return () => {
+      document.removeEventListener('click', handleOutside);
+      window.removeEventListener('resize', handleOutside);
+    };
   }, []);
+
+  const handleOpenCatMenu = (e: React.MouseEvent<HTMLButtonElement>, catId: number) => {
+    e.stopPropagation();
+    if (activeMenuCatId === catId) {
+      setActiveMenuCatId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < 110 ? Math.max(10, rect.top - 84) : rect.bottom + 4;
+    setMenuPos({
+      top,
+      right: Math.max(10, window.innerWidth - rect.right),
+    });
+    setActiveMenuCatId(catId);
+    setActiveMenuTypeId(null);
+  };
+
+  const handleOpenTypeMenu = (e: React.MouseEvent<HTMLButtonElement>, typeId: number) => {
+    e.stopPropagation();
+    if (activeMenuTypeId === typeId) {
+      setActiveMenuTypeId(null);
+      setMenuPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow < 110 ? Math.max(10, rect.top - 84) : rect.bottom + 4;
+    setMenuPos({
+      top,
+      right: Math.max(10, window.innerWidth - rect.right),
+    });
+    setActiveMenuTypeId(typeId);
+    setActiveMenuCatId(null);
+  };
 
   // Tính số thứ tự ưu tiên lớn nhất + 1 để tự động điền khi tạo mới Thư mục
   const nextOrderNumber = () => {
@@ -302,10 +347,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   }, [types, filterParentCat, typeSearch]);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -457,7 +503,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       <th className="px-4 py-3 min-w-[200px]">Tên thư mục</th>
                       <th className="px-3 py-3 w-32">Ngày lập</th>
                       <th className="px-3 py-3 w-28 text-center">Loại con</th>
-                      <th className="px-3 py-3 w-16 text-center">Thao tác</th>
+                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -497,47 +543,19 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                               className="px-3 py-3 text-center whitespace-nowrap"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <div className="relative inline-block text-left">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setActiveMenuCatId(activeMenuCatId === cat.id ? null : cat.id)
-                                  }
-                                  className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
-                                  title="Thao tác"
-                                  aria-label={`Thao tác với thư mục ${cat.ten_tai_lieu}`}
-                                >
-                                  <i className="fa-solid fa-ellipsis text-xs" />
-                                </button>
-
-                                {activeMenuCatId === cat.id && (
-                                  <div className="absolute right-0 mt-1 w-32 rounded-xl bg-surface border border-border-subtle shadow-lg z-30 py-1 text-left animate-in fade-in zoom-in-95 duration-100">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveMenuCatId(null);
-                                        handleOpenEditCat(cat);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer transition-colors"
-                                    >
-                                      <i className="fa-solid fa-pen-to-square text-primary text-xs" />
-                                      <span>Sửa</span>
-                                    </button>
-                                    <div className="my-1 border-t border-border-subtle" />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveMenuCatId(null);
-                                        handleDeleteCategoryWithCheck(cat);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger-subtle flex items-center gap-2 cursor-pointer font-medium transition-colors"
-                                    >
-                                      <i className="fa-solid fa-trash-can text-danger text-xs" />
-                                      <span>Xóa</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleOpenCatMenu(e, cat.id)}
+                                className={`w-7 h-7 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
+                                  activeMenuCatId === cat.id
+                                    ? 'bg-primary text-white shadow-xs'
+                                    : 'text-muted hover:text-main hover:bg-surface-elevated'
+                                }`}
+                                title="Thao tác"
+                                aria-label={`Thao tác với thư mục ${cat.ten_tai_lieu}`}
+                              >
+                                <i className="fa-solid fa-ellipsis text-xs" />
+                              </button>
                             </td>
                           </tr>
                         );
@@ -614,7 +632,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       <th className="px-3 py-3 w-48">Thư mục cha</th>
                       <th className="px-3 py-3 w-28 text-center">Phạm vi</th>
                       <th className="px-3 py-3 min-w-[160px]">Ghi chú</th>
-                      <th className="px-3 py-3 w-16 text-center">Thao tác</th>
+                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -662,47 +680,19 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                               className="px-3 py-3 text-center whitespace-nowrap"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <div className="relative inline-block text-left">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setActiveMenuTypeId(activeMenuTypeId === t.id ? null : t.id)
-                                  }
-                                  className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
-                                  title="Thao tác"
-                                  aria-label={`Thao tác với loại ${t.ten_loai}`}
-                                >
-                                  <i className="fa-solid fa-ellipsis text-xs" />
-                                </button>
-
-                                {activeMenuTypeId === t.id && (
-                                  <div className="absolute right-0 mt-1 w-32 rounded-xl bg-surface border border-border-subtle shadow-lg z-30 py-1 text-left animate-in fade-in zoom-in-95 duration-100">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveMenuTypeId(null);
-                                        handleOpenEditType(t);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer transition-colors"
-                                    >
-                                      <i className="fa-solid fa-pen-to-square text-primary text-xs" />
-                                      <span>Sửa</span>
-                                    </button>
-                                    <div className="my-1 border-t border-border-subtle" />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveMenuTypeId(null);
-                                        handleDeleteTypeConfirm(t);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger-subtle flex items-center gap-2 cursor-pointer font-medium transition-colors"
-                                    >
-                                      <i className="fa-solid fa-trash-can text-danger text-xs" />
-                                      <span>Xóa</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => handleOpenTypeMenu(e, t.id)}
+                                className={`w-7 h-7 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
+                                  activeMenuTypeId === t.id
+                                    ? 'bg-primary text-white shadow-xs'
+                                    : 'text-muted hover:text-main hover:bg-surface-elevated'
+                                }`}
+                                title="Thao tác"
+                                aria-label={`Thao tác với loại ${t.ten_loai}`}
+                              >
+                                <i className="fa-solid fa-ellipsis text-xs" />
+                              </button>
                             </td>
                           </tr>
                         );
@@ -732,7 +722,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       {/* ============================================================================ */}
       {isUnifiedModalOpen && (
         <div
-          className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-[10001] flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fade-in"
           onClick={() => setIsUnifiedModalOpen(false)}
         >
           <div
@@ -1078,6 +1068,79 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           </div>
         </div>
       )}
-    </div>
+
+      {/* Dropdown Menu Floating cho Thư mục — lật lên trên nếu gần đáy modal/màn hình */}
+      {activeMenuCatId !== null && menuPos && (
+        <div
+          className="fixed z-[10002] w-28 bg-surface rounded-xl border border-border-subtle shadow-xl py-1 animate-zoom-in"
+          style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              const cat = categories.find((c) => c.id === activeMenuCatId);
+              if (cat) handleOpenEditCat(cat);
+              setActiveMenuCatId(null);
+              setMenuPos(null);
+            }}
+            className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
+          >
+            <i className="fa-solid fa-pen-to-square text-primary text-xs" />
+            <span>Sửa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const cat = categories.find((c) => c.id === activeMenuCatId);
+              if (cat) handleDeleteCategoryWithCheck(cat);
+              setActiveMenuCatId(null);
+              setMenuPos(null);
+            }}
+            className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
+          >
+            <i className="fa-solid fa-trash-can text-danger text-xs" />
+            <span>Xóa</span>
+          </button>
+        </div>
+      )}
+
+      {/* Dropdown Menu Floating cho Loại tài liệu — lật lên trên nếu gần đáy modal/màn hình */}
+      {activeMenuTypeId !== null && menuPos && (
+        <div
+          className="fixed z-[10002] w-28 bg-surface rounded-xl border border-border-subtle shadow-xl py-1 animate-zoom-in"
+          style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              const t = types.find((item) => item.id === activeMenuTypeId);
+              if (t) handleOpenEditType(t);
+              setActiveMenuTypeId(null);
+              setMenuPos(null);
+            }}
+            className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
+          >
+            <i className="fa-solid fa-pen-to-square text-primary text-xs" />
+            <span>Sửa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const t = types.find((item) => item.id === activeMenuTypeId);
+              if (t) handleDeleteTypeConfirm(t);
+              setActiveMenuTypeId(null);
+              setMenuPos(null);
+            }}
+            className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
+          >
+            <i className="fa-solid fa-trash-can text-danger text-xs" />
+            <span>Xóa</span>
+          </button>
+        </div>
+      )}
+    </div>,
+    document.body
   );
 };

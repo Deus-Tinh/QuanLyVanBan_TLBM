@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ResourceItem, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
@@ -32,6 +33,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen || !item) return null;
+  if (typeof document === 'undefined') return null;
 
   // Format ngày dd/mm/yyyy
   const formatDate = (dateStr?: string) => {
@@ -131,9 +133,9 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
       ? [{ name: item.file_dinh_kem.split('/').pop() || 'Tệp đính kèm', path: item.file_dinh_kem }]
       : [];
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -404,6 +406,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   ResourceItem,
@@ -2117,9 +2118,9 @@ export default function ResourceManagementPage() {
       />
 
       {/* MODAL XÁC NHẬN XÓA TÀI LIỆU (MỤC 5) */}
-      {isDeleteOpen && deleteItem && (
+      {isDeleteOpen && deleteItem && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
           onClick={() => {
             if (!isDeleting) {
               setIsDeleteOpen(false);
@@ -2187,7 +2188,8 @@ export default function ResourceManagementPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* TOAST THÔNG BÁO HOÀN TẤT THAO TÁC */}
