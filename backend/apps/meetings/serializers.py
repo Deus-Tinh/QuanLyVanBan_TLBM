@@ -17,9 +17,24 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
     Serializer CRUD cho Danh mục phòng họp (MeetingRoom / meetings_meetingroom).
     """
 
-    name = serializers.CharField(max_length=100, required=False)
+    name = serializers.CharField(
+        max_length=100,
+        required=False,
+        error_messages={
+            "max_length": "meetings.messages.roomNameTooLong",
+        },
+    )
     location = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
-    capacity = serializers.IntegerField(min_value=1, max_value=2147483647, required=False, default=10)
+    capacity = serializers.IntegerField(
+        min_value=1,
+        max_value=2147483647,
+        required=False,
+        default=10,
+        error_messages={
+            "min_value": "meetings.messages.capacityMustBePositive",
+            "max_value": "meetings.messages.capacityTooLarge",
+        },
+    )
     amenities = serializers.CharField(required=False, allow_blank=True, default="")
     is_public = serializers.BooleanField(required=False)
     status = serializers.ChoiceField(choices=MeetingRoom.Status.choices, required=False, default=MeetingRoom.Status.AVAILABLE)
@@ -283,7 +298,10 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                     e_dt = timezone.localtime(e_dt)
 
                 if s_dt.date() != e_dt.date():
-                    d["_cross_day_error"] = True
+                    raise serializers.ValidationError({
+                        "end_time": "meetings.messages.crossDayNotAllowed",
+                        "thoi_gian_ket_thuc": "meetings.messages.crossDayNotAllowed",
+                    })
 
                 if "date" not in d:
                     d["date"] = s_dt.date().isoformat()
@@ -291,6 +309,8 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                     d["start_time"] = s_dt.time().strftime("%H:%M:%S")
                 if "end_time" not in d:
                     d["end_time"] = e_dt.time().strftime("%H:%M:%S")
+            except serializers.ValidationError:
+                raise
             except Exception:
                 pass
 
@@ -317,14 +337,15 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        # Tính trạng thái hiển thị động nếu lịch CONFIRMED nhưng đã kết thúc trong quá khứ
-        if instance.status == MeetingBooking.Status.CONFIRMED and instance.date and instance.end_time:
-            now_local = timezone.localtime(timezone.now())
-            today = now_local.date()
-            now_time = now_local.time()
-            if instance.date < today or (instance.date == today and instance.end_time <= now_time):
-                ret["status"] = MeetingBooking.Status.COMPLETED
-                ret["trang_thai"] = "hoan_thanh"
+        # Tính trạng thái hiển thị động dựa trên effective_status
+        effective_st = instance.effective_status
+        ret["status"] = effective_st
+        mapping = {
+            MeetingBooking.Status.CONFIRMED: "da_dat",
+            MeetingBooking.Status.CANCELLED: "da_huy",
+            MeetingBooking.Status.COMPLETED: "hoan_thanh",
+        }
+        ret["trang_thai"] = mapping.get(effective_st, effective_st)
         return ret
 
     def get_don_vi_to_chuc(self, obj):
@@ -343,13 +364,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
         return timezone.make_aware(dt, tz).isoformat()
 
     def get_trang_thai(self, obj):
-        st = obj.status
-        if st == MeetingBooking.Status.CONFIRMED and obj.date and obj.end_time:
-            now_local = timezone.localtime(timezone.now())
-            today = now_local.date()
-            now_time = now_local.time()
-            if obj.date < today or (obj.date == today and obj.end_time <= now_time):
-                st = MeetingBooking.Status.COMPLETED
+        st = obj.effective_status
         mapping = {
             MeetingBooking.Status.CONFIRMED: "da_dat",
             MeetingBooking.Status.CANCELLED: "da_huy",
@@ -358,12 +373,6 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
         return mapping.get(st, st)
 
     def validate(self, attrs):
-        if self.initial_data and self.initial_data.get("_cross_day_error"):
-            raise serializers.ValidationError({
-                "end_time": "meetings.messages.crossDayNotAllowed",
-                "thoi_gian_ket_thuc": "meetings.messages.crossDayNotAllowed",
-            })
-
         room = attrs.get("room", getattr(self.instance, "room", None))
         booking_date = attrs.get("date", getattr(self.instance, "date", None))
         start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
@@ -381,7 +390,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         user = getattr(request, "user", None)
         if room and not room.is_public:
-            has_perm = user and (user.is_superuser or user.has_perm("change_phonghop") or user.has_perm("meetings.change_phonghop"))
+            has_perm = user and (user.is_superuser or user.has_perm("change_phonghop"))
             if not has_perm:
                 raise serializers.ValidationError({
                     "room": "meetings.messages.privateRoomForbidden",

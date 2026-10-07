@@ -10,6 +10,7 @@ export interface MeetingRoom {
   suc_chua: number;
   thiet_bi: string;
   is_public: boolean;
+  status?: 'AVAILABLE' | 'MAINTENANCE' | 'UNAVAILABLE' | string;
   ghi_chu: string;
   created_at: string;
   updated_at: string;
@@ -21,6 +22,7 @@ export interface CreateMeetingRoomDTO {
   suc_chua: number;
   thiet_bi?: string;
   is_public?: boolean;
+  status?: 'AVAILABLE' | 'MAINTENANCE' | 'UNAVAILABLE' | string;
   ghi_chu?: string;
 }
 

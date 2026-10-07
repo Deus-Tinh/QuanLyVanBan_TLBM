@@ -31,6 +31,7 @@ class MeetingRoomPermission(permissions.BasePermission):
     - Xóa (DELETE): Cần quyền 'delete_phonghop' hoặc is_superuser
     (Bỏ hoàn toàn bypass is_staff, chỉ giữ is_superuser)
     """
+    message = "meetings.messages.permissionDenied"
 
     def has_permission(self, request, view):
         user = request.user
@@ -176,6 +177,7 @@ class IsOwnerOrAdminForBooking(permissions.BasePermission):
       * Nếu là người khác: cần quyền 'change_any_datphonghop' hoặc is_superuser
     (Bỏ hoàn toàn bypass is_staff, chỉ giữ is_superuser)
     """
+    message = "meetings.messages.permissionDenied"
 
     def has_permission(self, request, view):
         user = request.user
@@ -322,7 +324,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 # Chặn đặt phòng nội bộ nếu không có quyền
                 if not locked_room.is_public:
                     user = request.user
-                    has_perm = user and (user.is_superuser or user.has_perm("change_phonghop") or user.has_perm("meetings.change_phonghop"))
+                    has_perm = user and (user.is_superuser or user.has_perm("change_phonghop"))
                     if not has_perm:
                         return Response(
                             {
@@ -403,6 +405,18 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         """
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
+
+        # Không cho phép cập nhật lịch đã kết thúc trong quá khứ
+        if instance.effective_status == MeetingBooking.Status.COMPLETED:
+            return Response(
+                {
+                    "error": "meetings.messages.bookingAlreadyEnded",
+                    "detail": "meetings.messages.bookingAlreadyEnded",
+                    "code": "meetings.messages.bookingAlreadyEnded",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
@@ -419,7 +433,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 # Chặn đặt/sửa phòng nội bộ nếu không có quyền
                 if not locked_room.is_public:
                     user = request.user
-                    has_perm = user and (user.is_superuser or user.has_perm("change_phonghop") or user.has_perm("meetings.change_phonghop"))
+                    has_perm = user and (user.is_superuser or user.has_perm("change_phonghop"))
                     if not has_perm:
                         return Response(
                             {
@@ -496,6 +510,18 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         Hủy lịch đặt phòng họp: giải phóng khung giờ nhưng vẫn giữ lại bản ghi lịch sử.
         """
         booking = self.get_object()
+
+        # Không cho phép hủy lịch đã hoàn thành / kết thúc trong quá khứ
+        if booking.effective_status == MeetingBooking.Status.COMPLETED:
+            return Response(
+                {
+                    "error": "meetings.messages.bookingAlreadyEnded",
+                    "detail": "meetings.messages.bookingAlreadyEnded",
+                    "code": "meetings.messages.bookingAlreadyEnded",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         if booking.status == MeetingBooking.Status.CANCELLED:
             return Response(
                 {
@@ -506,9 +532,9 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
             )
 
         booking.status = MeetingBooking.Status.CANCELLED
-        reason = request.data.get("ly_do_huy", "").strip()
+        reason = (request.data.get("ly_do_huy") or request.data.get("cancel_reason") or "").strip()
         if reason:
-            booking.purpose = (booking.purpose + f"\n[Lý do hủy]: {reason}").strip()
+            booking.purpose = (booking.purpose + f"\n{reason}").strip() if booking.purpose else reason
         booking.save()
 
         serializer = self.get_serializer(booking)

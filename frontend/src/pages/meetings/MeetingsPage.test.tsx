@@ -241,4 +241,42 @@ describe('MeetingsPage Component (Issue #22)', () => {
       );
     });
   });
+
+  it('hides Edit and Cancel action buttons for completed bookings', async () => {
+    const completedBooking = {
+      ...mockBookings[0],
+      id: 102,
+      trang_thai: 'hoan_thanh',
+      thoi_gian_bat_dau: '2026-09-20T08:00:00Z',
+      thoi_gian_ket_thuc: '2026-09-20T09:00:00Z',
+    };
+
+    getMockFn().mockImplementation((url: string) => {
+      if (url.includes('/api/auth/profile/')) return Promise.resolve(mockProfile);
+      if (url.includes('/api/auth/me/permissions/')) {
+        return Promise.resolve({
+          is_superuser: true,
+          permissions: ['add_phonghop', 'change_phonghop', 'change_any_datphonghop'],
+        });
+      }
+      if (url.includes('/api/meeting-rooms/')) return Promise.resolve({ results: mockRooms, count: 2 });
+      if (url.includes('/api/meeting-bookings/')) return Promise.resolve({ results: [completedBooking], count: 1 });
+      return Promise.resolve({});
+    });
+
+    render(
+      <MemoryRouter>
+        <MeetingsPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Họp giao ban tuần 40')).toBeInTheDocument();
+    });
+
+    // For completed bookings, neither "Chỉnh sửa" nor "Hủy lịch" buttons should be rendered
+    expect(screen.queryByText('Hủy lịch')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chỉnh sửa')).not.toBeInTheDocument();
+  });
 });
+

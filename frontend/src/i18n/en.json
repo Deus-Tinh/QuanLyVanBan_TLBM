@@ -823,7 +823,16 @@
       "roomStatus": "Room Status",
       "notUpdated": "Location not set",
       "noAmenities": "No amenities listed",
-      "bookThisRoom": "Book this room"
+      "bookThisRoom": "Book this room",
+      "roomFallback": "Room #{id}",
+      "staffFallback": "Staff"
+    },
+    "fields": {
+      "capacity": "Capacity",
+      "people": "people",
+      "location": "Location",
+      "amenities": "Amenities",
+      "privateBadge": "Private"
     },
     "status": {
       "confirmed": "Reserved",
@@ -872,9 +881,10 @@
       "locationLabel": "Room Location",
       "locationPlaceholder": "e.g. 2nd Floor, Building A",
       "capacityLabel": "Capacity (people)",
-      "statusLabel": "Operating Status",
-      "statusDesc": "Allow room to be visible and bookable in directory",
-      "isPublicLabel": "Public for staff booking",
+      "statusLabel": "Room Status",
+      "statusDesc": "Set operating availability of the meeting room",
+      "isPublicLabel": "Public for staff bookings",
+      "isPublicDesc": "Allow room to be visible and bookable in directory by staff",
       "amenitiesLabel": "Available Amenities",
       "amenitiesPlaceholder": "e.g. Sony 4K projector, 2 wireless mics, 75 inch TV...",
       "notesLabel": "Notes",
@@ -936,6 +946,8 @@
       "endTimeRequired": "Please select end time.",
       "attendeesRequired": "Attendees count must be greater than 0.",
       "bookingAlreadyCancelled": "This meeting booking has already been cancelled.",
+      "bookingAlreadyEnded": "Cannot cancel or modify a meeting that has already ended.",
+      "permissionDenied": "You do not have permission to perform this action.",
       "saveRoomError": "An error occurred while saving the meeting room. Please try again.",
       "saveBookingError": "Cannot save meeting booking. Please check the entered information!"
     }

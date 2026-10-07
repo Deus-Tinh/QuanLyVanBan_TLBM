@@ -23,6 +23,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
   const [sucChua, setSucChua] = useState<number>(roomToEdit?.suc_chua ?? 10);
   const [thietBi, setThietBi] = useState(roomToEdit?.thiet_bi || '');
   const [isPublic, setIsPublic] = useState(roomToEdit?.is_public ?? true);
+  const [status, setStatus] = useState<string>(roomToEdit?.status || 'AVAILABLE');
   const [ghiChu, setGhiChu] = useState(roomToEdit?.ghi_chu || '');
 
   const [loading, setLoading] = useState(false);
@@ -55,6 +56,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
       suc_chua: Number(sucChua),
       thiet_bi: thietBi.trim(),
       is_public: isPublic,
+      status: status,
       ghi_chu: ghiChu.trim(),
     };
 
@@ -87,18 +89,18 @@ export const RoomModal: React.FC<RoomModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fadeIn"
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all duration-200">
+      <div className="relative w-full max-w-lg bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden transform transition-all duration-200">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-elevated">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-bold text-main">
               {roomToEdit ? t('meetings.modalRoom.editTitle') : t('meetings.modalRoom.createTitle')}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-muted mt-0.5">
               {roomToEdit
                 ? t('meetings.modalRoom.editSubtitle', { name: roomToEdit.ten_phong })
                 : t('meetings.modalRoom.createSubtitle')}
@@ -107,48 +109,46 @@ export const RoomModal: React.FC<RoomModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800"
+            className="text-muted hover:text-main transition-colors p-1.5 rounded-lg hover:bg-surface-elevated"
             aria-label={t('meetings.modalRoom.cancelBtn')}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <i className="fa-solid fa-xmark text-lg" />
           </button>
         </div>
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
           {errors.general && (
-            <div className="p-3 text-sm text-red-700 bg-red-50 dark:bg-red-950/40 dark:text-red-300 rounded-xl border border-red-200 dark:border-red-900/50">
+            <div className="p-3 text-sm text-danger bg-danger-subtle rounded-xl border border-danger-border">
               {errors.general}
             </div>
           )}
 
           {/* Tên phòng */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-              {t('meetings.modalRoom.nameLabel')} <span className="text-red-500">*</span>
+            <label className="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">
+              {t('meetings.modalRoom.nameLabel')} <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               value={tenPhong}
               onChange={(e) => setTenPhong(e.target.value)}
               placeholder={t('meetings.modalRoom.namePlaceholder')}
-              className={`w-full px-3.5 py-2 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 bg-slate-50 dark:bg-slate-800/80 dark:text-white ${
+              className={`w-full px-3.5 py-2 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 bg-surface text-main placeholder:text-muted ${
                 errors.ten_phong
-                  ? 'border-red-400 focus:ring-red-400/30'
-                  : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/30 focus:border-blue-500'
+                  ? 'border-danger focus:ring-danger'
+                  : 'border-border focus:ring-primary focus:border-primary'
               }`}
             />
             {errors.ten_phong && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.ten_phong}</p>
+              <p className="mt-1 text-xs text-danger">{errors.ten_phong}</p>
             )}
           </div>
 
           {/* Vị trí & Sức chứa */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">
                 {t('meetings.modalRoom.locationLabel')}
               </label>
               <input
@@ -156,16 +156,16 @@ export const RoomModal: React.FC<RoomModalProps> = ({
                 value={viTri}
                 onChange={(e) => setViTri(e.target.value)}
                 placeholder={t('meetings.modalRoom.locationPlaceholder')}
-                className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+                className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               />
               {errors.vi_tri && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.vi_tri}</p>
+                <p className="mt-1 text-xs text-danger">{errors.vi_tri}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                {t('meetings.modalRoom.capacityLabel')} <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">
+                {t('meetings.modalRoom.capacityLabel')} <span className="text-danger">*</span>
               </label>
               <input
                 type="number"
@@ -173,21 +173,37 @@ export const RoomModal: React.FC<RoomModalProps> = ({
                 value={sucChua}
                 onChange={(e) => setSucChua(parseInt(e.target.value, 10) || 0)}
                 placeholder="10"
-                className={`w-full px-3.5 py-2 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 bg-slate-50 dark:bg-slate-800/80 dark:text-white ${
+                className={`w-full px-3.5 py-2 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 bg-surface text-main ${
                   errors.suc_chua
-                    ? 'border-red-400 focus:ring-red-400/30'
-                    : 'border-slate-300 dark:border-slate-700 focus:ring-blue-500/30 focus:border-blue-500'
+                    ? 'border-danger focus:ring-danger'
+                    : 'border-border focus:ring-primary focus:border-primary'
                 }`}
               />
               {errors.suc_chua && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.suc_chua}</p>
+                <p className="mt-1 text-xs text-danger">{errors.suc_chua}</p>
               )}
             </div>
           </div>
 
+          {/* Trạng thái phòng (AVAILABLE / MAINTENANCE / UNAVAILABLE) */}
+          <div>
+            <label className="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">
+              {t('meetings.modalRoom.statusLabel')}
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer font-medium"
+            >
+              <option value="AVAILABLE">{t('meetings.status.available')}</option>
+              <option value="MAINTENANCE">{t('meetings.status.maintenance')}</option>
+              <option value="UNAVAILABLE">{t('meetings.status.unavailable')}</option>
+            </select>
+          </div>
+
           {/* Thiết bị */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">
               {t('meetings.modalRoom.amenitiesLabel')}
             </label>
             <textarea
@@ -195,21 +211,21 @@ export const RoomModal: React.FC<RoomModalProps> = ({
               value={thietBi}
               onChange={(e) => setThietBi(e.target.value)}
               placeholder={t('meetings.modalRoom.amenitiesPlaceholder')}
-              className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+              className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
             />
             {errors.thiet_bi && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.thiet_bi}</p>
+              <p className="mt-1 text-xs text-danger">{errors.thiet_bi}</p>
             )}
           </div>
 
-          {/* Trạng thái công khai */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+          {/* Trạng thái công khai cho cán bộ đặt */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-surface-elevated">
             <div>
-              <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                {t('meetings.modalRoom.statusLabel')}
+              <span className="text-sm font-semibold text-main">
+                {t('meetings.modalRoom.isPublicLabel')}
               </span>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {t('meetings.modalRoom.statusDesc')}
+              <p className="text-xs text-muted">
+                {t('meetings.modalRoom.isPublicDesc')}
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -219,13 +235,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({
                 onChange={(e) => setIsPublic(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <div className="w-11 h-6 bg-surface border border-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
           </div>
 
           {/* Ghi chú */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-secondary uppercase tracking-wider mb-1">
               {t('meetings.modalRoom.notesLabel')}
             </label>
             <textarea
@@ -233,15 +249,15 @@ export const RoomModal: React.FC<RoomModalProps> = ({
               value={ghiChu}
               onChange={(e) => setGhiChu(e.target.value)}
               placeholder={t('meetings.modalRoom.notesPlaceholder')}
-              className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+              className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
             />
           </div>
 
           {/* Modal Footer */}
-          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-border">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={onClose}
               disabled={loading}
             >
@@ -254,10 +270,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
             >
               {loading ? (
                 <span className="flex items-center space-x-1.5">
-                  <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                  </svg>
+                  <i className="fa-solid fa-spinner fa-spin mr-1" />
                   <span>{t('meetings.modalRoom.savingBtn')}</span>
                 </span>
               ) : roomToEdit ? (

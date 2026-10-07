@@ -823,7 +823,16 @@
       "roomStatus": "Trạng thái phòng",
       "notUpdated": "Chưa cập nhật vị trí",
       "noAmenities": "Chưa có thông tin trang thiết bị",
-      "bookThisRoom": "Đặt phòng này"
+      "bookThisRoom": "Đặt phòng này",
+      "roomFallback": "Phòng #{id}",
+      "staffFallback": "CBNV"
+    },
+    "fields": {
+      "capacity": "Sức chứa",
+      "people": "người",
+      "location": "Vị trí",
+      "amenities": "Thiết bị",
+      "privateBadge": "Tạm ẩn"
     },
     "status": {
       "confirmed": "Đã giữ chỗ",
@@ -872,9 +881,10 @@
       "locationLabel": "Vị trí phòng",
       "locationPlaceholder": "VD: Tầng 2, Tòa Nhà A",
       "capacityLabel": "Sức chứa (người)",
-      "statusLabel": "Trạng thái hoạt động",
-      "statusDesc": "Cho phép hiển thị khả dụng trong danh mục",
-      "isPublicLabel": "Công khai cho CBNV đặt",
+      "statusLabel": "Trạng thái phòng",
+      "statusDesc": "Thiết lập tình trạng khả dụng của phòng họp",
+      "isPublicLabel": "Công khai cho cán bộ đặt",
+      "isPublicDesc": "Cho phép hiển thị khả dụng trong danh mục cho cán bộ đặt",
       "amenitiesLabel": "Trang thiết bị có sẵn",
       "amenitiesPlaceholder": "VD: Máy chiếu Sony 4K, 2 Micro không dây, Tivi 75 inch...",
       "notesLabel": "Ghi chú",
@@ -936,6 +946,8 @@
       "endTimeRequired": "Vui lòng chọn giờ kết thúc.",
       "attendeesRequired": "Số người tham gia phải lớn hơn 0.",
       "bookingAlreadyCancelled": "Lịch đặt phòng này đã được hủy trước đó.",
+      "bookingAlreadyEnded": "Không thể hủy hoặc sửa cuộc họp đã kết thúc.",
+      "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
       "saveRoomError": "Có lỗi xảy ra khi lưu phòng họp. Vui lòng thử lại.",
       "saveBookingError": "Không thể lưu lịch đặt phòng. Vui lòng kiểm tra lại thông tin!"
     }

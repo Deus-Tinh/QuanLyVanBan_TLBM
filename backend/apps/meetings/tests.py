@@ -693,7 +693,7 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertNotIn(past_booking.id, confirmed_ids)
 
     def test_cross_day_booking_rejected(self):
-        """Đặt lịch vắt qua ngày hôm sau phải bị từ chối với 400 Bad Request."""
+        """Đặt lịch vắt qua ngày hôm sau phải bị từ chối với 400 Bad Request và key crossDayNotAllowed."""
         self.client.force_authenticate(user=self.user2)
         payload = {
             "room": self.room1.id,
@@ -704,6 +704,103 @@ class DatPhongHopAPITestCase(APITestCase):
         }
         res = self.client.post("/api/meeting-bookings/", payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.crossDayNotAllowed", str(res.data))
+
+    def test_cancel_past_booking_rejected(self):
+        """Hủy lịch đã kết thúc trong quá khứ phải trả về 400 kèm key bookingAlreadyEnded."""
+        self.client.force_authenticate(user=self.admin_user)
+        yesterday = timezone.localtime(timezone.now()).date() - timedelta(days=1)
+        past_booking = DatPhongHop.objects.create(
+            room=self.room1,
+            organizer=self.user1,
+            title="Cuộc họp hôm qua",
+            date=yesterday,
+            start_time=time(9, 0),
+            end_time=time(10, 0),
+            attendees_count=5,
+            status=DatPhongHop.Status.CONFIRMED,
+        )
+        res = self.client.post(
+            f"/api/meeting-bookings/{past_booking.id}/cancel/",
+            {"ly_do_huy": "Hủy muộn"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data.get("error"), "meetings.messages.bookingAlreadyEnded")
+        # Bản ghi vẫn phải giữ nguyên COMPLETED / CONFIRMED, không bị chuyển sang CANCELLED
+        past_booking.refresh_from_db()
+        self.assertNotEqual(past_booking.status, DatPhongHop.Status.CANCELLED)
+
+    def test_update_past_booking_rejected(self):
+        """Cập nhật lịch đã kết thúc trong quá khứ phải trả về 400 kèm key bookingAlreadyEnded."""
+        self.client.force_authenticate(user=self.admin_user)
+        yesterday = timezone.localtime(timezone.now()).date() - timedelta(days=1)
+        past_booking = DatPhongHop.objects.create(
+            room=self.room1,
+            organizer=self.user1,
+            title="Cuộc họp hôm qua",
+            date=yesterday,
+            start_time=time(9, 0),
+            end_time=time(10, 0),
+            attendees_count=5,
+            status=DatPhongHop.Status.CONFIRMED,
+        )
+        res = self.client.put(
+            f"/api/meeting-bookings/{past_booking.id}/",
+            {"title": "Đổi tiêu đề lịch đã qua"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data.get("error"), "meetings.messages.bookingAlreadyEnded")
+
+    def test_cancel_booking_reason_saved_without_hardcoded_label(self):
+        """Hủy lịch hợp lệ: lý do hủy không được kèm nhãn tiếng Việt viết cứng [Lý do hủy]:"""
+        self.client.force_authenticate(user=self.user1)
+        res = self.client.post(
+            f"/api/meeting-bookings/{self.booking1.id}/cancel/",
+            {"ly_do_huy": "Thay đổi kế hoạch nội bộ"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.booking1.refresh_from_db()
+        self.assertEqual(self.booking1.status, DatPhongHop.Status.CANCELLED)
+        self.assertNotIn("[Lý do hủy]:", self.booking1.purpose)
+        self.assertIn("Thay đổi kế hoạch nội bộ", self.booking1.purpose)
+
+    def test_room_name_too_long_error_key(self):
+        """Tạo phòng họp có tên > 100 ký tự trả về 400 và key roomNameTooLong."""
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "name": "P" * 101,
+            "capacity": 10,
+        }
+        res = self.client.post("/api/meeting-rooms/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.roomNameTooLong", str(res.data))
+
+    def test_room_capacity_too_large_error_key(self):
+        """Tạo phòng họp có sức chứa quá lớn trả về 400 và key capacityTooLarge."""
+        self.client.force_authenticate(user=self.admin_user)
+        payload = {
+            "name": "Phòng Siêu Lớn",
+            "capacity": 2147483648,
+        }
+        res = self.client.post("/api/meeting-rooms/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.capacityTooLarge", str(res.data))
+
+    def test_permission_denied_custom_message(self):
+        """Người dùng không có quyền nhận 403 với detail meetings.messages.permissionDenied."""
+        no_perm_user = User.objects.create_user(
+            username="no_perm_user",
+            email="noperm@tlbm.vn",
+            password="Password123!",
+        )
+        self.client.force_authenticate(user=no_perm_user)
+        res = self.client.post(
+            "/api/meeting-rooms/",
+            {"name": "Phòng Trái Quyền", "capacity": 10},
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("meetings.messages.permissionDenied", str(res.data))
+
 
 
 

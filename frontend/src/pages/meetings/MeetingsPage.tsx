@@ -294,7 +294,7 @@ export const MeetingsPage: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-border-subtle shadow-sm">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xl shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-primary-subtle text-primary flex items-center justify-center font-bold text-xl shadow-sm">
               <i className="fa-solid fa-people-roof" />
             </div>
             <div>
@@ -344,13 +344,13 @@ export const MeetingsPage: React.FC = () => {
           onClick={() => setActiveTab('schedule')}
           className={`flex items-center gap-2.5 px-5 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
             activeTab === 'schedule'
-              ? 'text-primary border-primary bg-primary/5'
-              : 'text-secondary border-transparent hover:text-main hover:bg-surface-elevated/40'
+              ? 'text-primary border-primary bg-primary-subtle'
+              : 'text-secondary border-transparent hover:text-main hover:bg-surface-hover'
           }`}
         >
           <i className="fa-regular fa-calendar-days text-base" />
           <span>{t('meetings.tabSchedule')}</span>
-          <span className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-semibold">
+          <span className="px-2 py-0.5 rounded-full text-xs bg-primary-subtle text-primary font-semibold">
             {activeInDay}
           </span>
         </button>
@@ -359,8 +359,8 @@ export const MeetingsPage: React.FC = () => {
           onClick={() => setActiveTab('rooms')}
           className={`flex items-center gap-2.5 px-5 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
             activeTab === 'rooms'
-              ? 'text-primary border-primary bg-primary/5'
-              : 'text-secondary border-transparent hover:text-main hover:bg-surface-elevated/40'
+              ? 'text-primary border-primary bg-primary-subtle'
+              : 'text-secondary border-transparent hover:text-main hover:bg-surface-hover'
           }`}
         >
           <i className="fa-solid fa-door-open text-base" />
@@ -381,7 +381,7 @@ export const MeetingsPage: React.FC = () => {
                 <p className="text-xs font-bold text-muted uppercase tracking-wider">{t('meetings.totalToday')}</p>
                 <p className="text-2xl font-black text-main mt-1">{totalInDay}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-primary-subtle text-primary flex items-center justify-center">
                 <i className="fa-solid fa-calendar-check text-lg" />
               </div>
             </Card>
@@ -391,7 +391,7 @@ export const MeetingsPage: React.FC = () => {
                 <p className="text-xs font-bold text-muted uppercase tracking-wider">{t('meetings.confirmedToday')}</p>
                 <p className="text-2xl font-black text-success mt-1">{activeInDay}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-success-subtle text-success flex items-center justify-center">
                 <i className="fa-solid fa-clock text-lg" />
               </div>
             </Card>
@@ -411,7 +411,7 @@ export const MeetingsPage: React.FC = () => {
                 <p className="text-xs font-bold text-muted uppercase tracking-wider">{t('meetings.cancelledToday')}</p>
                 <p className="text-2xl font-black text-danger mt-1">{cancelledInDay}</p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-danger-subtle text-danger flex items-center justify-center">
                 <i className="fa-solid fa-calendar-xmark text-lg" />
               </div>
             </Card>
@@ -451,7 +451,7 @@ export const MeetingsPage: React.FC = () => {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main font-bold text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main font-bold text-sm focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                 />
               </div>
             </div>
@@ -463,7 +463,7 @@ export const MeetingsPage: React.FC = () => {
                 <select
                   value={selectedRoomFilter}
                   onChange={(e) => setSelectedRoomFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                 >
                   <option value="all">{t('meetings.allRooms')}</option>
                   {rooms.map((r) => (
@@ -479,7 +479,7 @@ export const MeetingsPage: React.FC = () => {
                 <select
                   value={selectedStatusFilter}
                   onChange={(e) => setSelectedStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                 >
                   <option value="all">{t('meetings.allStatuses')}</option>
                   <option value="da_dat">{t('meetings.filterConfirmed')}</option>
@@ -542,7 +542,7 @@ export const MeetingsPage: React.FC = () => {
                     hoverable
                     className={`p-5 transition-all ${
                       booking.trang_thai === 'da_huy'
-                        ? 'opacity-70 bg-surface-elevated/30 border-dashed'
+                        ? 'opacity-70 bg-surface-elevated border-dashed'
                         : 'border-l-4 border-l-primary'
                     }`}
                   >
@@ -580,7 +580,7 @@ export const MeetingsPage: React.FC = () => {
                           <div className="flex items-center gap-4 text-xs text-secondary flex-wrap pt-1">
                             <span className="flex items-center gap-1.5 font-bold text-primary">
                               <i className="fa-solid fa-door-open" />
-                              {booking.phong_hop_detail?.ten_phong || `Phòng #${booking.phong_hop}`}
+                              {booking.phong_hop_detail?.ten_phong || t('meetings.table.roomFallback', { id: booking.phong_hop })}
                               {booking.phong_hop_detail?.vi_tri && ` (${booking.phong_hop_detail.vi_tri})`}
                             </span>
 
@@ -588,7 +588,7 @@ export const MeetingsPage: React.FC = () => {
                               <i className="fa-solid fa-user-tie text-muted" />
                               {t('meetings.table.organizer')}:{' '}
                               <strong className="text-main font-semibold">
-                                {booking.nguoi_dat_detail?.full_name || booking.nguoi_dat_detail?.username || 'CBNV'}
+                                {booking.nguoi_dat_detail?.full_name || booking.nguoi_dat_detail?.username || t('meetings.table.staffFallback')}
                               </strong>
                             </span>
 
@@ -606,7 +606,7 @@ export const MeetingsPage: React.FC = () => {
                           </div>
 
                           {booking.ghi_chu && (
-                            <p className="text-xs text-muted bg-surface-elevated/50 px-2.5 py-1.5 rounded-lg border border-border-subtle mt-2 inline-block">
+                            <p className="text-xs text-muted bg-surface-elevated px-2.5 py-1.5 rounded-lg border border-border-subtle mt-2 inline-block">
                               <i className="fa-regular fa-note-sticky mr-1.5" />
                               {booking.ghi_chu}
                             </p>
@@ -615,7 +615,7 @@ export const MeetingsPage: React.FC = () => {
                       </div>
 
                       {/* Cột phải: Thao tác */}
-                      {booking.trang_thai !== 'da_huy' && canModify && (
+                      {booking.trang_thai !== 'da_huy' && booking.trang_thai !== 'hoan_thanh' && canModify && (
                         <div className="flex items-center gap-2 self-end lg:self-center">
                           <Button
                             variant="secondary"
@@ -663,7 +663,7 @@ export const MeetingsPage: React.FC = () => {
                   placeholder={t('meetings.searchRoomPlaceholder')}
                   value={roomSearchTerm}
                   onChange={(e) => setRoomSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main placeholder:text-muted text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main placeholder:text-muted text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -672,7 +672,7 @@ export const MeetingsPage: React.FC = () => {
               <select
                 value={roomStatusFilter}
                 onChange={(e) => setRoomStatusFilter(e.target.value)}
-                className="px-3.5 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
               >
                 <option value="all">{t('meetings.allStatuses')}</option>
                 <option value="public">{t('meetings.publicOnly')}</option>
@@ -734,7 +734,7 @@ export const MeetingsPage: React.FC = () => {
                     </div>
 
                     {/* Sức chứa */}
-                    <div className="p-3 rounded-xl bg-surface-elevated/60 border border-border-subtle mb-3 flex items-center justify-between">
+                    <div className="p-3 rounded-xl bg-surface-elevated border border-border-subtle mb-3 flex items-center justify-between">
                       <span className="text-xs text-secondary font-medium">{t('meetings.table.capacityMax')}</span>
                       <span className="text-sm font-black text-primary flex items-center gap-1">
                         <i className="fa-solid fa-users text-xs" />
@@ -796,7 +796,7 @@ export const MeetingsPage: React.FC = () => {
                             onClick={() => setDeletingRoom(room)}
                             title={t('meetings.actions.delete')}
                           >
-                            <i className="fa-solid fa-trash-can text-danger/80 hover:text-danger" />
+                            <i className="fa-solid fa-trash-can text-danger hover:opacity-80" />
                           </Button>
                         )}
                       </div>
@@ -846,11 +846,11 @@ export const MeetingsPage: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-labelledby="cancel-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fadeIn"
         >
           <div className="bg-surface border border-border-subtle rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 text-danger">
-              <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 rounded-xl bg-danger-subtle flex items-center justify-center font-bold text-lg">
                 <i className="fa-solid fa-triangle-exclamation" />
               </div>
               <div>
@@ -874,7 +874,7 @@ export const MeetingsPage: React.FC = () => {
                 placeholder={t('meetings.modalCancel.reasonPlaceholder')}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs focus:outline-none focus:ring-2 focus:ring-danger/40"
+                className="w-full px-3 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs focus:outline-none focus:ring-2 focus:ring-danger"
               />
             </div>
 
@@ -906,11 +906,11 @@ export const MeetingsPage: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-room-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fadeIn"
         >
           <div className="bg-surface border border-border-subtle rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-3 text-danger">
-              <div className="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center font-bold text-lg">
+              <div className="w-10 h-10 rounded-xl bg-danger-subtle flex items-center justify-center font-bold text-lg">
                 <i className="fa-solid fa-trash-can" />
               </div>
               <div>

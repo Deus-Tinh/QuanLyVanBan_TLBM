@@ -252,9 +252,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
   return (
     <>
       {/* Header Modal */}
-      <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between bg-surface-elevated/40">
+      <div className="px-6 py-4 border-b border-border-subtle flex items-center justify-between bg-surface-elevated">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-xl bg-primary-subtle text-primary flex items-center justify-center font-bold">
             <i className="fa-solid fa-calendar-plus text-lg" />
           </div>
           <div>
@@ -281,7 +281,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         {/* Banner cảnh báo lỗi / trùng lịch */}
         {errorMsg && (
           <div
-            className="p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm flex items-start gap-2.5 animate-fadeIn"
+            className="p-3.5 rounded-xl bg-danger-subtle border border-danger-border text-danger text-sm flex items-start gap-2.5 animate-fadeIn"
             role="alert"
           >
             <i className="fa-solid fa-triangle-exclamation mt-0.5 shrink-0" />
@@ -307,14 +307,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
               }
             }}
             required
-            className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm font-medium transition-all ${
+            className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all ${
               fieldErrors.phong_hop ? 'border-danger' : 'border-border-subtle'
             }`}
           >
             <option value="" disabled>{t('meetings.modalBooking.roomPlaceholder')}</option>
             {rooms.map((r) => (
               <option key={r.id} value={r.id} disabled={!r.is_public && r.id !== bookingToEdit?.phong_hop}>
-                {r.ten_phong} (Sức chứa: {r.suc_chua} người) {r.vi_tri ? `- ${r.vi_tri}` : ''} {!r.is_public ? '[Tạm ẩn]' : ''}
+                {r.ten_phong} ({t('meetings.fields.capacity')}: {r.suc_chua} {t('meetings.fields.people')}) {r.vi_tri ? `- ${r.vi_tri}` : ''} {!r.is_public ? `[${t('meetings.fields.privateBadge')}]` : ''}
               </option>
             ))}
           </select>
@@ -324,20 +324,20 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
           {/* Room quick details preview */}
           {selectedRoom && (
-            <div className="mt-2 p-2.5 rounded-lg bg-surface-elevated/40 border border-border-subtle text-xs text-secondary flex flex-wrap items-center gap-x-4 gap-y-1">
+            <div className="mt-2 p-2.5 rounded-lg bg-surface-elevated border border-border-subtle text-xs text-secondary flex flex-wrap items-center gap-x-4 gap-y-1">
               <span>
-                <i className="fa-solid fa-users text-primary mr-1" /> Sức chứa:{' '}
-                <strong className="text-main">{selectedRoom.suc_chua} người</strong>
+                <i className="fa-solid fa-users text-primary mr-1" /> {t('meetings.fields.capacity')}:{' '}
+                <strong className="text-main">{selectedRoom.suc_chua} {t('meetings.fields.people')}</strong>
               </span>
               {selectedRoom.vi_tri && (
                 <span>
-                  <i className="fa-solid fa-location-dot text-primary mr-1" /> Vị trí:{' '}
+                  <i className="fa-solid fa-location-dot text-primary mr-1" /> {t('meetings.fields.location')}:{' '}
                   <strong className="text-main">{selectedRoom.vi_tri}</strong>
                 </span>
               )}
               {selectedRoom.thiet_bi && (
                 <span className="truncate max-w-full">
-                  <i className="fa-solid fa-tv text-primary mr-1" /> Thiết bị:{' '}
+                  <i className="fa-solid fa-tv text-primary mr-1" /> {t('meetings.fields.amenities')}:{' '}
                   <span className="text-main">{selectedRoom.thiet_bi}</span>
                 </span>
               )}
@@ -365,7 +365,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
               }
             }}
             required
-            className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm font-medium transition-all ${
+            className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all ${
               fieldErrors.tieu_de ? 'border-danger' : 'border-border-subtle'
             }`}
           />
@@ -389,7 +389,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
               placeholder={t('meetings.modalBooking.departmentPlaceholder')}
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border-subtle text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm font-medium transition-all"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border-subtle text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all"
             />
           </div>
 
@@ -413,7 +413,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 }
               }}
               required
-              className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm font-medium transition-all ${
+              className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all ${
                 fieldErrors.so_nguoi_tham_gia ? 'border-danger' : 'border-border-subtle'
               }`}
             />
@@ -424,7 +424,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         </div>
 
         {/* Ngày họp & Khung giờ */}
-        <div className="p-3.5 rounded-xl bg-surface-elevated/40 border border-border-subtle space-y-3">
+        <div className="p-3.5 rounded-xl bg-surface-elevated border border-border-subtle space-y-3">
           <div className="text-xs font-bold text-main uppercase tracking-wider flex items-center gap-1.5">
             <i className="fa-regular fa-clock text-primary" /> {t('meetings.modalBooking.timeSlotLabel')}
           </div>
@@ -442,7 +442,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-lg bg-surface border border-border-subtle text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-border-subtle text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary font-medium"
               />
             </div>
 
@@ -459,7 +459,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 required
-                className={`w-full px-3 py-2 rounded-lg bg-surface border text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium ${
+                className={`w-full px-3 py-2 rounded-lg bg-surface border text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary font-medium ${
                   fieldErrors.thoi_gian_bat_dau ? 'border-danger' : 'border-border-subtle'
                 }`}
               />
@@ -478,7 +478,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 required
-                className={`w-full px-3 py-2 rounded-lg bg-surface border text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 font-medium ${
+                className={`w-full px-3 py-2 rounded-lg bg-surface border text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary font-medium ${
                   fieldErrors.thoi_gian_ket_thuc ? 'border-danger' : 'border-border-subtle'
                 }`}
               />
@@ -503,7 +503,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
             placeholder={t('meetings.modalBooking.purposePlaceholder')}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border-subtle text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm font-medium transition-all resize-none"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border-subtle text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all resize-none"
           />
         </div>
 
@@ -558,7 +558,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({ isOpen, ...props }) 
       role="dialog"
       aria-modal="true"
       aria-labelledby="booking-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fadeIn"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           props.onClose();
