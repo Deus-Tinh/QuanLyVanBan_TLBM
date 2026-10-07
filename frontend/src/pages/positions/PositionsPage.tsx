@@ -222,7 +222,7 @@ export default function PositionsPage() {
                     key={position.id}
                     data-testid={`position-row-${position.id}`}
                     className={`transition-colors hover:bg-surface-hover ${
-                      position.is_public ? '' : 'bg-warning-subtle/20 border-l-4 border-l-warning'
+                      position.is_public ? '' : 'bg-warning-subtle border-l-4 border-l-warning'
                     }`}
                   >
                     <td className="px-4 py-3 text-center font-bold text-main">{position.stt_uu_tien}</td>

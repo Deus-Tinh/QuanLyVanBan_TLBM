@@ -34,6 +34,7 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
     const next: FieldErrors = {};
     if (!cleanName) next.name = 'positions.messages.nameRequired';
     if (cleanStt && (!/^\d+$/.test(cleanStt) || Number(cleanStt) < 1)) next.stt = 'positions.messages.sttInvalid';
+    else if (cleanStt && Number(cleanStt) > 2147483647) next.stt = 'positions.messages.sttTooLarge';
     if (next.name || next.stt) {
       setErrors(next);
       return;
@@ -70,7 +71,7 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fade-in">
       <div
         role="dialog"
         aria-modal="true"

@@ -194,6 +194,20 @@ describe('PositionsPage (Issue #20)', () => {
     expect(mockedApiClient.post).not.toHaveBeenCalled();
   });
 
+  it('rejects an STT above the database limit on the client', async () => {
+    mockApi();
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Thêm Chức vụ/ }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/Tên chức vụ/), { target: { value: 'Hợp lệ' } });
+    fireEvent.change(within(dialog).getByLabelText('STT Ưu tiên'), { target: { value: '2147483648' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tạo mới' }));
+
+    expect(await within(dialog).findByText('STT ưu tiên tối đa 2147483647.')).toBeInTheDocument();
+    expect(mockedApiClient.post).not.toHaveBeenCalled();
+  });
+
   it('shows server field errors and keeps the modal open', async () => {
     mockApi();
     vi.mocked(mockedApiClient.post).mockRejectedValue(

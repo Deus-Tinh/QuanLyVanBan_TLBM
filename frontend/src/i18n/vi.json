@@ -668,6 +668,7 @@
       "nameTooLong": "Tên chức vụ tối đa 255 ký tự.",
       "nameExists": "Tên chức vụ này đã tồn tại.",
       "sttInvalid": "STT ưu tiên phải là số nguyên dương.",
+      "sttTooLarge": "STT ưu tiên tối đa 2147483647.",
       "sttExists": "STT ưu tiên này đã được sử dụng. Vui lòng chọn số khác.",
       "notFound": "Không tìm thấy chức vụ.",
       "inUse": "Không thể xóa chức vụ này vì đang được gán cho cán bộ nhân viên.",

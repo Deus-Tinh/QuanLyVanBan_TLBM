@@ -12,6 +12,10 @@ vietnam_phone_regex = RegexValidator(
 )
 
 
+# accounts_position.display_order là INTEGER (32 bit) trong DDL: vượt giá trị này PostgreSQL báo "integer out of range".
+MAX_DISPLAY_ORDER = 2147483647
+
+
 class Position(models.Model):
     """Danh mục Chức vụ — bảng accounts_position theo SQL_Fix4."""
 
@@ -47,8 +51,18 @@ class Position(models.Model):
 
     @classmethod
     def get_next_display_order(cls) -> int:
-        latest = cls.objects.order_by("-display_order").first()
-        return (latest.display_order + 1) if latest else 1
+        """MAX + 1; khi MAX đã chạm trần cột INTEGER của DDL thì lấy số trống nhỏ nhất."""
+        latest = cls.objects.order_by("-display_order").values_list("display_order", flat=True).first()
+        if latest is None:
+            return 1
+        if latest < MAX_DISPLAY_ORDER:
+            return latest + 1
+        expected = 1
+        for value in cls.objects.order_by("display_order").values_list("display_order", flat=True):
+            if value > expected:
+                break
+            expected = value + 1
+        return expected
 
 
 class EmployeeManager(BaseUserManager):
