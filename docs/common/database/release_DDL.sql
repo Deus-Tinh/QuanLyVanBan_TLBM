@@ -12,6 +12,13 @@
 --   2) signing_process_step_signer thêm pham_vi_chuc_vu (NULL khi cấu hình theo tài khoản): chức vụ
 --      hiểu tương đối trong đơn vị người tạo, đơn vị cố định của cấp hoặc toàn cơ quan.
 --   3) signing_request.muc_do giữ VARCHAR(20); giá trị THUONG | KHAN | HOA_TOC kiểm ở tầng ứng dụng.
+--   4) signing_process thêm don_vi_ap_dung_id (FK organizations_donvi, RESTRICT) và index; CHECK phạm vi
+--      PHONG_BAN bắt buộc có đơn vị, CONG_TY không gắn đơn vị (migration signing 0008_don_vi_ap_dung; dữ liệu
+--      cũ PHONG_BAN chưa có đơn vị được chuyển CONG_TY, đúng hành vi trước đó). Người tạo hồ sơ chỉ chọn
+--      quy trình CONG_TY hoặc PHONG_BAN của đơn vị mình.
+--   5) Cấp manage_signing_process cho nhóm TP (plan mục 8): lãnh đạo đơn vị quản lý quy trình PHONG_BAN
+--      của đơn vị mình; quy trình CONG_TY vẫn chỉ quản trị quản lý (kiểm ở tầng ứng dụng).
+-- Quy mô sau [P7] và [P10] (nạp sạch): 55 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 197 lượt phân quyền.
 -- =====================================================================
 -- THAY ĐỔI PHASE 6c TRÌNH KÝ (Nhóm 5; issue #79; đánh dấu [6c] tại vị trí)
 -- Căn cứ: docs/modules/05_signing_workflow/danh-gia-nghiep-vu-va-de-xuat.md mục 2 (đã chốt ở PR #78),
@@ -1018,16 +1025,22 @@ CREATE TABLE signing_process (
     phien_ban SMALLINT NOT NULL DEFAULT 1 CHECK (phien_ban >= 0),
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'NHAP',
     pham_vi VARCHAR(20) NOT NULL,
+    don_vi_ap_dung_id BIGINT REFERENCES organizations_donvi (id) ON DELETE RESTRICT, -- [P7] bắt buộc khi PHONG_BAN
     -- [6c] Bỏ kieu_ky_mac_dinh: cấp ký luôn tuần tự, song song là nhiều người trong một cấp.
     cau_hinh_nhac_han JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     nguoi_cap_nhat_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
-    CONSTRAINT uq_signing_process_ma_phien_ban UNIQUE (ma_quy_trinh, phien_ban)
+    CONSTRAINT uq_signing_process_ma_phien_ban UNIQUE (ma_quy_trinh, phien_ban),
+    CONSTRAINT chk_signing_process_don_vi_ap_dung CHECK ( -- [P7]
+        (pham_vi = 'PHONG_BAN' AND don_vi_ap_dung_id IS NOT NULL)
+        OR (pham_vi = 'CONG_TY' AND don_vi_ap_dung_id IS NULL)
+    )
 );
 
 CREATE INDEX idx_signing_process_nguoi_tao ON signing_process (nguoi_tao_id);
+CREATE INDEX idx_signing_process_don_vi_ap_dung ON signing_process (don_vi_ap_dung_id); -- [P7]
 CREATE INDEX idx_signing_process_nguoi_cap_nhat ON signing_process (nguoi_cap_nhat_id);
 
 -- 9.2. Cấp ký trong quy trình mẫu
@@ -2473,6 +2486,7 @@ WHERE
         'send_trinhky',
         'delegate_trinhky',
         'cancel_trinhky',
+        'manage_signing_process', -- [P7] lãnh đạo đơn vị quản lý quy trình PHONG_BAN
         'view_congviec',
         'view_dept_congviec',
         'add_congviec',
