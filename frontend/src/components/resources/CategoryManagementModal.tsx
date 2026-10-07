@@ -5,6 +5,7 @@ import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
 import { useTranslation } from '@i18n/translate';
 import { ConfirmationModal } from './ConfirmationModal';
+import { authService } from '@lib/authService';
 
 export interface CategoryManagementModalProps {
   isOpen: boolean;
@@ -61,7 +62,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
   // State Thư mục
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
-  const [catForm, setCatForm] = useState({
+  const [catForm, setCatForm] = useState<{
+    stt_uu_tien: number | string;
+    ky_hieu: string;
+    ten_tai_lieu: string;
+    nguoi_lap_name: string;
+    ngay_lap: string;
+    ghi_chu: string;
+  }>({
     stt_uu_tien: 1,
     ky_hieu: '',
     ten_tai_lieu: '',
@@ -160,8 +168,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setActiveMenuCatId(null);
   };
 
-  // Tính số thứ tự ưu tiên tự động tăng dần theo số lượng thư mục hiện có
-  const nextOrderNumber = () => categories.length + 1;
+  // Tính số thứ tự ưu tiên gợi ý lớn nhất + 1 để tự động điền ban đầu khi tạo mới Thư mục
+  const nextOrderNumber = () => {
+    if (categories.length === 0) return 1;
+    const maxOrder = Math.max(...categories.map((c) => c.stt_uu_tien || 0));
+    return maxOrder + 1;
+  };
 
   // Mở Popup Tạo mới hợp nhất
   const handleOpenUnifiedCreate = (target: 'category' | 'type') => {
@@ -177,12 +189,13 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setIsUnifiedDirty(false);
     setIsConfirmDiscardUnifiedOpen(false);
 
-    // Khởi tạo form Thư mục
+    // Khởi tạo form Thư mục: Tự động điền giá trị gợi ý mặc định ban đầu, cho phép chỉnh sửa tự do cả 3 trường
+    const defaultAuthor = authService.getSession()?.fullName || 'Thượng Mạnh Quỳnh';
     setCatForm({
       stt_uu_tien: nextOrderNumber(),
       ky_hieu: '',
       ten_tai_lieu: '',
-      nguoi_lap_name: 'Thượng Mạnh Quỳnh',
+      nguoi_lap_name: defaultAuthor,
       ngay_lap: new Date().toISOString().split('T')[0],
       ghi_chu: '',
     });
@@ -221,7 +234,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       stt_uu_tien: cat.stt_uu_tien,
       ky_hieu: cat.ky_hieu || '',
       ten_tai_lieu: cat.ten_tai_lieu,
-      nguoi_lap_name: cat.nguoi_lap_name || 'Thượng Mạnh Quỳnh',
+      nguoi_lap_name: cat.nguoi_lap_name || authService.getSession()?.fullName || 'Thượng Mạnh Quỳnh',
       ngay_lap: cat.ngay_lap || new Date().toISOString().split('T')[0],
       ghi_chu: cat.ghi_chu || '',
     });
@@ -331,23 +344,27 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         return;
       }
 
-      if (editingCatId) {
-        const isDuplicateOrder = categories.some(
-          (c) => c.stt_uu_tien === Number(catForm.stt_uu_tien) && c.id !== editingCatId
-        );
-        if (isDuplicateOrder) {
-          setCatError('STT ưu tiên đã tồn tại');
-          return;
-        }
+      if (!catForm.stt_uu_tien || Number(catForm.stt_uu_tien) < 1) {
+        setCatError('Vui lòng nhập STT ưu tiên hợp lệ (tối thiểu là 1)');
+        return;
+      }
+
+      const sttNum = Number(catForm.stt_uu_tien);
+      const isDuplicateOrder = categories.some(
+        (c) => c.stt_uu_tien === sttNum && c.id !== editingCatId
+      );
+      if (isDuplicateOrder) {
+        setCatError('STT ưu tiên đã tồn tại');
+        return;
       }
 
       const categoryId = editingCatId || Date.now();
       const payload: ResourceCategory = {
         id: categoryId,
-        stt_uu_tien: editingCatId ? Number(catForm.stt_uu_tien) : categories.length + 1,
+        stt_uu_tien: sttNum,
         ky_hieu: catForm.ky_hieu.trim(),
         ten_tai_lieu: catForm.ten_tai_lieu.trim(),
-        nguoi_lap_name: catForm.nguoi_lap_name,
+        nguoi_lap_name: catForm.nguoi_lap_name.trim(),
         ngay_lap: catForm.ngay_lap,
         ghi_chu: catForm.ghi_chu.trim(),
       };
@@ -948,22 +965,23 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       {/* STT ưu tiên */}
                       <div className="sm:col-span-4">
                         <label className="text-xs font-semibold text-main block mb-1">
-                          STT ưu tiên <span className="text-muted font-normal text-[11px]">(Tự động cấp)</span>
+                          STT ưu tiên <span className="text-danger">*</span>
                         </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            value={catForm.stt_uu_tien}
-                            readOnly
-                            disabled
-                            className="w-full px-3 py-2 bg-surface-elevated/80 border border-border-subtle rounded-xl text-xs font-mono font-bold text-primary cursor-not-allowed shadow-2xs select-none"
-                            title="STT được hệ thống tự động tăng dần khi thêm mới và tự động dồn thứ tự khi xóa"
-                          />
-                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted font-medium bg-surface px-1.5 py-0.5 rounded border border-border-subtle/80 select-none">
-                            Tự động
-                          </span>
-                        </div>
-                        {catError === 'STT ưu tiên đã tồn tại' && (
+                        <input
+                          type="number"
+                          min={1}
+                          value={catForm.stt_uu_tien}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                            setCatForm({ ...catForm, stt_uu_tien: val });
+                            if (catError && catError.includes('STT')) setCatError(null);
+                            setIsUnifiedDirty(true);
+                          }}
+                          placeholder="VD: 1, 2, 3..."
+                          className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs font-mono font-bold text-main focus:outline-hidden focus:border-primary shadow-2xs"
+                          required
+                        />
+                        {catError && catError.includes('STT') && (
                           <p className="text-danger text-[11px] mt-1 font-medium">{catError}</p>
                         )}
                       </div>

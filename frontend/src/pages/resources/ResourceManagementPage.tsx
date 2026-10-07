@@ -1390,11 +1390,7 @@ export default function ResourceManagementPage() {
         )
       );
     } else {
-      const newCat: ResourceCategory = {
-        ...category,
-        stt_uu_tien: categories.length + 1,
-      };
-      setCategories((prev) => [...prev, newCat]);
+      setCategories((prev) => [...prev, category]);
     }
     setToastMessage(`Đã ${isEdit ? 'cập nhật' : 'thêm'} danh mục Cấp 1: "${category.ten_tai_lieu}"`);
     setTimeout(() => setToastMessage(null), 3500);
@@ -1402,15 +1398,7 @@ export default function ResourceManagementPage() {
 
   const handleDeleteCategory = (id: number) => {
     const cat = categories.find((c) => c.id === id);
-    setCategories((prev) => {
-      const remaining = prev.filter((c) => c.id !== id);
-      // Tự động dồn lại thứ tự (re-index) 1, 2, 3... liên tục khi xóa để không bị khuyết số
-      const sorted = [...remaining].sort((a, b) => (a.stt_uu_tien || 0) - (b.stt_uu_tien || 0));
-      return sorted.map((c, index) => ({
-        ...c,
-        stt_uu_tien: index + 1,
-      }));
-    });
+    setCategories((prev) => prev.filter((c) => c.id !== id));
     setTypes((prev) => prev.filter((t) => t.dm_tai_lieu !== id));
     setDocuments((prev) => prev.filter((d) => d.dm_tai_lieu !== id));
     setToastMessage(`Đã xóa danh mục Cấp 1: "${cat?.ten_tai_lieu || id}"`);
