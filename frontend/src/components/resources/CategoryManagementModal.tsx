@@ -160,12 +160,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setActiveMenuCatId(null);
   };
 
-  // Tính số thứ tự ưu tiên lớn nhất + 1 để tự động điền khi tạo mới Thư mục
-  const nextOrderNumber = () => {
-    if (categories.length === 0) return 1;
-    const maxOrder = Math.max(...categories.map((c) => c.stt_uu_tien || 0));
-    return maxOrder + 1;
-  };
+  // Tính số thứ tự ưu tiên tự động tăng dần theo số lượng thư mục hiện có
+  const nextOrderNumber = () => categories.length + 1;
 
   // Mở Popup Tạo mới hợp nhất
   const handleOpenUnifiedCreate = (target: 'category' | 'type') => {
@@ -335,18 +331,20 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         return;
       }
 
-      const isDuplicateOrder = categories.some(
-        (c) => c.stt_uu_tien === Number(catForm.stt_uu_tien) && c.id !== editingCatId
-      );
-      if (isDuplicateOrder) {
-        setCatError('STT ưu tiên đã tồn tại');
-        return;
+      if (editingCatId) {
+        const isDuplicateOrder = categories.some(
+          (c) => c.stt_uu_tien === Number(catForm.stt_uu_tien) && c.id !== editingCatId
+        );
+        if (isDuplicateOrder) {
+          setCatError('STT ưu tiên đã tồn tại');
+          return;
+        }
       }
 
       const categoryId = editingCatId || Date.now();
       const payload: ResourceCategory = {
         id: categoryId,
-        stt_uu_tien: Number(catForm.stt_uu_tien),
+        stt_uu_tien: editingCatId ? Number(catForm.stt_uu_tien) : categories.length + 1,
         ky_hieu: catForm.ky_hieu.trim(),
         ten_tai_lieu: catForm.ten_tai_lieu.trim(),
         nguoi_lap_name: catForm.nguoi_lap_name,
@@ -950,20 +948,21 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       {/* STT ưu tiên */}
                       <div className="sm:col-span-4">
                         <label className="text-xs font-semibold text-main block mb-1">
-                          STT ưu tiên <span className="text-danger">*</span>
+                          STT ưu tiên <span className="text-muted font-normal text-[11px]">(Tự động cấp)</span>
                         </label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={catForm.stt_uu_tien}
-                          onChange={(e) => {
-                            setCatForm({ ...catForm, stt_uu_tien: Number(e.target.value) });
-                            setCatError(null);
-                            setIsUnifiedDirty(true);
-                          }}
-                          className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs font-mono text-main focus:outline-hidden focus:border-primary shadow-2xs"
-                          required
-                        />
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={catForm.stt_uu_tien}
+                            readOnly
+                            disabled
+                            className="w-full px-3 py-2 bg-surface-elevated/80 border border-border-subtle rounded-xl text-xs font-mono font-bold text-primary cursor-not-allowed shadow-2xs select-none"
+                            title="STT được hệ thống tự động tăng dần khi thêm mới và tự động dồn thứ tự khi xóa"
+                          />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted font-medium bg-surface px-1.5 py-0.5 rounded border border-border-subtle/80 select-none">
+                            Tự động
+                          </span>
+                        </div>
                         {catError === 'STT ưu tiên đã tồn tại' && (
                           <p className="text-danger text-[11px] mt-1 font-medium">{catError}</p>
                         )}
