@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -15,6 +15,7 @@ import { Button } from '@components/common/Button';
 import { Toast, ToastNotification } from '@components/common/Toast';
 import { useTranslation } from '@i18n/translate';
 import { authService } from '@lib/authService';
+import { apiClient } from '@lib/apiClient';
 
 const STORAGE_KEY = 'tlbm_resources_filter_state';
 const STORAGE_DOCS = 'tlbm_documents_v2';
@@ -115,7 +116,40 @@ export default function ResourceManagementPage() {
     return [];
   });
 
-  // Tự động lưu dữ liệu danh mục, loại và tài liệu vào localStorage
+  // Trạng thái đang tải dữ liệu từ Backend API
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Tải dữ liệu từ Backend API (/api/resources/...)
+  const fetchResources = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [catsRes, typesRes, docsRes] = await Promise.all([
+        apiClient<ResourceCategory[]>('/api/resources/categories/').catch(() => null),
+        apiClient<ResourceType[]>('/api/resources/types/').catch(() => null),
+        apiClient<ResourceItem[]>('/api/resources/documents/').catch(() => null),
+      ]);
+
+      if (catsRes && Array.isArray(catsRes)) {
+        setCategories(catsRes);
+      }
+      if (typesRes && Array.isArray(typesRes)) {
+        setTypes(typesRes);
+      }
+      if (docsRes && Array.isArray(docsRes)) {
+        setDocuments(docsRes);
+      }
+    } catch (e) {
+      console.warn('Lỗi khi tải dữ liệu từ API backend:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchResources();
+  }, [fetchResources]);
+
+  // Tự động lưu dữ liệu danh mục, loại và tài liệu vào localStorage dự phòng
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_DOCS, JSON.stringify(documents));
@@ -1428,6 +1462,7 @@ export default function ResourceManagementPage() {
       {/* 4. BẢNG DỮ LIỆU TÀI LIỆU CHÍNH (MỤC 5) */}
       <ResourceTable
         items={paginatedDocuments}
+        isLoading={isLoading}
         currentPage={currentPage}
         totalPages={totalPages}
         pageSize={pageSize}
