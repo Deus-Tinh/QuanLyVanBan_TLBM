@@ -2,7 +2,7 @@ from datetime import date
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from document_templates.models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet
+from document_templates.models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment
 
 
 class Command(BaseCommand):
@@ -227,12 +227,20 @@ class Command(BaseCommand):
                     "ghi_chu": ddata.get("ghi_chu", ""),
                     "hien_thi": ddata.get("hien_thi", "TAT_CA"),
                     "nguoi_tao": admin_user,
-                    "file_dinh_kem": ContentFile(
-                        b"%PDF-1.4 Mock document binary content for testing",
-                        name=ddata["file_name"]
-                    )
                 }
             )
             doc.loai_tai_lieu.set([type_objs[tid] for tid in ddata["types"]])
+
+            # Đính kèm tệp theo chuẩn bảng con 1-N Hướng A
+            ChiTietTaiLieuAttachment.objects.update_or_create(
+                document=doc,
+                name=ddata["file_name"],
+                defaults={
+                    "path": f"document_templates/{ddata['file_name']}",
+                    "file_size": 1024,
+                    "mime_type": "application/pdf",
+                    "created_user": admin_user,
+                }
+            )
 
         self.stdout.write(self.style.SUCCESS(f"-> Da khoi tao thanh cong {len(documents_data)} tai lieu mau!"))
