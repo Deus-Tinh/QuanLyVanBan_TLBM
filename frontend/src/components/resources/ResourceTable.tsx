@@ -51,32 +51,45 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Đóng menu khi click ra ngoài, scroll hoặc resize
+  // Đóng menu khi click ra ngoài, scroll bất kỳ container nào hoặc resize
   useEffect(() => {
+    const handleClose = () => {
+      setActiveMenuId(null);
+      setMenuPos(null);
+      setActiveFileMenuId(null);
+    };
+
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target?.closest?.('[data-dropdown-root]')) {
-        setActiveMenuId(null);
-        setMenuPos(null);
-        setActiveFileMenuId(null);
+        handleClose();
       }
     };
+
+    // Khi cuộn bất kỳ container nào (main viewport, table, window), đóng ngay menu để không bị trôi lơ lửng
+    const handleScroll = () => {
+      handleClose();
+    };
+
     document.addEventListener('click', handleClickOutside, true);
-    window.addEventListener('resize', handleClickOutside);
-    window.addEventListener('scroll', handleClickOutside, true);
+    window.addEventListener('resize', handleClose);
+    window.addEventListener('scroll', handleScroll, true);
+    document.addEventListener('scroll', handleScroll, true);
+
     return () => {
       document.removeEventListener('click', handleClickOutside, true);
-      window.removeEventListener('resize', handleClickOutside);
-      window.removeEventListener('scroll', handleClickOutside, true);
+      window.removeEventListener('resize', handleClose);
+      window.removeEventListener('scroll', handleScroll, true);
+      document.removeEventListener('scroll', handleScroll, true);
     };
   }, []);
 
-  // Tự động đóng menu khi chuyển trang hoặc đổi số dòng
+  // Tự động đóng menu khi danh sách items thay đổi (lọc, tìm kiếm), chuyển trang, đổi số dòng, loading
   useEffect(() => {
     setActiveMenuId(null);
     setMenuPos(null);
     setActiveFileMenuId(null);
-  }, [currentPage, pageSize]);
+  }, [items, currentPage, pageSize, isLoading]);
 
   // Mở menu ⋯ với vị trí fixed (không bị cắt bởi overflow và lật lên trên nếu gần đáy)
   const openActionMenu = (e: React.MouseEvent<HTMLButtonElement>, itemId: number) => {

@@ -99,13 +99,19 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       closeAllMenus();
     };
 
+    const handleScroll = () => {
+      closeAllMenus();
+    };
+
     document.addEventListener('click', handleOutside, true);
-    window.addEventListener('resize', handleOutside);
-    window.addEventListener('scroll', handleOutside, true);
+    window.addEventListener('resize', closeAllMenus);
+    window.addEventListener('scroll', handleScroll, true);
+    document.addEventListener('scroll', handleScroll, true);
     return () => {
       document.removeEventListener('click', handleOutside, true);
-      window.removeEventListener('resize', handleOutside);
-      window.removeEventListener('scroll', handleOutside, true);
+      window.removeEventListener('resize', closeAllMenus);
+      window.removeEventListener('scroll', handleScroll, true);
+      document.removeEventListener('scroll', handleScroll, true);
     };
   }, []);
 
