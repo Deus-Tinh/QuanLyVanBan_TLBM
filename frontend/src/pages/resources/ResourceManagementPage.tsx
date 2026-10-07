@@ -903,21 +903,9 @@ export default function ResourceManagementPage() {
     return [...categories].sort((a, b) => (a.stt_uu_tien || 0) - (b.stt_uu_tien || 0));
   }, [categories]);
 
-  // Ref cho thanh tab ngang — dùng để cuộn bằng nút mũi tên khi nhiều thư mục
+  // Ref cho thanh tab ngang (Cấp 1) & thanh loại tài liệu ngang (Cấp 2)
   const tabBarRef = useRef<HTMLDivElement>(null);
-  const scrollTabs = (direction: 'left' | 'right') => {
-    const el = tabBarRef.current;
-    if (!el) return;
-    el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
-  };
-
-  // Ref cho thanh loại tài liệu ngang — dùng để cuộn bằng nút mũi tên khi nhiều loại
   const typeBarRef = useRef<HTMLDivElement>(null);
-  const scrollTypes = (direction: 'left' | 'right') => {
-    const el = typeBarRef.current;
-    if (!el) return;
-    el.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
-  };
 
   // Mặc định mới vào: hiện ở Tất cả ('all')
   const [selectedCategory, setSelectedCategory] = useState<string>(initialFilterState.category || 'all');
@@ -1005,6 +993,41 @@ export default function ResourceManagementPage() {
     }
     return types.filter((t) => t.dm_tai_lieu === Number(selectedCategory));
   }, [types, selectedCategory]);
+
+  // Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột (Mouse Wheel) thay cho 2 nút mũi tên
+  useEffect(() => {
+    const attachWheelScroll = (el: HTMLDivElement | null) => {
+      if (!el) return undefined;
+      const onWheel = (e: WheelEvent) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          const maxScrollLeft = el.scrollWidth - el.clientWidth;
+          if (maxScrollLeft > 0) {
+            const canScrollLeft = el.scrollLeft > 0;
+            const canScrollRight = el.scrollLeft < maxScrollLeft - 1;
+            const isScrollingLeft = e.deltaY < 0;
+            const isScrollingRight = e.deltaY > 0;
+
+            if ((isScrollingLeft && canScrollLeft) || (isScrollingRight && canScrollRight)) {
+              e.preventDefault();
+              el.scrollLeft += e.deltaY;
+            }
+          }
+        }
+      };
+      el.addEventListener('wheel', onWheel, { passive: false });
+      return () => {
+        el.removeEventListener('wheel', onWheel);
+      };
+    };
+
+    const cleanupTab = attachWheelScroll(tabBarRef.current);
+    const cleanupType = attachWheelScroll(typeBarRef.current);
+
+    return () => {
+      cleanupTab?.();
+      cleanupType?.();
+    };
+  }, [sortedCategories, availableTypesForFilter, selectedCategory]);
 
   // Đổi Thư mục: Tự động reset Loại tài liệu về 'all' và về trang 1
   const handleCategorySelect = (newCat: string) => {
@@ -1481,20 +1504,14 @@ export default function ResourceManagementPage() {
             })()}
           </div>
 
-          {/* Cột 2: Nút cuộn trái (nằm ngay bên phải chữ Tất cả) */}
-          <button
-            type="button"
-            onClick={() => scrollTabs('left')}
-            className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
-            aria-label="Cuộn tab sang trái"
-            title="Cuộn danh mục sang trái"
-          >
-            <i className="fa-solid fa-chevron-left text-xs" />
-          </button>
-
-          {/* Cột 3: Vùng danh mục cuộn ngang */}
+          {/* Vùng danh mục cuộn ngang (Hỗ trợ con lăn chuột di chuyển qua lại) */}
           <div
             ref={tabBarRef}
+            onWheel={(e) => {
+              if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
             className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1 min-w-0"
             style={{ scrollbarWidth: 'none' }}
           >
@@ -1531,18 +1548,7 @@ export default function ResourceManagementPage() {
             })}
           </div>
 
-          {/* Cột 4: Nút cuộn phải */}
-          <button
-            type="button"
-            onClick={() => scrollTabs('right')}
-            className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
-            aria-label="Cuộn tab sang phải"
-            title="Cuộn danh mục sang phải"
-          >
-            <i className="fa-solid fa-chevron-right text-xs" />
-          </button>
-
-          {/* Cột 5: Nút dropdown chọn Danh mục trực tiếp ở góc phải (cố định w-36) */}
+          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (cố định w-36) */}
           <div className="relative w-36 shrink-0 flex items-stretch border-l border-border-subtle" ref={categoryDropdownRef}>
             <button
               type="button"
@@ -1664,21 +1670,15 @@ export default function ResourceManagementPage() {
               </span>
             </div>
 
-            {/* Cột 2: Nút cuộn trái loại tài liệu */}
-            <button
-              type="button"
-              onClick={() => scrollTypes('left')}
-              className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-r border-border-subtle cursor-pointer"
-              aria-label="Cuộn loại tài liệu sang trái"
-              title="Cuộn loại tài liệu sang trái"
-            >
-              <i className="fa-solid fa-chevron-left text-xs" />
-            </button>
-
-            {/* Cột 3: Vùng chips loại tài liệu cuộn ngang (bao gồm chip Tất cả nằm ở đầu) */}
+            {/* Vùng chips loại tài liệu cuộn ngang (Hỗ trợ con lăn chuột di chuyển qua lại) */}
             <div
               ref={typeBarRef}
-              className="flex items-center gap-1.5 px-2.5 overflow-x-auto scrollbar-none flex-1 min-w-0"
+              onWheel={(e) => {
+                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 overflow-x-auto scrollbar-none flex-1 min-w-0"
               style={{ scrollbarWidth: 'none' }}
             >
               {/* Chip "Tất cả" loại tài liệu (chuyển sang bên này cùng hàng với các loại) */}
@@ -1733,18 +1733,7 @@ export default function ResourceManagementPage() {
               })}
             </div>
 
-            {/* Cột 4: Nút cuộn phải loại tài liệu */}
-            <button
-              type="button"
-              onClick={() => scrollTypes('right')}
-              className="w-9 shrink-0 flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors border-l border-border-subtle cursor-pointer"
-              aria-label="Cuộn loại tài liệu sang phải"
-              title="Cuộn loại tài liệu sang phải"
-            >
-              <i className="fa-solid fa-chevron-right text-xs" />
-            </button>
-
-            {/* Cột 5: Nút dropdown Loại tài liệu ở góc phải (cố định w-36) */}
+            {/* Cột dropdown Loại tài liệu ở góc phải (cố định w-36) */}
             <div className="relative w-36 shrink-0 flex items-stretch border-l border-border-subtle" ref={typeDropdownRef}>
               <button
                 type="button"
