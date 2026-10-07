@@ -16,8 +16,6 @@ export interface CategoryManagementModalProps {
   onDeleteCategory: (id: number) => void;
   onSaveType: (type: ResourceType, isEdit: boolean, silent?: boolean) => void;
   onDeleteType: (id: number) => void;
-  onRestoreMockData?: () => void;
-  onResetToEmpty?: () => void;
 }
 
 export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
@@ -29,8 +27,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   onDeleteCategory,
   onSaveType,
   onDeleteType,
-  onRestoreMockData,
-  onResetToEmpty,
 }) => {
   const { t } = useTranslation();
   // 2 tab chính quản lý: "category" (Thư mục) | "type" (Loại tài liệu)
@@ -845,32 +841,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             {t('resourceManagement.totalSummary', { catCount: String(categories.length), typeCount: String(types.length) })}
           </span>
           <div className="flex items-center justify-end gap-2">
-            {onResetToEmpty && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onResetToEmpty}
-                className="text-xs text-danger hover:text-danger-hover hover:bg-danger-subtle cursor-pointer font-medium"
-                title="Xóa trắng toàn bộ thư mục & loại tài liệu để tự tạo lại từ đầu"
-              >
-                <i className="fa-solid fa-trash-can mr-1.5" />
-                Xóa trắng
-              </Button>
-            )}
-            {onRestoreMockData && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onRestoreMockData}
-                className="text-xs text-secondary hover:text-main hover:bg-surface cursor-pointer font-medium"
-                title="Nạp lại bộ dữ liệu mẫu mặc định để kiểm thử giao diện"
-              >
-                <i className="fa-solid fa-rotate-left mr-1.5" />
-                Nạp mẫu test
-              </Button>
-            )}
             <Button variant="outline" size="sm" onClick={onClose} className="text-xs font-semibold">
               {t('resourceManagement.close')}
             </Button>
