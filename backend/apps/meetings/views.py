@@ -224,6 +224,15 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
 
         qs = super().get_queryset().order_by("-date", "-start_time")
 
+        # Bảo mật phòng nội bộ: Người không có change_phonghop chỉ thấy lịch phòng công khai hoặc lịch của mình
+        user = self.request.user
+        can_manage_private = user.is_authenticated and (user.is_superuser or user.has_perm("change_phonghop"))
+        if not can_manage_private:
+            if user.is_authenticated:
+                qs = qs.filter(Q(room__is_public=True) | Q(organizer=user))
+            else:
+                qs = qs.filter(room__is_public=True)
+
         # 1. Lọc theo phòng họp an toàn (chống ValueError 500 khi room_id không phải số)
         room_param = self.request.query_params.get("room_id") or self.request.query_params.get("phong_hop") or self.request.query_params.get("room")
         if room_param:
@@ -417,6 +426,17 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Không cho phép cập nhật lịch đã bị hủy
+        if instance.status == MeetingBooking.Status.CANCELLED:
+            return Response(
+                {
+                    "error": "meetings.messages.bookingAlreadyCancelled",
+                    "detail": "meetings.messages.bookingAlreadyCancelled",
+                    "code": "meetings.messages.bookingAlreadyCancelled",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
@@ -504,6 +524,19 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
+    def destroy(self, request, *args, **kwargs):
+        """
+        Chặn xóa cứng lịch đặt phòng qua API (Issue #22: hủy lịch vẫn bảo toàn lịch sử).
+        """
+        return Response(
+            {
+                "error": "meetings.messages.deleteBookingNotAllowed",
+                "detail": "meetings.messages.deleteBookingNotAllowed",
+                "code": "meetings.messages.deleteBookingNotAllowed",
+            },
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
     @action(detail=True, methods=["post"], url_path="cancel")
     def cancel(self, request, pk=None):
         """
@@ -534,7 +567,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         booking.status = MeetingBooking.Status.CANCELLED
         reason = (request.data.get("ly_do_huy") or request.data.get("cancel_reason") or "").strip()
         if reason:
-            booking.purpose = (booking.purpose + f"\n{reason}").strip() if booking.purpose else reason
+            booking.purpose = (booking.purpose + f"\n---\n{reason}").strip() if booking.purpose else reason
         booking.save()
 
         serializer = self.get_serializer(booking)

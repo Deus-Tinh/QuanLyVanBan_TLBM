@@ -801,6 +801,176 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("meetings.messages.permissionDenied", str(res.data))
 
+    def test_client_cannot_change_booking_status_directly(self):
+        """Client không thể tự ý thay đổi status sang CANCELLED/COMPLETED qua POST hoặc PUT/PATCH."""
+        self.client.force_authenticate(user=self.user1)
+        future_date = (timezone.localtime(timezone.now()).date() + timedelta(days=5)).isoformat()
+
+        # 1. POST với status: CANCELLED vẫn được lưu là CONFIRMED
+        payload = {
+            "room_id": self.room1.id,
+            "title": "Họp Thử Cố Đổi Trạng Thái",
+            "date": future_date,
+            "start_time": "14:00:00",
+            "end_time": "15:00:00",
+            "attendees_count": 5,
+            "status": "CANCELLED",
+        }
+        res_post = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res_post.status_code, status.HTTP_201_CREATED)
+        booking_id = res_post.data["id"]
+        booking = DatPhongHop.objects.get(id=booking_id)
+        self.assertEqual(booking.status, MeetingBooking.Status.CONFIRMED)
+
+        # 2. PUT với status: CANCELLED bị bỏ qua, status vẫn giữ nguyên CONFIRMED
+        res_put = self.client.put(
+            f"/api/meeting-bookings/{booking_id}/",
+            {
+                "title": "Họp Đã Đổi Tên",
+                "room_id": self.room1.id,
+                "date": future_date,
+                "start_time": "14:00:00",
+                "end_time": "15:00:00",
+                "status": "CANCELLED",
+            },
+        )
+        self.assertEqual(res_put.status_code, status.HTTP_200_OK)
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, MeetingBooking.Status.CONFIRMED)
+
+    def test_delete_booking_returns_405_and_keeps_record(self):
+        """Xóa lịch đặt phòng phải trả về 405 Method Not Allowed và không xóa bản ghi trong DB."""
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.delete(f"/api/meeting-bookings/{self.booking1.id}/")
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("meetings.messages.deleteBookingNotAllowed", str(res.data))
+        self.assertTrue(DatPhongHop.objects.filter(id=self.booking1.id).exists())
+
+    def test_create_past_booking_rejected(self):
+        """Không cho phép tạo lịch đặt trong quá khứ, trả về 400 và key bookingInPast."""
+        self.client.force_authenticate(user=self.user1)
+        yesterday = (timezone.localtime(timezone.now()).date() - timedelta(days=1)).isoformat()
+        payload = {
+            "room_id": self.room1.id,
+            "title": "Họp Trong Quá Khứ",
+            "date": yesterday,
+            "start_time": "09:00:00",
+            "end_time": "10:00:00",
+            "attendees_count": 5,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.bookingInPast", str(res.data))
+
+    def test_reschedule_booking_to_past_rejected(self):
+        """Không cho phép dời lịch họp hiện tại về ngày/giờ trong quá khứ."""
+        self.client.force_authenticate(user=self.user1)
+        yesterday = (timezone.localtime(timezone.now()).date() - timedelta(days=1)).isoformat()
+        res = self.client.patch(
+            f"/api/meeting-bookings/{self.booking1.id}/",
+            {"date": yesterday},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.bookingInPast", str(res.data))
+
+    def test_put_room_without_status_preserves_maintenance(self):
+        """PUT phòng họp mà không truyền trường status thì không bị reset về AVAILABLE."""
+        self.client.force_authenticate(user=self.admin_user)
+        m_room = PhongHop.objects.create(
+            name="Phòng Đang Sửa",
+            capacity=15,
+            status=MeetingRoom.Status.MAINTENANCE,
+        )
+        res = self.client.put(
+            f"/api/meeting-rooms/{m_room.id}/",
+            {
+                "name": "Phòng Đang Sửa Cập Nhật",
+                "capacity": 20,
+            },
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        m_room.refresh_from_db()
+        self.assertEqual(m_room.status, MeetingRoom.Status.MAINTENANCE)
+
+    def test_update_cancelled_booking_rejected(self):
+        """Cập nhật lịch họp đã bị hủy phải trả về 400 kèm key bookingAlreadyCancelled."""
+        self.client.force_authenticate(user=self.user1)
+        self.booking1.status = DatPhongHop.Status.CANCELLED
+        self.booking1.save(update_fields=["status"])
+
+        res = self.client.put(
+            f"/api/meeting-bookings/{self.booking1.id}/",
+            {"title": "Cố Sửa Lịch Đã Hủy"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.bookingAlreadyCancelled", str(res.data))
+
+    def test_create_booking_without_title_rejected(self):
+        """Tạo lịch họp thiếu tiêu đề hoặc để trống phải trả về 400 kèm key titleRequired."""
+        self.client.force_authenticate(user=self.user1)
+        future_date = (timezone.localtime(timezone.now()).date() + timedelta(days=5)).isoformat()
+        payload = {
+            "room_id": self.room1.id,
+            "title": "   ",
+            "date": future_date,
+            "start_time": "14:00:00",
+            "end_time": "15:00:00",
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("meetings.messages.titleRequired", str(res.data))
+
+    def test_staff_cannot_see_other_users_private_room_bookings(self):
+        """User thường không thể xem lịch phòng nội bộ của người khác, trừ khi chính mình là người đặt."""
+        private_room = PhongHop.objects.create(
+            name="Phòng Họp Mật HĐQT",
+            capacity=10,
+            is_public=False,
+        )
+        future_date = (timezone.localtime(timezone.now()).date() + timedelta(days=10))
+        # Booking của admin trong phòng riêng
+        admin_booking = DatPhongHop.objects.create(
+            room=private_room,
+            organizer=self.admin_user,
+            title="Họp Mật Của Admin",
+            date=future_date,
+            start_time=time(14, 0),
+            end_time=time(15, 0),
+            status=DatPhongHop.Status.CONFIRMED,
+        )
+        # Booking của user1 trong phòng riêng
+        user1_booking = DatPhongHop.objects.create(
+            room=private_room,
+            organizer=self.user1,
+            title="Họp Mật Của User 1",
+            date=future_date,
+            start_time=time(16, 0),
+            end_time=time(17, 0),
+            status=DatPhongHop.Status.CONFIRMED,
+        )
+
+        # 1. user2 (staff thường, không phải organizer) vào xem danh sách -> không thấy cả 2 lịch phòng riêng
+        self.client.force_authenticate(user=self.user2)
+        res_user2 = self.client.get("/api/meeting-bookings/")
+        ids_user2 = [b["id"] for b in res_user2.data.get("results", [])]
+        self.assertNotIn(admin_booking.id, ids_user2)
+        self.assertNotIn(user1_booking.id, ids_user2)
+
+        # 2. user1 (chính là organizer của user1_booking) vào xem danh sách -> thấy lịch của mình, không thấy của admin
+        self.client.force_authenticate(user=self.user1)
+        res_user1 = self.client.get("/api/meeting-bookings/")
+        ids_user1 = [b["id"] for b in res_user1.data.get("results", [])]
+        self.assertIn(user1_booking.id, ids_user1)
+        self.assertNotIn(admin_booking.id, ids_user1)
+
+        # 3. Manager/Admin có quyền change_phonghop -> thấy tất cả
+        self.client.force_authenticate(user=self.admin_user)
+        res_admin = self.client.get("/api/meeting-bookings/")
+        ids_admin = [b["id"] for b in res_admin.data.get("results", [])]
+        self.assertIn(admin_booking.id, ids_admin)
+        self.assertIn(user1_booking.id, ids_admin)
+
+
 
 
 

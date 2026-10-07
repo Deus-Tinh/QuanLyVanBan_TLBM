@@ -90,7 +90,7 @@ export default function AppRouter({
         <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
         <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
         <Route path="/meetings" element={<MeetingsPage />} />
-        <Route path="/birthdays" element={<SyllabusPreview activePage="birthdays" />} />
+        <Route path="/birthdays" element={<BirthdayPage />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
         <Route path="/organizations" element={<OrganizationsPage />} />

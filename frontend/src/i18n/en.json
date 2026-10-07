@@ -825,7 +825,8 @@
       "noAmenities": "No amenities listed",
       "bookThisRoom": "Book this room",
       "roomFallback": "Room #{id}",
-      "staffFallback": "Staff"
+      "staffFallback": "Staff",
+      "cancelReason": "Cancellation reason"
     },
     "fields": {
       "capacity": "Capacity",
@@ -949,7 +950,16 @@
       "bookingAlreadyEnded": "Cannot cancel or modify a meeting that has already ended.",
       "permissionDenied": "You do not have permission to perform this action.",
       "saveRoomError": "An error occurred while saving the meeting room. Please try again.",
-      "saveBookingError": "Cannot save meeting booking. Please check the entered information!"
+      "saveBookingError": "Cannot save meeting booking. Please check the entered information!",
+      "bookingInPast": "Cannot book or reschedule a meeting in the past.",
+      "deleteBookingNotAllowed": "Deleting bookings is not allowed. Please use the cancel booking feature.",
+      "capacityMustBeInteger": "Meeting room capacity must be an integer.",
+      "locationTooLong": "Location cannot exceed 200 characters.",
+      "attendeesMustBePositive": "Number of attendees must be greater than 0.",
+      "attendeesMustBeInteger": "Number of attendees must be an integer.",
+      "roomNotFound": "Meeting room not found.",
+      "titleTooLong": "Meeting title cannot exceed 255 characters.",
+      "invalidChoice": "Invalid choice value."
     }
   },
   "auth": {

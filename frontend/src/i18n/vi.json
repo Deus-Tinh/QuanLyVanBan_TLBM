@@ -825,7 +825,8 @@
       "noAmenities": "Chưa có thông tin trang thiết bị",
       "bookThisRoom": "Đặt phòng này",
       "roomFallback": "Phòng #{id}",
-      "staffFallback": "CBNV"
+      "staffFallback": "CBNV",
+      "cancelReason": "Lý do hủy"
     },
     "fields": {
       "capacity": "Sức chứa",
@@ -949,7 +950,16 @@
       "bookingAlreadyEnded": "Không thể hủy hoặc sửa cuộc họp đã kết thúc.",
       "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
       "saveRoomError": "Có lỗi xảy ra khi lưu phòng họp. Vui lòng thử lại.",
-      "saveBookingError": "Không thể lưu lịch đặt phòng. Vui lòng kiểm tra lại thông tin!"
+      "saveBookingError": "Không thể lưu lịch đặt phòng. Vui lòng kiểm tra lại thông tin!",
+      "bookingInPast": "Không thể đặt hoặc dời lịch họp về thời điểm trong quá khứ.",
+      "deleteBookingNotAllowed": "Không cho phép xóa lịch đặt. Vui lòng sử dụng chức năng hủy lịch.",
+      "capacityMustBeInteger": "Sức chứa phòng họp phải là số nguyên.",
+      "locationTooLong": "Vị trí phòng họp không được vượt quá 200 ký tự.",
+      "attendeesMustBePositive": "Số người tham gia phải lớn hơn 0.",
+      "attendeesMustBeInteger": "Số người tham gia phải là số nguyên.",
+      "roomNotFound": "Phòng họp không tồn tại.",
+      "titleTooLong": "Tiêu đề cuộc họp không được vượt quá 255 ký tự.",
+      "invalidChoice": "Giá trị lựa chọn không hợp lệ."
     }
   },
   "auth": {

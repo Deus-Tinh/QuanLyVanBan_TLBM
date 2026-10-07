@@ -605,12 +605,27 @@ export const MeetingsPage: React.FC = () => {
                             </span>
                           </div>
 
-                          {booking.ghi_chu && (
-                            <p className="text-xs text-muted bg-surface-elevated px-2.5 py-1.5 rounded-lg border border-border-subtle mt-2 inline-block">
-                              <i className="fa-regular fa-note-sticky mr-1.5" />
-                              {booking.ghi_chu}
-                            </p>
-                          )}
+                          {booking.ghi_chu && (() => {
+                            const parts = booking.ghi_chu.split('\n---\n');
+                            const purposeText = parts[0]?.trim();
+                            const cancelReasonText = parts[1]?.trim();
+                            return (
+                              <div className="mt-2 space-y-1">
+                                {purposeText && (
+                                  <p className="text-xs text-muted bg-surface-elevated px-2.5 py-1.5 rounded-lg border border-border-subtle inline-block mr-2">
+                                    <i className="fa-regular fa-note-sticky mr-1.5" />
+                                    {purposeText}
+                                  </p>
+                                )}
+                                {cancelReasonText && (
+                                  <p className="text-xs text-danger bg-danger-subtle px-2.5 py-1.5 rounded-lg border border-danger-border inline-block">
+                                    <i className="fa-solid fa-ban mr-1.5" />
+                                    <strong>{t('meetings.table.cancelReason')}:</strong> {cancelReasonText}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
 

@@ -24,20 +24,35 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
             "max_length": "meetings.messages.roomNameTooLong",
         },
     )
-    location = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    location = serializers.CharField(
+        max_length=200,
+        required=False,
+        allow_blank=True,
+        default="",
+        error_messages={
+            "max_length": "meetings.messages.locationTooLong",
+        },
+    )
     capacity = serializers.IntegerField(
         min_value=1,
         max_value=2147483647,
         required=False,
         default=10,
         error_messages={
+            "invalid": "meetings.messages.capacityMustBeInteger",
             "min_value": "meetings.messages.capacityMustBePositive",
             "max_value": "meetings.messages.capacityTooLarge",
         },
     )
     amenities = serializers.CharField(required=False, allow_blank=True, default="")
     is_public = serializers.BooleanField(required=False)
-    status = serializers.ChoiceField(choices=MeetingRoom.Status.choices, required=False, default=MeetingRoom.Status.AVAILABLE)
+    status = serializers.ChoiceField(
+        choices=MeetingRoom.Status.choices,
+        required=False,
+        error_messages={
+            "invalid_choice": "meetings.messages.invalidStatus",
+        },
+    )
     ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
 
     # Bí danh tiếng Việt cho Frontend tương thích ngược
@@ -67,6 +82,16 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    def create(self, validated_data):
+        if "status" not in validated_data:
+            validated_data["status"] = MeetingRoom.Status.AVAILABLE
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if "status" not in validated_data:
+            validated_data["status"] = instance.status
+        return super().update(instance, validated_data)
+
     def to_internal_value(self, data):
         if hasattr(data, "dict"):
             d = data.dict()
@@ -86,6 +111,13 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
             d["capacity"] = d.get("suc_chua")
         if "thiet_bi" in d and "amenities" not in d:
             d["amenities"] = d.get("thiet_bi")
+        if "trang_thai" in d and "status" not in d:
+            d["status"] = d.get("trang_thai")
+        if "status" not in d:
+            if self.instance:
+                d["status"] = self.instance.status
+            elif not self.partial:
+                d["status"] = MeetingRoom.Status.AVAILABLE
 
         return super().to_internal_value(d)
 
@@ -187,15 +219,43 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
     """
 
     room = serializers.PrimaryKeyRelatedField(
-        queryset=MeetingRoom.objects.all(), required=False
+        queryset=MeetingRoom.objects.all(),
+        required=False,
+        error_messages={
+            "does_not_exist": "meetings.messages.roomNotFound",
+            "incorrect_type": "meetings.messages.invalidRoomId",
+        },
     )
-    title = serializers.CharField(max_length=255, required=False)
-    date = serializers.DateField(required=False)
+    title = serializers.CharField(
+        max_length=255,
+        required=True,
+        allow_blank=False,
+        error_messages={
+            "required": "meetings.messages.titleRequired",
+            "blank": "meetings.messages.titleRequired",
+            "max_length": "meetings.messages.titleTooLong",
+        },
+    )
+    date = serializers.DateField(
+        required=False,
+        error_messages={
+            "invalid": "meetings.messages.invalidDateFormat",
+        },
+    )
     start_time = serializers.TimeField(required=False)
     end_time = serializers.TimeField(required=False)
-    attendees_count = serializers.IntegerField(min_value=1, max_value=2147483647, required=False, default=1)
+    attendees_count = serializers.IntegerField(
+        min_value=1,
+        max_value=2147483647,
+        required=False,
+        default=1,
+        error_messages={
+            "invalid": "meetings.messages.attendeesMustBeInteger",
+            "min_value": "meetings.messages.attendeesMustBePositive",
+        },
+    )
     purpose = serializers.CharField(required=False, allow_blank=True, default="")
-    status = serializers.ChoiceField(choices=MeetingBooking.Status.choices, required=False, default=MeetingBooking.Status.CONFIRMED)
+    status = serializers.CharField(read_only=True)
     department = serializers.PrimaryKeyRelatedField(
         queryset=DonVi.objects.all(), required=False, allow_null=True
     )
@@ -247,7 +307,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             "trang_thai",
             "ghi_chu",
         ]
-        read_only_fields = ["id", "organizer", "created_at"]
+        read_only_fields = ["id", "organizer", "status", "created_at"]
 
     def to_internal_value(self, data):
         if hasattr(data, "dict"):
@@ -268,14 +328,10 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             d["attendees_count"] = d.get("so_nguoi_tham_gia")
         if "ghi_chu" in d and "purpose" not in d:
             d["purpose"] = d.get("ghi_chu")
-        if "trang_thai" in d and "status" not in d:
-            mapping = {
-                "da_dat": MeetingBooking.Status.CONFIRMED,
-                "da_huy": MeetingBooking.Status.CANCELLED,
-                "hoan_thanh": MeetingBooking.Status.COMPLETED,
-            }
-            st = d.get("trang_thai")
-            d["status"] = mapping.get(st, st)
+        if "status" in d:
+            d.pop("status")
+        if "trang_thai" in d:
+            d.pop("trang_thai")
 
         # Parse datetime nếu client gửi thoi_gian_bat_dau / thoi_gian_ket_thuc
         if "thoi_gian_bat_dau" in d and "thoi_gian_ket_thuc" in d:
@@ -380,6 +436,18 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
         attendees = attrs.get("attendees_count", getattr(self.instance, "attendees_count", 1))
         status_val = attrs.get("status", getattr(self.instance, "status", MeetingBooking.Status.CONFIRMED))
 
+        title_val = attrs.get("title")
+        if not self.instance and not title_val:
+            raise serializers.ValidationError({
+                "title": "meetings.messages.titleRequired",
+                "tieu_de": "meetings.messages.titleRequired",
+            })
+        if title_val is not None and not str(title_val).strip():
+            raise serializers.ValidationError({
+                "title": "meetings.messages.titleRequired",
+                "tieu_de": "meetings.messages.titleRequired",
+            })
+
         if not room and not self.instance:
             raise serializers.ValidationError({
                 "room": "meetings.messages.roomRequired",
@@ -411,6 +479,25 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                 "end_time": "meetings.messages.endTimeRequired",
                 "thoi_gian_ket_thuc": "meetings.messages.endTimeRequired",
             })
+
+        # Chặn đặt lịch trong quá khứ hoặc dời lịch về quá khứ
+        now_local = timezone.localtime(timezone.now())
+        if booking_date and start_time:
+            booking_start_dt = datetime.combine(booking_date, start_time)
+            tz = timezone.get_current_timezone()
+            if timezone.is_naive(booking_start_dt):
+                booking_start_dt = timezone.make_aware(booking_start_dt, tz)
+            else:
+                booking_start_dt = timezone.localtime(booking_start_dt)
+
+            is_creating = not self.instance
+            is_rescheduling = bool(self.instance and ("date" in attrs or "start_time" in attrs))
+            if (is_creating or is_rescheduling) and booking_start_dt < now_local:
+                raise serializers.ValidationError({
+                    "start_time": "meetings.messages.bookingInPast",
+                    "thoi_gian_bat_dau": "meetings.messages.bookingInPast",
+                    "non_field_errors": "meetings.messages.bookingInPast",
+                })
 
         # Phòng MAINTENANCE hoặc UNAVAILABLE không cho đặt
         if room and room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
@@ -463,6 +550,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             # Tự động gán phòng ban nếu chưa chọn
             if not validated_data.get("department") and hasattr(request.user, "don_vi"):
                 validated_data["department"] = request.user.don_vi
+        validated_data["status"] = MeetingBooking.Status.CONFIRMED
         return super().create(validated_data)
 
 

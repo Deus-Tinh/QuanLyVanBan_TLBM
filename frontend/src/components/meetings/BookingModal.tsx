@@ -134,6 +134,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     if (!date) {
       errors.date = t('meetings.messages.dateRequired');
     }
+
     if (!startTime) {
       errors.thoi_gian_bat_dau = t('meetings.messages.startTimeRequired');
     }
@@ -439,6 +440,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
               <input
                 id="booking-date-input"
                 type="date"
+                min={initialDate && initialDate < new Date().toLocaleDateString('en-CA') ? undefined : new Date().toLocaleDateString('en-CA')}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
