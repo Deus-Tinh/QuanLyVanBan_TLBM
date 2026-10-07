@@ -137,9 +137,9 @@ describe('MeetingsPage Component (Issue #22)', () => {
     );
 
     expect(screen.getByText('Phân hệ Quản lý Phòng họp')).toBeInTheDocument();
-    expect(screen.getByText('Đặt phòng họp mới')).toBeInTheDocument();
 
     await waitFor(() => {
+      expect(screen.getByText('Đặt phòng họp mới')).toBeInTheDocument();
       expect(screen.getByText('Họp giao ban tuần 40')).toBeInTheDocument();
       expect(screen.getByText('Phòng Hội thảo A (Tầng 2, Tòa A)')).toBeInTheDocument();
     });
@@ -173,7 +173,7 @@ describe('MeetingsPage Component (Issue #22)', () => {
       </MemoryRouter>
     );
 
-    const openBtn = screen.getByText('Đặt phòng họp mới');
+    const openBtn = await screen.findByText('Đặt phòng họp mới');
     fireEvent.click(openBtn);
 
     await waitFor(() => {

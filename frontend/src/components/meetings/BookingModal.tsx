@@ -74,7 +74,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
         roomId: bookingToEdit.phong_hop,
         title: bookingToEdit.tieu_de || '',
         department: bookingToEdit.don_vi_to_chuc || '',
-        date: startParsed?.date || initialDate || new Date().toISOString().split('T')[0],
+        date: startParsed?.date || initialDate || (() => {
+          const now = new Date();
+          return `${now.getFullYear()}-${padZero(now.getMonth() + 1)}-${padZero(now.getDate())}`;
+        })(),
         startTime: startParsed?.time || '09:00',
         endTime: endParsed?.time || '10:00',
         attendees: bookingToEdit.so_nguoi_tham_gia || 5,
@@ -123,27 +126,30 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const errors: Record<string, string> = {};
 
     if (!roomId) {
-      errors.phong_hop = 'Vui lòng chọn phòng họp.';
+      errors.phong_hop = t('meetings.messages.roomRequired');
     }
     if (!title.trim()) {
-      errors.tieu_de = 'Vui lòng nhập tiêu đề cuộc họp.';
+      errors.tieu_de = t('meetings.messages.titleRequired');
     }
     if (!date) {
-      errors.date = 'Vui lòng chọn ngày họp.';
+      errors.date = t('meetings.messages.dateRequired');
     }
     if (!startTime) {
-      errors.thoi_gian_bat_dau = 'Vui lòng chọn giờ bắt đầu.';
+      errors.thoi_gian_bat_dau = t('meetings.messages.startTimeRequired');
     }
     if (!endTime) {
-      errors.thoi_gian_ket_thuc = 'Vui lòng chọn giờ kết thúc.';
+      errors.thoi_gian_ket_thuc = t('meetings.messages.endTimeRequired');
     } else if (startTime && startTime >= endTime) {
-      errors.thoi_gian_ket_thuc = 'Giờ kết thúc phải diễn ra sau giờ bắt đầu.';
+      errors.thoi_gian_ket_thuc = t('meetings.messages.invalidTimeRange');
     }
 
     if (!attendees || attendees <= 0) {
-      errors.so_nguoi_tham_gia = 'Số người tham gia phải lớn hơn 0.';
+      errors.so_nguoi_tham_gia = t('meetings.messages.attendeesRequired');
     } else if (selectedRoom && attendees > selectedRoom.suc_chua) {
-      errors.so_nguoi_tham_gia = `Vượt quá sức chứa phòng "${selectedRoom.ten_phong}" (tối đa ${selectedRoom.suc_chua} người).`;
+      errors.so_nguoi_tham_gia = t('meetings.messages.capacityExceeded', {
+        room: selectedRoom.ten_phong,
+        max: selectedRoom.suc_chua,
+      });
     }
 
     setFieldErrors(errors);
@@ -200,22 +206,28 @@ const BookingForm: React.FC<BookingFormProps> = ({
       if (err instanceof ApiError) {
         const errorData = err.data as Record<string, unknown> | undefined;
         if (errorData) {
-          if (Array.isArray(errorData.non_field_errors)) {
-            setErrorMsg(errorData.non_field_errors.join(' '));
+          const errKey = String(errorData.error || errorData.detail || '');
+          if (errKey && errKey.startsWith('meetings.messages.')) {
+            setErrorMsg(t(errKey));
+          } else if (Array.isArray(errorData.non_field_errors)) {
+            setErrorMsg(errorData.non_field_errors.map((e) => typeof e === 'string' && e.startsWith('meetings.messages.') ? t(e) : e).join(' '));
           } else if (typeof errorData.non_field_errors === 'string') {
-            setErrorMsg(errorData.non_field_errors);
+            const nfe = errorData.non_field_errors;
+            setErrorMsg(nfe.startsWith('meetings.messages.') ? t(nfe) : nfe);
           } else if (errorData.error) {
-            setErrorMsg(String(errorData.error));
+            const errStr = String(errorData.error);
+            setErrorMsg(errStr.startsWith('meetings.messages.') ? t(errStr) : errStr);
           } else if (errorData.detail) {
-            setErrorMsg(String(errorData.detail));
+            const dtStr = String(errorData.detail);
+            setErrorMsg(dtStr.startsWith('meetings.messages.') ? t(dtStr) : dtStr);
           } else {
             // Map individual field errors
             const fErrors: Record<string, string> = {};
             for (const [key, value] of Object.entries(errorData)) {
               if (Array.isArray(value)) {
-                fErrors[key] = value.join(' ');
+                fErrors[key] = value.map((v) => typeof v === 'string' && v.startsWith('meetings.messages.') ? t(v) : v).join(' ');
               } else if (typeof value === 'string') {
-                fErrors[key] = value;
+                fErrors[key] = value.startsWith('meetings.messages.') ? t(value) : value;
               }
             }
             setFieldErrors(fErrors);
@@ -223,14 +235,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
             if (firstKey) {
               setErrorMsg(fErrors[firstKey]);
             } else {
-              setErrorMsg(err.message || 'Không thể lưu lịch đặt phòng. Vui lòng kiểm tra lại thông tin!');
+              setErrorMsg(err.message || t('meetings.messages.saveBookingError'));
             }
           }
         } else {
-          setErrorMsg(err.message || 'Không thể lưu lịch đặt phòng. Vui lòng thử lại!');
+          setErrorMsg(err.message || t('meetings.messages.saveBookingError'));
         }
       } else {
-        setErrorMsg('Đã xảy ra lỗi không mong muốn. Vui lòng thử lại sau.');
+        setErrorMsg(t('meetings.messages.unexpectedError'));
       }
     } finally {
       setLoading(false);

@@ -321,6 +321,8 @@ class MeetingBooking(models.Model):
         if "thoi_gian_bat_dau" in kwargs:
             dt_start = kwargs.pop("thoi_gian_bat_dau")
             if hasattr(dt_start, "date"):
+                if timezone.is_aware(dt_start):
+                    dt_start = timezone.localtime(dt_start)
                 if "date" not in kwargs:
                     kwargs["date"] = dt_start.date()
                 if "start_time" not in kwargs:
@@ -328,6 +330,8 @@ class MeetingBooking(models.Model):
         if "thoi_gian_ket_thuc" in kwargs:
             dt_end = kwargs.pop("thoi_gian_ket_thuc")
             if hasattr(dt_end, "time"):
+                if timezone.is_aware(dt_end):
+                    dt_end = timezone.localtime(dt_end)
                 if "end_time" not in kwargs:
                     kwargs["end_time"] = dt_end.time()
         if "don_vi_to_chuc" in kwargs:
@@ -338,6 +342,20 @@ class MeetingBooking(models.Model):
         return f"[{self.room.name}] {self.title} ({self.date:%d/%m/%Y} {self.start_time:%H:%M} - {self.end_time:%H:%M})"
 
     # ── Backward compatibility properties ─────────────────────────────────
+    @property
+    def effective_status(self):
+        """
+        Tính trạng thái hiển thị động:
+        Nếu lịch CONFIRMED nhưng thời điểm kết thúc đã qua thì hiển thị COMPLETED.
+        """
+        if self.status == self.Status.CONFIRMED and self.date and self.end_time:
+            now_local = timezone.localtime(timezone.now())
+            today = now_local.date()
+            now_time = now_local.time()
+            if self.date < today or (self.date == today and self.end_time <= now_time):
+                return self.Status.COMPLETED
+        return self.status
+
     @property
     def phong_hop(self):
         return self.room
@@ -410,7 +428,7 @@ class MeetingBooking(models.Model):
                     "COMPLETED": ["hoan_thanh", "COMPLETED"],
                 }
                 return other in mapping.get(self, [])
-        return StatusProxy(self.status)
+        return StatusProxy(self.effective_status)
 
     @trang_thai.setter
     def trang_thai(self, val):

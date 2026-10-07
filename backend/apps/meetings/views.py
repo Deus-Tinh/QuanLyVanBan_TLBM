@@ -97,7 +97,7 @@ class MeetingRoomViewSet(viewsets.ModelViewSet):
             cleaned_status = status_param.upper()
             if cleaned_status not in valid_statuses:
                 raise ValidationError({
-                    "status": f"Trạng thái phòng '{status_param}' không hợp lệ. Các giá trị hợp lệ: {', '.join(valid_statuses)}."
+                    "status": "meetings.messages.invalidStatus"
                 })
             queryset = queryset.filter(status=cleaned_status)
 
@@ -158,10 +158,9 @@ class MeetingRoomViewSet(viewsets.ModelViewSet):
         except (ProtectedError, RestrictedError):
             return Response(
                 {
-                    "error": (
-                        "Không thể xóa phòng họp này vì đã có dữ liệu lịch đặt liên kết. "
-                        "Vui lòng chuyển trạng thái phòng sang Không khả dụng (UNAVAILABLE) hoặc ẩn (is_public=False) thay vì xóa."
-                    )
+                    "error": "meetings.messages.cannotDeleteRoomHasBookings",
+                    "detail": "meetings.messages.cannotDeleteRoomHasBookings",
+                    "code": "meetings.messages.cannotDeleteRoomHasBookings",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -231,7 +230,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(room_id=valid_room_id)
             except (ValueError, TypeError):
                 raise ValidationError({
-                    "room_id": f"Mã phòng họp '{room_param}' không hợp lệ. Vui lòng nhập số nguyên."
+                    "room_id": "meetings.messages.invalidRoomId"
                 })
 
         # 2. Lọc theo trạng thái an toàn (chống 500 DataError trên PostgreSQL ENUM)
@@ -246,9 +245,29 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
             valid_statuses = [choice[0] for choice in MeetingBooking.Status.choices]
             if mapped_status not in valid_statuses:
                 raise ValidationError({
-                    "status": f"Trạng thái đặt phòng '{status_param}' không hợp lệ. Các giá trị hợp lệ: {', '.join(valid_statuses)}."
+                    "status": "meetings.messages.invalidStatus"
                 })
-            qs = qs.filter(status=mapped_status)
+
+            now_local = timezone.localtime(timezone.now())
+            today = now_local.date()
+            now_time = now_local.time()
+
+            if mapped_status == MeetingBooking.Status.COMPLETED:
+                qs = qs.filter(
+                    Q(status=MeetingBooking.Status.COMPLETED)
+                    | (
+                        Q(status=MeetingBooking.Status.CONFIRMED)
+                        & (Q(date__lt=today) | (Q(date=today) & Q(end_time__lte=now_time)))
+                    )
+                )
+            elif mapped_status == MeetingBooking.Status.CONFIRMED:
+                qs = qs.filter(
+                    status=MeetingBooking.Status.CONFIRMED
+                ).filter(
+                    Q(date__gt=today) | (Q(date=today) & Q(end_time__gt=now_time))
+                )
+            else:
+                qs = qs.filter(status=mapped_status)
 
         # 3. Lọc theo ngày cụ thể (YYYY-MM-DD) an toàn
         date_str = self.request.query_params.get("date")
@@ -258,7 +277,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(date=target_date).order_by("start_time")
             except ValueError:
                 raise ValidationError({
-                    "date": f"Định dạng ngày '{date_str}' không hợp lệ. Yêu cầu định dạng YYYY-MM-DD."
+                    "date": "meetings.messages.invalidDateFormat"
                 })
 
         # 4. Lọc theo khoảng ngày (start_date, end_date) an toàn
@@ -270,7 +289,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(date__gte=sd)
             except ValueError:
                 raise ValidationError({
-                    "start_date": f"Định dạng ngày bắt đầu '{start_date}' không hợp lệ. Yêu cầu định dạng YYYY-MM-DD."
+                    "start_date": "meetings.messages.invalidDateFormat"
                 })
         if end_date:
             try:
@@ -278,7 +297,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(date__lte=ed)
             except ValueError:
                 raise ValidationError({
-                    "end_date": f"Định dạng ngày kết thúc '{end_date}' không hợp lệ. Yêu cầu định dạng YYYY-MM-DD."
+                    "end_date": "meetings.messages.invalidDateFormat"
                 })
 
         return qs
@@ -300,10 +319,30 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 # Khóa bản ghi phòng họp để các request đồng thời phải tuần tự kiểm tra
                 locked_room = MeetingRoom.objects.select_for_update().get(id=room.id)
 
+                # Chặn đặt phòng nội bộ nếu không có quyền
+                if not locked_room.is_public:
+                    user = request.user
+                    has_perm = user and (user.is_superuser or user.has_perm("change_phonghop") or user.has_perm("meetings.change_phonghop"))
+                    if not has_perm:
+                        return Response(
+                            {
+                                "error": "meetings.messages.privateRoomForbidden",
+                                "detail": "meetings.messages.privateRoomForbidden",
+                                "code": "meetings.messages.privateRoomForbidden",
+                            },
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+
                 if locked_room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
                     return Response(
                         {
-                            "error": f"Phòng họp '{locked_room.name}' đang ở trạng thái {locked_room.get_status_display()}, không thể đặt lịch."
+                            "error": "meetings.messages.roomUnavailable",
+                            "detail": "meetings.messages.roomUnavailable",
+                            "code": "meetings.messages.roomUnavailable",
+                            "params": {
+                                "room_name": locked_room.name,
+                                "room_status": locked_room.status,
+                            },
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
@@ -324,7 +363,17 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                     c_date = conflict.date.strftime("%d/%m/%Y")
                     return Response(
                         {
-                            "error": f"Phòng '{locked_room.name}' vừa được đặt trùng khung giờ: '{conflict.title}' ({c_start} - {c_end} ngày {c_date}) bởi {host}. Vui lòng chọn khung giờ khác!"
+                            "error": "meetings.messages.roomTimeConflict",
+                            "detail": "meetings.messages.roomTimeConflict",
+                            "code": "meetings.messages.roomTimeConflict",
+                            "params": {
+                                "room_name": locked_room.name,
+                                "conflict_title": conflict.title,
+                                "start_time": c_start,
+                                "end_time": c_end,
+                                "date": c_date,
+                                "organizer": host,
+                            },
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
@@ -335,7 +384,9 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
             # Bắt lỗi ràng buộc chống trùng cấp CSDL (PostgreSQL GiST excl_room_time)
             return Response(
                 {
-                    "error": "Khung giờ này vừa có người khác đặt trước. Vui lòng chọn khung giờ khác!"
+                    "error": "meetings.messages.roomTimeConflict",
+                    "detail": "meetings.messages.roomTimeConflict",
+                    "code": "meetings.messages.roomTimeConflict",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -365,11 +416,31 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 locked_room = MeetingRoom.objects.select_for_update().get(id=room.id)
 
+                # Chặn đặt/sửa phòng nội bộ nếu không có quyền
+                if not locked_room.is_public:
+                    user = request.user
+                    has_perm = user and (user.is_superuser or user.has_perm("change_phonghop") or user.has_perm("meetings.change_phonghop"))
+                    if not has_perm:
+                        return Response(
+                            {
+                                "error": "meetings.messages.privateRoomForbidden",
+                                "detail": "meetings.messages.privateRoomForbidden",
+                                "code": "meetings.messages.privateRoomForbidden",
+                            },
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+
                 if new_status != MeetingBooking.Status.CANCELLED:
                     if locked_room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
                         return Response(
                             {
-                                "error": f"Phòng họp '{locked_room.name}' đang ở trạng thái {locked_room.get_status_display()}, không thể đặt lịch."
+                                "error": "meetings.messages.roomUnavailable",
+                                "detail": "meetings.messages.roomUnavailable",
+                                "code": "meetings.messages.roomUnavailable",
+                                "params": {
+                                    "room_name": locked_room.name,
+                                    "room_status": locked_room.status,
+                                },
                             },
                             status=status.HTTP_400_BAD_REQUEST,
                         )
@@ -390,7 +461,17 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                         c_date = conflict.date.strftime("%d/%m/%Y")
                         return Response(
                             {
-                                "error": f"Không thể đổi sang khung giờ này vì bị trùng với cuộc họp '{conflict.title}' ({c_start} - {c_end} ngày {c_date}) bởi {host}!"
+                                "error": "meetings.messages.roomTimeConflict",
+                                "detail": "meetings.messages.roomTimeConflict",
+                                "code": "meetings.messages.roomTimeConflict",
+                                "params": {
+                                    "room_name": locked_room.name,
+                                    "conflict_title": conflict.title,
+                                    "start_time": c_start,
+                                    "end_time": c_end,
+                                    "date": c_date,
+                                    "organizer": host,
+                                },
                             },
                             status=status.HTTP_400_BAD_REQUEST,
                         )
@@ -400,7 +481,9 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         except IntegrityError:
             return Response(
                 {
-                    "error": "Khung giờ này bị trùng lặp với lịch họp khác trên hệ thống!"
+                    "error": "meetings.messages.roomTimeConflict",
+                    "detail": "meetings.messages.roomTimeConflict",
+                    "code": "meetings.messages.roomTimeConflict",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -415,7 +498,10 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         booking = self.get_object()
         if booking.status == MeetingBooking.Status.CANCELLED:
             return Response(
-                {"detail": "Lịch đặt phòng này đã được hủy trước đó."},
+                {
+                    "detail": "meetings.messages.bookingAlreadyCancelled",
+                    "code": "meetings.messages.bookingAlreadyCancelled",
+                },
                 status=status.HTTP_200_OK,
             )
 
@@ -428,7 +514,8 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(booking)
         return Response(
             {
-                "detail": "Đã hủy lịch đặt phòng thành công. Khung giờ đã được giải phóng.",
+                "detail": "meetings.messages.cancelSuccess",
+                "code": "meetings.messages.cancelSuccess",
                 "booking": serializer.data,
             },
             status=status.HTTP_200_OK,

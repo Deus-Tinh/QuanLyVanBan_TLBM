@@ -21,7 +21,7 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
     location = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
     capacity = serializers.IntegerField(min_value=1, max_value=2147483647, required=False, default=10)
     amenities = serializers.CharField(required=False, allow_blank=True, default="")
-    is_public = serializers.BooleanField(required=False, default=True)
+    is_public = serializers.BooleanField(required=False)
     status = serializers.ChoiceField(choices=MeetingRoom.Status.choices, required=False, default=MeetingRoom.Status.AVAILABLE)
     ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
 
@@ -93,33 +93,44 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
         name = attrs.get("name")
         if not name and not self.instance:
             raise serializers.ValidationError({
-                "name": "Tên phòng họp không được để trống.",
-                "ten_phong": "Tên phòng họp không được để trống.",
+                "name": "meetings.messages.roomNameRequired",
+                "ten_phong": "meetings.messages.roomNameRequired",
             })
 
         if name is not None:
             cleaned_name = str(name).strip()
             if not cleaned_name:
                 raise serializers.ValidationError({
-                    "name": "Tên phòng họp không được để trống.",
-                    "ten_phong": "Tên phòng họp không được để trống.",
+                    "name": "meetings.messages.roomNameRequired",
+                    "ten_phong": "meetings.messages.roomNameRequired",
+                })
+            if len(cleaned_name) > 100:
+                raise serializers.ValidationError({
+                    "name": "meetings.messages.roomNameTooLong",
+                    "ten_phong": "meetings.messages.roomNameTooLong",
                 })
             qs = MeetingRoom.objects.filter(name__iexact=cleaned_name)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise serializers.ValidationError({
-                    "name": f"Phòng họp với tên '{cleaned_name}' đã tồn tại trong hệ thống.",
-                    "ten_phong": f"Phòng họp với tên '{cleaned_name}' đã tồn tại trong hệ thống.",
+                    "name": "meetings.messages.roomNameExists",
+                    "ten_phong": "meetings.messages.roomNameExists",
                 })
             attrs["name"] = cleaned_name
 
         capacity = attrs.get("capacity")
-        if capacity is not None and capacity < 1:
-            raise serializers.ValidationError({
-                "capacity": "Sức chứa phòng họp phải là số nguyên dương lớn hơn hoặc bằng 1.",
-                "suc_chua": "Sức chứa phòng họp phải là số nguyên dương lớn hơn hoặc bằng 1.",
-            })
+        if capacity is not None:
+            if capacity < 1:
+                raise serializers.ValidationError({
+                    "capacity": "meetings.messages.capacityMustBePositive",
+                    "suc_chua": "meetings.messages.capacityMustBePositive",
+                })
+            if capacity > 2147483647:
+                raise serializers.ValidationError({
+                    "capacity": "meetings.messages.capacityTooLarge",
+                    "suc_chua": "meetings.messages.capacityTooLarge",
+                })
 
         return attrs
 
@@ -266,6 +277,14 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                 else:
                     e_dt = end_raw
 
+                if timezone.is_aware(s_dt):
+                    s_dt = timezone.localtime(s_dt)
+                if timezone.is_aware(e_dt):
+                    e_dt = timezone.localtime(e_dt)
+
+                if s_dt.date() != e_dt.date():
+                    d["_cross_day_error"] = True
+
                 if "date" not in d:
                     d["date"] = s_dt.date().isoformat()
                 if "start_time" not in d:
@@ -296,6 +315,18 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             errs["thoi_gian_bat_dau"] = errs["start_time"]
         return errs
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Tính trạng thái hiển thị động nếu lịch CONFIRMED nhưng đã kết thúc trong quá khứ
+        if instance.status == MeetingBooking.Status.CONFIRMED and instance.date and instance.end_time:
+            now_local = timezone.localtime(timezone.now())
+            today = now_local.date()
+            now_time = now_local.time()
+            if instance.date < today or (instance.date == today and instance.end_time <= now_time):
+                ret["status"] = MeetingBooking.Status.COMPLETED
+                ret["trang_thai"] = "hoan_thanh"
+        return ret
+
     def get_don_vi_to_chuc(self, obj):
         if obj.department:
             return obj.department.ten
@@ -312,14 +343,27 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
         return timezone.make_aware(dt, tz).isoformat()
 
     def get_trang_thai(self, obj):
+        st = obj.status
+        if st == MeetingBooking.Status.CONFIRMED and obj.date and obj.end_time:
+            now_local = timezone.localtime(timezone.now())
+            today = now_local.date()
+            now_time = now_local.time()
+            if obj.date < today or (obj.date == today and obj.end_time <= now_time):
+                st = MeetingBooking.Status.COMPLETED
         mapping = {
             MeetingBooking.Status.CONFIRMED: "da_dat",
             MeetingBooking.Status.CANCELLED: "da_huy",
             MeetingBooking.Status.COMPLETED: "hoan_thanh",
         }
-        return mapping.get(obj.status, obj.status)
+        return mapping.get(st, st)
 
     def validate(self, attrs):
+        if self.initial_data and self.initial_data.get("_cross_day_error"):
+            raise serializers.ValidationError({
+                "end_time": "meetings.messages.crossDayNotAllowed",
+                "thoi_gian_ket_thuc": "meetings.messages.crossDayNotAllowed",
+            })
+
         room = attrs.get("room", getattr(self.instance, "room", None))
         booking_date = attrs.get("date", getattr(self.instance, "date", None))
         start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
@@ -329,44 +373,59 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
 
         if not room and not self.instance:
             raise serializers.ValidationError({
-                "room": "Vui lòng chọn phòng họp.",
-                "phong_hop": "Vui lòng chọn phòng họp.",
+                "room": "meetings.messages.roomRequired",
+                "phong_hop": "meetings.messages.roomRequired",
             })
 
+        # Chặn đặt phòng nội bộ nếu user không có change_phonghop
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if room and not room.is_public:
+            has_perm = user and (user.is_superuser or user.has_perm("change_phonghop") or user.has_perm("meetings.change_phonghop"))
+            if not has_perm:
+                raise serializers.ValidationError({
+                    "room": "meetings.messages.privateRoomForbidden",
+                    "phong_hop": "meetings.messages.privateRoomForbidden",
+                })
+
         if not booking_date and not self.instance:
-            raise serializers.ValidationError({"date": "Vui lòng chọn ngày họp."})
+            raise serializers.ValidationError({"date": "meetings.messages.dateRequired"})
 
         if not start_time and not self.instance:
-            raise serializers.ValidationError({"start_time": "Vui lòng chọn giờ bắt đầu."})
+            raise serializers.ValidationError({
+                "start_time": "meetings.messages.startTimeRequired",
+                "thoi_gian_bat_dau": "meetings.messages.startTimeRequired",
+            })
 
         if not end_time and not self.instance:
-            raise serializers.ValidationError({"end_time": "Vui lòng chọn giờ kết thúc."})
+            raise serializers.ValidationError({
+                "end_time": "meetings.messages.endTimeRequired",
+                "thoi_gian_ket_thuc": "meetings.messages.endTimeRequired",
+            })
 
         # Phòng MAINTENANCE hoặc UNAVAILABLE không cho đặt
         if room and room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
-            err_msg = f"Phòng họp '{room.name}' đang ở trạng thái {room.get_status_display()}, không thể đặt lịch."
             raise serializers.ValidationError({
-                "room": err_msg,
-                "phong_hop": err_msg,
+                "room": "meetings.messages.roomUnavailable",
+                "phong_hop": "meetings.messages.roomUnavailable",
             })
 
         if start_time and end_time and end_time <= start_time:
             raise serializers.ValidationError({
-                "end_time": "Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.",
-                "thoi_gian_ket_thuc": "Thời gian kết thúc phải diễn ra sau thời gian bắt đầu.",
+                "end_time": "meetings.messages.invalidTimeRange",
+                "thoi_gian_ket_thuc": "meetings.messages.invalidTimeRange",
             })
 
         if attendees is not None and attendees <= 0:
             raise serializers.ValidationError({
-                "attendees_count": "Số người tham gia phải lớn hơn 0.",
-                "so_nguoi_tham_gia": "Số người tham gia phải lớn hơn 0.",
+                "attendees_count": "meetings.messages.attendeesRequired",
+                "so_nguoi_tham_gia": "meetings.messages.attendeesRequired",
             })
 
         if room and attendees is not None and attendees > room.capacity:
-            err_msg = f"Số người tham gia ({attendees}) vượt quá sức chứa tối đa của phòng '{room.name}' ({room.capacity} người)."
             raise serializers.ValidationError({
-                "attendees_count": err_msg,
-                "so_nguoi_tham_gia": err_msg,
+                "attendees_count": "meetings.messages.capacityExceeded",
+                "so_nguoi_tham_gia": "meetings.messages.capacityExceeded",
             })
 
         # Kiểm tra chống trùng lịch
@@ -382,14 +441,8 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                 conflicts = conflicts.exclude(pk=self.instance.pk)
 
             if conflicts.exists():
-                conflict = conflicts.first()
-                organizer = conflict.organizer
-                host_name = getattr(organizer, "ho_ten", None) or organizer.get_full_name() or organizer.username
-                c_start = conflict.start_time.strftime("%H:%M")
-                c_end = conflict.end_time.strftime("%H:%M")
-                c_date = conflict.date.strftime("%d/%m/%Y")
                 raise serializers.ValidationError({
-                    "non_field_errors": f"Phòng họp '{room.name}' đã có lịch đặt: '{conflict.title}' ({c_start} - {c_end} ngày {c_date}) bởi {host_name}. Vui lòng chọn khung giờ khác!"
+                    "non_field_errors": "meetings.messages.roomTimeConflict",
                 })
 
         return attrs

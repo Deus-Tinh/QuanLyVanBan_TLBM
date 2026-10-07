@@ -24,7 +24,7 @@ interface UserProfileResponse {
 
 export const MeetingsPage: React.FC = () => {
   const { t } = useTranslation();
-  const { can, loaded } = usePermissions();
+  const { can } = usePermissions();
 
   // Tab hiện tại: 'schedule' (Lịch đặt) | 'rooms' (Danh mục phòng)
   const [activeTab, setActiveTab] = useState<'schedule' | 'rooms'>('schedule');
@@ -34,10 +34,15 @@ export const MeetingsPage: React.FC = () => {
   const [bookings, setBookings] = useState<MeetingBooking[]>([]);
   const [currentUser, setCurrentUser] = useState<BookingUser | null>(null);
 
+  const formatLocalDate = (d: Date = new Date()): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Bộ lọc lịch
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  const [selectedDate, setSelectedDate] = useState<string>(() => formatLocalDate());
   const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
 
@@ -173,13 +178,14 @@ export const MeetingsPage: React.FC = () => {
 
   // Điều khiển ngày: Hôm nay, trước, sau
   const handleDateChange = (daysDelta: number) => {
-    const current = new Date(selectedDate);
+    const parts = selectedDate.split('-');
+    const current = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     current.setDate(current.getDate() + daysDelta);
-    setSelectedDate(current.toISOString().split('T')[0]);
+    setSelectedDate(formatLocalDate(current));
   };
 
   const handleSetToday = () => {
-    setSelectedDate(new Date().toISOString().split('T')[0]);
+    setSelectedDate(formatLocalDate());
   };
 
   // Xử lý Hủy lịch đặt
@@ -226,13 +232,12 @@ export const MeetingsPage: React.FC = () => {
     }
   };
 
-  const isAdmin = currentUser?.role === 'admin';
-  const canAddRoom = can('add_phonghop') || (loaded ? false : isAdmin);
-  const canChangeRoom = can('change_phonghop') || (loaded ? false : isAdmin);
-  const canDeleteRoom = can('delete_phonghop') || (loaded ? false : isAdmin);
-  const canAddBooking = can('add_datphonghop') || (loaded ? false : true);
-  const canChangeOwnBooking = can('change_own_datphonghop') || (loaded ? false : true);
-  const canChangeAnyBooking = can('change_any_datphonghop') || (loaded ? false : isAdmin);
+  const canAddRoom = can('add_phonghop');
+  const canChangeRoom = can('change_phonghop');
+  const canDeleteRoom = can('delete_phonghop');
+  const canAddBooking = can('add_datphonghop');
+  const canChangeOwnBooking = can('change_own_datphonghop');
+  const canChangeAnyBooking = can('change_any_datphonghop');
 
   // Lọc danh mục phòng ở Tab 2
   const filteredRooms = rooms.filter((r) => {

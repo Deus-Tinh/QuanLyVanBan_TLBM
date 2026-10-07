@@ -33,10 +33,10 @@ export const RoomModal: React.FC<RoomModalProps> = ({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!tenPhong.trim()) {
-      newErrors.ten_phong = 'Vui lòng nhập tên phòng họp.';
+      newErrors.ten_phong = t('meetings.messages.roomNameRequired');
     }
     if (!sucChua || sucChua < 1) {
-      newErrors.suc_chua = 'Sức chứa phòng phải là số nguyên dương từ 1 trở lên.';
+      newErrors.suc_chua = t('meetings.messages.capacityMustBePositive');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -71,14 +71,14 @@ export const RoomModal: React.FC<RoomModalProps> = ({
         const fieldErrors: Record<string, string> = {};
         for (const [key, value] of Object.entries(err.data)) {
           if (Array.isArray(value)) {
-            fieldErrors[key] = value.join(' ');
+            fieldErrors[key] = value.map((v) => typeof v === 'string' && v.startsWith('meetings.messages.') ? t(v) : v).join(' ');
           } else if (typeof value === 'string') {
-            fieldErrors[key] = value;
+            fieldErrors[key] = value.startsWith('meetings.messages.') ? t(value) : value;
           }
         }
         setErrors(fieldErrors);
       } else {
-        setErrors({ general: 'Có lỗi xảy ra khi lưu phòng họp. Vui lòng thử lại.' });
+        setErrors({ general: t('meetings.messages.saveRoomError') });
       }
     } finally {
       setLoading(false);

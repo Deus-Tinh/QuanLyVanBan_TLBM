@@ -6,7 +6,7 @@ Kiểm thử toàn diện:
 2. API PhongHopViewSet: CRUD, validation, search, filter, pagination, permission
 """
 
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, time, date
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -288,39 +288,42 @@ class DatPhongHopModelTestCase(TestCase):
         )
 
     def test_create_dat_phong_hop_success(self):
-        now = timezone.now()
+        tz = timezone.get_current_timezone()
+        base = timezone.make_aware(datetime(2026, 10, 20, 8, 0, 0), tz)
         booking = DatPhongHop.objects.create(
             phong_hop=self.room,
             nguoi_dat=self.user,
             tieu_de="Họp Bàn Giao",
-            thoi_gian_bat_dau=now + timedelta(hours=1),
-            thoi_gian_ket_thuc=now + timedelta(hours=2),
+            thoi_gian_bat_dau=base + timedelta(hours=1),
+            thoi_gian_ket_thuc=base + timedelta(hours=2),
             so_nguoi_tham_gia=10,
         )
         self.assertEqual(booking.trang_thai, DatPhongHop.STATUS_DA_DAT)
         self.assertIn("Họp Bàn Giao", str(booking))
 
     def test_clean_end_time_before_start_time(self):
-        now = timezone.now()
+        tz = timezone.get_current_timezone()
+        base = timezone.make_aware(datetime(2026, 10, 20, 8, 0, 0), tz)
         booking = DatPhongHop(
             phong_hop=self.room,
             nguoi_dat=self.user,
             tieu_de="Họp Lỗi Giờ",
-            thoi_gian_bat_dau=now + timedelta(hours=2),
-            thoi_gian_ket_thuc=now + timedelta(hours=1),
+            thoi_gian_bat_dau=base + timedelta(hours=2),
+            thoi_gian_ket_thuc=base + timedelta(hours=1),
             so_nguoi_tham_gia=5,
         )
         with self.assertRaises(ValidationError):
             booking.clean()
 
     def test_clean_capacity_exceeded(self):
-        now = timezone.now()
+        tz = timezone.get_current_timezone()
+        base = timezone.make_aware(datetime(2026, 10, 20, 8, 0, 0), tz)
         booking = DatPhongHop(
             phong_hop=self.room,
             nguoi_dat=self.user,
             tieu_de="Họp Quá Tải",
-            thoi_gian_bat_dau=now + timedelta(hours=1),
-            thoi_gian_ket_thuc=now + timedelta(hours=2),
+            thoi_gian_bat_dau=base + timedelta(hours=1),
+            thoi_gian_ket_thuc=base + timedelta(hours=2),
             so_nguoi_tham_gia=25,  # sức chứa phòng là 20
         )
         with self.assertRaises(ValidationError):
@@ -364,7 +367,8 @@ class DatPhongHopAPITestCase(APITestCase):
             is_public=True,
         )
 
-        self.base_time = timezone.now().replace(minute=0, second=0, microsecond=0) + timedelta(days=1)
+        vn_tz = timezone.get_current_timezone()
+        self.base_time = timezone.make_aware(datetime(2026, 10, 20, 0, 0, 0), vn_tz)
         self.booking1 = DatPhongHop.objects.create(
             phong_hop=self.room1,
             nguoi_dat=self.user1,
@@ -614,5 +618,92 @@ class DatPhongHopAPITestCase(APITestCase):
             "capacity": 99999999999999,
         })
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_put_room_without_is_public_preserves_privacy(self):
+        """PUT phòng họp không gửi trường is_public phải giữ nguyên giá trị cũ (không bị reset về True)."""
+        self.client.force_authenticate(user=self.admin_user)
+        private_room = PhongHop.objects.create(
+            ten_phong="Phòng Cơ Mật HĐQT",
+            suc_chua=10,
+            is_public=False,
+        )
+        res = self.client.put(f"/api/meeting-rooms/{private_room.id}/", {
+            "name": "Phòng Cơ Mật HĐQT (Cập nhật)",
+            "capacity": 12,
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        private_room.refresh_from_db()
+        self.assertFalse(private_room.is_public)
+        self.assertEqual(private_room.capacity, 12)
+
+    def test_regular_user_cannot_book_private_room(self):
+        """Người dùng thường không có quyền change_phonghop thì không được đặt lịch vào phòng nội bộ."""
+        private_room = PhongHop.objects.create(
+            ten_phong="Phòng Riêng VIP Ban Giám Đốc",
+            suc_chua=8,
+            is_public=False,
+        )
+        self.client.force_authenticate(user=self.user2)
+        payload = {
+            "room": private_room.id,
+            "title": "Họp Thử Phòng Riêng",
+            "date": (self.base_time.date()).isoformat(),
+            "start_time": "14:00:00",
+            "end_time": "15:00:00",
+            "attendees_count": 4,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertIn(res.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN])
+
+        # Admin hoặc người có quyền change_phonghop thì đặt được
+        self.client.force_authenticate(user=self.admin_user)
+        res_admin = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res_admin.status_code, status.HTTP_201_CREATED)
+
+    def test_past_booking_returns_completed_status_and_filtered(self):
+        """Lịch đã diễn ra trong quá khứ tự động hiển thị COMPLETED (hoan_thanh) và lọc được bằng ?status=hoan_thanh."""
+        self.client.force_authenticate(user=self.admin_user)
+        yesterday = timezone.localtime(timezone.now()).date() - timedelta(days=1)
+        past_booking = DatPhongHop.objects.create(
+            room=self.room1,
+            organizer=self.user1,
+            title="Cuộc họp hôm qua",
+            date=yesterday,
+            start_time=time(9, 0),
+            end_time=time(10, 0),
+            attendees_count=5,
+            status=DatPhongHop.Status.CONFIRMED,
+        )
+        # 1. GET chi tiết lịch họp -> trạng thái động trả về COMPLETED / hoan_thanh
+        res = self.client.get(f"/api/meeting-bookings/{past_booking.id}/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["status"], "COMPLETED")
+        self.assertEqual(res.data["trang_thai"], "hoan_thanh")
+
+        # 2. Lọc theo ?status=hoan_thanh -> tìm thấy lịch này
+        res_list = self.client.get("/api/meeting-bookings/?status=hoan_thanh")
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+        ids = [item["id"] for item in res_list.data.get("results", [])]
+        self.assertIn(past_booking.id, ids)
+
+        # 3. Lọc theo ?status=da_dat -> không chứa lịch này
+        res_confirmed = self.client.get("/api/meeting-bookings/?status=da_dat")
+        self.assertEqual(res_confirmed.status_code, status.HTTP_200_OK)
+        confirmed_ids = [item["id"] for item in res_confirmed.data.get("results", [])]
+        self.assertNotIn(past_booking.id, confirmed_ids)
+
+    def test_cross_day_booking_rejected(self):
+        """Đặt lịch vắt qua ngày hôm sau phải bị từ chối với 400 Bad Request."""
+        self.client.force_authenticate(user=self.user2)
+        payload = {
+            "room": self.room1.id,
+            "title": "Họp Xuyên Đêm",
+            "thoi_gian_bat_dau": (self.base_time + timedelta(hours=23)).isoformat(),
+            "thoi_gian_ket_thuc": (self.base_time + timedelta(hours=25)).isoformat(),
+            "attendees_count": 5,
+        }
+        res = self.client.post("/api/meeting-bookings/", payload)
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 
