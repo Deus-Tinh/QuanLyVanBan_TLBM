@@ -1,7 +1,7 @@
 -- =====================================================================
 -- THAY ĐỔI PHASE 6c TRÌNH KÝ (Nhóm 5; issue #79; đánh dấu [6c] tại vị trí)
 -- Căn cứ: docs/modules/05_signing_workflow/danh-gia-nghiep-vu-va-de-xuat.md mục 2 (đã chốt ở PR #78),
---   plan-trien-khai-theo-phase.md Phase 6c; migration signing 0004_bo_kieu_ky_chi_nhan_van_ban_di.
+--   plan-trien-khai-theo-phase.md Phase 6c; migration signing 0005_bo_kieu_ky_chi_nhan_van_ban_di.
 --   1) signing_process bỏ cột kieu_ky_mac_dinh; signing_request bỏ cột kieu_ky.
 --      Cấp ký luôn tuần tự theo thu_tu, người trong cùng cấp ký song song.
 --      Lý do bỏ cách thức TUAN_TU/SONG_SONG cho toàn hồ sơ:
@@ -18,7 +18,7 @@
 --      'signing_kieuky' (kieu_ky, kieu_ky_mac_dinh là VARCHAR); pg_depend không có đối tượng phụ thuộc.
 --   3) Không đổi document_kind: trình ký chỉ nhận 'vanbandi', kiểm ở tầng ứng dụng; giữ ENUM chung
 --      vì documents_view_log và task_congviec vẫn dùng 'vanbanden'.
--- Quy mô sau thay đổi: 54 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
+-- Quy mô sau thay đổi (đã ghép PR #92): 55 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
 -- =====================================================================
 -- THAY ĐỔI BỎ VĂN BẢN MẬT (GVHD đã chốt bỏ văn bản mật; đánh dấu [BỎ MẬT] tại vị trí; giữ nhãn phiên bản)
 -- Bối cảnh: khách hàng là doanh nghiệp bảo hiểm; "văn bản mật" được hiểu là tài liệu nội bộ
