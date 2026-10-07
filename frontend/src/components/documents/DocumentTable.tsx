@@ -276,7 +276,17 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 </div>
                               );
                             }
-                            return null;
+                            // Khi văn bản đã hết hiệu lực theo ngày nhưng vẫn lưu giữ lịch sử thay thế
+                            return (
+                              <div
+                                key={idx}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-secondary bg-surface-elevated px-2 py-0.5 rounded-md border border-border-subtle"
+                                title={`Văn bản liên quan: ${targetSoHieu}`}
+                              >
+                                <i className="fa-solid fa-repeat text-muted text-xs" />
+                                <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
+                              </div>
+                            );
                           });
                         })()}
                       </div>
