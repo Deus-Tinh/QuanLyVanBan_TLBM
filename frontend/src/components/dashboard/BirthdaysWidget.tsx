@@ -10,47 +10,12 @@ export interface BirthdayEmployee {
   isToday?: boolean;
 }
 
-const DEFAULT_BIRTHDAYS: BirthdayEmployee[] = [
-  {
-    id: 1,
-    name: 'Nguyễn Văn An',
-    birthdate: '17/09 (Hôm nay)',
-    position: 'Trưởng phòng Nghiệp vụ',
-    department: 'Ban Quản lý Văn bản',
-    isToday: true,
-  },
-  {
-    id: 2,
-    name: 'Trần Thị Mai',
-    birthdate: '17/09 (Hôm nay)',
-    position: 'Chuyên viên chính',
-    department: 'Văn phòng Hành chính',
-    isToday: true,
-  },
-  {
-    id: 3,
-    name: 'Lê Hoàng Long',
-    birthdate: '18/09 (Ngày mai)',
-    position: 'Phó Trưởng ban',
-    department: 'Ban CNTT & CĐS',
-    isToday: false,
-  },
-  {
-    id: 4,
-    name: 'Phạm Minh Tuấn',
-    birthdate: '18/09 (Ngày mai)',
-    position: 'Cán bộ Lưu trữ',
-    department: 'Trung tâm Lưu trữ',
-    isToday: false,
-  },
-];
-
 interface BirthdaysWidgetProps {
   birthdays?: BirthdayEmployee[];
 }
 
 export default function BirthdaysWidget({
-  birthdays = DEFAULT_BIRTHDAYS,
+  birthdays = [],
 }: BirthdaysWidgetProps) {
   const { t } = useTranslation();
 
