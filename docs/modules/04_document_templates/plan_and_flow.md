@@ -180,7 +180,7 @@ Cấp 3: Chi tiết tài liệu (TaiLieuChiTiet - table `records_chitiettailieu`
 - [x] Endpoint chuyển trạng thái nhanh (`/documents/{id}/toggle-validity/`)
 - [x] Validator file đính kèm: chặn file vượt 20MB và sai phần mở rộng
 - [x] Bộ lọc quyền nội bộ theo `don_vi_id` (`TAT_CA` vs `NOI_BO_PHONG_BAN`)
-- [x] Router đăng ký API dưới tiền tố `/api/document-templates/`
+- [x] Router đăng ký API dưới tiền tố `/api/resources/` (đã gỡ alias `/api/document-templates/` theo chốt tại issue #93)
 
 ### Phase 3: Thiết kế lại Giao diện & Tối ưu Trải nghiệm Frontend (ĐÃ XONG)
 - [x] Xây dựng UI phân cấp 3 tầng trực quan: Tab Cấp 1 có cuộn ◄ ►, Chip Cấp 2, Bảng Cấp 3

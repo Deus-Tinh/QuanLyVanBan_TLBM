@@ -17,7 +17,6 @@ urlpatterns = [
 
     # ── Module Nhóm 4 — Tài liệu & Biểu mẫu (Nguyễn Chí Tín) ───────────────
     path("api/resources/", include("document_templates.urls")),
-    path("api/document-templates/", include("document_templates.urls")),
 ]
 
 from django.conf import settings
