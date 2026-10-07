@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ResourceCategory, ResourceType } from '@app-types/resource';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
+import { useTranslation } from '@i18n/translate';
 
 export interface CategoryManagementModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   onSaveType,
   onDeleteType,
 }) => {
+  const { t } = useTranslation();
   // 2 tab chính quản lý: "category" (Thư mục) | "type" (Loại tài liệu)
   const [activeTab, setActiveTab] = useState<'category' | 'type'>('category');
 
@@ -365,10 +367,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           <div>
             <h2 className="text-base sm:text-lg font-bold text-main flex items-center gap-2">
               <i className="fa-solid fa-folder-tree text-primary text-base" />
-              <span>Quản Lý Thư Mục &amp; Loại Tài Liệu</span>
+              <span>{t('resourceManagement.catModalTitle')}</span>
             </h2>
             <p className="text-xs text-secondary mt-0.5">
-              Thiết lập cấu trúc Thư mục (Cấp 1) và danh mục phân loại biểu mẫu nội bộ (Cấp 2)
+              {t('resourceManagement.catModalSubtitle')}
             </p>
           </div>
 
@@ -397,7 +399,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             }`}
           >
             <i className="fa-solid fa-folder" />
-            <span>Thư mục</span>
+            <span>{t('resourceManagement.tabFolders')}</span>
             <span
               className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                 activeTab === 'category'
@@ -422,7 +424,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             }`}
           >
             <i className="fa-solid fa-tags" />
-            <span>Loại tài liệu</span>
+            <span>{t('resourceManagement.tabTypes')}</span>
             <span
               className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                 activeTab === 'type'
@@ -464,7 +466,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Tìm theo tên hoặc ký hiệu thư mục..."
+                    placeholder={t('resourceManagement.catSearchPlaceholder')}
                     value={catSearch}
                     onChange={(e) => setCatSearch(e.target.value)}
                     className="w-full pl-8 pr-8 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary transition-all shadow-2xs"
@@ -487,9 +489,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   icon="fa-plus"
                   onClick={() => handleOpenUnifiedCreate('category')}
                   className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow"
-                  title="Thêm mới Thư mục hoặc Loại tài liệu"
+                  title={t('resourceManagement.addNew')}
                 >
-                  Thêm mới
+                  {t('resourceManagement.addNew')}
                 </Button>
               </div>
 
@@ -498,12 +500,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-surface-elevated font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
                     <tr>
-                      <th className="px-3 py-3 w-16 text-center">STT</th>
-                      <th className="px-3 py-3 w-28">Ký hiệu</th>
-                      <th className="px-4 py-3 min-w-[200px]">Tên thư mục</th>
-                      <th className="px-3 py-3 w-32">Ngày lập</th>
-                      <th className="px-3 py-3 w-28 text-center">Loại con</th>
-                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">Thao tác</th>
+                      <th className="px-3 py-3 w-16 text-center">{t('resourceManagement.colOrder')}</th>
+                      <th className="px-3 py-3 w-28">{t('resourceManagement.colCatCode')}</th>
+                      <th className="px-4 py-3 min-w-[200px]">{t('resourceManagement.colCatName')}</th>
+                      <th className="px-3 py-3 w-32">{t('resourceManagement.colCatDate')}</th>
+                      <th className="px-3 py-3 w-28 text-center">{t('resourceManagement.colCatSubtypes')}</th>
+                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -628,11 +630,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-surface-elevated font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
                     <tr>
-                      <th className="px-4 py-3 min-w-[200px]">Tên loại tài liệu</th>
-                      <th className="px-3 py-3 w-48">Thư mục cha</th>
-                      <th className="px-3 py-3 w-28 text-center">Phạm vi</th>
-                      <th className="px-3 py-3 min-w-[160px]">Ghi chú</th>
-                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">Thao tác</th>
+                      <th className="px-4 py-3 min-w-[200px]">{t('resourceManagement.colTypeName')}</th>
+                      <th className="px-3 py-3 w-48">{t('resourceManagement.colParentCat')}</th>
+                      <th className="px-3 py-3 w-28 text-center">{t('resourceManagement.colScope')}</th>
+                      <th className="px-3 py-3 min-w-[160px]">{t('resourceManagement.colNotes')}</th>
+                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -708,11 +710,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         {/* Footer Modal */}
         <div className="px-6 py-3.5 border-t border-border-subtle bg-surface-elevated flex items-center justify-between shrink-0">
           <span className="text-xs text-muted">
-            Tổng cộng: <strong className="text-main">{categories.length}</strong> thư mục,{' '}
-            <strong className="text-main">{types.length}</strong> loại tài liệu
+            {t('resourceManagement.totalSummary', { catCount: String(categories.length), typeCount: String(types.length) })}
           </span>
           <Button variant="outline" size="sm" onClick={onClose} className="text-xs font-semibold">
-            Đóng
+            {t('resourceManagement.close')}
           </Button>
         </div>
       </div>
@@ -1087,7 +1088,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
           >
             <i className="fa-solid fa-pen-to-square text-primary text-xs" />
-            <span>Sửa</span>
+            <span>{t('resourceManagement.edit')}</span>
           </button>
           <button
             type="button"
@@ -1100,7 +1101,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
           >
             <i className="fa-solid fa-trash-can text-danger text-xs" />
-            <span>Xóa</span>
+            <span>{t('resourceManagement.delete')}</span>
           </button>
         </div>
       )}
@@ -1123,7 +1124,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
           >
             <i className="fa-solid fa-pen-to-square text-primary text-xs" />
-            <span>Sửa</span>
+            <span>{t('resourceManagement.edit')}</span>
           </button>
           <button
             type="button"
@@ -1136,7 +1137,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
           >
             <i className="fa-solid fa-trash-can text-danger text-xs" />
-            <span>Xóa</span>
+            <span>{t('resourceManagement.delete')}</span>
           </button>
         </div>
       )}

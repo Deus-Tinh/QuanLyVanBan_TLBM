@@ -8,6 +8,7 @@ import {
   HienThiType,
 } from '@app-types/resource';
 import { Button } from '@components/common/Button';
+import { useTranslation } from '@i18n/translate';
 
 export interface ResourceFormData {
   dm_tai_lieu: number | '';
@@ -50,6 +51,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   types = [],
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const isEditMode = Boolean(initialData);
 
   // Form State
@@ -322,10 +324,10 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-elevated shrink-0">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-main">
-              {isEditMode ? 'Chỉnh Sửa Tài Liệu & Biểu Mẫu' : 'Thêm Mới Tài Liệu & Biểu Mẫu'}
+              {isEditMode ? t('resourceManagement.formTitleEdit') : t('resourceManagement.formTitleAdd')}
             </h2>
             <p className="text-xs text-secondary mt-0.5">
-              Nhập thông tin theo 4 khối nghiệp vụ chuẩn hoá
+              {t('resourceManagement.formSubtitle')}
             </p>
           </div>
 
@@ -348,7 +350,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 1
               </span>
               <h3 className="text-xs font-bold text-main uppercase tracking-wider">
-                Phân loại tài liệu
+                {t('resourceManagement.block1Classification')}
               </h3>
             </div>
 
@@ -358,7 +360,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 htmlFor="field-dm_tai_lieu"
                 className="text-xs font-semibold text-main block mb-1"
               >
-                Thư mục <span className="text-danger">*</span>
+                {t('resourceManagement.fieldFolder')} <span className="text-danger">*</span>
               </label>
               <select
                 id="field-dm_tai_lieu"
@@ -383,7 +385,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             {/* Loại tài liệu (*) (Multi-select) */}
             <div id="field-loai_tai_lieu">
               <label className="text-xs font-semibold text-main block mb-1">
-                Loại tài liệu <span className="text-danger">*</span>
+                {t('resourceManagement.fieldType')} <span className="text-danger">*</span>
                 <span className="text-muted font-normal text-xs ml-1">(chọn một hoặc nhiều loại)</span>
               </label>
 
@@ -433,7 +435,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 2
               </span>
               <h3 className="text-xs font-bold text-main uppercase tracking-wider">
-                Thông tin văn bản
+                {t('resourceManagement.block2Info')}
               </h3>
             </div>
 
@@ -444,7 +446,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                   htmlFor="field-ky_hieu"
                   className="text-xs font-semibold text-main block mb-1"
                 >
-                  Số ký hiệu
+                  {t('resourceManagement.fieldCode')}
                 </label>
                 <input
                   id="field-ky_hieu"
@@ -465,7 +467,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                   htmlFor="field-ngay_dang"
                   className="text-xs font-semibold text-main block mb-1"
                 >
-                  Ngày đăng <span className="text-danger">*</span>
+                  {t('resourceManagement.fieldPostedDate')} <span className="text-danger">*</span>
                 </label>
                 <input
                   id="field-ngay_dang"
@@ -490,7 +492,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 htmlFor="field-tieu_de"
                 className="text-xs font-semibold text-main block mb-1"
               >
-                Tiêu đề tài liệu <span className="text-danger">*</span>
+                {t('resourceManagement.fieldTitle')} <span className="text-danger">*</span>
               </label>
               <textarea
                 id="field-tieu_de"
@@ -515,7 +517,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 htmlFor="field-noi_ban_hanh"
                 className="text-xs font-semibold text-main block mb-1"
               >
-                Nơi ban hành
+                {t('resourceManagement.fieldIssuingAuthority')}
               </label>
               <input
                 id="field-noi_ban_hanh"
@@ -538,7 +540,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 3
               </span>
               <h3 className="text-xs font-bold text-main uppercase tracking-wider">
-                Hiệu lực &amp; Phạm vi
+                {t('resourceManagement.block4Properties')}
               </h3>
             </div>
 
@@ -701,7 +703,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 4
               </span>
               <h3 className="text-xs font-bold text-main uppercase tracking-wider">
-                Tệp đính kèm {!isEditMode && <span className="text-danger">*</span>}
+                {t('resourceManagement.block3Attachment')} {!isEditMode && <span className="text-danger">*</span>}
               </h3>
             </div>
 
@@ -805,7 +807,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             disabled={isLoading}
             className="text-xs"
           >
-            Hủy
+            {t('resourceManagement.cancel')}
           </Button>
 
           <Button
@@ -817,7 +819,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             disabled={isLoading}
             className="text-xs shadow-sm"
           >
-            {isEditMode ? 'Lưu thay đổi' : 'Lưu tài liệu'}
+            {isEditMode ? t('resourceManagement.saveChanges') : t('resourceManagement.save')}
           </Button>
         </div>
       </div>

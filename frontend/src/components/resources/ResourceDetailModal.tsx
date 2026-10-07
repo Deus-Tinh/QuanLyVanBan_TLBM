@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ResourceItem, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
+import { useTranslation } from '@i18n/translate';
 
 export interface ResourceDetailModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   onDelete,
   onDownloadFile,
 }) => {
+  const { t } = useTranslation();
   // Lắng nghe phím ESC để đóng Modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -100,25 +102,25 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
       case 'CON_HIEU_LUC':
         return (
           <Badge variant="success" size="md" withDot>
-            Còn hiệu lực
+            {t('resourceManagement.statusActive')}
           </Badge>
         );
       case 'CON_HIEU_LUC_1_PHAN':
         return (
           <Badge variant="warning" size="md" withDot>
-            Còn hiệu lực 1 phần
+            {t('resourceManagement.statusPartial')}
           </Badge>
         );
       case 'HET_HIEU_LUC':
         return (
           <Badge variant="danger" size="md" withDot>
-            Hết hiệu lực
+            {t('resourceManagement.statusExpired')}
           </Badge>
         );
       case 'HET_VA_THAY_THE':
         return (
           <Badge variant="warning" size="md" withDot>
-            Hết và thay thế
+            {t('resourceManagement.statusExpired')}
           </Badge>
         );
       default:
@@ -177,7 +179,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm flex items-start gap-2.5">
               <i className="fa-solid fa-triangle-exclamation text-base shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <span className="font-semibold block">Văn bản này đã hết hiệu lực và được thay thế bởi:</span>
+                <span className="font-semibold block">{t('resourceManagement.expiredBannerReplaced')}</span>
                 {item.link_thay_the ? (
                   <a
                     href={item.link_thay_the}
@@ -185,7 +187,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 font-bold underline hover:opacity-80"
                   >
-                    <span>Mở văn bản mới &rarr;</span>
+                    <span>{t('resourceManagement.viewReplacement')}</span>
                     <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
                   </a>
                 ) : (
@@ -198,14 +200,14 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           {item.hieu_luc === 'HET_HIEU_LUC' && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs sm:text-sm flex items-center gap-2.5">
               <i className="fa-solid fa-circle-xmark text-base shrink-0" />
-              <span>Văn bản này hiện đã hết hiệu lực thi hành.</span>
+              <span>{t('resourceManagement.expiredBannerNormal')}</span>
             </div>
           )}
 
           {item.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm flex items-center gap-2.5">
               <i className="fa-solid fa-circle-info text-base shrink-0" />
-              <span>Văn bản này hiện chỉ còn hiệu lực một phần.</span>
+              <span>{t('resourceManagement.partialBanner')}</span>
             </div>
           )}
 
@@ -218,7 +220,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-6 text-xs sm:text-sm">
               {/* Thư mục */}
               <div>
-                <span className="text-xs text-muted block mb-0.5">Thư mục</span>
+                <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldFolder')}</span>
                 <span className="font-semibold text-main">
                   {item.dm_tai_lieu_name || `Thư mục #${item.dm_tai_lieu}`}
                 </span>
@@ -226,7 +228,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
 
               {/* Loại tài liệu (tag) */}
               <div>
-                <span className="text-xs text-muted block mb-1">Loại tài liệu</span>
+                <span className="text-xs text-muted block mb-1">{t('resourceManagement.fieldType')}</span>
                 <div className="flex flex-wrap gap-1.5">
                   {item.loai_tai_lieu_names && item.loai_tai_lieu_names.length > 0 ? (
                     item.loai_tai_lieu_names.map((name, i) => (
@@ -245,20 +247,20 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
 
               {/* Nơi ban hành */}
               <div>
-                <span className="text-xs text-muted block mb-0.5">Nơi ban hành</span>
+                <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldIssuingAuthority')}</span>
                 <span className="text-main font-medium">{item.noi_ban_hanh || '-'}</span>
               </div>
 
               {/* Ngày đăng */}
               <div>
-                <span className="text-xs text-muted block mb-0.5">Ngày đăng</span>
+                <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldPostedDate')}</span>
                 <span className="font-mono text-main">{formatDate(item.ngay_dang)}</span>
               </div>
 
               {/* Ngày hết hiệu lực (nếu có) */}
               {item.ngay_het_hieu_luc && (
                 <div>
-                  <span className="text-xs text-muted block mb-0.5">Ngày hết hiệu lực</span>
+                  <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldExpirationDate')}</span>
                   <span className="font-mono text-danger font-medium">
                     {formatDate(item.ngay_het_hieu_luc)}
                   </span>
@@ -362,7 +364,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                 }}
                 className="text-xs"
               >
-                Sửa
+                {t('resourceManagement.edit')}
               </Button>
             )}
 
@@ -377,7 +379,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                 }}
                 className="text-xs text-danger border-danger/30 hover:bg-danger-subtle"
               >
-                Xóa
+                {t('resourceManagement.delete')}
               </Button>
             )}
           </div>
@@ -391,7 +393,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                 onClick={() => onDownloadFile?.(item)}
                 className="text-xs shadow-xs"
               >
-                Tải về tệp
+                {t('resourceManagement.download')}
               </Button>
             )}
 
@@ -401,7 +403,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
               onClick={onClose}
               className="text-xs"
             >
-              Đóng
+              {t('resourceManagement.close')}
             </Button>
           </div>
         </div>

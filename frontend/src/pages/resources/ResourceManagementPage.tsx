@@ -11,6 +11,8 @@ import { ResourceDetailModal } from '@components/resources/ResourceDetailModal';
 import { ResourceFormModal, ResourceFormData } from '@components/resources/ResourceFormModal';
 import { CategoryManagementModal } from '@components/resources/CategoryManagementModal';
 import { Button } from '@components/common/Button';
+import { useTranslation } from '@i18n/translate';
+import LanguageSwitcher from '@components/layout/LanguageSwitcher';
 
 // ============================================================================
 // DỮ LIỆU MẪU CHUẨN ĐẶC TẢ TỪ THẦY HƯỚNG DẪN (IMAGE 1 & IMAGE 2)
@@ -864,6 +866,7 @@ const getInitialFilterState = (searchParams: URLSearchParams): PersistedResource
 };
 
 export default function ResourceManagementPage() {
+  const { t, currentLang } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilterState = useMemo(() => getInitialFilterState(searchParams), []);
 
@@ -1409,14 +1412,17 @@ export default function ResourceManagementPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-5 sm:p-6 rounded-2xl border border-border-subtle shadow-xs">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-main tracking-tight">
-            Kho Tài Liệu &amp; Biểu Mẫu Dùng Chung
+            {t('resourceManagement.pageTitle')}
           </h1>
           <p className="text-xs text-secondary mt-1">
-            Tra cứu, khai thác và quản lý biểu mẫu, quy định chuẩn trong toàn Tổng công ty Bảo Long
+            {t('resourceManagement.pageSubtitle')}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* Nút chuyển đổi ngôn ngữ VN / EN ngay trên trang Resources */}
+          <LanguageSwitcher />
+
           {/* Nút Quản lý Danh mục (Thao tác cấu hình phụ) */}
           <Button
             variant="secondary"
@@ -1424,9 +1430,9 @@ export default function ResourceManagementPage() {
             icon="fa-folder-tree"
             onClick={() => setIsCategoryModalOpen(true)}
             className="h-10 px-4 rounded-xl text-xs sm:text-sm font-semibold border-border-subtle shadow-2xs hover:border-primary/50 hover:text-primary transition-all"
-            title="Quản lý danh mục thư mục và các loại biểu mẫu dùng chung"
+            title={t('resourceManagement.categoriesBtn')}
           >
-            Quản lý danh mục
+            {t('resourceManagement.categoriesBtn')}
           </Button>
 
           {/* Nút Thêm mới tài liệu (Thao tác chính nổi bật) */}
@@ -1436,9 +1442,9 @@ export default function ResourceManagementPage() {
             icon="fa-plus"
             onClick={handleAddNew}
             className="h-10 px-4.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:shadow-glow transition-all"
-            title="Thêm mới văn bản, tài liệu hoặc biểu mẫu mới vào kho"
+            title={t('resourceManagement.addDocumentBtn')}
           >
-            Thêm mới tài liệu
+            {t('resourceManagement.addDocumentBtn')}
           </Button>
         </div>
       </div>
@@ -1464,7 +1470,7 @@ export default function ResourceManagementPage() {
                   aria-current={isAll ? 'page' : undefined}
                 >
                   <i className={`fa-solid fa-layer-group text-xs ${isAll ? 'text-primary' : 'text-muted'}`} />
-                  <span>Tất cả</span>
+                  <span>{t('resourceManagement.all')}</span>
                   <span
                     className={`px-1.5 py-0.5 text-[11px] rounded-full font-bold ${
                       isAll
@@ -1577,7 +1583,7 @@ export default function ResourceManagementPage() {
                 >
                   <span className="flex items-center gap-2 truncate">
                     <i className="fa-solid fa-layer-group text-xs" />
-                    <span className="truncate">Tất cả danh mục</span>
+                    <span className="truncate">{t('resourceManagement.allFolders')}</span>
                   </span>
                   <span
                     className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
@@ -1658,7 +1664,7 @@ export default function ResourceManagementPage() {
             <div className="w-[130px] shrink-0 flex items-center justify-center px-3 border-r border-border-subtle rounded-bl-xl">
               <span className="text-[11px] text-muted font-bold uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                 <i className="fa-solid fa-sitemap text-[10px] text-primary" />
-                Loại tài liệu:
+                {t('resourceManagement.fieldType')}:
               </span>
             </div>
 
@@ -1689,7 +1695,7 @@ export default function ResourceManagementPage() {
                     : 'bg-surface text-secondary border border-border-subtle hover:border-primary hover:text-primary'
                 }`}
               >
-                <span>Tất cả</span>
+                <span>{t('resourceManagement.all')}</span>
                 <span className={`text-[10px] font-bold ${
                   selectedType === 'all' ? 'text-white/80' : 'text-muted'
                 }`}>
@@ -1879,7 +1885,7 @@ export default function ResourceManagementPage() {
             <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
             <input
               type="text"
-              placeholder="Tìm theo tiêu đề, ký hiệu, nơi ban hành..."
+              placeholder={t('resourceManagement.searchPlaceholder')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full h-10 pl-9 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary placeholder:text-muted transition-colors"
@@ -1913,10 +1919,10 @@ export default function ResourceManagementPage() {
               className="w-full h-10 pl-3 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
               aria-label="Lọc theo năm ban hành"
             >
-              <option value="all">Tất cả năm</option>
+              <option value="all">{t('resourceManagement.allYears')}</option>
               {availableYears.map((yr) => (
                 <option key={yr} value={yr}>
-                  Năm {yr}
+                  {currentLang === 'en' ? `Year ${yr}` : `Năm ${yr}`}
                 </option>
               ))}
             </select>
@@ -1934,11 +1940,11 @@ export default function ResourceManagementPage() {
               className="w-full h-10 pl-3 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
               aria-label="Lọc theo tình trạng hiệu lực"
             >
-              <option value="all">Tất cả hiệu lực</option>
-              <option value="CON_HIEU_LUC">🟢 Còn hiệu lực</option>
-              <option value="CON_HIEU_LUC_1_PHAN">🟡 Còn hiệu lực 1 phần</option>
-              <option value="HET_HIEU_LUC">🔴 Hết hiệu lực</option>
-              <option value="HET_VA_THAY_THE">🟠 Hết và thay thế</option>
+              <option value="all">{t('resourceManagement.allStatuses')}</option>
+              <option value="CON_HIEU_LUC">🟢 {t('resourceManagement.statusActive')}</option>
+              <option value="CON_HIEU_LUC_1_PHAN">🟡 {t('resourceManagement.statusPartial')}</option>
+              <option value="HET_HIEU_LUC">🔴 {t('resourceManagement.statusExpired')}</option>
+              <option value="HET_VA_THAY_THE">🟠 {t('resourceManagement.statusExpired')}</option>
             </select>
             <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-xs" />
           </div>
@@ -1948,7 +1954,7 @@ export default function ResourceManagementPage() {
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border-subtle text-xs">
             <div className="flex flex-wrap items-center gap-1.5 text-secondary">
-              <span className="text-muted font-medium mr-0.5">Đang lọc:</span>
+              <span className="text-muted font-medium mr-0.5">{t('resourceManagement.filteringBadge')}</span>
               {searchTerm && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
                   <span>Tìm: "{searchTerm}"</span>
@@ -2022,7 +2028,7 @@ export default function ResourceManagementPage() {
               className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-danger hover:bg-danger-subtle rounded-md transition-colors font-semibold cursor-pointer shrink-0"
             >
               <i className="fa-solid fa-rotate-left text-[11px]" />
-              <span>Xóa bộ lọc</span>
+              <span>{t('resourceManagement.clearFilter')}</span>
             </button>
           </div>
         )}
@@ -2046,11 +2052,11 @@ export default function ResourceManagementPage() {
           icon="fa-file-excel"
           onClick={handleExportExcel}
           isLoading={isExporting}
-          title="Xuất danh sách theo bộ lọc hiện tại"
-          aria-label="Xuất danh sách theo bộ lọc hiện tại"
+          title={t('resourceManagement.exportTooltip')}
+          aria-label={t('resourceManagement.exportTooltip')}
           className="text-xs font-semibold"
         >
-          Xuất Excel
+          {t('resourceManagement.exportExcel')}
         </Button>
       </div>
 
@@ -2140,29 +2146,29 @@ export default function ResourceManagementPage() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-main">
-                  Xác nhận xóa tài liệu
+                  {t('resourceManagement.confirmDeleteTitle')}
                 </h3>
                 <p className="text-xs text-secondary mt-0.5">
-                  Xóa tài liệu {deleteItem.ky_hieu || deleteItem.tieu_de}? Hành động này không thể hoàn tác.
+                  {t('resourceManagement.confirmDeleteDesc', { code: deleteItem.ky_hieu || deleteItem.tieu_de })}
                 </p>
               </div>
             </div>
 
             <div className="p-3.5 bg-surface-elevated rounded-xl border border-border-subtle text-xs space-y-1.5">
-              <div className="text-muted font-medium">Tài liệu cần xóa:</div>
+              <div className="text-muted font-medium">{t('resourceManagement.docToDelete')}</div>
               <div className="font-semibold text-main text-sm line-clamp-2">
                 {deleteItem.tieu_de}
               </div>
               {deleteItem.ky_hieu && (
                 <div className="font-mono text-muted">
-                  Ký hiệu: <span className="text-main font-semibold">{deleteItem.ky_hieu}</span>
+                  {t('resourceManagement.colCode')}: <span className="text-main font-semibold">{deleteItem.ky_hieu}</span>
                 </div>
               )}
             </div>
 
             <div className="text-xs text-danger font-medium flex items-center gap-1.5">
               <i className="fa-solid fa-circle-exclamation text-xs" />
-              <span>Lưu ý: Dữ liệu sau khi xóa sẽ không thể phục hồi lại.</span>
+              <span>{t('resourceManagement.confirmDeleteNote')}</span>
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border-subtle">
@@ -2175,7 +2181,7 @@ export default function ResourceManagementPage() {
                   setDeleteItem(null);
                 }}
               >
-                Hủy bỏ
+                {t('resourceManagement.cancel')}
               </Button>
               <Button
                 variant="danger"
@@ -2184,7 +2190,7 @@ export default function ResourceManagementPage() {
                 isLoading={isDeleting}
                 onClick={handleConfirmDelete}
               >
-                Xác nhận xóa
+                {t('resourceManagement.delete')}
               </Button>
             </div>
           </div>

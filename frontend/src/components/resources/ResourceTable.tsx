@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ResourceItem, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
+import { useTranslation } from '@i18n/translate';
 
 export interface ResourceTableProps {
   items: ResourceItem[];
@@ -40,6 +41,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   onClearFilters,
   onDrillDown,
 }) => {
+  const { t } = useTranslation();
   // Dropdown menu "⋯" theo từng dòng
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   // Vị trí fixed của dropdown menu — giải quyết lỗi bị clip bởi overflow-x-auto
@@ -138,31 +140,30 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     }
   };
 
-  // Badge trạng thái hiệu lực
   const renderStatusBadge = (hieuLuc: HieuLucType) => {
     switch (hieuLuc) {
       case 'CON_HIEU_LUC':
         return (
           <Badge variant="success" size="sm" withDot>
-            Còn hiệu lực
+            {t('resourceManagement.statusActive')}
           </Badge>
         );
       case 'CON_HIEU_LUC_1_PHAN':
         return (
           <Badge variant="warning" size="sm" withDot>
-            Còn hiệu lực 1 phần
+            {t('resourceManagement.statusPartial')}
           </Badge>
         );
       case 'HET_HIEU_LUC':
         return (
           <Badge variant="danger" size="sm" withDot>
-            Hết hiệu lực
+            {t('resourceManagement.statusExpired')}
           </Badge>
         );
       case 'HET_VA_THAY_THE':
         return (
           <Badge variant="warning" size="sm" withDot>
-            Hết và thay thế
+            {t('resourceManagement.statusExpired')}
           </Badge>
         );
       default:
@@ -256,13 +257,13 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         <table className="w-full text-left text-sm border-collapse min-w-[850px]">
           <thead className="bg-surface-elevated text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle select-none">
             <tr>
-              <th className="px-4 py-3.5 w-36 min-w-[130px] whitespace-nowrap">Ký hiệu</th>
-              <th className="px-4 py-3.5 min-w-[260px]">Tiêu đề</th>
-              <th className="px-4 py-3.5 w-48 min-w-[170px]">Nơi ban hành</th>
-              <th className="px-3.5 py-3.5 w-32 min-w-[110px] text-center whitespace-nowrap">Ngày đăng</th>
-              <th className="px-4 py-3.5 w-44 min-w-[150px] text-center whitespace-nowrap">Hiệu lực</th>
-              <th className="px-3.5 py-3.5 w-40 min-w-[140px] text-center whitespace-nowrap">Tệp</th>
-              <th className="px-3.5 py-3.5 w-20 min-w-[80px] text-center whitespace-nowrap">Thao tác</th>
+              <th className="px-4 py-3.5 w-36 min-w-[130px] whitespace-nowrap">{t('resourceManagement.colCode')}</th>
+              <th className="px-4 py-3.5 min-w-[260px]">{t('resourceManagement.colTitle')}</th>
+              <th className="px-4 py-3.5 w-48 min-w-[170px]">{t('resourceManagement.colAuthority')}</th>
+              <th className="px-3.5 py-3.5 w-32 min-w-[110px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
+              <th className="px-4 py-3.5 w-44 min-w-[150px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
+              <th className="px-3.5 py-3.5 w-40 min-w-[140px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
+              <th className="px-3.5 py-3.5 w-20 min-w-[80px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -331,10 +332,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     </div>
                     <div className="max-w-sm space-y-1">
                       <h4 className="text-base font-semibold text-main">
-                        Không có tài liệu phù hợp
+                        {t('resourceManagement.noMatchTitle')}
                       </h4>
                       <p className="text-xs text-secondary">
-                        Thử điều chỉnh từ khóa hoặc xóa các bộ lọc để xem toàn bộ tài liệu trong thư mục.
+                        {t('resourceManagement.noMatchDesc')}
                       </p>
                     </div>
                     {onClearFilters && (
@@ -344,7 +345,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                         className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-subtle text-primary border border-primary/30 hover:bg-primary/15 transition-colors cursor-pointer"
                       >
                         <i className="fa-solid fa-rotate-left text-[11px]" />
-                        <span>Xóa bộ lọc</span>
+                        <span>{t('resourceManagement.clearFilter')}</span>
                       </button>
                     )}
                   </div>
@@ -594,7 +595,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                               aria-label="Chỉnh sửa tài liệu"
                             >
                               <i className="fa-solid fa-pen-to-square text-muted text-xs" />
-                              <span>Chỉnh sửa</span>
+                              <span>{t('resourceManagement.edit')}</span>
                             </button>
                           )}
 
@@ -611,7 +612,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                               aria-label="Xóa tài liệu"
                             >
                               <i className="fa-solid fa-trash-can text-danger text-xs" />
-                              <span>Xóa tài liệu</span>
+                              <span>{t('resourceManagement.delete')}</span>
                             </button>
                           )}
                         </div>
@@ -641,7 +642,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
             <option value={20}>20 dòng</option>
             <option value={50}>50 dòng</option>
           </select>
-          <span className="font-medium">/ trang</span>
+          <span className="font-medium">/ {t('resourceManagement.rowsPerPage')}</span>
           {totalCount > 0 && (
             <span className="hidden sm:inline text-muted pl-1">
               (Bản ghi <strong className="text-main font-semibold">{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalCount)}</strong> trong tổng số <strong className="text-main font-semibold">{totalCount}</strong>)
