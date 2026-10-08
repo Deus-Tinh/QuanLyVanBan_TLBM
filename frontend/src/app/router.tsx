@@ -8,8 +8,17 @@ import AiAssistantPage from '@pages/ai/AiAssistantPage';
 import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
+import OrganizationsPage from '@pages/organizations/OrganizationsPage';
+import EmployeesPage from '@pages/employees/EmployeesPage';
+import PositionsPage from '@pages/positions/PositionsPage';
+import RolesPage from '@pages/roles/RolesPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
 import TasksPage from '../modules/work/pages/TasksPage';
+import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
+import BirthdayPage from '@pages/birthdays/BirthdayPage';
+
+// Phân hệ Trình ký (Nhóm 5): tải lười để tách khỏi bundle chính
+const SigningModule = React.lazy(() => import('@pages/signing/SigningModule'));
 
 interface RouterProps {
   currentTheme: ThemeMode;
@@ -79,19 +88,26 @@ export default function AppRouter({
 
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
         <Route path="/records" element={<SyllabusPreview activePage="records" />} />
-        <Route path="/resources" element={<SyllabusPreview activePage="resources" />} />
+        <Route path="/resources" element={<ResourceManagementPage />} />
 
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}
-        <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
+        <Route
+          path="/approvals/*"
+          element={
+            <React.Suspense fallback={null}>
+              <SigningModule />
+            </React.Suspense>
+          }
+        />
         <Route path="/tasks" element={<TasksPage />} />
         <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
-        <Route path="/birthdays" element={<SyllabusPreview activePage="birthdays" />} />
+        <Route path="/birthdays" element={<BirthdayPage />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}
-        <Route path="/organizations" element={<SyllabusPreview activePage="organizations" />} />
-        <Route path="/employees" element={<SyllabusPreview activePage="employees" />} />
-        <Route path="/positions" element={<SyllabusPreview activePage="positions" />} />
-        <Route path="/roles" element={<SyllabusPreview activePage="roles" />} />
+        <Route path="/organizations" element={<OrganizationsPage />} />
+        <Route path="/employees" element={<EmployeesPage />} />
+        <Route path="/positions" element={<PositionsPage />} />
+        <Route path="/roles" element={<RolesPage />} />
 
         {/* Tiện ích Cá nhân & Trợ lý AI (Nhóm 1 phụ trách) */}
         <Route path="/ai-assistant" element={<AiAssistantPage />} />

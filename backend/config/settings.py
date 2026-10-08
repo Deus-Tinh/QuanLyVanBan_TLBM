@@ -14,11 +14,16 @@ import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Tải biến môi trường từ .env
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 # Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
 sys.path.insert(0, str(BASE_DIR / "apps"))
@@ -50,12 +55,23 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    "django_filters",
     # Các app nghiệp vụ
     "accounts",
     "dashboard",
     "birthdays",
     "work",
+    "signing",
+    "document_templates",
+    "organizations",
+    "authorization",
 ]
+
+# Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo SQL_Fix4: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -100,38 +116,19 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-# Đọc file .env ở thư mục gốc dự án (nếu có) để lấy thông tin kết nối, khóa bí mật...
-try:
-    from dotenv import load_dotenv
+TESTING = "test" in sys.argv
 
-    load_dotenv(BASE_DIR.parent / ".env")
-except ImportError:
-    pass
+DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
 
-
-# Cấu hình Database: Ưu tiên PostgreSQL nếu môi trường có psycopg/psycopg2, ngược lại dùng SQLite nội bộ
-USE_POSTGRES = False
-try:
-    import psycopg2  # noqa: F401
-    USE_POSTGRES = True
-except ImportError:
-    try:
-        import psycopg  # noqa: F401
-        USE_POSTGRES = True
-    except ImportError:
-        USE_POSTGRES = False
-
-if USE_POSTGRES:
-    # Thông tin kết nối đọc từ biến môi trường / file .env (xem .env.example).
-    # KHÔNG ghi mật khẩu thẳng vào file này vì settings.py được đẩy lên GitHub chung.
+if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("POSTGRES_DB", "quanlyvanban_db"),
-            "USER": os.environ.get("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
-            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "NAME": os.getenv("DB_NAME", "qlvb_db"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
         }
     }
 else:
@@ -179,9 +176,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
-# Media files (file upload)
-MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Media files (File uploads)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR.parent / "media"
 
 
 # CORS — cho phép frontend Vite gọi API khi phát triển
@@ -224,6 +221,21 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ),
 }
+
+# ─────────────────────────────────────────────────
+# Trình ký — thư mục gốc chứa tệp văn bản (adapter filesystem)
+# ─────────────────────────────────────────────────
+SIGNING_DOCUMENT_ROOT = os.environ.get("SIGNING_DOCUMENT_ROOT", "")
+
+# Trình ký — bí mật máy chủ để băm mã xác minh PIN và mã hóa k_srv (plan mục 3.4).
+# Bắt buộc đặt riêng trên Staging/Production; để trống thì dùng SECRET_KEY (chỉ cho môi trường dev).
+# Đổi giá trị này làm mọi PIN đã đặt mất hiệu lực (người dùng phải đặt lại).
+SIGNING_PIN_SECRET = os.environ.get("SIGNING_PIN_SECRET", "")
+
+# Trình ký — phông chữ có dấu tiếng Việt để in tệp PDF hoàn tất (Phase 10). Để trống thì tự dò phông hệ thống
+# (DejaVu Sans, Noto Sans, Liberation Sans, Arial); không có phông nào thì tạo tệp báo lỗi `thieu_phong_chu`.
+SIGNING_PDF_FONT = os.environ.get("SIGNING_PDF_FONT", "")
+SIGNING_PDF_FONT_BOLD = os.environ.get("SIGNING_PDF_FONT_BOLD", "")
 
 # ─────────────────────────────────────────────────
 # SimpleJWT — Cấu hình token
