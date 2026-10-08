@@ -49,6 +49,8 @@ class Command(BaseCommand):
             raise CommandError(
                 "Cần cấu hình email backend dạng SMTP trước khi gửi email sinh nhật."
             )
+        if current_backend == smtp_backend and not getattr(settings, "DEFAULT_FROM_EMAIL", "").strip():
+            raise CommandError("Cần cấu hình DEFAULT_FROM_EMAIL trước khi gửi email sinh nhật.")
 
         if options["date"]:
             try:
@@ -86,6 +88,7 @@ class Command(BaseCommand):
             f"Đã gửi: {results['sent_count']} | "
             f"Bỏ qua: {results['skipped_count']} | "
             f"Chờ gửi lại: {results.get('retry_count', 0)} | "
+            f"SENDING kẹt cần đối soát: {results.get('stale_failed_count', 0)} | "
             f"Thất bại: {results['failed_count']}"
         )
         _safe_write(self.stdout.write, summary)

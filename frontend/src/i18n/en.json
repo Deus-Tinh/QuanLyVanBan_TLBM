@@ -1091,5 +1091,11 @@
     "nextYear": "Next year",
     "previousDecade": "Previous 12 years",
     "nextDecade": "Next 12 years"
+  },
+  "birthdays": {
+    "messages": {
+      "permissionDenied": "You do not have permission to view birthday email logs.",
+      "invalidStatus": "The birthday email log status is invalid."
+    }
   }
 }
