@@ -19,6 +19,7 @@ SYSTEM_TABLES = {"django_migrations", "django_content_type", "django_session", "
 CORE_APPS = {"auth", "organizations", "accounts", "authorization", "records"}
 CORE_TARGETS = [("auth", "0012_alter_user_first_name_max_length"), ("organizations", "0003_remove_donvi_created_at_remove_donvi_updated_at_and_more"), ("accounts", "0002_position_import_permission"), ("authorization", "0002_rbac_standard_data"), ("records", "0003_hoso_ten_ho_so_not_blank")]
 SYSTEM_TARGETS = [("contenttypes", "0002_remove_content_type_name"), ("sessions", "0001_initial"), ("token_blacklist", "0013_alter_blacklistedtoken_options_and_more")]
+POST_ADOPTION_TARGETS = [("records", "0004_restore_sqlite_hoso_guards")]
 def require_equal(label, actual, expected):
     if actual != expected:
         if isinstance(actual, set) and isinstance(expected, set):
@@ -127,7 +128,8 @@ def validate_graph(connection):
         if node not in loader.graph.nodes:
             raise ValueError("Required migration is unavailable: " + ".".join(node))
     leaves = set(loader.graph.leaf_nodes())
-    if leaves != set(CORE_TARGETS + SYSTEM_TARGETS):
+    expected_leaves = dict(CORE_TARGETS + SYSTEM_TARGETS + POST_ADOPTION_TARGETS)
+    if leaves != set(expected_leaves.items()):
         raise ValueError("Migration leaves differ from the pinned trial plan.")
     print("MIGRATION_GRAPH = PASS", flush=True)
     return loader
@@ -276,6 +278,10 @@ def bootstrap(connection, manifest, verifier):
             raise ValueError("Core adoption plan no longer contains the verified 22 migrations.")
         # No core RunPython seed/guard replacement runs here. Existing DDL is authoritative.
         executor.migrate(verifier.CORE_TARGETS, fake=True)
+        # Run the SQLite-only repair normally. PostgreSQL executes no schema SQL;
+        # its history still records the forward migration after verified adoption.
+        executor = MigrationExecutor(connection)
+        executor.migrate(verifier.POST_ADOPTION_TARGETS)
         for app, name in verifier.SYSTEM_TARGETS:
             if app != "contenttypes":
                 call_command("migrate", app, name, interactive=False, verbosity=1, skip_checks=True)
@@ -284,7 +290,7 @@ def bootstrap(connection, manifest, verifier):
         if catalog_fingerprint(connection, manifest["tables"]) != before_catalog:
             raise ValueError("Original release schema/guards changed. Bootstrap will roll back.")
         executor = MigrationExecutor(connection)
-        if executor.migration_plan(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS):
+        if executor.migration_plan(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS + verifier.POST_ADOPTION_TARGETS):
             raise ValueError("Pending trial migrations remain. Bootstrap will roll back.")
         applied = set(MigrationRecorder(connection).applied_migrations())
         if applied != set(executor.loader.graph.nodes):
@@ -304,7 +310,7 @@ def bootstrap(connection, manifest, verifier):
 def require_ready(connection, manifest, config, verifier):
     from django.db.migrations.executor import MigrationExecutor
     verifier.validate_graph(connection)
-    if MigrationExecutor(connection).migration_plan(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS):
+    if MigrationExecutor(connection).migration_plan(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS + verifier.POST_ADOPTION_TARGETS):
         raise ValueError("Trial bootstrap is incomplete.")
     verifier.model_preflight(connection)
     record_guards_preflight(connection)
