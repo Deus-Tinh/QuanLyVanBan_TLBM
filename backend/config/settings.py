@@ -52,10 +52,12 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
     # Các app nghiệp vụ
     "accounts",
     "dashboard",
     "birthdays",
+    "document_templates",
     "organizations",
     "authorization",
 ]
@@ -166,6 +168,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Media files (File uploads)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR.parent / "media"
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

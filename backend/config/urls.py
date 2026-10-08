@@ -15,6 +15,9 @@ urlpatterns = [
     # API Tổng quan Dashboard: GET /api/dashboard/overview/
     path("api/dashboard/", include("dashboard.urls", namespace="dashboard")),
 
+    # ── Module Nhóm 4 — Tài liệu & Biểu mẫu (Nguyễn Chí Tín) ───────────────
+    path("api/resources/", include("document_templates.urls")),
+
     # ── Module Nhóm 7 — Quang ─────────────────────────────────────────────
     # API Quản lý Khối & Đơn vị: /api/organizations/...
     path("api/organizations/", include("organizations.urls", namespace="organizations")),
@@ -33,4 +36,10 @@ urlpatterns = [
     # API Sinh nhật: GET /api/birthdays/calendar/, /api/birthdays/day/, ...
     path("api/birthdays/", include("birthdays.urls", namespace="birthdays")),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
