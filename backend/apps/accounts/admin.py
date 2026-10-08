@@ -1,49 +1,28 @@
 from django.contrib import admin
-from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import StaffProfile
+
+from .models import Employee, Position
 
 
-class StaffProfileInline(admin.StackedInline):
-    """Hiển thị StaffProfile ngay trong trang chỉnh sửa User."""
-    model = StaffProfile
-    can_delete = False
-    verbose_name = "Hồ sơ CBNV"
-    verbose_name_plural = "Hồ sơ CBNV"
-    fields = (
-        "full_name", "department", "position",
-        "role", "phone", "birthday", "avatar_url",
+@admin.register(Position)
+class PositionAdmin(admin.ModelAdmin):
+    list_display = ("display_order", "name", "is_public")
+    search_fields = ("name",)
+    ordering = ("display_order",)
+
+
+@admin.register(Employee)
+class EmployeeAdmin(BaseUserAdmin):
+    list_display = ("username", "ho_ten", "email", "don_vi", "chuc_vu", "trang_thai", "is_active")
+    list_filter = ("trang_thai", "is_active", "is_staff", "don_vi")
+    search_fields = ("username", "ho_ten", "email", "sdt")
+    ordering = ("ho_ten",)
+    fieldsets = (
+        (None, {"fields": ("username", "password")}),
+        ("Thông tin CBNV", {"fields": ("ho_ten", "ngay_sinh", "email", "sdt", "don_vi", "chuc_vu", "chuc_danh", "trang_thai", "is_public", "ghi_chu")}),
+        ("Phân quyền", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
     )
-
-
-class UserAdmin(BaseUserAdmin):
-    """User Admin mở rộng để hiển thị inline StaffProfile."""
-    inlines = (StaffProfileInline,)
-    list_display = ("username", "email", "get_full_name_display", "get_role", "is_active")
-
-    def get_full_name_display(self, obj):
-        try:
-            return obj.profile.full_name
-        except StaffProfile.DoesNotExist:
-            return obj.get_full_name() or "(chưa có hồ sơ)"
-    get_full_name_display.short_description = "Họ và tên"
-
-    def get_role(self, obj):
-        try:
-            return obj.profile.get_role_display()
-        except StaffProfile.DoesNotExist:
-            return "—"
-    get_role.short_description = "Quyền hạn"
-
-
-# Đăng ký lại User với UserAdmin mở rộng
-admin.site.unregister(User)
-admin.site.register(User, UserAdmin)
-
-# Đăng ký StaffProfile riêng để có thể quản lý độc lập
-@admin.register(StaffProfile)
-class StaffProfileAdmin(admin.ModelAdmin):
-    list_display = ("full_name", "user", "department", "position", "role", "birthday")
-    list_filter = ("role", "department")
-    search_fields = ("full_name", "user__username", "department")
-    ordering = ("full_name",)
+    add_fieldsets = (
+        (None, {"classes": ("wide",), "fields": ("username", "password1", "password2", "ho_ten", "ngay_sinh", "email", "don_vi", "chuc_vu")}),
+    )
+    filter_horizontal = ("groups", "user_permissions")

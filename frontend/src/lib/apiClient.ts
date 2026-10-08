@@ -5,6 +5,8 @@
  * - Xử lý HTTP 401 tập trung và hỗ trợ làm mới token (Refresh Token) tự động.
  */
 
+import { t } from '@i18n/translate';
+
 export interface ApiErrorResponse {
   success?: boolean;
   error?: string;
@@ -18,7 +20,7 @@ export class ApiError extends Error {
   data: ApiErrorResponse;
 
   constructor(status: number, data: ApiErrorResponse, message?: string) {
-    super(message || data.error || data.detail || data.message || `API Error: ${status}`);
+    super(message || data.error || data.detail || data.message || t('common.apiError', { status: String(status) }));
     this.name = 'ApiError';
     this.status = status;
     this.data = data;
@@ -67,6 +69,12 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return data as T;
 }
 
+function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export async function apiClient<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
@@ -85,12 +93,24 @@ export async function apiClient<T = unknown>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  const method = (options.method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const csrfToken = getCsrfToken();
+    if (csrfToken && !headers.has('X-CSRFToken')) {
+      headers.set('X-CSRFToken', csrfToken);
+    }
+  }
+
   let response: Response;
   try {
-    response = await fetch(url, { ...options, headers });
+    response = await fetch(url, {
+      credentials: options.credentials || 'include',
+      ...options,
+      headers,
+    });
   } catch {
     throw new ApiError(0, {
-      error: 'Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra lại đường truyền!',
+      error: t('common.networkError'),
     });
   }
 
@@ -103,9 +123,14 @@ export async function apiClient<T = unknown>(
         isRefreshing = true;
 
         try {
+          const csrfToken = getCsrfToken();
+          const refreshHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (csrfToken) refreshHeaders['X-CSRFToken'] = csrfToken;
+
           const refreshRes = await fetch(`${BASE_URL}/api/auth/token/refresh/`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: refreshHeaders,
+            credentials: 'include',
             body: JSON.stringify({ refresh: refreshToken }),
           });
 
@@ -134,7 +159,7 @@ export async function apiClient<T = unknown>(
           localStorage.removeItem('tlbm_refresh_token');
           localStorage.removeItem('tlbm_session');
           window.dispatchEvent(new Event('tlbm_auth_changed'));
-          throw new ApiError(401, { error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!' });
+          throw new ApiError(401, { error: t('auth.sessionExpired') });
         }
       } else {
         // Đang có tiến trình refresh -> Đợi token mới
@@ -174,7 +199,64 @@ apiClient.put = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
     body: body ? JSON.stringify(body) : undefined,
   });
 
+apiClient.patch = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
+  apiClient<T>(endpoint, {
+    ...options,
+    method: 'PATCH',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
 apiClient.delete = <T>(endpoint: string, options?: RequestInit) =>
   apiClient<T>(endpoint, { ...options, method: 'DELETE' });
+
+/**
+ * Tải file nhị phân (Blob) từ API, tự động đính kèm Token và kích hoạt tải về trên trình duyệt.
+ */
+export async function downloadBlob(endpoint: string, defaultFilename?: string): Promise<void> {
+  const url = endpoint.startsWith('http')
+    ? endpoint
+    : `${BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+
+  const headers = new Headers();
+  const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token');
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, { method: 'GET', headers });
+  if (!response.ok) {
+    const errorData: ApiErrorResponse = { error: 'organizations.messages.exportError' };
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const parsed = await response.json().catch(() => null);
+      if (parsed && typeof parsed === 'object') {
+        Object.assign(errorData, parsed);
+      }
+    }
+    throw new ApiError(response.status, errorData);
+  }
+
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = blobUrl;
+
+  const disposition = response.headers.get('Content-Disposition');
+  let filename = defaultFilename || t('common.defaultDownloadFilename');
+  if (disposition && disposition.includes('filename=')) {
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) {
+      filename = match[1];
+    }
+  }
+
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}
+
+apiClient.blob = downloadBlob;
 
 export default apiClient;

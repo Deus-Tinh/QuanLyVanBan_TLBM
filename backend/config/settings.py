@@ -14,9 +14,14 @@ import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Tải biến môi trường từ .env
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 # Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
 sys.path.insert(0, str(BASE_DIR / "apps"))
@@ -47,12 +52,22 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
     # Các app nghiệp vụ
     "accounts",
     "dashboard",
     "birthdays",
     "signing",
+    "document_templates",
+    "organizations",
+    "authorization",
 ]
+
+# Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo SQL_Fix4: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -94,12 +109,28 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+TESTING = "test" in sys.argv
+
+DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
+
+if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "qlvb_db"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -138,6 +169,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+# Media files (File uploads)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR.parent / "media"
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
