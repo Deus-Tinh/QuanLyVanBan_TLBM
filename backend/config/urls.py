@@ -9,6 +9,7 @@ from django.urls import include, path
 from accounts.views import staffs_view
 
 urlpatterns = [
+    path("api/records/", include("records.urls", namespace="records")),
     # Django Admin
     path("admin/", admin.site.urls),
 

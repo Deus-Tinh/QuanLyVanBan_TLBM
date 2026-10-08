@@ -1001,5 +1001,135 @@
     "colIssueDate": "Issue Date",
     "colNotes": "Notes",
     "noData": "No data available"
+  },
+  "records": {
+    "common": {
+      "dossier": "Dossier"
+    },
+    "actions": {
+      "filter": "Apply filters",
+      "reset": "Reset",
+      "retry": "Try again",
+      "viewDocuments": "View documents",
+      "view": "View",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "close": "Close",
+      "saveChanges": "Save changes",
+      "addNew": "Add new"
+    },
+    "filters": {
+      "year": "Filter by year",
+      "allYears": "All years",
+      "documentType": "Filter by document type",
+      "allDocumentTypes": "All",
+      "scope": "Scope"
+    },
+    "table": {
+      "index": "No.",
+      "createdDate": "Created date",
+      "note": "Notes",
+      "action": "Action"
+    },
+    "documentKinds": {
+      "vanbanden": "Incoming",
+      "vanbandi": "Outgoing"
+    },
+    "dossiers": {
+      "moduleLabel": "Group 3 · Dossiers and resources",
+      "title": "Dossier catalog",
+      "description": "Manage level-1 dossiers and open the document types assigned to each dossier.",
+      "add": "Add dossier",
+      "closeNotice": "Close notification",
+      "searchLabel": "Search dossiers",
+      "searchPlaceholder": "Search by dossier name or reference...",
+      "loading": "Loading dossiers",
+      "emptyTitle": "No matching dossiers",
+      "emptyDescription": "Change the filters or add a dossier to get started.",
+      "reference": "Reference",
+      "name": "Dossier name",
+      "creator": "Created by",
+      "viewDocumentTypesLabel": "View document types for {name}",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete dossier?",
+      "confirmDeleteMessage": "Dossier “{name}” will be deleted. The operation may be rejected if the dossier still contains related data.",
+      "notices": {
+        "updated": "Dossier updated successfully.",
+        "created": "Dossier added successfully.",
+        "deleted": "Dossier deleted successfully."
+      }
+    },
+    "modal": {
+      "requiredFields": "Fields marked with * are required.",
+      "titles": {
+        "addDossier": "Add dossier",
+        "editDossier": "Edit dossier",
+        "addDocumentType": "Add document type",
+        "editDocumentType": "Edit document type"
+      },
+      "fields": {
+        "reference": "Reference",
+        "priority": "Priority",
+        "dossierName": "Dossier name",
+        "documentTypeName": "Document type name",
+        "createdDate": "Created date",
+        "note": "Notes"
+      },
+      "validation": {
+        "dossierNameRequired": "Enter a dossier name.",
+        "documentTypeNameRequired": "Enter a document type name.",
+        "referenceRequired": "Enter a dossier reference.",
+        "priorityPositive": "Priority must be a positive integer."
+      }
+    },
+    "documentTypes": {
+      "back": "Back to dossiers",
+      "title": "Level-2 documents",
+      "readOnlyNote": "This level-2 catalog is read-only; add, edit, and delete actions are not available here.",
+      "viewAllDocuments": "View all documents",
+      "searchLabel": "Search level-2 documents",
+      "searchPlaceholder": "Search by document category name...",
+      "loading": "Loading level-2 documents",
+      "emptyTitle": "No matching level-2 documents",
+      "emptyDescription": "You can still open all documents linked to this dossier.",
+      "name": "Level-2 document name"
+    },
+    "documents": {
+      "back": "Back to level-2 documents",
+      "title": "Documents in dossier",
+      "readOnlyNote": "This is a read-only lookup screen with no add, edit, or delete actions.",
+      "searchLabel": "Search documents",
+      "searchPlaceholder": "Search by reference number or summary...",
+      "loading": "Loading documents",
+      "emptyTitle": "No matching documents",
+      "emptyDescription": "Try changing the keyword, year, or document type.",
+      "reference": "Reference",
+      "summary": "Summary",
+      "documentDate": "Document date",
+      "kind": "Type"
+    },
+    "errors": {
+      "title": "Unable to load data",
+      "forbidden": "You do not have permission to perform this action.",
+      "loadDossiers": "Unable to load dossiers.",
+      "saveDossier": "Unable to save the dossier. Check the entered data.",
+      "deleteDossier": "Unable to delete the dossier. It may still contain related data.",
+      "missingDossier": "The requested dossier could not be identified.",
+      "loadDocumentTypes": "Unable to load the level-2 document list.",
+      "loadDocuments": "Unable to load documents for this dossier.",
+      "sharedSchemaUnavailable": "Group 2's shared document tables are not yet available under the approved DDL. Synchronize the schema before testing this flow."
+    },
+    "pagination": {
+      "summary": "Showing {first}–{last} of {count}",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {page}/{total}"
+    },
+    "scopes": {
+      "all": "All scopes",
+      "NOI_BO": "Internal",
+      "HAN_CHE": "Restricted"
+    }
   }
 }
