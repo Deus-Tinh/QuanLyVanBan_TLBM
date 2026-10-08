@@ -106,4 +106,44 @@ describe('DocumentTable Component', () => {
     fireEvent.click(viewDetailButton);
     expect(onViewDetail).toHaveBeenCalledWith(1);
   });
+
+  it('renders distinct directional replacement badges (thay_the_cho & bi_thay_boi)', () => {
+    const directionalDoc: DocumentItem = {
+      id: 8,
+      loai: 'DEN',
+      loai_display: 'Văn bản Đến',
+      nam: 2026,
+      so_hieu: '205/QĐ-BTTTT',
+      so_thu_tu: 8,
+      trich_yeu: 'Quy định tiêu chuẩn kỹ thuật',
+      hieu_luc: 'HET_VA_THAY_THE',
+      hieu_luc_display: 'Đã thay thế',
+      hien_thi: true,
+      attachment_count: 0,
+      created_at: '2026-09-22T00:00:00Z',
+      thay_the_cho: ['102/QĐ-BTTTT'],
+      bi_thay_boi: ['127'],
+    };
+
+    render(
+      <DocumentTable
+        documents={[directionalDoc]}
+        totalCount={1}
+        page={1}
+        pageSize={10}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+        onViewHistory={vi.fn()}
+      />
+    );
+
+    // Kiểm tra badge xanh: Nó thay thế cho 102
+    expect(screen.getByText('102/QĐ-BTTTT')).toBeInTheDocument();
+    expect(screen.getByTitle('Văn bản này thay thế cho văn bản cũ: 102/QĐ-BTTTT')).toBeInTheDocument();
+
+    // Kiểm tra badge vàng: Nó bị 127 thay thế
+    expect(screen.getByText('127')).toBeInTheDocument();
+    expect(screen.getByTitle('Văn bản này đã bị thay thế bởi: 127')).toBeInTheDocument();
+  });
 });
+

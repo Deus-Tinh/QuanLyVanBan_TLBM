@@ -57,9 +57,9 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
       a.href = url;
       a.download = 'Mau_Nhap_Van_Ban_Den.xlsx';
       a.click();
-      URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setAlertMsg(e.message || String(e));
+       URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      setAlertMsg(e instanceof Error ? e.message : String(e));
       setAlertOpen(true);
     }
   }
@@ -81,19 +81,19 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
         body: fd,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      const data = await res.json();
+      const data = await res.json() as { message?: string; error?: string };
       if (res.ok) {
         setAlertMsg(data.message || 'Nhập danh sách văn bản thành công!');
         setAlertOpen(true);
         setSelectedFile(null);
-        onImported && onImported();
+        onImported?.();
         onClose();
       } else {
         setAlertMsg('Lỗi nhập dữ liệu: ' + (data.error || data.message || JSON.stringify(data)));
         setAlertOpen(true);
       }
-    } catch (e: any) {
-      setAlertMsg('Lỗi kết nối máy chủ: ' + e.message);
+    } catch (e: unknown) {
+      setAlertMsg('Lỗi kết nối máy chủ: ' + (e instanceof Error ? e.message : String(e)));
       setAlertOpen(true);
     } finally {
       setLoading(false);
@@ -157,13 +157,12 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-fast ${
-            isDragging
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-fast ${isDragging
               ? 'border-primary bg-primary-subtle/40 scale-[1.01]'
               : selectedFile
-              ? 'border-emerald-500/50 bg-emerald-500/5'
-              : 'border-border-subtle hover:border-primary/50 hover:bg-hover'
-          }`}
+                ? 'border-emerald-500/50 bg-emerald-500/5'
+                : 'border-border-subtle hover:border-primary/50 hover:bg-hover'
+            }`}
         >
           <input
             ref={fileRef}

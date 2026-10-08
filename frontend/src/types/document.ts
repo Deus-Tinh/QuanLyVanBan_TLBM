@@ -53,6 +53,8 @@ export interface DocumentItem {
   ngay_het_hieu_luc?: string | null;
   link_thay_the?: string;
   danh_sach_thay_the?: string[];
+  thay_the_cho?: string[];
+  bi_thay_boi?: string[];
   hien_thi: boolean;
   nguoi_tao_name?: string | null;
   nguoi_tao_username?: string | null;

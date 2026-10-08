@@ -36,7 +36,9 @@ export const InboundDocumentPage: React.FC = () => {
 
   useEffect(() => {
     if (loaiVanBanParam) {
-      setFilters(prev => ({ ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+      void Promise.resolve().then(() => {
+        setFilters(prev => (prev.loai_van_ban === loaiVanBanParam ? prev : { ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+      });
     }
   }, [loaiVanBanParam]);
 
@@ -47,7 +49,7 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Quản lý modal Thêm/Sửa & Import Excel (từ PR #34 của Tân)
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; soHieu: string } | null>(null);
   const [alertMsg, setAlertMsg] = useState<string>('');
@@ -97,8 +99,16 @@ export const InboundDocumentPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchYears();
-    fetchStats();
+    let ignore = false;
+    (async () => {
+      await Promise.resolve();
+      if (ignore) return;
+      fetchYears();
+      fetchStats();
+    })();
+    return () => {
+      ignore = true;
+    };
   }, [fetchYears, fetchStats]);
 
   // Gọi API lấy danh sách văn bản đến
@@ -116,6 +126,7 @@ export const InboundDocumentPage: React.FC = () => {
       if (filters.tu_ngay) params.append('tu_ngay', filters.tu_ngay);
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
+      if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
 
       const endpoint = `/api/documents/?${params.toString()}`;
       const response = await apiClient.get<PaginatedResponse<DocumentItem>>(endpoint);
@@ -124,7 +135,7 @@ export const InboundDocumentPage: React.FC = () => {
         setDocuments(response.results);
         setTotalCount(response.count || 0);
         if (response.results.length > 0) {
-          const docYears = Array.from(new Set(response.results.map((d: any) => d.nam).filter(Boolean))) as number[];
+          const docYears = Array.from(new Set(response.results.map((d: DocumentItem) => d.nam).filter(Boolean))) as number[];
           setAvailableYears(prev => {
             const merged = Array.from(new Set([...prev, ...docYears])).sort((a, b) => b - a);
             return merged;
@@ -150,7 +161,15 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Nạp dữ liệu khi bộ lọc thay đổi
   useEffect(() => {
-    fetchDocuments();
+    let ignore = false;
+    (async () => {
+      await Promise.resolve();
+      if (ignore) return;
+      fetchDocuments();
+    })();
+    return () => {
+      ignore = true;
+    };
   }, [fetchDocuments]);
 
   // Xử lý đổi trang
@@ -212,7 +231,16 @@ export const InboundDocumentPage: React.FC = () => {
   const handleExportExcel = async () => {
     try {
       const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
-      const res = await fetch('/api/documents/export/?loai=DEN', {
+      const params = new URLSearchParams();
+      params.append('loai', 'DEN');
+      if (filters.q) params.append('q', filters.q.trim());
+      if (filters.nam) params.append('nam', String(filters.nam));
+      if (filters.tu_ngay) params.append('tu_ngay', filters.tu_ngay);
+      if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
+      if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
+      if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
+
+      const res = await fetch(`/api/documents/export/?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Quá trình xuất Excel thất bại. Vui lòng kiểm tra lại kết nối!');
@@ -223,8 +251,8 @@ export const InboundDocumentPage: React.FC = () => {
       a.download = `Danh_Sach_Van_Ban_Den_${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setAlertMsg(e.message || String(e));
+    } catch (e: unknown) {
+      setAlertMsg(e instanceof Error ? e.message : String(e));
       setIsAlertOpen(true);
     }
   };

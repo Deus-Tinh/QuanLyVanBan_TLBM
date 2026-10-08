@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DocumentItem } from '@app-types/document';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
-import { formatDateTime, formatDate } from '@lib/dateUtils';
-import authService from '@lib/authService';
+import { formatDate } from '@lib/dateUtils';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -26,7 +25,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   page,
   pageSize,
   onPageChange,
-  onPageSizeChange,
   isLoading = false,
   onViewDetail,
   onViewHistory,
@@ -155,9 +153,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 const isActiveRow = activeMenuId === doc.id;
                 const isNearBottom = index >= documents.length - 2 && documents.length > 2;
 
-                const session = authService.getSession();
-                const isAdmin = authService.isAdmin();
-                const currentUsername = session?.username;
+
 
                 // Quyền sửa & xóa: Cán bộ có thể thao tác khi có hàm xử lý
                 const canEdit = !isConfidential && Boolean(onEdit);
@@ -233,6 +229,49 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                           </div>
                         )}
                         {(() => {
+                          const hasDirectionalData = Boolean(
+                            (doc.thay_the_cho && doc.thay_the_cho.length > 0) ||
+                            (doc.bi_thay_boi && doc.bi_thay_boi.length > 0)
+                          );
+
+                          if (hasDirectionalData) {
+                            return (
+                              <>
+                                {/* 1. Các văn bản mà tài liệu này đi thay thế */}
+                                {(doc.thay_the_cho || []).map((targetSoHieu, idx) => {
+                                  const isPartial = doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN';
+                                  return (
+                                    <div
+                                      key={`thay-the-${idx}`}
+                                      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md border ${
+                                        isPartial
+                                          ? 'text-purple-700 dark:text-purple-400 bg-purple-500/10 border-purple-500/20'
+                                          : 'text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                                      }`}
+                                      title={`Văn bản này thay thế cho văn bản cũ: ${targetSoHieu}`}
+                                    >
+                                      <i className={`fa-solid fa-repeat text-xs ${isPartial ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                                      <span>Thay thế cho: <strong className="font-mono">{targetSoHieu}</strong></span>
+                                    </div>
+                                  );
+                                })}
+
+                                {/* 2. Các văn bản mới đã đến thay thế tài liệu này */}
+                                {(doc.bi_thay_boi || []).map((targetSoHieu, idx) => (
+                                  <div
+                                    key={`bi-thay-${idx}`}
+                                    className="inline-flex items-center gap-1 text-xs font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
+                                    title={`Văn bản này đã bị thay thế bởi: ${targetSoHieu}`}
+                                  >
+                                    <i className="fa-solid fa-triangle-exclamation text-warning text-xs" />
+                                    <span>Bị thay bởi: <strong className="font-mono">{targetSoHieu}</strong></span>
+                                  </div>
+                                ))}
+                              </>
+                            );
+                          }
+
+                          // Fallback khi chưa có dữ liệu 2 chiều
                           const repList: string[] = (doc.danh_sach_thay_the && doc.danh_sach_thay_the.length > 0)
                             ? doc.danh_sach_thay_the
                             : (doc.link_thay_the ? doc.link_thay_the.split(',').map((s) => s.trim()).filter(Boolean) : []);
@@ -276,7 +315,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 </div>
                               );
                             }
-                            // Khi văn bản đã hết hiệu lực theo ngày nhưng vẫn lưu giữ lịch sử thay thế
                             return (
                               <div
                                 key={idx}
@@ -465,8 +503,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 onClick={() => onPageChange(p)}
                 disabled={isLoading}
                 className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-all ${page === p
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-secondary hover:text-main hover:bg-surface-elevated'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-secondary hover:text-main hover:bg-surface-elevated'
                   }`}
               >
                 {p}
