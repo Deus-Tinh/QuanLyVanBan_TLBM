@@ -181,6 +181,11 @@ SIGNING_DOCUMENT_ROOT = os.environ.get("SIGNING_DOCUMENT_ROOT", "")
 # Đổi giá trị này làm mọi PIN đã đặt mất hiệu lực (người dùng phải đặt lại).
 SIGNING_PIN_SECRET = os.environ.get("SIGNING_PIN_SECRET", "")
 
+# Trình ký — phông chữ có dấu tiếng Việt để in tệp PDF hoàn tất (Phase 10). Để trống thì tự dò phông hệ thống
+# (DejaVu Sans, Noto Sans, Liberation Sans, Arial); không có phông nào thì tạo tệp báo lỗi `thieu_phong_chu`.
+SIGNING_PDF_FONT = os.environ.get("SIGNING_PDF_FONT", "")
+SIGNING_PDF_FONT_BOLD = os.environ.get("SIGNING_PDF_FONT_BOLD", "")
+
 # ─────────────────────────────────────────────────
 # SimpleJWT — Cấu hình token
 # ─────────────────────────────────────────────────

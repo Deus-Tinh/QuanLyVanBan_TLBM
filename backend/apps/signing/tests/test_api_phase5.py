@@ -40,7 +40,6 @@ class ProcessApiTests(ApiBase):
     def payload(self, ma="QT1", **kw):
         data = {
             "ma_quy_trinh": ma, "ten_quy_trinh": "Quy trình duyệt", "pham_vi": "CONG_TY",
-            "kieu_ky_mac_dinh": "TUAN_TU",
             "cap_ky": [
                 {"cap_ky": 1, "ten_cap_ky": "Trưởng phòng", "thu_tu": 1,
                  "nguoi_ky": [{"nguoi_ky": self.u2.pk, "thu_tu": 1}]},
@@ -65,6 +64,10 @@ class ProcessApiTests(ApiBase):
         self.assertEqual(body["trang_thai"], "NHAP")
         self.assertEqual(body["phien_ban"], 1)
         self.assertEqual(body["create_by"], self.u1.pk)
+        self.assertEqual(set(body), {  # Phase 6c: không còn trường cách thức ký
+            "id", "ma_quy_trinh", "ten_quy_trinh", "mo_ta", "phien_ban", "trang_thai", "pham_vi",
+            "don_vi_ap_dung_id", "cau_hinh_nhac_han", "create_by", "created_at", "update_by", "update_at", "cap_ky",
+        })
         self.assertEqual([c["thu_tu"] for c in body["cap_ky"]], [1, 2])
         self.assertEqual(body["cap_ky"][1]["nguoi_ky"][0]["vai_tro_ky"], "KY_NHAY")
         self.assertFalse(body["cap_ky"][1]["nguoi_ky"][0]["chan_ky_chinh"])
@@ -73,7 +76,7 @@ class ProcessApiTests(ApiBase):
         response = self.c1.post(f"{BASE}/quy-trinh/", {"ten_quy_trinh": "x", "pham_vi": "SAI"}, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["code"], "du_lieu_khong_hop_le")
-        self.assertEqual(set(response.data["fields"]), {"ma_quy_trinh", "pham_vi", "kieu_ky_mac_dinh"})
+        self.assertEqual(set(response.data["fields"]), {"ma_quy_trinh", "pham_vi"})
 
     def test_signer_person_and_position_together_rejected(self):
         data = self.payload("QT9")

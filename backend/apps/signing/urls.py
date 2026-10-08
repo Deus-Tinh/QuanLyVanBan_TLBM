@@ -27,4 +27,36 @@ urlpatterns = [
     path("khoa/<int:pk>/dat-pin/", views.KhoaPinView.as_view(action="dat-pin"), name="khoa-dat-pin"),
     path("khoa/<int:pk>/mo-khoa-ky/", views.KhoaPinView.as_view(action="mo-khoa-ky"), name="khoa-mo-khoa-ky"),
     path("khoa/<int:pk>/doi-pin/", views.KhoaPinView.as_view(action="doi-pin"), name="khoa-doi-pin"),
+
+    # Hồ sơ trình ký (Phase 7, #80)
+    path("trinh-ky/", views.TrinhKyListCreateView.as_view(), name="trinh-ky-list"),
+    path("trinh-ky/<int:pk>/", views.TrinhKyDetailView.as_view(), name="trinh-ky-detail"),
+    path("trinh-ky/<int:pk>/tep/", views.TrinhKyTepView.as_view(), name="trinh-ky-tep"),
+    path("trinh-ky/<int:pk>/gui/", views.TrinhKyActionView.as_view(action="gui"), name="trinh-ky-gui"),
+    path("trinh-ky/<int:pk>/huy/", views.TrinhKyActionView.as_view(action="huy"), name="trinh-ky-huy"),
+    path("trinh-ky/<int:pk>/trinh-lai/", views.TrinhKyActionView.as_view(action="trinh-lai"),
+         name="trinh-ky-trinh-lai"),
+
+    # Hành động người ký (Phase 8, #80)
+    path("trinh-ky/<int:pk>/ky/", views.HanhDongKyView.as_view(action="ky"), name="trinh-ky-ky"),
+    path("trinh-ky/<int:pk>/tu-choi/", views.HanhDongKyView.as_view(action="tu-choi"), name="trinh-ky-tu-choi"),
+    path("trinh-ky/<int:pk>/thu-hoi/", views.HanhDongKyView.as_view(action="thu-hoi"), name="trinh-ky-thu-hoi"),
+
+    # Trả lại để sửa (lõi Phase 9, #80)
+    path("trinh-ky/<int:pk>/yeu-cau-sua/", views.YeuCauSuaView.as_view(), name="trinh-ky-yeu-cau-sua"),
+    path("trinh-ky/<int:pk>/trao-doi/", views.TraoDoiView.as_view(), name="trinh-ky-trao-doi"),
+    path("trinh-ky/<int:pk>/giai-quyet/", views.GiaiQuyetView.as_view(), name="trinh-ky-giai-quyet"),
+
+    # Bằng chứng và tệp hoàn tất (lõi Phase 10, #80)
+    path("trinh-ky/<int:pk>/bang-chung/", views.BangChungView.as_view(), name="trinh-ky-bang-chung"),
+    path("trinh-ky/<int:pk>/tep-hoan-tat/", views.TepHoanTatView.as_view(), name="trinh-ky-tep-hoan-tat"),
+    path("trinh-ky/<int:pk>/tao-lai-tep-hoan-tat/", views.TaoLaiTepHoanTatView.as_view(),
+         name="trinh-ky-tao-lai-tep-hoan-tat"),
+    path("trinh-ky/<int:pk>/anh-chu-ky/<int:chu_ky_id>/", views.AnhChuKyView.as_view(), name="trinh-ky-anh-chu-ky"),
+
+    # Tìm tài khoản để cấu hình người ký (người quản lý quy trình)
+    path("nguoi-dung/", views.NguoiDungView.as_view(), name="nguoi-dung"),
+    # Hỗ trợ giao diện: người dùng hiện tại, chọn văn bản đi
+    path("toi/", views.ToiView.as_view(), name="toi"),
+    path("van-ban-di/", views.VanBanDiView.as_view(), name="van-ban-di"),
 ]

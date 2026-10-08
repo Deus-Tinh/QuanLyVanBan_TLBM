@@ -1,6 +1,7 @@
 # Plan backend Trình ký — Nhóm 5
 
-> Cập nhật 06/10/2026 theo [`danh-gia-nghiep-vu-va-de-xuat.md`](danh-gia-nghiep-vu-va-de-xuat.md): cấp ký luôn tuần tự (bỏ `kieu_ky`), từ chối là kết thúc, chức vụ tương đối theo đơn vị, ủy quyền theo thời gian kèm hình thức ký, leo thang quá hạn, tách khâu văn thư. Các mục gắn `[CẦN XÁC NHẬN]` chờ pháp chế hoặc nhóm liên quan.
+> Cập nhật 06/10/2026 theo [`danh-gia-nghiep-vu-va-de-xuat.md`](danh-gia-nghiep-vu-va-de-xuat.md): cấp ký luôn tuần tự (bỏ `kieu_ky`), từ chối là kết thúc, chức vụ tương đối theo đơn vị, ủy quyền theo thời gian kèm hình thức ký, leo thang quá hạn, tách khâu văn thư.
+> Cập nhật 08/10/2026 theo #80: MVP là luồng duyệt nội bộ hoàn chỉnh, kết thúc ở **hoàn tất duyệt nội bộ, chưa phát hành**. CA, chứng thư số, `LegalSignerAdapter`, DocMDP, cấp số và phát hành pháp lý đã gỡ khỏi roadmap của #80 (mục 1.4). Văn bản mật đã bỏ nên không còn phụ thuộc pháp chế về phạm vi văn bản mật.
 
 ## 1. Mục tiêu và ranh giới
 
@@ -25,11 +26,11 @@ Xây dựng backend Django REST Framework cho nghiệp vụ trình ký văn bả
   - Lỗi nhỏ: ký duyệt kèm ghi chú (`ghi_chu_ky`), không chặn luồng.
   - Lỗi lớn: yêu cầu chỉnh sửa, mở luồng trao đổi hai chiều, sau khi chốt thì gửi lại toàn bộ bằng một lượt trình mới.
 - Từ chối là kết thúc hồ sơ; trình lại bằng hồ sơ mới trỏ về hồ sơ gốc.
-- Quá hạn không đóng luồng: vẫn cho ký muộn, ghi nhận trễ hạn, nhắc và leo thang lên cấp trên trực tiếp.
-- Ủy quyền đặt trước theo khoảng thời gian và ủy quyền khẩn cấp do cấp trên/quản trị thực hiện; ghi hình thức ký (KT., TL., TUQ.).
-- Nhật ký trình ký; thông báo in-app/email qua Celery, bảng thông báo đóng vai trò outbox.
+- Quá hạn không đóng luồng: hiển thị hạn xử lý, vẫn cho ký muộn và ghi nhận trễ hạn.
+- Nhật ký trình ký chỉ ghi thêm; bằng chứng tổng hợp chốt khi hoàn tất.
 - Lưu trữ tệp qua adapter; MVP dùng thư mục filesystem được mount, cấu hình bằng biến môi trường.
-- Phẳng hóa PDF (dán ảnh chữ ký) một lần duy nhất khi lượt trình `HOAN_THANH`.
+- Tệp PDF hoàn tất sinh một lần khi lượt trình `HOAN_THANH`: khối chữ ký theo vị trí, dòng nhận diện "bản duyệt nội bộ, chưa phát hành", trang phê duyệt, bằng chứng đính kèm; trạng thái tạo tệp và thử lại.
+- Giao diện tối thiểu (#80 mục E).
 
 ### 1.3. Ngoài phạm vi MVP
 
@@ -42,23 +43,11 @@ Xây dựng backend Django REST Framework cho nghiệp vụ trình ký văn bả
 - Nhiều tệp đính kèm/phụ lục trong một lượt trình (MVP: một lượt trình ứng với một tệp).
 - Vai trò xem/góp ý không ký; thu hồi hoặc ban hành bản thay thế sau khi lượt trình `HOAN_THANH`.
 - Quay lui về cấp trước trong cùng một lượt trình.
+- Backlog sau MVP (#80 mục 8): ủy quyền theo thời gian và khẩn cấp kèm hình thức ký (KT., TL., TUQ.); nhắc trước/tại hạn, nhắc lặp, email, leo thang cấp trên, báo cáo trễ hạn nâng cao; thông báo qua Celery.
 
-### 1.4. Khâu phát hành pháp lý (bước bổ sung cuối)
+### 1.4. Ngoài phạm vi MVP: phát hành pháp lý
 
-Đây là bước sau khi toàn bộ luồng duyệt nội bộ đã hoàn thành.
-
-> **LƯU Ý PHÁP LÝ (BẮT BUỘC):** Người chịu trách nhiệm pháp lý cao nhất (người đại diện theo pháp luật hoặc lãnh đạo có thẩm quyền ban hành) **bắt buộc phải có Chứng thư số X.509** do tổ chức cung cấp dịch vụ chứng thực chữ ký số (CA) được Nhà nước cấp phép. Chữ ký Ed25519 nội bộ không thay thế được chữ ký số có giá trị pháp lý với bên ngoài.
-
-Hệ thống tách hai giai đoạn:
-
-1. **Giai đoạn 1 — Duyệt nội bộ:** toàn bộ luồng tuần tự/song song, Ed25519, snapshot và nhật ký của module này. Mục đích: kiểm soát quy trình, chống tráo văn bản, chống chối bỏ trong nội bộ, giảm chi phí vận hành.
-2. **Giai đoạn 2 — Phát hành pháp lý:** chỉ mở khi lượt trình đã `HOAN_THANH` và đã có tệp PDF hoàn tất (mục 3.2):
-   - **Ký số cá nhân lãnh đạo:** `LegalSignerAdapter` kết nối dịch vụ ký số từ xa (Cloud CA / HSM / VNeID Remote Signing) hoặc đọc CCCD gắn chip (NFC/đầu đọc) để nhúng chứng thư số X.509.
-   - **Cấp số và ký số cơ quan:** hệ thống sổ văn bản đi của Nhóm 2 cấp số, ký hiệu, thời gian ban hành bằng chức năng của hệ thống (NĐ 30/2020 Điều 15; Nhóm 5 không tự sinh số, văn thư không nhập tay) và điền vào trường dành sẵn trên tệp; văn thư ký số của cơ quan kèm dấu thời gian TSA theo chuẩn PAdES (Điều 14, 17) `[CẦN XÁC NHẬN]` contract với Nhóm 2.
-   - Chữ ký số của người có thẩm quyền đặt mức DocMDP 2 (cho phép điền trường và ký tiếp), để việc điền số/ngày không làm mất hiệu lực chữ ký.
-   - `LegalSignerAdapter` theo mô hình ký số từ xa: gửi mã băm, người ký xác nhận trên thiết bị của mình, nhận lại chữ ký và chứng thư. Không giả định USB token cắm vào máy chủ.
-   - Khi đã tích hợp CA, người `KY_CHINH` của cấp cuối ký bằng adapter thay cho Ed25519 (một lần ký vừa hoàn thành lượt trình vừa là chữ ký ban hành). Khi chưa có CA, giữ Ed25519 và phát hành ở bước sau.
-   - MVP chỉ định nghĩa interface adapter; tích hợp nhà cung cấp cụ thể làm sau.
+Theo #80 mục 8, MVP dùng chữ ký điện tử nội bộ Ed25519 và kết thúc ở **hoàn tất duyệt nội bộ, chưa phát hành**. Không yêu cầu CA, chứng thư số, `LegalSignerAdapter`, DocMDP hoặc khâu cấp số/phát hành pháp lý; các hạng mục này đã gỡ khỏi roadmap triển khai của #80. Chữ ký Ed25519 nội bộ không có giá trị pháp lý với bên ngoài; tệp hoàn tất ghi rõ là bản duyệt nội bộ.
 
 ## 2. Bằng chứng và giả định
 
@@ -78,7 +67,7 @@ Hệ thống tách hai giai đoạn:
 - Vòng đời: `NHAP -> HOAT_DONG -> NGUNG`.
 - Chỉ quy trình `HOAT_DONG` được chọn khi tạo yêu cầu.
 - Tài khoản có quyền `manage_signing_process` được tạo, kích hoạt, ngừng, nhân bản quy trình (Phase 6b). Người tạo bị gỡ quyền thì không thao tác được nữa.
-- Quyền quản lý theo phạm vi: quy trình `CONG_TY` do quản trị (ADMIN) quản lý; quy trình `PHONG_BAN` gắn `don_vi_ap_dung` và do lãnh đạo đơn vị đó (có `manage_signing_process`) hoặc ADMIN quản lý. Áp dụng khi có model `Đơn vị` (Phase 7).
+- Quyền quản lý theo phạm vi: quy trình `CONG_TY` do quản trị (ADMIN) quản lý; quy trình `PHONG_BAN` gắn `don_vi_ap_dung` và do lãnh đạo đơn vị đó (có `manage_signing_process`) hoặc ADMIN quản lý. Đã triển khai (#80): `don_vi_ap_dung_id` + CHECK; lãnh đạo đơn vị = nhóm `TP` thuộc đơn vị đó (mã nhóm đọc qua `authorization.GroupInfo` của Nhóm 7); chưa có mã nhóm thì người có `manage_signing_process` được coi là quản trị như Phase 6b.
 - Chỉ sửa trực tiếp quy trình ở trạng thái `NHAP`. Muốn thay đổi quy trình đã kích hoạt thì nhân bản thành phiên bản mới (`phien_ban` + 1, cùng `ma_quy_trinh`); phiên bản cũ giữ nguyên để tra cứu.
 - Mỗi `ma_quy_trinh` chỉ có một phiên bản `HOAT_DONG`: kích hoạt phiên bản mới thì phiên bản đang hoạt động cùng mã chuyển `NGUNG` trong cùng transaction (ghi nhật ký `NGUNG_QUY_TRINH` kèm phiên bản thay thế). Yêu cầu đã tạo từ phiên bản cũ không bị ảnh hưởng.
 - Phạm vi hiển thị: `pham_vi` = `PHONG_BAN` (chỉ người thuộc `don_vi_ap_dung` thấy khi tạo hồ sơ) hoặc `CONG_TY`.
@@ -112,7 +101,7 @@ Hệ thống tách hai giai đoạn:
 **Vị trí đặt chữ ký và Lazy Stamping**
 
 - Khi tạo hồ sơ, người tạo kéo-thả trên bản xem trước để xác định vị trí ký cho từng người ký: `trang_ky`, `toa_do_x`, `toa_do_y`, `chieu_rong_khung`, `chieu_cao_khung`.
-- Tọa độ lưu dạng chuẩn hóa (tỷ lệ % trong `[0, 100]` hoặc điểm PDF) để không phụ thuộc độ phân giải hiển thị. `[CHƯA CHỐT]` chọn một trong hai hệ, chốt khi làm PDF viewer.
+- Tọa độ lưu dạng chuẩn hóa: **đã chốt tỷ lệ % theo khung trang, gốc góc trên-trái** (#80), khung nằm trọn trong trang. Người tạo đặt khung khi gửi (`vi_tri_ky` theo người ký cấu hình), server kiểm số trang của tệp đã khóa và chụp vào dòng người ký của lượt trình; lượt mới sau trả sửa chép vị trí, được đặt lại.
 - **Bất biến tệp gốc:** trong suốt luồng duyệt nội bộ, không sửa raw bytes của tệp PDF gốc. Mọi người ký của một lượt trình đều ký trên cùng một mã băm SHA-256 của tệp gốc đã khóa lúc gửi.
 - Ảnh chữ ký và tọa độ chỉ là metadata trong CSDL:
   - Ảnh chữ ký gốc nằm ở hồ sơ cá nhân (do Nhóm 7 cung cấp, mục 3.4).
@@ -121,8 +110,8 @@ Hệ thống tách hai giai đoạn:
 - Giao diện (React PDF viewer) hiển thị ảnh chữ ký như một lớp phủ CSS/Canvas đè lên bản xem trước theo tọa độ; không tạo tệp trung gian.
 - **Phẳng hóa (Stamping & Flattening):** chỉ khi lượt trình chuyển `HOAN_THANH`, tác vụ nền đọc tệp gốc, lấy snapshot ảnh và tọa độ của toàn bộ chữ ký hiện hành, dán một lần và sinh tệp PDF hoàn tất. Vị trí và mã băm tệp này lưu tại `signing_attempt.vi_tri_tep_hoan_tat`, `signing_attempt.ma_bam_tep_hoan_tat`.
 - Không sinh tệp theo từng người ký.
-- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành" cho tới khi hoàn tất phát hành pháp lý (mục 1.4). `[ĐỀ XUẤT]`, chốt ở Phase 10.
-- Tệp hoàn tất là đầu vào của giai đoạn phát hành pháp lý (mục 1.4).
+- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành". Đã làm ở lõi Phase 10 (#80): dòng nhận diện ở chân mọi trang, trang phê duyệt và bằng chứng JSON đính kèm; MVP chưa dán ảnh chữ ký (chưa có nguồn ảnh, chưa chốt tọa độ).
+- Đã triển khai (#80): snapshot ảnh lúc ký qua `tich_hop.to_chuc.anh_chu_ky` (field `anh_chu_ky` của Nhóm 7 khi có); tệp hoàn tất dán ảnh vào khung, chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT"; mã băm ảnh ghi trong bằng chứng và được kiểm khi dựng tệp.
 
 ### 3.3. Yêu cầu, lượt trình và nội dung văn bản
 
@@ -185,9 +174,17 @@ GVHD đã chốt bỏ văn bản mật hành chính. Tài liệu nội bộ hạ
 - Mở khóa ký: client gửi `verifier` kèm phiên đăng nhập; server so khớp, đếm số lần sai rồi mới trả `k_srv`. Sai 5 lần khóa 15 phút; sai 10 lần khóa cứng, quản trị mở lại sau khi xác minh danh tính. Bộ đếm lưu ở CSDL và cập nhật dưới `select_for_update`.
 - Sự kiện nhật ký: `DAT_PIN`, `DOI_PIN`, `MO_KHOA_KY`, `PIN_SAI`, `PIN_KHOA`.
 - Tham số Argon2id: `m=64 MiB, t=3, p=1` làm mức sàn, đo trên thiết bị yếu nhất được hỗ trợ (mục tiêu 300–500 ms); lưu tham số và phiên bản cùng bản bọc để nâng cấp. Dùng Argon2id (RFC 9106), không dùng PBKDF2/bcrypt.
+- **Contract salt Argon2id (#79):**
+  - Cách sinh: client sinh 16 byte ngẫu nhiên bằng CSPRNG của trình duyệt (`crypto.getRandomValues`), không suy ra từ tài khoản, khóa hay PIN.
+  - Phạm vi: một salt cho **một khóa ký trong một lần đặt PIN**. Đặt PIN lần đầu sinh salt; đổi PIN sinh salt mới. Không dùng chung giữa tài khoản, giữa khóa ký, giữa các lần đặt/đổi PIN.
+  - Quan hệ: `master_pin = Argon2id(PIN, salt, m, t, p)`; `verifier = HKDF(master_pin, "verify")` gửi server; khóa bọc `HKDF(master_pin, k_srv, "wrap")` chỉ ở client. Salt khác thì `master_pin`, `verifier`, `ma_bam_xac_minh_pin` và khóa bọc đều khác.
+  - Lưu trữ: salt nằm trong `tham_so_kdf` (Base64, cùng `thuat_toan`, `m`, `t`, `p`, `phien_ban`) trên `signing_key_unlock`; server trả lại `tham_so_kdf` trong response `dat-pin`, `mo-khoa-ky`, `doi-pin` để client dẫn xuất lại. Client cũng lưu kèm bản bọc trong IndexedDB. Salt không bí mật.
+  - Kiểm tra ở server: `tham_so_kdf` thiếu `salt`, không phải Base64 hoặc khác 16 byte bị từ chối (`tham_so_kdf_khong_hop_le`); `doi-pin` gửi salt trùng salt hiện tại bị từ chối (`salt_trung_salt_cu`).
+  - Lý do: dùng chung salt thì hai tài khoản cùng PIN có cùng `verifier` nên cùng `ma_bam_xac_minh_pin`, lộ việc trùng PIN khi đọc được CSDL và cho phép tính sẵn một lần cho mọi tài khoản.
+- **Bí mật máy chủ (#79):** `SIGNING_PIN_SECRET` bắt buộc khi `DEBUG = False`; dev được dùng `SECRET_KEY`. Hai lớp: `manage.py check --deploy` báo `signing.E001` (thiếu) hoặc `signing.E002` (trùng `SECRET_KEY`); lúc chạy, thao tác PIN trả 503 `chua_cau_hinh_bi_mat_pin` và ghi log lỗi nếu production thiếu biến (gunicorn không chạy system check). Không đăng ký thành check thường vì `manage.py test` luôn đặt `DEBUG = False`, sẽ chặn test của mọi nhóm.
 - Chính sách PIN: 8 chữ số; chặn dãy tăng/giảm, lặp một chữ số, dạng ngày `ddmmyyyy`, PIN phổ biến.
 - Mất PIN: không khôi phục. Thu hồi khóa cũ, cấp khóa mới sau khi quản trị xác minh danh tính; khóa cũ giữ để xác minh chữ ký lịch sử. Đổi PIN: bọc lại private key (cần PIN cũ), không sinh khóa mới.
-- Đổi PIN xoay vòng `k_srv` (Phase 6c): server sinh `k_srv` mới, trả cả `k_srv` cũ (mở bản bọc cũ) và mới (bọc lại) trong cùng response. Lý do: `k_srv` được trả ở mọi lần mở khóa; nếu không xoay vòng thì lộ `k_srv` một lần là đoán PIN offline được mãi, và đổi PIN khi nghi lộ không khôi phục được an toàn. Hiện tại (Phase 6a) `doi_pin` vẫn giữ nguyên `k_srv`.
+- Đổi PIN xoay vòng `k_srv` (Phase 6c): server sinh `k_srv` mới, trả cả `k_srv` cũ (mở bản bọc cũ) và mới (bọc lại) trong cùng response. Lý do: `k_srv` được trả ở mọi lần mở khóa; nếu không xoay vòng thì lộ `k_srv` một lần là đoán PIN offline được mãi, và đổi PIN khi nghi lộ không khôi phục được an toàn. Đã triển khai ở Phase 6c; đổi PIN thất bại không đổi `k_srv`.
 - MVP: một khóa `HOAT_DONG` trên một thiết bị. Đổi thiết bị là đăng ký khóa mới qua `xoay-vong`. Quy tắc cứng: bản bọc private key không lưu và không đồng bộ lên server; nếu sau này đồng bộ đa thiết bị thì thiết kế này mất tác dụng.
 - Giới hạn (`[FACT]` về phạm vi bảo vệ): PIN không chống XSS/malware ghi phím lúc nhập; không nâng giá trị pháp lý của chữ ký nội bộ. Giảm XSS bằng CSP chặt, không script bên thứ ba, màn hình ký hiển thị tên tệp và mã băm để người ký xác nhận.
 - Ước tính (`[ĐỀ XUẤT]`, chưa đo): với 8 chữ số (~26,6 bit) nếu chỉ bọc bằng PIN thì bản bọc bị đoán offline trong vài giờ với vài trăm core; vì vậy cần `k_srv` và khóa theo số lần sai.
@@ -243,7 +240,7 @@ GVHD đã chốt bỏ văn bản mật hành chính. Tài liệu nội bộ hạ
 - **Contract văn bản:** chỉ tham chiếu `document_type` + `van_ban_id`, `phien_ban_van_ban`, `vi_tri_luu_tep`, `ma_bam_tai_lieu`; không phụ thuộc đường dẫn tuyệt đối.
 - **`DocumentStorageAdapter`:** interface đọc metadata/bytes theo vị trí lưu. MVP dùng filesystem mount cấu hình qua biến môi trường; có thể thêm API/SFTP mà không đổi nghiệp vụ ký.
 - **`PdfStampingService`:** tác vụ nền phẳng hóa PDF khi lượt trình `HOAN_THANH` (mục 3.2).
-- **`LegalSignerAdapter`:** interface cho khâu phát hành pháp lý (CA/HSM/CCCD, dấu doanh nghiệp, TSA, PAdES).
+- **`LegalSignerAdapter`:** ngoài MVP, đã gỡ khỏi roadmap #80 (mục 1.4).
 - **PostgreSQL:** dữ liệu nghiệp vụ, ràng buộc unique/check, transaction, khóa dòng.
 - **Redis:** broker Celery, khóa ngắn hạn nếu cần; challenge khóa ký chỉ dùng Redis khi chuyển sang challenge ngẫu nhiên (mục 3.4).
 - **Celery worker:** gửi thông báo, nhắc hạn, escalation, phẳng hóa PDF, chốt bằng chứng tổng hợp. Task chỉ nhận ID, retry có backoff và jitter, idempotent.
@@ -636,7 +633,8 @@ TU_CHOI, HOAN_THANH, HUY: kết thúc (trình lại sau TU_CHOI = tạo yêu c�
 Lượt trình (signing_attempt.trang_thai):
 NHAP        -> CHO_KY      (gui)
 CHO_KY      -> YEU_CAU_SUA | TU_CHOI | HOAN_THANH | HUY
-YEU_CAU_SUA -> (kết thúc; thread DA_GIAI_QUYET thì tạo lượt trình mới)
+YEU_CAU_SUA -> HUY         (hủy hồ sơ khi đang chờ sửa)
+YEU_CAU_SUA: giữ nguyên làm lịch sử khi thread DA_GIAI_QUYET; tạo lượt trình mới (luot_truoc trỏ về)
 TU_CHOI     -> (kết thúc)
 ```
 
@@ -670,24 +668,37 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 
 ### 7.2. Yêu cầu trình ký
 
-- `GET /signing/requests`: lọc theo người tạo, người được giao ký, quản trị, kiểm toán; mặc định theo phòng ban người tạo.
-- `POST /signing/requests`: tạo `NHAP` từ văn bản và quy trình, kèm vị trí ký của từng người ký.
-- `GET /signing/requests/{id}`: tổng quan, cấp, người ký, hạn, lịch sử, vị trí ký.
-- `POST /signing/requests/{id}/gui`: khóa snapshot văn bản/quy trình, tạo lượt trình. Nhận `chon_nguoi_ky` khi người ký theo chức vụ có nhiều ứng viên; thiếu thì trả lỗi kèm danh sách ứng viên.
-- `POST /signing/requests/{id}/huy`
-- `POST /signing/requests/{id}/trinh-lai`: chỉ khi yêu cầu `TU_CHOI`; tạo yêu cầu mới `NHAP` sao chép văn bản, quy trình, vị trí ký, `ho_so_goc` trỏ về yêu cầu cũ.
-- `POST /signing/requests/{id}/phat-hanh`: khâu phát hành pháp lý; chỉ khi lượt trình hiện hành `HOAN_THANH` và đã có tệp hoàn tất.
+Đã triển khai ở Phase 7 (#80), đường dẫn `/signing/trinh-ky/`:
+- `GET /signing/trinh-ky/?hop=can_toi_ky|toi_gui|tat_ca&trang_thai=&muc_do=`: `can_toi_ky` = người ký đã được mở, đang chờ ký, trên lượt `CHO_KY`; `tat_ca` = hồ sơ người dùng được xem (người tạo, người ký của hồ sơ; `view_signing_audit` xem tất cả).
+- `POST /signing/trinh-ky/` (multipart): `document_type` (`vanbandi`), `van_ban_id`, `quy_trinh` (đang hoạt động), `muc_do` (`THUONG`, `KHAN`, `HOA_TOC`), `han_chot`, `ghi_chu`, `tep` (PDF ≤ 20 MB). Server tự lưu tệp và tính SHA-256; tạo `NHAP`. Quyền `add_trinhky`.
+- `GET /signing/trinh-ky/{id}/`: tổng quan, các lượt trình (cấp, người ký, hạn), người đang chờ, lịch sử. Không trả đường dẫn lưu tệp.
+- `PATCH /signing/trinh-ky/{id}/`: chỉ khi `NHAP`, chỉ người tạo; thay tệp tăng `phien_ban_van_ban`.
+- `GET /signing/trinh-ky/{id}/tep/`: tệp của lượt trình hiện hành (hoặc dự thảo khi còn nháp), kiểm quyền xem.
+- `POST /signing/trinh-ky/{id}/gui/`: khóa tệp/mã băm, snapshot cấp, người ký và vị trí ký, mở cấp đầu. Nhận `chon_nguoi_ky` (`{id người ký cấu hình: id tài khoản}`) khi chức vụ có nhiều ứng viên; thiếu thì lỗi `can_chon_nguoi_ky` kèm ứng viên. Nhận `vi_tri_ky` (`{id người ký cấu hình: {trang_ky, toa_do_x, toa_do_y, chieu_rong_khung, chieu_cao_khung}}`, tỷ lệ % gốc trên-trái, khung trong trang); trang vượt số trang hoặc khóa không phải người ký cấu hình: `vi_tri_ky_khong_hop_le`. Quyền `send_trinhky` + người tạo.
+- Tạo/trình lại kiểm quy trình áp dụng cho người tạo: `CONG_TY` hoặc `PHONG_BAN` của đơn vị mình (403 `quy_trinh_khong_ap_dung`). Tải lên kiểm PDF đọc được trang, không mật khẩu.
+- `POST /signing/trinh-ky/{id}/huy/`: người tạo; hoặc `cancel_trinhky` hủy thay (bắt buộc `ly_do`).
+- `POST /signing/trinh-ky/{id}/trinh-lai/`: chỉ khi `TU_CHOI`; tạo hồ sơ `NHAP` mới (văn bản, tệp lượt cuối, mức độ; phiên bản đang hoạt động của cùng mã quy trình), `ho_so_goc` trỏ về hồ sơ cũ. Quyền `send_trinhky` + người tạo.
+- `gui`, `huy`, `trinh-lai` bắt buộc header `Idempotency-Key`; gửi lặp cùng khóa trả kết quả lần trước.
+- Phát hành pháp lý (`phat-hanh`): ngoài MVP, đã gỡ khỏi roadmap #80.
 
 ### 7.3. Hành động người ký
 
-- `POST /signing/attempts/{id}/ky`: nhận `khoa_ky`, `hash_tai_lieu`, `chu_ky_so`, `ghi_chu_ky` (tùy chọn). Server verify, snapshot ảnh chữ ký, không sửa tệp.
-- `POST /signing/attempts/{id}/tu-choi`: `ly_do_tu_choi` bắt buộc.
-- `POST /signing/attempts/{id}/yeu-cau-sua`: `tieu_de`, `ly_do` bắt buộc; mở thread.
-- `POST /signing/attempts/{id}/uy-quyen`: ủy quyền khẩn cấp; `nguoi_ky` mới, `ly_do_uy_quyen`, `hinh_thuc_ky` bắt buộc; chỉ cấp trên trực tiếp hoặc quản trị.
-- `POST /signing/attempts/{id}/thu-hoi`: khi cấp của người ký còn mở, trước khi hoàn thành.
+Đã triển khai ở Phase 8 (#80), đường dẫn theo hồ sơ (người ký được xác định từ tài khoản đăng nhập; cấp mở tuần tự nên mỗi người có tối đa một dòng đang mở). Quyền `sign_trinhky`, bắt buộc `Idempotency-Key`:
+- `POST /signing/trinh-ky/{id}/ky/`: `khoa_ky`, `hash_tai_lieu` (hex 64), `chu_ky_so` (Base64 Ed25519 trên raw bytes của SHA-256), `ghi_chu_ky` (tùy chọn). Kiểm: lượt `CHO_KY`, người ký đã mở và chờ ký, mã băm khớp lượt, khóa thuộc người ký và đang hoạt động trong hiệu lực, chữ ký verify được. Ghi chữ ký `HOP_LE`, `ky_tre_han`/`so_giay_tre` theo `han_xu_ly` của cấp; mở ký chính khi ký nháy chặn ký đủ; đóng cấp khi mọi người ký trong cấp đã ký; mở cấp sau hoặc hoàn thành lượt và hồ sơ.
+- `POST /signing/trinh-ky/{id}/tu-choi/`: "Không đồng ý ban hành", `ly_do_tu_choi` bắt buộc; chỉ người ký đang được mở; lượt và hồ sơ `TU_CHOI` (kết thúc).
+- `POST /signing/trinh-ky/{id}/thu-hoi/`: khi cấp của người ký còn `DANG_KY`; ký nháy chặn không thu hồi khi ký chính cùng cấp đã ký; thu hồi ký nháy chặn khóa lại ký chính đã mở mà chưa ký. Chữ ký cũ giữ nguyên, ký lại tạo bản ghi mới.
+- Đồng thời: mọi hành động khóa dòng lượt trình trước khi xử lý; thao tác lặp cùng khóa trả kết quả lần trước.
+- Ảnh chữ ký cá nhân chưa có nguồn (#67 mục 2), `vi_tri_anh_chu_ky` để trống ở MVP.
+
+Trả lại để sửa, đã triển khai ở lõi Phase 9 (#80):
+- `POST /signing/trinh-ky/{id}/yeu-cau-sua/`: "Trả lại để sửa", `tieu_de` và `ly_do` bắt buộc; chỉ người ký đang được mở (quyền `sign_trinhky`, `Idempotency-Key`). Người ký và lượt `YEU_CAU_SUA`, cấp đang ký `TAM_DUNG`, mở thread; hồ sơ vẫn `CHO_KY` nhưng không ai ký tiếp trên lượt này.
+- `GET /signing/trinh-ky/{id}/trao-doi/`: thread gần nhất của lượt hiện hành và tin nhắn; người tạo hồ sơ, người yêu cầu sửa, hoặc `view_signing_audit` (chỉ đọc).
+- `POST /signing/trinh-ky/{id}/trao-doi/`: `noi_dung`; chỉ người tạo hồ sơ và người yêu cầu sửa, khi thread đang mở và hồ sơ còn `CHO_KY`.
+- `POST /signing/trinh-ky/{id}/giai-quyet/` (multipart `tep`, tùy chọn `vi_tri_ky` dạng chuỗi JSON theo id dòng người ký lượt hiện hành; mặc định giữ vị trí lượt trước, tệp mới ít trang hơn thì báo lỗi): người tạo hồ sơ (quyền `send_trinhky`, `Idempotency-Key`) tải bản sửa; server băm, tăng `phien_ban_van_ban`, thread `DA_GIAI_QUYET`, tạo lượt mới (`luot_truoc`) cùng cấp và người ký của lượt cũ, mở cấp đầu; toàn bộ các cấp ký lại. Chữ ký lượt cũ giữ làm lịch sử, không dùng cho tệp mới (mã băm khác). Có người ký không còn hoạt động thì lỗi `khong_xac_dinh_duoc_nguoi_ky`, chưa lưu tệp.
+
+Ngoài MVP (#80 mục 8), giữ trong roadmap:
+- `POST /signing/trinh-ky/{id}/uy-quyen/`: ủy quyền khẩn cấp; `nguoi_ky` mới, `ly_do_uy_quyen`, `hinh_thuc_ky` bắt buộc; chỉ cấp trên trực tiếp hoặc quản trị.
 - `GET|POST /signing/uy-quyen/`, `POST /signing/uy-quyen/{id}/huy/`: ủy quyền theo thời gian.
-- `GET|POST /signing/change-threads/{id}/messages`: trao đổi trong thread.
-- `POST /signing/change-threads/{id}/giai-quyet`: tải bản mới, đóng thread, tạo lượt trình mới.
 
 ### 7.4. Khóa, nhật ký, bằng chứng tổng hợp
 
@@ -698,17 +709,23 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - `POST /signing/khoa/{id}/xoay-vong/`
 - `POST /signing/khoa/{id}/thu-hoi/`
 - Phase 6a (bảo vệ khóa bằng PIN, mục 3.4). Payload dùng `xac_minh_pin` = Base64 của verifier 32 byte (không có field CSDL tương ứng; server chỉ lưu HMAC):
-  - `POST /signing/khoa/{id}/dat-pin/`: `xac_minh_pin`, `tham_so_kdf` → 201, trả `manh_bi_mat` (k_srv, Base64) một lần.
+  - `POST /signing/khoa/{id}/dat-pin/`: `xac_minh_pin`, `tham_so_kdf` (`thuat_toan`, `m`, `t`, `p`, `phien_ban`, `salt`) → 201, trả `manh_bi_mat` (k_srv, Base64) một lần.
   - `POST /signing/khoa/{id}/mo-khoa-ky/`: `xac_minh_pin` → 200 kèm `manh_bi_mat`; sai → 400 `pin_khong_dung`; bị khóa → 423 `pin_tam_khoa` / `pin_khoa_cung`.
-  - `POST /signing/khoa/{id}/doi-pin/`: `xac_minh_pin_cu`, `xac_minh_pin_moi`, `tham_so_kdf` → 200 kèm `manh_bi_mat` (hiện tại không đổi) để client bọc lại private key. Phase 6c: trả `manh_bi_mat_cu` và `manh_bi_mat` mới (xoay vòng `k_srv`, mục 3.4).
+  - `POST /signing/khoa/{id}/doi-pin/`: `xac_minh_pin_cu`, `xac_minh_pin_moi`, `tham_so_kdf` (salt mới) → 200 kèm `manh_bi_mat_cu` (mở bản bọc hiện có) và `manh_bi_mat` mới để client bọc lại private key (xoay vòng `k_srv` từ Phase 6c, mục 3.4).
   - Response có `Cache-Control: no-store`.
-- `GET /signing/requests/{id}/audit`
-- `GET /signing/attempts/{id}/manifest`: bằng chứng chuẩn hóa và trạng thái xác minh.
+- Lịch sử hồ sơ trả trong `GET /signing/trinh-ky/{id}/` (`lich_su`).
+- Lõi Phase 10 (#80), người xem được hồ sơ (người tạo, người ký, `view_signing_audit`):
+  - `GET /signing/trinh-ky/{id}/bang-chung/`: bằng chứng đã chốt của lượt hiện hành (`noi_dung_chuan_hoa`, `ma_bam_bang_chung`, `thoi_diem_chot`) và `xac_minh` (băm lại, verify lại từng chữ ký bằng khóa công khai trong bằng chứng, đối chiếu tệp gốc và tệp hoàn tất đang lưu). Chưa hoàn tất: 409 `chua_co_bang_chung`.
+  - `GET /signing/trinh-ky/{id}/tep-hoan-tat/`: tải tệp PDF hoàn tất (kiểm mã băm trước khi trả, `no-store`). Chưa sẵn sàng: 409 `tep_hoan_tat_chua_san_sang`; tệp bị đổi: 409 `tep_hoan_tat_bi_thay_doi`.
+  - `POST /signing/trinh-ky/{id}/tao-lai-tep-hoan-tat/`: người tạo hồ sơ hoặc `view_signing_audit`; khi `LOI` hoặc đang xử lý quá 10 phút; đã `THANH_CONG` thì không sinh lại; đang xử lý: 409 `dang_tao_tep_hoan_tat`.
+  - Chi tiết hồ sơ trả thêm theo lượt: `trang_thai_tep_hoan_tat`, `loi_tep_hoan_tat`, `ma_bam_tep_hoan_tat`, `ma_bam_bang_chung`; theo người ký: vị trí ký và `co_anh_chu_ky`.
+  - `GET /signing/trinh-ky/{id}/anh-chu-ky/{chu_ky_id}/`: ảnh snapshot lúc ký (lớp phủ UI), kiểm mã băm.
+- Hỗ trợ giao diện: `GET /signing/toi/` (id, tên, đơn vị, quyền Trình ký, `la_quan_tri`, `la_lanh_dao_don_vi`); `GET /signing/van-ban-di/?q=` (văn bản đi thường người dùng xem được, `add_trinhky`); `GET /signing/nguoi-dung/?q=` (tìm tài khoản để cấu hình người ký, `manage_signing_process`).
 
 ### 7.5. Quy tắc chung
 
 - Lỗi validation trả theo field, kèm mã lỗi nghiệp vụ ổn định.
-- Hành động chuyển trạng thái của yêu cầu/lượt trình (`gui`, `ky`, `tu-choi`, `yeu-cau-sua`, `uy-quyen`, `thu-hoi`, `huy`, `trinh-lai`) bắt buộc header `Idempotency-Key`, áp dụng từ Phase 8. Endpoint quy trình và khóa (Phase 5) chưa áp dụng.
+- Hành động chuyển trạng thái của yêu cầu/lượt trình (`gui`, `ky`, `tu-choi`, `yeu-cau-sua`, `giai-quyet`, `uy-quyen`, `thu-hoi`, `huy`, `trinh-lai`) bắt buộc header `Idempotency-Key`, áp dụng từ Phase 7–9. Endpoint quy trình và khóa (Phase 5) chưa áp dụng.
 - Không trả dữ liệu nhạy cảm ngoài contract; không log chữ ký/khóa ở dạng không kiểm soát.
 - Phân trang và lọc giới hạn theo quyền sở hữu, phân công, phạm vi ở server, không chỉ ẩn ở UI.
 - Ảnh chữ ký cá nhân đọc qua contract của Nhóm 7; module này không định nghĩa API hồ sơ.
@@ -795,7 +812,7 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - Thông báo kiêm outbox, task Celery có chống trùng/retry, quét bản ghi sót.
 - Adapter filesystem qua mount cấu hình bằng biến môi trường.
 - `PdfStampingService`: phẳng hóa khi `HOAN_THANH`, lưu `vi_tri_tep_hoan_tat`, `ma_bam_tep_hoan_tat`; test tệp gốc không đổi mã băm trong suốt luồng nội bộ.
-- Interface `LegalSignerAdapter` cho khâu phát hành.
+- (Ngoài MVP #80) Interface `LegalSignerAdapter` cho khâu phát hành.
 - Contract test để thay adapter lưu trữ bằng API/SFTP không đổi domain service.
 
 ### Pha 6 — Hoàn thiện API và bàn giao
@@ -837,8 +854,8 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - Chữ ký verify được từ khóa công khai và raw SHA-256 digest.
 - Xoay vòng/thu hồi khóa, thu hồi chữ ký, từ chối, yêu cầu sửa, ủy quyền, hủy, quản trị hủy thay đều có nhật ký, kể cả sự kiện không gắn yêu cầu.
 - Bằng chứng chuẩn hóa kiểm tra độc lập được theo lượt trình; `DA_CHOT` bất biến.
-- Có interface adapter sẵn sàng cắm dịch vụ ký số CA/CCCD và đóng dấu PAdES sau khi duyệt nội bộ hoàn thành.
-- Người chịu trách nhiệm pháp lý cao nhất ký ban hành phải có Chứng thư số CA hợp pháp.
+- Tệp hoàn tất mang nhận diện "bản duyệt nội bộ, chưa phát hành"; bằng chứng tổng hợp xác minh lại được (mã băm, chữ ký Ed25519, tệp gốc, tệp hoàn tất, ảnh chữ ký).
+- Phát hành pháp lý bằng chứng thư số CA nằm ngoài MVP (#80 mục 8).
 
 ### Hạn xử lý và thông báo
 

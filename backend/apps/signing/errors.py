@@ -1,3 +1,4 @@
+from django.http import Http404
 from rest_framework import status
 from rest_framework.exceptions import APIException
 from rest_framework.views import APIView
@@ -39,7 +40,7 @@ def exception_handler(exc, context):
         response.data = {"code": "du_lieu_khong_hop_le", "detail": "", "fields": response.data}
     elif isinstance(response.data, dict) and "detail" in response.data:
         response.data = {
-            "code": getattr(exc, "default_code", "loi"),
+            "code": "khong_tim_thay" if isinstance(exc, Http404) else getattr(exc, "default_code", "loi"),
             "detail": str(response.data["detail"]),
             "fields": {},
         }

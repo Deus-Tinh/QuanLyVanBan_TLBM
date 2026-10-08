@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
@@ -21,8 +22,7 @@ class Base(TestCase):
         self.u1 = User.objects.create_user("u1")
         self.u2 = User.objects.create_user("u2")
         self.process = SigningProcess.objects.create(
-            ma_quy_trinh="QT", ten_quy_trinh="QT", pham_vi=enums.PhamViQuyTrinh.CONG_TY,
-            kieu_ky_mac_dinh=enums.KieuKy.TUAN_TU, create_by=self.u1,
+            ma_quy_trinh="QT", ten_quy_trinh="QT", pham_vi=enums.PhamViQuyTrinh.CONG_TY, create_by=self.u1,
         )
         self.pstep = SigningProcessStep.objects.create(quy_trinh=self.process, cap_ky=1, ten_cap_ky="C1", thu_tu=1)
         self.request = self.make_request()
@@ -40,7 +40,7 @@ class Base(TestCase):
     def make_request(self, **kw):
         data = dict(
             document_type=enums.LoaiVanBan.VAN_BAN_DI, van_ban_id=1, quy_trinh=self.process, phien_ban_quy_trinh=1,
-            muc_do="THUONG", kieu_ky=enums.KieuKy.TUAN_TU, create_by=self.u1,
+            muc_do="THUONG", create_by=self.u1,
         )
         data.update(kw)
         return SigningRequest.objects.create(**data)
@@ -72,6 +72,27 @@ class ProcessStepSignerTests(Base):
 
 
 class RequestAttemptTests(Base):
+    def test_signing_only_accepts_outgoing_documents(self):
+        # Phase 6c: bỏ cách thức ký toàn yêu cầu; trình ký chỉ nhận văn bản đi.
+        # So đúng danh sách cột để phát hiện cả cột thừa lẫn cột thiếu so với DDL.
+        self.assertEqual(enums.LoaiVanBan.values, ["vanbandi"])
+        self.assertEqual(sorted(f.name for f in SigningProcess._meta.concrete_fields), [
+            "cau_hinh_nhac_han", "create_by", "created_at", "don_vi_ap_dung_id", "id", "ma_quy_trinh", "mo_ta",
+            "pham_vi", "phien_ban", "ten_quy_trinh", "trang_thai", "update_at", "update_by",
+        ])
+        self.assertEqual(sorted(f.name for f in SigningRequest._meta.concrete_fields), [
+            "create_by", "created_at", "document_type", "ghi_chu", "han_chot", "ho_so_goc", "id", "ly_do_huy",
+            "ly_do_tu_choi", "ma_bam_tai_lieu", "muc_do", "ngay_gui", "ngay_hoan_thanh", "ngay_huy",
+            "ngay_tu_choi", "phien_ban_quy_trinh", "phien_ban_van_ban", "quy_trinh", "trang_thai",
+            "update_at", "update_by", "van_ban_id", "vi_tri_luu_tep",
+        ])
+        for loai in ("vanbanden", "vanbanmat"):
+            yeu_cau = SigningRequest(document_type=loai, van_ban_id=1, quy_trinh=self.process,
+                                     phien_ban_quy_trinh=1, muc_do="THUONG", create_by=self.u1)
+            with self.assertRaises(ValidationError) as ctx:
+                yeu_cau.full_clean()
+            self.assertIn("document_type", ctx.exception.message_dict)
+
     def test_document_type_has_no_default(self):
         field = SigningRequest._meta.get_field("document_type")
         self.assertFalse(field.has_default())

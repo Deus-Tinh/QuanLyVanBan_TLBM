@@ -61,6 +61,7 @@ class SigningKey(models.Model):
 
 
 class SigningProcess(models.Model):
+    # Tên cột theo DDL chuẩn hóa (#96, quy ước #68): db_column giữ nguyên tên thuộc tính và API.
     ma_quy_trinh = models.CharField(max_length=50)
     ten_quy_trinh = models.CharField(max_length=255)
     mo_ta = models.TextField(blank=True, default="")
@@ -69,17 +70,25 @@ class SigningProcess(models.Model):
         max_length=20, choices=enums.TrangThaiQuyTrinh.choices, default=enums.TrangThaiQuyTrinh.NHAP
     )
     pham_vi = models.CharField(max_length=20, choices=enums.PhamViQuyTrinh.choices)
-    kieu_ky_mac_dinh = models.CharField(max_length=20, choices=enums.KieuKy.choices)
+    # Bắt buộc khi PHONG_BAN, rỗng khi CONG_TY (#80 mục A). Chờ Nhóm 7 (organizations_donvi): đổi sang ForeignKey.
+    don_vi_ap_dung_id = models.BigIntegerField(null=True, blank=True)
     cau_hinh_nhac_han = models.JSONField(null=True, blank=True)
-    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+", db_column="nguoi_tao_id")
     created_at = models.DateTimeField(auto_now_add=True)
-    update_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    update_at = models.DateTimeField(auto_now=True)
+    update_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", db_column="nguoi_cap_nhat_id"
+    )
+    update_at = models.DateTimeField(auto_now=True, db_column="updated_at")
 
     class Meta:
         db_table = "signing_process"
         constraints = [
             models.UniqueConstraint(fields=["ma_quy_trinh", "phien_ban"], name="uq_signing_process_ma_phien_ban"),
+            models.CheckConstraint(
+                condition=(Q(pham_vi=enums.PhamViQuyTrinh.PHONG_BAN) & Q(don_vi_ap_dung_id__isnull=False))
+                | (Q(pham_vi=enums.PhamViQuyTrinh.CONG_TY) & Q(don_vi_ap_dung_id__isnull=True)),
+                name="chk_signing_process_don_vi_ap_dung",
+            ),
         ]
 
     def __str__(self):
@@ -120,6 +129,8 @@ class SigningProcessStepSigner(models.Model):
     buoc_quy_trinh = models.ForeignKey(SigningProcessStep, on_delete=models.CASCADE, related_name="nguoi_ky_set")
     nguoi_ky = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     chuc_vu_id = models.BigIntegerField(null=True, blank=True)
+    # Chỉ dùng khi cấu hình theo chức vụ; rỗng khi cấu hình theo tài khoản (#80 Phase 7)
+    pham_vi_chuc_vu = models.CharField(max_length=20, choices=enums.PhamViChucVu.choices, null=True, blank=True)
     vai_tro_ky = models.CharField(max_length=20, choices=enums.VaiTroKy.choices, default=enums.VaiTroKy.KY_CHINH)
     chan_ky_chinh = models.BooleanField(default=True)
     thu_tu = models.PositiveSmallIntegerField()
@@ -138,15 +149,16 @@ class SigningProcessStepSigner(models.Model):
 
 class SigningRequest(models.Model):
     document_type = models.CharField(max_length=20, choices=enums.LoaiVanBan.choices)
-    van_ban_id = models.BigIntegerField()
+    van_ban_id = models.BigIntegerField(db_column="document_id")
     # Bản sao từ lượt trình hiện hành; nguồn sự thật là SigningAttempt.
     phien_ban_van_ban = models.CharField(max_length=50, null=True, blank=True)
     vi_tri_luu_tep = models.CharField(max_length=500, null=True, blank=True)
     ma_bam_tai_lieu = models.CharField(max_length=64, null=True, blank=True)
     quy_trinh = models.ForeignKey(SigningProcess, on_delete=models.PROTECT, related_name="+")
     phien_ban_quy_trinh = models.PositiveSmallIntegerField()
-    muc_do = models.CharField(max_length=20)
-    kieu_ky = models.CharField(max_length=20, choices=enums.KieuKy.choices)
+    muc_do = models.CharField(max_length=20, choices=enums.MucDoTrinhKy.choices)
+    # Trình lại sau từ chối tạo yêu cầu mới trỏ về yêu cầu bị từ chối (#80 Phase 7)
+    ho_so_goc = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="trinh_lai_set")
     trang_thai = models.CharField(
         max_length=20, choices=enums.TrangThaiYeuCau.choices, default=enums.TrangThaiYeuCau.NHAP
     )
@@ -158,10 +170,12 @@ class SigningRequest(models.Model):
     ngay_huy = models.DateTimeField(null=True, blank=True)
     ly_do_huy = models.TextField(blank=True, default="")
     ghi_chu = models.TextField(blank=True, default="")
-    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+", db_column="nguoi_tao_id")
     created_at = models.DateTimeField(auto_now_add=True)
-    update_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    update_at = models.DateTimeField(auto_now=True)
+    update_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", db_column="nguoi_cap_nhat_id"
+    )
+    update_at = models.DateTimeField(auto_now=True, db_column="updated_at")
 
     class Meta:
         db_table = "signing_request"
@@ -195,10 +209,16 @@ class SigningAttempt(models.Model):
     thoi_diem_huy = models.DateTimeField(null=True, blank=True)
     vi_tri_tep_hoan_tat = models.CharField(max_length=500, blank=True, default="")
     ma_bam_tep_hoan_tat = models.CharField(max_length=64, blank=True, default="")
-    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    trang_thai_tep_hoan_tat = models.CharField(
+        max_length=20, choices=enums.TrangThaiTepHoanTat.choices, null=True, blank=True
+    )
+    loi_tep_hoan_tat = models.CharField(max_length=100, blank=True, default="")
+    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+", db_column="nguoi_tao_id")
     created_at = models.DateTimeField(auto_now_add=True)
-    update_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    update_at = models.DateTimeField(auto_now=True)
+    update_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", db_column="nguoi_cap_nhat_id"
+    )
+    update_at = models.DateTimeField(auto_now=True, db_column="updated_at")
 
     class Meta:
         db_table = "signing_attempt"
@@ -363,7 +383,7 @@ class SigningManifest(models.Model):
         max_length=20, choices=enums.TrangThaiManifest.choices, default=enums.TrangThaiManifest.NHAP
     )
     thoi_diem_chot = models.DateTimeField(null=True, blank=True)
-    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+", db_column="nguoi_tao_id")
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = ManifestQuerySet.as_manager()
@@ -398,7 +418,7 @@ class SigningChangeThread(models.Model):
     )
     thoi_diem_giai_quyet = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    update_at = models.DateTimeField(auto_now=True)
+    update_at = models.DateTimeField(auto_now=True, db_column="updated_at")
 
     class Meta:
         db_table = "signing_change_thread"

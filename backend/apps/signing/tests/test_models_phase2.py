@@ -59,7 +59,7 @@ class SigningProcessConstraintTests(TestCase):
     def _process(self, ma="QT1", phien_ban=1):
         return SigningProcess.objects.create(
             ma_quy_trinh=ma, ten_quy_trinh="Quy trình", phien_ban=phien_ban,
-            pham_vi=enums.PhamViQuyTrinh.CONG_TY, kieu_ky_mac_dinh=enums.KieuKy.TUAN_TU,
+            pham_vi=enums.PhamViQuyTrinh.CONG_TY,
             create_by=self.user,
         )
 
