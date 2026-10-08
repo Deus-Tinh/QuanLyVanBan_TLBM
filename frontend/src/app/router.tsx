@@ -16,6 +16,9 @@ import SyllabusPreview from '@components/common/SyllabusPreview';
 import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
 import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
+// Phân hệ Trình ký (Nhóm 5): tải lười để tách khỏi bundle chính
+const SigningModule = React.lazy(() => import('@pages/signing/SigningModule'));
+
 interface RouterProps {
   currentTheme: ThemeMode;
   onSelectTheme: (theme: ThemeMode) => void;
@@ -87,7 +90,14 @@ export default function AppRouter({
         <Route path="/resources" element={<ResourceManagementPage />} />
 
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}
-        <Route path="/approvals" element={<SyllabusPreview activePage="approvals" />} />
+        <Route
+          path="/approvals/*"
+          element={
+            <React.Suspense fallback={null}>
+              <SigningModule />
+            </React.Suspense>
+          }
+        />
         <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
         <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
         <Route path="/birthdays" element={<BirthdayPage />} />

@@ -15,6 +15,8 @@ urlpatterns = [
     # API Tổng quan Dashboard: GET /api/dashboard/overview/
     path("api/dashboard/", include("dashboard.urls", namespace="dashboard")),
 
+    # ── Module Nhóm 5 — Trình ký ──────────────────────────────────────────
+    path("api/v1/signing/", include("signing.urls", namespace="signing")),
     # ── Module Nhóm 4 — Tài liệu & Biểu mẫu (Nguyễn Chí Tín) ───────────────
     path("api/resources/", include("document_templates.urls")),
 

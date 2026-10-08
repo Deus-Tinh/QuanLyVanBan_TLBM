@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "accounts",
     "dashboard",
     "birthdays",
+    "signing",
     "document_templates",
     "organizations",
     "authorization",
@@ -203,6 +204,21 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ),
 }
+
+# ─────────────────────────────────────────────────
+# Trình ký — thư mục gốc chứa tệp văn bản (adapter filesystem)
+# ─────────────────────────────────────────────────
+SIGNING_DOCUMENT_ROOT = os.environ.get("SIGNING_DOCUMENT_ROOT", "")
+
+# Trình ký — bí mật máy chủ để băm mã xác minh PIN và mã hóa k_srv (plan mục 3.4).
+# Bắt buộc đặt riêng trên Staging/Production; để trống thì dùng SECRET_KEY (chỉ cho môi trường dev).
+# Đổi giá trị này làm mọi PIN đã đặt mất hiệu lực (người dùng phải đặt lại).
+SIGNING_PIN_SECRET = os.environ.get("SIGNING_PIN_SECRET", "")
+
+# Trình ký — phông chữ có dấu tiếng Việt để in tệp PDF hoàn tất (Phase 10). Để trống thì tự dò phông hệ thống
+# (DejaVu Sans, Noto Sans, Liberation Sans, Arial); không có phông nào thì tạo tệp báo lỗi `thieu_phong_chu`.
+SIGNING_PDF_FONT = os.environ.get("SIGNING_PDF_FONT", "")
+SIGNING_PDF_FONT_BOLD = os.environ.get("SIGNING_PDF_FONT_BOLD", "")
 
 # ─────────────────────────────────────────────────
 # SimpleJWT — Cấu hình token
