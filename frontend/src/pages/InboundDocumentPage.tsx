@@ -343,10 +343,10 @@ export const InboundDocumentPage: React.FC = () => {
               <i className="fa-solid fa-file-circle-check" />
             </div>
             <div>
-              <span className="text-xs text-muted block mb-0.5 font-medium">Tổng số văn bản đến</span>
+              <span className="text-sm text-muted block mb-0.5 font-medium">Tổng số văn bản đến</span>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-bold text-main">{countActive}</span>
-                <span className="text-xs text-muted font-medium">văn bản còn hiệu lực</span>
+                <span className="text-sm text-muted font-medium">văn bản còn hiệu lực</span>
               </div>
             </div>
           </div>
