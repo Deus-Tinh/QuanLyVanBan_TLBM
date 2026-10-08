@@ -8,6 +8,7 @@ import AiAssistantPage from '@pages/ai/AiAssistantPage';
 import ProfilePage from '@pages/profile/ProfilePage';
 import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
+import InboundDocumentPage from '@pages/InboundDocumentPage';
 import OrganizationsPage from '@pages/organizations/OrganizationsPage';
 import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
@@ -81,7 +82,7 @@ export default function AppRouter({
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Phân hệ Văn bản (Nhóm 2 phụ trách theo đề cương) */}
-        <Route path="/documents/incoming" element={<SyllabusPreview activePage="documents_incoming" />} />
+        <Route path="/documents/incoming" element={<InboundDocumentPage />} />
         <Route path="/documents/outgoing" element={<SyllabusPreview activePage="documents_outgoing" />} />
         <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
 
@@ -120,5 +121,3 @@ export default function AppRouter({
     </Routes>
   );
 }
-
-
