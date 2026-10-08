@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "dashboard",
     "birthdays",
     "organizations",
+    "meetings",
     "authorization",
 ]
 
