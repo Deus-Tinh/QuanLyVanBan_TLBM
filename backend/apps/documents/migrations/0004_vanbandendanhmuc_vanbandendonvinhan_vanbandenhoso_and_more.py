@@ -19,15 +19,15 @@ class Migration(migrations.Migration):
             database_operations=[
                 migrations.RunSQL(
                     sql="""
-                    DROP TABLE IF EXISTS documents_vanbanden_danhmuc CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbanden_donvinhan CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbanden_hoso CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbanden_nguoinhan CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbandi_danhmuc CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbandi_donvinhan CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbandi_hoso CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbandi_nguoinhan CASCADE;
-                    DROP TABLE IF EXISTS documents_vanbandi_noibanhanh CASCADE;
+                    DROP TABLE IF EXISTS documents_vanbanden_danhmuc;
+                    DROP TABLE IF EXISTS documents_vanbanden_donvinhan;
+                    DROP TABLE IF EXISTS documents_vanbanden_hoso;
+                    DROP TABLE IF EXISTS documents_vanbanden_nguoinhan;
+                    DROP TABLE IF EXISTS documents_vanbandi_danhmuc;
+                    DROP TABLE IF EXISTS documents_vanbandi_donvinhan;
+                    DROP TABLE IF EXISTS documents_vanbandi_hoso;
+                    DROP TABLE IF EXISTS documents_vanbandi_nguoinhan;
+                    DROP TABLE IF EXISTS documents_vanbandi_noibanhanh;
                     DROP INDEX IF EXISTS idx_vanbanden_sohieu;
                     DROP INDEX IF EXISTS idx_vanbanden_nam;
                     DROP INDEX IF EXISTS idx_vanbandi_sohieu;

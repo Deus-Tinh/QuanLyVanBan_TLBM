@@ -12,6 +12,7 @@ Hỗ trợ:
 """
 
 import django_filters
+from django.contrib.auth import get_user_model
 from django.db.models import Q
 
 from .models import (
@@ -241,13 +242,20 @@ class ViewerFilter(django_filters.FilterSet):
     def filter_search(self, queryset, name, value):
         if not value:
             return queryset
-        return queryset.filter(
-            Q(user__username__icontains=value)
-            | Q(user__first_name__icontains=value)
-            | Q(user__last_name__icontains=value)
-        )
+        user_model = get_user_model()
+        q = Q(user__username__icontains=value)
+        if hasattr(user_model, "ho_ten"):
+            q |= Q(user__ho_ten__icontains=value)
+        if hasattr(user_model, "first_name"):
+            q |= Q(user__first_name__icontains=value)
+        if hasattr(user_model, "last_name"):
+            q |= Q(user__last_name__icontains=value)
+        return queryset.filter(q)
 
     def filter_don_vi(self, queryset, name, value):
         if not value:
             return queryset
+        user_model = get_user_model()
+        if hasattr(user_model, "don_vi"):
+            return queryset.filter(user__don_vi__ten__icontains=value)
         return queryset.filter(user__profile__department__icontains=value)

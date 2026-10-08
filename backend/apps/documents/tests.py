@@ -2,7 +2,8 @@
 
 import io
 import tempfile
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -251,7 +252,7 @@ class DocumentAPITests(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(
-            username="cbnv", password="password123", first_name="Văn", last_name="Nguyễn"
+            username="cbnv", password="password123", ho_ten="Nguyễn Văn"
         )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)

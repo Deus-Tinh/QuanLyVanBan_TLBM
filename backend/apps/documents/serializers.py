@@ -467,13 +467,22 @@ class DocumentViewLogSerializer(serializers.ModelSerializer):
         ]
 
     def get_full_name(self, obj):
-        full_name = obj.user.get_full_name()
-        return full_name if full_name else obj.user.username
+        if hasattr(obj.user, "get_full_name"):
+            full_name = obj.user.get_full_name()
+            if full_name:
+                return full_name
+        return getattr(obj.user, "ho_ten", None) or obj.user.username
 
     def get_chuc_danh(self, obj):
+        if hasattr(obj.user, "chuc_danh") and obj.user.chuc_danh:
+            return obj.user.chuc_danh
+        if hasattr(obj.user, "chuc_vu") and obj.user.chuc_vu:
+            return getattr(obj.user.chuc_vu, "name", "")
         profile = getattr(obj.user, "profile", None)
         return getattr(profile, "position", "") if profile else ""
 
     def get_don_vi(self, obj):
+        if hasattr(obj.user, "don_vi") and obj.user.don_vi:
+            return getattr(obj.user.don_vi, "ten", "")
         profile = getattr(obj.user, "profile", None)
         return getattr(profile, "department", "") if profile else ""

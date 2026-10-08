@@ -1,6 +1,7 @@
 """Django Admin cho Module Văn Bản — Phân hệ Đến & Đi."""
 
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 
 from .models import (
     VanBanDen,
@@ -94,7 +95,7 @@ class VanBanDiAdmin(admin.ModelAdmin):
 class DocumentViewLogAdmin(admin.ModelAdmin):
     list_display = ["document_type", "document_id", "user", "viewed_at"]
     list_filter = ["document_type", "viewed_at"]
-    search_fields = ["user__username", "user__first_name", "user__last_name"]
+    search_fields = ["user__username", "user__ho_ten"] if hasattr(get_user_model(), "ho_ten") else ["user__username", "user__first_name", "user__last_name"]
     readonly_fields = ["viewed_at"]
     list_per_page = 30
 
@@ -103,6 +104,6 @@ class DocumentViewLogAdmin(admin.ModelAdmin):
 class DocumentAccessLogAdmin(admin.ModelAdmin):
     list_display = ["document_type", "document_id", "user", "hanh_dong", "doi_tuong_user", "created_at"]
     list_filter = ["document_type", "hanh_dong", "created_at"]
-    search_fields = ["user__username", "user__first_name", "user__last_name"]
+    search_fields = ["user__username", "user__ho_ten"] if hasattr(get_user_model(), "ho_ten") else ["user__username", "user__first_name", "user__last_name"]
     readonly_fields = ["created_at"]
     list_per_page = 30
