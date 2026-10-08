@@ -10,8 +10,8 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .filters import DocumentFilter, ViewerFilter
-from .models import (
+from documents.filters import DocumentFilter, ViewerFilter
+from documents.models import (
     HieuLuc,
     LoaiVanBan,
     PhamVi,
@@ -33,7 +33,7 @@ from .models import (
     Document,
     DocumentAttachment,
 )
-from .services import (
+from documents.services import (
     export_to_excel,
     generate_excel_template,
     generate_so_thu_tu,
@@ -495,7 +495,7 @@ class JunctionAndThroughModelTests(TestCase):
 
     def test_restricted_document_visible_to_recipient_department(self):
         """Văn bản hạn chế xem được bởi CBNV thuộc đơn vị nhận (donvinhan)."""
-        from .selectors import van_ban_xem_duoc
+        from documents.selectors import van_ban_xem_duoc
         user_dept = User.objects.create_user(username="dept_user", password="pwd")
         user_dept.don_vi_id = 999  # Giả lập employee thuộc đơn vị 999
 
@@ -1038,7 +1038,7 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
 
     def test_composite_primary_key_junction_tables(self):
         """Test D-1: 9 bảng nối hoạt động với CompositePrimaryKey không có cột id thừa."""
-        from .models import (
+        from documents.models import (
             VanBanDenNguoiNhan, VanBanDenHoSo, VanBanDenDanhmuc, VanBanDenDonViNhan,
             VanBanDiNguoiNhan, VanBanDiHoSo, VanBanDiDanhmuc, VanBanDiDonViNhan, VanBanDiNoiBanHanh
         )
