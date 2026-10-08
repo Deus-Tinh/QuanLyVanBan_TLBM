@@ -6,8 +6,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import IncomingDocument, OutgoingDocument, MeetingRoom
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /api/dashboard/overview/
@@ -26,7 +24,6 @@ def overview_view(request):
         "stats": {
             "incoming_total": <int>,
             "outgoing_total": <int>,
-            "confidential_total": <int>,
             "tasks_pending": <int>
         },
         "recent_incoming": [
@@ -57,91 +54,29 @@ def overview_view(request):
     today = timezone.localdate()
     tomorrow = today + timedelta(days=1)
 
-    # ── 1. Thống kê số liệu tổng quan ──────────────────────────────────────
-    user = request.user
-    is_admin = user.is_superuser
-
-    current_year = today.year
-    incoming_qs = IncomingDocument.objects.filter(issued_date__year=current_year)
-    outgoing_qs = OutgoingDocument.objects.filter(issued_date__year=current_year)
-
-    if not is_admin:
-        # Cán bộ thường không được phép xem hoặc thống kê văn bản mật
-        incoming_qs = incoming_qs.filter(is_confidential=False)
-        outgoing_qs = outgoing_qs.filter(is_confidential=False)
-        confidential_total = 0
-    else:
-        confidential_total = (
-            incoming_qs.filter(is_confidential=True).count()
-            + outgoing_qs.filter(is_confidential=True).count()
-        )
-
-    incoming_total = incoming_qs.count()
-    outgoing_total = outgoing_qs.count()
+    # ── 1-4. Văn bản và phòng họp ───────────────────────────────────
+    # Nguồn dữ liệu duy nhất là DDL (documents_vanbanden, documents_vanbandi,
+    # meetings_*). Dashboard không giữ bảng riêng và không tự viết lại quy tắc
+    # "văn bản xem được" (#68 mục C5). Khi các module trên vào staging, nối
+    # tại đây qua van_ban_xem_duoc(user, loai) của Nhóm 2; đến lúc đó khối trả rỗng.
+    incoming_total = 0
+    outgoing_total = 0
     tasks_pending = 0  # Placeholder — sẽ tích hợp khi Nhóm 6 hoàn tất API Tasks
+    recent_incoming = []
+    recent_outgoing = []
+    today_meetings = []
 
     stats = {
         "incoming_total": incoming_total,
         "outgoing_total": outgoing_total,
-        "confidential_total": confidential_total,
         "tasks_pending": tasks_pending,
     }
 
     kpis = {
         "incomingCount": incoming_total,
         "outgoingCount": outgoing_total,
-        "confidentialCount": confidential_total,
         "tasksCount": tasks_pending,
     }
-
-    # ── 2. Top 5 văn bản đến mới nhất ──────────────────────────────────────
-    recent_incoming_qs = IncomingDocument.objects.all()
-    if not is_admin:
-        recent_incoming_qs = recent_incoming_qs.filter(is_confidential=False)
-
-    recent_incoming = [
-        {
-            "id": doc.id,
-            "code": doc.code,
-            "title": doc.title,
-            "date": doc.issued_date.strftime("%d/%m/%Y"),
-            "sender": doc.sender,
-        }
-        for doc in recent_incoming_qs[:5]
-    ]
-
-    # ── 3. Top 5 văn bản đi mới nhất ───────────────────────────────────────
-    recent_outgoing_qs = OutgoingDocument.objects.all()
-    if not is_admin:
-        recent_outgoing_qs = recent_outgoing_qs.filter(is_confidential=False)
-
-    recent_outgoing = [
-        {
-            "id": doc.id,
-            "code": doc.code,
-            "title": doc.title,
-            "date": doc.issued_date.strftime("%d/%m/%Y"),
-            "recipient": doc.recipient,
-        }
-        for doc in recent_outgoing_qs[:5]
-    ]
-
-    # ── 4. Lịch phòng họp hôm nay ──────────────────────────────────────────
-    today_meetings = [
-        {
-            "id": f"room-{m.id}",
-            "room_name": m.room_name,
-            "roomName": m.room_name,
-            "meeting_title": m.meeting_title,
-            "topic": m.meeting_title,
-            "start_time": m.start_time.strftime("%H:%M"),
-            "end_time": m.end_time.strftime("%H:%M"),
-            "time": f"{m.start_time.strftime('%H:%M')} - {m.end_time.strftime('%H:%M')}",
-            "organizer": m.organizer,
-            "status": m.status or "ready",
-        }
-        for m in MeetingRoom.objects.filter(date=today)
-    ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
     employees = get_user_model().objects.filter(is_active=True).select_related("don_vi", "chuc_vu")

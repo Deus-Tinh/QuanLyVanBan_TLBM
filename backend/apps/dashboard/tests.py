@@ -1,13 +1,13 @@
-from datetime import date, timedelta, time
-from django.test import TestCase
+from datetime import date, timedelta
+from django.apps import apps
 from django.contrib.auth import get_user_model
+from django.test import TestCase
 from django.utils import timezone
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from accounts.models import Position
 from organizations.models import DonVi, KhoiKhuVuc
-from dashboard.models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
 class DashboardAPITests(TestCase):
@@ -17,71 +17,25 @@ class DashboardAPITests(TestCase):
         self.tomorrow = self.today + timedelta(days=1)
 
         khoi = KhoiKhuVuc.objects.create(ten="Khối Hỗ trợ")
-        don_vi_hc = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Phòng Hành chính")
-        don_vi_vp = DonVi.objects.create(khoi=khoi, stt_uu_tien=2, ten="Văn phòng Trung tâm")
-        cv_van_thu = Position.objects.create(display_order=1, name="Chuyên viên văn thư")
-        cv_quan_tri = Position.objects.create(display_order=2, name="Quản trị viên tối cao")
+        don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Phòng Hành chính")
+        chuc_vu = Position.objects.create(display_order=1, name="Chuyên viên văn thư")
         UserModel = get_user_model()
 
-        # 1. Staff user (cán bộ chuyên viên)
         self.staff_user = UserModel.objects.create_user(
             username="staffuser",
             password="password123",
             ho_ten="Cán Bộ Nhân Viên",
-            don_vi=don_vi_hc,
-            chuc_vu=cv_van_thu,
+            don_vi=don_vi,
+            chuc_vu=chuc_vu,
             ngay_sinh=date(1995, self.today.month, self.today.day),
         )
-
-        # 2. Admin user (quản trị viên)
         self.admin_user = UserModel.objects.create_superuser(
             username="adminuser",
             password="password123",
             ho_ten="Quản Trị Viên",
-            don_vi=don_vi_vp,
-            chuc_vu=cv_quan_tri,
+            don_vi=don_vi,
+            chuc_vu=chuc_vu,
             ngay_sinh=date(1990, self.tomorrow.month, self.tomorrow.day),
-        )
-
-        # 3. Tạo văn bản thường và văn bản mật
-        self.doc_normal = IncomingDocument.objects.create(
-            code="VB-THUONG-01",
-            title="Văn bản thông thường công khai",
-            issued_date=self.today,
-            sender="Sở Giáo Dục",
-            is_confidential=False,
-        )
-        self.doc_secret = IncomingDocument.objects.create(
-            code="VB-MAT-01",
-            title="Văn bản tuyệt mật nội bộ",
-            issued_date=self.today,
-            sender="Ban Cơ Yếu",
-            is_confidential=True,
-        )
-        self.out_normal = OutgoingDocument.objects.create(
-            code="VBD-THUONG-01",
-            title="Văn bản đi công khai",
-            issued_date=self.today,
-            recipient="UBND TP.HCM",
-            is_confidential=False,
-        )
-        self.out_secret = OutgoingDocument.objects.create(
-            code="VBD-MAT-01",
-            title="Văn bản đi mật",
-            issued_date=self.today,
-            recipient="Thủ trưởng đơn vị",
-            is_confidential=True,
-        )
-
-        # 4. Phòng họp
-        MeetingRoom.objects.create(
-            room_name="Phòng họp A1 - Khu A",
-            meeting_title="Họp giao ban định kỳ",
-            date=self.today,
-            start_time=time(8, 30),
-            end_time=time(11, 30),
-            organizer="Văn phòng Trung tâm",
-            status="ready",
         )
 
     def test_overview_unauthorized(self):
@@ -90,57 +44,43 @@ class DashboardAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_overview_authorized_contract(self):
-        """User hợp lệ nhận đủ các trường hợp đồng chuẩn."""
+        """Người dùng hợp lệ nhận đủ các khóa của hợp đồng API."""
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get("/api/dashboard/overview/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("kpis", response.data)
-        self.assertIn("recentIncoming", response.data)
-        self.assertIn("recentOutgoing", response.data)
-        self.assertIn("meetingRooms", response.data)
-        self.assertIn("birthdays", response.data)
+        for key in ("kpis", "recentIncoming", "recentOutgoing", "tasks", "meetingRooms", "birthdays"):
+            self.assertIn(key, response.data)
+        self.assertEqual(
+            set(response.data["kpis"]), {"incomingCount", "outgoingCount", "tasksCount"}
+        )
 
-    def test_overview_as_staff_excludes_confidential(self):
-        """Cán bộ thường (staff) KHÔNG được thấy văn bản mật và confidentialCount bằng 0."""
-        self.client.force_authenticate(user=self.staff_user)
-        response = self.client.get("/api/dashboard/overview/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Confidential KPI phải bằng 0
-        self.assertEqual(response.data["kpis"]["confidentialCount"], 0)
-        
-        # Danh sách gần đây không được chứa văn bản mật
-        incoming_codes = [d["code"] for d in response.data["recentIncoming"]]
-        outgoing_codes = [d["code"] for d in response.data["recentOutgoing"]]
-        self.assertNotIn("VB-MAT-01", incoming_codes)
-        self.assertNotIn("VBD-MAT-01", outgoing_codes)
-        self.assertIn("VB-THUONG-01", incoming_codes)
-        self.assertIn("VBD-THUONG-01", outgoing_codes)
+    def test_overview_documents_and_meetings_empty_until_modules_wired(self):
+        """Dashboard không giữ bảng riêng: khối văn bản và phòng họp rỗng cho mọi vai trò."""
+        for user in (self.staff_user, self.admin_user):
+            self.client.force_authenticate(user=user)
+            response = self.client.get("/api/dashboard/overview/")
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data["kpis"]["incomingCount"], 0)
+            self.assertEqual(response.data["kpis"]["outgoingCount"], 0)
+            self.assertEqual(response.data["recentIncoming"], [])
+            self.assertEqual(response.data["recentOutgoing"], [])
+            self.assertEqual(response.data["meetingRooms"], [])
 
-    def test_overview_as_admin_includes_confidential(self):
-        """Quản trị viên (admin) được phép thống kê và xem văn bản mật."""
+    def test_overview_has_no_confidential_data(self):
+        """Không còn khóa văn bản mật; superuser không có đường xem riêng."""
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get("/api/dashboard/overview/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("confidentialCount", response.data["kpis"])
+        self.assertNotIn("confidential_total", response.data["stats"])
 
-        # Confidential KPI phản ánh đúng 2 văn bản mật đã tạo
-        self.assertEqual(response.data["kpis"]["confidentialCount"], 2)
+    def test_dashboard_defines_no_models(self):
+        """Dữ liệu chỉ lấy từ bảng của DDL, dashboard không tạo bảng riêng."""
+        self.assertEqual(list(apps.get_app_config("dashboard").get_models()), [])
 
-        # Danh sách chứa cả văn bản mật
-        incoming_codes = [d["code"] for d in response.data["recentIncoming"]]
-        self.assertIn("VB-MAT-01", incoming_codes)
-
-    def test_overview_empty(self):
-        """Khi cơ sở dữ liệu trống, API trả về 0 và mảng rỗng không bị crash."""
-        IncomingDocument.objects.all().delete()
-        OutgoingDocument.objects.all().delete()
-        MeetingRoom.objects.all().delete()
-
+    def test_overview_birthdays_today_and_tomorrow(self):
+        """Sinh nhật hôm nay và ngày mai vẫn đọc từ bảng nhân viên."""
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get("/api/dashboard/overview/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["kpis"]["incomingCount"], 0)
-        self.assertEqual(response.data["kpis"]["outgoingCount"], 0)
-        self.assertEqual(response.data["recentIncoming"], [])
-        self.assertEqual(response.data["recentOutgoing"], [])
-        self.assertEqual(response.data["meetingRooms"], [])
+        labels = {b["label"] for b in response.data["birthdays"]}
+        self.assertEqual(labels, {"Hôm nay", "Ngày mai"})

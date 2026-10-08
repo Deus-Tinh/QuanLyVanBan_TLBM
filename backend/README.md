@@ -197,64 +197,14 @@ class AccountsAPITests(TestCase):
 #### Bộ kịch bản kiểm thử mẫu (`DashboardAPITests`):
 1. **`test_overview_unauthorized`**: Kiểm tra chặn `401 Unauthorized` khi chưa có JWT Token.
 2. **`test_overview_authorized_contract`**: Kiểm tra cấu trúc dữ liệu theo hợp đồng API:
-   - `kpis`: `incomingCount`, `outgoingCount`, `confidentialCount`, `tasksCount`.
+   - `kpis`: `incomingCount`, `outgoingCount`, `tasksCount`.
    - Danh sách mảng: `recentIncoming`, `recentOutgoing`, `tasks`, `meetingRooms`, `birthdays`.
-3. **`test_tomorrow_date_calculation`**: Kiểm tra tính toán ngày sinh nhật chuyển giao tháng/năm.
+3. **`test_overview_documents_and_meetings_empty_until_modules_wired`**: Khối văn bản và phòng họp rỗng với mọi vai trò.
+4. **`test_overview_has_no_confidential_data`**: Không còn khóa văn bản mật.
+5. **`test_dashboard_defines_no_models`**: App không tạo bảng riêng.
+6. **`test_overview_birthdays_today_and_tomorrow`**: Sinh nhật hôm nay và ngày mai đọc từ bảng nhân viên.
 
-<details>
-<summary><b>👉 Xem mã nguồn kiểm thử mẫu (Python TestCase)</b></summary>
-
-```python
-from datetime import date, timedelta, time
-from django.test import TestCase
-from django.contrib.auth.models import User
-from django.utils import timezone
-from rest_framework.test import APIClient
-from rest_framework import status
-from accounts.models import StaffProfile
-from dashboard.models import MeetingRoom
-
-
-class DashboardAPITests(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(username="testuser", password="testpassword123")
-        self.today = timezone.localdate()
-        self.tomorrow = self.today + timedelta(days=1)
-
-        StaffProfile.objects.create(
-            user=self.user,
-            full_name="Cán Bộ Ngày Mai",
-            department="Ban Kế hoạch",
-            position="Chuyên viên",
-            birthday=date(1995, self.tomorrow.month, self.tomorrow.day),
-        )
-
-        MeetingRoom.objects.create(
-            room_name="Phòng họp A1 - Khu A",
-            meeting_title="Họp giao ban định kỳ",
-            date=self.today,
-            start_time=time(8, 30),
-            end_time=time(11, 30),
-            organizer="Văn phòng Trung tâm",
-            status="ready",
-        )
-
-    def test_overview_unauthorized(self):
-        response = self.client.get("/api/dashboard/overview/")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_overview_authorized_contract(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get("/api/dashboard/overview/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("kpis", response.data)
-        self.assertIn("recentIncoming", response.data)
-        self.assertIn("recentOutgoing", response.data)
-        self.assertIn("meetingRooms", response.data)
-        self.assertIn("birthdays", response.data)
-```
-</details>
+Ghi chú nguồn dữ liệu: app `dashboard` không có model riêng. Khối văn bản và phòng họp trả rỗng cho tới khi nối với `documents_*` (qua `van_ban_xem_duoc` của Nhóm 2) và `meetings_*` (Nhóm 7). Mã kiểm thử: `backend/apps/dashboard/tests.py`.
 
 ---
 
