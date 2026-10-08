@@ -261,7 +261,7 @@ class Task(models.Model):
         verbose_name="Người tạo",
         on_delete=models.PROTECT,
         related_name="work_created_tasks",
-        db_column="nguoi_tao",
+        db_column="nguoi_tao_id",
     )
     is_public = models.BooleanField("Trạng thái hiển thị", default=True, db_column="hien_thi")
 
@@ -313,21 +313,16 @@ class Task(models.Model):
         verbose_name_plural = "Công việc"
         ordering = ["-created_date", "-created_at"]
         indexes = [
-            models.Index(fields=["created_date"], name="work_task_created_date_idx"),
-            models.Index(fields=["due_date"], name="work_task_due_date_idx"),
+            # Khớp CREATE INDEX idx_task_congviec_document ON task_congviec (document_type, document_id)
+            models.Index(fields=["document_type", "document_id"], name="idx_task_congviec_document"),
         ]
-        # Quyền riêng của module; nhóm quyền chung do nhóm 7 cấp theo các mã này.
-        # Lưu ý: approve_congviec KHÔNG dùng làm điều kiện chặn duyệt — quyền duyệt xét theo
-        # vai trò trong task_participant (người tạo / chủ trì / chỉ đạo), theo chốt của thầy.
-        permissions = [
-            ("view_all_congviec", "Xem tất cả công việc (toàn hệ thống)"),
-            ("view_dept_congviec", "Xem công việc theo phòng ban"),
-            ("approve_congviec", "Duyệt / Hủy duyệt công việc"),
-        ]
+        # Permission: 7 ma DDL seed (view_congviec, add_congviec, change_congviec, delete_congviec,
+        # approve_congviec, assign_congviec, comment_congviec) do nhom 7 cap. KHONG khai bao
+        # Meta.permissions o day vi authorization/apps.py tren staging da tat tin hieu tu sinh.
         constraints = [
             models.CheckConstraint(
                 condition=Q(due_date__gte=F("created_date")),
-                name="work_task_due_after_created",
+                name="chk_task_due_after_created",
                 violation_error_message=(
                     "Ngày xử lý đang trước ngày tạo. "
                     "Hãy chọn ngày xử lý bằng hoặc sau ngày tạo."
@@ -568,9 +563,6 @@ class TaskParticipant(models.Model):
         db_table = "task_participant"
         verbose_name = "Người liên quan"
         verbose_name_plural = "Người liên quan"
-        indexes = [
-            models.Index(fields=["user", "role"], name="work_participant_user_role_idx"),
-        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["task", "user"],
@@ -583,7 +575,7 @@ class TaskParticipant(models.Model):
             models.UniqueConstraint(
                 fields=["task"],
                 condition=Q(role=ParticipantRole.CHU_TRI),
-                name="work_participant_one_host",
+                name="uq_task_participant_one_host",
                 violation_error_message=(
                     "Mỗi công việc chỉ có một người chủ trì. "
                     "Hãy giữ lại một người chủ trì và chuyển những người còn lại sang vai trò khác."
@@ -619,7 +611,8 @@ class TaskComment(models.Model):
         verbose_name_plural = "Ý kiến"
         ordering = ["created_at", "id"]
         indexes = [
-            models.Index(fields=["task", "created_at"], name="work_comment_task_created_idx"),
+            # Khớp CREATE INDEX idx_comment_congviec ON task_comment (cong_viec)
+            models.Index(fields=["task"], name="idx_comment_congviec"),
         ]
 
     def __str__(self):
@@ -629,7 +622,9 @@ class TaskComment(models.Model):
 class TaskDonVi(models.Model):
     """
     Bảng `task_congviec_donvi`: một công việc gắn được nhiều phòng/ban.
-    TODO: doi don_vi_id thanh FK toi organizations.DonVi khi app organizations ve nhanh 6_tasks
+    TODO: doi don_vi_id = BigIntegerField thanh
+    don_vi = models.ForeignKey("organizations.DonVi", on_delete=models.CASCADE, db_column="don_vi")
+    khi app organizations ve nhanh 6_tasks (hien chi co o origin/staging).
     (hien app nay moi co o nhanh nhom 7 va feat/issue-19-organizations).
     """
 
@@ -648,7 +643,9 @@ class TaskDonVi(models.Model):
         verbose_name = "Phòng ban của công việc"
         verbose_name_plural = "Phòng ban của công việc"
         indexes = [
-            models.Index(fields=["don_vi_id"], name="work_task_donvi_idx"),
+            # Khớp 2 index DDL: idx_task_donvi_congviec (cong_viec), idx_task_donvi_donvi (don_vi)
+            models.Index(fields=["task"], name="idx_task_donvi_congviec"),
+            models.Index(fields=["don_vi_id"], name="idx_task_donvi_donvi"),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -703,9 +700,9 @@ class TaskAttachment(models.Model):
         verbose_name="Người tải lên",
         on_delete=models.PROTECT,
         related_name="+",
-        db_column="created_user_id",
+        db_column="nguoi_tao_id",
     )
-    uploaded_at = models.DateTimeField("Tải lên lúc", auto_now_add=True, db_column="created_time")
+    uploaded_at = models.DateTimeField("Tải lên lúc", auto_now_add=True, db_column="created_at")
 
     class Meta:
         db_table = "task_attachment"
@@ -713,7 +710,10 @@ class TaskAttachment(models.Model):
         verbose_name_plural = "File đính kèm"
         ordering = ["uploaded_at", "id"]
         indexes = [
-            models.Index(fields=["task", "kind"], name="work_attachment_task_kind_idx"),
+            # Khớp CREATE INDEX idx_task_attachment_congviec ON task_attachment (cong_viec_id)
+            models.Index(fields=["task"], name="idx_task_attachment_congviec"),
+            # idx_task_attachment_deleted là index thường trong DDL (không WHERE), không dùng partial
+            models.Index(fields=["is_deleted"], name="idx_task_attachment_deleted"),
         ]
         constraints = [
             models.CheckConstraint(
@@ -721,7 +721,7 @@ class TaskAttachment(models.Model):
                     Q(kind=AttachmentKind.GIAO_VIEC, comment__isnull=True)
                     | Q(kind=AttachmentKind.BANG_CHUNG, comment__isnull=False)
                 ),
-                name="work_attachment_evidence_in_comment",
+                name="chk_task_attachment_evidence",
                 violation_error_message=(
                     "File bằng chứng phải nằm trong một ý kiến, còn file giao việc thì không. "
                     "Hãy nộp kết quả bằng cách ghi ý kiến kèm file trên trang chi tiết công việc."

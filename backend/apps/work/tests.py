@@ -196,8 +196,14 @@ class TaskDepartmentVisibilityTests(WorkTestBase):
 
     def grant(self, user, *codenames):
         from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
 
-        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+        ct = ContentType.objects.get_for_model(Task)
+        for codename in codenames:
+            perm, _ = Permission.objects.get_or_create(
+                codename=codename, content_type=ct, defaults={"name": codename},
+            )
+            user.user_permissions.add(perm)
         # Django cache quyền trên từng instance, phải lấy lại bản mới.
         return User.objects.get(pk=user.pk)
 
@@ -341,7 +347,7 @@ class TaskTableMappingTests(WorkTestBase):
         self.assertEqual(cot_task["created_date"], "ngay_tao_cv")
         self.assertEqual(cot_task["due_date"], "ngay_xu_ly")
         self.assertEqual(cot_task["requirement"], "yeu_cau_xu_ly")
-        self.assertEqual(cot_task["created_by"], "nguoi_tao")
+        self.assertEqual(cot_task["created_by"], "nguoi_tao_id")
         self.assertEqual(cot_task["is_public"], "hien_thi")
         self.assertEqual(cot_task["first_opened_at"], "opened_at")
         self.assertEqual(cot_task["first_opened_by"], "opened_by")
@@ -352,11 +358,11 @@ class TaskTableMappingTests(WorkTestBase):
         self.assertEqual(cot_file["task"], "cong_viec_id")
         self.assertEqual(cot_file["comment"], "y_kien_id")
         self.assertEqual(cot_file["kind"], "loai")
-        self.assertEqual(cot_file["uploaded_by"], "created_user_id")
-        self.assertEqual(cot_file["uploaded_at"], "created_time")
+        self.assertEqual(cot_file["uploaded_by"], "nguoi_tao_id")
+        self.assertEqual(cot_file["uploaded_at"], "created_at")
         self.assertEqual(
             sorted(cot_file.values()),
-            ["cong_viec_id", "created_time", "created_user_id", "id", "is_deleted", "loai", "name", "path", "y_kien_id"],
+            ["cong_viec_id", "created_at", "id", "is_deleted", "loai", "name", "nguoi_tao_id", "path", "y_kien_id"],
         )
 
 
