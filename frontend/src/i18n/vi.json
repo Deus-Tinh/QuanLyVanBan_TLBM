@@ -1091,5 +1091,11 @@
     "nextYear": "Năm sau",
     "previousDecade": "12 năm trước",
     "nextDecade": "12 năm sau"
+  },
+  "birthdays": {
+    "messages": {
+      "permissionDenied": "Bạn không có quyền xem nhật ký email sinh nhật.",
+      "invalidStatus": "Trạng thái nhật ký email sinh nhật không hợp lệ."
+    }
   }
 }

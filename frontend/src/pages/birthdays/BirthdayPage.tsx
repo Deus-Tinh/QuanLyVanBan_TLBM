@@ -418,7 +418,7 @@ export default function BirthdayPage() {
                             </span>
 
                             <span
-                              className={`birthday-calendar-today-indicator h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-400 ring-2 ring-cyan-100 ${isToday ? '' : 'invisible'}`}
+                              className={`birthday-calendar-today-indicator h-2.5 w-2.5 shrink-0 rounded-full bg-info ring-2 ring-info-subtle ${isToday ? '' : 'invisible'}`}
                               aria-hidden="true"
                               title={isToday ? t('birthdayPage.today') : undefined}
                             />

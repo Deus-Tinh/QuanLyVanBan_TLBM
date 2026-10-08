@@ -30,6 +30,7 @@ class BirthdayWish(models.Model):
         max_length=20,
         choices=BirthdayWishStatus.choices,
         default=BirthdayWishStatus.APPROVED,
+        db_column="trang_thai",
         verbose_name="Trạng thái kiểm duyệt",
     )
     sticker_url = models.CharField(
@@ -85,6 +86,7 @@ class BirthdayEmailLog(models.Model):
         max_length=20,
         choices=BirthdayEmailStatus.choices,
         default=BirthdayEmailStatus.PENDING,
+        db_column="trang_thai",
         verbose_name="Trạng thái gửi",
     )
     error_message = models.TextField(
