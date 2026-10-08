@@ -1,4 +1,5 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
+import AlertModal from '@components/common/AlertModal';
 import { ActivePageId } from '@app-types/navigation';
 import '@styles/ai-chat.css';
 
@@ -139,6 +140,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const [inputVal, setInputVal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [aiAlertOpen, setAiAlertOpen] = useState(false);
+    const [aiAlertMsg, setAiAlertMsg] = useState('');
   const [attachedFile, setAttachedFile] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -565,7 +568,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                 if (onNavigate) {
                                   onNavigate(cite.targetPage);
                                 } else {
-                                  alert(`Điều hướng tới: ${cite.label} (${cite.code})`);
+                                  setAiAlertMsg(`Điều hướng tới: ${cite.label} (${cite.code})`);
+                                  setAiAlertOpen(true);
                                 }
                               }}
                               title={`Nhấp để mở trang ${cite.label}`}
@@ -622,7 +626,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                       <button
                         type="button"
                         className="msg-tool-btn"
-                        onClick={() => alert('Cảm ơn bạn đã đánh giá câu trả lời hữu ích!')}
+                        onClick={() => { setAiAlertMsg('Cảm ơn bạn đã đánh giá câu trả lời hữu ích!'); setAiAlertOpen(true); }}
                         title="Hữu ích"
                       >
                         <i className="fa-regular fa-thumbs-up" />
@@ -631,7 +635,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                       <button
                         type="button"
                         className="msg-tool-btn"
-                        onClick={() => alert('Hệ thống đã ghi nhận phản hồi để hoàn thiện mô hình AI!')}
+                        onClick={() => { setAiAlertMsg('Hệ thống đã ghi nhận phản hồi để hoàn thiện mô hình AI!'); setAiAlertOpen(true); }}
                         title="Cần cải thiện"
                       >
                         <i className="fa-regular fa-thumbs-down" />
@@ -732,7 +736,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             <button
               type="button"
               className="input-tool-btn voice-btn"
-              onClick={() => alert('Đang kích hoạt micro thu âm giọng nói tiếng Việt...')}
+              onClick={() => { setAiAlertMsg('Đang kích hoạt micro thu âm giọng nói tiếng Việt...'); setAiAlertOpen(true); }}
               title="Nhập bằng giọng nói"
             >
               <i className="fa-solid fa-microphone" />
@@ -757,6 +761,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
           </div>
         </footer>
       </main>
+      <AlertModal open={aiAlertOpen} onClose={()=>setAiAlertOpen(false)} message={aiAlertMsg} />
     </div>
   );
 }

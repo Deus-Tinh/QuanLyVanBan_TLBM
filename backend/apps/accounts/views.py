@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -6,38 +6,20 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
-from .models import StaffProfile
 from .serializers import ChangePasswordSerializer
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Hàm tiện ích — lấy / tạo StaffProfile cho user nếu chưa có
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _get_or_create_profile(user):
-    """Tự động tạo StaffProfile nếu chưa có (tránh crash với superuser cũ)."""
-    profile, created = StaffProfile.objects.get_or_create(
-        user=user,
-        defaults={
-            "full_name": user.get_full_name() or user.username,
-            "role": "admin" if user.is_superuser else "staff",
-        },
-    )
-    return profile
 
 
 def _build_user_payload(user):
     """Trả về dict thông tin user dùng chung cho login & profile response, hỗ trợ cả camelCase lẫn snake_case."""
-    profile = _get_or_create_profile(user)
-    full_name = profile.full_name or user.get_full_name() or user.username
-    department = profile.department or "Văn phòng Trung tâm"
-    position = profile.position or ("Quản trị viên tối cao" if profile.role == "admin" else "Chuyên viên văn thư")
-    date_joined_str = user.date_joined.strftime("%Y-%m-%d") if user.date_joined else ""
+    full_name = user.ho_ten or user.username
+    department = user.don_vi.ten if user.don_vi_id else "Văn phòng Trung tâm"
+    position = user.chuc_vu.name if user.chuc_vu_id else ("Quản trị viên tối cao" if user.is_superuser else "Chuyên viên văn thư")
+    date_joined_str = user.created_at.strftime("%Y-%m-%d") if user.created_at else ""
 
     return {
         "id": user.id,
         "username": user.username,
-        "email": user.email,
+        "email": user.email or "",
         # CamelCase (theo API Contract Hieu.md)
         "fullName": full_name,
         "unit": department,
@@ -47,10 +29,10 @@ def _build_user_payload(user):
         "full_name": full_name,
         "department": department,
         "position": position,
-        "role": profile.role,
-        "phone": profile.phone,
-        "avatar_url": profile.avatar_url,
-        "birthday": profile.birthday.isoformat() if profile.birthday else None,
+        "role": "admin" if user.is_superuser else "staff",
+        "phone": user.sdt,
+        "avatar_url": "",
+        "birthday": user.ngay_sinh.isoformat() if user.ngay_sinh else None,
     }
 
 
@@ -80,16 +62,16 @@ def login_view(request):
     user = authenticate(request, username=username, password=password)
 
     if user is None:
-        from django.contrib.auth.models import User
+        UserModel = get_user_model()
         try:
-            existing_user = User.objects.get(username=username)
+            existing_user = UserModel.objects.get(username=username)
             if not existing_user.is_active and existing_user.check_password(password):
                 msg = "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên."
                 return Response(
                     {"success": False, "error": msg, "detail": msg},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-        except User.DoesNotExist:
+        except UserModel.DoesNotExist:
             pass
 
         msg = "Tên đăng nhập hoặc mật khẩu không chính xác!"
@@ -220,3 +202,34 @@ def logout_view(request):
         {"success": True, "message": "Đã đăng xuất", "detail": "Đã đăng xuất"},
         status=status.HTTP_200_OK,
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /api/accounts/staffs/ & GET /api/auth/staffs/
+# ─────────────────────────────────────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def staffs_view(request):
+    """
+    GET /api/accounts/staffs/
+    Danh sách cán bộ / nhân viên theo phòng ban cho các phân hệ khác (Document, Records...).
+    """
+    from django.contrib.auth.models import User
+    department = request.query_params.get("department")
+    users = User.objects.all().select_related("profile")
+    data = []
+    for u in users:
+        profile = getattr(u, "profile", None)
+        dept = profile.department if (profile and profile.department) else ("Ban Giám hiệu" if u.is_superuser else "Phòng Hành chính - Tổng hợp")
+        if department and dept.strip().lower() != department.strip().lower():
+            continue
+        full_name = (profile.full_name if profile and profile.full_name else "") or u.get_full_name() or u.username
+        data.append({
+            "id": u.id,
+            "username": u.username,
+            "full_name": full_name,
+            "department": dept,
+        })
+    return Response(data, status=status.HTTP_200_OK)
+
