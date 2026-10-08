@@ -9,7 +9,8 @@ Hợp đồng: `kiem_tra_van_ban_trinh_ky(nguoi_dung, document_type, van_ban_id)
 - người trình phải xem được văn bản.
 
 Cài đặt tạm (chờ hàm "văn bản xem được" dùng chung của Nhóm 2, #68 mục C5):
-- đọc trực tiếp bảng DDL `documents_vanbandi`, chỉ các cột `id`, `pham_vi`, `nguoi_tao`, `trich_yeu`, `so_hieu`;
+- đọc trực tiếp bảng DDL `documents_vanbandi`, chỉ các cột `id`, `pham_vi`, `nguoi_tao_id` (tên chuẩn hóa ở #96;
+  DB dựng từ DDL cũ dùng `nguoi_tao`), `trich_yeu`, `so_hieu`;
 - quyền xem: người tạo văn bản hoặc có quyền `view_vanbandi`.
 Khi Nhóm 2 có hàm dùng chung, thay thân `_doc_van_ban_di` và `_xem_duoc` bằng lời gọi hàm đó.
 
@@ -42,6 +43,12 @@ class VanBanDi:
     trich_yeu: str
 
 
+def _cot_nguoi_tao(cursor):
+    """Cột người tạo văn bản: `nguoi_tao_id` theo DDL chuẩn hóa (#96), `nguoi_tao` với DDL trước đó."""
+    cot = {c.name for c in connection.introspection.get_table_description(cursor, BANG_VAN_BAN_DI)}
+    return "nguoi_tao_id" if "nguoi_tao_id" in cot else "nguoi_tao"
+
+
 def _doc_van_ban_di(van_ban_id):
     if BANG_VAN_BAN_DI not in connection.introspection.table_names():
         raise SigningError(
@@ -51,7 +58,7 @@ def _doc_van_ban_di(van_ban_id):
         )
     with connection.cursor() as cursor:
         cursor.execute(
-            f"SELECT id, pham_vi, nguoi_tao, so_hieu, trich_yeu FROM {BANG_VAN_BAN_DI} WHERE id = %s",
+            f"SELECT id, pham_vi, {_cot_nguoi_tao(cursor)}, so_hieu, trich_yeu FROM {BANG_VAN_BAN_DI} WHERE id = %s",
             [van_ban_id],
         )
         row = cursor.fetchone()
@@ -114,7 +121,8 @@ def tim_van_ban_di(nguoi_dung, tu_khoa=""):
     sql = f"SELECT id, so_hieu, trich_yeu FROM {BANG_VAN_BAN_DI} WHERE pham_vi <> %s"
     tham_so = [PHAM_VI_HAN_CHE]
     if not co_quyen(nguoi_dung, "view_vanbandi"):
-        sql += " AND nguoi_tao = %s"
+        with connection.cursor() as cursor:
+            sql += f" AND {_cot_nguoi_tao(cursor)} = %s"
         tham_so.append(nguoi_dung.pk)
     if tu_khoa:
         sql += " AND (UPPER(so_hieu) LIKE UPPER(%s) OR UPPER(trich_yeu) LIKE UPPER(%s))"
