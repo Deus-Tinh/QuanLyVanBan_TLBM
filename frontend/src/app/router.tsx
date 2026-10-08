@@ -59,7 +59,6 @@ export default function AppRouter({
     <Routes>
       {/* Route Standalone: Màn hình Đăng Nhập */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/resources-demo" element={<ResourceManagementPage />} />
 
       {/* Routes có Layout chung (được bảo vệ bởi ProtectedRoute - yêu cầu đăng nhập trước) */}
       <Route

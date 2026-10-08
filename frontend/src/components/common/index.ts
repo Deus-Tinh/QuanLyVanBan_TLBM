@@ -3,5 +3,4 @@ export * from '@components/common/Card';
 export * from '@components/common/Badge';
 export * from '@components/common/Table';
 export * from '@components/common/Select';
-export * from '@components/common/Toast';
 

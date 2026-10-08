@@ -12,7 +12,7 @@ import { ResourceDetailModal } from '@components/resources/ResourceDetailModal';
 import { ResourceFormModal, ResourceFormData } from '@components/resources/ResourceFormModal';
 import { CategoryManagementModal } from '@components/resources/CategoryManagementModal';
 import { Button } from '@components/common/Button';
-import { Toast, ToastNotification } from '@components/common/Toast';
+import { Toast, ToastNotification } from '@components/resources/Toast';
 import { useTranslation } from '@i18n/translate';
 import { authService } from '@lib/authService';
 import { apiClient } from '@lib/apiClient';
@@ -862,7 +862,7 @@ export default function ResourceManagementPage() {
   };
 
   return (
-    <div className="space-y-4 pb-4">
+    <div className="space-y-4 pb-16 sm:pb-20">
       {/* Header trang & Nút hành động (GIỮ NGUYÊN KHÔNG ĐỤNG VÀO) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface p-5 sm:p-6 rounded-2xl border border-border-subtle shadow-xs">
         <div>
