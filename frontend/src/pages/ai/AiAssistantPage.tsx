@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import AlertModal from '@components/common/AlertModal';
 import { ActivePageId } from '@app-types/navigation';
 import {
   uploadDocumentAsync,
@@ -61,6 +62,63 @@ interface DocItem {
 interface CategoryItem {
   name: string;
   count: number;
+}
+
+const EMPTY_MESSAGES: ChatMessage[] = [];
+
+interface AIConfig {
+  provider?: string;
+  llm_model?: string;
+  api_key?: string;
+  [key: string]: unknown;
+}
+
+interface UploadProgress {
+  status?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+interface ApiError {
+  message?: unknown;
+  response?: { data?: { detail?: unknown } };
+}
+
+interface SpeechRecognitionResultEvent extends Event {
+  results: ArrayLike<ArrayLike<{ transcript: string }>>;
+}
+
+interface SpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  start: () => void;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognitionInstance;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error !== 'object' || error === null) return fallback;
+
+  const apiError = error as ApiError;
+  const detail = apiError.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  return typeof apiError.message === 'string' ? apiError.message : fallback;
+}
+
+function parseChatSessions(raw: string | null): ChatSession[] | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as ChatSession[];
+  } catch {
+    return null;
+  }
 }
 
 // 4 Thẻ gợi ý chuẩn nhận diện thương hiệu TLBM
@@ -214,16 +272,26 @@ function DocumentPreviewModal({ filename, onClose }: PreviewModalProps) {
   const contentRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError('');
-    setData(null);
+    let cancelled = false;
     previewDocument(filename)
-      .then((res: PreviewData) => setData(res))
-      .catch((err: any) => {
-        const msg = err.response?.data?.detail || err.message || 'Không thể tải nội dung tài liệu.';
-        setError(msg);
+      .then((res: PreviewData) => {
+        if (!cancelled) {
+          setData(res);
+          setError('');
+          setLoading(false);
+        }
       })
-      .finally(() => setLoading(false));
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const resErr = err as { response?: { data?: { detail?: string } }; message?: string };
+          const msg = resErr.response?.data?.detail || resErr.message || 'Không thể tải nội dung tài liệu.';
+          setError(msg);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [filename]);
 
   useEffect(() => {
@@ -250,21 +318,22 @@ function DocumentPreviewModal({ filename, onClose }: PreviewModalProps) {
 
   useEffect(() => {
     if (!isPdf || !data?.file_url) {
-      setPdfUrl(null);
       return;
     }
 
     let cancelled = false;
     let objectUrl: string | null = null;
-    setPdfUrl(null);
     getDocumentFile(filename)
       .then((file) => {
         if (cancelled) return;
         objectUrl = URL.createObjectURL(file);
         setPdfUrl(objectUrl);
       })
-      .catch((err: any) => {
-        if (!cancelled) setError(err.message || 'Không thể tải tệp PDF.');
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const resErr = err as { message?: string };
+          setError(resErr.message || 'Không thể tải tệp PDF.');
+        }
       });
 
     return () => {
@@ -273,7 +342,7 @@ function DocumentPreviewModal({ filename, onClose }: PreviewModalProps) {
     };
   }, [data?.file_url, filename, isPdf]);
 
-  const fileUrl = pdfUrl;
+  const fileUrl = isPdf && data?.file_url ? pdfUrl : null;
 
   return (
     <div className="preview-backdrop" onClick={onClose}>
@@ -480,10 +549,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
   // Sessions state
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    try {
-      const saved = localStorage.getItem('tlbm_chat_sessions_v2');
-      if (saved) return JSON.parse(saved);
-    } catch {}
+    const savedSessions = parseChatSessions(localStorage.getItem('tlbm_chat_sessions_v2'));
+    if (savedSessions) return savedSessions;
     return [
       {
         id: 'session-default',
@@ -516,7 +583,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   }, [sessions]);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) || sessions[0];
-  const messages = activeSession?.messages || [];
+  const messages = activeSession?.messages || EMPTY_MESSAGES;
 
   // Knowledge base state
   const [documents, setDocuments] = useState<DocItem[]>([]);
@@ -524,21 +591,23 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [previewFilename, setPreviewFilename] = useState<string | null>(null);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
-  const [aiConfig, setAiConfig] = useState<any>(null);
+  const [aiConfig, setAiConfig] = useState<AIConfig | null>(null);
 
   // Chat input states
   const [inputVal, setInputVal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<any>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [aiAlertOpen, setAiAlertOpen] = useState(false);
+  const [aiAlertMsg, setAiAlertMsg] = useState('');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
-  const pollTimerRef = useRef<any>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load tài liệu & cấu hình ban đầu
   const loadDocuments = useCallback(async () => {
@@ -565,12 +634,30 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   }, [loadDocuments, loadCategories]);
 
   useEffect(() => {
-    loadCategories();
+    let cancelled = false;
+    getCategories()
+      .then((data) => {
+        if (!cancelled) setCategories(data.categories || []);
+      })
+      .catch(console.error);
+
     if (currentUser.isAdmin) {
-      getAISettings().then(setAiConfig).catch(console.error);
-      loadDocuments();
+      getAISettings()
+        .then((data) => {
+          if (!cancelled) setAiConfig(data);
+        })
+        .catch(console.error);
+      getDocuments()
+        .then((data) => {
+          if (!cancelled) setDocuments(data.documents || []);
+        })
+        .catch(console.error);
     }
-  }, [currentUser.isAdmin, loadCategories, loadDocuments]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser.isAdmin]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -632,14 +719,20 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             const prog = await getUploadProgress(jobId);
             setUploadProgress(prog);
             if (prog.status === 'completed' || prog.status === 'failed') {
-              clearInterval(pollTimerRef.current);
+              if (pollTimerRef.current !== null) {
+                clearInterval(pollTimerRef.current);
+                pollTimerRef.current = null;
+              }
               setTimeout(() => {
                 setUploadProgress(null);
                 refreshDocuments();
               }, 2000);
             }
           } catch {
-            clearInterval(pollTimerRef.current);
+            if (pollTimerRef.current !== null) {
+              clearInterval(pollTimerRef.current);
+              pollTimerRef.current = null;
+            }
             setUploadProgress(null);
           }
         }, 1500);
@@ -647,8 +740,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         setUploadProgress(null);
         refreshDocuments();
       }
-    } catch (err: any) {
-      alert(err.response?.data?.detail || err.message || 'Lỗi tải lên tài liệu.');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Lỗi tải lên tài liệu.'));
       setUploadProgress(null);
     }
   };
@@ -666,8 +759,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       try {
         await deleteDocument(filename);
         await refreshDocuments();
-      } catch (err: any) {
-        alert(err.message || 'Lỗi khi xóa tài liệu.');
+      } catch (err: unknown) {
+        alert(getErrorMessage(err, 'Lỗi khi xóa tài liệu.'));
       }
     }
   };
@@ -676,8 +769,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     try {
       await reclassifyDocument(filename);
       await refreshDocuments();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi phân loại tài liệu.');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Lỗi phân loại tài liệu.'));
     }
   };
 
@@ -686,8 +779,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       try {
         await deleteDocuments();
         await refreshDocuments();
-      } catch (err: any) {
-        alert(err.message || 'Lỗi khi dọn sạch kho tài liệu.');
+      } catch (err: unknown) {
+        alert(getErrorMessage(err, 'Lỗi khi dọn sạch kho tài liệu.'));
       }
     }
   };
@@ -704,7 +797,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     }
 
     const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: `user-${activeSessionId}-${messages.length}`,
       sender: 'user',
       text,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -735,7 +828,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       const res = await askQuestion(text, history, selectedCategory || null);
 
       const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
+        id: `ai-${activeSessionId}-${newMessages.length}`,
         sender: 'ai',
         text: res.answer || res.text || 'Không có phản hồi từ mô hình AI.',
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -754,12 +847,12 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             : s
         )
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Backend call failed:', err);
       const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
+        id: `ai-${activeSessionId}-${newMessages.length}`,
         sender: 'ai',
-        text: err?.message || 'Không thể truy cập AI lúc này. Vui lòng thử lại sau.',
+        text: getErrorMessage(err, 'Không thể truy cập AI lúc này. Vui lòng thử lại sau.'),
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -797,7 +890,11 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
   // Nhận diện giọng nói tiếng Việt (Web Speech API)
   const handleToggleVoice = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert('Trình duyệt không hỗ trợ Web Speech API. Vui lòng sử dụng Google Chrome hoặc Microsoft Edge.');
       return;
@@ -817,7 +914,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     recognition.onend = () => setIsListening(false);
     recognition.onerror = () => setIsListening(false);
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionResultEvent) => {
       const transcript = event.results[0][0].transcript;
       setInputVal((prev) => (prev ? `${prev} ${transcript}` : transcript));
     };
@@ -1293,7 +1390,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                       <button
                         type="button"
                         className="msg-tool-btn"
-                        onClick={() => alert('Cảm ơn bạn đã đánh giá câu trả lời hữu ích!')}
+                        onClick={() => { setAiAlertMsg('Cảm ơn bạn đã đánh giá câu trả lời hữu ích!'); setAiAlertOpen(true); }}
                         title="Hữu ích"
                       >
                         <i className="fa-regular fa-thumbs-up" />
@@ -1302,7 +1399,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                       <button
                         type="button"
                         className="msg-tool-btn"
-                        onClick={() => alert('Hệ thống đã ghi nhận phản hồi để cải thiện!')}
+                        onClick={() => { setAiAlertMsg('Hệ thống đã ghi nhận phản hồi để hoàn thiện mô hình AI!'); setAiAlertOpen(true); }}
                         title="Cần cải thiện"
                       >
                         <i className="fa-regular fa-thumbs-down" />
@@ -1442,9 +1539,10 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       {showSettingsModal && (
         <AISettingsModal
           onClose={() => setShowSettingsModal(false)}
-          onSaved={(newConfig: any) => setAiConfig(newConfig)}
+          onSaved={(newConfig: AIConfig) => setAiConfig(newConfig)}
         />
       )}
+      <AlertModal open={aiAlertOpen} onClose={()=>setAiAlertOpen(false)} message={aiAlertMsg} />
     </div>
   );
 }
