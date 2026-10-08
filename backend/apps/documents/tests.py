@@ -251,9 +251,13 @@ class DocumentAPITests(TestCase):
     """Test API endpoints (hỗ trợ cả unified endpoint và dedicated endpoints)."""
 
     def setUp(self):
-        self.user = User.objects.create_user(
-            username="cbnv", password="password123", ho_ten="Nguyễn Văn"
-        )
+        user_kwargs = {"username": "cbnv", "password": "password123"}
+        if hasattr(User, "ho_ten"):
+            user_kwargs["ho_ten"] = "Nguyễn Văn"
+        elif hasattr(User, "first_name"):
+            user_kwargs["first_name"] = "Văn"
+            user_kwargs["last_name"] = "Nguyễn"
+        self.user = User.objects.create_user(**user_kwargs)
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
