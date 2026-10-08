@@ -1,7 +1,7 @@
 # Bộ test case QA — MVP Trình ký duyệt nội bộ (#80, kèm Phase 6c #79)
 
-> Phạm vi: PR #111 (DDL) và PR #112 (backend `signing`, giao diện `/approvals`).
-> Mục tiêu: kiểm thử thủ công các luồng nghiệp vụ, quyền, lỗi và giao diện. Cột **Tự động** ghi test tự động đã có (nếu có) để QA ưu tiên kiểm phần chưa được tự động hóa, đặc biệt giao diện và môi trường thật.
+> Phạm vi: PR #111 (DDL) và PR #112 (backend `signing`, giao diện `/approvals`), đối chiếu đầy đủ checklist #80 (118 case: 58 P1, 41 P2, 19 P3 qua 11 nhóm).
+> Mục tiêu: kiểm thử thủ công các luồng nghiệp vụ, quyền, lỗi, giao diện và tích hợp staging. Cột **Tự động** ghi test tự động đã có (nếu có) để QA ưu tiên kiểm phần chưa được tự động hóa, đặc biệt giao diện và môi trường thật.
 > Ưu tiên: **P1** chặn phát hành; **P2** quan trọng; **P3** bổ sung.
 
 ---
@@ -10,7 +10,7 @@
 
 | Mục | Yêu cầu |
 |---|---|
-| CSDL | PostgreSQL nạp `release_DDL.sql` của PR #111 (55 bảng, 20 ENUM, 77 quyền, 197 lượt phân quyền), sau đó `manage.py migrate --fake` |
+| CSDL | PostgreSQL nạp `release_DDL.sql` của PR #111 (55 bảng, 20 ENUM, 77 quyền, 197 lượt phân quyền). Luồng chạy migration theo #68 mục 2: `python manage.py migrate authorization` (chạy thật), sau đó chạy fake cho các app còn lại: `python manage.py migrate --fake` (kể cả `signing`). |
 | Backend | Nhánh PR #112; `SIGNING_PIN_SECRET` và `SIGNING_DOCUMENT_ROOT` đã đặt; server có phông chữ tiếng Việt (ví dụ `fonts-dejavu-core`) hoặc `SIGNING_PDF_FONT`; `manage.py check --deploy` không báo `signing.E001`/`E002`/`E003`/`W001` |
 | Nhóm 7 | Có Employee, Đơn vị, nhóm quyền chuẩn (`ADMIN`, `BGD`, `TP`, `CV`, `VT`) và đăng nhập JWT |
 | Trình duyệt | Chrome/Edge/Firefox/Safari bản mới (hỗ trợ Ed25519 WebCrypto) |
@@ -35,6 +35,9 @@
 | QT-08 | Hiển thị theo đơn vị | Văn thư đơn vị A và đơn vị B mở trang Quy trình | Đơn vị A thấy quy trình công ty và quy trình phòng ban A; đơn vị B không thấy quy trình phòng ban A; không ai ngoài người quản lý thấy bản Nháp | P1 | Có |
 | QT-09 | Nhân bản giữ đơn vị | Tạo phiên bản mới từ quy trình phòng ban A | Phiên bản mới vẫn phạm vi Phòng ban, đơn vị A | P3 | Có |
 | QT-10 | Người không quản lý | Chuyên viên mở trang Quy trình | Có thông báo chỉ quản trị/lãnh đạo đơn vị cấu hình; không có nút Tạo/Kích hoạt | P2 | — |
+| QT-11 | Quản lý quy trình công ty ngoài nhóm ADMIN/TP | Tài khoản có `manage_signing_process` nhưng không thuộc nhóm `ADMIN` hoặc `TP` tạo/sửa quy trình phạm vi Công ty | Bị từ chối quyền (403 `khong_phai_quan_tri_cong_ty`); chỉ nhóm `ADMIN` (hoặc superuser) mới quản lý quy trình công ty | P1 | Có |
+
+---
 
 ## 2. Khóa ký và PIN (contract #79) — `/approvals/khoa`
 
@@ -52,6 +55,8 @@
 | KP-10 | Khóa cứng | Sai PIN 10 lần | Báo khóa cứng, cần quản trị | P2 | Có |
 | KP-11 | Thu hồi khóa | Nhập lý do → Thu hồi | Khóa chuyển Đã thu hồi; ký sau đó báo khóa không hoạt động | P2 | Có |
 | KP-12 | Trình duyệt không hỗ trợ Ed25519 | Mở trang trên trình duyệt cũ | Hiện thông báo trình duyệt chưa hỗ trợ, không có form tạo khóa | P3 | — |
+
+---
 
 ## 3. Tạo và gửi hồ sơ (mục A, E) — `/approvals/tao-moi`
 
@@ -73,6 +78,13 @@
 | HS-14 | Chức vụ không có ai | Quy trình theo chức vụ không ai giữ → Gửi | Báo không xác định được người ký, không gửi | P2 | Có |
 | HS-15 | Mở lại nháp | Lưu nháp, rời trang; vào Tôi đã gửi trình → mở hồ sơ Nháp → nút đặt vị trí và gửi | Quay lại bước 2 với tệp và quy trình đã lưu | P2 | — |
 | HS-16 | Hủy nháp | Người tạo → Hủy hồ sơ | Trạng thái Đã hủy | P3 | Có |
+| HS-17 | Người ký chức vụ phạm vi Đơn vị người tạo | Quy trình có cấp ký theo chức vụ với `pham_vi_chuc_vu = DON_VI_NGUOI_TAO` → Người tạo gửi hồ sơ | Hệ thống lọc ứng viên cùng đơn vị với người tạo; 1 người tự gán, nhiều người yêu cầu chọn, không có ai báo lỗi | P1 | Có |
+| HS-18 | Người ký chức vụ phạm vi Đơn vị cố định | Quy trình có cấp ký chức vụ gắn đơn vị cố định (`pham_vi_chuc_vu = DON_VI_CO_DINH`) → Người tạo thuộc đơn vị khác gửi | Lọc ứng viên có chức vụ thuộc đúng đơn vị cố định của cấp ký, không phụ thuộc đơn vị người tạo | P1 | Có |
+| HS-19 | Người ký chức vụ phạm vi Toàn cơ quan | Quy trình có cấp ký theo chức vụ với `pham_vi_chuc_vu = TOAN_CO_QUAN` → Gửi hồ sơ | Tìm ứng viên có chức vụ tương ứng trên toàn cơ quan, không lọc theo đơn vị | P1 | Có |
+| HS-20 | Từ chối văn bản đến | Gọi API tạo hồ sơ trình ký với `document_type = vanbanden` (hoặc chọn văn bản đến) | Bị từ chối 400 `du_lieu_khong_hop_le`; hệ thống chỉ hỗ trợ trình ký cho dự thảo văn bản đi (`vanbandi`) | P2 | Có |
+| HS-21 | Kiểm tra lại quyền xem văn bản gốc khi Gửi và Trình lại | Tạo nháp hồ sơ khi có quyền xem; sau đó quyền xem văn bản gốc bị thu hồi (hoặc văn bản chuyển phạm vi hạn chế) → Bấm Gửi hoặc Trình lại | Bị chặn và trả lỗi 403/400 (`van_ban_khong_hop_le` hoặc `van_ban_han_che_khong_trinh_ky`); kiểm tra quyền xem ở cả 2 thời điểm gửi và trình lại | P2 | Có |
+
+---
 
 ## 4. Ký, không đồng ý, thu hồi, hủy (mục B)
 
@@ -95,6 +107,11 @@
 | KY-15 | Hủy thay bắt buộc lý do | Tài khoản có `cancel_trinhky` (không phải người tạo) hủy, bỏ trống lý do | Không cho xác nhận; có lý do → hủy, lịch sử ghi hủy thay | P2 | Có |
 | KY-16 | Người ngoài luồng | Chuyên viên mở URL chi tiết hồ sơ | Báo không tìm thấy (404); không lộ thông tin hồ sơ | P1 | Có |
 | KY-17 | Người không có quyền ký | Gỡ `sign_trinhky` của người ký → ký | 403, `fields.quyen = sign_trinhky` | P2 | Có |
+| KY-18 | Snapshot bất biến của lượt trình đã gửi | Hồ sơ đã gửi Đang chờ ký: Quản trị viên sửa quy trình gốc (thay đổi người ký/cấp ký), hoặc nhân sự đổi chức vụ/vô hiệu hóa tài khoản người ký cấp sau | Lượt trình đang chạy giữ nguyên người ký và cấp ký đã snapshot tại thời điểm gửi; các cấp tiếp theo mở đúng người ký ban đầu, không bị ảnh hưởng bởi thay đổi quy trình sau đó | P1 | Có |
+| KY-19 | Người tạo không mặc nhiên là người ký | Người tạo gửi hồ sơ có cấp 1 là người khác (người tạo không nằm trong danh sách cấp ký) → Người tạo mở hộp hồ sơ và gọi API ký duyệt | Không có nút Ký duyệt; gọi API ký trả về 403 `khong_phai_nguoi_ky_dang_mo`; người tạo chỉ theo dõi hoặc hủy hồ sơ | P2 | Có |
+| KY-20 | Ký lặp tuần tự cùng một người ký | Người ký đã bấm Ký duyệt thành công → Mở tab khác hoặc gọi lại API ký duyệt lần 2 cho cùng lượt trình | Hệ thống xử lý an toàn: cùng khóa chống trùng trả kết quả cũ (lũy thừa), khác khóa trả 409 `chua_den_luot_ky`/`nguoi_ky_da_ky`; không sinh chữ ký thừa | P3 | Có |
+
+---
 
 ## 5. Trả lại để sửa (mục C)
 
@@ -110,6 +127,8 @@
 | TS-08 | Người ký nghỉ việc | Vô hiệu hóa tài khoản một người ký rồi gửi bản sửa | Báo không xác định được người ký; không tạo lượt mới | P3 | Có |
 | TS-09 | Gửi bản sửa hai lần | Bấm tải bản sửa liên tiếp | Chỉ một lượt mới | P2 | Có |
 | TS-10 | Hủy khi đang trả sửa | Người tạo hủy hồ sơ đang trả sửa → thử nhắn tin / gửi bản sửa | Bị chặn (`khong_co_trao_doi_dang_mo` / `khong_co_yeu_cau_sua_dang_mo`) | P2 | Có |
+
+---
 
 ## 6. Kết quả và bằng chứng (mục D)
 
@@ -129,6 +148,8 @@
 | KQ-12 | Đang xử lý | Quan sát ngay sau khi ký cấp cuối (tệp lớn) | Hiện "Đang tạo tệp hoàn tất…", tự cập nhật khi xong | P3 | — |
 | KQ-13 | Ảnh chữ ký snapshot | Khi Nhóm 7 có field `anh_chu_ky`: người ký có ảnh PNG ký; đổi ảnh trong hồ sơ cá nhân sau khi ký | Lớp phủ và tệp hoàn tất dùng ảnh tại thời điểm ký; người không có ảnh hiện khối chữ "ĐÃ KÝ DUYỆT" | P2 | Có (giả lập ảnh) |
 
+---
+
 ## 7. Đồng thời (PostgreSQL)
 
 | ID | Kịch bản | Bước | Kết quả mong đợi | Ưu tiên | Tự động |
@@ -137,6 +158,8 @@
 | DT-02 | Ký cạnh tranh hủy | Người ký cuối ký đồng thời người tạo hủy | Kết quả nhất quán: hoặc Hoàn tất (1 chữ ký) hoặc Đã hủy (0 chữ ký); không lỗi 500 | P1 | Có |
 | DT-03 | Ký cạnh tranh trả sửa | Hai người cùng cấp: một ký, một trả sửa đồng thời | Lượt luôn ở Đang trả lại để sửa; không có chữ ký trên lượt đã dừng | P2 | Có |
 | DT-04 | Trả sửa cạnh tranh từ chối | Hai người cùng cấp: một trả sửa, một không đồng ý | Chỉ một thao tác thành công | P3 | Có |
+
+---
 
 ## 8. Giao diện chung (mục E)
 
@@ -152,16 +175,20 @@
 | UI-08 | Lịch sử dễ đọc | Xem Lịch sử của hồ sơ đã qua nhiều thao tác | Tên hành động bằng ngôn ngữ người dùng (Tạo hồ sơ, Gửi trình ký, Ký duyệt…), không hiện mã thô | P3 | — |
 | UI-09 | Tải lười | DevTools → Network khi vào trang chủ rồi vào `/approvals` | Mã nguồn Trình ký và pdf.js chỉ tải khi vào `/approvals` | P3 | — |
 
+---
+
 ## 9. CSDL và migration (PR #111, #112)
 
 | ID | Kịch bản | Bước | Kết quả mong đợi | Ưu tiên | Tự động |
 |---|---|---|---|---|---|
 | DB-01 | Nạp DDL sạch | Nạp `release_DDL.sql` vào DB mới | Không lỗi; 55 bảng, 20 ENUM, 77 quyền, 197 lượt phân quyền; nhóm `TP` có `manage_signing_process` | P1 | Có |
 | DB-02 | CHECK phạm vi quy trình | Chèn `signing_process` `PHONG_BAN` không có đơn vị | Bị từ chối bởi `chk_signing_process_don_vi_ap_dung` | P2 | Có |
-| DB-03 | `migrate --fake` | Chạy trên DB nạp DDL | `showmigrations signing` đến `0009`; luồng HTTP chạy được | P1 | Có |
+| DB-03 | `migrate --fake` | Chạy trên DB nạp DDL theo chuẩn #68 | `showmigrations signing` đến `0009`; luồng HTTP chạy được | P1 | Có |
 | DB-04 | Migration thật trên DB có dữ liệu | DB đang ở `0006` có quy trình `PHONG_BAN` cũ và hồ sơ → `migrate signing` | `0007`–`0009` áp dụng; quy trình `PHONG_BAN` chưa có đơn vị chuyển `CONG_TY`; hồ sơ, lượt trình giữ nguyên; cột đổi tên (`nguoi_tao_id`, `updated_at`, `document_id`…) | P1 | Có |
 | DB-05 | Chạy ngược migration | `migrate signing 0006` | Không lỗi | P3 | Có |
 | DB-06 | Bất biến bằng chứng | `UPDATE signing_manifest` dòng `DA_CHOT` | Trigger từ chối | P2 | Có |
+
+---
 
 ## 10. Bảo mật và cấu hình
 
@@ -173,6 +200,38 @@
 | BM-04 | Thiếu bí mật PIN ở production | Chạy `DEBUG=False` không đặt `SIGNING_PIN_SECRET` → thao tác PIN | 503 `chua_cau_hinh_bi_mat_pin`; `check --deploy` báo `signing.E001` | P2 | Có |
 | BM-05 | Thiếu phông chữ | Server không có phông tiếng Việt, không đặt `SIGNING_PDF_FONT` | `check --deploy` báo `signing.W001` | P3 | — |
 | BM-06 | Danh bạ tài khoản | Chuyên viên gọi `GET /api/v1/signing/nguoi-dung/` | 403 (chỉ người quản lý quy trình) | P3 | Có |
+| BM-07 | Xác minh nội dung nhật ký hệ thống và hủy thay | Đăng nhập tài khoản kiểm toán (có `view_signing_audit`); kiểm tra chuỗi sự kiện tạo, gửi, ký, trả sửa, và quản trị viên hủy thay (có `cancel_trinhky`) | Bảng `signing_audit_log` ghi đầy đủ hành động, IP, đối tượng; sự kiện hủy thay ghi nhận rõ tài khoản hủy thay, lý do hủy bắt buộc, phân biệt với người tạo hồ sơ | P2 | Có |
+
+---
+
+## 11. Kiểm thử tích hợp trên môi trường Staging (sau khi ghép nhóm)
+
+> Điều kiện: DDL Trình ký (#114) và mã nguồn (#117) đã merge vào nhánh `staging`. Kiểm thử trực tiếp với dữ liệu thật: nhóm quyền Nhóm 7 (`authorization`), nhân sự Employee thật, và văn bản đi Nhóm 2 (`documents`).
+
+| ID | Kịch bản | Bước | Kết quả mong đợi | Ưu tiên | Môi trường |
+|---|---|---|---|---|---|
+| STG-01 | Phân quyền menu và tab Trình ký với nhóm quyền thật | Đăng nhập lần lượt tài khoản thuộc các nhóm: `ADMIN`, `BGD`, `TP`, `CV`, `VT` qua JWT staging | Menu `/approvals` hiển thị đúng quyền: `ADMIN` thấy Quản lý quy trình công ty; `TP` thấy Tạo quy trình phòng ban; `VT`/`CV` có quyền `add_trinhky` thấy Tạo hồ sơ; người có `sign_trinhky` thấy Khóa ký & PIN | P1 | Staging |
+| STG-02 | Tạo và kích hoạt quy trình với Employee và Đơn vị thật | Tài khoản `ADMIN` tạo quy trình công ty (2 cấp); `TP` đơn vị tạo quy trình phòng ban gắn mã đơn vị thật → Kích hoạt | Cả hai quy trình chuyển Hoạt động; gán đúng người ký/chức vụ từ bảng Employee thật | P1 | Staging |
+| STG-03 | Tạo và gửi hồ sơ từ văn bản đi thật | Tài khoản `VT` chọn dự thảo văn bản đi thật của Nhóm 2 → Đính kèm PDF thật → Đặt khung ký → Gửi trình ký | Tạo hồ sơ thành công; tự động liên kết mã văn bản đi; lọc đúng ứng viên người ký theo đơn vị và chức vụ thật | P1 | Staging |
+| STG-04 | Ký duyệt 2 cấp liên tiếp bằng WebCrypto Ed25519 thật | Cấp 1 (`TP`) tạo khóa ký & PIN thật → Ký duyệt hồ sơ STG-03; sau đó Cấp 2 (`BGD`) tạo khóa & PIN → Ký duyệt | Cấp 1 ký xong mở Cấp 2; Cấp 2 ký xong chuyển trạng thái Hoàn tất duyệt nội bộ; chữ ký Ed25519 hợp lệ | P1 | Staging |
+| STG-05 | Tải và kiểm tra tệp PDF hoàn tất có đóng dấu duyệt nội bộ | Mở chi tiết hồ sơ sau khi hoàn tất → Bấm Tải tệp hoàn tất | Tệp PDF tải về có dòng nhận diện chân trang "BẢN DUYỆT NỘI BỘ, CHƯA PHÁT HÀNH", khối chữ ký đúng vị trí, trang cuối có bảng phê duyệt đầy đủ | P1 | Staging |
+
+---
+
+## 12. Bảng đối chiếu các mục bổ sung theo Review Checklist #80
+
+| Mã Review | Mức | Nội dung yêu cầu | Mã kịch bản bổ sung | Trạng thái |
+|---|---|---|---|---|
+| QA-1 | P1 | `pham_vi_chuc_vu` 3 giá trị (`DON_VI_NGUOI_TAO`, `DON_VI_CO_DINH`, `TOAN_CO_QUAN`) | `HS-17`, `HS-18`, `HS-19` | Đã bổ sung |
+| QA-2 | P1 | Snapshot bất biến: sửa quy trình, đổi chức vụ/vô hiệu người ký sau khi gửi | `KY-18` | Đã bổ sung |
+| QA-3 | P1 | Quyền `manage_signing_process` ngoài nhóm ADMIN/TP bị 403 quy trình công ty | `QT-11` | Đã bổ sung |
+| QA-4 | P2 | Từ chối văn bản đến (`document_type = vanbanden`) | `HS-20` | Đã bổ sung |
+| QA-5 | P2 | Kiểm tra lại quyền xem văn bản gốc lúc gửi và trình lại | `HS-21` | Đã bổ sung |
+| QA-6 | P2 | Người tạo không mặc nhiên là người ký | `KY-19` | Đã bổ sung |
+| QA-7 | P2 | Nhật ký `signing_audit_log` (quyền `view_signing_audit`), xác minh hủy thay | `BM-07` | Đã bổ sung |
+| QA-8 | P3 | Ký lặp tuần tự: cùng người ký bấm Ký lần hai sau khi đã ký | `KY-20` | Đã bổ sung |
+| Doc-CSDL | — | Hướng dẫn migration CSDL chuẩn luồng #68 mục 2 | Mục 0 (CSDL) & `DB-03` | Đã chỉnh sửa |
+| Doc-Staging | — | Nhóm kịch bản kiểm thử trên staging sau ghép nhóm | Mục 11 (`STG-01` → `STG-05`) | Đã bổ sung |
 
 ---
 
