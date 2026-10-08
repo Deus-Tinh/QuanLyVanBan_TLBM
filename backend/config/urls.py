@@ -6,14 +6,9 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from accounts.views import staffs_view
-
 urlpatterns = [
     # Django Admin
     path("admin/", admin.site.urls),
-
-    # API Cán bộ / Nhân viên (phục vụ liên nhóm)
-    path("api/accounts/staffs/", staffs_view, name="accounts_staffs"),
 
     # ── Module Nhóm 1 — Hiếu ──────────────────────────────────────────────
     # API Xác thực & Tài khoản: POST /api/auth/login/, GET /api/auth/profile/, ...

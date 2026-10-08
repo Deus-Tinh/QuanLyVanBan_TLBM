@@ -20,7 +20,4 @@ urlpatterns = [
 
     # Đăng xuất
     path("logout/", views.logout_view, name="logout"),
-
-    # Danh sách cán bộ nhân viên
-    path("staffs/", views.staffs_view, name="staffs"),
 ]
