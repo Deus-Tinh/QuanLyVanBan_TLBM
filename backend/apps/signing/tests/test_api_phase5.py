@@ -11,7 +11,7 @@ from signing import enums
 from signing.models import SigningAuditLog, SigningKey, SigningProcess
 from signing.permissions import co_quyen
 
-from .helpers import cap_quyen
+from .helpers import cap_quyen, them_vao_nhom_quan_tri
 
 User = get_user_model()
 
@@ -250,6 +250,7 @@ class PermissionApiTests(ApiBase):
         group = Group.objects.create(name="Quản trị trình ký")
         group.permissions.add(Permission.objects.get(codename="manage_signing_process"))
         self.u3.groups.add(group)
+        them_vao_nhom_quan_tri(self.u3)
         r = self.c3.post(f"{BASE}/quy-trinh/", ProcessApiTests.payload(self, "QT4"), format="json")
         self.assertEqual(r.status_code, 201, r.data)
 
