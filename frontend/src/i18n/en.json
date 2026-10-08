@@ -787,6 +787,8 @@
     "nextDay": "Next day",
     "allRooms": "All rooms",
     "allStatuses": "All statuses",
+    "filterRoomStatusAria": "Filter by room status",
+    "filterRoomVisibilityAria": "Filter by visibility mode",
     "filterConfirmed": "Booked (Confirmed)",
     "filterCancelled": "Cancelled (Released)",
     "filterCompleted": "Completed",

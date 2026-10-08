@@ -695,7 +695,7 @@ export const MeetingsPage: React.FC = () => {
                 value={roomStatusFilter}
                 onChange={(e) => setRoomStatusFilter(e.target.value)}
                 className="px-3.5 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                aria-label="Lọc theo trạng thái phòng"
+                aria-label={t('meetings.filterRoomStatusAria')}
               >
                 <option value="all">{t('meetings.allStatuses')}</option>
                 <option value="AVAILABLE">{t('meetings.status.available')}</option>
@@ -708,7 +708,7 @@ export const MeetingsPage: React.FC = () => {
                   value={roomVisibilityFilter}
                   onChange={(e) => setRoomVisibilityFilter(e.target.value)}
                   className="px-3.5 py-2 rounded-xl bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
-                  aria-label="Lọc theo chế độ hiển thị"
+                  aria-label={t('meetings.filterRoomVisibilityAria')}
                 >
                   <option value="all">{t('meetings.allRooms')}</option>
                   <option value="public">{t('meetings.status.public')}</option>

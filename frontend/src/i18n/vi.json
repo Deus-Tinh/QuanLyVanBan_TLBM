@@ -787,6 +787,8 @@
     "nextDay": "Ngày sau",
     "allRooms": "Tất cả các phòng",
     "allStatuses": "Tất cả trạng thái",
+    "filterRoomStatusAria": "Lọc theo trạng thái phòng",
+    "filterRoomVisibilityAria": "Lọc theo chế độ hiển thị",
     "filterConfirmed": "Đã đặt (Hiệu lực)",
     "filterCancelled": "Đã hủy (Giải phóng)",
     "filterCompleted": "Đã hoàn thành",
