@@ -201,7 +201,7 @@
     "interfaceStyleModernDesc": "Contemporary flat design. Spacious card margins, softer corner radii, and visual clarity aligned with modern SaaS enterprise standards.",
     "notificationSectionTitle": "Document Notification Configuration",
     "notifIncoming": "Receive alerts when a new incoming document is routed",
-    "notifUrgent": "Sound alerts for documents marked \"URGENT\" or \"CONFIDENTIAL\"",
+    "notifUrgent": "Sound alerts for documents marked \"RESTRICTED\" or needing urgent handling",
     "notifDeadline": "Automated reminder 1 day before document deadline",
     "securitySectionTitle": "Session Security & Protection",
     "secAutoLock": "Auto-lock session after 15 minutes of inactivity",

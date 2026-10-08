@@ -201,7 +201,7 @@
     "interfaceStyleModernDesc": "Phong cách giao diện phẳng thế hệ mới. Bố cục thoáng đãng, bo góc mềm mại, tối ưu hiển thị trực quan theo xu hướng ứng dụng quản lý hiện đại.",
     "notificationSectionTitle": "Cấu hình thông báo văn bản",
     "notifIncoming": "Nhận thông báo khi có văn bản đến mới được phân phối",
-    "notifUrgent": "Cảnh báo âm thanh đối với văn bản có độ khẩn \"HỎA TỐC\" hoặc \"TUYỆT MẬT\"",
+    "notifUrgent": "Cảnh báo âm thanh đối với văn bản có phạm vi \"HẠN CHẾ\" hoặc cần xử lý gấp",
     "notifDeadline": "Nhắc việc tự động trước hạn xử lý 01 ngày",
     "securitySectionTitle": "Bảo mật phiên làm việc",
     "secAutoLock": "Tự động khóa màn hình làm việc sau 15 phút không thao tác",

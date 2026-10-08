@@ -436,7 +436,8 @@ class VanBanDi(BaseVanBan):
 
     @property
     def noi_ban_hanh(self):
-        return getattr(self, "_noi_ban_hanh", "") or "Trường Cao đẳng Công nghệ Thông tin TP.HCM (ITC)"
+        # N2-9: Bỏ gán cứng "Trường ITC"; nơi ban hành văn bản đi lưu tại documents_vanbandi_noibanhanh
+        return getattr(self, "_noi_ban_hanh", "")
 
     @noi_ban_hanh.setter
     def noi_ban_hanh(self, val):
