@@ -3,7 +3,7 @@ API ViewSets cho phân hệ Quản lý Cán bộ Nhân viên (CBNV - Issue #24).
 Tác giả: Lê Duy Khánh (leduykhanhdevs).
 """
 from django.db import transaction
-from django.db.models import Q, ProtectedError
+from django.db.models import Q, ProtectedError, RestrictedError
 from django.contrib.auth.models import Group
 from django.http import HttpResponse
 from rest_framework import viewsets, status
@@ -119,8 +119,10 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(chuc_vu_id=chuc_vu_id)
 
         trang_thai = self.request.query_params.get("trang_thai")
-        if trang_thai:
-            queryset = queryset.filter(trang_thai=STATUS_API_TO_DB.get(trang_thai, trang_thai))
+        if trang_thai is not None and trang_thai != "":
+            if trang_thai not in STATUS_API_TO_DB:
+                raise ValidationError({"detail": "employees.messages.invalidFilterParam"})
+            queryset = queryset.filter(trang_thai=STATUS_API_TO_DB[trang_thai])
 
         is_public = self.request.query_params.get("is_public")
         if is_public is not None and is_public != "":
@@ -197,10 +199,24 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         # Chốt nghiệp vụ khóa tài khoản / chuyển trạng thái nghỉ việc:
         new_status = request.data.get("trang_thai")
-        is_active = request.data.get("is_active")
+        raw_is_active = request.data.get("is_active")
+
+        parsed_is_active = None
+        if raw_is_active is not None:
+            if isinstance(raw_is_active, bool):
+                parsed_is_active = raw_is_active
+            elif isinstance(raw_is_active, str):
+                s = raw_is_active.strip().lower()
+                if s in ("false", "0", "f"):
+                    parsed_is_active = False
+                elif s in ("true", "1", "t"):
+                    parsed_is_active = True
+            elif isinstance(raw_is_active, int):
+                parsed_is_active = bool(raw_is_active)
+
         is_deactivating = (
             (new_status in ("nghi_viec", Employee.Status.NGHI_VIEC))
-            or (is_active is False)
+            or (parsed_is_active is False)
         )
         if is_deactivating:
             if instance.id == user.id:
@@ -272,7 +288,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 instance.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        except ProtectedError:
+        except (ProtectedError, RestrictedError):
             return Response(
                 {
                     "detail": "employees.messages.cannotDeleteProtected"

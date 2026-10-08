@@ -8,7 +8,7 @@ from django.db import models
 # Regex kiểm tra số điện thoại Việt Nam chuẩn
 vietnam_phone_regex = RegexValidator(
     regex=r"^(0|\+84)[1-9][0-9]{7,9}$",
-    message="Số điện thoại không hợp lệ. Vui lòng nhập định dạng Việt Nam hợp lệ (ví dụ: 0912345678 hoặc 0281234567).",
+    message="employees.messages.invalidPhone",
 )
 
 

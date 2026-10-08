@@ -234,6 +234,26 @@ def import_cbnv_from_excel(file_obj) -> dict:
                 str(raw_birthday or ""),
                 f"Ngày sinh '{raw_birthday}' không đúng định dạng (hỗ trợ YYYY-MM-DD hoặc DD/MM/YYYY).",
             )
+        else:
+            today = date.today()
+            if birthday > today:
+                add_error(
+                    idx,
+                    "ngay_sinh",
+                    "employees.messages.birthdayInFuture",
+                    str(raw_birthday or ""),
+                    "Ngày sinh không thể ở trong tương lai.",
+                )
+            else:
+                age = today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
+                if age < 18 or age > 100:
+                    add_error(
+                        idx,
+                        "ngay_sinh",
+                        "employees.messages.birthdayOutOfRange",
+                        str(raw_birthday or ""),
+                        "Độ tuổi của cán bộ nhân viên phải từ 18 đến 100 tuổi.",
+                    )
 
         # 3. Validate Email
         if not raw_email:

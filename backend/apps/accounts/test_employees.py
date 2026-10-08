@@ -9,10 +9,12 @@ Bao gồm:
 5. Kiểm tra Tải tệp mẫu Excel và Nhập Excel validate từng dòng dữ liệu.
 """
 from io import BytesIO
-from datetime import date
+from datetime import date, timedelta
+from unittest.mock import patch
 import openpyxl
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+from django.db.models import ProtectedError, RestrictedError
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -837,6 +839,251 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         res = self.client.post(self.employee_list_url, payload, format="json")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("password", res.json())
+
+
+class ReviewRound4FixesTests(EmployeeBaseTestCase):
+    """
+    Bộ kiểm thử cho các phản hồi Review Vòng 4 từ Trưởng nhóm:
+    1. Xóa CBNV có quan hệ RESTRICT / PROTECT không gây lỗi 500, trả về 400 + i18n key rõ ràng.
+    2. Ngày sinh không thể ở tương lai hoặc ngoài khoảng độ tuổi [18, 100].
+    3. Filter ?trang_thai=bogus trả về 400 invalidFilterParam, không gây DataError trên PostgreSQL ENUM.
+    4. PATCH is_active hỗ trợ chuỗi 'false'/'true' và đồng bộ với trang_thai, áp dụng đầy đủ guards.
+    5. Các lỗi serializer DRF trả chuẩn i18n keys thay vì tiếng Anh mặc định.
+    6. Import Excel validate ngày sinh tương lai và độ tuổi.
+    """
+
+    @patch.object(Employee, "delete")
+    def test_delete_employee_with_restricted_relation_fails_gracefully(self, mock_delete):
+        """Review Vòng 4: Xóa CBNV có dữ liệu ràng buộc RESTRICT trả về 400 và thông báo thân thiện."""
+        mock_delete.side_effect = RestrictedError("Cannot delete restricted relation", [])
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.delete(f"{self.employee_list_url}{self.normal_user.id}/")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data["detail"], "employees.messages.cannotDeleteProtected")
+
+    @patch.object(Employee, "delete")
+    def test_delete_employee_with_protected_relation_fails_gracefully(self, mock_delete):
+        """Review Vòng 4: Xóa CBNV có dữ liệu ràng buộc PROTECT trả về 400 và thông báo thân thiện."""
+        mock_delete.side_effect = ProtectedError("Cannot delete protected relation", [])
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.delete(f"{self.employee_list_url}{self.normal_user.id}/")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data["detail"], "employees.messages.cannotDeleteProtected")
+
+    def test_birthday_validation_future_and_age_range(self):
+        """Review Vòng 4: Không cho phép ngày sinh tương lai hoặc độ tuổi ngoài khoảng [18, 100]."""
+        self.client.force_authenticate(user=self.admin_user)
+        today = date.today()
+
+        # 1. Ngày mai -> 400 birthdayInFuture
+        tomorrow = today + timedelta(days=1)
+        res_fut = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "Người Tương Lai",
+                "email": "future@donvi.gov.vn",
+                "ngay_sinh": tomorrow.isoformat(),
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_fut.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("employees.messages.birthdayInFuture", str(res_fut.json()))
+
+        # 2. Dưới 18 tuổi (ví dụ: 17 tuổi) -> 400 birthdayOutOfRange
+        under_18 = date(today.year - 17, today.month, today.day)
+        res_u18 = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "Người Chưa Đủ 18",
+                "email": "under18@donvi.gov.vn",
+                "ngay_sinh": under_18.isoformat(),
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_u18.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("employees.messages.birthdayOutOfRange", str(res_u18.json()))
+
+        # 3. Trên 100 tuổi (ví dụ: 101 tuổi) -> 400 birthdayOutOfRange
+        over_100 = date(today.year - 101, today.month, today.day)
+        res_o100 = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "Cụ Thượng Thọ",
+                "email": "over100@donvi.gov.vn",
+                "ngay_sinh": over_100.isoformat(),
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_o100.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("employees.messages.birthdayOutOfRange", str(res_o100.json()))
+
+        # 4. Độ tuổi hợp lệ (ví dụ: 25 tuổi) -> 201 Created
+        valid_bday = date(today.year - 25, today.month, today.day)
+        res_ok = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "Người Hợp Lệ Tuổi",
+                "email": "validage@donvi.gov.vn",
+                "ngay_sinh": valid_bday.isoformat(),
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_ok.status_code, status.HTTP_201_CREATED)
+
+    def test_invalid_trang_thai_filter_param_returns_400(self):
+        """Review Vòng 4: Filter ?trang_thai=bogus phải trả về 400 chứ không gây 500 DataError trên PostgreSQL."""
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.get(f"{self.employee_list_url}?trang_thai=bogus")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.json()["detail"], "employees.messages.invalidFilterParam")
+
+    def test_patch_is_active_string_boolean_and_guards(self):
+        """Review Vòng 4: PATCH is_active dạng string 'false'/'true' phải được ghi nhận và đồng bộ trạng thái."""
+        self.client.force_authenticate(user=self.admin_user)
+
+        # 1. Khóa tài khoản qua is_active="false" (chuỗi)
+        res_deact = self.client.patch(
+            f"{self.employee_list_url}{self.normal_user.id}/",
+            {"is_active": "false"},
+            format="json",
+        )
+        self.assertEqual(res_deact.status_code, status.HTTP_200_OK)
+        self.normal_user.refresh_from_db()
+        self.assertFalse(self.normal_user.is_active)
+        self.assertEqual(self.normal_user.trang_thai, Employee.Status.NGHI_VIEC)
+
+        # 2. Mở khóa tài khoản qua is_active="true" (chuỗi)
+        res_react = self.client.patch(
+            f"{self.employee_list_url}{self.normal_user.id}/",
+            {"is_active": "true"},
+            format="json",
+        )
+        self.assertEqual(res_react.status_code, status.HTTP_200_OK)
+        self.normal_user.refresh_from_db()
+        self.assertTrue(self.normal_user.is_active)
+        self.assertEqual(self.normal_user.trang_thai, Employee.Status.LAM_VIEC)
+
+        # 3. Bảo vệ: Không cho phép tự khóa tài khoản của chính mình bằng is_active="false"
+        res_self = self.client.patch(
+            f"{self.employee_list_url}{self.admin_user.id}/",
+            {"is_active": "false"},
+            format="json",
+        )
+        self.assertEqual(res_self.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_self.data["detail"], "employees.messages.cannotDeactivateSelf")
+
+    def test_drf_serializer_error_messages_i18n(self):
+        """Review Vòng 4: Toàn bộ lỗi validation từ DRF serializer phải trả mã i18n chuẩn."""
+        self.client.force_authenticate(user=self.admin_user)
+
+        # 1. Họ tên quá 150 ký tự
+        res_name = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "A" * 151,
+                "email": "nametoolong@donvi.gov.vn",
+                "ngay_sinh": "1990-01-01",
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_name.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_name.json()["ho_ten"], ["employees.messages.nameTooLong"])
+
+        # 2. Email sai định dạng
+        res_email = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "Email Sai",
+                "email": "invalid-email-format",
+                "ngay_sinh": "1990-01-01",
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_email.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_email.json()["email"], ["employees.messages.invalidEmail"])
+
+        # 3. Đơn vị không tồn tại
+        res_donvi = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "Đơn Vị Ảo",
+                "email": "donviao@donvi.gov.vn",
+                "ngay_sinh": "1990-01-01",
+                "don_vi_id": 999999,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res_donvi.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_donvi.json()["don_vi_id"], ["employees.messages.unitNotFound"])
+
+        # 4. Chức vụ không tồn tại
+        res_chucvu = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "Chức Vụ Ảo",
+                "email": "chucvuao@donvi.gov.vn",
+                "ngay_sinh": "1990-01-01",
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": 999999,
+            },
+            format="json",
+        )
+        self.assertEqual(res_chucvu.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_chucvu.json()["chuc_vu_id"], ["employees.messages.positionNotFound"])
+
+        # 5. SĐT sai chuẩn VN (qua regex validator ở model)
+        res_sdt = self.client.post(
+            self.employee_list_url,
+            {
+                "ho_ten": "SĐT Sai",
+                "email": "sdtsai@donvi.gov.vn",
+                "ngay_sinh": "1990-01-01",
+                "don_vi_id": self.don_vi_1.id,
+                "chuc_vu_id": self.cv_chuyen_vien.id,
+                "sdt": "09999",
+            },
+            format="json",
+        )
+        self.assertEqual(res_sdt.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res_sdt.json()["sdt"], ["employees.messages.invalidPhone"])
+
+    def test_excel_import_birthday_validations(self):
+        """Review Vòng 4: Import Excel kiểm tra ngày sinh tương lai và khoảng tuổi [18, 100]."""
+        self.client.force_authenticate(user=self.sensitive_user)
+        today = date.today()
+        fut_date = (today + timedelta(days=5)).isoformat()
+        u18_date = date(today.year - 16, today.month, today.day).isoformat()
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["Họ và tên", "Ngày sinh", "Email", "Số điện thoại", "Đơn vị", "Chức vụ", "Chức danh", "Trạng thái", "Ghi chú"])
+        ws.append(["Tương Lai", fut_date, "fut@donvi.gov.vn", "0912345678", self.don_vi_1.ten, self.cv_truong_phong.name, "", "Đang làm việc", ""])
+        ws.append(["Dưới 18", u18_date, "u18@donvi.gov.vn", "0912345679", self.don_vi_1.ten, self.cv_truong_phong.name, "", "Đang làm việc", ""])
+
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        bio.name = "test_birthdays.xlsx"
+
+        res = self.client.post(self.import_url, {"file": bio}, format="multipart")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        errors = res.json()["errors"]
+        codes = [err["code"] for err in errors]
+        self.assertIn("employees.messages.birthdayInFuture", codes)
+        self.assertIn("employees.messages.birthdayOutOfRange", codes)
 
 
 class SeedDbCommandTests(APITestCase):
