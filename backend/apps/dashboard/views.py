@@ -157,30 +157,34 @@ def overview_view(request):
     # Mảng phẳng birthdays chuẩn BirthdayEmployee của React
     birthdays_list = []
     for p in today_profiles:
+        pos_name = p.chuc_vu.name if p.chuc_vu else ""
+        dept_name = p.don_vi.ten if p.don_vi else ""
         birthdays_list.append({
             "id": p.id,
             "name": p.ho_ten,
             "fullName": p.ho_ten,
             "full_name": p.ho_ten,
             "birthdate": f"{today.strftime('%d/%m')} (Hôm nay)",
-            "position": p.chuc_vu.name,
-            "roleTitle": p.chuc_vu.name,
-            "department": p.don_vi.ten,
-            "unit": p.don_vi.ten,
+            "position": pos_name,
+            "roleTitle": pos_name,
+            "department": dept_name,
+            "unit": dept_name,
             "isToday": True,
             "label": "Hôm nay",
         })
     for p in tomorrow_profiles:
+        pos_name = p.chuc_vu.name if p.chuc_vu else ""
+        dept_name = p.don_vi.ten if p.don_vi else ""
         birthdays_list.append({
             "id": p.id,
             "name": p.ho_ten,
             "fullName": p.ho_ten,
             "full_name": p.ho_ten,
             "birthdate": f"{tomorrow.strftime('%d/%m')} (Ngày mai)",
-            "position": p.chuc_vu.name,
-            "roleTitle": p.chuc_vu.name,
-            "department": p.don_vi.ten,
-            "unit": p.don_vi.ten,
+            "position": pos_name,
+            "roleTitle": pos_name,
+            "department": dept_name,
+            "unit": dept_name,
             "isToday": False,
             "label": "Ngày mai",
         })
@@ -189,16 +193,16 @@ def overview_view(request):
         "today": [
             {
                 "full_name": p.ho_ten,
-                "department": p.don_vi.ten,
-                "position": p.chuc_vu.name,
+                "department": p.don_vi.ten if p.don_vi else "",
+                "position": p.chuc_vu.name if p.chuc_vu else "",
             }
             for p in today_profiles
         ],
         "tomorrow": [
             {
                 "full_name": p.ho_ten,
-                "department": p.don_vi.ten,
-                "position": p.chuc_vu.name,
+                "department": p.don_vi.ten if p.don_vi else "",
+                "position": p.chuc_vu.name if p.chuc_vu else "",
             }
             for p in tomorrow_profiles
         ],
