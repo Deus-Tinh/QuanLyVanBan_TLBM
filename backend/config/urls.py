@@ -1,12 +1,19 @@
 """
-URL configuration for config project.
+URL configuration for QLVB&TL project.
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+
+from accounts.views import staffs_view
 
 urlpatterns = [
     # Django Admin
     path("admin/", admin.site.urls),
+
+    # API Cán bộ / Nhân viên (phục vụ liên nhóm)
+    path("api/accounts/staffs/", staffs_view, name="accounts_staffs"),
 
     # ── Module Nhóm 1 — Hiếu ──────────────────────────────────────────────
     # API Xác thực & Tài khoản: POST /api/auth/login/, GET /api/auth/profile/, ...
@@ -17,6 +24,10 @@ urlpatterns = [
 
     # ── Module Nhóm 6 — Công việc ─────────────────────────────────────────
     path("api/work/", include("work.urls")),
+
+    # ── Module Nhóm 2 — Quản lý Văn bản (Kiệt) ───────────────────────────
+    path("api/", include("documents.urls")),
+
     # ── Module Nhóm 5 — Trình ký ──────────────────────────────────────────
     path("api/v1/signing/", include("signing.urls", namespace="signing")),
     # ── Module Nhóm 4 — Tài liệu & Biểu mẫu (Nguyễn Chí Tín) ───────────────
@@ -41,9 +52,5 @@ urlpatterns = [
     path("api/birthdays/", include("birthdays.urls", namespace="birthdays")),
 ]
 
-from django.conf import settings
-from django.conf.urls.static import static
-
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

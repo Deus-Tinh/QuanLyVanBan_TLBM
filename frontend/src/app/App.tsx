@@ -12,6 +12,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-ui-style', 'modern');
     localStorage.setItem('tlbm_theme', theme);
   }, [theme]);
 
