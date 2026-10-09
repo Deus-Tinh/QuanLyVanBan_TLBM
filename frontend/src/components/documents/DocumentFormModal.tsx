@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import apiClient from '@lib/apiClient';
-import { DocumentDetail, DocumentItem } from '@app-types/document';
+import { DocumentDetail, DocumentItem, DocumentStatus, PaginatedResponse } from '@app-types/document';
 import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
 
@@ -60,11 +60,36 @@ interface FormState {
   nguoi_nhan: (number | string)[];
 }
 
+interface DocumentFormInput extends Partial<DocumentDetail> {
+  soHieu?: string;
+  soDen?: number;
+  ngayDen?: string;
+  ngayVanBan?: string;
+  ngay_thang_van_ban?: string;
+  coQuanBanHanh?: string;
+  co_quan_ban_hanh?: string;
+  trichYeu?: string;
+  danh_muc_ho_so?: string;
+  danhMucHoSo?: string;
+  ten_loai_van_ban?: string;
+  loaiVanBan?: string;
+  nguoiKy?: string;
+  chucVu?: string;
+  hieuLuc?: DocumentStatus;
+  ngayHetHieuLuc?: string;
+  linkThayThe?: string;
+  ghiChu?: string;
+  guiMailToanHeThong?: boolean;
+  pham_vi?: 'NOI_BO' | 'HAN_CHE';
+  nguoi_nhan?: (number | string | { id: number })[];
+  don_vi_nhan?: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  initial?: InitialDocType | null;
-  onSaved?: (doc: Record<string, unknown>) => void;
+  initial?: InitialDocType | DocumentFormInput | null;
+  onSaved?: (doc: Record<string, unknown> | DocumentFormInput) => void;
   defaultLoai?: 'DEN' | 'DI';
 }
 
@@ -115,7 +140,7 @@ function getFileIcon(fileName: string) {
   return 'fa-solid fa-file text-slate-400';
 }
 
-function buildInitialForm(initDocInput?: InitialDocType | null, defaultLoai: 'DEN' | 'DI' = 'DEN'): FormState {
+function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | null, defaultLoai: 'DEN' | 'DI' = 'DEN'): FormState {
   const now = new Date();
   const defaultDate = toLocalDateString(now);
   const initDoc = initDocInput as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
@@ -179,7 +204,6 @@ function buildInitialForm(initDocInput?: InitialDocType | null, defaultLoai: 'DE
 export default function DocumentFormModal({ open, onClose, initial, onSaved, defaultLoai = 'DEN' }: Props) {
   const initDoc = initial as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
   const [loading, setLoading] = useState(false);
-  const [prevInitial, setPrevInitial] = useState(initial);
   const [form, setForm] = useState<FormState>(() => buildInitialForm(initial, defaultLoai));
   const [units, setUnits] = useState<string[]>(DEFAULT_UNITS);
   const [staff, setStaff] = useState<UserOption[]>([]);
@@ -210,23 +234,27 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   const filePattern = /\.(pdf|docx?|png|jpe?g)$/i;
   const maxFiles = 10;
 
-  if (initial !== prevInitial) {
-    setPrevInitial(initial);
-    setForm(buildInitialForm(initial, defaultLoai));
-    setFiles([]);
-    setIsDragging(false);
-    setReplacementSuggestions([]);
-    setShowReplacementDropdown(false);
-    setSelectedReplacementDoc(null);
-    setAutoUpdateReplaced(true);
-    const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
-    setIsReplacingOther(hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE');
-    if (initDoc?.attachments && Array.isArray(initDoc.attachments)) {
-      setExistingAttachments(initDoc.attachments as ExistingAttachment[]);
-    } else {
-      setExistingAttachments([]);
+  const [previousProps, setPreviousProps] = useState({ open, initial });
+  if (previousProps.open !== open || previousProps.initial !== initial) {
+    setPreviousProps({ open, initial });
+    if (open) {
+      setForm(buildInitialForm(initial, defaultLoai));
+      setFiles([]);
+      setIsDragging(false);
+      setReplacementSuggestions([]);
+      setShowReplacementDropdown(false);
+      setSelectedReplacementDoc(null);
+      setAutoUpdateReplaced(true);
+      const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
+      setIsReplacingOther(hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE');
+      if (initDoc?.attachments && Array.isArray(initDoc.attachments)) {
+        setExistingAttachments(initDoc.attachments as ExistingAttachment[]);
+      } else {
+        setExistingAttachments([]);
+      }
+      setSelectedUnit((initDoc?.don_vi_nhan as string) || '');
+      setStaff([]);
     }
-    setSelectedUnit((initDoc?.don_vi_nhan as string) || '');
   }
 
   async function fetchUnits() {
@@ -270,32 +298,29 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   }
 
   useEffect(() => {
-    if (!open) return;
-    let ignore = false;
-    const targetSoHieu = (initDoc?.link_thay_the || initDoc?.linkThayThe) as string | undefined;
-    const initialUnit = (initDoc?.don_vi_nhan as string) || '';
-
-    void Promise.resolve().then(() => {
-      if (ignore) return;
+    let cancelled = false;
+    if (open) {
+      const targetSoHieu = (initDoc?.link_thay_the || initDoc?.linkThayThe) as string | undefined;
       if (targetSoHieu) {
-        apiClient.get<{ results?: SuggestedDoc[] } | SuggestedDoc[]>(`/api/documents/?q=${encodeURIComponent(targetSoHieu)}&page_size=3`)
+        apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(`/api/documents/?q=${encodeURIComponent(targetSoHieu)}&page_size=3`)
           .then(res => {
-            if (ignore) return;
+            if (cancelled) return;
             const items = Array.isArray(res) ? res : res?.results || [];
-            const found = items.find((d: SuggestedDoc) => d.so_hieu === targetSoHieu);
+            const found = items.find((document) => document.so_hieu === targetSoHieu);
             if (found) setSelectedReplacementDoc(found);
           })
-          .catch(() => {});
+          .catch(() => undefined);
       }
 
-      fetchUnits();
-      if (initialUnit) {
-        fetchStaffByUnit(initialUnit);
-      }
-    });
-
+      const initialUnit = (initDoc?.don_vi_nhan as string) || '';
+      Promise.resolve().then(() => {
+        if (cancelled) return;
+        void fetchUnits();
+        if (initialUnit) void fetchStaffByUnit(initialUnit);
+      });
+    }
     return () => {
-      ignore = true;
+      cancelled = true;
     };
   }, [open, initDoc?.don_vi_nhan, initDoc?.linkThayThe, initDoc?.link_thay_the]);
 
@@ -330,7 +355,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
         const endpoint = trimmed
           ? `/api/documents/?q=${encodeURIComponent(trimmed)}&page_size=8`
           : `/api/documents/?page_size=6`;
-        const res = await apiClient.get<{ results?: SuggestedDoc[] } | SuggestedDoc[]>(endpoint);
+        const res = await apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(endpoint);
         const items: SuggestedDoc[] = Array.isArray(res) ? res : res?.results || [];
         const currentSoHieu = (form.so_hieu || '').trim().toLowerCase();
         const filtered = items.filter(d => {

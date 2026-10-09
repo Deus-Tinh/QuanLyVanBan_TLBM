@@ -36,9 +36,13 @@ export const InboundDocumentPage: React.FC = () => {
 
   useEffect(() => {
     if (loaiVanBanParam) {
-      void Promise.resolve().then(() => {
-        setFilters(prev => (prev.loai_van_ban === loaiVanBanParam ? prev : { ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+      let cancelled = false;
+      Promise.resolve().then(() => {
+        if (!cancelled) setFilters(prev => ({ ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
       });
+      return () => {
+        cancelled = true;
+      };
     }
   }, [loaiVanBanParam]);
 
@@ -107,15 +111,15 @@ export const InboundDocumentPage: React.FC = () => {
   }, [filters.loai_van_ban]);
 
   useEffect(() => {
-    let ignore = false;
-    (async () => {
-      await Promise.resolve();
-      if (ignore) return;
-      fetchYears();
-      fetchStats();
-    })();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        void fetchYears();
+        void fetchStats();
+      }
+    });
     return () => {
-      ignore = true;
+      cancelled = true;
     };
   }, [fetchYears, fetchStats]);
 
@@ -143,7 +147,7 @@ export const InboundDocumentPage: React.FC = () => {
         setDocuments(response.results);
         setTotalCount(response.count || 0);
         if (response.results.length > 0) {
-          const docYears = Array.from(new Set(response.results.map((d: DocumentItem) => d.nam).filter(Boolean))) as number[];
+          const docYears = Array.from(new Set(response.results.map((document) => document.nam).filter(Boolean))) as number[];
           setAvailableYears(prev => {
             const merged = Array.from(new Set([...prev, ...docYears])).sort((a, b) => b - a);
             return merged;
@@ -169,14 +173,12 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Nạp dữ liệu khi bộ lọc thay đổi
   useEffect(() => {
-    let ignore = false;
-    (async () => {
-      await Promise.resolve();
-      if (ignore) return;
-      fetchDocuments();
-    })();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void fetchDocuments();
+    });
     return () => {
-      ignore = true;
+      cancelled = true;
     };
   }, [fetchDocuments]);
 
@@ -263,8 +265,8 @@ export const InboundDocumentPage: React.FC = () => {
       a.download = `Danh_Sach_Van_Ban_Den_${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: unknown) {
-      setAlertMsg(e instanceof Error ? e.message : String(e));
+    } catch (error: unknown) {
+      setAlertMsg(error instanceof Error ? error.message : String(error));
       setIsAlertOpen(true);
     }
   };

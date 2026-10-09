@@ -5,6 +5,7 @@ import { Button } from '@components/common/Button';
 import { formatDate } from '@lib/dateUtils';
 import { authService } from '@lib/authService';
 
+
 export interface DocumentTableProps {
   documents: DocumentItem[];
   totalCount: number;
@@ -158,8 +159,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 const isActive = doc.hieu_luc === 'CON_HIEU_LUC';
                 const isActiveRow = activeMenuId === doc.id;
                 const isNearBottom = index >= documents.length - 2 && documents.length > 2;
-
-
 
                 // Phân quyền sửa & xóa văn bản:
                 // - Văn bản hạn chế (HAN_CHE) hoặc chế độ bảo mật: tuyệt đối không được xóa
