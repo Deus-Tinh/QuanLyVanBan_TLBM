@@ -96,6 +96,11 @@ export const recordsService = {
     await apiClient.delete(`/api/records/dossiers/${id}/`);
   },
 
+  async listDocumentTypeCatalog(query: ListQuery): Promise<PageResult<DocumentType>> {
+    const response = await apiClient.get<unknown>(`/api/records/document-types/${queryString(query)}`);
+    return normalizePage<DocumentType>(response);
+  },
+
   async listDocumentTypes(dossierId: EntityId, query: ListQuery): Promise<PageResult<DocumentType>> {
     const response = await apiClient.get<unknown>(
       `/api/records/dossiers/${dossierId}/document-types/${queryString(query)}`

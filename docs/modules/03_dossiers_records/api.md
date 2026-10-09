@@ -1,70 +1,46 @@
-# API Hồ sơ và Loại văn bản (Nhóm 3)
+# API nhóm 3 — cập nhật review PR #123, 09/10/2026
 
-Tiền tố: `/api/records/`. Tất cả endpoint yêu cầu JWT. Sau khi RBAC Nhóm 7
-được tích hợp, quyền được kiểm tra bằng codename trần trong bảng dưới đây.
+Base kiểm chứng: PR #123 ở `362a367`; DDL `46463ba`, SHA256 `0308b8dcd23e20b57994894653df1f49cf7fe212ef94c2f4a3de33ec74ed0b5f`. User dùng chung `accounts.Employee`, backend `authorization.backends.RbacBackend`.
 
-## Endpoint
+| API | Thao tác | Quyền DDL |
+|---|---|---|
+| `/api/records/dossiers/` | GET / POST | view_hoso / add_hoso |
+| `/api/records/dossiers/{id}/` | GET / PATCH / DELETE | view_hoso / change_hoso / delete_hoso |
+| `/api/records/document-types/` | GET — danh mục cấp 2 độc lập | view_hoso |
+| `/api/records/dossiers/{id}/document-types/` | GET / POST | view_hoso / add_hoso |
+| `/api/records/document-types/{id}/` | GET / PATCH / DELETE | view_hoso / change_hoso / delete_hoso |
+| `/api/records/dossiers/{id}/documents/` | Đã gỡ; 404 | Không còn API metadata riêng |
 
-| Phương thức | Đường dẫn | Quyền | Mô tả |
-|---|---|---|---|
-| `GET` | `/dossiers/` | `view_hoso` | Danh sách hồ sơ |
-| `POST` | `/dossiers/` | `add_hoso` | Tạo hồ sơ; `nguoi_lap` luôn lấy từ `request.user` |
-| `GET` | `/dossiers/{id}/` | `view_hoso` | Chi tiết hồ sơ |
-| `PATCH` | `/dossiers/{id}/` | `change_hoso` | Sửa hồ sơ |
-| `DELETE` | `/dossiers/{id}/` | `delete_hoso` | Xóa hồ sơ; không xóa Hồ sơ chung hoặc hồ sơ đang được tham chiếu |
-| `GET` | `/dossiers/{id}/document-types/` | `view_hoso` | Danh sách loại văn bản thuộc đúng hồ sơ |
-| `POST` | `/dossiers/{id}/document-types/` | `add_hoso` | Tạo loại văn bản trong hồ sơ |
-| `GET` | `/document-types/{id}/` | `view_hoso` | Chi tiết loại văn bản |
-| `PATCH` | `/document-types/{id}/` | `change_hoso` | Sửa loại văn bản |
-| `DELETE` | `/document-types/{id}/` | `delete_hoso` | Xóa loại văn bản; trả `409` nếu đang được văn bản tham chiếu |
-| `GET` | `/dossiers/{id}/documents/` | `view_hoso` | Danh sách chỉ đọc các văn bản thuộc hồ sơ |
+DDL không có `*_loaivanban`; danh mục con dùng quyền hồ sơ. Danh sách trả `{count,next,previous,results}`. Danh mục loại trả thêm `ten_ho_so` chỉ đọc; `id` là PK của loại văn bản, `ho_so` là PK hồ sơ cha. Bộ lọc danh mục: `search`, `year`, `page`, `page_size`; danh mục độc lập thêm `ho_so` là số nguyên dương. API độc lập chỉ đọc, thao tác tạo loại vẫn thuộc hồ sơ cụ thể. Chưa đăng nhập 401, thiếu quyền 403, validation 400, xóa hồ sơ hệ thống hoặc đối tượng còn tham chiếu 409.
 
-## Query danh sách
+## Giao diện theo yêu cầu mới của thầy
 
-- Hồ sơ và loại văn bản: `search`, `year`, `page`, `page_size`.
-- Văn bản thuộc hồ sơ: `search`, `year`, `type`, `page`, `page_size`.
-- `type` nhận `vanbanden`, `vanbandi`, `vanbanmat`; bỏ trống để lấy tất cả.
-- `page_size` tối đa `100`; `year` từ `1` đến `9999`.
+- `/records`: trang Hồ sơ cấp 1.
+- `/records/document-types`: trang Loại văn bản cấp 2 độc lập, có hồ sơ cha.
+- `/records/{id}/document-types`: cùng trang cấp 2, giới hạn hồ sơ đang chọn.
+- Click tên loại hoặc nút xem văn bản mở popup chọn **đến / đi**, thêm tùy chọn **mật (hạn chế)**.
+- Popup chuyển đến trang nhóm 2, truyền `loai_van_ban=<PK loại>`; khi chọn mật, thêm `pham_vi=HAN_CHE`.
+- URL trang riêng cũ `/records/{id}/documents` chuyển về danh mục loại; không còn trang hoặc truy vấn văn bản riêng.
 
-Phản hồi phân trang:
+“Mật” là phạm vi của văn bản đến/đi theo release. Không khôi phục bảng `vanbanmat`, kind `MAT` hoặc quyền cũ. Popup chỉ chọn danh sách, không tự tạo văn bản. Việc thêm văn bản nằm ở module nhóm 2 và phải kiểm tra quyền ở API nhóm 2.
 
-```json
-{
-  "count": 1,
-  "next": null,
-  "previous": null,
-  "results": []
-}
-```
+## Hợp đồng nhóm 2 và phần chưa hoàn thành liên nhóm
 
-## Quy tắc dữ liệu
+| Lựa chọn | Trang nhóm 2 | Query |
+|---|---|---|
+| Đến | `/documents/incoming` | `loai_van_ban=23` |
+| Đi | `/documents/outgoing` | `loai_van_ban=23` |
+| Đến mật | `/documents/incoming` | `loai_van_ban=23&pham_vi=HAN_CHE` |
+| Đi mật | `/documents/outgoing` | `loai_van_ban=23&pham_vi=HAN_CHE` |
 
-- `stt_uu_tien` là số nguyên dương, duy nhất; bỏ trống khi tạo để hệ thống gán
-  `MAX + 1` trong transaction có khóa chống trùng trên PostgreSQL.
-- `so_ky_hieu`, `ten_ho_so`, `ten_loai` được trim và không nhận chuỗi rỗng.
-- `nguoi_lap` và `is_he_thong` là chỉ đọc; client không thể ghi đè.
-- `LOWER(TRIM(ten_loai))` không được trùng trong cùng một hồ sơ.
-- Hồ sơ chung không thể bị xóa hoặc hạ `is_he_thong` từ `true` xuống `false`.
-- Xóa dữ liệu được Nhóm 2 tham chiếu trả `409 Conflict`, không trả `500`.
-- Văn bản mật chỉ hiện với người tạo, người nhận hoặc đơn vị nhận, kể cả khi
-  tài khoản là staff/superuser. Khi Nhóm 2 cung cấp hàm visibility dùng chung,
-  endpoint này phải chuyển sang gọi hàm đó theo mục C5 của kế hoạch Ship MVP.
+ID 23 chỉ là ví dụ. Trong snapshot review, incoming chưa chuyển `loai_van_ban` vào API; filter backend chưa khai báo `pham_vi`; outgoing là placeholder. Nhóm 2 cần tiếp nhận hợp đồng này, gửi bộ lọc xuống API, hiển thị loại đã chọn, giữ hoặc xóa bộ lọc đúng khi đổi URL và kiểm tra ACL trước đếm/phân trang. Không đánh dấu toàn luồng hoàn thành chỉ dựa trên việc URL đã đúng.
 
-## Mã lỗi chính
+Xóa API G3 giải quyết đường bypass metadata nêu trong review; không khẳng định ACL của module nhóm 2 đã được kiểm chứng hoặc đã sửa tất cả lỗi của nhóm 2.
 
-| HTTP | Ý nghĩa |
-|---|---|
-| `400` | Dữ liệu hoặc bộ lọc không hợp lệ; trùng mã/STT/tên loại |
-| `401` | Chưa xác thực |
-| `403` | Đã đăng nhập nhưng thiếu quyền |
-| `404` | Hồ sơ hoặc loại văn bản không tồn tại |
-| `409` | Không thể xóa Hồ sơ chung hoặc dữ liệu đang được tham chiếu |
-| `503` | Schema văn bản dùng chung của Nhóm 2 chưa sẵn sàng |
+## Chỉ mục và database hiện hữu
 
-## Dựng cơ sở dữ liệu từ DDL base
+Model khai báo hai index `idx_hoso_nguoi_lap`, `idx_loaivanban_hoso`; hai ForeignKey dùng `db_index=False`. Migration mới `0005_canonical_fk_indexes` không sửa migration cũ và không rebuild bảng. PostgreSQL: index Django cũ được đổi tên; index chuẩn DDL có sẵn được giữ; chỉ bản trùng tên Django đã biết mới bị xóa. Index khác hoặc định nghĩa bất thường làm migration dừng để review. Migration này không tự reverse về tên cũ.
 
-Hai migration nền `records.0001_initial` và `records.0002_hoso_guards` tương
-ứng các bảng, index và trigger đã có trong DDL. Trên DB dựng từ DDL phải đánh
-dấu đúng migration nền theo quy trình cấp dự án; không chạy lại SQL tạo bảng
-hoặc trigger. Kiểm thử tích hợp phải dùng PostgreSQL và không dùng DB cục bộ đã
-từng migrate dở.
+Database release đã bootstrap: chỉ chạy migration records còn thiếu sau khi xem plan và sao lưu. Không nhập lại DDL, không bootstrap lại, không chạy seed RBAC cũ hoặc `--fake` toàn dự án. Hai đường fresh-migration và DDL-adopt cần kiểm chứng catalog PostgreSQL bằng script riêng trước báo cáo hoàn tất DDL-1.
+
+Profile `config.records_release` phục vụ kiểm chứng nhóm 3, không thay cho toàn bộ cấu hình deploy. Quy trình Git: nhánh cá nhân → `3_dossiers_documents` → `staging`; người phụ trách tích hợp quyết định merge staging/deploy.

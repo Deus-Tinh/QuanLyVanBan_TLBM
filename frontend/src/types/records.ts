@@ -25,6 +25,7 @@ export interface DocumentType {
   id: EntityId;
   ho_so?: EntityId | Dossier;
   ten_loai: string;
+  ten_ho_so?: string;
   ngay_lap?: string | null;
   ghi_chu?: string | null;
   created_at?: string;

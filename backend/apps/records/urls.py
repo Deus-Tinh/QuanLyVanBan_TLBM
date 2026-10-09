@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .views import (
-    DossierDocumentListAPIView,
+    DocumentTypeCatalogAPIView,
     HoSoDetailAPIView,
     HoSoListCreateAPIView,
     LoaiVanBanDetailAPIView,
@@ -12,6 +12,7 @@ from .views import (
 app_name = "records"
 
 urlpatterns = [
+    path("document-types/", DocumentTypeCatalogAPIView.as_view(), name="document-type-catalog"),
     path(
         "dossiers/",
         HoSoListCreateAPIView.as_view(),
@@ -26,11 +27,6 @@ urlpatterns = [
         "dossiers/<int:dossier_id>/document-types/",
         LoaiVanBanListCreateAPIView.as_view(),
         name="document-type-list-create",
-    ),
-    path(
-        "dossiers/<int:dossier_id>/documents/",
-        DossierDocumentListAPIView.as_view(),
-        name="dossier-document-list",
     ),
     path(
         "document-types/<int:pk>/",

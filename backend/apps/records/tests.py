@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.urls import reverse
 from rest_framework import status
@@ -11,10 +10,7 @@ from django.db import DatabaseError, IntegrityError, transaction
 from django.test import TestCase
 
 from records.models import HoSo, LoaiVanBan
-from records.document_queries import (
-    DocumentDataUnavailable,
-    query_dossier_documents,
-)
+
 
 
 class RecordsModelTests(TestCase):
@@ -145,6 +141,7 @@ class RecordsApiTests(APITestCase):
         self.user = user_model._default_manager.create_user(
             username="api-user",
             password="test-only",
+            is_superuser=True,
         )
         self.client.force_authenticate(user=self.user)
         self.dossier_list_url = reverse(
@@ -439,113 +436,3 @@ class RecordsApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertTrue(LoaiVanBan.objects.filter(pk=document_type.pk).exists())
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_contract_and_filters(self, query_documents):
-        dossier = self.create_dossier()
-        query_documents.return_value = (
-            1,
-            [{
-                "key": "vanbanden:17",
-                "id": 17,
-                "document_type": "vanbanden",
-                "so_hieu": "17/CV-TLBM",
-                "trich_yeu": "Thông báo kiểm thử",
-                "ngay_van_ban": datetime(2026, 10, 4, tzinfo=timezone.utc),
-                "nam": 2026,
-            }],
-        )
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk]),
-            {
-                "search": "Thông báo",
-                "year": "2026",
-                "type": "vanbanden",
-                "page": "1",
-                "page_size": "10",
-            },
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
-        self.assertEqual(response.data["results"][0]["key"], "vanbanden:17")
-        query_documents.assert_called_once_with(
-            dossier_id=dossier.pk,
-            user=self.user,
-            search="Thông báo",
-            year=2026,
-            document_type="vanbanden",
-            page=1,
-            page_size=10,
-        )
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_validates_filters(self, query_documents):
-        dossier = self.create_dossier()
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk]),
-            {"type": "khong-hop-le", "page": "0"},
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("type", response.data)
-        self.assertIn("page", response.data)
-        query_documents.assert_not_called()
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_reports_missing_shared_schema(self, query_documents):
-        dossier = self.create_dossier()
-        query_documents.side_effect = DocumentDataUnavailable("documents_vanbanden")
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk])
-        )
-        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_requires_authentication(self, query_documents):
-        dossier = self.create_dossier()
-        self.client.force_authenticate(user=None)
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk])
-        )
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        query_documents.assert_not_called()
-
-
-class DossierDocumentQuerySecurityTests(TestCase):
-    @patch("records.document_queries.connection")
-    def test_confidential_scope_also_applies_to_superuser(self, db_connection):
-        db_connection.introspection.table_names.return_value = [
-            "documents_vanbanmat",
-            "documents_vanbanmat_hoso",
-            "documents_vanbanmat_nguoinhan",
-            "documents_vanbanmat_donvinhan",
-        ]
-        cursor = MagicMock()
-        cursor.fetchone.return_value = (0,)
-        cursor.description = [
-            ("id",),
-            ("document_type",),
-            ("so_hieu",),
-            ("trich_yeu",),
-            ("ngay_van_ban",),
-            ("nam",),
-        ]
-        cursor.fetchall.return_value = []
-        db_connection.cursor.return_value.__enter__.return_value = cursor
-        user = SimpleNamespace(
-            pk=7,
-            is_staff=True,
-            is_superuser=True,
-            don_vi_id=3,
-        )
-
-        query_dossier_documents(
-            dossier_id=11,
-            user=user,
-            document_type="vanbanmat",
-        )
-
-        count_sql, count_params = cursor.execute.call_args_list[0].args
-        self.assertIn("d.nguoi_tao = %s", count_sql)
-        self.assertIn("documents_vanbanmat_nguoinhan", count_sql)
-        self.assertIn("documents_vanbanmat_donvinhan", count_sql)
-        self.assertEqual(count_params, [11, 7, 7, 3])

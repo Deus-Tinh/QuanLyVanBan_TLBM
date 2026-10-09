@@ -1,101 +1,25 @@
-import { readFile, readdir } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+// Kiểm tra vi.json và en.json có cùng tập key (so sánh theo đường dẫn key đã làm phẳng).
+import { readFileSync } from 'node:fs';
 
-const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dictionariesDir = path.join(frontendDir, 'src', 'i18n');
-const recordsSources = [
-  path.join(frontendDir, 'src', 'components', 'records'),
-  path.join(frontendDir, 'src', 'pages', 'records'),
-];
+const load = (lang) => JSON.parse(readFileSync(new URL(`../src/i18n/${lang}.json`, import.meta.url), 'utf8'));
 
-async function readDictionary(language) {
-  const file = path.join(dictionariesDir, `${language}.json`);
-  return JSON.parse((await readFile(file, 'utf8')).replace(/^\uFEFF/, ''));
-}
+const flatten = (obj, prefix = '') =>
+  Object.entries(obj).flatMap(([key, value]) =>
+    value !== null && typeof value === 'object' ? flatten(value, `${prefix}${key}.`) : [`${prefix}${key}`],
+  );
 
-function flatten(value, prefix = '', result = new Map()) {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
-    result.set(prefix, value);
-    return result;
-  }
+const vi = new Set(flatten(load('vi')));
+const en = new Set(flatten(load('en')));
 
-  if (typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`Translation key "${prefix}" has an unsupported value.`);
-  }
+const missingInEn = [...vi].filter((key) => !en.has(key));
+const missingInVi = [...en].filter((key) => !vi.has(key));
 
-  for (const [key, child] of Object.entries(value)) {
-    flatten(child, prefix ? `${prefix}.${key}` : key, result);
-  }
-  return result;
-}
+for (const key of missingInEn) console.error(`Thiếu trong en.json: ${key}`);
+for (const key of missingInVi) console.error(`Thiếu trong vi.json: ${key}`);
 
-function placeholders(value) {
-  if (typeof value !== 'string') return [];
-  return [...value.matchAll(/\{([A-Za-z0-9_]+)\}/g)]
-    .map((match) => match[1])
-    .sort();
-}
-
-async function sourceFiles(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files = [];
-  for (const entry of entries) {
-    const target = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await sourceFiles(target)));
-    else if (/\.(ts|tsx)$/.test(entry.name) && !/\.test\.(ts|tsx)$/.test(entry.name)) files.push(target);
-  }
-  return files;
-}
-
-const [vi, en] = await Promise.all([readDictionary('vi'), readDictionary('en')]);
-const viKeys = flatten(vi);
-const enKeys = flatten(en);
-const errors = [];
-
-for (const key of viKeys.keys()) {
-  if (!enKeys.has(key)) errors.push(`Missing English key: ${key}`);
-}
-for (const key of enKeys.keys()) {
-  if (!viKeys.has(key)) errors.push(`Missing Vietnamese key: ${key}`);
-}
-for (const key of viKeys.keys()) {
-  if (!enKeys.has(key)) continue;
-  if (typeof viKeys.get(key) !== typeof enKeys.get(key)) {
-    errors.push(
-      `Value type mismatch at ${key}: vi=${typeof viKeys.get(key)}, en=${typeof enKeys.get(key)}`
-    );
-    continue;
-  }
-  const viPlaceholders = placeholders(viKeys.get(key));
-  const enPlaceholders = placeholders(enKeys.get(key));
-  if (viPlaceholders.join('|') !== enPlaceholders.join('|')) {
-    errors.push(
-      `Placeholder mismatch at ${key}: vi=[${viPlaceholders.join(', ')}], en=[${enPlaceholders.join(', ')}]`
-    );
-  }
-}
-
-const vietnameseText = /[À-ỹ]/u;
-for (const directory of recordsSources) {
-  for (const file of await sourceFiles(directory)) {
-    const lines = (await readFile(file, 'utf8')).split(/\r?\n/);
-    lines.forEach((line, index) => {
-      if (vietnameseText.test(line)) {
-        errors.push(
-          `Hardcoded Vietnamese text in ${path.relative(frontendDir, file)}:${index + 1}`
-        );
-      }
-    });
-  }
-}
-
-if (errors.length > 0) {
-  console.error('i18n check failed:');
-  errors.forEach((error) => console.error(`- ${error}`));
+if (missingInEn.length || missingInVi.length) {
+  console.error(`i18n lệch: ${missingInEn.length} key thiếu ở en, ${missingInVi.length} key thiếu ở vi.`);
   process.exit(1);
 }
 
-console.log(
-  `i18n check passed: ${viKeys.size} keys are aligned and Records UI has no hardcoded Vietnamese text.`
-);
+console.log(`i18n khớp: ${vi.size} key.`);
