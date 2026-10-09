@@ -10,46 +10,39 @@ interface StatusStyle {
   icon: string;
   color: string;
   background: string;
-  border: string;
 }
 
-// Chờ duyệt và Chưa hoàn thành cùng tông vàng/cam nên mỗi trạng thái có thêm icon riêng để không nhầm.
+// Mỗi trạng thái có nền + chữ riêng (chốt với trưởng nhóm); icon kèm theo để Chờ duyệt / Chưa hoàn thành không nhầm tông.
 const STATUS_STYLES: Record<TaskStatus, StatusStyle> = {
   CHO_XU_LY: {
     icon: 'fa-regular fa-hourglass-half',
-    color: 'var(--text-secondary)',
-    background: 'var(--bg-surface-hover)',
-    border: 'var(--border-subtle)',
+    color: '#6B7280',
+    background: '#F3F4F6',
   },
   DANG_XU_LY: {
     icon: 'fa-solid fa-pen-ruler',
-    color: 'var(--color-primary)',
-    background: 'var(--color-primary-subtle)',
-    border: 'var(--color-primary-border)',
+    color: '#1D4ED8',
+    background: '#DBEAFE',
   },
   CHO_DUYET: {
     icon: 'fa-regular fa-clock',
-    color: 'var(--color-warning-text)',
-    background: 'var(--color-warning-subtle)',
-    border: 'var(--color-warning-border)',
+    color: '#6D28D9',
+    background: '#EDE9FE',
   },
   HOAN_THANH: {
     icon: 'fa-solid fa-circle-check',
-    color: 'var(--color-success)',
-    background: 'var(--color-success-subtle)',
-    border: 'var(--color-success-border)',
+    color: '#065F46',
+    background: '#D1FAE5',
   },
   CHUA_HOAN_THANH: {
     icon: 'fa-solid fa-triangle-exclamation',
-    color: 'var(--color-warning-hover)',
-    background: 'var(--color-warning-subtle)',
-    border: 'var(--color-warning)',
+    color: '#D97706',
+    background: '#FEF3C7',
   },
   QUA_HAN: {
     icon: 'fa-solid fa-circle-exclamation',
-    color: 'var(--color-danger)',
-    background: 'var(--color-danger-subtle)',
-    border: 'var(--color-danger-border)',
+    color: '#DC2626',
+    background: '#FEE2E2',
   },
 };
 
@@ -71,12 +64,11 @@ export default function TaskStatusBadge({ status, label, size = 'md' }: TaskStat
         alignItems: 'center',
         gap: '6px',
         padding: size === 'sm' ? '2px 8px' : '4px 12px',
-        borderRadius: 'var(--radius-full)',
+        borderRadius: '9999px',
         background: style.background,
-        border: `1px solid ${style.border}`,
         color: style.color,
-        fontSize: size === 'sm' ? '0.72rem' : '0.78rem',
-        fontWeight: 700,
+        fontSize: size === 'sm' ? '12px' : '13px',
+        fontWeight: 500,
         whiteSpace: 'nowrap',
         lineHeight: 1.6,
       }}
