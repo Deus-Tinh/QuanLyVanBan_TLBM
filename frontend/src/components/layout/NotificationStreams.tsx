@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SAMPLE_STREAMS } from '@lib/constants';
 import { NotificationStreamType } from '@app-types/notification';
@@ -35,7 +35,7 @@ export default function NotificationStreams() {
         type="button"
         className="relative w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast"
         onClick={() => setIsOpen(!isOpen)}
-        title="Thông báo văn bản (Đến, Đi, Mật)"
+        title="Thông báo hệ thống"
         aria-label="Thông báo"
       >
         <i className="fa-regular fa-bell text-base" />
@@ -73,7 +73,7 @@ export default function NotificationStreams() {
               </div>
             </div>
 
-            {/* Streams Tab Navigation: Đến, Đi, Mật, Lịch Họp */}
+            {/* Streams Tab Navigation: Đến, Đi, Lịch Họp */}
             <div className="flex items-center p-1.5 bg-surface border-b border-subtle gap-1 overflow-x-auto">
               {SAMPLE_STREAMS.map((stream) => {
                 const streamLabelKey = `notifications.${stream.type}`;
@@ -93,13 +93,7 @@ export default function NotificationStreams() {
                     <i className={`fa-solid ${stream.icon} text-xs`} />
                     <span>{streamLabel}</span>
                     {stream.unreadCount > 0 && (
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                          stream.type === 'confidential'
-                            ? 'bg-danger-subtle text-danger'
-                            : 'bg-primary-subtle text-primary'
-                        }`}
-                      >
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-primary-subtle text-primary">
                         {stream.unreadCount}
                       </span>
                     )}
@@ -127,17 +121,7 @@ export default function NotificationStreams() {
                       <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-surface border border-subtle text-text-secondary">
                         {item.code}
                       </span>
-                      {item.priority === 'urgent' && (
-                        <span className="text-[11px] text-danger font-bold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" /> Khẩn
-                        </span>
-                      )}
-                      {item.priority === 'confidential' && (
-                        <span className="text-[11px] text-danger font-bold flex items-center gap-1">
-                          <i className="fa-solid fa-lock text-[10px]" />
-                          <span>Tuyệt Mật</span>
-                        </span>
-                      )}
+                      {/* Badge hiển thị mã văn bản */}
                     </div>
                     <div className="font-medium text-xs text-text-main line-clamp-2 leading-relaxed">
                       {item.title}

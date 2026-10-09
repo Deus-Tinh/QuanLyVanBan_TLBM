@@ -22,7 +22,6 @@ export interface DashboardMeetingItem {
 export interface DashboardKpis {
   incomingCount: number;
   outgoingCount: number;
-  confidentialCount: number;
   tasksCount: number;
 }
 
