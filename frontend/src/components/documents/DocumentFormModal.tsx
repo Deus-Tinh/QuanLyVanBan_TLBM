@@ -1,8 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import apiClient from '@lib/apiClient';
+import { DocumentDetail, DocumentItem, DocumentStatus, PaginatedResponse } from '@app-types/document';
 import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
+
+export type InitialDocType =
+  | DocumentItem
+  | DocumentDetail
+  | (Omit<Partial<DocumentDetail>, 'hieu_luc'> & { hieu_luc?: string; [key: string]: unknown });
 
 interface UserOption {
   id: number;
@@ -27,10 +33,12 @@ interface SuggestedDoc {
   nam?: number;
   ngay_ban_hanh?: string;
   ngay_den?: string;
+  hieu_luc?: string;
+  link_thay_the?: string;
 }
 
 interface FormState {
-  loai: 'DEN';
+  loai: 'DEN' | 'DI';
   nam: number;
   so_hieu: string;
   so_thu_tu?: number | null;
@@ -52,11 +60,37 @@ interface FormState {
   nguoi_nhan: (number | string)[];
 }
 
+interface DocumentFormInput extends Partial<DocumentDetail> {
+  soHieu?: string;
+  soDen?: number;
+  ngayDen?: string;
+  ngayVanBan?: string;
+  ngay_thang_van_ban?: string;
+  coQuanBanHanh?: string;
+  co_quan_ban_hanh?: string;
+  trichYeu?: string;
+  danh_muc_ho_so?: string;
+  danhMucHoSo?: string;
+  ten_loai_van_ban?: string;
+  loaiVanBan?: string;
+  nguoiKy?: string;
+  chucVu?: string;
+  hieuLuc?: DocumentStatus;
+  ngayHetHieuLuc?: string;
+  linkThayThe?: string;
+  ghiChu?: string;
+  guiMailToanHeThong?: boolean;
+  pham_vi?: 'NOI_BO' | 'HAN_CHE';
+  nguoi_nhan?: (number | string | { id: number })[];
+  don_vi_nhan?: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  initial?: any;
-  onSaved?: (doc: any) => void;
+  initial?: InitialDocType | DocumentFormInput | null;
+  onSaved?: (doc: Record<string, unknown> | DocumentFormInput) => void;
+  defaultLoai?: 'DEN' | 'DI';
 }
 
 const DEFAULT_UNITS = [
@@ -82,14 +116,6 @@ const MOCK_STAFF_BY_UNIT: Record<string, UserOption[]> = {
   ],
 };
 
-function toLocalDatetimeString(dateInput?: string | Date | null): string {
-  if (!dateInput) return '';
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return '';
-  const offset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - offset).toISOString().slice(0, 16);
-}
-
 function toLocalDateString(dateInput?: string | Date | null): string {
   if (!dateInput) return '';
   const d = new Date(dateInput);
@@ -114,13 +140,77 @@ function getFileIcon(fileName: string) {
   return 'fa-solid fa-file text-slate-400';
 }
 
-export default function DocumentFormModal({ open, onClose, initial, onSaved }: Props) {
+function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | null, defaultLoai: 'DEN' | 'DI' = 'DEN'): FormState {
+  const now = new Date();
+  const defaultDate = toLocalDateString(now);
+  const initDoc = initDocInput as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
+
+  if (!initDoc) {
+    return {
+      loai: defaultLoai,
+      nam: now.getFullYear(),
+      so_hieu: '',
+      so_thu_tu: undefined,
+      ngay_den: defaultDate,
+      ngay_van_ban: defaultDate,
+      noi_ban_hanh: '',
+      trich_yeu: '',
+      danh_muc_ho_so: '',
+      ten_loai_van_ban: 'Công văn',
+      nguoi_ky: '',
+      chuc_vu: '',
+      hieu_luc: 'CON_HIEU_LUC',
+      ngay_het_hieu_luc: '',
+      link_thay_the: '',
+      ghi_chu: '',
+      pham_vi: 'NOI_BO',
+      hien_thi: true,
+      gui_mail_toan_he_thong: false,
+      nguoi_nhan: [],
+    };
+  }
+
+  const recipients: (number | string)[] = [];
+  if (Array.isArray(initDoc.nguoi_nhan)) {
+    initDoc.nguoi_nhan.forEach((u: unknown) => recipients.push(typeof u === 'object' && u !== null && 'id' in u ? (u as { id: number | string }).id : (u as number | string)));
+  } else if (Array.isArray(initDoc.nguoi_nhan_list)) {
+    initDoc.nguoi_nhan_list.forEach((u: unknown) => { if (typeof u === 'object' && u !== null && 'id' in u) recipients.push((u as { id: number | string }).id); });
+  }
+
+  return {
+    loai: ((initDoc.loai as 'DEN' | 'DI') || defaultLoai),
+    nam: (initDoc.nam as number) ?? now.getFullYear(),
+    so_hieu: (initDoc.so_hieu as string) ?? (initDoc.soHieu as string) ?? '',
+    so_thu_tu: (initDoc.so_thu_tu as number) ?? (initDoc.soDen as number) ?? undefined,
+    ngay_den: toLocalDateString((initDoc.ngay_den || initDoc.ngayDen || initDoc.ngay_ban_hanh || initDoc.ngayBanHanh) as string) || defaultDate,
+    ngay_van_ban: toLocalDateString((initDoc.ngay_van_ban || initDoc.ngayVanBan || initDoc.ngay_thang_van_ban) as string) || defaultDate,
+    noi_ban_hanh: (initDoc.noi_ban_hanh || initDoc.coQuanBanHanh || initDoc.co_quan_ban_hanh || '') as string,
+    trich_yeu: (initDoc.trich_yeu || initDoc.trichYeu || '') as string,
+    danh_muc_ho_so: (initDoc.danh_muc_ho_so || initDoc.danhMucHoSo || '') as string,
+    ten_loai_van_ban: (initDoc.ten_loai_van_ban || initDoc.loaiVanBan || 'Công văn') as string,
+    nguoi_ky: (initDoc.nguoi_ky || initDoc.nguoiKy || '') as string,
+    chuc_vu: (initDoc.chuc_vu || initDoc.chucVu || '') as string,
+    hieu_luc: ((initDoc.hieu_luc || initDoc.hieuLuc) as FormState['hieu_luc']) || 'CON_HIEU_LUC',
+    ngay_het_hieu_luc: toLocalDateString((initDoc.ngay_het_hieu_luc || initDoc.ngayHetHieuLuc) as string),
+    link_thay_the: (initDoc.link_thay_the || initDoc.linkThayThe || '') as string,
+    ghi_chu: (initDoc.ghi_chu || initDoc.ghiChu || '') as string,
+    pham_vi: (initDoc.pham_vi === 'HAN_CHE' ? 'HAN_CHE' : 'NOI_BO'),
+    hien_thi: initDoc.hien_thi !== undefined ? Boolean(initDoc.hien_thi) : true,
+    gui_mail_toan_he_thong: Boolean(initDoc.gui_mail_toan_he_thong ?? initDoc.guiMailToanHeThong),
+    nguoi_nhan: recipients,
+  };
+}
+
+export default function DocumentFormModal({ open, onClose, initial, onSaved, defaultLoai = 'DEN' }: Props) {
+  const initDoc = initial as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<FormState>(() => buildInitialForm(null));
+  const [form, setForm] = useState<FormState>(() => buildInitialForm(initial, defaultLoai));
   const [units, setUnits] = useState<string[]>(DEFAULT_UNITS);
   const [staff, setStaff] = useState<UserOption[]>([]);
-  const [selectedUnit, setSelectedUnit] = useState<string>('');
-  const [existingAttachments, setExistingAttachments] = useState<ExistingAttachment[]>([]);
+  const [selectedUnit, setSelectedUnit] = useState<string>(() => (initDoc?.don_vi_nhan as string) || '');
+  const [existingAttachments, setExistingAttachments] = useState<ExistingAttachment[]>(() =>
+    initDoc?.attachments && Array.isArray(initDoc.attachments) ? (initDoc.attachments as ExistingAttachment[]) : []
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -133,125 +223,47 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
   const [isSearchingReplacement, setIsSearchingReplacement] = useState(false);
   const [showReplacementDropdown, setShowReplacementDropdown] = useState(false);
   const [selectedReplacementDoc, setSelectedReplacementDoc] = useState<SuggestedDoc | null>(null);
-  const [isReplacingOther, setIsReplacingOther] = useState(false);
+  const [isReplacingOther, setIsReplacingOther] = useState(() => {
+    const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
+    return hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE';
+  });
   const [autoUpdateReplaced, setAutoUpdateReplaced] = useState(true);
   const replacementDropdownRef = useRef<HTMLDivElement | null>(null);
-  const searchTimeoutRef = useRef<any>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filePattern = /\.(pdf|docx?|png|jpe?g)$/i;
   const maxFiles = 10;
 
-  function buildInitialForm(initDoc?: any): FormState {
-    const now = new Date();
-    const defaultDate = toLocalDateString(now);
-
-    if (!initDoc) {
-      return {
-        loai: 'DEN',
-        nam: now.getFullYear(),
-        so_hieu: '',
-        so_thu_tu: undefined,
-        ngay_den: defaultDate,
-        ngay_van_ban: defaultDate,
-        noi_ban_hanh: '',
-        trich_yeu: '',
-        danh_muc_ho_so: '',
-        ten_loai_van_ban: 'Công văn',
-        nguoi_ky: '',
-        chuc_vu: '',
-        hieu_luc: 'CON_HIEU_LUC',
-        ngay_het_hieu_luc: '',
-        link_thay_the: '',
-        ghi_chu: '',
-        pham_vi: 'NOI_BO',
-        hien_thi: true,
-        gui_mail_toan_he_thong: false,
-        nguoi_nhan: [],
-      };
-    }
-
-    const recipients: (number | string)[] = [];
-    if (Array.isArray(initDoc.nguoi_nhan)) {
-      initDoc.nguoi_nhan.forEach((u: any) => recipients.push(typeof u === 'object' ? u.id : u));
-    } else if (Array.isArray(initDoc.nguoi_nhan_list)) {
-      initDoc.nguoi_nhan_list.forEach((u: any) => recipients.push(u.id));
-    }
-
-    return {
-      loai: 'DEN',
-      nam: initDoc.nam ?? now.getFullYear(),
-      so_hieu: initDoc.so_hieu ?? initDoc.soHieu ?? '',
-      so_thu_tu: initDoc.so_thu_tu ?? initDoc.soDen ?? undefined,
-      ngay_den: toLocalDateString(initDoc.ngay_den ?? initDoc.ngayDen) || defaultDate,
-      ngay_van_ban: toLocalDateString(initDoc.ngay_van_ban ?? initDoc.ngayVanBan ?? initDoc.ngay_thang_van_ban) || defaultDate,
-      noi_ban_hanh: initDoc.noi_ban_hanh ?? initDoc.coQuanBanHanh ?? initDoc.co_quan_ban_hanh ?? '',
-      trich_yeu: initDoc.trich_yeu ?? initDoc.trichYeu ?? '',
-      danh_muc_ho_so: initDoc.danh_muc_ho_so ?? initDoc.danhMucHoSo ?? '',
-      ten_loai_van_ban: initDoc.ten_loai_van_ban ?? initDoc.loaiVanBan ?? 'Công văn',
-      nguoi_ky: initDoc.nguoi_ky ?? initDoc.nguoiKy ?? '',
-      chuc_vu: initDoc.chuc_vu ?? initDoc.chucVu ?? '',
-      hieu_luc: initDoc.hieu_luc ?? initDoc.hieuLuc ?? 'CON_HIEU_LUC',
-      ngay_het_hieu_luc: toLocalDateString(initDoc.ngay_het_hieu_luc ?? initDoc.ngayHetHieuLuc),
-      link_thay_the: initDoc.link_thay_the ?? initDoc.linkThayThe ?? '',
-      ghi_chu: initDoc.ghi_chu ?? initDoc.ghiChu ?? '',
-      pham_vi: (initDoc.pham_vi === 'HAN_CHE' ? 'HAN_CHE' : 'NOI_BO'),
-      hien_thi: initDoc.hien_thi !== undefined ? Boolean(initDoc.hien_thi) : true,
-      gui_mail_toan_he_thong: Boolean(initDoc.gui_mail_toan_he_thong ?? initDoc.guiMailToanHeThong),
-      nguoi_nhan: recipients,
-    };
-  }
-
-  useEffect(() => {
+  const [previousProps, setPreviousProps] = useState({ open, initial });
+  if (previousProps.open !== open || previousProps.initial !== initial) {
+    setPreviousProps({ open, initial });
     if (open) {
-      const initialForm = buildInitialForm(initial);
-      setForm(initialForm);
+      setForm(buildInitialForm(initial, defaultLoai));
       setFiles([]);
       setIsDragging(false);
       setReplacementSuggestions([]);
       setShowReplacementDropdown(false);
       setSelectedReplacementDoc(null);
       setAutoUpdateReplaced(true);
-
-      const hasReplacement = Boolean(initial?.link_thay_the || initial?.linkThayThe);
-      setIsReplacingOther(hasReplacement && initial?.hieu_luc !== 'HET_VA_THAY_THE');
-
-      // Nếu đang sửa văn bản đã có số hiệu thay thế, tìm thông tin để hiển thị thẻ xem trước
-      const targetSoHieu = initial?.link_thay_the || initial?.linkThayThe;
-      if (targetSoHieu) {
-        apiClient.get<any>(`/api/documents/?q=${encodeURIComponent(targetSoHieu)}&page_size=3`)
-          .then(res => {
-            const items = Array.isArray(res) ? res : res?.results || [];
-            const found = items.find((d: any) => d.so_hieu === targetSoHieu);
-            if (found) setSelectedReplacementDoc(found);
-          })
-          .catch(() => {});
-      }
-
-      if (initial?.attachments && Array.isArray(initial.attachments)) {
-        setExistingAttachments(initial.attachments);
+      const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
+      setIsReplacingOther(hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE');
+      if (initDoc?.attachments && Array.isArray(initDoc.attachments)) {
+        setExistingAttachments(initDoc.attachments as ExistingAttachment[]);
       } else {
         setExistingAttachments([]);
       }
-
-      const initialUnit = initial?.don_vi_nhan || '';
-      setSelectedUnit(initialUnit);
-      fetchUnits();
-
-      if (initialUnit) {
-        fetchStaffByUnit(initialUnit);
-      } else {
-        setStaff([]);
-      }
+      setSelectedUnit((initDoc?.don_vi_nhan as string) || '');
+      setStaff([]);
     }
-  }, [open, initial]);
+  }
 
   async function fetchUnits() {
     try {
-      const listRes = await fetch('/api/accounts/staffs/');
+      const listRes = await fetch('/api/accounts/employees/?page_size=100');
       if (listRes.ok) {
         const data = await listRes.json();
-        const items = Array.isArray(data) ? data : data.results || [];
-        const depts = Array.from(new Set(items.map((u: any) => u.department).filter(Boolean))) as string[];
+        const items: { department?: string }[] = Array.isArray(data) ? data : data.results || [];
+        const depts = Array.from(new Set(items.map((u) => u.department).filter(Boolean))) as string[];
         if (depts.length > 0) {
           const merged = Array.from(new Set([...depts, ...DEFAULT_UNITS]));
           setUnits(merged);
@@ -270,10 +282,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       return;
     }
     try {
-      const res = await fetch(`/api/accounts/staffs/?department=${encodeURIComponent(unit)}`);
+      const res = await fetch(`/api/accounts/employees/?department=${encodeURIComponent(unit)}`);
       if (res.ok) {
         const data = await res.json();
-        const list = Array.isArray(data) ? data : data.results || [];
+        const list: UserOption[] = Array.isArray(data) ? data : data.results || [];
         if (list.length > 0) {
           setStaff(list);
           return;
@@ -284,6 +296,33 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
     }
     setStaff(MOCK_STAFF_BY_UNIT[unit] || []);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    if (open) {
+      const targetSoHieu = (initDoc?.link_thay_the || initDoc?.linkThayThe) as string | undefined;
+      if (targetSoHieu) {
+        apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(`/api/documents/?q=${encodeURIComponent(targetSoHieu)}&page_size=3`)
+          .then(res => {
+            if (cancelled) return;
+            const items = Array.isArray(res) ? res : res?.results || [];
+            const found = items.find((document) => document.so_hieu === targetSoHieu);
+            if (found) setSelectedReplacementDoc(found);
+          })
+          .catch(() => undefined);
+      }
+
+      const initialUnit = (initDoc?.don_vi_nhan as string) || '';
+      Promise.resolve().then(() => {
+        if (cancelled) return;
+        void fetchUnits();
+        if (initialUnit) void fetchStaffByUnit(initialUnit);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [open, initDoc?.don_vi_nhan, initDoc?.linkThayThe, initDoc?.link_thay_the]);
 
   function handleUnitChange(unit: string) {
     setSelectedUnit(unit);
@@ -316,9 +355,17 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         const endpoint = trimmed
           ? `/api/documents/?q=${encodeURIComponent(trimmed)}&page_size=8`
           : `/api/documents/?page_size=6`;
-        const res = await apiClient.get<any>(endpoint);
+        const res = await apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(endpoint);
         const items: SuggestedDoc[] = Array.isArray(res) ? res : res?.results || [];
-        const filtered = items.filter(d => d.id !== initial?.id);
+        const currentSoHieu = (form.so_hieu || '').trim().toLowerCase();
+        const filtered = items.filter(d => {
+          if (d.id === (initial?.id as number | undefined)) return false;
+          if (d.so_hieu && d.so_hieu.trim().toLowerCase() === currentSoHieu) return false;
+          // Chặn chọn văn bản đang trỏ ngược lại văn bản hiện tại
+          const otherLinks = (d.link_thay_the || '').toLowerCase().split(',').map(s => s.trim());
+          if (currentSoHieu && otherLinks.includes(currentSoHieu)) return false;
+          return true;
+        });
         setReplacementSuggestions(filtered);
       } catch {
         setReplacementSuggestions([]);
@@ -406,10 +453,42 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       setAlertOpen(true);
       return;
     }
-    if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && !form.link_thay_the?.trim()) {
-      setAlertMsg('Vui lòng nhập hoặc chọn Số hiệu văn bản thay thế (*)');
-      setAlertOpen(true);
-      return;
+    if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther)) {
+      if (!form.link_thay_the?.trim()) {
+        setAlertMsg('Vui lòng nhập hoặc chọn Số hiệu văn bản thay thế (*)');
+        setAlertOpen(true);
+        return;
+      }
+      const targetSoHieu = form.link_thay_the.trim().toLowerCase();
+      const currentSoHieu = (form.so_hieu || '').trim().toLowerCase();
+      if (currentSoHieu && targetSoHieu === currentSoHieu) {
+        setAlertMsg('Văn bản không thể tự thiết lập thay thế chính nó (*)');
+        setAlertOpen(true);
+        return;
+      }
+
+      // Khóa nghiệp vụ: Bắt buộc văn bản thay thế phải tồn tại trong hệ thống
+      const matchedSuggestion = replacementSuggestions.find(
+        d => d.so_hieu && d.so_hieu.trim().toLowerCase() === targetSoHieu
+      );
+      if (!selectedReplacementDoc && !matchedSuggestion) {
+        try {
+          const checkRes = await apiClient.get<{ results?: SuggestedDoc[] } | SuggestedDoc[]>(
+            `/api/documents/?q=${encodeURIComponent(form.link_thay_the.trim())}&page_size=10`
+          );
+          const items: SuggestedDoc[] = Array.isArray(checkRes) ? checkRes : checkRes?.results || [];
+          const exists = items.some(
+            d => d.so_hieu && d.so_hieu.trim().toLowerCase() === targetSoHieu
+          );
+          if (!exists) {
+            setAlertMsg(`Văn bản mục tiêu "${form.link_thay_the.trim()}" không tồn tại trong hệ thống. Vui lòng chọn văn bản từ danh sách gợi ý (*).`);
+            setAlertOpen(true);
+            return;
+          }
+        } catch {
+          // Bỏ qua lỗi mạng cục bộ để backend serializer thực thi chốt chặn cuối cùng
+        }
+      }
     }
     if (form.pham_vi === 'HAN_CHE' && (!form.nguoi_nhan || form.nguoi_nhan.length === 0)) {
       setAlertMsg('Văn bản hạn chế bắt buộc phải chọn ít nhất một cán bộ nhận / xử lý (*)');
@@ -420,7 +499,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
     setLoading(true);
     try {
       const payload = new FormData();
-      payload.append('loai', 'DEN');
+      payload.append('loai', form.loai || defaultLoai);
       payload.append('nam', String(form.nam));
       payload.append('so_hieu', form.so_hieu.trim());
       payload.append('noi_ban_hanh', form.noi_ban_hanh.trim());
@@ -430,8 +509,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       payload.append('hien_thi', form.hien_thi ? 'true' : 'false');
       payload.append('gui_mail_toan_he_thong', form.pham_vi === 'HAN_CHE' ? 'false' : (form.gui_mail_toan_he_thong ? 'true' : 'false'));
 
-      if (form.ngay_den) {
-        payload.append('ngay_den', form.ngay_den);
+      if (form.loai === 'DI') {
+        if (form.ngay_den) {
+          payload.append('ngay_ban_hanh', form.ngay_den);
+        }
+      } else {
+        if (form.ngay_den) {
+          payload.append('ngay_den', form.ngay_den);
+        }
       }
       if (form.ngay_van_ban) {
         payload.append('ngay_van_ban', form.ngay_van_ban);
@@ -469,14 +554,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       if (import.meta.env.DEV && !token) {
         setTimeout(() => {
           const fakeData = {
-            id: initial?.id || Date.now(),
+            id: (initial?.id as number) || Date.now(),
             ...form,
-            so_thu_tu: initial?.so_thu_tu || Math.floor(Math.random() * 50 + 1),
+            so_thu_tu: (initial?.so_thu_tu as number) || Math.floor(Math.random() * 50 + 1),
             ngay_den: form.ngay_den || toLocalDateString(new Date()),
             created_at: new Date().toISOString(),
             attachment_count: files.length + existingAttachments.length,
           };
-          onSaved && onSaved(fakeData);
+          onSaved?.(fakeData);
           onClose();
         }, 500);
         return;
@@ -498,8 +583,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       }
 
       if (res.ok) {
-        const data = await res.json();
-        onSaved && onSaved(data);
+        const data = await res.json() as Record<string, unknown>;
+        onSaved?.(data);
         onClose();
       } else {
         const err = await res.json().catch(() => ({ error: 'Không thể xử lý yêu cầu' }));
@@ -513,8 +598,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
         setAlertMsg('Lỗi từ máy chủ: ' + msg);
         setAlertOpen(true);
       }
-    } catch (err: any) {
-      setAlertMsg('Lỗi kết nối máy chủ: ' + err.message);
+    } catch (err: unknown) {
+      setAlertMsg('Lỗi kết nối máy chủ: ' + (err instanceof Error ? err.message : String(err)));
       setAlertOpen(true);
     } finally {
       setLoading(false);
@@ -541,12 +626,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
             </span>
             <div>
               <h3 className="text-base font-bold text-main m-0">
-                {initial?.id ? 'Cập Nhật Văn Bản Đến' : 'Thêm Mới Văn Bản Đến'}
+                {initial?.id
+                  ? (form.loai === 'DI' ? 'Cập Nhật Văn Bản Đi' : 'Cập Nhật Văn Bản Đến')
+                  : (form.loai === 'DI' ? 'Thêm Mới Văn Bản Đi' : 'Thêm Mới Văn Bản Đến')}
               </h3>
               <p className="text-xs text-muted m-0">
                 {initial?.id
                   ? `Chỉnh sửa thông tin hồ sơ văn bản ${form.so_hieu || ''}`
-                  : 'Tiếp nhận, vào sổ công văn đến và phân phối xử lý nội bộ'}
+                  : (form.loai === 'DI' ? 'Vào sổ công văn đi và quản lý phát hành nội bộ' : 'Tiếp nhận, vào sổ công văn đến và phân phối xử lý nội bộ')}
               </p>
             </div>
           </div>
@@ -588,10 +675,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Số đến */}
+              {/* Số đến / Số đi */}
               <div className="col-span-12 sm:col-span-3">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Số đến <span className="text-muted font-normal text-xs">(Tự động)</span>
+                  {form.loai === 'DI' ? 'Số đi' : 'Số đến'} <span className="text-muted font-normal text-xs">(Tự động)</span>
                 </label>
                 <input
                   readOnly
@@ -601,10 +688,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Ngày đến */}
+              {/* Ngày đến / Ngày ban hành */}
               <div className="col-span-12 sm:col-span-4">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Ngày đến <span className="text-danger">*</span>
+                  {form.loai === 'DI' ? 'Ngày ban hành' : 'Ngày đến'} <span className="text-danger">*</span>
                 </label>
                 <input
                   type="date"
@@ -752,7 +839,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   rows={3}
                   value={form.trich_yeu}
                   onChange={e => setForm({ ...form, trich_yeu: e.target.value })}
-                  placeholder="Nhập tóm tắt ngắn gọn mục đích và nội dung cốt lõi của văn bản đến..."
+                  placeholder="Nhập tóm tắt ngắn gọn mục đích và nội dung cốt lõi của văn bản..."
                   className="w-full text-sm bg-surface border border-border-subtle rounded-xl p-3 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast resize-y"
                   required
                 />
@@ -858,7 +945,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   <select
                     value={form.hieu_luc}
                     onChange={e => {
-                      const newHieuLuc = e.target.value as any;
+                      const newHieuLuc = e.target.value as FormState['hieu_luc'];
                       setForm({ ...form, hieu_luc: newHieuLuc });
                       if (newHieuLuc !== 'HET_VA_THAY_THE' && !isReplacingOther) {
                         setForm(prev => ({ ...prev, link_thay_the: '' }));
@@ -1036,7 +1123,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                         ) : !isSearchingReplacement ? (
                           <div className="p-4 text-center text-xs text-muted">
                             <i className="fa-solid fa-circle-info text-muted mr-1.5" />
-                            Không tìm thấy văn bản phù hợp. Bạn vẫn có thể nhập trực tiếp số hiệu hoặc đường dẫn bên ngoài.
+                            Không tìm thấy văn bản phù hợp trong hệ thống. Vui lòng chọn số hiệu văn bản có sẵn trong danh mục.
                           </div>
                         ) : null}
                       </div>

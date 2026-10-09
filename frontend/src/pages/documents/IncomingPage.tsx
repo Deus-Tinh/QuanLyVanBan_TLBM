@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from '@i18n/translate';
+import { DocumentItem, PaginatedResponse } from '@app-types/document';
 import DocumentFormModal from '@components/documents/DocumentFormModal';
 import ImportExcelModal from '@components/documents/ImportExcelModal';
 import apiClient from '@lib/apiClient';
@@ -7,55 +8,46 @@ import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
 import ConfirmModal from '@components/common/ConfirmModal';
 
+interface IncomingDocument extends DocumentItem {
+  don_vi_nhan?: string;
+  tac_gia?: string;
+  author?: { username?: string };
+  ghi_chu?: string;
+}
+
 export default function IncomingPage(){
   const { t } = useTranslation();
   const [openForm, setOpenForm] = useState(false);
   const [openImport, setOpenImport] = useState(false);
-  const [list, setList] = useState<any[]>([]);
-  const [initialDoc, setInitialDoc] = useState<any|null>(null);
+  const [list, setList] = useState<IncomingDocument[]>([]);
+  const [initialDoc, setInitialDoc] = useState<IncomingDocument | null>(null);
   const [pendingDelete, setPendingDelete] = useState<number|null>(null);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
-  const [filteredList, setFilteredList] = useState<any[]>([]);
 
-  useEffect(()=>{ fetchList(); }, []);
-  async function fetchList(){
-    try{ const data:any = await apiClient.get('/api/documents/?loai=DEN'); setList(data.results || data || []); }catch(e){console.error(e);} }
-
-  useEffect(()=>{
-    // apply client-side filter on ngay_den using dateFrom/dateTo
-    if ((!dateFrom && !dateTo) || list.length===0) { setFilteredList(list); return; }
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
-    const fromTs = from ? new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime() : null;
-    const toTs = to ? new Date(to.getFullYear(), to.getMonth(), to.getDate()+1).getTime() - 1 : null;
-    const result = list.filter((d:any)=>{
-      const t = d.ngay_den ? new Date(d.ngay_den).getTime() : null;
-      if (!t) return false;
-      if (fromTs !== null && t < fromTs) return false;
-      if (toTs !== null && t > toTs) return false;
-      return true;
-    });
-    setFilteredList(result);
-  }, [list, dateFrom, dateTo]);
-
-  function applyFilters() {
-    if ((!dateFrom && !dateTo) || list.length===0) { setFilteredList(list); return; }
-    const from = dateFrom ? new Date(dateFrom) : null;
-    const to = dateTo ? new Date(dateTo) : null;
-    const fromTs = from ? new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime() : null;
-    const toTs = to ? new Date(to.getFullYear(), to.getMonth(), to.getDate()+1).getTime() - 1 : null;
-    const result = list.filter((d:any)=>{
-      const t = d.ngay_den ? new Date(d.ngay_den).getTime() : null;
-      if (!t) return false;
-      if (fromTs !== null && t < fromTs) return false;
-      if (toTs !== null && t > toTs) return false;
-      return true;
-    });
-    setFilteredList(result);
+  useEffect(() => { void fetchList(); }, []);
+  async function fetchList() {
+    try {
+      const data = await apiClient.get<PaginatedResponse<IncomingDocument> | IncomingDocument[]>('/api/documents/?loai=DEN');
+      setList(Array.isArray(data) ? data : data.results || []);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  async function handleDelete(id?: number) {
+  const filteredList = useMemo(() => {
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    return list.filter((document) => {
+      const receivedTime = document.ngay_den ? new Date(document.ngay_den).getTime() : null;
+      if (receivedTime === null || Number.isNaN(receivedTime)) return false;
+      if (fromTime !== null && receivedTime < fromTime) return false;
+      if (toTime !== null && receivedTime > toTime) return false;
+      return true;
+    });
+  }, [list, dateFrom, dateTo]);
+
+  function handleDelete(id?: number) {
     if (!id) return;
     // show confirm modal via state
     setPendingDelete(id);
@@ -66,11 +58,11 @@ export default function IncomingPage(){
       await apiClient.delete(`/api/documents/${id}/`);
       setPendingDelete(null);
       fetchList();
-    } catch (err:any) {
+    } catch (err: unknown) {
       console.error(err);
       setPendingDelete(null);
       // show inline alert modal instead of native alert
-      setGlobalAlertMsg(err?.message || 'Không thể xóa văn bản');
+      setGlobalAlertMsg(err instanceof Error ? err.message : 'Không thể xóa văn bản');
       setGlobalAlertOpen(true);
     }
   }
@@ -90,7 +82,10 @@ export default function IncomingPage(){
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = 'export.xlsx'; a.click(); URL.revokeObjectURL(url);
-    } catch (e:any) { setGlobalAlertMsg(e.message||String(e)); setGlobalAlertOpen(true); }
+    } catch (error: unknown) {
+      setGlobalAlertMsg(error instanceof Error ? error.message : String(error));
+      setGlobalAlertOpen(true);
+    }
   }
 
   return (
@@ -107,7 +102,7 @@ export default function IncomingPage(){
               <option>2026</option>
               <option>2025</option>
             </select>
-            <Button variant="primary" onClick={()=>{ fetchList().then(()=>applyFilters()); }}>{t('documents_incoming_page.searchBtn')}</Button>
+            <Button variant="primary" onClick={() => void fetchList()}>{t('documents_incoming_page.searchBtn')}</Button>
           </div>
         </div>
 
@@ -144,7 +139,7 @@ export default function IncomingPage(){
             </tr>
           </thead>
           <tbody>
-            {filteredList.map((d:any, idx:number)=> (
+            {filteredList.map((d, idx)=> (
               <tr key={d.id || idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                 <td className="p-3 border border-gray-200 align-top text-sm">
                   <div className="flex gap-2">
@@ -177,10 +172,11 @@ export default function IncomingPage(){
         setInitialDoc(null);
         if (import.meta.env.DEV && !localStorage.getItem('tlbm_access_token') && savedData) {
           // Mock cập nhật list ở frontend
+          const savedDocument = savedData as IncomingDocument;
           setList(prev => {
-            const exists = prev.find(item => item.id === savedData.id);
-            if (exists) return prev.map(item => item.id === savedData.id ? savedData : item);
-            return [savedData, ...prev];
+            const exists = prev.find(item => item.id === savedDocument.id);
+            if (exists) return prev.map(item => item.id === savedDocument.id ? savedDocument : item);
+            return [savedDocument, ...prev];
           });
         } else {
           fetchList(); 

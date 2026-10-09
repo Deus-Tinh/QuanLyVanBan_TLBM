@@ -13,7 +13,7 @@ import { Button } from '@components/common/Button';
 import apiClient from '@lib/apiClient';
 
 export const InboundDocumentPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const loaiVanBanParam = searchParams.get('loai_van_ban');
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -36,9 +36,22 @@ export const InboundDocumentPage: React.FC = () => {
 
   useEffect(() => {
     if (loaiVanBanParam) {
-      setFilters(prev => ({ ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+      let cancelled = false;
+      Promise.resolve().then(() => {
+        if (!cancelled) setFilters(prev => ({ ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+      });
+      return () => {
+        cancelled = true;
+      };
     }
   }, [loaiVanBanParam]);
+
+  const handleClearLoaiVanBan = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('loai_van_ban');
+    setSearchParams(nextParams);
+    setFilters(prev => ({ ...prev, loai_van_ban: undefined, page: 1 }));
+  };
 
   // Quản lý modal xem chi tiết & modal danh sách người đọc
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
@@ -47,7 +60,7 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Quản lý modal Thêm/Sửa & Import Excel (từ PR #34 của Tân)
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; soHieu: string } | null>(null);
   const [alertMsg, setAlertMsg] = useState<string>('');
@@ -80,7 +93,8 @@ export const InboundDocumentPage: React.FC = () => {
   // Lấy thống kê số lượng văn bản theo trạng thái (loại bỏ các văn bản hết hiệu lực)
   const fetchStats = useCallback(async () => {
     try {
-      const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DEN&page_size=1000');
+      const extraQuery = filters.loai_van_ban ? `&loai_van_ban=${encodeURIComponent(String(filters.loai_van_ban))}` : '';
+      const res = await apiClient.get<PaginatedResponse<DocumentItem>>(`/api/documents/?loai=DEN&page_size=1000${extraQuery}`);
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
       const partial = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
@@ -94,11 +108,19 @@ export const InboundDocumentPage: React.FC = () => {
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
     }
-  }, []);
+  }, [filters.loai_van_ban]);
 
   useEffect(() => {
-    fetchYears();
-    fetchStats();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        void fetchYears();
+        void fetchStats();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fetchYears, fetchStats]);
 
   // Gọi API lấy danh sách văn bản đến
@@ -116,6 +138,7 @@ export const InboundDocumentPage: React.FC = () => {
       if (filters.tu_ngay) params.append('tu_ngay', filters.tu_ngay);
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
+      if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
 
       const endpoint = `/api/documents/?${params.toString()}`;
       const response = await apiClient.get<PaginatedResponse<DocumentItem>>(endpoint);
@@ -124,7 +147,7 @@ export const InboundDocumentPage: React.FC = () => {
         setDocuments(response.results);
         setTotalCount(response.count || 0);
         if (response.results.length > 0) {
-          const docYears = Array.from(new Set(response.results.map((d: any) => d.nam).filter(Boolean))) as number[];
+          const docYears = Array.from(new Set(response.results.map((document) => document.nam).filter(Boolean))) as number[];
           setAvailableYears(prev => {
             const merged = Array.from(new Set([...prev, ...docYears])).sort((a, b) => b - a);
             return merged;
@@ -150,7 +173,13 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Nạp dữ liệu khi bộ lọc thay đổi
   useEffect(() => {
-    fetchDocuments();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void fetchDocuments();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fetchDocuments]);
 
   // Xử lý đổi trang
@@ -165,6 +194,9 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Đặt lại bộ lọc
   const handleResetFilters = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('loai_van_ban');
+    setSearchParams(nextParams);
     setFilters({
       q: '',
       nam: '',
@@ -174,6 +206,7 @@ export const InboundDocumentPage: React.FC = () => {
       page: 1,
       page_size: 10,
       loai: 'DEN',
+      loai_van_ban: undefined,
     });
   };
 
@@ -212,7 +245,16 @@ export const InboundDocumentPage: React.FC = () => {
   const handleExportExcel = async () => {
     try {
       const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
-      const res = await fetch('/api/documents/export/?loai=DEN', {
+      const params = new URLSearchParams();
+      params.append('loai', 'DEN');
+      if (filters.q) params.append('q', filters.q.trim());
+      if (filters.nam) params.append('nam', String(filters.nam));
+      if (filters.tu_ngay) params.append('tu_ngay', filters.tu_ngay);
+      if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
+      if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
+      if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
+
+      const res = await fetch(`/api/documents/export/?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Quá trình xuất Excel thất bại. Vui lòng kiểm tra lại kết nối!');
@@ -223,8 +265,8 @@ export const InboundDocumentPage: React.FC = () => {
       a.download = `Danh_Sach_Van_Ban_Den_${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setAlertMsg(e.message || String(e));
+    } catch (error: unknown) {
+      setAlertMsg(error instanceof Error ? error.message : String(error));
       setIsAlertOpen(true);
     }
   };
@@ -315,10 +357,10 @@ export const InboundDocumentPage: React.FC = () => {
               <i className="fa-solid fa-file-circle-check" />
             </div>
             <div>
-              <span className="text-xs text-muted block mb-0.5 font-medium">Tổng số văn bản đến</span>
+              <span className="text-sm text-muted block mb-0.5 font-medium">Tổng số văn bản đến</span>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-bold text-main">{countActive}</span>
-                <span className="text-xs text-muted font-medium">văn bản còn hiệu lực</span>
+                <span className="text-sm text-muted font-medium">văn bản còn hiệu lực</span>
               </div>
             </div>
           </div>
@@ -357,7 +399,28 @@ export const InboundDocumentPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Thanh Tìm Kiếm & Bộ Lọc Đa Tiêu Chí */}
+      {/* 3. Chỉ báo lọc Loại văn bản từ URL (Nhóm 3 liên kết) */}
+      {filters.loai_van_ban && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 mb-4 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary shadow-2xs">
+          <div className="flex items-center gap-2">
+            <i className="fa-solid fa-filter text-primary" />
+            <span>
+              Đang lọc danh sách theo Loại văn bản (từ phân hệ Hồ sơ): <strong>#{filters.loai_van_ban}</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearLoaiVanBan}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-main text-xs border border-border-subtle transition-all cursor-pointer shadow-2xs"
+            title="Xóa bộ lọc loại văn bản"
+          >
+            <i className="fa-solid fa-xmark text-danger" />
+            <span>Bỏ lọc</span>
+          </button>
+        </div>
+      )}
+
+      {/* 4. Thanh Tìm Kiếm & Bộ Lọc Đa Tiêu Chí */}
       <FilterBar
         filters={filters}
         onFilterChange={setFilters}
