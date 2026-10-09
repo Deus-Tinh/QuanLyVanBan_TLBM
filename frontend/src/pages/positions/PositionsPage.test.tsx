@@ -30,8 +30,8 @@ const { ApiError } = apiClientModule;
 const ALL_PERMISSIONS = ['view_chucvu', 'add_chucvu', 'change_chucvu', 'delete_chucvu', 'import_chucvu'];
 
 const POSITIONS = [
-  { id: 1, stt_uu_tien: 1, ten_chuc_vu: 'Tổng Giám đốc', is_public: true, ghi_chu: 'Cấp cao nhất' },
-  { id: 2, stt_uu_tien: 2, ten_chuc_vu: 'Cộng tác viên', is_public: false, ghi_chu: '' },
+  { id: 1, display_order: 1, name: 'Tổng Giám đốc', is_public: true, note: 'Cấp cao nhất' },
+  { id: 2, display_order: 2, name: 'Cộng tác viên', is_public: false, note: '' },
 ];
 
 function mockApi(options: { permissions?: string[]; list?: unknown; listError?: unknown } = {}) {
@@ -157,10 +157,10 @@ describe('PositionsPage (Issue #20)', () => {
 
     await waitFor(() =>
       expect(mockedApiClient.post).toHaveBeenCalledWith('/api/positions/', {
-        stt_uu_tien: undefined,
-        ten_chuc_vu: 'Phó phòng',
+        display_order: undefined,
+        name: 'Phó phòng',
         is_public: true,
-        ghi_chu: 'ghi chú',
+        note: 'ghi chú',
       }),
     );
     expect(await screen.findByText('Đã thêm chức vụ thành công.')).toBeInTheDocument();
@@ -211,7 +211,7 @@ describe('PositionsPage (Issue #20)', () => {
   it('shows server field errors and keeps the modal open', async () => {
     mockApi();
     vi.mocked(mockedApiClient.post).mockRejectedValue(
-      new ApiError(400, { ten_chuc_vu: ['positions.messages.nameExists'], stt_uu_tien: ['positions.messages.sttExists'] }),
+      new ApiError(400, { name: ['positions.messages.nameExists'], display_order: ['positions.messages.sttExists'] }),
     );
     renderPage();
 
@@ -241,10 +241,10 @@ describe('PositionsPage (Issue #20)', () => {
 
     await waitFor(() =>
       expect(mockedApiClient.put).toHaveBeenCalledWith('/api/positions/1/', {
-        stt_uu_tien: 1,
-        ten_chuc_vu: 'Tổng Giám đốc điều hành',
+        display_order: 1,
+        name: 'Tổng Giám đốc điều hành',
         is_public: true,
-        ghi_chu: 'Cấp cao nhất',
+        note: 'Cấp cao nhất',
       }),
     );
     expect(await screen.findByText('Đã cập nhật chức vụ thành công.')).toBeInTheDocument();
@@ -306,8 +306,8 @@ describe('PositionsPage (Issue #20)', () => {
           imported: 1,
           failed: 2,
           errors: [
-            { row: 3, field: 'ten_chuc_vu', code: 'positions.messages.nameExists', value: 'Tổng Giám đốc' },
-            { row: 4, field: 'stt_uu_tien', code: 'positions.import.errors.invalidStt', value: 'abc' },
+            { row: 3, field: 'name', code: 'positions.messages.nameExists', value: 'Tổng Giám đốc' },
+            { row: 4, field: 'display_order', code: 'positions.import.errors.invalidStt', value: 'abc' },
           ],
         };
       }

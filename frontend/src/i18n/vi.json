@@ -477,6 +477,10 @@
       "exportSuccess": "Xuất tệp Excel thành công!",
       "exportError": "Không thể tải tệp Excel. Vui lòng thử lại sau.",
       "fetchError": "Không thể tải danh sách dữ liệu. Vui lòng kiểm tra lại kết nối mạng.",
+      "nameTooLong": "Tên tối đa 255 ký tự.",
+      "addressTooLong": "Địa chỉ tối đa 255 ký tự.",
+      "priorityTooLarge": "STT ưu tiên tối đa 2147483647.",
+      "displayOrderInvalid": "Thứ tự hiển thị phải là số nguyên từ 0 đến 2147483647.",
       "exportPermissionDenied": "Bạn không có quyền xuất danh sách Đơn vị ra Excel.",
       "permissionDenied": "Bạn không có quyền thực hiện thao tác này."
     }
@@ -739,8 +743,8 @@
       "valueLabel": "Giá trị: {value}",
       "allSuccess": "Tất cả các dòng đã được import thành công.",
       "fields": {
-        "stt_uu_tien": "STT ưu tiên",
-        "ten_chuc_vu": "Tên chức vụ",
+        "display_order": "STT ưu tiên",
+        "name": "Tên chức vụ",
         "is_public": "Hiển thị công khai"
       },
       "errors": {

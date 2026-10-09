@@ -16,7 +16,6 @@ from rest_framework.response import Response
 
 from .models import Employee
 from .serializers import (
-    STATUS_API_TO_DB,
     GroupSimpleSerializer,
     EmployeeSerializer,
     EmployeeCreateSerializer,
@@ -120,9 +119,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         trang_thai = self.request.query_params.get("trang_thai")
         if trang_thai is not None and trang_thai != "":
-            if trang_thai not in STATUS_API_TO_DB:
+            if trang_thai not in Employee.Status.values:
                 raise ValidationError({"detail": "employees.messages.invalidFilterParam"})
-            queryset = queryset.filter(trang_thai=STATUS_API_TO_DB[trang_thai])
+            queryset = queryset.filter(trang_thai=trang_thai)
 
         is_public = self.request.query_params.get("is_public")
         if is_public is not None and is_public != "":
@@ -187,9 +186,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         user = request.user
 
         # Bảo vệ đặc quyền: Người dùng không có quyền change_full_cbnv và không phải superuser
-        # CHỈ ĐƯỢC PHÉP sửa các trường thông tin cá nhân (sdt, email, ngay_sinh, avatar_url).
+        # CHỈ ĐƯỢC PHÉP sửa các trường thông tin cá nhân (sdt, email, ngay_sinh).
         if not (user.is_superuser or user.has_perm("change_full_cbnv")):
-            allowed_self_fields = {"sdt", "email", "ngay_sinh", "avatar_url"}
+            allowed_self_fields = {"sdt", "email", "ngay_sinh"}
             disallowed_fields = set(request.data.keys()) - allowed_self_fields
             if disallowed_fields:
                 return Response(
@@ -215,7 +214,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 parsed_is_active = bool(raw_is_active)
 
         is_deactivating = (
-            (new_status in ("nghi_viec", Employee.Status.NGHI_VIEC))
+            (new_status == Employee.Status.NGHI_VIEC)
             or (parsed_is_active is False)
         )
         if is_deactivating:

@@ -36,17 +36,17 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
   const [formData, setFormData] = useState(() => {
     if (initialData) {
       return {
-        ho_ten: initialData.ho_ten || initialData.full_name || '',
+        ho_ten: initialData.ho_ten || '',
         email: initialData.email || '',
         username: initialData.username || '',
         password: '',
-        ngay_sinh: initialData.birthday || (initialData.ngay_sinh?.includes('-') ? initialData.ngay_sinh : ''),
+        ngay_sinh: initialData.is_birthday_masked ? '' : initialData.ngay_sinh || '',
         don_vi_id: initialData.don_vi_id ? String(initialData.don_vi_id) : '',
         chuc_vu_id: initialData.chuc_vu_id ? String(initialData.chuc_vu_id) : '',
         chuc_danh: initialData.chuc_danh || '',
-        sdt: initialData.sdt || initialData.phone || '',
+        sdt: initialData.sdt || '',
         nhom_quyen_ids: initialData.nhom_quyen ? initialData.nhom_quyen.map((g) => g.id) : [],
-        trang_thai: initialData.trang_thai || 'dang_lam_viec',
+        trang_thai: initialData.trang_thai || 'LAM_VIEC',
         is_public: initialData.is_public ?? true,
         ghi_chu: initialData.ghi_chu || '',
       };
@@ -62,7 +62,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
       chuc_danh: '',
       sdt: '',
       nhom_quyen_ids: [] as number[],
-      trang_thai: 'dang_lam_viec' as const,
+      trang_thai: 'LAM_VIEC' as const,
       is_public: true,
       ghi_chu: '',
     };
@@ -413,7 +413,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   clearable={!isSelfEditOnly}
                   options={positions.map((pos) => ({
                     value: String(pos.id),
-                    label: pos.ten_chuc_vu,
+                    label: pos.name,
                   }))}
                 />
               </div>
@@ -448,13 +448,13 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   leftIcon="fa-circle-dot"
                   options={[
                     {
-                      value: 'dang_lam_viec',
+                      value: 'LAM_VIEC',
                       label: t('employees.status.working'),
                       icon: 'fa-circle-check',
                       badge: <Badge variant="success" size="sm">{t('employees.status.working')}</Badge>,
                     },
                     {
-                      value: 'nghi_viec',
+                      value: 'NGHI_VIEC',
                       label: t('employees.status.resigned'),
                       icon: 'fa-circle-xmark',
                       badge: <Badge variant="secondary" size="sm">{t('employees.status.resigned')}</Badge>,

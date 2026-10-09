@@ -477,6 +477,10 @@
       "exportSuccess": "Exported to Excel successfully!",
       "exportError": "Failed to download Excel file. Please try again.",
       "fetchError": "Failed to load data list. Please check your network connection.",
+      "nameTooLong": "Name must be at most 255 characters.",
+      "addressTooLong": "Address must be at most 255 characters.",
+      "priorityTooLarge": "Priority number must be at most 2147483647.",
+      "displayOrderInvalid": "Display order must be an integer from 0 to 2147483647.",
       "exportPermissionDenied": "You do not have permission to export the unit list to Excel.",
       "permissionDenied": "You do not have permission to perform this action."
     }
@@ -739,8 +743,8 @@
       "valueLabel": "Value: {value}",
       "allSuccess": "All rows were imported successfully.",
       "fields": {
-        "stt_uu_tien": "Priority No.",
-        "ten_chuc_vu": "Position name",
+        "display_order": "Priority No.",
+        "name": "Position name",
         "is_public": "Publicly visible"
       },
       "errors": {

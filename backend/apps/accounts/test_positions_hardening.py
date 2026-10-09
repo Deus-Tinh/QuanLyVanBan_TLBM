@@ -12,19 +12,19 @@ LIMIT = 2147483647
 class PositionHardeningTests(PositionBaseTestCase):
     def test_stt_above_limit_rejected_with_message_key(self):
         res = self.client_for["pos_manager"].post(
-            LIST_URL, {"ten_chuc_vu": "Quá lớn", "stt_uu_tien": LIMIT + 1}, format="json"
+            LIST_URL, {"name": "Quá lớn", "display_order": LIMIT + 1}, format="json"
         )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(res.json()["stt_uu_tien"], ["positions.messages.sttTooLarge"])
+        self.assertEqual(res.json()["display_order"], ["positions.messages.sttTooLarge"])
         self.assertFalse(self.others().exists())
 
     def test_stt_at_limit_is_accepted_and_auto_numbering_keeps_working(self):
         client = self.client_for["pos_manager"]
-        res = client.post(LIST_URL, {"ten_chuc_vu": "Sát trần", "stt_uu_tien": LIMIT}, format="json")
+        res = client.post(LIST_URL, {"name": "Sát trần", "display_order": LIMIT}, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        res = client.post(LIST_URL, {"ten_chuc_vu": "Tự cấp"}, format="json")
+        res = client.post(LIST_URL, {"name": "Tự cấp"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(res.json()["stt_uu_tien"], 1)
+        self.assertEqual(res.json()["display_order"], 1)
 
     def test_next_display_order_takes_smallest_free_number_when_max_is_at_limit(self):
         for stt in (1, 2, 4, LIMIT):
@@ -34,7 +34,7 @@ class PositionHardeningTests(PositionBaseTestCase):
     def test_put_without_is_public_keeps_internal_position_internal(self):
         position = Position.objects.create(display_order=7, name="Nội bộ", is_public=False)
         res = self.client_for["pos_manager"].put(
-            detail_url(position.pk), {"ten_chuc_vu": "Nội bộ mới"}, format="json"
+            detail_url(position.pk), {"name": "Nội bộ mới"}, format="json"
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         position.refresh_from_db()
@@ -42,7 +42,7 @@ class PositionHardeningTests(PositionBaseTestCase):
         self.assertFalse(position.is_public)
 
     def test_create_without_is_public_defaults_to_public(self):
-        res = self.client_for["pos_manager"].post(LIST_URL, {"ten_chuc_vu": "Mặc định"}, format="json")
+        res = self.client_for["pos_manager"].post(LIST_URL, {"name": "Mặc định"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertTrue(res.json()["is_public"])
 
@@ -54,7 +54,7 @@ class PositionHardeningTests(PositionBaseTestCase):
         self.assertEqual(body["imported"], 1)
         self.assertEqual(body["failed"], 1)
         self.assertEqual(body["errors"][0]["code"], "positions.messages.sttTooLarge")
-        self.assertEqual(body["errors"][0]["field"], "stt_uu_tien")
+        self.assertEqual(body["errors"][0]["field"], "display_order")
 
     def test_import_blank_stt_uses_free_number_when_max_is_at_limit(self):
         Position.objects.create(display_order=LIMIT, name="Sát trần")

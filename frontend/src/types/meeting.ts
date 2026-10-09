@@ -31,9 +31,9 @@ export type UpdateMeetingRoomDTO = Partial<CreateMeetingRoomDTO>;
 export interface BookingUser {
   id: number;
   username: string;
-  full_name: string;
-  department: string;
-  role: string;
+  ho_ten: string;
+  don_vi_ten: string;
+  chuc_vu_ten: string;
 }
 
 export type BookingStatus = 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';

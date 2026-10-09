@@ -329,7 +329,7 @@ export default function EmployeesPage() {
               { value: '', label: t('employees.filters.allPositions') },
               ...positions.map((p) => ({
                 value: String(p.id),
-                label: p.ten_chuc_vu,
+                label: p.name,
               })),
             ]}
           />
@@ -347,13 +347,13 @@ export default function EmployeesPage() {
             options={[
               { value: '', label: t('employees.filters.allStatuses') },
               {
-                value: 'dang_lam_viec',
+                value: 'LAM_VIEC',
                 label: t('employees.status.working'),
                 icon: 'fa-circle-check',
                 badge: <Badge variant="success" size="sm">{t('employees.status.working')}</Badge>,
               },
               {
-                value: 'nghi_viec',
+                value: 'NGHI_VIEC',
                 label: t('employees.status.resigned'),
                 icon: 'fa-circle-xmark',
                 badge: <Badge variant="secondary" size="sm">{t('employees.status.resigned')}</Badge>,
@@ -420,14 +420,14 @@ export default function EmployeesPage() {
                 </tr>
               ) : (
                 employees.map((emp, idx) => {
-                  const initials = (emp.ho_ten || emp.full_name || 'NV')
+                  const initials = (emp.ho_ten || 'NV')
                     .split(' ')
                     .filter(Boolean)
                     .slice(-2)
                     .map((w) => w[0])
                     .join('')
                     .toUpperCase();
-                  const isWorking = emp.trang_thai === 'dang_lam_viec';
+                  const isWorking = emp.trang_thai === 'LAM_VIEC';
                   const rowNumber = (currentPage - 1) * pageSize + idx + 1;
 
                   return (
@@ -451,7 +451,7 @@ export default function EmployeesPage() {
                               }}
                               className="font-semibold text-main hover:text-primary cursor-pointer truncate block"
                             >
-                              {emp.ho_ten || emp.full_name}
+                              {emp.ho_ten}
                             </span>
                             <span className="text-xs text-muted truncate block">
                               @{emp.username} • {emp.email}
@@ -487,7 +487,7 @@ export default function EmployeesPage() {
                       {/* Ngày sinh */}
                       <td className="py-3.5 px-4 font-mono text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span>{emp.ngay_sinh || emp.birthday || '—'}</span>
+                          <span>{emp.ngay_sinh || '—'}</span>
                           {emp.is_birthday_masked && (
                             <span
                               className="text-warning text-[10px]"
@@ -501,13 +501,13 @@ export default function EmployeesPage() {
 
                       {/* SĐT */}
                       <td className="py-3.5 px-4 text-xs font-mono text-secondary">
-                        {emp.sdt || emp.phone ? (
+                        {emp.sdt ? (
                           <a
-                            href={`tel:${emp.sdt || emp.phone}`}
+                            href={`tel:${emp.sdt}`}
                             className="hover:text-primary transition-colors flex items-center gap-1"
                           >
                             <i className="fa-solid fa-phone text-[10px]" />
-                            {emp.sdt || emp.phone}
+                            {emp.sdt}
                           </a>
                         ) : (
                           '—'
@@ -657,7 +657,7 @@ export default function EmployeesPage() {
           setDeleteErrorMessage(null);
         }}
         onConfirm={handleConfirmDelete}
-        name={deletingEmployee?.ho_ten || deletingEmployee?.full_name || ''}
+        name={deletingEmployee?.ho_ten || ''}
         isLoading={isDeleting}
         errorMessage={deleteErrorMessage}
       />

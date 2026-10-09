@@ -75,9 +75,9 @@ describe('MeetingsPage Component (Issue #22)', () => {
       organizer_detail: {
         id: 1,
         username: 'hieu_staff',
-        full_name: 'Nguyễn Phan Minh Hiệu',
-        department: 'Phòng Hành chính - Tổng hợp',
-        role: 'staff',
+        ho_ten: 'Nguyễn Phan Minh Hiệu',
+        don_vi_ten: 'Phòng Hành chính - Tổng hợp',
+        chuc_vu_ten: 'Chuyên viên',
       },
       department: 1,
       department_name: 'Phòng Hành chính - Tổng hợp',

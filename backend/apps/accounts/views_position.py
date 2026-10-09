@@ -46,7 +46,7 @@ def _visible_positions(user):
 
 
 def _stt_conflict():
-    return Response({"stt_uu_tien": ["positions.messages.sttExists"]}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"display_order": ["positions.messages.sttExists"]}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["GET", "POST"])

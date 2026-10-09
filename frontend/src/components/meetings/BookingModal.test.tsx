@@ -75,9 +75,9 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
     currentUser: {
       id: 1,
       username: 'hieunpm',
-      full_name: 'Nguyễn Phan Minh Hiếu',
-      department: 'Phòng CNTT',
-      role: 'staff',
+      ho_ten: 'Nguyễn Phan Minh Hiếu',
+      don_vi_ten: 'Phòng CNTT',
+      chuc_vu_ten: 'Chuyên viên',
     },
   };
 
