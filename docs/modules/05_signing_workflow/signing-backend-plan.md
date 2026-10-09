@@ -298,7 +298,7 @@ Ràng buộc: unique `(ma_quy_trinh, phien_ban)`; CHECK `pham_vi = PHONG_BAN` th
 | Cấp ký | `cap_ky` | Number (SmallInt) | X | Số hiệu hiển thị |
 | Tên cấp ký | `ten_cap_ky` | Text (255) | X | |
 | Thứ tự ký | `thu_tu` | Number (SmallInt) | X | Quyết định thứ tự mở cấp |
-| Đơn vị ký | `don_vi_id` | Number (BigInt) | | Tạm là số nguyên; đổi sang ForeignKey (Đơn vị/phòng ban) khi Nhóm 7 chốt (Phase 7) |
+| Đơn vị ký | `don_vi_id` | ForeignKey (Đơn vị) | | FK `organizations_donvi` của Nhóm 7 (migration `0010`) |
 | Số giờ xử lý của cấp | `so_gio_xu_ly` | Number | | Rỗng: dùng quy tắc chia hạn mục 3.5 |
 | Đang áp dụng | `dang_ap_dung` | Boolean | X | Mặc định True |
 | Ghi chú | `ghi_chu` | Text | | |
@@ -313,7 +313,7 @@ Ràng buộc: unique `(quy_trinh, thu_tu)`.
 | ID | `id` | Number (auto) | | |
 | Cấp ký trong quy trình | `buoc_quy_trinh` | ForeignKey (signing_process_step) | X | |
 | Người ký | `nguoi_ky` | ForeignKey (auth_user) | | Nhập người ký HOẶC chức vụ |
-| Chức vụ ký | `chuc_vu_id` | Number (BigInt) | | Nhập người ký HOẶC chức vụ; tạm là số nguyên, đổi sang ForeignKey (Chức vụ) ở Phase 7 |
+| Chức vụ ký | `chuc_vu_id` | ForeignKey (Chức vụ) | | Nhập người ký HOẶC chức vụ; FK `accounts_position` của Nhóm 7 (migration `0010`) |
 | Phạm vi chức vụ | `pham_vi_chuc_vu` | Text (20) [DON_VI_NGUOI_TAO, DON_VI_CO_DINH, TOAN_CO_QUAN] | | Bắt buộc khi cấu hình theo chức vụ (mục 3.2). Thêm ở Phase 7 |
 | Vai trò ký | `vai_tro_ky` | Text (20) [KY_NHAY, KY_CHINH] | X | Mặc định KY_CHINH |
 | Chặn ký chính | `chan_ky_chinh` | Boolean | X | Mặc định True; ký nháy xong mới mở ký chính |
