@@ -20,6 +20,8 @@ export const pageIdToPath = (pageId: ActivePageId): string => {
       return '/documents/outgoing';
     case 'documents_confidential':
       return '/documents/confidential';
+    case 'record_types':
+      return '/records/document-types';
     case 'records':
       return '/records';
     case 'resources':
@@ -55,6 +57,7 @@ export const pathToPageId = (pathname: string): ActivePageId => {
   if (clean.startsWith('/documents/incoming')) return 'documents_incoming';
   if (clean.startsWith('/documents/outgoing')) return 'documents_outgoing';
   if (clean.startsWith('/documents/confidential')) return 'documents_confidential';
+  if (clean === '/records/document-types' || /^\/records\/[^/]+\/document-types$/.test(clean)) return 'record_types';
   if (clean.startsWith('/records')) return 'records';
   if (clean.startsWith('/resources')) return 'resources';
   if (clean.startsWith('/approvals')) return 'approvals';

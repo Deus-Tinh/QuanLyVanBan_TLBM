@@ -49,7 +49,8 @@
     "organizations": "Departments",
     "positions": "Job Positions",
     "employees": "Staff Directory",
-    "roles": "Roles & Permissions"
+    "roles": "Roles & Permissions",
+    "record_types": "Document types"
   },
   "userMenu": {
     "profile": "Account Profile",
@@ -1085,15 +1086,15 @@
     },
     "documentTypes": {
       "back": "Back to dossiers",
-      "title": "Level-2 documents",
-      "readOnlyNote": "This level-2 catalog is read-only; add, edit, and delete actions are not available here.",
+      "title": "Document types",
+      "readOnlyNote": "Select a document type to open the corresponding incoming or outgoing document list.",
       "viewAllDocuments": "View all documents",
-      "searchLabel": "Search level-2 documents",
+      "searchLabel": "Search document types",
       "searchPlaceholder": "Search by document category name...",
-      "loading": "Loading level-2 documents",
-      "emptyTitle": "No matching level-2 documents",
-      "emptyDescription": "You can still open all documents linked to this dossier.",
-      "name": "Level-2 document name"
+      "loading": "Loading document types",
+      "emptyTitle": "No matching document types",
+      "emptyDescription": "Try changing the search filters.",
+      "name": "Document type name"
     },
     "documents": {
       "back": "Back to level-2 documents",
@@ -1130,6 +1131,12 @@
       "all": "All scopes",
       "NOI_BO": "Internal",
       "HAN_CHE": "Restricted"
+    },
+    "destination": {
+      "title": "Choose document list",
+      "direction": "Incoming or outgoing",
+      "restricted": "Restricted documents only",
+      "note": "Restricted documents are incoming or outgoing documents. You can only view documents you are permitted to access."
     }
   }
 }

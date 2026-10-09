@@ -84,6 +84,7 @@ export const NAV_GROUPS: NavGroup[] = [
         label: 'Danh Mục Hồ Sơ',
         icon: 'fa-folder-tree',
       },
+      { id: 'record_types', label: 'Loại văn bản', icon: 'fa-tags' },
     ],
   },
   {
@@ -236,6 +237,7 @@ export const MAIN_MODULES: MainModule[] = [
         icon: 'fa-folder-tree',
         description: 'Quản lý hồ sơ Cấp 1 và phân loại văn bản Cấp 2',
       },
+      { id: 'record_types', label: 'Loại văn bản', icon: 'fa-tags' },
       {
         id: 'resources',
         label: 'Kho Tài Liệu & Biểu Mẫu',

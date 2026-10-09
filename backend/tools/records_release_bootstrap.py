@@ -19,7 +19,7 @@ SYSTEM_TABLES = {"django_migrations", "django_content_type", "django_session", "
 CORE_APPS = {"auth", "organizations", "accounts", "authorization", "records"}
 CORE_TARGETS = [("auth", "0012_alter_user_first_name_max_length"), ("organizations", "0003_remove_donvi_created_at_remove_donvi_updated_at_and_more"), ("accounts", "0002_position_import_permission"), ("authorization", "0002_rbac_standard_data"), ("records", "0003_hoso_ten_ho_so_not_blank")]
 SYSTEM_TARGETS = [("contenttypes", "0002_remove_content_type_name"), ("sessions", "0001_initial"), ("token_blacklist", "0013_alter_blacklistedtoken_options_and_more")]
-POST_ADOPTION_TARGETS = [("records", "0004_restore_sqlite_hoso_guards")]
+POST_ADOPTION_TARGETS = [("records", "0005_canonical_fk_indexes")]
 def require_equal(label, actual, expected):
     if actual != expected:
         if isinstance(actual, set) and isinstance(expected, set):
@@ -257,6 +257,12 @@ def record_guards_preflight(connection):
             raise ValueError("Document type normalization index differs.")
     print("RECORDS_DDL_GUARDS_FOR_ADOPTION = PASS", flush=True)
 
+def final_migration_targets(verifier):
+    """Keep only the final target per app, including post-adoption upgrades."""
+    targets = dict(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS)
+    targets.update(verifier.POST_ADOPTION_TARGETS)
+    return list(targets.items())
+
 def bootstrap(connection, manifest, verifier):
     from django.core.management import call_command
     from django.db import transaction
@@ -278,8 +284,8 @@ def bootstrap(connection, manifest, verifier):
             raise ValueError("Core adoption plan no longer contains the verified 22 migrations.")
         # No core RunPython seed/guard replacement runs here. Existing DDL is authoritative.
         executor.migrate(verifier.CORE_TARGETS, fake=True)
-        # Run the SQLite-only repair normally. PostgreSQL executes no schema SQL;
-        # its history still records the forward migration after verified adoption.
+        # Run the SQLite trigger repair and canonical index migration normally.
+        # Existing canonical DDL indexes require no schema SQL on PostgreSQL.
         executor = MigrationExecutor(connection)
         executor.migrate(verifier.POST_ADOPTION_TARGETS)
         for app, name in verifier.SYSTEM_TARGETS:
@@ -290,7 +296,7 @@ def bootstrap(connection, manifest, verifier):
         if catalog_fingerprint(connection, manifest["tables"]) != before_catalog:
             raise ValueError("Original release schema/guards changed. Bootstrap will roll back.")
         executor = MigrationExecutor(connection)
-        if executor.migration_plan(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS + verifier.POST_ADOPTION_TARGETS):
+        if executor.migration_plan(final_migration_targets(verifier)):
             raise ValueError("Pending trial migrations remain. Bootstrap will roll back.")
         applied = set(MigrationRecorder(connection).applied_migrations())
         if applied != set(executor.loader.graph.nodes):
@@ -310,10 +316,11 @@ def bootstrap(connection, manifest, verifier):
 def require_ready(connection, manifest, config, verifier):
     from django.db.migrations.executor import MigrationExecutor
     verifier.validate_graph(connection)
-    if MigrationExecutor(connection).migration_plan(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS + verifier.POST_ADOPTION_TARGETS):
+    if MigrationExecutor(connection).migration_plan(final_migration_targets(verifier)):
         raise ValueError("Trial bootstrap is incomplete.")
     verifier.model_preflight(connection)
     record_guards_preflight(connection)
+    canonical_records_indexes_preflight(connection)
     import psycopg
     expected = dict(manifest, tables=manifest["tables"] | SYSTEM_TABLES)
     verifier.audit_database(psycopg, config, expected)
@@ -398,7 +405,7 @@ def smoke_api(connection, manifest):
     print("TEST_ROWS_AND_ADMIN_PASSWORD = ROLLED_BACK_AND_VERIFIED", flush=True)
     print("TRIAL_SEQUENCES = MAY_HAVE_ADVANCED", flush=True)
     print("EMPLOYEE_JWT_RECORDS_SMOKE = PASS", flush=True)
-    print("DOCUMENT_LEVEL2_ACL_FULL_ROLE_MATRIX_FRONTEND = NOT_TESTED", flush=True)
+    print("GROUP2_DOCUMENT_LIST_FLOW = NOT_TESTED_BY_CORE_SMOKE", flush=True)
 
 def business_rows_fingerprint(connection, tables):
     """Check all original DDL table rows, including permissions and mappings."""
@@ -474,60 +481,26 @@ def create_database(repo, config):
     print("NEW_RELEASE_DATABASE_UTF8_IMPORT = PASS",flush=True)
 
 
-def smoke_level2(connection, manifest):
-    from django.contrib.auth import get_user_model
-    from django.db import transaction, DatabaseError
-    from rest_framework.test import APIClient
-    from records.models import HoSo
-    from records.document_queries import query_dossier_documents
-    before = business_rows_fingerprint(connection, manifest["tables"] | SYSTEM_TABLES)
-    with transaction.atomic():
-        User = get_user_model()
-        creator = User.objects.create_user(username="g3-creator-" + secrets.token_hex(5),password=secrets.token_urlsafe(24))
-        recipient = User.objects.create_user(username="g3-recipient-" + secrets.token_hex(5),password=secrets.token_urlsafe(24))
-        outsider = User.objects.create_user(username="g3-outsider-" + secrets.token_hex(5),password=secrets.token_urlsafe(24),don_vi=creator.don_vi)
-        admin = User.objects.get(username="admin")
-        dossier = HoSo.objects.create(so_ky_hieu="G3-SMOKE-"+secrets.token_hex(6),ten_ho_so="Release ACL smoke",nguoi_lap=creator)
-        ids = {}
-        for kind,date_column,link_column in [("vanbanden","ngay_den","vanbanden_id"),("vanbandi","ngay_ban_hanh","vanbandi_id")]:
-            for scope in ["NOI_BO","HAN_CHE"]:
-                with connection.cursor() as cursor:
-                    cursor.execute(f"SELECT COALESCE(MAX(so_thu_tu),0)+1 FROM documents_{kind} WHERE nam=2026")
-                    priority = cursor.fetchone()[0]
-                    cursor.execute(f"INSERT INTO documents_{kind} (nam,so_hieu,so_thu_tu,{date_column},ngay_van_ban,trich_yeu,hieu_luc,pham_vi,nguoi_tao_id) VALUES (2026,%s,%s,now(),now(),%s,'CON_HIEU_LUC',%s,%s) RETURNING id",["G3-"+secrets.token_hex(6),priority,"g3 smoke metadata",scope,creator.pk])
-                    doc_id=cursor.fetchone()[0];ids[kind,scope]=doc_id
-                    cursor.execute(f"INSERT INTO documents_{kind}_hoso ({link_column},hoso_id) VALUES (%s,%s)",[doc_id,dossier.pk])
-                    if scope=="HAN_CHE":
-                        cursor.execute(f"INSERT INTO documents_{kind}_nguoinhan ({link_column},employee_id) VALUES (%s,%s)",[doc_id,recipient.pk])
-                        cursor.execute(f"INSERT INTO documents_{kind}_donvinhan ({link_column},donvi_id) VALUES (%s,%s)",[doc_id,outsider.don_vi_id])
-        for actor,expected in [(creator,4),(recipient,4),(outsider,2),(admin,2)]:
-            count,rows=query_dossier_documents(dossier_id=dossier.pk,user=actor)
-            require_equal("LEVEL2_ACL_"+actor.username.split('-')[1] if actor is not admin else "LEVEL2_ACL_ADMIN_NO_OVERRIDE",count,expected)
-            require_equal("LEVEL2_RETURNED_ROWS",len(rows),expected)
-        count,rows=query_dossier_documents(dossier_id=dossier.pk,user=creator,document_type="vanbandi",scope="HAN_CHE",search="g3 smoke",year=2026,page_size=1)
-        require_equal("LEVEL2_FILTERS_AND_PAGINATION",(count,len(rows),rows[0]["id"]),(1,1,ids['vanbandi','HAN_CHE']))
-        outsider.is_active=False
-        require_equal("LEVEL2_INACTIVE_ACTOR_DENIED",query_dossier_documents(dossier_id=dossier.pk,user=outsider),(0,[]))
-        outsider.is_active=True
-        client=APIClient();client.force_authenticate(user=outsider)
-        require_equal("CATALOG_WRITE_WITHOUT_PERMISSION_DENIED",client.post("/api/records/dossiers/",{"so_ky_hieu":"FORBIDDEN","ten_ho_so":"Forbidden"},format="json").status_code,403)
-        client.force_authenticate(user=admin)
-        require_equal("LEVEL2_VANBANMAT_FILTER_REJECTED",client.get(f"/api/records/dossiers/{dossier.pk}/documents/?type=vanbanmat").status_code,400)
-        require_equal("LEVEL2_INVALID_SCOPE_REJECTED",client.get(f"/api/records/dossiers/{dossier.pk}/documents/?scope=INVALID").status_code,400)
-        require_equal("LEVEL2_POST_NOT_ALLOWED",client.post(f"/api/records/dossiers/{dossier.pk}/documents/",{},format="json").status_code,405)
+def smoke_retired_document_endpoint():
+    from django.urls import resolve, Resolver404
+    for path in ("/api/records/dossiers/1/documents/", "/api/records/dossiers/999/documents/"):
+        try:
+            resolve(path)
+        except Resolver404:
+            continue
+        raise ValueError("Retired Group 3 metadata endpoint remains reachable")
+    print("RETIRED_GROUP3_DOCUMENT_ENDPOINT = PASS", flush=True)
+
+
+def canonical_records_indexes_preflight(connection):
+    from records.models import HoSo, LoaiVanBan
+    for model, column, expected in ((HoSo, "nguoi_lap_id", "idx_hoso_nguoi_lap"),
+                                    (LoaiVanBan, "ho_so_id", "idx_loaivanban_hoso")):
         with connection.cursor() as cursor:
-            cursor.execute("SELECT id FROM documents_access_log WHERE user_id=%s ORDER BY id DESC LIMIT 1",[creator.pk]);log_id=cursor.fetchone()[0]
-        for verb in ["UPDATE documents_access_log SET hanh_dong='TAI_FILE' WHERE id=%s","DELETE FROM documents_access_log WHERE id=%s"]:
-            try:
-                with transaction.atomic():
-                    with connection.cursor() as cursor:cursor.execute(verb,[log_id])
-            except DatabaseError as error:
-                if getattr(error.__cause__,"sqlstate",None)!='P0001':raise
-            else:raise ValueError("Access log WORM guard did not reject mutation")
-        print("LEVEL2_ACCESS_LOG_WORM = PASS",flush=True)
-        transaction.set_rollback(True)
-    require_equal("LEVEL2_SMOKE_ROWS_ROLLED_BACK",business_rows_fingerprint(connection,manifest['tables']|SYSTEM_TABLES),before)
-    print("LEVEL2_SQL_RELEASE_SMOKE = PASS",flush=True)
+            indexes = connection.introspection.get_constraints(cursor, model._meta.db_table)
+        matches = {name for name, info in indexes.items()
+                   if info.get("index") and not info.get("unique") and info.get("columns") == [column]}
+        require_equal("CANONICAL_FK_INDEX_" + expected, matches, {expected})
 
 
 def main():
@@ -558,10 +531,11 @@ def main():
         import psycopg
         audit_database(psycopg,config,manifest)
         validate_graph(connection);model_preflight(connection);record_guards_preflight(connection)
+        canonical_records_indexes_preflight(connection)
         backup_trial(repo,config);bootstrap(connection,manifest,verifier)
     require_ready(connection,manifest,config,verifier)
     if args.action=='smoke':
-        smoke_api(connection,manifest);smoke_level2(connection,manifest)
+        smoke_api(connection,manifest);smoke_retired_document_endpoint()
     print('RECORDS_RELEASE_'+args.action.upper()+' = PASS',flush=True)
 
 

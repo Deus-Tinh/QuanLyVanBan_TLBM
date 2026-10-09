@@ -49,7 +49,8 @@
     "organizations": "Đơn Vị & Phòng Ban",
     "positions": "Danh Mục Chức Vụ",
     "employees": "Hồ Sơ Cán Bộ NV",
-    "roles": "Phân Quyền & Vai Trò"
+    "roles": "Phân Quyền & Vai Trò",
+    "record_types": "Loại văn bản"
   },
   "userMenu": {
     "profile": "Thông tin tài khoản",
@@ -1085,15 +1086,15 @@
     },
     "documentTypes": {
       "back": "Quay lại danh mục hồ sơ",
-      "title": "Văn bản cấp 2",
-      "readOnlyNote": "Danh mục cấp 2 chỉ dùng để tra cứu; không thêm, sửa hoặc xóa tại màn hình này.",
+      "title": "Loại văn bản",
+      "readOnlyNote": "Chọn Loại văn bản để mở danh sách văn bản đến hoặc đi tương ứng.",
       "viewAllDocuments": "Xem toàn bộ văn bản",
-      "searchLabel": "Tìm văn bản cấp 2",
+      "searchLabel": "Tìm loại văn bản",
       "searchPlaceholder": "Tìm theo tên loại văn bản...",
-      "loading": "Đang tải danh sách văn bản cấp 2",
-      "emptyTitle": "Chưa có văn bản cấp 2 phù hợp",
-      "emptyDescription": "Bạn vẫn có thể mở danh sách toàn bộ văn bản thuộc hồ sơ.",
-      "name": "Tên văn bản cấp 2"
+      "loading": "Đang tải loại văn bản",
+      "emptyTitle": "Không tìm thấy loại văn bản phù hợp",
+      "emptyDescription": "Thử thay đổi bộ lọc tìm kiếm.",
+      "name": "Tên loại văn bản"
     },
     "documents": {
       "back": "Quay lại văn bản cấp 2",
@@ -1130,6 +1131,12 @@
       "all": "Tất cả phạm vi",
       "NOI_BO": "Nội bộ",
       "HAN_CHE": "Hạn chế"
+    },
+    "destination": {
+      "title": "Chọn danh sách văn bản",
+      "direction": "Văn bản đến hoặc đi",
+      "restricted": "Chỉ văn bản mật (hạn chế)",
+      "note": "Văn bản mật thuộc văn bản đến hoặc đi. Bạn chỉ xem được các văn bản được phép truy cập."
     }
   }
 }

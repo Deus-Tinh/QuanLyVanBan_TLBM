@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.urls import reverse
 from rest_framework import status
@@ -11,10 +10,7 @@ from django.db import DatabaseError, IntegrityError, transaction
 from django.test import TestCase
 
 from records.models import HoSo, LoaiVanBan
-from records.document_queries import (
-    DocumentDataUnavailable,
-    query_dossier_documents,
-)
+
 
 
 class RecordsModelTests(TestCase):
@@ -440,74 +436,3 @@ class RecordsApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertTrue(LoaiVanBan.objects.filter(pk=document_type.pk).exists())
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_contract_and_filters(self, query_documents):
-        dossier = self.create_dossier()
-        query_documents.return_value = (
-            1,
-            [{
-                "key": "vanbanden:17",
-                "id": 17,
-                "document_type": "vanbanden",
-                "pham_vi": "NOI_BO",
-                "so_hieu": "17/CV-TLBM",
-                "trich_yeu": "Thông báo kiểm thử",
-                "ngay_van_ban": datetime(2026, 10, 4, tzinfo=timezone.utc),
-                "nam": 2026,
-            }],
-        )
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk]),
-            {
-                "search": "Thông báo",
-                "year": "2026",
-                "type": "vanbanden",
-                "page": "1",
-                "page_size": "10",
-            },
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
-        self.assertEqual(response.data["results"][0]["key"], "vanbanden:17")
-        query_documents.assert_called_once_with(
-            dossier_id=dossier.pk,
-            user=self.user,
-            search="Thông báo",
-            year=2026,
-            document_type="vanbanden",
-            scope="",
-            page=1,
-            page_size=10,
-        )
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_validates_filters(self, query_documents):
-        dossier = self.create_dossier()
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk]),
-            {"type": "khong-hop-le", "page": "0"},
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("type", response.data)
-        self.assertIn("page", response.data)
-        query_documents.assert_not_called()
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_reports_missing_shared_schema(self, query_documents):
-        dossier = self.create_dossier()
-        query_documents.side_effect = DocumentDataUnavailable("documents_vanbanden")
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk])
-        )
-        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
-
-    @patch("records.views.query_dossier_documents")
-    def test_dossier_document_list_requires_authentication(self, query_documents):
-        dossier = self.create_dossier()
-        self.client.force_authenticate(user=None)
-        response = self.client.get(
-            reverse("records:dossier-document-list", args=[dossier.pk])
-        )
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        query_documents.assert_not_called()

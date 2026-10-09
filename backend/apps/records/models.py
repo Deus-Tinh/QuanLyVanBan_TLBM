@@ -16,6 +16,7 @@ class HoSo(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="ho_so_da_lap",
+        db_index=False,
     )
     ngay_lap = models.DateTimeField(null=True, blank=True)
     ghi_chu = models.TextField(null=True, blank=True)
@@ -45,6 +46,7 @@ class HoSo(models.Model):
             ),
         ]
         indexes = [
+            models.Index(fields=["nguoi_lap"], name="idx_hoso_nguoi_lap"),
             models.Index(fields=["ten_ho_so"], name="idx_hoso_ten"),
             models.Index(fields=["ngay_lap"], name="idx_hoso_ngay_lap"),
         ]
@@ -95,7 +97,7 @@ class HoSo(models.Model):
 
 
 class LoaiVanBan(models.Model):
-    ho_so = models.ForeignKey(HoSo, on_delete=models.PROTECT, related_name="loai_van_ban")
+    ho_so = models.ForeignKey(HoSo, on_delete=models.PROTECT, related_name="loai_van_ban", db_index=False)
     ten_loai = models.CharField(max_length=255)
     ngay_lap = models.DateTimeField(null=True, blank=True)
     ghi_chu = models.TextField(null=True, blank=True)
@@ -117,6 +119,7 @@ class LoaiVanBan(models.Model):
             ),
         ]
         indexes = [
+            models.Index(fields=["ho_so"], name="idx_loaivanban_hoso"),
             models.Index(fields=["ten_loai"], name="idx_loaivanban_ten"),
             models.Index(fields=["ngay_lap"], name="idx_loaivanban_ngay_lap"),
         ]

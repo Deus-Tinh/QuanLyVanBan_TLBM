@@ -4,7 +4,6 @@ import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
 import DossiersPage from '@pages/records/DossiersPage';
 import DocumentTypesPage from '@pages/records/DocumentTypesPage';
-import DossierDocumentsPage from '@pages/records/DossierDocumentsPage';
 import DashboardPage from '@pages/dashboard/DashboardPage';
 import LoginPage from '@pages/auth/LoginPage';
 import AiAssistantPage from '@pages/ai/AiAssistantPage';
@@ -92,7 +91,8 @@ export default function AppRouter({
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
         <Route path="/records" element={<DossiersPage />} />
         <Route path="/records/:dossierId/document-types" element={<DocumentTypesPage />} />
-        <Route path="/records/:dossierId/documents" element={<DossierDocumentsPage />} />
+        <Route path="/records/document-types" element={<DocumentTypesPage />} />
+        <Route path="/records/:dossierId/documents" element={<Navigate to="/records/document-types" replace />} />
         <Route path="/resources" element={<ResourceManagementPage />} />
 
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}

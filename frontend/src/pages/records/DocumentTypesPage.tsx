@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@components/common';
 import Pagination from '@components/records/Pagination';
+import DocumentDestinationDialog from '@components/records/DocumentDestinationDialog';
 import type { Dossier, DocumentType } from '@app-types/records';
 
 const PAGE_SIZE = 10;
@@ -38,25 +39,22 @@ export default function DocumentTypesPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [reloadKey, setReloadKey] = React.useState(0);
 
-  const documentsPath = `/records/${dossierId}/documents`;
+  const [selectedCategory, setSelectedCategory] = React.useState<DocumentType | null>(null);
+  const closeDestination = React.useCallback(() => setSelectedCategory(null), []);
 
   React.useEffect(() => {
-    if (!dossierId || dossier) return;
-    recordsService.getDossier(dossierId).then(setDossier).catch(() => undefined);
-  }, [dossierId, dossier]);
-
-  React.useEffect(() => {
-    if (!dossierId) {
-      queueMicrotask(() => {
-        setError(t('records.errors.missingDossier'));
-        setIsLoading(false);
-      });
-      return undefined;
-    }
-
+    if (!dossierId) return;
     let active = true;
-    recordsService
-      .listDocumentTypes(dossierId, { search, year, page, pageSize: PAGE_SIZE })
+    recordsService.getDossier(dossierId).then((value) => { if (active) setDossier(value); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [dossierId]);
+
+  React.useEffect(() => {
+    let active = true;
+    const request = dossierId
+      ? recordsService.listDocumentTypes(dossierId, { search, year, page, pageSize: PAGE_SIZE })
+      : recordsService.listDocumentTypeCatalog({ search, year, page, pageSize: PAGE_SIZE });
+    request
       .then((result) => {
         if (!active) return;
         setItems(result.items);
@@ -96,7 +94,6 @@ export default function DocumentTypesPage() {
     return new Intl.DateTimeFormat(currentLang === 'vi' ? 'vi-VN' : 'en-US').format(date);
   };
 
-  const openDocuments = () => navigate(documentsPath, { state: { dossier } });
 
   return (
     <section className="space-y-5" aria-labelledby="document-types-title">
@@ -113,22 +110,15 @@ export default function DocumentTypesPage() {
           <h1 id="document-types-title" className="m-0 text-2xl font-bold text-main">
             {t('records.documentTypes.title')}
           </h1>
-          <p className="m-0 mt-1 text-sm text-secondary">
-            {t('records.common.dossier')}:{' '}
-            <strong className="text-main">{dossier?.ten_ho_so ?? `#${dossierId}`}</strong>
-            {dossier?.so_ky_hieu && (
-              <Badge variant="secondary" className="ml-2">
-                {dossier.so_ky_hieu}
-              </Badge>
-            )}
-          </p>
+          {dossierId && <p className="m-0 mt-1 text-sm text-secondary">
+            {t('records.common.dossier')}: <strong>{dossier?.ten_ho_so ?? `#${dossierId}`}</strong>
+            {dossier?.so_ky_hieu && <Badge variant="secondary" className="ml-2">{dossier.so_ky_hieu}</Badge>}
+          </p>}
           <p className="m-0 mt-2 text-xs text-muted">
             {t('records.documentTypes.readOnlyNote')}
           </p>
         </div>
-        <Button type="button" icon="fa-folder-open" onClick={openDocuments}>
-          {t('records.documentTypes.viewAllDocuments')}
-        </Button>
+
       </div>
 
       <Card>
@@ -228,9 +218,7 @@ export default function DocumentTypesPage() {
                 {t('records.documentTypes.emptyDescription')}
               </p>
             </div>
-            <Button type="button" variant="secondary" icon="fa-folder-open" onClick={openDocuments}>
-              {t('records.documentTypes.viewAllDocuments')}
-            </Button>
+
           </div>
         ) : (
           <>
@@ -240,6 +228,7 @@ export default function DocumentTypesPage() {
                   <TableRow>
                     <TableHead className="w-20">{t('records.table.index')}</TableHead>
                     <TableHead>{t('records.documentTypes.name')}</TableHead>
+                    {!dossierId && <TableHead>{t('records.common.dossier')}</TableHead>}
                     <TableHead>{t('records.table.createdDate')}</TableHead>
                     <TableHead>{t('records.table.note')}</TableHead>
                     <TableHead className="text-right">{t('records.table.action')}</TableHead>
@@ -247,11 +236,13 @@ export default function DocumentTypesPage() {
                 </TableHeader>
                 <TableBody>
                   {items.map((item, index) => (
-                    <TableRow key={item.id} className="cursor-pointer" onClick={openDocuments}>
+                    <TableRow key={item.id} className="cursor-pointer" onClick={() => setSelectedCategory(item)}>
                       <TableCell>{(page - 1) * PAGE_SIZE + index + 1}</TableCell>
                       <TableCell>
-                        <span className="font-semibold text-main">{item.ten_loai}</span>
+                        <button type="button" className="cursor-pointer text-left font-semibold text-primary hover:underline"
+                          onClick={(event) => { event.stopPropagation(); setSelectedCategory(item); }}>{item.ten_loai}</button>
                       </TableCell>
+                      {!dossierId && <TableCell>{item.ten_ho_so || `#${typeof item.ho_so === 'object' ? item.ho_so.id : item.ho_so}`}</TableCell>}
                       <TableCell className="whitespace-nowrap">{displayDate(item.ngay_lap)}</TableCell>
                       <TableCell>
                         <span className="block max-w-md truncate text-secondary">
@@ -266,7 +257,7 @@ export default function DocumentTypesPage() {
                           icon="fa-folder-open"
                           onClick={(event) => {
                             event.stopPropagation();
-                            openDocuments();
+                            setSelectedCategory(item);
                           }}
                         >
                           {t('records.actions.viewDocuments')}
@@ -289,6 +280,8 @@ export default function DocumentTypesPage() {
           </>
         )}
       </Card>
+      {selectedCategory && <DocumentDestinationDialog key={String(selectedCategory.id)} category={selectedCategory}
+        onClose={closeDestination} onNavigate={(destination) => navigate(destination)} />}
     </section>
   );
 }

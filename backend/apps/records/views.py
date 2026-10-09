@@ -6,15 +6,11 @@ from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
-from .document_queries import DocumentDataUnavailable, query_dossier_documents
 from .models import HoSo, LoaiVanBan
 from .permissions import RecordsPermission
 from .pagination import RecordsPagination
 from .serializers import (
-    DossierDocumentFilterSerializer,
-    DossierDocumentSerializer,
     HoSoSerializer,
     LoaiVanBanSerializer,
 )
@@ -170,57 +166,22 @@ class LoaiVanBanDetailAPIView(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-def _page_url(request, page):
-    query = request.query_params.copy()
-    if page == 1:
-        query.pop("page", None)
-    else:
-        query["page"] = page
-    query_string = query.urlencode()
-    path = request.path
-    return request.build_absolute_uri(f"{path}?{query_string}" if query_string else path)
 
+class DocumentTypeCatalogAPIView(generics.ListAPIView):
+    """The independent level-2 catalog; nested CRUD remains dossier-scoped."""
 
-class DossierDocumentListAPIView(APIView):
-    """Read-only Level-3 list aggregated from Group 2 DDL tables."""
-
+    serializer_class = LoaiVanBanSerializer
     permission_classes = [IsAuthenticated, RecordsPermission]
+    pagination_class = RecordsPagination
 
-    def get(self, request, dossier_id):
-        get_object_or_404(HoSo, pk=dossier_id)
-        filters = DossierDocumentFilterSerializer(data=request.query_params)
-        filters.is_valid(raise_exception=True)
-        values = filters.validated_data
-
-        try:
-            count, documents = query_dossier_documents(
-                dossier_id=dossier_id,
-                user=request.user,
-                search=values["search"],
-                year=values.get("year"),
-                document_type=values["type"],
-                scope=values["scope"],
-                page=values["page"],
-                page_size=values["page_size"],
-            )
-        except DocumentDataUnavailable:
-            return Response(
-                {
-                    "detail": (
-                        "Dữ liệu văn bản dùng chung chưa sẵn sàng. "
-                        "Cần đồng bộ schema DDL của Nhóm 2 trước khi sử dụng."
-                    )
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        page = values["page"]
-        page_size = values["page_size"]
-        return Response(
-            {
-                "count": count,
-                "next": _page_url(request, page + 1) if page * page_size < count else None,
-                "previous": _page_url(request, page - 1) if page > 1 else None,
-                "results": DossierDocumentSerializer(documents, many=True).data,
-            }
-        )
+    def get_queryset(self):
+        queryset = LoaiVanBan.objects.select_related("ho_so").all()
+        dossier = self.request.query_params.get("ho_so")
+        if dossier:
+            if not dossier.isascii() or not dossier.isdecimal() or int(dossier) < 1:
+                raise ValidationError({"ho_so": "ID hồ sơ phải là số nguyên dương."})
+            queryset = queryset.filter(ho_so_id=int(dossier))
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(Q(ten_loai__icontains=search) | Q(ghi_chu__icontains=search))
+        return filter_by_year(queryset, self.request.query_params.get("year"))
