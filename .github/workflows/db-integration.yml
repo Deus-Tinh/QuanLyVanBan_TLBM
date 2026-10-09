@@ -41,7 +41,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:17
+        image: postgres:16
         env:
           POSTGRES_DB: tlbm_ci
           POSTGRES_USER: postgres
@@ -90,7 +90,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:17
+        image: postgres:16
         env:
           POSTGRES_DB: tlbm_ci
           POSTGRES_USER: postgres
