@@ -200,6 +200,10 @@ describe('DocumentFormModal', () => {
     const hieuLucSelect = screen.getByDisplayValue('Còn hiệu lực');
     fireEvent.change(hieuLucSelect, { target: { value: 'HET_HIEU_LUC' } });
     expect(hieuLucSelect).toHaveValue('HET_HIEU_LUC');
+
+    await waitFor(() => {
+      expect(screen.getByText('-- Chọn đơn vị nhận --')).toBeInTheDocument();
+    });
   });
 
   it('tìm kiếm và gợi ý văn bản thay thế khi tick chọn thay thế cho văn bản khác lúc thêm mới', async () => {
