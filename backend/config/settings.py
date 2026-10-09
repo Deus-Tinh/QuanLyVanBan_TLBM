@@ -25,8 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR.parent / ".env")
 
-# Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
+# Cho phép Django nhận diện trực tiếp các app trong thư mục apps/ và package backend/
 sys.path.insert(0, str(BASE_DIR / "apps"))
+if str(BASE_DIR.parent) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR.parent))
 
 
 # Quick-start development settings - unsuitable for production

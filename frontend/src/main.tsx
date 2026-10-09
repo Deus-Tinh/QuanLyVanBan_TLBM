@@ -64,7 +64,7 @@ if (rootElement) {
         localStorage.setItem('tlbm_session', JSON.stringify(matchedUser));
       }
       window.dispatchEvent(new Event('tlbm_auth_changed'));
-    } catch (e) {
+    } catch {
       // ignore
     }
   }
