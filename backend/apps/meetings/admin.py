@@ -8,8 +8,8 @@ from meetings.models import MeetingRoom, MeetingBooking
 
 @admin.register(MeetingRoom)
 class MeetingRoomAdmin(admin.ModelAdmin):
-    list_display = ("name", "location", "capacity", "status", "is_public", "created_at", "updated_at")
-    list_filter = ("status", "is_public", "created_at")
+    list_display = ("name", "location", "capacity", "trang_thai", "is_public", "created_at", "updated_at")
+    list_filter = ("trang_thai", "is_public", "created_at")
     search_fields = ("name", "location", "amenities", "ghi_chu")
     ordering = ("name",)
 
@@ -25,10 +25,10 @@ class MeetingBookingAdmin(admin.ModelAdmin):
         "start_time",
         "end_time",
         "attendees_count",
-        "status",
+        "trang_thai",
         "created_at",
     )
-    list_filter = ("status", "room", "date")
+    list_filter = ("trang_thai", "room", "date")
     search_fields = (
         "title",
         "purpose",

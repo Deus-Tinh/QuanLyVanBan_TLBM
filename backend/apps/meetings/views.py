@@ -91,16 +91,16 @@ class MeetingRoomViewSet(viewsets.ModelViewSet):
         elif not can_manage:
             queryset = queryset.filter(is_public=True)
 
-        # 2. Lọc theo trạng thái status (chống 500 DataError trên PostgreSQL ENUM)
-        status_param = self.request.query_params.get("status")
-        if status_param:
-            valid_statuses = [choice[0] for choice in MeetingRoom.Status.choices]
-            cleaned_status = status_param.upper()
-            if cleaned_status not in valid_statuses:
+        # 2. Lọc theo trạng thái trang_thai (chống 500 DataError trên PostgreSQL ENUM)
+        trang_thai_param = self.request.query_params.get("trang_thai")
+        if trang_thai_param:
+            valid_values = [choice[0] for choice in MeetingRoom.Status.choices]
+            cleaned_value = trang_thai_param.upper()
+            if cleaned_value not in valid_values:
                 raise ValidationError({
-                    "status": "meetings.messages.invalidStatus"
+                    "trang_thai": "meetings.messages.invalidStatus"
                 })
-            queryset = queryset.filter(status=cleaned_status)
+            queryset = queryset.filter(trang_thai=cleaned_value)
 
         # Tìm kiếm theo từ khóa (name, location, amenities, ghi_chu)
         search = self.request.query_params.get("search", "").strip()
@@ -206,7 +206,7 @@ class IsOwnerOrAdminForBooking(permissions.BasePermission):
 class MeetingBookingViewSet(viewsets.ModelViewSet):
     """
     API ViewSet quản lý Đặt lịch phòng họp:
-    - GET /api/meeting-bookings/ : Danh sách lịch đặt (hỗ trợ lọc theo date, room_id, status)
+    - GET /api/meeting-bookings/ : Danh sách lịch đặt (hỗ trợ lọc theo date, room_id, trang_thai)
     - POST /api/meeting-bookings/ : Tạo lịch đặt mới (Database Lock chống race condition)
     - GET /api/meeting-bookings/{id}/ : Chi tiết lịch đặt
     - PUT/PATCH /api/meeting-bookings/{id}/ : Cập nhật lịch đặt
@@ -245,18 +245,13 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 })
 
         # 2. Lọc theo trạng thái an toàn (chống 500 DataError trên PostgreSQL ENUM)
-        status_param = self.request.query_params.get("status") or self.request.query_params.get("trang_thai")
-        if status_param:
-            mapping = {
-                "da_dat": MeetingBooking.Status.CONFIRMED,
-                "da_huy": MeetingBooking.Status.CANCELLED,
-                "hoan_thanh": MeetingBooking.Status.COMPLETED,
-            }
-            mapped_status = mapping.get(str(status_param).lower(), str(status_param).upper())
-            valid_statuses = [choice[0] for choice in MeetingBooking.Status.choices]
-            if mapped_status not in valid_statuses:
+        trang_thai_param = self.request.query_params.get("trang_thai")
+        if trang_thai_param:
+            mapped_status = str(trang_thai_param).upper()
+            valid_values = [choice[0] for choice in MeetingBooking.Status.choices]
+            if mapped_status not in valid_values:
                 raise ValidationError({
-                    "status": "meetings.messages.invalidStatus"
+                    "trang_thai": "meetings.messages.invalidStatus"
                 })
 
             now_local = timezone.localtime(timezone.now())
@@ -265,20 +260,20 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
 
             if mapped_status == MeetingBooking.Status.COMPLETED:
                 qs = qs.filter(
-                    Q(status=MeetingBooking.Status.COMPLETED)
+                    Q(trang_thai=MeetingBooking.Status.COMPLETED)
                     | (
-                        Q(status=MeetingBooking.Status.CONFIRMED)
+                        Q(trang_thai=MeetingBooking.Status.CONFIRMED)
                         & (Q(date__lt=today) | (Q(date=today) & Q(end_time__lte=now_time)))
                     )
                 )
             elif mapped_status == MeetingBooking.Status.CONFIRMED:
                 qs = qs.filter(
-                    status=MeetingBooking.Status.CONFIRMED
+                    trang_thai=MeetingBooking.Status.CONFIRMED
                 ).filter(
                     Q(date__gt=today) | (Q(date=today) & Q(end_time__gt=now_time))
                 )
             else:
-                qs = qs.filter(status=mapped_status)
+                qs = qs.filter(trang_thai=mapped_status)
 
         # 3. Lọc theo ngày cụ thể (YYYY-MM-DD) an toàn
         date_str = self.request.query_params.get("date")
@@ -344,7 +339,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_403_FORBIDDEN,
                         )
 
-                if locked_room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
+                if locked_room.trang_thai in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
                     return Response(
                         {
                             "error": "meetings.messages.roomUnavailable",
@@ -352,7 +347,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                             "code": "meetings.messages.roomUnavailable",
                             "params": {
                                 "room_name": locked_room.name,
-                                "room_status": locked_room.status,
+                                "room_trang_thai": locked_room.trang_thai,
                             },
                         },
                         status=status.HTTP_400_BAD_REQUEST,
@@ -363,7 +358,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                     date=booking_date,
                     start_time__lt=end,
                     end_time__gt=start,
-                ).exclude(status=MeetingBooking.Status.CANCELLED)
+                ).exclude(trang_thai=MeetingBooking.Status.CANCELLED)
 
                 if conflicts.exists():
                     conflict = conflicts.first()
@@ -427,7 +422,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
             )
 
         # Không cho phép cập nhật lịch đã bị hủy
-        if instance.status == MeetingBooking.Status.CANCELLED:
+        if instance.trang_thai == MeetingBooking.Status.CANCELLED:
             return Response(
                 {
                     "error": "meetings.messages.bookingAlreadyCancelled",
@@ -444,7 +439,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         booking_date = serializer.validated_data.get("date", instance.date)
         start = serializer.validated_data.get("start_time", instance.start_time)
         end = serializer.validated_data.get("end_time", instance.end_time)
-        new_status = serializer.validated_data.get("status", instance.status)
+        new_status = serializer.validated_data.get("trang_thai", instance.trang_thai)
 
         try:
             with transaction.atomic():
@@ -465,7 +460,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                         )
 
                 if new_status != MeetingBooking.Status.CANCELLED:
-                    if locked_room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
+                    if locked_room.trang_thai in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
                         return Response(
                             {
                                 "error": "meetings.messages.roomUnavailable",
@@ -473,7 +468,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                                 "code": "meetings.messages.roomUnavailable",
                                 "params": {
                                     "room_name": locked_room.name,
-                                    "room_status": locked_room.status,
+                                    "room_trang_thai": locked_room.trang_thai,
                                 },
                             },
                             status=status.HTTP_400_BAD_REQUEST,
@@ -484,7 +479,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                         date=booking_date,
                         start_time__lt=end,
                         end_time__gt=start,
-                    ).exclude(status=MeetingBooking.Status.CANCELLED).exclude(pk=instance.pk)
+                    ).exclude(trang_thai=MeetingBooking.Status.CANCELLED).exclude(pk=instance.pk)
 
                     if conflicts.exists():
                         conflict = conflicts.first()
@@ -555,7 +550,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if booking.status == MeetingBooking.Status.CANCELLED:
+        if booking.trang_thai == MeetingBooking.Status.CANCELLED:
             return Response(
                 {
                     "error": "meetings.messages.bookingAlreadyCancelled",
@@ -565,7 +560,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        booking.status = MeetingBooking.Status.CANCELLED
+        booking.trang_thai = MeetingBooking.Status.CANCELLED
         reason = (request.data.get("ly_do_huy") or request.data.get("cancel_reason") or "").strip()
         if reason:
             booking.purpose = (booking.purpose + f"\n---\n{reason}").strip() if booking.purpose else reason

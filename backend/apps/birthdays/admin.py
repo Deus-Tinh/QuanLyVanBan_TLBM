@@ -4,8 +4,8 @@ from .models import BirthdayEmailLog, BirthdayWish
 
 @admin.register(BirthdayWish)
 class BirthdayWishAdmin(admin.ModelAdmin):
-    list_display = ("employee", "sender_name", "status", "likes_count", "created_at")
-    list_filter = ("status", "card_template", "is_anonymous")
+    list_display = ("employee", "sender_name", "trang_thai", "likes_count", "created_at")
+    list_filter = ("trang_thai", "card_template", "is_anonymous")
     search_fields = ("employee__ho_ten", "sender_name", "message")
     readonly_fields = ("created_at", "updated_at")
 
@@ -16,12 +16,12 @@ class BirthdayEmailLogAdmin(admin.ModelAdmin):
         "employee",
         "sent_date",
         "recipient_email",
-        "status",
+        "trang_thai",
         "retry_count",
         "sent_at",
     )
     list_filter = (
-        "status",
+        "trang_thai",
         "sent_date",
         "card_template",
     )

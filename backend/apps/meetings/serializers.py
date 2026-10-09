@@ -46,7 +46,7 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
     )
     amenities = serializers.CharField(required=False, allow_blank=True, default="")
     is_public = serializers.BooleanField(required=False)
-    status = serializers.ChoiceField(
+    trang_thai = serializers.ChoiceField(
         choices=MeetingRoom.Status.choices,
         required=False,
         error_messages={
@@ -70,7 +70,7 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
             "capacity",
             "amenities",
             "is_public",
-            "status",
+            "trang_thai",
             "ghi_chu",
             "created_at",
             "updated_at",
@@ -83,13 +83,13 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def create(self, validated_data):
-        if "status" not in validated_data:
-            validated_data["status"] = MeetingRoom.Status.AVAILABLE
+        if "trang_thai" not in validated_data:
+            validated_data["trang_thai"] = MeetingRoom.Status.AVAILABLE
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        if "status" not in validated_data:
-            validated_data["status"] = instance.status
+        if "trang_thai" not in validated_data:
+            validated_data["trang_thai"] = instance.trang_thai
         return super().update(instance, validated_data)
 
     def to_internal_value(self, data):
@@ -111,13 +111,11 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
             d["capacity"] = d.get("suc_chua")
         if "thiet_bi" in d and "amenities" not in d:
             d["amenities"] = d.get("thiet_bi")
-        if "trang_thai" in d and "status" not in d:
-            d["status"] = d.get("trang_thai")
-        if "status" not in d:
+        if "trang_thai" not in d:
             if self.instance:
-                d["status"] = self.instance.status
+                d["trang_thai"] = self.instance.trang_thai
             elif not self.partial:
-                d["status"] = MeetingRoom.Status.AVAILABLE
+                d["trang_thai"] = MeetingRoom.Status.AVAILABLE
 
         return super().to_internal_value(d)
 
@@ -255,7 +253,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
         },
     )
     purpose = serializers.CharField(required=False, allow_blank=True, default="")
-    status = serializers.CharField(read_only=True)
+    trang_thai = serializers.CharField(read_only=True)
     department = serializers.PrimaryKeyRelatedField(
         queryset=DonVi.objects.all(), required=False, allow_null=True
     )
@@ -275,7 +273,6 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
     don_vi_to_chuc = serializers.SerializerMethodField()
     thoi_gian_bat_dau = serializers.SerializerMethodField()
     thoi_gian_ket_thuc = serializers.SerializerMethodField()
-    trang_thai = serializers.SerializerMethodField()
 
     class Meta:
         model = MeetingBooking
@@ -292,7 +289,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             "end_time",
             "attendees_count",
             "purpose",
-            "status",
+            "trang_thai",
             "created_at",
             # Backward compatibility fields
             "phong_hop",
@@ -304,10 +301,9 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             "so_nguoi_tham_gia",
             "thoi_gian_bat_dau",
             "thoi_gian_ket_thuc",
-            "trang_thai",
             "ghi_chu",
         ]
-        read_only_fields = ["id", "organizer", "status", "created_at"]
+        read_only_fields = ["id", "organizer", "trang_thai", "created_at"]
 
     def to_internal_value(self, data):
         if hasattr(data, "dict"):
@@ -328,8 +324,6 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             d["attendees_count"] = d.get("so_nguoi_tham_gia")
         if "ghi_chu" in d and "purpose" not in d:
             d["purpose"] = d.get("ghi_chu")
-        if "status" in d:
-            d.pop("status")
         if "trang_thai" in d:
             d.pop("trang_thai")
 
@@ -393,15 +387,8 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        # Tính trạng thái hiển thị động dựa trên effective_status
-        effective_st = instance.effective_status
-        ret["status"] = effective_st
-        mapping = {
-            MeetingBooking.Status.CONFIRMED: "da_dat",
-            MeetingBooking.Status.CANCELLED: "da_huy",
-            MeetingBooking.Status.COMPLETED: "hoan_thanh",
-        }
-        ret["trang_thai"] = mapping.get(effective_st, effective_st)
+        # Trạng thái hiển thị động: lịch CONFIRMED đã qua giờ kết thúc trả về COMPLETED
+        ret["trang_thai"] = instance.effective_status
         return ret
 
     def get_don_vi_to_chuc(self, obj):
@@ -419,22 +406,13 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
         dt = datetime.combine(obj.date, obj.end_time)
         return timezone.make_aware(dt, tz).isoformat()
 
-    def get_trang_thai(self, obj):
-        st = obj.effective_status
-        mapping = {
-            MeetingBooking.Status.CONFIRMED: "da_dat",
-            MeetingBooking.Status.CANCELLED: "da_huy",
-            MeetingBooking.Status.COMPLETED: "hoan_thanh",
-        }
-        return mapping.get(st, st)
-
     def validate(self, attrs):
         room = attrs.get("room", getattr(self.instance, "room", None))
         booking_date = attrs.get("date", getattr(self.instance, "date", None))
         start_time = attrs.get("start_time", getattr(self.instance, "start_time", None))
         end_time = attrs.get("end_time", getattr(self.instance, "end_time", None))
         attendees = attrs.get("attendees_count", getattr(self.instance, "attendees_count", 1))
-        status_val = attrs.get("status", getattr(self.instance, "status", MeetingBooking.Status.CONFIRMED))
+        status_val = attrs.get("trang_thai", getattr(self.instance, "trang_thai", MeetingBooking.Status.CONFIRMED))
 
         title_val = attrs.get("title")
         if not self.instance and not title_val:
@@ -506,7 +484,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                 })
 
         # Phòng MAINTENANCE hoặc UNAVAILABLE không cho đặt
-        if room and room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
+        if room and room.trang_thai in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
             raise serializers.ValidationError({
                 "room": "meetings.messages.roomUnavailable",
                 "phong_hop": "meetings.messages.roomUnavailable",
@@ -537,7 +515,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
                 date=booking_date,
                 start_time__lt=end_time,
                 end_time__gt=start_time,
-            ).exclude(status=MeetingBooking.Status.CANCELLED)
+            ).exclude(trang_thai=MeetingBooking.Status.CANCELLED)
 
             if self.instance and self.instance.pk:
                 conflicts = conflicts.exclude(pk=self.instance.pk)
@@ -556,7 +534,7 @@ class MeetingBookingSerializer(serializers.ModelSerializer):
             # Tự động gán phòng ban nếu chưa chọn
             if not validated_data.get("department") and hasattr(request.user, "don_vi"):
                 validated_data["department"] = request.user.don_vi
-        validated_data["status"] = MeetingBooking.Status.CONFIRMED
+        validated_data["trang_thai"] = MeetingBooking.Status.CONFIRMED
         return super().create(validated_data)
 
 

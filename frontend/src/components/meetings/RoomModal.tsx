@@ -23,7 +23,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
   const [sucChua, setSucChua] = useState<number>(roomToEdit?.suc_chua ?? 10);
   const [thietBi, setThietBi] = useState(roomToEdit?.thiet_bi || '');
   const [isPublic, setIsPublic] = useState(roomToEdit?.is_public ?? true);
-  const [status, setStatus] = useState<string>(roomToEdit?.status || 'AVAILABLE');
+  const [trangThai, setTrangThai] = useState<string>(roomToEdit?.trang_thai || 'AVAILABLE');
   const [ghiChu, setGhiChu] = useState(roomToEdit?.ghi_chu || '');
 
   const [loading, setLoading] = useState(false);
@@ -56,7 +56,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
       suc_chua: Number(sucChua),
       thiet_bi: thietBi.trim(),
       is_public: isPublic,
-      status: status,
+      trang_thai: trangThai,
       ghi_chu: ghiChu.trim(),
     };
 
@@ -191,8 +191,8 @@ export const RoomModal: React.FC<RoomModalProps> = ({
               {t('meetings.modalRoom.statusLabel')}
             </label>
             <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              value={trangThai}
+              onChange={(e) => setTrangThai(e.target.value)}
               className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer font-medium"
             >
               <option value="AVAILABLE">{t('meetings.status.available')}</option>

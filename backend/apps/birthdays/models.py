@@ -26,11 +26,10 @@ class BirthdayWish(models.Model):
         verbose_name="Mẫu thiệp chúc mừng",
     )
     is_anonymous = models.BooleanField(default=False, verbose_name="Gửi ẩn danh")
-    status = models.CharField(
+    trang_thai = models.CharField(
         max_length=20,
         choices=BirthdayWishStatus.choices,
         default=BirthdayWishStatus.APPROVED,
-        db_column="trang_thai",
         verbose_name="Trạng thái kiểm duyệt",
     )
     sticker_url = models.CharField(
@@ -53,7 +52,7 @@ class BirthdayWish(models.Model):
         ]
 
     def __str__(self):
-        return f"Lời chúc gửi {self.employee}: {self.sender_name} - {self.get_status_display()}"
+        return f"Lời chúc gửi {self.employee}: {self.sender_name} - {self.get_trang_thai_display()}"
 
 
 class BirthdayEmailStatus(models.TextChoices):
@@ -82,11 +81,10 @@ class BirthdayEmailLog(models.Model):
         default="GOLDEN",
         verbose_name="Mẫu thiệp gửi kèm",
     )
-    status = models.CharField(
+    trang_thai = models.CharField(
         max_length=20,
         choices=BirthdayEmailStatus.choices,
         default=BirthdayEmailStatus.PENDING,
-        db_column="trang_thai",
         verbose_name="Trạng thái gửi",
     )
     error_message = models.TextField(
@@ -142,4 +140,4 @@ class BirthdayEmailLog(models.Model):
         ]
 
     def __str__(self):
-        return f"Email sinh nhật: {self.employee} ({self.sent_date:%d/%m/%Y}) - {self.get_status_display()}"
+        return f"Email sinh nhật: {self.employee} ({self.sent_date:%d/%m/%Y}) - {self.get_trang_thai_display()}"

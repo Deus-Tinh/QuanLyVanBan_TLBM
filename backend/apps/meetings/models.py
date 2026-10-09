@@ -55,7 +55,6 @@ class MeetingBookingQuerySet(models.QuerySet):
             "tieu_de": "title",
             "so_nguoi_tham_gia": "attendees_count",
             "ghi_chu": "purpose",
-            "trang_thai": "status",
         }
         new_kwargs = {}
         for k, v in kwargs.items():
@@ -121,11 +120,10 @@ class MeetingRoom(models.Model):
         verbose_name="Hiển thị công khai",
         help_text="Hiển thị công khai cho CBNV đặt (nếu False chỉ Admin/Lễ tân thấy)",
     )
-    status = models.CharField(
+    trang_thai = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.AVAILABLE,
-        db_column="trang_thai",
         verbose_name="Trạng thái phòng",
     )
     ghi_chu = models.TextField(
@@ -270,11 +268,10 @@ class MeetingBooking(models.Model):
         default="",
         verbose_name="Mục đích cuộc họp / Ghi chú",
     )
-    status = models.CharField(
+    trang_thai = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.CONFIRMED,
-        db_column="trang_thai",
         verbose_name="Trạng thái",
     )
     created_at = models.DateTimeField(
@@ -312,14 +309,6 @@ class MeetingBooking(models.Model):
             kwargs["attendees_count"] = kwargs.pop("so_nguoi_tham_gia")
         if "ghi_chu" in kwargs and "purpose" not in kwargs:
             kwargs["purpose"] = kwargs.pop("ghi_chu")
-        if "trang_thai" in kwargs and "status" not in kwargs:
-            tt = kwargs.pop("trang_thai")
-            mapping = {
-                "da_dat": self.Status.CONFIRMED,
-                "da_huy": self.Status.CANCELLED,
-                "hoan_thanh": self.Status.COMPLETED,
-            }
-            kwargs["status"] = mapping.get(tt, tt)
         if "thoi_gian_bat_dau" in kwargs:
             dt_start = kwargs.pop("thoi_gian_bat_dau")
             if hasattr(dt_start, "date"):
@@ -350,13 +339,13 @@ class MeetingBooking(models.Model):
         Tính trạng thái hiển thị động:
         Nếu lịch CONFIRMED nhưng thời điểm kết thúc đã qua thì hiển thị COMPLETED.
         """
-        if self.status == self.Status.CONFIRMED and self.date and self.end_time:
+        if self.trang_thai == self.Status.CONFIRMED and self.date and self.end_time:
             now_local = timezone.localtime(timezone.now())
             today = now_local.date()
             now_time = now_local.time()
             if self.date < today or (self.date == today and self.end_time <= now_time):
                 return self.Status.COMPLETED
-        return self.status
+        return self.trang_thai
 
     @property
     def phong_hop(self):
@@ -419,29 +408,6 @@ class MeetingBooking(models.Model):
         self.purpose = val
 
     @property
-    def trang_thai(self):
-        class StatusProxy(str):
-            def __eq__(self, other):
-                if super().__eq__(other):
-                    return True
-                mapping = {
-                    "CONFIRMED": ["da_dat", "CONFIRMED"],
-                    "CANCELLED": ["da_huy", "CANCELLED"],
-                    "COMPLETED": ["hoan_thanh", "COMPLETED"],
-                }
-                return other in mapping.get(self, [])
-        return StatusProxy(self.effective_status)
-
-    @trang_thai.setter
-    def trang_thai(self, val):
-        mapping = {
-            "da_dat": self.Status.CONFIRMED,
-            "da_huy": self.Status.CANCELLED,
-            "hoan_thanh": self.Status.COMPLETED,
-        }
-        self.status = mapping.get(val, val)
-
-    @property
     def thoi_gian_bat_dau(self):
         tz = timezone.get_current_timezone()
         dt = datetime.combine(self.date, self.start_time)
@@ -469,9 +435,9 @@ class MeetingBooking(models.Model):
         # Kiểm tra trạng thái phòng họp: MAINTENANCE hoặc UNAVAILABLE không cho đặt
         room = getattr(self, "room", None)
         if room:
-            if room.status in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
+            if room.trang_thai in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
                 raise ValidationError({
-                    "room": f"Phòng họp '{room.name}' đang ở trạng thái {room.get_status_display()}, không thể đặt lịch."
+                    "room": f"Phòng họp '{room.name}' đang ở trạng thái {room.get_trang_thai_display()}, không thể đặt lịch."
                 })
             if self.attendees_count and self.attendees_count > room.capacity:
                 raise ValidationError({
@@ -479,13 +445,13 @@ class MeetingBooking(models.Model):
                 })
 
         # Kiểm tra trùng lịch đối với lịch có hiệu lực (khác CANCELLED)
-        if self.status != self.Status.CANCELLED and self.room_id and self.date and self.start_time and self.end_time:
+        if self.trang_thai != self.Status.CANCELLED and self.room_id and self.date and self.start_time and self.end_time:
             conflicts = MeetingBooking.objects.filter(
                 room_id=self.room_id,
                 date=self.date,
                 start_time__lt=self.end_time,
                 end_time__gt=self.start_time,
-            ).exclude(status=self.Status.CANCELLED)
+            ).exclude(trang_thai=self.Status.CANCELLED)
 
             if self.pk:
                 conflicts = conflicts.exclude(pk=self.pk)

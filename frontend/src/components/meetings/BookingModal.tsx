@@ -91,7 +91,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     })();
 
     // Mặc định chọn phòng đầu tiên có trạng thái sẵn sàng (AVAILABLE)
-    const defaultRoom = rooms.find((r) => (r.status || 'AVAILABLE') === 'AVAILABLE') || rooms[0];
+    const defaultRoom = rooms.find((r) => (r.trang_thai || 'AVAILABLE') === 'AVAILABLE') || rooms[0];
 
     return {
       roomId: defaultRoom ? defaultRoom.id : '',
@@ -314,13 +314,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
           >
             <option value="" disabled>{t('meetings.modalBooking.roomPlaceholder')}</option>
             {rooms.map((r) => {
-              const isAvailable = (r.status || 'AVAILABLE') === 'AVAILABLE';
+              const isAvailable = (r.trang_thai || 'AVAILABLE') === 'AVAILABLE';
               const isDisabled = !isAvailable && r.id !== bookingToEdit?.phong_hop;
 
               let statusLabel = '';
-              if (r.status === 'MAINTENANCE') {
+              if (r.trang_thai === 'MAINTENANCE') {
                 statusLabel = ` [${t('meetings.status.maintenance')}]`;
-              } else if (r.status === 'UNAVAILABLE') {
+              } else if (r.trang_thai === 'UNAVAILABLE') {
                 statusLabel = ` [${t('meetings.status.unavailable')}]`;
               }
 

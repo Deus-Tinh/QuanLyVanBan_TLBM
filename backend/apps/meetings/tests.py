@@ -503,12 +503,12 @@ class DatPhongHopAPITestCase(APITestCase):
             "end_time": "15:30:00",
             "attendees_count": 6,
             "purpose": "Đánh giá KPI và kế hoạch ngân sách",
-            "status": "CONFIRMED",
+            "trang_thai": "CONFIRMED",
         }
         res = self.client.post("/api/meeting-bookings/", payload)
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(res.data["title"], "Họp Chiến Lược Quý 4")
-        self.assertEqual(res.data["status"], "CONFIRMED")
+        self.assertEqual(res.data["trang_thai"], "CONFIRMED")
         self.assertEqual(res.data["attendees_count"], 6)
 
     def test_cannot_book_maintenance_room(self):
@@ -517,7 +517,7 @@ class DatPhongHopAPITestCase(APITestCase):
             name="Phòng Bảo Trì 101",
             location="Tầng 1",
             capacity=20,
-            status=MeetingRoom.Status.MAINTENANCE,
+            trang_thai=MeetingRoom.Status.MAINTENANCE,
         )
         self.client.force_authenticate(user=self.user1)
         payload = {
@@ -537,7 +537,7 @@ class DatPhongHopAPITestCase(APITestCase):
             name="Phòng Khóa Tạm Thời",
             location="Tầng 2",
             capacity=10,
-            status=MeetingRoom.Status.UNAVAILABLE,
+            trang_thai=MeetingRoom.Status.UNAVAILABLE,
         )
         self.client.force_authenticate(user=self.user1)
         payload = {
@@ -567,7 +567,7 @@ class DatPhongHopAPITestCase(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.booking1.refresh_from_db()
-        self.assertEqual(self.booking1.status, MeetingBooking.Status.CANCELLED)
+        self.assertEqual(self.booking1.trang_thai, MeetingBooking.Status.CANCELLED)
 
     def test_staff_user_without_add_phonghop_cannot_create_room(self):
         """User có is_staff=True nhưng không có quyền add_phonghop bị 403 Forbidden."""
@@ -585,14 +585,14 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_invalid_status_param_returns_400(self):
-        """Truyền status không thuộc enum (ví dụ ?status=bogus) phải trả về 400 thay vì 500 DataError."""
+        """Truyền trang_thai không thuộc enum (ví dụ ?trang_thai=bogus) phải trả về 400 thay vì 500 DataError."""
         self.client.force_authenticate(user=self.admin_user)
         # Phòng họp
-        res_rooms = self.client.get("/api/meeting-rooms/?status=BOGUS")
+        res_rooms = self.client.get("/api/meeting-rooms/?trang_thai=BOGUS")
         self.assertEqual(res_rooms.status_code, status.HTTP_400_BAD_REQUEST)
 
         # Lịch đặt phòng
-        res_bookings = self.client.get("/api/meeting-bookings/?status=BOGUS")
+        res_bookings = self.client.get("/api/meeting-bookings/?trang_thai=BOGUS")
         self.assertEqual(res_bookings.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_invalid_room_id_param_returns_400(self):
@@ -661,7 +661,7 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertEqual(res_admin.status_code, status.HTTP_201_CREATED)
 
     def test_past_booking_returns_completed_status_and_filtered(self):
-        """Lịch đã diễn ra trong quá khứ tự động hiển thị COMPLETED (hoan_thanh) và lọc được bằng ?status=hoan_thanh."""
+        """Lịch đã diễn ra trong quá khứ tự động hiển thị COMPLETED và lọc được bằng ?trang_thai=COMPLETED."""
         self.client.force_authenticate(user=self.admin_user)
         yesterday = timezone.localtime(timezone.now()).date() - timedelta(days=1)
         past_booking = DatPhongHop.objects.create(
@@ -672,22 +672,21 @@ class DatPhongHopAPITestCase(APITestCase):
             start_time=time(9, 0),
             end_time=time(10, 0),
             attendees_count=5,
-            status=DatPhongHop.Status.CONFIRMED,
+            trang_thai=DatPhongHop.Status.CONFIRMED,
         )
-        # 1. GET chi tiết lịch họp -> trạng thái động trả về COMPLETED / hoan_thanh
+        # 1. GET chi tiết lịch họp -> trạng thái động trả về COMPLETED
         res = self.client.get(f"/api/meeting-bookings/{past_booking.id}/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.data["status"], "COMPLETED")
-        self.assertEqual(res.data["trang_thai"], "hoan_thanh")
+        self.assertEqual(res.data["trang_thai"], "COMPLETED")
 
-        # 2. Lọc theo ?status=hoan_thanh -> tìm thấy lịch này
-        res_list = self.client.get("/api/meeting-bookings/?status=hoan_thanh")
+        # 2. Lọc theo ?trang_thai=COMPLETED -> tìm thấy lịch này
+        res_list = self.client.get("/api/meeting-bookings/?trang_thai=COMPLETED")
         self.assertEqual(res_list.status_code, status.HTTP_200_OK)
         ids = [item["id"] for item in res_list.data.get("results", [])]
         self.assertIn(past_booking.id, ids)
 
-        # 3. Lọc theo ?status=da_dat -> không chứa lịch này
-        res_confirmed = self.client.get("/api/meeting-bookings/?status=da_dat")
+        # 3. Lọc theo ?trang_thai=CONFIRMED -> không chứa lịch này
+        res_confirmed = self.client.get("/api/meeting-bookings/?trang_thai=CONFIRMED")
         self.assertEqual(res_confirmed.status_code, status.HTTP_200_OK)
         confirmed_ids = [item["id"] for item in res_confirmed.data.get("results", [])]
         self.assertNotIn(past_booking.id, confirmed_ids)
@@ -718,7 +717,7 @@ class DatPhongHopAPITestCase(APITestCase):
             start_time=time(9, 0),
             end_time=time(10, 0),
             attendees_count=5,
-            status=DatPhongHop.Status.CONFIRMED,
+            trang_thai=DatPhongHop.Status.CONFIRMED,
         )
         res = self.client.post(
             f"/api/meeting-bookings/{past_booking.id}/cancel/",
@@ -728,7 +727,7 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertEqual(res.data.get("error"), "meetings.messages.bookingAlreadyEnded")
         # Bản ghi vẫn phải giữ nguyên COMPLETED / CONFIRMED, không bị chuyển sang CANCELLED
         past_booking.refresh_from_db()
-        self.assertNotEqual(past_booking.status, DatPhongHop.Status.CANCELLED)
+        self.assertNotEqual(past_booking.trang_thai, DatPhongHop.Status.CANCELLED)
 
     def test_update_past_booking_rejected(self):
         """Cập nhật lịch đã kết thúc trong quá khứ phải trả về 400 kèm key bookingAlreadyEnded."""
@@ -742,7 +741,7 @@ class DatPhongHopAPITestCase(APITestCase):
             start_time=time(9, 0),
             end_time=time(10, 0),
             attendees_count=5,
-            status=DatPhongHop.Status.CONFIRMED,
+            trang_thai=DatPhongHop.Status.CONFIRMED,
         )
         res = self.client.put(
             f"/api/meeting-bookings/{past_booking.id}/",
@@ -760,7 +759,7 @@ class DatPhongHopAPITestCase(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.booking1.refresh_from_db()
-        self.assertEqual(self.booking1.status, DatPhongHop.Status.CANCELLED)
+        self.assertEqual(self.booking1.trang_thai, DatPhongHop.Status.CANCELLED)
         self.assertNotIn("[Lý do hủy]:", self.booking1.purpose)
         self.assertIn("Thay đổi kế hoạch nội bộ", self.booking1.purpose)
 
@@ -802,11 +801,11 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertIn("meetings.messages.permissionDenied", str(res.data))
 
     def test_client_cannot_change_booking_status_directly(self):
-        """Client không thể tự ý thay đổi status sang CANCELLED/COMPLETED qua POST hoặc PUT/PATCH."""
+        """Client không thể tự ý thay đổi trang_thai sang CANCELLED/COMPLETED qua POST hoặc PUT/PATCH."""
         self.client.force_authenticate(user=self.user1)
         future_date = (timezone.localtime(timezone.now()).date() + timedelta(days=5)).isoformat()
 
-        # 1. POST với status: CANCELLED vẫn được lưu là CONFIRMED
+        # 1. POST với trang_thai: CANCELLED vẫn được lưu là CONFIRMED
         payload = {
             "room_id": self.room1.id,
             "title": "Họp Thử Cố Đổi Trạng Thái",
@@ -814,15 +813,15 @@ class DatPhongHopAPITestCase(APITestCase):
             "start_time": "14:00:00",
             "end_time": "15:00:00",
             "attendees_count": 5,
-            "status": "CANCELLED",
+            "trang_thai": "CANCELLED",
         }
         res_post = self.client.post("/api/meeting-bookings/", payload)
         self.assertEqual(res_post.status_code, status.HTTP_201_CREATED)
         booking_id = res_post.data["id"]
         booking = DatPhongHop.objects.get(id=booking_id)
-        self.assertEqual(booking.status, MeetingBooking.Status.CONFIRMED)
+        self.assertEqual(booking.trang_thai, MeetingBooking.Status.CONFIRMED)
 
-        # 2. PUT với status: CANCELLED bị bỏ qua, status vẫn giữ nguyên CONFIRMED
+        # 2. PUT với trang_thai: CANCELLED bị bỏ qua, trang_thai vẫn giữ nguyên CONFIRMED
         res_put = self.client.put(
             f"/api/meeting-bookings/{booking_id}/",
             {
@@ -831,12 +830,12 @@ class DatPhongHopAPITestCase(APITestCase):
                 "date": future_date,
                 "start_time": "14:00:00",
                 "end_time": "15:00:00",
-                "status": "CANCELLED",
+                "trang_thai": "CANCELLED",
             },
         )
         self.assertEqual(res_put.status_code, status.HTTP_200_OK)
         booking.refresh_from_db()
-        self.assertEqual(booking.status, MeetingBooking.Status.CONFIRMED)
+        self.assertEqual(booking.trang_thai, MeetingBooking.Status.CONFIRMED)
 
     def test_delete_booking_returns_405_and_keeps_record(self):
         """Xóa lịch đặt phòng phải trả về 405 Method Not Allowed và không xóa bản ghi trong DB."""
@@ -874,12 +873,12 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertIn("meetings.messages.bookingInPast", str(res.data))
 
     def test_put_room_without_status_preserves_maintenance(self):
-        """PUT phòng họp mà không truyền trường status thì không bị reset về AVAILABLE."""
+        """PUT phòng họp mà không truyền trường trang_thai thì không bị reset về AVAILABLE."""
         self.client.force_authenticate(user=self.admin_user)
         m_room = PhongHop.objects.create(
             name="Phòng Đang Sửa",
             capacity=15,
-            status=MeetingRoom.Status.MAINTENANCE,
+            trang_thai=MeetingRoom.Status.MAINTENANCE,
         )
         res = self.client.put(
             f"/api/meeting-rooms/{m_room.id}/",
@@ -890,13 +889,13 @@ class DatPhongHopAPITestCase(APITestCase):
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         m_room.refresh_from_db()
-        self.assertEqual(m_room.status, MeetingRoom.Status.MAINTENANCE)
+        self.assertEqual(m_room.trang_thai, MeetingRoom.Status.MAINTENANCE)
 
     def test_update_cancelled_booking_rejected(self):
         """Cập nhật lịch họp đã bị hủy phải trả về 400 kèm key bookingAlreadyCancelled."""
         self.client.force_authenticate(user=self.user1)
-        self.booking1.status = DatPhongHop.Status.CANCELLED
-        self.booking1.save(update_fields=["status"])
+        self.booking1.trang_thai = DatPhongHop.Status.CANCELLED
+        self.booking1.save(update_fields=["trang_thai"])
 
         res = self.client.put(
             f"/api/meeting-bookings/{self.booking1.id}/",
@@ -936,7 +935,7 @@ class DatPhongHopAPITestCase(APITestCase):
             date=future_date,
             start_time=time(14, 0),
             end_time=time(15, 0),
-            status=DatPhongHop.Status.CONFIRMED,
+            trang_thai=DatPhongHop.Status.CONFIRMED,
         )
         # Booking của user1 trong phòng riêng
         user1_booking = DatPhongHop.objects.create(
@@ -946,7 +945,7 @@ class DatPhongHopAPITestCase(APITestCase):
             date=future_date,
             start_time=time(16, 0),
             end_time=time(17, 0),
-            status=DatPhongHop.Status.CONFIRMED,
+            trang_thai=DatPhongHop.Status.CONFIRMED,
         )
 
         # 1. user2 (staff thường, không phải organizer) vào xem danh sách -> không thấy cả 2 lịch phòng riêng
@@ -970,16 +969,16 @@ class DatPhongHopAPITestCase(APITestCase):
         self.assertIn(admin_booking.id, ids_admin)
         self.assertIn(user1_booking.id, ids_admin)
 
-    def test_status_fields_db_column_is_trang_thai(self):
-        """Cột status trong database của MeetingRoom và MeetingBooking phải có db_column là trang_thai."""
-        self.assertEqual(MeetingRoom._meta.get_field("status").column, "trang_thai")
-        self.assertEqual(MeetingBooking._meta.get_field("status").column, "trang_thai")
+    def test_trang_thai_field_matches_ddl_column(self):
+        """Field trang_thai của MeetingRoom và MeetingBooking dùng đúng cột trang_thai của DDL."""
+        self.assertEqual(MeetingRoom._meta.get_field("trang_thai").column, "trang_thai")
+        self.assertEqual(MeetingBooking._meta.get_field("trang_thai").column, "trang_thai")
 
     def test_cancel_already_cancelled_booking_returns_400(self):
         """Hủy lại lịch họp đã bị hủy phải trả về 400 kèm key bookingAlreadyCancelled."""
         self.client.force_authenticate(user=self.user1)
-        self.booking1.status = DatPhongHop.Status.CANCELLED
-        self.booking1.save(update_fields=["status"])
+        self.booking1.trang_thai = DatPhongHop.Status.CANCELLED
+        self.booking1.save(update_fields=["trang_thai"])
         res = self.client.post(f"/api/meeting-bookings/{self.booking1.id}/cancel/")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("meetings.messages.bookingAlreadyCancelled", str(res.data))
@@ -998,7 +997,7 @@ class DatPhongHopAPITestCase(APITestCase):
             date=today,
             start_time=start_time,
             end_time=end_time,
-            status=DatPhongHop.Status.CONFIRMED,
+            trang_thai=DatPhongHop.Status.CONFIRMED,
             attendees_count=5,
         )
 

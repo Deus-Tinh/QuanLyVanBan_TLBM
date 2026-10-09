@@ -154,7 +154,7 @@ export const MeetingsPage: React.FC = () => {
       url += `&room_id=${selectedRoomFilter}`;
     }
     if (selectedStatusFilter !== 'all') {
-      url += `&status=${selectedStatusFilter}`;
+      url += `&trang_thai=${selectedStatusFilter}`;
     }
 
     apiClient.get<PaginatedResponse<MeetingBooking> | MeetingBooking[]>(url)
@@ -247,7 +247,7 @@ export const MeetingsPage: React.FC = () => {
       (r.vi_tri && r.vi_tri.toLowerCase().includes(roomSearchTerm.toLowerCase())) ||
       (r.thiet_bi && r.thiet_bi.toLowerCase().includes(roomSearchTerm.toLowerCase()));
 
-    const currentStatus = r.status || 'AVAILABLE';
+    const currentStatus = r.trang_thai || 'AVAILABLE';
     const matchesStatus =
       roomStatusFilter === 'all'
         ? true
@@ -265,9 +265,9 @@ export const MeetingsPage: React.FC = () => {
 
   // Thống kê nhanh trong ngày
   const totalInDay = bookings.length;
-  const activeInDay = bookings.filter((b) => b.trang_thai === 'da_dat').length;
-  const cancelledInDay = bookings.filter((b) => b.trang_thai === 'da_huy').length;
-  const completedInDay = bookings.filter((b) => b.trang_thai === 'hoan_thanh').length;
+  const activeInDay = bookings.filter((b) => b.trang_thai === 'CONFIRMED').length;
+  const cancelledInDay = bookings.filter((b) => b.trang_thai === 'CANCELLED').length;
+  const completedInDay = bookings.filter((b) => b.trang_thai === 'COMPLETED').length;
 
   return (
     <div className="space-y-6">
@@ -489,9 +489,9 @@ export const MeetingsPage: React.FC = () => {
                   className="px-3 py-1.5 rounded-lg bg-surface-elevated border border-border-subtle text-main text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
                 >
                   <option value="all">{t('meetings.allStatuses')}</option>
-                  <option value="da_dat">{t('meetings.filterConfirmed')}</option>
-                  <option value="hoan_thanh">{t('meetings.filterCompleted')}</option>
-                  <option value="da_huy">{t('meetings.filterCancelled')}</option>
+                  <option value="CONFIRMED">{t('meetings.filterConfirmed')}</option>
+                  <option value="COMPLETED">{t('meetings.filterCompleted')}</option>
+                  <option value="CANCELLED">{t('meetings.filterCancelled')}</option>
                 </select>
               </div>
             </div>
@@ -548,7 +548,7 @@ export const MeetingsPage: React.FC = () => {
                     key={booking.id}
                     hoverable
                     className={`p-5 transition-all ${
-                      booking.trang_thai === 'da_huy'
+                      booking.trang_thai === 'CANCELLED'
                         ? 'opacity-70 bg-surface-elevated border-dashed'
                         : 'border-l-4 border-l-primary'
                     }`}
@@ -566,17 +566,17 @@ export const MeetingsPage: React.FC = () => {
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-black text-base text-main">{booking.tieu_de}</span>
-                            {booking.trang_thai === 'da_dat' && (
+                            {booking.trang_thai === 'CONFIRMED' && (
                               <Badge variant="success" size="sm" withDot>
                                 {t('meetings.status.confirmed')}
                               </Badge>
                             )}
-                            {booking.trang_thai === 'hoan_thanh' && (
+                            {booking.trang_thai === 'COMPLETED' && (
                               <Badge variant="secondary" size="sm">
                                 {t('meetings.status.completed')}
                               </Badge>
                             )}
-                            {booking.trang_thai === 'da_huy' && (
+                            {booking.trang_thai === 'CANCELLED' && (
                               <Badge variant="danger" size="sm" withDot>
                                 {t('meetings.status.cancelled')}
                               </Badge>
@@ -637,7 +637,7 @@ export const MeetingsPage: React.FC = () => {
                       </div>
 
                       {/* Cột phải: Thao tác */}
-                      {booking.trang_thai !== 'da_huy' && booking.trang_thai !== 'hoan_thanh' && canModify && (
+                      {booking.trang_thai !== 'CANCELLED' && booking.trang_thai !== 'COMPLETED' && canModify && (
                         <div className="flex items-center gap-2 self-end lg:self-center">
                           <Button
                             variant="secondary"
@@ -760,11 +760,11 @@ export const MeetingsPage: React.FC = () => {
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        {room.status === 'MAINTENANCE' ? (
+                        {room.trang_thai === 'MAINTENANCE' ? (
                           <Badge variant="warning" size="sm" withDot>
                             {t('meetings.status.maintenance')}
                           </Badge>
-                        ) : room.status === 'UNAVAILABLE' ? (
+                        ) : room.trang_thai === 'UNAVAILABLE' ? (
                           <Badge variant="danger" size="sm" withDot>
                             {t('meetings.status.unavailable')}
                           </Badge>
@@ -807,7 +807,7 @@ export const MeetingsPage: React.FC = () => {
 
                   {/* Actions */}
                   <div className="pt-4 mt-4 border-t border-border-subtle flex items-center justify-between">
-                    {canAddBooking && (room.status || 'AVAILABLE') === 'AVAILABLE' ? (
+                    {canAddBooking && (room.trang_thai || 'AVAILABLE') === 'AVAILABLE' ? (
                       <Button
                         variant="outline"
                         size="sm"

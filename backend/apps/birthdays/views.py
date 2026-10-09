@@ -25,8 +25,8 @@ def serialize_email_log(log: BirthdayEmailLog) -> dict:
         "recipient_email": log.recipient_email,
         "subject": log.subject,
         "card_template": log.card_template,
-        "status": log.status,
-        "status_display": log.get_status_display(),
+        "trang_thai": log.trang_thai,
+        "trang_thai_display": log.get_trang_thai_display(),
         "retry_count": log.retry_count,
         "error_message": log.error_message or "",
         "smtp_response_code": log.smtp_response_code or "",
@@ -194,7 +194,7 @@ def birthday_email_logs_api(request):
 
     month_raw = request.GET.get("month")
     year_raw = request.GET.get("year")
-    status_raw = request.GET.get("status")
+    trang_thai_raw = request.GET.get("trang_thai")
 
     if month_raw:
         try:
@@ -208,14 +208,14 @@ def birthday_email_logs_api(request):
         except ValueError:
             pass
 
-    if status_raw:
-        normalized_status = status_raw.upper()
-        if normalized_status not in BirthdayEmailStatus.values:
+    if trang_thai_raw:
+        normalized_trang_thai = trang_thai_raw.upper()
+        if normalized_trang_thai not in BirthdayEmailStatus.values:
             return Response(
                 {"success": False, "error": "birthdays.messages.invalidStatus"},
                 status=400,
             )
-        logs = logs.filter(status=normalized_status)
+        logs = logs.filter(trang_thai=normalized_trang_thai)
 
     paginator = Paginator(logs, 15)
     page_obj = paginator.get_page(request.GET.get("page", 1))
