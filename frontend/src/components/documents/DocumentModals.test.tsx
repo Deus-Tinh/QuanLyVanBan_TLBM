@@ -37,7 +37,7 @@ describe('DocumentDetailModal', () => {
       ngay_den: '2026-09-23T08:00:00Z',
       trich_yeu: 'Hướng dẫn tổ chức thi tuyển sinh',
       noi_ban_hanh: 'Bộ Giáo Dục',
-      hieu_luc: 'CON_HIEU_LUC',
+      hieu_luc: 'CON_HIEU_LUC' as const,
       hieu_luc_display: 'Còn hiệu lực',
       hien_thi: true,
       gui_mail_toan_he_thong: false,
@@ -166,7 +166,7 @@ describe('DocumentFormModal', () => {
       id: 1,
       so_hieu: '15/CV-BGDDT',
       so_thu_tu: 15,
-      hieu_luc: 'CON_HIEU_LUC',
+      hieu_luc: 'CON_HIEU_LUC' as const,
       noi_ban_hanh: 'Bộ GD&ĐT',
       trich_yeu: 'Văn bản hướng dẫn',
     };
@@ -203,7 +203,7 @@ describe('DocumentFormModal', () => {
   });
 
   it('tìm kiếm và gợi ý văn bản thay thế khi tick chọn thay thế cho văn bản khác lúc thêm mới', async () => {
-    (apiClient.get as any).mockResolvedValueOnce({
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
       results: [
         {
           id: 99,
