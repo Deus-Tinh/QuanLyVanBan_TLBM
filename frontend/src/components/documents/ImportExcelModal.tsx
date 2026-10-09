@@ -58,8 +58,8 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
       a.download = 'Mau_Nhap_Van_Ban_Den.xlsx';
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setAlertMsg(e.message || String(e));
+    } catch (error: unknown) {
+      setAlertMsg(error instanceof Error ? error.message : String(error));
       setAlertOpen(true);
     }
   }
@@ -86,14 +86,15 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
         setAlertMsg(data.message || 'Nhập danh sách văn bản thành công!');
         setAlertOpen(true);
         setSelectedFile(null);
-        onImported && onImported();
+        if (onImported) onImported();
         onClose();
       } else {
         setAlertMsg('Lỗi nhập dữ liệu: ' + (data.error || data.message || JSON.stringify(data)));
         setAlertOpen(true);
       }
-    } catch (e: any) {
-      setAlertMsg('Lỗi kết nối máy chủ: ' + e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      setAlertMsg('Lỗi kết nối máy chủ: ' + message);
       setAlertOpen(true);
     } finally {
       setLoading(false);

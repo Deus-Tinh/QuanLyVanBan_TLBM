@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DocumentItem } from '@app-types/document';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
-import { formatDateTime, formatDate } from '@lib/dateUtils';
-import authService from '@lib/authService';
+import { formatDate } from '@lib/dateUtils';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -26,7 +25,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   page,
   pageSize,
   onPageChange,
-  onPageSizeChange,
   isLoading = false,
   onViewDetail,
   onViewHistory,
@@ -154,10 +152,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 const isActive = doc.hieu_luc === 'CON_HIEU_LUC';
                 const isActiveRow = activeMenuId === doc.id;
                 const isNearBottom = index >= documents.length - 2 && documents.length > 2;
-
-                const session = authService.getSession();
-                const isAdmin = authService.isAdmin();
-                const currentUsername = session?.username;
 
                 // Quyền sửa & xóa: Cán bộ có thể thao tác khi có hàm xử lý
                 const canEdit = !isConfidential && Boolean(onEdit);
