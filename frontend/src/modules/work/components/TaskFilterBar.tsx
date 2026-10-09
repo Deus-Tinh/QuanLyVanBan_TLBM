@@ -67,8 +67,8 @@ export default function TaskFilterBar({ value, busy = false, onSearch, onCreate 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '12px',
+          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gap: '16px',
           alignItems: 'end',
         }}
       >
@@ -110,28 +110,11 @@ export default function TaskFilterBar({ value, busy = false, onSearch, onCreate 
             ariaLabel="Đến ngày tạo"
           />
         </div>
-
-        <div style={{ minWidth: 0 }}>
-          <label htmlFor="work-filter-search" style={fieldLabelStyle}>
-            Nội dung công việc
-          </label>
-          <input
-            id="work-filter-search"
-            type="search"
-            value={draft.search}
-            placeholder="Nhập từ khóa trong nội dung công việc"
-            onChange={(event) => setDraft({ ...draft, search: event.target.value })}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') submit();
-            }}
-            style={inputStyle}
-          />
-        </div>
       </div>
 
       {error && <div style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>{error}</div>}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
         <button
           type="button"
           onClick={onCreate}
@@ -148,13 +131,35 @@ export default function TaskFilterBar({ value, busy = false, onSearch, onCreate 
             fontSize: '0.86rem',
             cursor: 'pointer',
             boxShadow: '0 4px 12px var(--color-primary-glow)',
+            whiteSpace: 'nowrap',
           }}
         >
           <i className="fa-solid fa-plus" />
           Thêm công việc mới
         </button>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            flex: '1 1 320px',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <input
+            id="work-filter-search"
+            type="search"
+            value={draft.search}
+            placeholder="Nhập từ khóa trong nội dung công việc"
+            aria-label="Nội dung công việc"
+            onChange={(event) => setDraft({ ...draft, search: event.target.value })}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') submit();
+            }}
+            style={{ ...inputStyle, flex: '1 1 220px', width: 'auto', maxWidth: '360px' }}
+          />
           {hasFilter && (
             <button
               type="button"
