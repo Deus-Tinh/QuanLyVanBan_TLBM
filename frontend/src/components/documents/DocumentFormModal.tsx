@@ -259,16 +259,13 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
 
   async function fetchUnits() {
     try {
-      const listRes = await fetch('/api/accounts/employees/?page_size=100');
-      if (listRes.ok) {
-        const data = await listRes.json();
-        const items: { department?: string }[] = Array.isArray(data) ? data : data.results || [];
-        const depts = Array.from(new Set(items.map((u) => u.department).filter(Boolean))) as string[];
-        if (depts.length > 0) {
-          const merged = Array.from(new Set([...depts, ...DEFAULT_UNITS]));
-          setUnits(merged);
-          return;
-        }
+      const data = await apiClient.get<UserOption[] | PaginatedResponse<UserOption>>('/api/accounts/staffs/');
+      const items = Array.isArray(data) ? data : data?.results || [];
+      const depts = Array.from(new Set(items.map((u) => u.department).filter(Boolean))) as string[];
+      if (depts.length > 0) {
+        const merged = Array.from(new Set([...depts, ...DEFAULT_UNITS]));
+        setUnits(merged);
+        return;
       }
     } catch {
       // Fallback to default units
@@ -282,14 +279,13 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       return;
     }
     try {
-      const res = await fetch(`/api/accounts/employees/?department=${encodeURIComponent(unit)}`);
-      if (res.ok) {
-        const data = await res.json();
-        const list: UserOption[] = Array.isArray(data) ? data : data.results || [];
-        if (list.length > 0) {
-          setStaff(list);
-          return;
-        }
+      const data = await apiClient.get<UserOption[] | PaginatedResponse<UserOption>>(
+        `/api/accounts/staffs/?department=${encodeURIComponent(unit)}`
+      );
+      const list: UserOption[] = Array.isArray(data) ? data : data?.results || [];
+      if (list.length > 0) {
+        setStaff(list);
+        return;
       }
     } catch {
       // Use fallback

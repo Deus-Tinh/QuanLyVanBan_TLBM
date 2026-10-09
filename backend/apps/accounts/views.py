@@ -209,27 +209,42 @@ def logout_view(request):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def staffs_view(request):
     """
-    GET /api/accounts/staffs/
+    GET /api/accounts/staffs/ & GET /api/auth/staffs/
     Danh sách cán bộ / nhân viên theo phòng ban cho các phân hệ khác (Document, Records...).
+    Hỗ trợ lọc theo ?department= (tên đơn vị) hoặc ?don_vi_id= (ID đơn vị).
     """
-    from django.contrib.auth.models import User
+    UserModel = get_user_model()
+    queryset = (
+        UserModel.objects.filter(is_active=True)
+        .select_related("don_vi", "chuc_vu")
+        .order_by("don_vi__stt_uu_tien", "chuc_vu__display_order", "ho_ten", "id")
+    )
+
+    don_vi_id = request.query_params.get("don_vi_id")
     department = request.query_params.get("department")
-    users = User.objects.all().select_related("profile")
+
+    if don_vi_id:
+        queryset = queryset.filter(don_vi_id=don_vi_id)
+    elif department:
+        queryset = queryset.filter(don_vi__ten__iexact=department.strip())
+
     data = []
-    for u in users:
-        profile = getattr(u, "profile", None)
-        dept = profile.department if (profile and profile.department) else ("Ban Giám hiệu" if u.is_superuser else "Phòng Hành chính - Tổng hợp")
-        if department and dept.strip().lower() != department.strip().lower():
-            continue
-        full_name = (profile.full_name if profile and profile.full_name else "") or u.get_full_name() or u.username
+    for u in queryset:
+        dept_name = u.don_vi.ten if u.don_vi else ""
+        position_name = u.chuc_vu.name if u.chuc_vu else ""
+        full_name = u.ho_ten or u.username
         data.append({
             "id": u.id,
             "username": u.username,
             "full_name": full_name,
-            "department": dept,
+            "department": dept_name,
+            "don_vi_id": u.don_vi_id,
+            "chuc_vu_id": u.chuc_vu_id,
+            "position": position_name,
         })
     return Response(data, status=status.HTTP_200_OK)
+
 
