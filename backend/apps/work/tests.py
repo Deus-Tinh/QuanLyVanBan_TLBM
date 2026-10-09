@@ -48,12 +48,12 @@ class WorkTestBase(APITestCase):
 
     def setUp(self):
         self.today = timezone.localdate()
-        self.creator = User.objects.create_user("nguoitao", first_name="Duy", last_name="Trần Phương")
-        self.host = User.objects.create_user("chutri", first_name="Dũng", last_name="Phan Quốc")
-        self.director = User.objects.create_user("chidao", first_name="Hiền", last_name="Nguyễn Thu")
-        self.member = User.objects.create_user("thamgia", first_name="Minh", last_name="Nguyễn Bình")
+        self.creator = User.objects.create_user("nguoitao", ho_ten="Trần Phương Duy")
+        self.host = User.objects.create_user("chutri", ho_ten="Phan Quốc Dũng")
+        self.director = User.objects.create_user("chidao", ho_ten="Nguyễn Thu Hiền")
+        self.member = User.objects.create_user("thamgia", ho_ten="Nguyễn Bình Minh")
         self.outsider = User.objects.create_user("nguoingoai")
-        self.admin = User.objects.create_superuser("quantri", "quantri@example.com", "Admin@123")
+        self.admin = User.objects.create_superuser("quantri", "Admin@123", email="quantri@example.com")
 
     # ----- tiện ích -----
 
@@ -195,15 +195,11 @@ class TaskDepartmentVisibilityTests(WorkTestBase):
         TaskDonVi.objects.create(task=self.task, don_vi_id=7)
 
     def grant(self, user, *codenames):
+        # Nhóm 7 seed sẵn 7 quyền *_congviec theo SQL_Fix4 (codename trần, content_type_id=NULL),
+        # backend RBAC kiểm theo codename trần — chỉ cần gán quyền đã có, không tự tạo.
         from django.contrib.auth.models import Permission
-        from django.contrib.contenttypes.models import ContentType
 
-        ct = ContentType.objects.get_for_model(Task)
-        for codename in codenames:
-            perm, _ = Permission.objects.get_or_create(
-                codename=codename, content_type=ct, defaults={"name": codename},
-            )
-            user.user_permissions.add(perm)
+        user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
         # Django cache quyền trên từng instance, phải lấy lại bản mới.
         return User.objects.get(pk=user.pk)
 

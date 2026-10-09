@@ -495,19 +495,19 @@ class AttachmentViewSet(WorkApiMixin, viewsets.GenericViewSet):
 class EmployeeViewSet(WorkApiMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     /api/work/employees/?search= — danh sách CBNV cho ô chọn người.
-    Tạm lấy từ auth.User; thay khi nhóm 7 có model CBNV.
+    Trả mảng phẳng (ô chọn người của frontend cần mảng), không theo phân trang chung của dự án.
     """
 
     serializer_class = EmployeeSerializer
+    pagination_class = None
 
     def get_queryset(self):
-        queryset = User.objects.filter(is_active=True).order_by("last_name", "first_name", "username")
+        queryset = User.objects.filter(is_active=True).order_by("ho_ten", "username")
         search = self.request.query_params.get("search", "").strip()
         if search:
             queryset = queryset.filter(
                 Q(username__icontains=search)
-                | Q(first_name__icontains=search)
-                | Q(last_name__icontains=search)
+                | Q(ho_ten__icontains=search)
             )
         return queryset
 

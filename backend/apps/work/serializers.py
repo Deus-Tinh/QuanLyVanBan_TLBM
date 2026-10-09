@@ -26,8 +26,8 @@ POSITION_PLACEHOLDER = "Nhân viên"
 
 
 def employee_full_name(user):
-    """Tên hiển thị kiểu Việt Nam: Họ (last_name) + Tên (first_name); chưa khai báo thì dùng username."""
-    full_name = f"{user.last_name} {user.first_name}".strip()
+    """Tên hiển thị: họ và tên (ho_ten) của Employee; chưa khai báo thì dùng username."""
+    full_name = (user.get_full_name() or "").strip()
     return full_name or user.username
 
 
