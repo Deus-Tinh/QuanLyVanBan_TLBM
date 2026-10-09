@@ -1132,7 +1132,7 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
 
     def test_reject_nonexistent_replacement_target(self):
         """Khóa nghiệp vụ: Chặn nhập số hiệu văn bản không tồn tại trong hệ thống (như '12')."""
-        from .serializers import DocumentCreateUpdateSerializer
+        from documents.serializers import DocumentCreateUpdateSerializer
         doc = VanBanDen.objects.create(
             nam=2026, so_hieu="112/TB-SGDĐT", so_thu_tu=210,
             trich_yeu="Văn bản thông báo", noi_ban_hanh="SGDĐT",
@@ -1151,7 +1151,7 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
 
     def test_get_replacement_relations_ignores_nonexistent_target(self):
         """Engine quan hệ thay thế tuyệt đối không sinh badge cho văn bản ma/không tồn tại trong DB."""
-        from .services import get_replacement_relations
+        from documents.services import get_replacement_relations
         doc = VanBanDen.objects.create(
             nam=2026, so_hieu="112/TB-SGDĐT", so_thu_tu=211,
             trich_yeu="Văn bản thông báo", noi_ban_hanh="SGDĐT",
