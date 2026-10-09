@@ -226,8 +226,14 @@ def staffs_view(request):
     don_vi_id = request.query_params.get("don_vi_id")
     department = request.query_params.get("department")
 
-    if don_vi_id:
-        queryset = queryset.filter(don_vi_id=don_vi_id)
+    if don_vi_id is not None and don_vi_id != "":
+        don_vi_id_str = str(don_vi_id).strip()
+        if not don_vi_id_str.isdigit():
+            return Response(
+                {"detail": "don_vi_id phải là số nguyên hợp lệ.", "error": "don_vi_id must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        queryset = queryset.filter(don_vi_id=int(don_vi_id_str))
     elif department:
         queryset = queryset.filter(don_vi__ten__iexact=department.strip())
 
@@ -240,10 +246,13 @@ def staffs_view(request):
             "id": u.id,
             "username": u.username,
             "full_name": full_name,
+            "ho_ten": full_name,
             "department": dept_name,
+            "don_vi_ten": dept_name,
             "don_vi_id": u.don_vi_id,
             "chuc_vu_id": u.chuc_vu_id,
             "position": position_name,
+            "chuc_vu_ten": position_name,
         })
     return Response(data, status=status.HTTP_200_OK)
 

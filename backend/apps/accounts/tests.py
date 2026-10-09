@@ -193,3 +193,29 @@ class AccountsAuthenticationTests(APITestCase):
         self.assertEqual(response_empty.status_code, status.HTTP_200_OK)
         self.assertEqual(response_empty.json(), [])
 
+    def test_staffs_view_invalid_don_vi_id(self):
+        """Truyền ?don_vi_id= không phải số (ví dụ 'abc') -> HTTP 400 Bad Request."""
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        response = self.client.get("/api/accounts/staffs/?don_vi_id=abc")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.json())
+
+    def test_staffs_view_filter_by_don_vi_id(self):
+        """Lọc cán bộ theo ?don_vi_id= hợp lệ -> HTTP 200 OK và có cả key alias."""
+        refresh = RefreshToken.for_user(self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+        response = self.client.get(f"/api/accounts/staffs/?don_vi_id={self.don_vi.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertTrue(any(u["username"] == "canbo_test" for u in data))
+        first_item = data[0]
+        # Kiểm tra đầy đủ key cũ và alias mới
+        self.assertIn("full_name", first_item)
+        self.assertIn("ho_ten", first_item)
+        self.assertIn("department", first_item)
+        self.assertIn("don_vi_ten", first_item)
+        self.assertIn("position", first_item)
+        self.assertIn("chuc_vu_ten", first_item)
+
+
