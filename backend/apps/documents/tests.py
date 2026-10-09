@@ -1081,8 +1081,8 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
 
     def test_directional_replacement_relations_and_circular_prevention(self):
         """Test phân định quan hệ thay thế 2 chiều và chặn vòng lặp thay thế A <-> B."""
-        from .services import get_replacement_relations, sync_replacement_document
-        from .serializers import DocumentCreateUpdateSerializer
+        from documents.services import get_replacement_relations, sync_replacement_document
+        from documents.serializers import DocumentCreateUpdateSerializer
         from rest_framework.exceptions import ValidationError
 
         # Tạo văn bản gốc A
