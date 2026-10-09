@@ -108,8 +108,25 @@ class DocumentListSerializer(serializers.Serializer):
     pham_vi_display = serializers.SerializerMethodField()
     hien_thi = serializers.BooleanField(read_only=True)
     nguoi_tao_name = serializers.SerializerMethodField()
+    nguoi_tao_username = serializers.CharField(source="nguoi_tao.username", read_only=True, default=None)
+    can_edit = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
     attachment_count = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
+
+    def get_can_edit(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        from .views import can_edit_document
+        return can_edit_document(request.user, obj)
+
+    def get_can_delete(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        from .views import can_delete_document
+        return can_delete_document(request.user, obj)
 
     def get_pham_vi_display(self, obj):
         pv = getattr(obj, "pham_vi", "NOI_BO")
@@ -184,9 +201,25 @@ class DocumentDetailSerializer(serializers.Serializer):
     attachments = serializers.SerializerMethodField()
     nguoi_tao_name = serializers.SerializerMethodField()
     nguoi_tao_username = serializers.CharField(source="nguoi_tao.username", read_only=True, default=None)
+    can_edit = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
     nguoi_nhan_list = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
+
+    def get_can_edit(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        from .views import can_edit_document
+        return can_edit_document(request.user, obj)
+
+    def get_can_delete(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        from .views import can_delete_document
+        return can_delete_document(request.user, obj)
 
     def get_pham_vi_display(self, obj):
         pv = getattr(obj, "pham_vi", "NOI_BO")

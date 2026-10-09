@@ -29,7 +29,7 @@ def _build_user_payload(user):
         "full_name": full_name,
         "department": department,
         "position": position,
-        "role": "admin" if user.is_superuser else "staff",
+        "role": "admin" if (user.is_superuser or user.is_staff or getattr(getattr(user, "userprofile", None), "role", None) == "admin") else "staff",
         "phone": user.sdt,
         "avatar_url": "",
         "birthday": user.ngay_sinh.isoformat() if user.ngay_sinh else None,

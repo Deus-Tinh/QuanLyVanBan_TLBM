@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { DocumentItem } from '@app-types/document';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { formatDate } from '@lib/dateUtils';
+import { authService } from '@lib/authService';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -34,6 +35,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   isConfidential = false,
   loai = 'DEN',
 }) => {
+  // Lấy thông tin phiên làm việc hiện tại để phân quyền hiển thị tác vụ
+  const currentSession = useMemo(() => authService.getSession(), []);
+
   // Quản lý menu 3 chấm ⋮ mở trên dòng nào
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -157,9 +161,27 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
 
 
-                // Quyền sửa & xóa: Cán bộ có thể thao tác khi có hàm xử lý
-                const canEdit = !isConfidential && Boolean(onEdit);
-                const canDelete = !isConfidential && Boolean(onDelete);
+                // Phân quyền sửa & xóa văn bản:
+                // - Văn bản hạn chế (HAN_CHE) hoặc chế độ bảo mật: tuyệt đối không được xóa
+                // - Admin (vai trò admin hoặc tài khoản canbo): toàn quyền sửa / xóa
+                // - Người tạo văn bản: có quyền sửa văn bản của chính mình
+                // - Cán bộ thường không được phân quyền: ẩn hoàn toàn nút Chỉnh sửa và Xóa
+                const isDocConfidential = isConfidential || doc.pham_vi === 'HAN_CHE';
+                const isAdmin =
+                  currentSession?.role === 'admin' ||
+                  currentSession?.username === 'admin' ||
+                  currentSession?.username === 'canbo';
+                const isCreator = Boolean(
+                  currentSession?.username &&
+                  doc.nguoi_tao_username &&
+                  currentSession.username === doc.nguoi_tao_username
+                );
+
+                const userCanEdit = doc.can_edit !== undefined ? doc.can_edit : (!currentSession || isAdmin || isCreator);
+                const userCanDelete = doc.can_delete !== undefined ? doc.can_delete : (!isDocConfidential && (!currentSession || isAdmin || isCreator));
+
+                const canEdit = !isDocConfidential && Boolean(onEdit) && userCanEdit;
+                const canDelete = !isDocConfidential && Boolean(onDelete) && userCanDelete;
 
                 // Tông màu hàng theo trạng thái hiệu lực:
                 // - Văn bản có hiệu lực: tông xanh lá nhẹ + viền trái xanh lá

@@ -145,5 +145,111 @@ describe('DocumentTable Component', () => {
     expect(screen.getByText('127')).toBeInTheDocument();
     expect(screen.getByTitle('Văn bản này đã bị thay thế bởi: 127')).toBeInTheDocument();
   });
+
+  it('hides edit and delete buttons when regular staff user is not the document creator', () => {
+    localStorage.setItem(
+      'tlbm_session',
+      JSON.stringify({ username: 'chuyenvien_cntt', role: 'staff' })
+    );
+
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+
+    render(
+      <DocumentTable
+        documents={mockDocuments}
+        totalCount={2}
+        page={1}
+        pageSize={10}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+        onViewHistory={vi.fn()}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    );
+
+    const actionButtons = screen.getAllByTitle('Tác vụ');
+    fireEvent.click(actionButtons[0]);
+
+    // Regular staff user who did not create the document should only see view options
+    expect(screen.getByText('Xem chi tiết')).toBeInTheDocument();
+    expect(screen.getByText('Lịch sử xem')).toBeInTheDocument();
+    expect(screen.queryByText('Chỉnh sửa')).not.toBeInTheDocument();
+    expect(screen.queryByText('Xóa văn bản')).not.toBeInTheDocument();
+
+    localStorage.removeItem('tlbm_session');
+  });
+
+  it('shows edit and delete buttons for admin user', () => {
+    localStorage.setItem(
+      'tlbm_session',
+      JSON.stringify({ username: 'admin', role: 'admin' })
+    );
+
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+
+    render(
+      <DocumentTable
+        documents={mockDocuments}
+        totalCount={2}
+        page={1}
+        pageSize={10}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+        onViewHistory={vi.fn()}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    );
+
+    const actionButtons = screen.getAllByTitle('Tác vụ');
+    fireEvent.click(actionButtons[0]);
+
+    // Admin must see Edit and Delete buttons
+    expect(screen.getByText('Chỉnh sửa')).toBeInTheDocument();
+    expect(screen.getByText('Xóa văn bản')).toBeInTheDocument();
+
+    localStorage.removeItem('tlbm_session');
+  });
+
+  it('shows edit and delete buttons for the creator of the document', () => {
+    const docWithCreator: DocumentItem = {
+      ...mockDocuments[0],
+      nguoi_tao_username: 'canbo_vanthu',
+    };
+
+    localStorage.setItem(
+      'tlbm_session',
+      JSON.stringify({ username: 'canbo_vanthu', role: 'staff' })
+    );
+
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+
+    render(
+      <DocumentTable
+        documents={[docWithCreator]}
+        totalCount={1}
+        page={1}
+        pageSize={10}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+        onViewHistory={vi.fn()}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    );
+
+    const actionButtons = screen.getAllByTitle('Tác vụ');
+    fireEvent.click(actionButtons[0]);
+
+    // Creator must see Edit and Delete buttons for their document
+    expect(screen.getByText('Chỉnh sửa')).toBeInTheDocument();
+    expect(screen.getByText('Xóa văn bản')).toBeInTheDocument();
+
+    localStorage.removeItem('tlbm_session');
+  });
 });
 
