@@ -14,12 +14,13 @@ interface PaginatedResponse<T> {
   results?: T[];
 }
 
+// /api/auth/profile/ (hợp đồng chung của layout) vẫn dùng full_name, department, position.
 interface UserProfileResponse {
   id: number;
   username: string;
   full_name?: string;
   department?: string;
-  role?: string;
+  position?: string;
 }
 
 export const MeetingsPage: React.FC = () => {
@@ -92,9 +93,9 @@ export const MeetingsPage: React.FC = () => {
         setCurrentUser({
           id: res.id,
           username: res.username,
-          full_name: res.full_name || res.username,
-          department: res.department || '',
-          role: res.role || 'staff',
+          ho_ten: res.full_name || res.username,
+          don_vi_ten: res.department || '',
+          chuc_vu_ten: res.position || '',
         });
       })
       .catch(() => {
@@ -106,9 +107,9 @@ export const MeetingsPage: React.FC = () => {
             setCurrentUser({
               id: parsed.id || 0,
               username: parsed.username || '',
-              full_name: parsed.full_name || parsed.username || '',
-              department: parsed.department || '',
-              role: parsed.role || 'staff',
+              ho_ten: parsed.full_name || parsed.username || '',
+              don_vi_ten: parsed.department || '',
+              chuc_vu_ten: parsed.position || '',
             });
           }
         } catch {
@@ -587,7 +588,7 @@ export const MeetingsPage: React.FC = () => {
                               <i className="fa-solid fa-user-tie text-muted" />
                               {t('meetings.table.organizer')}:{' '}
                               <strong className="text-main font-semibold">
-                                {booking.organizer_detail?.full_name || booking.organizer_detail?.username || t('meetings.table.staffFallback')}
+                                {booking.organizer_detail?.ho_ten || booking.organizer_detail?.username || t('meetings.table.staffFallback')}
                               </strong>
                             </span>
 

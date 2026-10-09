@@ -27,13 +27,10 @@ const mockedApiClient = vi.mocked(apiClientModule.apiClient);
 const mockEmployeeData = [
   {
     id: 1,
-    user_id: 10,
     username: 'binhnv',
     email: 'binhnv@donvi.gov.vn',
     ho_ten: 'Nguyễn Văn Bình',
-    full_name: 'Nguyễn Văn Bình',
     ngay_sinh: '20/05/----',
-    birthday: '1995-05-20',
     is_birthday_masked: true,
     don_vi_id: 1,
     don_vi_ten: 'Văn phòng Viện',
@@ -42,9 +39,7 @@ const mockEmployeeData = [
     chuc_vu_ten: 'Chuyên viên',
     chuc_danh: 'Chuyên viên tổng hợp',
     sdt: '0912345678',
-    phone: '0912345678',
-    avatar_url: '',
-    trang_thai: 'dang_lam_viec' as const,
+    trang_thai: 'LAM_VIEC' as const,
     trang_thai_display: 'Đang làm việc',
     is_active: true,
     is_public: true,
@@ -56,13 +51,10 @@ const mockEmployeeData = [
   },
   {
     id: 2,
-    user_id: 11,
     username: 'hungtv',
     email: 'hungtv@donvi.gov.vn',
     ho_ten: 'Trần Văn Hùng',
-    full_name: 'Trần Văn Hùng',
     ngay_sinh: '1988-10-15',
-    birthday: '1988-10-15',
     is_birthday_masked: false,
     don_vi_id: 2,
     don_vi_ten: 'Phòng Kế toán',
@@ -71,9 +63,7 @@ const mockEmployeeData = [
     chuc_vu_ten: 'Trưởng phòng',
     chuc_danh: 'Trưởng phòng Kế toán',
     sdt: '0987654321',
-    phone: '0987654321',
-    avatar_url: '',
-    trang_thai: 'nghi_viec' as const,
+    trang_thai: 'NGHI_VIEC' as const,
     trang_thai_display: 'Nghỉ việc',
     is_active: false,
     is_public: true,
@@ -112,8 +102,8 @@ describe('EmployeesPage Component (Issue #24)', () => {
       }
       if (endpoint.includes('/api/positions/')) {
         return [
-          { id: 1, ten_chuc_vu: 'Chuyên viên', stt_uu_tien: 1, is_public: true, ghi_chu: '' },
-          { id: 2, ten_chuc_vu: 'Trưởng phòng', stt_uu_tien: 2, is_public: true, ghi_chu: '' },
+          { id: 1, name: 'Chuyên viên', display_order: 1, is_public: true, note: '' },
+          { id: 2, name: 'Trưởng phòng', display_order: 2, is_public: true, note: '' },
         ];
       }
       if (endpoint.includes('/accounts/groups/')) {

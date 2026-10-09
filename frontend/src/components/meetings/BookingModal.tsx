@@ -82,7 +82,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
     return {
       roomId: defaultRoom ? defaultRoom.id : '',
       title: '',
-      department: currentUser?.department || '',
+      department: currentUser?.don_vi_ten || '',
       date: todayStr,
       startTime: '09:00',
       endTime: '10:00',

@@ -141,33 +141,14 @@ class MeetingRoomSerializer(serializers.ModelSerializer):
 
 class UserSimpleSerializer(serializers.Serializer):
     """
-    Thông tin rút gọn của người dùng/CBNV đặt phòng (từ accounts.Employee).
+    Thông tin rút gọn của người đặt phòng (accounts_employee), cùng tên field với API CBNV.
     """
 
     id = serializers.IntegerField(read_only=True)
     username = serializers.CharField(read_only=True)
-    full_name = serializers.SerializerMethodField()
-    department = serializers.SerializerMethodField()
-    role = serializers.SerializerMethodField()
-
-    def get_full_name(self, obj):
-        return getattr(obj, "ho_ten", None) or obj.get_full_name() or obj.username
-
-    def get_department(self, obj):
-        if hasattr(obj, "don_vi") and obj.don_vi:
-            return getattr(obj.don_vi, "ten", str(obj.don_vi))
-        return ""
-
-    def get_role(self, obj):
-        if hasattr(obj, "chuc_vu") and obj.chuc_vu:
-            return getattr(obj.chuc_vu, "name", str(obj.chuc_vu))
-        if getattr(obj, "is_superuser", False):
-            return "admin"
-        if hasattr(obj, "groups"):
-            first_group = obj.groups.values_list("name", flat=True).first()
-            if first_group:
-                return first_group
-        return "staff"
+    ho_ten = serializers.CharField(read_only=True)
+    don_vi_ten = serializers.CharField(source="don_vi.ten", read_only=True, default="")
+    chuc_vu_ten = serializers.CharField(source="chuc_vu.name", read_only=True, default="")
 
 
 class MeetingBookingSerializer(serializers.ModelSerializer):

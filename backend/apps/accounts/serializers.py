@@ -27,19 +27,6 @@ def validate_employee_birthday(value: date) -> date:
         raise serializers.ValidationError("employees.messages.birthdayOutOfRange")
     return value
 
-# Giao diện dùng 'dang_lam_viec' / 'nghi_viec'; CSDL (ENUM employee_work_status) dùng 'LAM_VIEC' / 'NGHI_VIEC'.
-STATUS_API_TO_DB = {
-    "dang_lam_viec": Employee.Status.LAM_VIEC,
-    "nghi_viec": Employee.Status.NGHI_VIEC,
-    "LAM_VIEC": Employee.Status.LAM_VIEC,
-    "NGHI_VIEC": Employee.Status.NGHI_VIEC,
-}
-STATUS_DB_TO_API = {
-    Employee.Status.LAM_VIEC: "dang_lam_viec",
-    Employee.Status.NGHI_VIEC: "nghi_viec",
-}
-STATUS_API_CHOICES = list(STATUS_API_TO_DB.keys())
-
 SENSITIVE_PERMISSION = "view_full_cbnv"
 
 
@@ -69,12 +56,10 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class PositionSerializer(serializers.ModelSerializer):
     """
-    Danh mục Chức vụ (accounts_position, Issue #20).
-    Key API theo Issue (stt_uu_tien, ten_chuc_vu, ghi_chu) ánh xạ vào cột DDL (display_order, name, note).
+    Danh mục Chức vụ (accounts_position, Issue #20). Key API trùng tên cột DDL: display_order, name, is_public, note.
     """
 
-    stt_uu_tien = serializers.IntegerField(
-        source="display_order",
+    display_order = serializers.IntegerField(
         required=False,
         min_value=1,
         max_value=MAX_DISPLAY_ORDER,
@@ -84,8 +69,7 @@ class PositionSerializer(serializers.ModelSerializer):
             "invalid": "positions.messages.sttInvalid",
         },
     )
-    ten_chuc_vu = serializers.CharField(
-        source="name",
+    name = serializers.CharField(
         max_length=255,
         error_messages={
             "blank": "positions.messages.nameRequired",
@@ -94,16 +78,16 @@ class PositionSerializer(serializers.ModelSerializer):
             "max_length": "positions.messages.nameTooLong",
         },
     )
-    ghi_chu = serializers.CharField(source="note", required=False, allow_blank=True, allow_null=True)
+    note = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     # Không đặt default: cập nhật (PUT) thiếu trường này không được âm thầm đổi chức vụ Nội bộ thành Công khai; tạo mới dùng default của model (True).
     is_public = serializers.BooleanField(required=False)
 
     class Meta:
         model = Position
-        fields = ["id", "stt_uu_tien", "ten_chuc_vu", "is_public", "ghi_chu"]
+        fields = ["id", "display_order", "name", "is_public", "note"]
         read_only_fields = ["id"]
 
-    def validate_ten_chuc_vu(self, value):
+    def validate_name(self, value):
         trimmed = " ".join(value.split())
         if not trimmed:
             raise serializers.ValidationError("positions.messages.nameRequired")
@@ -115,7 +99,7 @@ class PositionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("positions.messages.nameExists")
         return trimmed
 
-    def validate_stt_uu_tien(self, value):
+    def validate_display_order(self, value):
         duplicated = Position.objects.filter(display_order=value)
         if self.instance is not None:
             duplicated = duplicated.exclude(pk=self.instance.pk)
@@ -123,7 +107,7 @@ class PositionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("positions.messages.sttExists")
         return value
 
-    def validate_ghi_chu(self, value):
+    def validate_note(self, value):
         return (value or "").strip()
 
     def create(self, validated_data):
@@ -137,7 +121,7 @@ class PositionSerializer(serializers.ModelSerializer):
                     return super().create(validated_data)
             except IntegrityError:
                 continue
-        raise serializers.ValidationError({"stt_uu_tien": ["positions.messages.sttExists"]})
+        raise serializers.ValidationError({"display_order": ["positions.messages.sttExists"]})
 
 
 class GroupSimpleSerializer(serializers.ModelSerializer):
@@ -154,9 +138,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
     Che năm sinh và ẩn nhóm quyền nếu người xem thiếu quyền accounts.view_full_cbnv.
     """
 
-    user_id = serializers.IntegerField(source="id", read_only=True)
-    full_name = serializers.CharField(source="ho_ten", read_only=True)
-
     don_vi_id = serializers.IntegerField(read_only=True)
     don_vi_ten = serializers.CharField(source="don_vi.ten", read_only=True)
     khoi_ten = serializers.CharField(source="don_vi.khoi.ten", read_only=True)
@@ -164,14 +145,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
     chuc_vu_id = serializers.IntegerField(read_only=True)
     chuc_vu_ten = serializers.CharField(source="chuc_vu.name", read_only=True)
 
-    phone = serializers.CharField(source="sdt", read_only=True)
-    avatar_url = serializers.SerializerMethodField()
     ngay_sinh = serializers.SerializerMethodField()
-    birthday = serializers.SerializerMethodField()
     is_birthday_masked = serializers.SerializerMethodField()
 
     nhom_quyen = serializers.SerializerMethodField()
-    trang_thai = serializers.SerializerMethodField()
     trang_thai_display = serializers.CharField(source="get_trang_thai_display", read_only=True)
     has_sensitive_permission = serializers.SerializerMethodField()
     temporary_password = serializers.SerializerMethodField()
@@ -180,13 +157,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
         model = Employee
         fields = [
             "id",
-            "user_id",
             "username",
             "email",
             "ho_ten",
-            "full_name",
             "ngay_sinh",
-            "birthday",
             "is_birthday_masked",
             "don_vi_id",
             "don_vi_ten",
@@ -195,8 +169,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "chuc_vu_ten",
             "chuc_danh",
             "sdt",
-            "phone",
-            "avatar_url",
             "trang_thai",
             "trang_thai_display",
             "is_active",
@@ -223,13 +195,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def get_temporary_password(self, obj):
         return getattr(obj, "raw_temporary_password", None)
 
-    def get_avatar_url(self, obj) -> str:
-        # SQL_Fix4 không có cột ảnh đại diện; giữ khóa để giao diện cũ không lỗi.
-        return ""
-
-    def get_trang_thai(self, obj) -> str:
-        return STATUS_DB_TO_API.get(obj.trang_thai, obj.trang_thai)
-
     def get_has_sensitive_permission(self, obj) -> bool:
         return self._can_view_sensitive(obj)
 
@@ -237,10 +202,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
         if self._can_view_sensitive(obj):
             return obj.ngay_sinh.isoformat()
         return obj.ngay_sinh.strftime("%d/%m/----")
-
-    def get_birthday(self, obj):
-        # Chỉ trả ngày sinh đầy đủ cho người có quyền hoặc chính chủ; người khác chỉ thấy ngay_sinh đã che năm.
-        return obj.ngay_sinh.isoformat() if self._can_view_sensitive(obj) else None
 
     def get_is_birthday_masked(self, obj) -> bool:
         return not self._can_view_sensitive(obj)
@@ -314,8 +275,8 @@ class EmployeeCreateSerializer(serializers.Serializer):
         },
     )
     trang_thai = serializers.ChoiceField(
-        choices=STATUS_API_CHOICES,
-        default="dang_lam_viec",
+        choices=Employee.Status.choices,
+        default=Employee.Status.LAM_VIEC,
         error_messages={"invalid_choice": "employees.messages.invalidFilterParam"},
     )
     is_public = serializers.BooleanField(default=True)
@@ -374,7 +335,7 @@ class EmployeeCreateSerializer(serializers.Serializer):
             alphabet = string.ascii_letters + string.digits
             raw_password = "".join(secrets.choice(alphabet) for _ in range(10))
 
-        trang_thai = STATUS_API_TO_DB[validated_data.get("trang_thai", "dang_lam_viec")]
+        trang_thai = validated_data.get("trang_thai", Employee.Status.LAM_VIEC)
 
         with transaction.atomic():
             employee = UserModel.objects.create_user(
@@ -454,7 +415,7 @@ class EmployeeUpdateSerializer(serializers.Serializer):
         },
     )
     trang_thai = serializers.ChoiceField(
-        choices=STATUS_API_CHOICES,
+        choices=Employee.Status.choices,
         required=False,
         error_messages={"invalid_choice": "employees.messages.invalidFilterParam"},
     )
@@ -464,7 +425,6 @@ class EmployeeUpdateSerializer(serializers.Serializer):
     )
     is_public = serializers.BooleanField(required=False)
     ghi_chu = serializers.CharField(required=False, allow_blank=True)
-    avatar_url = serializers.CharField(required=False, allow_blank=True)  # nhận nhưng bỏ qua: DDL không có cột
 
     def validate_ho_ten(self, value):
         if value is None:
@@ -512,7 +472,7 @@ class EmployeeUpdateSerializer(serializers.Serializer):
                     instance.trang_thai = Employee.Status.LAM_VIEC
 
             if "trang_thai" in validated_data:
-                new_status = STATUS_API_TO_DB[validated_data["trang_thai"]]
+                new_status = validated_data["trang_thai"]
                 if new_status == Employee.Status.LAM_VIEC and instance.trang_thai == Employee.Status.NGHI_VIEC:
                     if "is_active" not in validated_data:
                         instance.is_active = True

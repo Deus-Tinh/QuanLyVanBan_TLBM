@@ -21,10 +21,10 @@ const inputClass =
 
 export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit, initialData, isLoading = false }) => {
   const { t } = useTranslation();
-  const [stt, setStt] = useState<string>(initialData ? String(initialData.stt_uu_tien) : '');
-  const [name, setName] = useState<string>(initialData?.ten_chuc_vu ?? '');
+  const [stt, setStt] = useState<string>(initialData ? String(initialData.display_order) : '');
+  const [name, setName] = useState<string>(initialData?.name ?? '');
   const [isPublic, setIsPublic] = useState<boolean>(initialData?.is_public ?? true);
-  const [note, setNote] = useState<string>(initialData?.ghi_chu ?? '');
+  const [note, setNote] = useState<string>(initialData?.note ?? '');
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,10 +42,10 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
 
     try {
       await onSubmit({
-        stt_uu_tien: cleanStt ? Number(cleanStt) : undefined,
-        ten_chuc_vu: cleanName,
+        display_order: cleanStt ? Number(cleanStt) : undefined,
+        name: cleanName,
         is_public: isPublic,
-        ghi_chu: note.trim(),
+        note: note.trim(),
       });
       onClose();
     } catch (err: unknown) {
@@ -56,8 +56,8 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
       const first = (value: unknown): string | undefined =>
         Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined;
       const detail = typeof data.detail === 'string' ? data.detail : undefined;
-      const fieldName = first(data.ten_chuc_vu);
-      const fieldStt = first(data.stt_uu_tien);
+      const fieldName = first(data.name);
+      const fieldStt = first(data.display_order);
       setErrors({
         name: fieldName,
         stt: fieldStt,

@@ -159,27 +159,27 @@ def import_positions_from_excel(file_obj) -> dict:
 
         name = " ".join(str(name_raw or "").split())
         if not name:
-            add_error(row_number, "ten_chuc_vu", "positions.messages.nameRequired")
+            add_error(row_number, "name", "positions.messages.nameRequired")
             row_errors += 1
         elif len(name) > 255:
-            add_error(row_number, "ten_chuc_vu", "positions.messages.nameTooLong", name[:40])
+            add_error(row_number, "name", "positions.messages.nameTooLong", name[:40])
             row_errors += 1
         elif name.casefold() in existing_names:
-            add_error(row_number, "ten_chuc_vu", "positions.messages.nameExists", name)
+            add_error(row_number, "name", "positions.messages.nameExists", name)
             row_errors += 1
         elif name.casefold() in seen_names:
-            add_error(row_number, "ten_chuc_vu", "positions.import.errors.duplicateNameInFile", name)
+            add_error(row_number, "name", "positions.import.errors.duplicateNameInFile", name)
             row_errors += 1
 
         stt, stt_error = _parse_stt(stt_raw)
         if stt_error:
-            add_error(row_number, "stt_uu_tien", stt_error, stt_raw)
+            add_error(row_number, "display_order", stt_error, stt_raw)
             row_errors += 1
         elif stt is not None and stt in existing_stt:
-            add_error(row_number, "stt_uu_tien", "positions.messages.sttExists", stt)
+            add_error(row_number, "display_order", "positions.messages.sttExists", stt)
             row_errors += 1
         elif stt is not None and stt in seen_stt:
-            add_error(row_number, "stt_uu_tien", "positions.import.errors.duplicateSttInFile", stt)
+            add_error(row_number, "display_order", "positions.import.errors.duplicateSttInFile", stt)
             row_errors += 1
 
         is_public, public_error = _parse_public(public_raw)
@@ -213,7 +213,7 @@ def import_positions_from_excel(file_obj) -> dict:
                 Position.objects.create(display_order=stt, name=name, is_public=is_public, note=note)
             imported += 1
         except IntegrityError:
-            add_error(row_number, "stt_uu_tien", "positions.messages.sttExists", stt)
+            add_error(row_number, "display_order", "positions.messages.sttExists", stt)
 
     errors.sort(key=lambda e: e["row"])
     return {

@@ -3,7 +3,7 @@
  * Tác giả: Lê Duy Khánh (leduykhanhdevs).
  */
 
-export type EmployeeStatus = 'dang_lam_viec' | 'nghi_viec';
+export type EmployeeStatus = 'LAM_VIEC' | 'NGHI_VIEC';
 
 export interface EmployeeGroup {
   id: number;
@@ -12,13 +12,10 @@ export interface EmployeeGroup {
 
 export interface Employee {
   id: number;
-  user_id: number;
   username: string;
   email: string;
   ho_ten: string;
-  full_name: string;
   ngay_sinh: string | null;
-  birthday: string | null;
   is_birthday_masked: boolean;
   don_vi_id: number | null;
   don_vi_ten: string;
@@ -27,8 +24,6 @@ export interface Employee {
   chuc_vu_ten: string;
   chuc_danh: string | null;
   sdt: string | null;
-  phone: string | null;
-  avatar_url: string;
   trang_thai: EmployeeStatus;
   trang_thai_display: string;
   is_active: boolean;
@@ -43,10 +38,10 @@ export interface Employee {
 
 export interface Position {
   id: number;
-  stt_uu_tien: number;
-  ten_chuc_vu: string;
+  display_order: number;
+  name: string;
   is_public: boolean;
-  ghi_chu: string | null;
+  note: string | null;
 }
 
 export interface GroupSimple {
@@ -82,7 +77,6 @@ export interface EmployeeUpdatePayload {
   trang_thai?: EmployeeStatus;
   is_public?: boolean;
   ghi_chu?: string;
-  avatar_url?: string;
 }
 
 export interface ExcelImportError {

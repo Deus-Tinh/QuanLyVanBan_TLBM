@@ -4,7 +4,7 @@ Tác giả: Lê Duy Khánh (leduykhanhdevs).
 Bao gồm:
 1. CRUD nhân viên (tạo, đọc, sửa, xóa, tìm kiếm, lọc, sắp xếp theo STT Đơn vị -> Chức vụ).
 2. Kiểm tra tính bảo mật & quyền riêng tư (che năm sinh DD/MM/---- và ẩn nhóm quyền nếu thiếu quyền view_full_cbnv).
-3. Kiểm tra logic nghiệp vụ: trạng thái 'nghi_viec' tự động vô hiệu hóa user.is_active = False.
+3. Kiểm tra logic nghiệp vụ: trạng thái 'NGHI_VIEC' tự động vô hiệu hóa user.is_active = False.
 4. Kiểm tra danh mục Chức vụ (Position) và Nhóm quyền (Group).
 5. Kiểm tra Tải tệp mẫu Excel và Nhập Excel validate từng dòng dữ liệu.
 """
@@ -150,7 +150,7 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
             "chuc_danh": "Chuyên viên tổng hợp",
             "sdt": "0901234567",
             "nhom_quyen_ids": [self.group_van_thu.id],
-            "trang_thai": "dang_lam_viec",
+            "trang_thai": "LAM_VIEC",
             "is_public": True,
             "ghi_chu": "Nhân viên mới tuyển dụng",
         }
@@ -273,19 +273,19 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
         self.assertIn("chuc_vu_id", body)
 
     def test_status_is_stored_with_ddl_enum_values(self):
-        """API nhận 'nghi_viec' nhưng CSDL lưu 'NGHI_VIEC' (ENUM employee_work_status), API vẫn trả dạng cũ."""
+        """API nhận và trả đúng giá trị ENUM employee_work_status của DDL."""
         self.client.force_authenticate(user=self.admin_user)
-        res = self.client.patch(f"{self.employee_list_url}{self.normal_user.id}/", {"trang_thai": "nghi_viec"}, format="json")
+        res = self.client.patch(f"{self.employee_list_url}{self.normal_user.id}/", {"trang_thai": "NGHI_VIEC"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(res.json()["trang_thai"], "nghi_viec")
+        self.assertEqual(res.json()["trang_thai"], "NGHI_VIEC")
         self.normal_user.refresh_from_db()
         self.assertEqual(self.normal_user.trang_thai, "NGHI_VIEC")
 
-    def test_filter_by_status_uses_api_value(self):
+    def test_filter_by_status_uses_ddl_value(self):
         self.client.force_authenticate(user=self.admin_user)
         self.normal_user.trang_thai = Employee.Status.NGHI_VIEC
         self.normal_user.save()
-        res = self.client.get(f"{self.employee_list_url}?trang_thai=nghi_viec")
+        res = self.client.get(f"{self.employee_list_url}?trang_thai=NGHI_VIEC")
         self.assertEqual([item["username"] for item in res.json()["results"]], ["normal_user"])
 
 
@@ -302,7 +302,6 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
 
         # Ngày sinh gốc là 1988-10-15 -> phải được format thành 15/10/----
         self.assertEqual(data["ngay_sinh"], "15/10/----")
-        self.assertIsNone(data["birthday"])  # không được lộ ngày sinh đầy đủ qua trường birthday
         self.assertTrue(data["is_birthday_masked"])
         self.assertFalse(data["has_sensitive_permission"])
         self.assertEqual(data["nhom_quyen"], [])
@@ -343,21 +342,20 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         data = res.json()
         self.assertEqual(data["ngay_sinh"], "1995-05-20")
-        self.assertEqual(data["birthday"], "1995-05-20")
         self.assertFalse(data["is_birthday_masked"])
 
     def test_status_nghi_viec_deactivates_user(self):
-        """Khi cập nhật trạng thái 'nghi_viec', user.is_active tự động chuyển thành False."""
+        """Khi cập nhật trạng thái 'NGHI_VIEC', user.is_active tự động chuyển thành False."""
         self.client.force_authenticate(user=self.admin_user)
         detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
-        res = self.client.patch(detail_url, {"trang_thai": "nghi_viec"}, format="json")
+        res = self.client.patch(detail_url, {"trang_thai": "NGHI_VIEC"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
         self.normal_user.refresh_from_db()
         self.assertFalse(self.normal_user.is_active)
 
-        # Chuyển lại 'dang_lam_viec' -> user.is_active trở lại True
-        res_reactivate = self.client.patch(detail_url, {"trang_thai": "dang_lam_viec"}, format="json")
+        # Chuyển lại 'LAM_VIEC' -> user.is_active trở lại True
+        res_reactivate = self.client.patch(detail_url, {"trang_thai": "LAM_VIEC"}, format="json")
         self.assertEqual(res_reactivate.status_code, status.HTTP_200_OK)
         self.normal_user.refresh_from_db()
         self.assertTrue(self.normal_user.is_active)
@@ -598,7 +596,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.assertEqual(self.self_user.groups.count(), 0)
 
         # 2. Tự đổi trạng thái làm việc / nghỉ việc -> 403
-        res_status = self.client.patch(own_url, {"trang_thai": "nghi_viec"}, format="json")
+        res_status = self.client.patch(own_url, {"trang_thai": "NGHI_VIEC"}, format="json")
         self.assertEqual(res_status.status_code, status.HTTP_403_FORBIDDEN)
         self.self_user.refresh_from_db()
         self.assertEqual(self.self_user.trang_thai, Employee.Status.LAM_VIEC)
@@ -748,7 +746,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         # 2. Superuser cố gắng tự thôi việc chính mình -> 400
         res_self_deact = self.client.patch(
             f"{self.employee_list_url}{self.admin_user.id}/",
-            {"trang_thai": "nghi_viec"},
+            {"trang_thai": "NGHI_VIEC"},
             format="json",
         )
         self.assertEqual(res_self_deact.status_code, status.HTTP_400_BAD_REQUEST)
@@ -782,7 +780,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.client.force_authenticate(user=hr_user)
         res_deact_su = self.client.patch(
             f"{self.employee_list_url}{self.admin_user.id}/",
-            {"trang_thai": "nghi_viec"},
+            {"trang_thai": "NGHI_VIEC"},
             format="json",
         )
         self.assertEqual(res_deact_su.status_code, status.HTTP_403_FORBIDDEN)
@@ -800,7 +798,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.client.force_authenticate(user=second_admin)
         res_deact_1 = self.client.patch(
             f"{self.employee_list_url}{self.admin_user.id}/",
-            {"trang_thai": "nghi_viec"},
+            {"trang_thai": "NGHI_VIEC"},
             format="json",
         )
         self.assertEqual(res_deact_1.status_code, status.HTTP_200_OK)
@@ -819,7 +817,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.client.force_authenticate(user=third_admin)
         res_last = self.client.patch(
             f"{self.employee_list_url}{second_admin.id}/",
-            {"trang_thai": "nghi_viec"},
+            {"trang_thai": "NGHI_VIEC"},
             format="json",
         )
         self.assertEqual(res_last.status_code, status.HTTP_400_BAD_REQUEST)

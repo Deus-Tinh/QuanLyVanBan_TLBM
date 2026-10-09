@@ -21,7 +21,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
 
   if (!isOpen || !employee) return null;
 
-  const initials = (employee.ho_ten || employee.full_name || 'NV')
+  const initials = (employee.ho_ten || 'NV')
     .split(' ')
     .filter(Boolean)
     .slice(-2)
@@ -29,7 +29,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
     .join('')
     .toUpperCase();
 
-  const isWorking = employee.trang_thai === 'dang_lam_viec';
+  const isWorking = employee.trang_thai === 'LAM_VIEC';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fade-in">
@@ -61,7 +61,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-xl font-bold text-main truncate">
-                  {employee.ho_ten || employee.full_name}
+                  {employee.ho_ten}
                 </h3>
                 <Badge variant={isWorking ? 'success' : 'danger'}>
                   {isWorking ? t('employees.status.working') : t('employees.status.resigned')}
@@ -127,7 +127,7 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
                 )}
               </div>
               <span className="text-sm font-medium text-main block font-mono">
-                {employee.ngay_sinh || employee.birthday || '—'}
+                {employee.ngay_sinh || '—'}
               </span>
             </div>
 
@@ -137,12 +137,12 @@ export const EmployeeDetailModal: React.FC<EmployeeDetailModalProps> = ({
                 {t('employees.fields.phone')}
               </span>
               <span className="text-sm font-medium text-main block">
-                {employee.sdt || employee.phone ? (
+                {employee.sdt ? (
                   <a
-                    href={`tel:${employee.sdt || employee.phone}`}
+                    href={`tel:${employee.sdt}`}
                     className="text-primary hover:underline"
                   >
-                    {employee.sdt || employee.phone}
+                    {employee.sdt}
                   </a>
                 ) : (
                   '—'
