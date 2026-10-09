@@ -19,6 +19,15 @@ export interface ResourceItem {
   hien_thi: HienThiType;
   don_vi_id?: number;
   nguoi_tao_name?: string;
+  attachments?: ResourceAttachment[];
+}
+
+export interface ResourceAttachment {
+  id?: number;
+  name: string;
+  path?: string;
+  file_size?: number;
+  mime_type?: string;
 }
 
 export interface ResourceCategory {

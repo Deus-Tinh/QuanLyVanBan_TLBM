@@ -2,13 +2,29 @@ from datetime import date
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from document_templates.models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet
+from document_templates.models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment
 
 
 class Command(BaseCommand):
     help = "Khởi tạo dữ liệu mẫu cho Phân hệ Tài liệu & Biểu mẫu (BM) - Nhóm 4"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--clear",
+            action="store_true",
+            help="Xóa sạch toàn bộ dữ liệu tài liệu, loại tài liệu và danh mục trong database",
+        )
+
     def handle(self, *args, **options):
+        if options.get("clear"):
+            self.stdout.write(self.style.WARNING("Dang xoa sach toan bo du lieu Tai lieu & Bieu mau..."))
+            ChiTietTaiLieuAttachment.objects.all().delete()
+            TaiLieuChiTiet.objects.all().delete()
+            LoaiTaiLieu.objects.all().delete()
+            DanhMucTaiLieu.objects.all().delete()
+            self.stdout.write(self.style.SUCCESS("-> Da xoa sach toan bo du lieu mau trong co so du lieu!"))
+            return
+
         self.stdout.write(self.style.NOTICE("Dang khoi tao du lieu mau Tai lieu & Bieu mau..."))
         User = get_user_model()
 
@@ -227,12 +243,20 @@ class Command(BaseCommand):
                     "ghi_chu": ddata.get("ghi_chu", ""),
                     "hien_thi": ddata.get("hien_thi", "TAT_CA"),
                     "nguoi_tao": admin_user,
-                    "file_dinh_kem": ContentFile(
-                        b"%PDF-1.4 Mock document binary content for testing",
-                        name=ddata["file_name"]
-                    )
                 }
             )
             doc.loai_tai_lieu.set([type_objs[tid] for tid in ddata["types"]])
+
+            # Đính kèm tệp theo chuẩn bảng con 1-N Hướng A
+            ChiTietTaiLieuAttachment.objects.update_or_create(
+                document=doc,
+                name=ddata["file_name"],
+                defaults={
+                    "path": f"document_templates/{ddata['file_name']}",
+                    "file_size": 1024,
+                    "mime_type": "application/pdf",
+                    "nguoi_tao": admin_user,
+                }
+            )
 
         self.stdout.write(self.style.SUCCESS(f"-> Da khoi tao thanh cong {len(documents_data)} tai lieu mau!"))

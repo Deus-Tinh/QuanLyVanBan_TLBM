@@ -1,12 +1,14 @@
 import io
 import openpyxl
 from datetime import date
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
+
+User = get_user_model()
 
 from document_templates.models import (
     DanhMucTaiLieu,
@@ -56,12 +58,17 @@ class DocumentTemplatesModelAndAPITests(TestCase):
     def setUp(self):
         self.client = APIClient()
 
-        # Tạo người dùng
+        extra_user = {}
+        if hasattr(User, 'ho_ten'):
+            extra_user['ho_ten'] = 'Nguyen Chi Tin'
+        else:
+            extra_user['first_name'] = 'Chi Tin'
+            extra_user['last_name'] = 'Nguyen'
+
         self.user = User.objects.create_user(
             username='chitin',
             password='password123',
-            first_name='Chi Tin',
-            last_name='Nguyen'
+            **extra_user
         )
         self.admin = User.objects.create_superuser(
             username='admin',
@@ -349,10 +356,12 @@ class DocumentTemplatesModelAndAPITests(TestCase):
             path='/media/documents/templates/phu_luc_01.pdf',
             file_size=102400,
             mime_type='application/pdf',
-            created_user=self.user,
+            nguoi_tao=self.user,
         )
         self.assertEqual(att.document_id, self.doc1.id)
         self.assertFalse(att.is_deleted)
+        self.assertEqual(att.nguoi_tao, self.user)
+        self.assertIsNotNone(att.created_at)
 
         # Truy vấn danh sách attachment qua API
         res = self.client.get(f'/api/resources/attachments/?document={self.doc1.id}')

@@ -101,7 +101,7 @@ describe('ResourceTable Component', () => {
     expect(rows[2].className).not.toContain('bg-slate-100/70');
   });
 
-  it('calls onViewDetail when clicking on title or view button', () => {
+  it('calls onViewDetail via action menu Xem chi tiết button', () => {
     const handleViewDetail = vi.fn();
     render(
       <ResourceTable
@@ -115,7 +115,13 @@ describe('ResourceTable Component', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Quy chế quản lý nội bộ 2026'));
+    // Mở menu ⋯ trên dòng đầu tiên
+    const menuButtons = screen.getAllByTitle('Thao tác');
+    fireEvent.click(menuButtons[0]);
+
+    // Bấm "Xem chi tiết" trong menu
+    const viewBtn = screen.getByRole('button', { name: 'Xem chi tiết tài liệu' });
+    fireEvent.click(viewBtn);
     expect(handleViewDetail).toHaveBeenCalledWith(mockItems[0]);
   });
 
@@ -132,7 +138,7 @@ describe('ResourceTable Component', () => {
       />
     );
 
-    expect(screen.getByText('Chưa có tài liệu nào')).toBeInTheDocument();
+    expect(screen.getByText('Không có tài liệu phù hợp')).toBeInTheDocument();
   });
 
   it('renders CON_HIEU_LUC_1_PHAN badge correctly', () => {
@@ -149,5 +155,159 @@ describe('ResourceTable Component', () => {
     );
 
     expect(screen.getByText('Còn hiệu lực 1 phần')).toBeInTheDocument();
+  });
+
+  it('handles multi-page pagination controls correctly', () => {
+    const handlePageChange = vi.fn();
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={2}
+        totalPages={10}
+        pageSize={5}
+        totalCount={50}
+        onPageChange={handlePageChange}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Kiểm tra nút chuyển trang
+    const prevBtn = screen.getByTitle('Trang trước');
+    fireEvent.click(prevBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(1);
+
+    const nextBtn = screen.getByTitle('Trang sau');
+    fireEvent.click(nextBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(3);
+
+    // Kiểm tra nút Về trang đầu và Đến trang cuối
+    const firstBtn = screen.getByTitle('Về trang đầu (Trang 1)');
+    fireEvent.click(firstBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(1);
+
+    const lastBtn = screen.getByTitle('Đến trang cuối (Trang 10)');
+    fireEvent.click(lastBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(10);
+  });
+
+  it('supports quick jumping to page via input', () => {
+    const handlePageChange = vi.fn();
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={20}
+        pageSize={5}
+        totalCount={100}
+        onPageChange={handlePageChange}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    const jumpInput = screen.getByLabelText('Nhập số trang muốn chuyển tới');
+    fireEvent.change(jumpInput, { target: { value: '8' } });
+
+    const goBtn = screen.getByTitle('Chuyển đến trang đã nhập');
+    fireEvent.click(goBtn);
+    expect(handlePageChange).toHaveBeenCalledWith(8);
+  });
+
+  it('renders only 3 page numbers (1, 2, 3) on page 1 of 9 pages, not 4 or 5', () => {
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={9}
+        pageSize={5}
+        totalCount={42}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Kiểm tra có các nút trang 1, 2, 3 và trang cuối 9
+    expect(screen.getByRole('button', { name: 'Trang 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 3' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 9' })).toBeInTheDocument();
+
+    // Tuyệt đối không hiển thị nút trang 4 và 5 theo yêu cầu người dùng
+    expect(screen.queryByRole('button', { name: 'Trang 4' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang 5' })).not.toBeInTheDocument();
+  });
+
+  it('renders only 3 page numbers (7, 8, 9) on page 9 of 9 pages, not 5 or 6', () => {
+    render(
+      <ResourceTable
+        items={[mockItems[0], mockItems[1]]}
+        currentPage={9}
+        totalPages={9}
+        pageSize={5}
+        totalCount={42}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Kiểm tra có các nút trang 1, 7, 8, 9
+    expect(screen.getByRole('button', { name: 'Trang 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 7' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 8' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trang 9' })).toBeInTheDocument();
+
+    // Không hiển thị 5 hay 6
+    expect(screen.queryByRole('button', { name: 'Trang 5' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang 6' })).not.toBeInTheDocument();
+  });
+
+  it('renders spacer rows on the last page to stabilize table height', () => {
+    const { container } = render(
+      <ResourceTable
+        items={[mockItems[0], mockItems[1]]}
+        currentPage={9}
+        totalPages={9}
+        pageSize={5}
+        totalCount={42}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Có 2 dòng thực tế + 3 dòng spacer = 5 dòng
+    const allRows = container.querySelectorAll('tbody tr');
+    expect(allRows.length).toBe(5);
+
+    const spacerRows = container.querySelectorAll('tbody tr[data-spacer="true"]');
+    expect(spacerRows.length).toBe(3);
+  });
+
+  it('renders safe extension (PDF) and prevents blob URL/IP leakage', () => {
+    const blobItem: ResourceItem = {
+      id: 99,
+      dm_tai_lieu: 1,
+      tieu_de: 'Tài liệu thử nghiệm tải lên tệp blob',
+      ngay_dang: '2026-10-07',
+      hieu_luc: 'CON_HIEU_LUC',
+      hien_thi: 'TAT_CA',
+      loai_tai_lieu: [1],
+      file_dinh_kem: 'blob:http://127.0.0.1:5173/d881270d-8705-4415-a3e4-d514c4dae5ff',
+    };
+
+    render(
+      <ResourceTable
+        items={[blobItem]}
+        currentPage={1}
+        totalPages={1}
+        pageSize={5}
+        totalCount={1}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+      />
+    );
+
+    // Không bao giờ được hiển thị IP port hoặc guid trong nhãn extension
+    expect(screen.queryByText(/1:5173/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/d881270d/i)).not.toBeInTheDocument();
+    expect(screen.getByText('PDF')).toBeInTheDocument();
   });
 });

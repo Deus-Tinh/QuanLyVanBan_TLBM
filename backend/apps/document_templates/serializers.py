@@ -50,7 +50,10 @@ class LoaiTaiLieuSerializer(serializers.ModelSerializer):
 
 class ChiTietTaiLieuAttachmentSerializer(serializers.ModelSerializer):
     """Serializer cho Tệp đính kèm (records_chitiettailieu_attachment)"""
+    created_user = serializers.PrimaryKeyRelatedField(read_only=True, source='nguoi_tao')
+    created_time = serializers.DateTimeField(read_only=True, source='created_at')
     created_user_name = serializers.SerializerMethodField()
+    nguoi_tao_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ChiTietTaiLieuAttachment
@@ -62,16 +65,23 @@ class ChiTietTaiLieuAttachmentSerializer(serializers.ModelSerializer):
             'file_size',
             'mime_type',
             'is_deleted',
+            'created_at',
             'created_time',
+            'nguoi_tao',
+            'nguoi_tao_name',
             'created_user',
             'created_user_name',
         ]
-        read_only_fields = ['id', 'created_time', 'created_user']
+        read_only_fields = ['id', 'created_at', 'created_time', 'nguoi_tao', 'created_user']
 
     def get_created_user_name(self, obj):
-        if not obj.created_user:
+        user = obj.nguoi_tao
+        if not user:
             return None
-        return obj.created_user.get_full_name() or obj.created_user.username
+        return user.get_full_name() or user.username
+
+    def get_nguoi_tao_name(self, obj):
+        return self.get_created_user_name(obj)
 
 
 class TaiLieuChiTietSerializer(serializers.ModelSerializer):
@@ -160,7 +170,7 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
                 path=storage_path,
                 file_size=getattr(file_dinh_kem, 'size', None),
                 mime_type=getattr(file_dinh_kem, 'content_type', None),
-                created_user=instance.nguoi_tao
+                nguoi_tao=instance.nguoi_tao
             )
         return instance
 
@@ -183,6 +193,6 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
                 path=storage_path,
                 file_size=getattr(file_dinh_kem, 'size', None),
                 mime_type=getattr(file_dinh_kem, 'content_type', None),
-                created_user=instance.nguoi_tao
+                nguoi_tao=instance.nguoi_tao
             )
         return instance

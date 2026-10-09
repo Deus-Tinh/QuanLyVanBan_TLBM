@@ -1,10 +1,11 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from accounts.models import StaffProfile
+from accounts.models import Position
+from organizations.models import DonVi, KhoiKhuVuc
 
 
 class AccountsAuthenticationTests(APITestCase):
@@ -14,29 +15,30 @@ class AccountsAuthenticationTests(APITestCase):
     """
 
     def setUp(self):
+        UserModel = get_user_model()
+        khoi = KhoiKhuVuc.objects.create(ten="Khối Hỗ trợ")
+        self.don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Ban Pháp Chế")
+        self.chuc_vu = Position.objects.create(display_order=1, name="Chuyên viên chính")
+
         # 1. Tạo user chuẩn
         self.password = "Secr3tP@ssword"
-        self.user = User.objects.create_user(
+        self.user = UserModel.objects.create_user(
             username="canbo_test",
             email="canbo_test@donvi.gov.vn",
             password=self.password,
-            first_name="Văn Thư",
-            last_name="Kiểm Thử",
+            ho_ten="Văn Thư Kiểm Thử",
+            don_vi=self.don_vi,
+            chuc_vu=self.chuc_vu,
             is_active=True,
-        )
-        self.profile = StaffProfile.objects.create(
-            user=self.user,
-            full_name="Văn Thư Kiểm Thử",
-            department="Ban Pháp Chế",
-            position="Chuyên viên chính",
-            role="staff",
         )
 
         # 2. Tạo user bị khóa (inactive)
-        self.inactive_user = User.objects.create_user(
+        self.inactive_user = UserModel.objects.create_user(
             username="inactive_test",
             email="inactive@donvi.gov.vn",
             password=self.password,
+            don_vi=self.don_vi,
+            chuc_vu=self.chuc_vu,
             is_active=False,
         )
 
@@ -129,6 +131,8 @@ class AccountsAuthenticationTests(APITestCase):
         data = response.json()
         self.assertEqual(data["username"], "canbo_test")
         self.assertEqual(data["fullName"], "Văn Thư Kiểm Thử")
+        self.assertEqual(data["unit"], "Ban Pháp Chế")
+        self.assertEqual(data["roleTitle"], "Chuyên viên chính")
 
     def test_profile_unauthenticated(self):
         """Không gửi Bearer Token -> HTTP 401 Unauthorized."""

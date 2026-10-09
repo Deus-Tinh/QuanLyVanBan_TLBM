@@ -1,11 +1,12 @@
 from datetime import date, timedelta, time
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from accounts.models import StaffProfile
+from accounts.models import Position
+from organizations.models import DonVi, KhoiKhuVuc
 from dashboard.models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
@@ -15,26 +16,31 @@ class DashboardAPITests(TestCase):
         self.today = timezone.localdate()
         self.tomorrow = self.today + timedelta(days=1)
 
+        khoi = KhoiKhuVuc.objects.create(ten="Khối Hỗ trợ")
+        don_vi_hc = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Phòng Hành chính")
+        don_vi_vp = DonVi.objects.create(khoi=khoi, stt_uu_tien=2, ten="Văn phòng Trung tâm")
+        cv_van_thu = Position.objects.create(display_order=1, name="Chuyên viên văn thư")
+        cv_quan_tri = Position.objects.create(display_order=2, name="Quản trị viên tối cao")
+        UserModel = get_user_model()
+
         # 1. Staff user (cán bộ chuyên viên)
-        self.staff_user = User.objects.create_user(username="staffuser", password="password123")
-        self.staff_profile = StaffProfile.objects.create(
-            user=self.staff_user,
-            full_name="Cán Bộ Nhân Viên",
-            department="Phòng Hành chính",
-            position="Chuyên viên văn thư",
-            role="staff",
-            birthday=date(1995, self.today.month, self.today.day),
+        self.staff_user = UserModel.objects.create_user(
+            username="staffuser",
+            password="password123",
+            ho_ten="Cán Bộ Nhân Viên",
+            don_vi=don_vi_hc,
+            chuc_vu=cv_van_thu,
+            ngay_sinh=date(1995, self.today.month, self.today.day),
         )
 
         # 2. Admin user (quản trị viên)
-        self.admin_user = User.objects.create_user(username="adminuser", password="password123")
-        self.admin_profile = StaffProfile.objects.create(
-            user=self.admin_user,
-            full_name="Quản Trị Viên",
-            department="Văn phòng Trung tâm",
-            position="Quản trị viên tối cao",
-            role="admin",
-            birthday=date(1990, self.tomorrow.month, self.tomorrow.day),
+        self.admin_user = UserModel.objects.create_superuser(
+            username="adminuser",
+            password="password123",
+            ho_ten="Quản Trị Viên",
+            don_vi=don_vi_vp,
+            chuc_vu=cv_quan_tri,
+            ngay_sinh=date(1990, self.tomorrow.month, self.tomorrow.day),
         )
 
         # 3. Tạo văn bản thường và văn bản mật

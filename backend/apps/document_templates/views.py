@@ -366,8 +366,9 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet cho Tệp đính kèm tài liệu (1-N Hướng A):
     - Quản lý danh sách, upload, xóa mềm tệp đính kèm theo DDL Base
+    - Chuẩn hóa tên cột nguoi_tao_id, created_at (PR #96 / PR #101)
     """
-    queryset = ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).select_related('document', 'created_user')
+    queryset = ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).select_related('document', 'nguoi_tao')
     serializer_class = ChiTietTaiLieuAttachmentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
@@ -377,10 +378,11 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         kwargs = {}
         if self.request.user and self.request.user.is_authenticated:
-            kwargs['created_user'] = self.request.user
+            kwargs['nguoi_tao'] = self.request.user
         serializer.save(**kwargs)
 
     def perform_destroy(self, instance):
         instance.is_deleted = True
         instance.save()
+
 
