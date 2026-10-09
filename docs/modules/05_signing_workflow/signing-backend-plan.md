@@ -110,8 +110,8 @@ Theo #80 mục 8, MVP dùng chữ ký điện tử nội bộ Ed25519 và kết 
 - Giao diện (React PDF viewer) hiển thị ảnh chữ ký như một lớp phủ CSS/Canvas đè lên bản xem trước theo tọa độ; không tạo tệp trung gian.
 - **Phẳng hóa (Stamping & Flattening):** chỉ khi lượt trình chuyển `HOAN_THANH`, tác vụ nền đọc tệp gốc, lấy snapshot ảnh và tọa độ của toàn bộ chữ ký hiện hành, dán một lần và sinh tệp PDF hoàn tất. Vị trí và mã băm tệp này lưu tại `signing_attempt.vi_tri_tep_hoan_tat`, `signing_attempt.ma_bam_tep_hoan_tat`.
 - Không sinh tệp theo từng người ký.
-- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành". Đã làm ở lõi Phase 10 (#80): dòng nhận diện ở chân mọi trang, trang phê duyệt và bằng chứng JSON đính kèm; MVP chưa dán ảnh chữ ký (chưa có nguồn ảnh, chưa chốt tọa độ).
-- Đã triển khai (#80): snapshot ảnh lúc ký qua `tich_hop.to_chuc.anh_chu_ky` (field `anh_chu_ky` của Nhóm 7 khi có); tệp hoàn tất dán ảnh vào khung, chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT"; mã băm ảnh ghi trong bằng chứng và được kiểm khi dựng tệp.
+- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành". Đã làm ở lõi Phase 10 (#80): dòng nhận diện ở chân mọi trang, trang phê duyệt và bằng chứng JSON đính kèm; MVP chưa dán ảnh chữ ký vì chưa có nguồn ảnh (Nhóm 7 chốt cột `anh_chu_ky` để sau MVP, #67 mục 2).
+- Đã triển khai (#80): snapshot ảnh lúc ký qua `tich_hop.to_chuc.anh_chu_ky` (field `anh_chu_ky` của Nhóm 7 khi có); tệp hoàn tất dán ảnh vào khung, chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT" kèm họ tên, chức vụ, thời điểm ký; mã băm ảnh ghi trong bằng chứng và được kiểm khi dựng tệp.
 
 ### 3.3. Yêu cầu, lượt trình và nội dung văn bản
 
@@ -688,7 +688,7 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - `POST /signing/trinh-ky/{id}/tu-choi/`: "Không đồng ý ban hành", `ly_do_tu_choi` bắt buộc; chỉ người ký đang được mở; lượt và hồ sơ `TU_CHOI` (kết thúc).
 - `POST /signing/trinh-ky/{id}/thu-hoi/`: khi cấp của người ký còn `DANG_KY`; ký nháy chặn không thu hồi khi ký chính cùng cấp đã ký; thu hồi ký nháy chặn khóa lại ký chính đã mở mà chưa ký. Chữ ký cũ giữ nguyên, ký lại tạo bản ghi mới.
 - Đồng thời: mọi hành động khóa dòng lượt trình trước khi xử lý; thao tác lặp cùng khóa trả kết quả lần trước.
-- Ảnh chữ ký cá nhân chưa có nguồn (#67 mục 2), `vi_tri_anh_chu_ky` để trống ở MVP.
+- Ảnh chữ ký cá nhân để sau MVP (Nhóm 7 chốt ở #67 mục 2), `vi_tri_anh_chu_ky` để trống ở MVP; tệp hoàn tất in khối chữ thay ảnh.
 
 Trả lại để sửa, đã triển khai ở lõi Phase 9 (#80):
 - `POST /signing/trinh-ky/{id}/yeu-cau-sua/`: "Trả lại để sửa", `tieu_de` và `ly_do` bắt buộc; chỉ người ký đang được mở (quyền `sign_trinhky`, `Idempotency-Key`). Người ký và lượt `YEU_CAU_SUA`, cấp đang ký `TAM_DUNG`, mở thread; hồ sơ vẫn `CHO_KY` nhưng không ai ký tiếp trên lượt này.
