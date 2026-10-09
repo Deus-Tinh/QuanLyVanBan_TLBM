@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import serializers
 
+from documents.selectors import van_ban_xem_duoc
 from work.models import (
     AttachmentKind,
     DocumentKind,
@@ -212,8 +213,8 @@ class TaskDetailSerializer(TaskListSerializer):
     evidences = serializers.SerializerMethodField()
     commentCount = serializers.SerializerMethodField()
     donViIds = serializers.SerializerMethodField()
-    documentType = serializers.CharField(source="document_type", read_only=True)
-    documentId = serializers.IntegerField(source="document_id", read_only=True)
+    documentType = serializers.SerializerMethodField()
+    documentId = serializers.SerializerMethodField()
 
     class Meta(TaskListSerializer.Meta):
         fields = TaskListSerializer.Meta.fields + [
@@ -254,6 +255,21 @@ class TaskDetailSerializer(TaskListSerializer):
 
     def get_commentCount(self, obj):
         return obj.comments.count()
+
+    def _can_view_document(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated or not obj.document_id:
+            return False
+        loai = {"vanbanden": "DEN", "vanbandi": "DI"}.get(obj.document_type)
+        if not loai:
+            return False
+        return van_ban_xem_duoc(request.user, loai).filter(pk=obj.document_id).exists()
+
+    def get_documentType(self, obj):
+        return obj.document_type if self._can_view_document(obj) else None
+
+    def get_documentId(self, obj):
+        return obj.document_id if self._can_view_document(obj) else None
 
     def get_permissions(self, obj):
         user = self._current_user()
@@ -331,8 +347,6 @@ class TaskWriteSerializer(serializers.Serializer):
         required=False,
         error_messages={"invalid": "Danh sách phòng ban không hợp lệ. Hãy chọn lại phòng ban."},
     )
-    # TODO(issue #83): kiem tra nguoi dung co duoc xem van ban nay khong bang
-    # van_ban_xem_duoc(user, loai) cua nhom 2 khi ham dung chung len nhanh.
     documentType = serializers.ChoiceField(
         source="document_type",
         choices=DocumentKind.choices,
@@ -413,6 +427,20 @@ class TaskWriteSerializer(serializers.Serializer):
                 "Văn bản liên quan phải chọn đủ cả loại văn bản và mã văn bản, "
                 "hoặc bỏ trống cả hai nếu công việc không phát sinh từ văn bản."
             )
+        elif document_type and document_id and (
+            instance is None or "document_type" in attrs or "document_id" in attrs
+        ):
+            request = self.context.get("request")
+            loai = {"vanbanden": "DEN", "vanbandi": "DI"}.get(document_type)
+            if (
+                not request
+                or not request.user.is_authenticated
+                or not loai
+                or not van_ban_xem_duoc(request.user, loai).filter(pk=document_id).exists()
+            ):
+                errors["documentId"] = (
+                    "Không tìm thấy văn bản hoặc bạn không có quyền xem văn bản này."
+                )
 
         remove_ids = attrs.get("remove_attachment_ids") or []
         if remove_ids:

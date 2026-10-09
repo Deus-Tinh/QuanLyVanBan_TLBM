@@ -25,6 +25,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from authorization.permissions import require_permission
 from work.models import (
     AttachmentKind,
     ParticipantRole,
@@ -133,6 +134,12 @@ class TaskViewSet(
     pagination_class = TaskPagination
     lookup_value_regex = r"\d+"
 
+    def get_permissions(self):
+        permissions = super().get_permissions()
+        if self.action == "create":
+            permissions.append(require_permission("add_congviec")())
+        return permissions
+
     def get_queryset(self):
         participants = Prefetch(
             "participants",
@@ -227,8 +234,7 @@ class TaskViewSet(
         return queryset
 
     def create(self, request, *args, **kwargs):
-        # Chỉ người đã đăng nhập mới tạo được công việc (permission_classes = IsAuthenticated).
-        # TODO(#65-2, cho C2 Nhom 7): thay bang require_permission("add_congviec") khi RBAC len staging.
+        # IsAuthenticated chặn ẩn danh; RBAC chặn tài khoản không có add_congviec.
         serializer = TaskWriteSerializer(data=request.data, context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         task = serializer.save()

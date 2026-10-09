@@ -3,6 +3,7 @@ import shutil
 import tempfile
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.core import mail
 from django.core.signals import request_finished
 from django.db import close_old_connections
@@ -13,9 +14,12 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
+from organizations.models import DonVi
+from documents.models import VanBanDen, VanBanDi
 
 from work.models import (
     AttachmentKind,
+    DocumentKind,
     ParticipantRole,
     Task,
     TaskAttachment,
@@ -54,6 +58,21 @@ class WorkTestBase(APITestCase):
         self.member = User.objects.create_user("thamgia", ho_ten="Nguyễn Bình Minh")
         self.outsider = User.objects.create_user("nguoingoai")
         self.admin = User.objects.create_superuser("quantri", "Admin@123", email="quantri@example.com")
+        permissions = [
+            Permission.objects.get(codename=codename)
+            for codename in ("add_congviec", "view_vanbanden", "view_vanbandi")
+        ]
+        self.creator.user_permissions.add(*permissions)
+        default_region = self.creator.don_vi.khoi
+        self.units = {
+            unit_id: DonVi.objects.create(
+                id=unit_id,
+                khoi=default_region,
+                stt_uu_tien=unit_id + 10,
+                ten=f"Phòng ban kiểm thử {unit_id}",
+            )
+            for unit_id in (3, 5, 7, 8, 9)
+        }
 
     # ----- tiện ích -----
 
@@ -244,6 +263,21 @@ class TaskDepartmentVisibilityTests(WorkTestBase):
 class TaskDepartmentAndDocumentApiTests(WorkTestBase):
     """Gắn công việc với nhiều phòng/ban và với văn bản của nhóm 2."""
 
+    def setUp(self):
+        super().setUp()
+        self.document_incoming = VanBanDen.objects.create(
+            nam=self.today.year,
+            so_hieu="VB-DEN-WORK",
+            trich_yeu="Văn bản đến cho kiểm thử công việc",
+            nguoi_tao=self.creator,
+        )
+        self.document_outgoing = VanBanDi.objects.create(
+            nam=self.today.year,
+            so_hieu="VB-DI-WORK",
+            trich_yeu="Văn bản đi cho kiểm thử công việc",
+            nguoi_tao=self.creator,
+        )
+
     def payload(self, **overrides):
         data = {
             "title": "Việc có phòng ban",
@@ -276,12 +310,40 @@ class TaskDepartmentAndDocumentApiTests(WorkTestBase):
         self.login(self.creator)
         response = self.client.post(
             "/api/work/tasks/",
-            self.payload(documentType="vanbanden", documentId=12),
+            self.payload(documentType="vanbanden", documentId=self.document_incoming.pk),
             format="multipart",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.assertEqual(response.data["documentType"], "vanbanden")
-        self.assertEqual(response.data["documentId"], 12)
+        self.assertEqual(response.data["documentId"], self.document_incoming.pk)
+
+    def test_nguoi_tao_khong_co_quyen_xem_khong_duoc_gan_van_ban_noi_bo(self):
+        self.outsider.user_permissions.add(Permission.objects.get(codename="add_congviec"))
+        self.login(self.outsider)
+        response = self.client.post(
+            "/api/work/tasks/",
+            self.payload(documentType="vanbanden", documentId=self.document_incoming.pk),
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Không tìm thấy văn bản hoặc bạn không có quyền xem", str(response.data["documentId"]))
+        self.assertFalse(Task.objects.exists())
+
+    def test_task_details_hide_document_reference_without_document_permission(self):
+        from types import SimpleNamespace
+        from work.serializers import TaskDetailSerializer
+
+        task = self.make_task(
+            document_type=DocumentKind.VAN_BAN_DEN,
+            document_id=self.document_incoming.pk,
+        )
+        data = TaskDetailSerializer(
+            task,
+            context={"request": SimpleNamespace(user=self.outsider)},
+        ).data
+
+        self.assertIsNone(data["documentType"])
+        self.assertIsNone(data["documentId"])
 
     def test_thieu_mot_nua_thong_tin_van_ban_bi_chan(self):
         self.login(self.creator)
@@ -291,15 +353,16 @@ class TaskDepartmentAndDocumentApiTests(WorkTestBase):
 
     def test_chi_con_hai_loai_van_ban(self):
         """Issue #83: GVHD bỏ hẳn văn bản mật, enum chỉ còn văn bản đến và văn bản đi."""
-        from work.models import DocumentKind
-
         self.assertEqual(list(DocumentKind.values), ["vanbanden", "vanbandi"])
 
         self.login(self.creator)
-        for loai in DocumentKind.values:
+        for loai, document in (
+            (DocumentKind.VAN_BAN_DEN, self.document_incoming),
+            (DocumentKind.VAN_BAN_DI, self.document_outgoing),
+        ):
             response = self.client.post(
                 "/api/work/tasks/",
-                self.payload(documentType=loai, documentId=1),
+                self.payload(documentType=loai, documentId=document.pk),
                 format="multipart",
             )
             self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
@@ -473,6 +536,13 @@ class TaskCreateApiTests(WorkTestBase):
         self.assertEqual(response.data["creator"]["id"], self.creator.pk)
         self.assertEqual([f["fileName"] for f in response.data["attachments"]], ["Kế hoạch.pdf", "Phụ lục.pdf"])
         self.assertEqual(response.data["evidences"], [])
+
+    def test_tao_cong_viec_thieu_quyen_add_congviec_bi_chan(self):
+        self.login(self.outsider)
+        response = self.client.post("/api/work/tasks/", self.payload(), format="multipart")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Task.objects.exists())
 
     def test_file_luu_theo_thu_muc_nam_thang(self):
         self.login(self.creator)

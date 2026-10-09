@@ -622,10 +622,7 @@ class TaskComment(models.Model):
 class TaskDonVi(models.Model):
     """
     Bảng `task_congviec_donvi`: một công việc gắn được nhiều phòng/ban.
-    TODO: doi don_vi_id = BigIntegerField thanh
-    don_vi = models.ForeignKey("organizations.DonVi", on_delete=models.CASCADE, db_column="don_vi")
-    khi app organizations ve nhanh 6_tasks (hien chi co o origin/staging).
-    (hien app nay moi co o nhanh nhom 7 va feat/issue-19-organizations).
+    Liên kết trực tiếp với organizations.DonVi theo DDL.
     """
 
     task = models.ForeignKey(
@@ -635,7 +632,14 @@ class TaskDonVi(models.Model):
         related_name="don_vi_links",
         db_column="cong_viec",
     )
-    don_vi_id = models.BigIntegerField("Đơn vị (organizations_donvi.id)", db_column="don_vi")
+    don_vi = models.ForeignKey(
+        "organizations.DonVi",
+        verbose_name="Đơn vị",
+        on_delete=models.CASCADE,
+        related_name="task_links",
+        db_column="don_vi",
+        db_index=False,
+    )
     created_at = models.DateTimeField("Gắn lúc", auto_now_add=True)
 
     class Meta:
@@ -645,11 +649,11 @@ class TaskDonVi(models.Model):
         indexes = [
             # Khớp 2 index DDL: idx_task_donvi_congviec (cong_viec), idx_task_donvi_donvi (don_vi)
             models.Index(fields=["task"], name="idx_task_donvi_congviec"),
-            models.Index(fields=["don_vi_id"], name="idx_task_donvi_donvi"),
+            models.Index(fields=["don_vi"], name="idx_task_donvi_donvi"),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["task", "don_vi_id"],
+                fields=["task", "don_vi"],
                 name="uq_task_congviec_donvi",
                 violation_error_message=(
                     "Phòng ban này đã được gắn cho công việc. Hãy bỏ bớt phòng ban trùng."
