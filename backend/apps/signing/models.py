@@ -70,8 +70,10 @@ class SigningProcess(models.Model):
         max_length=20, choices=enums.TrangThaiQuyTrinh.choices, default=enums.TrangThaiQuyTrinh.NHAP
     )
     pham_vi = models.CharField(max_length=20, choices=enums.PhamViQuyTrinh.choices)
-    # Bắt buộc khi PHONG_BAN, rỗng khi CONG_TY (#80 mục A). Chờ Nhóm 7 (organizations_donvi): đổi sang ForeignKey.
-    don_vi_ap_dung_id = models.BigIntegerField(null=True, blank=True)
+    # Bắt buộc khi PHONG_BAN, rỗng khi CONG_TY (#80 mục A). FK organizations_donvi (Nhóm 7) theo DDL.
+    don_vi_ap_dung = models.ForeignKey(
+        "organizations.DonVi", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
     cau_hinh_nhac_han = models.JSONField(null=True, blank=True)
     create_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+", db_column="nguoi_tao_id")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -100,8 +102,10 @@ class SigningProcessStep(models.Model):
     cap_ky = models.PositiveSmallIntegerField()
     ten_cap_ky = models.CharField(max_length=255)
     thu_tu = models.PositiveSmallIntegerField()
-    # Chờ Nhóm 7 (organizations_donvi): đổi sang ForeignKey khi bảng có trên staging.
-    don_vi_id = models.BigIntegerField(null=True, blank=True)
+    # Đơn vị cố định cho người ký theo chức vụ (DON_VI_CO_DINH); FK organizations_donvi, DDL không đánh index.
+    don_vi = models.ForeignKey(
+        "organizations.DonVi", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", db_index=False
+    )
     so_gio_xu_ly = models.PositiveIntegerField(null=True, blank=True)
     dang_ap_dung = models.BooleanField(default=True)
     ghi_chu = models.TextField(blank=True, default="")
@@ -121,14 +125,16 @@ class SigningProcessStep(models.Model):
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 3 — model phụ thuộc Phase 2
 # Không dùng default cho document_type: người tạo phải chỉ rõ loại văn bản.
-# chuc_vu_id tạm là số nguyên (chờ bảng Chức vụ); đổi sang ForeignKey sau.
+# chuc_vu: FK accounts_position (Chức vụ, Nhóm 7) theo DDL; DDL không đánh index cột này.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 class SigningProcessStepSigner(models.Model):
     buoc_quy_trinh = models.ForeignKey(SigningProcessStep, on_delete=models.CASCADE, related_name="nguoi_ky_set")
     nguoi_ky = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
-    chuc_vu_id = models.BigIntegerField(null=True, blank=True)
+    chuc_vu = models.ForeignKey(
+        "accounts.Position", null=True, blank=True, on_delete=models.PROTECT, related_name="+", db_index=False
+    )
     # Chỉ dùng khi cấu hình theo chức vụ; rỗng khi cấu hình theo tài khoản (#80 Phase 7)
     pham_vi_chuc_vu = models.CharField(max_length=20, choices=enums.PhamViChucVu.choices, null=True, blank=True)
     vai_tro_ky = models.CharField(max_length=20, choices=enums.VaiTroKy.choices, default=enums.VaiTroKy.KY_CHINH)
@@ -262,7 +268,9 @@ class SigningRequestStep(models.Model):
 class SigningRequestStepSigner(models.Model):
     buoc_ky = models.ForeignKey(SigningRequestStep, on_delete=models.PROTECT, related_name="nguoi_ky_set")
     nguoi_ky = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
-    chuc_vu_id = models.BigIntegerField(null=True, blank=True)
+    chuc_vu = models.ForeignKey(
+        "accounts.Position", null=True, blank=True, on_delete=models.SET_NULL, related_name="+", db_index=False
+    )
     ten_nguoi_ky = models.CharField(max_length=255)
     ten_chuc_vu = models.CharField(max_length=255, null=True, blank=True)
     vai_tro_ky = models.CharField(max_length=20, choices=enums.VaiTroKy.choices)

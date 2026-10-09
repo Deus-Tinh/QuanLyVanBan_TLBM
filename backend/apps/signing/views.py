@@ -57,7 +57,7 @@ def _ip(request):
 def _quy_trinh_xem_duoc(user):
     if not (co_quyen(user, XEM_TRINH_KY) or co_quyen(user, QUAN_LY_QUY_TRINH)):
         yeu_cau_quyen(user, XEM_TRINH_KY)
-    return process_service.quy_trinh_xem_duoc(user)
+    return process_service.quy_trinh_xem_duoc(user).select_related("don_vi_ap_dung")
 
 
 class QuyTrinhListCreateView(SigningAPIView):
@@ -476,6 +476,14 @@ class AnhChuKyView(SigningAPIView):
         response["Cache-Control"] = "no-store"
         response["X-Content-Type-Options"] = "nosniff"
         return response
+
+
+class DonViView(SigningAPIView):
+    """GET /don-vi/: đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (manage_signing_process)."""
+
+    def get(self, request):
+        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
+        return Response([{"id": d.pk, "ten": d.ten} for d in to_chuc.don_vi_quan_ly_duoc(request.user)])
 
 
 class NguoiDungView(SigningAPIView):

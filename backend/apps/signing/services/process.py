@@ -90,6 +90,7 @@ def tao_quy_trinh(nguoi_tao, *, ma_quy_trinh, ten_quy_trinh, pham_vi, don_vi_ap_
     nguoi_ky: [{nguoi_ky?, chuc_vu_id?, vai_tro_ky?, chan_ky_chinh?, thu_tu}]}.
     """
     kiem_tra_pham_vi(pham_vi, don_vi_ap_dung_id)
+    to_chuc.kiem_tra_don_vi(don_vi_ap_dung_id, "don_vi_ap_dung_id")
     try:
         with transaction.atomic():
             process = SigningProcess.objects.create(
@@ -111,6 +112,7 @@ def them_cap_ky(process, nguoi_thuc_hien, *, cap_ky, ten_cap_ky, thu_tu, nguoi_k
                 don_vi_id=None, so_gio_xu_ly=None, ghi_chu="", _ghi_nhat_ky=True):
     process = _khoa(process.pk)
     _yeu_cau_ban_nhap(process)
+    to_chuc.kiem_tra_don_vi(don_vi_id, "don_vi_id")
     try:
         with transaction.atomic():
             step = SigningProcessStep.objects.create(
@@ -142,6 +144,7 @@ def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=No
                                detail="Phạm vi chức vụ chỉ dùng cho người ký cấu hình theo chức vụ.",
                                fields={"pham_vi_chuc_vu": ["Bỏ trống khi chọn người ký cụ thể."]})
     else:
+        to_chuc.kiem_tra_chuc_vu(chuc_vu_id, "chuc_vu_id")
         pham_vi_chuc_vu = pham_vi_chuc_vu or enums.PhamViChucVu.DON_VI_NGUOI_TAO
         if pham_vi_chuc_vu == enums.PhamViChucVu.DON_VI_CO_DINH and step.don_vi_id is None:
             raise SigningError(code="cap_ky_thieu_don_vi",

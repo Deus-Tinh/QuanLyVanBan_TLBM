@@ -1,9 +1,25 @@
+from accounts.models import Position
 from django.apps import apps
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Max
+from organizations.models import DonVi, KhoiKhuVuc
 
 from signing.models import SigningProcess
 from signing.permissions import QUAN_LY_QUY_TRINH
+
+
+def tao_chuc_vu(ten="Chức vụ thử nghiệm"):
+    """Chức vụ thật ở accounts_position (Nhóm 7); cột chuc_vu_id của Trình ký là FK."""
+    thu_tu = (Position.objects.aggregate(m=Max("display_order"))["m"] or 0) + 1
+    return Position.objects.create(display_order=thu_tu, name=f"{ten} {thu_tu}")
+
+
+def tao_don_vi(ten="Đơn vị thử nghiệm"):
+    """Đơn vị thật ở organizations_donvi (Nhóm 7); cột don_vi_id, don_vi_ap_dung_id của Trình ký là FK."""
+    khoi = KhoiKhuVuc.objects.order_by("pk").first() or KhoiKhuVuc.objects.create(ten="Khối thử nghiệm")
+    stt = (DonVi.objects.aggregate(m=Max("stt_uu_tien"))["m"] or 0) + 1
+    return DonVi.objects.create(khoi=khoi, stt_uu_tien=stt, ten=f"{ten} {stt}")
 
 
 def cap_quyen(user, *codenames):

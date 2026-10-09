@@ -56,6 +56,7 @@ urlpatterns = [
 
     # Tìm tài khoản để cấu hình người ký (người quản lý quy trình)
     path("nguoi-dung/", views.NguoiDungView.as_view(), name="nguoi-dung"),
+    path("don-vi/", views.DonViView.as_view(), name="don-vi"),
     # Hỗ trợ giao diện: người dùng hiện tại, chọn văn bản đi
     path("toi/", views.ToiView.as_view(), name="toi"),
     path("van-ban-di/", views.VanBanDiView.as_view(), name="van-ban-di"),

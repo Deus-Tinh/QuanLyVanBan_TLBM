@@ -12,6 +12,8 @@ from signing.models import SigningAuditLog, SigningKey, SigningProcess
 from signing.services import keys as key_service
 from signing.services import process as process_service
 
+from .helpers import tao_chuc_vu
+
 User = get_user_model()
 
 
@@ -29,13 +31,14 @@ class ProcessServiceTests(TestCase):
     def setUp(self):
         self.u1 = User.objects.create_user("u1")
         self.u2 = User.objects.create_user("u2")
+        self.chuc_vu = tao_chuc_vu()
 
     def create(self, ma="QT1", cap_ky=None):
         cap_ky = cap_ky if cap_ky is not None else [
             {"cap_ky": 1, "ten_cap_ky": "Cấp 1", "thu_tu": 1,
              "nguoi_ky": [{"nguoi_ky": self.u2, "thu_tu": 1}]},
             {"cap_ky": 2, "ten_cap_ky": "Cấp 2", "thu_tu": 2,
-             "nguoi_ky": [{"chuc_vu_id": 7, "thu_tu": 1, "vai_tro_ky": enums.VaiTroKy.KY_NHAY}]},
+             "nguoi_ky": [{"chuc_vu_id": self.chuc_vu.pk, "thu_tu": 1, "vai_tro_ky": enums.VaiTroKy.KY_NHAY}]},
         ]
         return process_service.tao_quy_trinh(
             self.u1, ma_quy_trinh=ma, ten_quy_trinh="Quy trình", pham_vi=enums.PhamViQuyTrinh.CONG_TY, cap_ky=cap_ky,
