@@ -109,6 +109,7 @@ export interface DocumentFilterParams {
   page_size?: number;
   loai?: DocumentType;
   loai_van_ban?: string | number;
+  pham_vi?: 'NOI_BO' | 'HAN_CHE' | string;
 }
 
 /**

@@ -298,6 +298,27 @@ describe('InboundDocumentPage Component (Phân hệ Văn bản Đến)', () => {
         expect(screen.queryByText(/Đang lọc danh sách theo Loại văn bản/i)).not.toBeInTheDocument();
       });
     });
+
+    it('hiển thị badge lọc và gửi param pham_vi khi có trên URL, và cho phép bỏ lọc', async () => {
+      render(
+        <MemoryRouter initialEntries={['/documents/incoming?loai_van_ban=5&pham_vi=HAN_CHE']}>
+          <InboundDocumentPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Đang lọc danh sách theo phạm vi/i)).toBeInTheDocument();
+        expect(screen.getByText(/Văn bản hạn chế \(Mật\)/i)).toBeInTheDocument();
+        expect(mockedApiClient.get).toHaveBeenCalledWith(expect.stringContaining('pham_vi=HAN_CHE'));
+      });
+
+      const clearPhamViBtn = screen.getByTitle('Xóa bộ lọc phạm vi');
+      fireEvent.click(clearPhamViBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Đang lọc danh sách theo phạm vi/i)).not.toBeInTheDocument();
+      });
+    });
   });
 });
 

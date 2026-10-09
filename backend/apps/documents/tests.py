@@ -1163,4 +1163,108 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
         self.assertEqual(rel["bi_thay_boi"], [])
 
 
+class DocumentPhamViFilterTests(TestCase):
+    """
+    Test suite kiểm tra bộ lọc pham_vi (HAN_CHE / NOI_BO) theo contract điều hướng của Nhóm 3 (PR #131).
+    Đảm bảo:
+    - Lọc đúng pham_vi=HAN_CHE và pham_vi=NOI_BO cho cả Văn bản Đến và Đi.
+    - Bảo mật RBAC tuyệt đối: Chỉ người tạo/người nhận/đơn vị nhận mới thấy văn bản HAN_CHE.
+    - Người không có quyền (stranger) khi gọi pham_vi=HAN_CHE nhận count = 0, không lộ metadata.
+    - Phân trang (pagination) và count tính toán chính xác trên tập đã lọc.
+    """
+
+    def setUp(self):
+        self.creator = User.objects.create_user(username="creator_pv", password="pwd", is_staff=True)
+        self.recipient = User.objects.create_user(username="recipient_pv", password="pwd")
+        self.stranger = User.objects.create_user(username="stranger_pv", password="pwd")
+
+        # Văn bản đến: 1 nội bộ, 1 hạn chế
+        self.doc_den_noibo = VanBanDen.objects.create(
+            nam=2026, so_hieu="01/NB-DEN", so_thu_tu=1,
+            trich_yeu="Văn bản đến nội bộ thông thường",
+            pham_vi=PhamVi.NOI_BO,
+            hien_thi=True,
+            nguoi_tao=self.creator,
+        )
+        self.doc_den_hanche = VanBanDen.objects.create(
+            nam=2026, so_hieu="02/HC-DEN", so_thu_tu=2,
+            trich_yeu="Văn bản đến hạn chế bảo mật",
+            pham_vi=PhamVi.HAN_CHE,
+            hien_thi=False,
+            nguoi_tao=self.creator,
+        )
+        self.doc_den_hanche.nguoi_nhan.add(self.recipient)
+
+        # Văn bản đi: 1 nội bộ, 1 hạn chế
+        self.doc_di_noibo = VanBanDi.objects.create(
+            nam=2026, so_hieu="01/NB-DI", so_thu_tu=1,
+            trich_yeu="Văn bản đi nội bộ thông thường",
+            pham_vi=PhamVi.NOI_BO,
+            hien_thi=True,
+            nguoi_tao=self.creator,
+        )
+        self.doc_di_hanche = VanBanDi.objects.create(
+            nam=2026, so_hieu="02/HC-DI", so_thu_tu=2,
+            trich_yeu="Văn bản đi hạn chế bảo mật",
+            pham_vi=PhamVi.HAN_CHE,
+            hien_thi=False,
+            nguoi_tao=self.creator,
+        )
+        self.doc_di_hanche.nguoi_nhan.add(self.recipient)
+
+    def test_filter_den_han_che_for_creator(self):
+        """Người tạo lọc pham_vi=HAN_CHE cho VB Đến chỉ thấy đúng văn bản hạn chế."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        response = client.get("/api/documents/?loai=DEN&pham_vi=HAN_CHE")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], self.doc_den_hanche.id)
+        self.assertEqual(response.data["results"][0]["pham_vi"], "HAN_CHE")
+
+    def test_filter_den_han_che_for_recipient(self):
+        """Người nhận lọc pham_vi=HAN_CHE cho VB Đến thấy đúng văn bản hạn chế được giao."""
+        client = APIClient()
+        client.force_authenticate(user=self.recipient)
+
+        response = client.get("/api/documents/?loai=DEN&pham_vi=HAN_CHE")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], self.doc_den_hanche.id)
+
+    def test_filter_den_han_che_for_stranger_returns_zero(self):
+        """Người không có quyền lọc pham_vi=HAN_CHE nhận kết quả rỗng (count=0, không lộ metadata)."""
+        client = APIClient()
+        client.force_authenticate(user=self.stranger)
+
+        response = client.get("/api/documents/?loai=DEN&pham_vi=HAN_CHE")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 0)
+        self.assertEqual(len(response.data["results"]), 0)
+
+    def test_filter_den_noi_bo(self):
+        """Lọc pham_vi=NOI_BO chỉ trả về văn bản nội bộ, loại bỏ văn bản hạn chế."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        response = client.get("/api/documents/?loai=DEN&pham_vi=NOI_BO")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], self.doc_den_noibo.id)
+        self.assertEqual(response.data["results"][0]["pham_vi"], "NOI_BO")
+
+    def test_filter_di_han_che_and_pagination(self):
+        """Kiểm tra lọc pham_vi=HAN_CHE trên Văn bản Đi kèm phân trang chính xác."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        response = client.get("/api/documents/?loai=DI&pham_vi=HAN_CHE&page=1&page_size=10")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], self.doc_di_hanche.id)
+        self.assertEqual(response.data["results"][0]["pham_vi"], "HAN_CHE")
+
+
+
 

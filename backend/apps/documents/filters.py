@@ -119,6 +119,26 @@ class BaseDocumentFilter(django_filters.FilterSet):
         help_text="Lọc theo loại văn bản ID (Nhóm 3 liên kết)",
     )
 
+    # ── Phạm vi văn bản (URL route từ Nhóm 3: ?pham_vi=HAN_CHE hoặc NOI_BO) ──
+    pham_vi = django_filters.CharFilter(
+        method="filter_pham_vi",
+        label="Phạm vi",
+        help_text="Lọc theo phạm vi (NOI_BO hoặc HAN_CHE)",
+    )
+    scope = django_filters.CharFilter(
+        method="filter_pham_vi",
+        label="Scope (English alias)",
+    )
+
+    def filter_pham_vi(self, queryset, name, value):
+        if not value:
+            return queryset
+        val = value.strip().upper()
+        fields = [f.name for f in queryset.model._meta.fields]
+        if "pham_vi" in fields:
+            return queryset.filter(pham_vi__iexact=val)
+        return queryset
+
     def filter_loai_van_ban(self, queryset, name, value):
         if not value:
             return queryset
@@ -194,7 +214,7 @@ class VanBanDenFilter(BaseDocumentFilter):
     class Meta:
         model = VanBanDen
         fields = [
-            "nam", "year", "hien_thi", "is_public"
+            "nam", "year", "hien_thi", "is_public", "pham_vi"
         ]
 
 
@@ -202,7 +222,7 @@ class VanBanDiFilter(BaseDocumentFilter):
     class Meta:
         model = VanBanDi
         fields = [
-            "nam", "year", "hien_thi", "is_public"
+            "nam", "year", "hien_thi", "is_public", "pham_vi"
         ]
 
 

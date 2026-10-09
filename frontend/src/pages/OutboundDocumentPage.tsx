@@ -15,6 +15,7 @@ import apiClient from '@lib/apiClient';
 export const OutboundDocumentPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const loaiVanBanParam = searchParams.get('loai_van_ban');
+  const phamViParam = searchParams.get('pham_vi');
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -32,21 +33,45 @@ export const OutboundDocumentPage: React.FC = () => {
     page_size: 10,
     loai: 'DI',
     loai_van_ban: loaiVanBanParam || undefined,
+    pham_vi: phamViParam || undefined,
   });
 
   useEffect(() => {
-    if (loaiVanBanParam) {
-      void Promise.resolve().then(() => {
-        setFilters(prev => (prev.loai_van_ban === loaiVanBanParam ? prev : { ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
-      });
-    }
-  }, [loaiVanBanParam]);
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        setFilters(prev => {
+          const nextLoaiVanBan = loaiVanBanParam || undefined;
+          const nextPhamVi = phamViParam || undefined;
+          if (prev.loai_van_ban === nextLoaiVanBan && prev.pham_vi === nextPhamVi) {
+            return prev;
+          }
+          return {
+            ...prev,
+            loai_van_ban: nextLoaiVanBan,
+            pham_vi: nextPhamVi,
+            page: 1,
+          };
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loaiVanBanParam, phamViParam]);
 
   const handleClearLoaiVanBan = () => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('loai_van_ban');
     setSearchParams(nextParams);
     setFilters(prev => ({ ...prev, loai_van_ban: undefined, page: 1 }));
+  };
+
+  const handleClearPhamVi = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('pham_vi');
+    setSearchParams(nextParams);
+    setFilters(prev => ({ ...prev, pham_vi: undefined, page: 1 }));
   };
 
   // Quản lý modal xem chi tiết & modal danh sách người đọc
@@ -89,7 +114,7 @@ export const OutboundDocumentPage: React.FC = () => {
   // Lấy thống kê số lượng văn bản đi theo trạng thái
   const fetchStats = useCallback(async () => {
     try {
-      const extraQuery = filters.loai_van_ban ? `&loai_van_ban=${encodeURIComponent(String(filters.loai_van_ban))}` : '';
+      const extraQuery = `${filters.loai_van_ban ? `&loai_van_ban=${encodeURIComponent(String(filters.loai_van_ban))}` : ''}${filters.pham_vi ? `&pham_vi=${encodeURIComponent(String(filters.pham_vi))}` : ''}`;
       const res = await apiClient.get<PaginatedResponse<DocumentItem>>(`/api/documents/?loai=DI&page_size=1000${extraQuery}`);
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
@@ -104,7 +129,7 @@ export const OutboundDocumentPage: React.FC = () => {
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
     }
-  }, [filters.loai_van_ban]);
+  }, [filters.loai_van_ban, filters.pham_vi]);
 
   useEffect(() => {
     let ignore = false;
@@ -135,6 +160,7 @@ export const OutboundDocumentPage: React.FC = () => {
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
       if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
+      if (filters.pham_vi) params.append('pham_vi', String(filters.pham_vi));
 
       const endpoint = `/api/documents/?${params.toString()}`;
       const response = await apiClient.get<PaginatedResponse<DocumentItem>>(endpoint);
@@ -189,6 +215,7 @@ export const OutboundDocumentPage: React.FC = () => {
   const handleResetFilters = () => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete('loai_van_ban');
+    nextParams.delete('pham_vi');
     setSearchParams(nextParams);
     setFilters({
       q: '',
@@ -200,6 +227,7 @@ export const OutboundDocumentPage: React.FC = () => {
       page_size: 10,
       loai: 'DI',
       loai_van_ban: undefined,
+      pham_vi: undefined,
     });
   };
 
@@ -246,6 +274,7 @@ export const OutboundDocumentPage: React.FC = () => {
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
       if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
+      if (filters.pham_vi) params.append('pham_vi', String(filters.pham_vi));
 
       const res = await fetch(`/api/documents/export/?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -405,6 +434,27 @@ export const OutboundDocumentPage: React.FC = () => {
             onClick={handleClearLoaiVanBan}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-main text-xs border border-border-subtle transition-all cursor-pointer shadow-2xs"
             title="Xóa bộ lọc loại văn bản"
+          >
+            <i className="fa-solid fa-xmark text-danger" />
+            <span>Bỏ lọc</span>
+          </button>
+        </div>
+      )}
+
+      {/* 3.1. Chỉ báo lọc Phạm vi văn bản từ URL (Văn bản hạn chế / Mật từ Nhóm 3) */}
+      {filters.pham_vi && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-800 dark:text-amber-300 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <i className="fa-solid fa-shield-halved text-amber-600 dark:text-amber-400" />
+            <span>
+              Đang lọc danh sách theo phạm vi: <strong>{filters.pham_vi === 'HAN_CHE' ? 'Văn bản hạn chế (Mật)' : filters.pham_vi}</strong> — Chỉ hiển thị văn bản bạn có thẩm quyền tiếp cận.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearPhamVi}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-main text-xs border border-border-subtle transition-all cursor-pointer shadow-2xs"
+            title="Xóa bộ lọc phạm vi"
           >
             <i className="fa-solid fa-xmark text-danger" />
             <span>Bỏ lọc</span>
