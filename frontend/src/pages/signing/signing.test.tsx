@@ -1,6 +1,6 @@
 /**
  * Giao diện Trình ký (#80 mục E): tab theo quyền, danh sách (rỗng/lỗi/thử lại), hành động theo quyền và trạng thái,
- * hộp thoại ký hiển thị mã băm và chặn ký khi tệp đang xem khác mã băm đã khóa.
+ * hộp thoại ký hiển thị mã băm và chặn ký khi tệp đang xem khác mã băm đã khóa; quy trình chọn đơn vị từ danh sách.
  */
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,13 +8,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HanhDong from '@components/signing/HanhDong';
 import { signingApi } from '@lib/signing/api';
 import { SigningContext } from '@lib/signing/hooks';
-import type { HoSoChiTiet, NguoiDungHienTai } from '@lib/signing/types';
+import type { HoSoChiTiet, NguoiDungHienTai, QuyTrinh } from '@lib/signing/types';
 import DanhSachPage from './DanhSachPage';
+import QuyTrinhPage from './QuyTrinhPage';
 import SigningModule from './SigningModule';
 
 vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
-  return { ...actual, signingApi: { toi: vi.fn(), danhSach: vi.fn() } };
+  return { ...actual, signingApi: { toi: vi.fn(), danhSach: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn() } };
 });
 const api = vi.mocked(signingApi);
 
@@ -111,5 +112,25 @@ describe('HanhDong', () => {
     expect(hop).toHaveTextContent('Tệp đã thay đổi so với lượt trình');
     fireEvent.change(screen.getByLabelText(/Nhập PIN ký/), { target: { value: '48273916' } });
     await waitFor(() => expect(screen.getAllByRole('button', { name: /Ký duyệt/ }).at(-1)).toBeDisabled());
+  });
+});
+
+describe('QuyTrinhPage', () => {
+  const TP: NguoiDungHienTai = { ...TOI, don_vi_id: 4, la_lanh_dao_don_vi: true, quyen: { ...TOI.quyen, manage_signing_process: true } };
+  const QT: QuyTrinh = {
+    id: 1, ma_quy_trinh: 'QT-KH', ten_quy_trinh: 'Duyệt kế hoạch', mo_ta: '', phien_ban: 1, trang_thai: 'HOAT_DONG',
+    pham_vi: 'PHONG_BAN', don_vi_ap_dung_id: 4, ten_don_vi_ap_dung: 'Phòng Kế hoạch', cap_ky: [],
+  };
+
+  it('hiện tên đơn vị áp dụng và chọn đơn vị từ danh sách khi tạo quy trình phòng ban', async () => {
+    api.quyTrinh.mockResolvedValue([QT]);
+    api.donVi.mockResolvedValue([{ id: 4, ten: 'Phòng Kế hoạch' }]);
+    boc(<QuyTrinhPage />, TP);
+    expect(await screen.findByText(/Phòng ban · Phòng Kế hoạch/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Tạo quy trình/ }));
+    const chon = await screen.findByRole('combobox', { name: /Đơn vị áp dụng/ });
+    await waitFor(() => expect(within(chon).getByRole('option', { name: 'Phòng Kế hoạch' })).toBeInTheDocument());
+    expect((chon as HTMLSelectElement).value).toBe('4');
+    expect(api.donVi).toHaveBeenCalledTimes(1);
   });
 });

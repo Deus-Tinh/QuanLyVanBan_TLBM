@@ -59,6 +59,7 @@ export interface QuyTrinh {
   trang_thai: 'NHAP' | 'HOAT_DONG' | 'NGUNG';
   pham_vi: PhamViQuyTrinh;
   don_vi_ap_dung_id: number | null;
+  ten_don_vi_ap_dung: string | null;
   cap_ky: CapKyQuyTrinh[];
 }
 
@@ -233,6 +234,12 @@ export interface VanBanDi {
   id: number;
   so_hieu: string;
   trich_yeu: string;
+}
+
+/** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */
+export interface DonViLuaChon {
+  id: number;
+  ten: string;
 }
 
 export interface NguoiDungTim {

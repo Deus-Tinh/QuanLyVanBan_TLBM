@@ -5,8 +5,8 @@
  */
 import apiClient, { ApiError } from '@lib/apiClient';
 import type {
-  BangChung, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh, ThamSoKdf, TinNhan,
-  TraoDoi, VanBanDi, ViTriKy,
+  BangChung, DonViLuaChon, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh, ThamSoKdf,
+  TinNhan, TraoDoi, VanBanDi, ViTriKy,
 } from './types';
 
 export const SIGNING_BASE = '/api/v1/signing';
@@ -105,6 +105,7 @@ export const signingApi = {
     apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/${thao_tac}/`, {}),
   timNguoiDung: (q: string) =>
     apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?q=${encodeURIComponent(q)}`),
+  donVi: () => apiClient.get<DonViLuaChon[]>(`${SIGNING_BASE}/don-vi/`),
   timVanBanDi: (q: string) => apiClient.get<VanBanDi[]>(`${SIGNING_BASE}/van-ban-di/?q=${encodeURIComponent(q)}`),
 
   // ── Khóa ký, PIN ─────────────────────────────────────────────────────────

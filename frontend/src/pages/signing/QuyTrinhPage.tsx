@@ -1,6 +1,7 @@
 /**
  * Cấu hình quy trình ký (#80 mục A, E): quy trình CONG_TY do quản trị, PHONG_BAN do lãnh đạo đơn vị áp dụng.
- * Người ký cấu hình theo tài khoản; cấu hình theo chức vụ chờ danh mục chức vụ của Nhóm 7 lên staging.
+ * Người ký cấu hình theo tài khoản. Đơn vị áp dụng chọn từ Đơn vị của Nhóm 7 (quản trị: mọi đơn vị, lãnh đạo đơn vị:
+ * đơn vị mình).
  */
 import { useState } from 'react';
 import { Badge, Button, Card } from '@components/common';
@@ -42,6 +43,7 @@ function FormTao({ mo, onDong, onXong }: { mo: boolean; onDong: () => void; onXo
   const [ten, setTen] = useState('');
   const [phamVi, setPhamVi] = useState<PhamViQuyTrinh>(toi?.la_quan_tri ? 'CONG_TY' : 'PHONG_BAN');
   const [donVi, setDonVi] = useState(toi?.don_vi_id ? String(toi.don_vi_id) : '');
+  const dsDonVi = useTai(() => signingApi.donVi(), []);
   const [cap, setCap] = useState<CapNhap[]>([{ ten_cap_ky: '', so_gio_xu_ly: '', nguoi_ky: [] }]);
   const [dangLuu, setDangLuu] = useState(false);
   const [thongBao, setThongBao] = useState('');
@@ -90,7 +92,10 @@ function FormTao({ mo, onDong, onXong }: { mo: boolean; onDong: () => void; onXo
         </TruongNhap>
         {phamVi === 'PHONG_BAN' && (
           <TruongNhap nhan={t('quyTrinh.donVi')}>
-            <input className={LOP_O_NHAP} inputMode="numeric" value={donVi} onChange={(e) => setDonVi(e.target.value.replace(/\D/g, ''))} />
+            <select className={LOP_O_NHAP} value={donVi} onChange={(e) => setDonVi(e.target.value)}>
+              <option value="">{t('quyTrinh.chonDonVi')}</option>
+              {dsDonVi.duLieu?.map((d) => <option key={d.id} value={String(d.id)}>{d.ten}</option>)}
+            </select>
           </TruongNhap>
         )}
       </div>
@@ -173,7 +178,7 @@ export default function QuyTrinhPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-bold text-main">{q.ten_quy_trinh}</span>
               <TrangThaiBadge trangThai={q.trang_thai} />
-              <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` #${q.don_vi_ap_dung_id}` : ''}</Badge>
+              <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
             </div>
             <div className="text-xs text-secondary">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
             <ol className="space-y-1 text-sm">
