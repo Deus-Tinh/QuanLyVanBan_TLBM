@@ -2,7 +2,7 @@ import datetime
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
-from django.core.validators import RegexValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 
 # Regex kiểm tra số điện thoại Việt Nam chuẩn
@@ -19,8 +19,9 @@ MAX_DISPLAY_ORDER = 2147483647
 class Position(models.Model):
     """Danh mục Chức vụ — bảng accounts_position theo SQL_Fix4."""
 
-    display_order = models.PositiveIntegerField(
+    display_order = models.IntegerField(
         unique=True,
+        validators=[MinValueValidator(1)],
         verbose_name="STT ưu tiên hiển thị",
         help_text="Số nguyên dương duy nhất, sắp xếp từ nhỏ đến lớn.",
     )
@@ -29,8 +30,8 @@ class Position(models.Model):
         verbose_name="Tên chức vụ",
         help_text="Bắt buộc, ví dụ: Tổng Giám đốc, Trưởng phòng, Chuyên viên...",
     )
-    is_public = models.BooleanField(default=True, verbose_name="Hiển thị công khai (isPublic)")
-    note = models.TextField(blank=True, default="", verbose_name="Ghi chú")
+    is_public = models.BooleanField(default=True, db_default=True, verbose_name="Hiển thị công khai (isPublic)")
+    note = models.TextField(null=True, blank=True, default="", verbose_name="Ghi chú")
 
     class Meta:
         db_table = "accounts_position"

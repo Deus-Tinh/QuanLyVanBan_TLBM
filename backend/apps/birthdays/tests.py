@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, Lock
 import time
+from unittest import skipUnless
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -9,7 +10,7 @@ from django.contrib.auth.models import Permission
 from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 from django.test import TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.utils import timezone
 from django.urls import reverse
@@ -149,13 +150,13 @@ class BirthdaySystemTests(TestCase):
         self.assertNotIn("sdt", emp1)
 
     def test_birthday_email_logs_api(self):
-        """API nhật ký chỉ cho superuser xem và chuẩn hóa status không phân biệt hoa thường."""
+        """API nhật ký chỉ cho superuser xem và chuẩn hóa trang_thai không phân biệt hoa thường."""
         log = BirthdayEmailLog.objects.create(
             employee=self.emp_staff,
             sent_date=date(2026, 5, 20),
             recipient_email=self.emp_staff.email,
             subject="Chúc mừng sinh nhật",
-            status=BirthdayEmailStatus.SUCCESS,
+            trang_thai=BirthdayEmailStatus.SUCCESS,
         )
 
         url = reverse("birthdays:logs")
@@ -171,13 +172,13 @@ class BirthdaySystemTests(TestCase):
         self.assertTrue(data["success"])
         self.assertEqual(data["total"], 1)
         self.assertEqual(data["logs"][0]["employee_name"], self.emp_staff.ho_ten)
-        self.assertEqual(data["logs"][0]["status"], BirthdayEmailStatus.SUCCESS)
+        self.assertEqual(data["logs"][0]["trang_thai"], BirthdayEmailStatus.SUCCESS)
 
-        lowercase_status = self.client.get(url, {"status": "success"})
+        lowercase_status = self.client.get(url, {"trang_thai": "success"})
         self.assertEqual(lowercase_status.status_code, status.HTTP_200_OK)
         self.assertEqual(lowercase_status.json()["total"], 1)
 
-        invalid_status = self.client.get(url, {"status": "bogus"})
+        invalid_status = self.client.get(url, {"trang_thai": "bogus"})
         self.assertEqual(invalid_status.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(invalid_status.json()["error"], "birthdays.messages.invalidStatus")
 
@@ -189,8 +190,8 @@ class BirthdaySystemTests(TestCase):
         self.assertEqual(BirthdayWish._meta.db_table, "birthdays_birthdaywish")
 
     def test_birthday_status_fields_map_to_staging_columns(self):
-        self.assertEqual(BirthdayWish._meta.get_field("status").db_column, "trang_thai")
-        self.assertEqual(BirthdayEmailLog._meta.get_field("status").db_column, "trang_thai")
+        self.assertEqual(BirthdayWish._meta.get_field("trang_thai").column, "trang_thai")
+        self.assertEqual(BirthdayEmailLog._meta.get_field("trang_thai").column, "trang_thai")
 
     def test_private_employees_are_hidden_from_calendar_and_day_api(self):
         Employee.objects.create_user(
@@ -230,7 +231,7 @@ class BirthdaySystemTests(TestCase):
             sent_date=retry_date,
             recipient_email=self.emp_no_perm.email,
             subject="Thư sinh nhật cần gửi lại",
-            status=BirthdayEmailStatus.RETRY,
+            trang_thai=BirthdayEmailStatus.RETRY,
             retry_count=1,
         )
 
@@ -239,7 +240,7 @@ class BirthdaySystemTests(TestCase):
         retry_log.refresh_from_db()
         self.assertEqual(results["total_eligible"], 3)
         self.assertEqual(results["sent_count"], 3)
-        self.assertEqual(retry_log.status, BirthdayEmailStatus.SUCCESS)
+        self.assertEqual(retry_log.trang_thai, BirthdayEmailStatus.SUCCESS)
         self.assertEqual(len(mail.outbox), 3)
 
     @override_settings(
@@ -254,7 +255,7 @@ class BirthdaySystemTests(TestCase):
             sent_date=target_date,
             recipient_email=self.emp_staff.email,
             subject="Chúc mừng sinh nhật",
-            status=BirthdayEmailStatus.SENDING,
+            trang_thai=BirthdayEmailStatus.SENDING,
         )
         BirthdayEmailLog.objects.filter(pk=stale_log.pk).update(
             updated_at=timezone.now() - timedelta(minutes=31),
@@ -264,7 +265,7 @@ class BirthdaySystemTests(TestCase):
 
         stale_log.refresh_from_db()
         self.assertEqual(results["stale_failed_count"], 1)
-        self.assertEqual(stale_log.status, BirthdayEmailStatus.FAILED)
+        self.assertEqual(stale_log.trang_thai, BirthdayEmailStatus.FAILED)
         self.assertTrue(stale_log.error_message.startswith("Kết quả gửi không xác định, cần đối soát."))
         self.assertNotIn(self.emp_staff.email, [message.to[0] for message in mail.outbox])
 
@@ -281,7 +282,7 @@ class BirthdaySystemTests(TestCase):
         results = send_automated_birthday_emails(target_date=target_date, allow_test_email_backend=True)
 
         log = BirthdayEmailLog.objects.get(employee=self.emp_staff, sent_date=target_date)
-        self.assertEqual(log.status, BirthdayEmailStatus.FAILED)
+        self.assertEqual(log.trang_thai, BirthdayEmailStatus.FAILED)
         self.assertTrue(log.error_message.startswith("Bỏ qua:"))
         self.assertEqual(results["skipped_count"], 1)
         self.assertNotIn("not-an-email", [message.to[0] for message in mail.outbox])
@@ -318,7 +319,7 @@ class BirthdaySystemTests(TestCase):
         logs = BirthdayEmailLog.objects.filter(sent_date=target_date)
         self.assertEqual(logs.count(), 2)
         for log in logs:
-            self.assertEqual(log.status, BirthdayEmailStatus.SUCCESS)
+            self.assertEqual(log.trang_thai, BirthdayEmailStatus.SUCCESS)
             self.assertIsNotNone(log.sent_at)
 
         # Chạy lại cùng ngày: Không gửi trùng (anti-duplicate)
@@ -402,4 +403,22 @@ class BirthdayEmailConcurrencyTests(TransactionTestCase):
         log = BirthdayEmailLog.objects.get(employee=self.employee, sent_date=date(2026, 5, 20))
         self.assertEqual(send_call_count, 1)
         self.assertEqual(sum(result["sent_count"] for result in results), 1)
-        self.assertEqual(log.status, BirthdayEmailStatus.SUCCESS)
+        self.assertEqual(log.trang_thai, BirthdayEmailStatus.SUCCESS)
+
+
+@skipUnless(connection.vendor == "postgresql", "Kiểu ENUM chỉ có trên PostgreSQL")
+class BirthdaysReleaseDdlSchemaTests(TestCase):
+    """Cột trang_thai tạo từ migration phải dùng đúng kiểu ENUM của release_DDL.sql."""
+
+    def test_trang_thai_uses_ddl_enum_types(self):
+        with connection.cursor() as cursor:
+            for table, enum_type in [
+                ("birthdays_birthdaywish", "birthdaywish_status"),
+                ("birthdays_birthdayemaillog", "emaillog_status"),
+            ]:
+                cursor.execute(
+                    "SELECT udt_name FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() AND table_name = %s AND column_name = 'trang_thai'",
+                    [table],
+                )
+                self.assertEqual(cursor.fetchone()[0], enum_type)

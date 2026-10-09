@@ -18,12 +18,12 @@ export const RoomModal: React.FC<RoomModalProps> = ({
   roomToEdit,
 }) => {
   const { t } = useTranslation();
-  const [tenPhong, setTenPhong] = useState(roomToEdit?.ten_phong || '');
-  const [viTri, setViTri] = useState(roomToEdit?.vi_tri || '');
-  const [sucChua, setSucChua] = useState<number>(roomToEdit?.suc_chua ?? 10);
-  const [thietBi, setThietBi] = useState(roomToEdit?.thiet_bi || '');
+  const [tenPhong, setTenPhong] = useState(roomToEdit?.name || '');
+  const [viTri, setViTri] = useState(roomToEdit?.location || '');
+  const [sucChua, setSucChua] = useState<number>(roomToEdit?.capacity ?? 10);
+  const [thietBi, setThietBi] = useState(roomToEdit?.amenities || '');
   const [isPublic, setIsPublic] = useState(roomToEdit?.is_public ?? true);
-  const [status, setStatus] = useState<string>(roomToEdit?.status || 'AVAILABLE');
+  const [trangThai, setTrangThai] = useState<string>(roomToEdit?.trang_thai || 'AVAILABLE');
   const [ghiChu, setGhiChu] = useState(roomToEdit?.ghi_chu || '');
 
   const [loading, setLoading] = useState(false);
@@ -34,10 +34,10 @@ export const RoomModal: React.FC<RoomModalProps> = ({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!tenPhong.trim()) {
-      newErrors.ten_phong = t('meetings.messages.roomNameRequired');
+      newErrors.name = t('meetings.messages.roomNameRequired');
     }
     if (!sucChua || sucChua < 1) {
-      newErrors.suc_chua = t('meetings.messages.capacityMustBePositive');
+      newErrors.capacity = t('meetings.messages.capacityMustBePositive');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -51,12 +51,12 @@ export const RoomModal: React.FC<RoomModalProps> = ({
     setErrors({});
 
     const payload: CreateMeetingRoomDTO = {
-      ten_phong: tenPhong.trim(),
-      vi_tri: viTri.trim(),
-      suc_chua: Number(sucChua),
-      thiet_bi: thietBi.trim(),
+      name: tenPhong.trim(),
+      location: viTri.trim(),
+      capacity: Number(sucChua),
+      amenities: thietBi.trim(),
       is_public: isPublic,
-      status: status,
+      trang_thai: trangThai,
       ghi_chu: ghiChu.trim(),
     };
 
@@ -102,7 +102,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({
             </h3>
             <p className="text-xs text-muted mt-0.5">
               {roomToEdit
-                ? t('meetings.modalRoom.editSubtitle', { name: roomToEdit.ten_phong })
+                ? t('meetings.modalRoom.editSubtitle', { name: roomToEdit.name })
                 : t('meetings.modalRoom.createSubtitle')}
             </p>
           </div>
@@ -135,13 +135,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({
               onChange={(e) => setTenPhong(e.target.value)}
               placeholder={t('meetings.modalRoom.namePlaceholder')}
               className={`w-full px-3.5 py-2 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 bg-surface text-main placeholder:text-muted ${
-                errors.ten_phong
+                errors.name
                   ? 'border-danger focus:ring-danger'
                   : 'border-border focus:ring-primary focus:border-primary'
               }`}
             />
-            {errors.ten_phong && (
-              <p className="mt-1 text-xs text-danger">{errors.ten_phong}</p>
+            {errors.name && (
+              <p className="mt-1 text-xs text-danger">{errors.name}</p>
             )}
           </div>
 
@@ -158,8 +158,8 @@ export const RoomModal: React.FC<RoomModalProps> = ({
                 placeholder={t('meetings.modalRoom.locationPlaceholder')}
                 className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               />
-              {errors.vi_tri && (
-                <p className="mt-1 text-xs text-danger">{errors.vi_tri}</p>
+              {errors.location && (
+                <p className="mt-1 text-xs text-danger">{errors.location}</p>
               )}
             </div>
 
@@ -174,13 +174,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({
                 onChange={(e) => setSucChua(parseInt(e.target.value, 10) || 0)}
                 placeholder="10"
                 className={`w-full px-3.5 py-2 text-sm rounded-xl border transition-all focus:outline-none focus:ring-2 bg-surface text-main ${
-                  errors.suc_chua
+                  errors.capacity
                     ? 'border-danger focus:ring-danger'
                     : 'border-border focus:ring-primary focus:border-primary'
                 }`}
               />
-              {errors.suc_chua && (
-                <p className="mt-1 text-xs text-danger">{errors.suc_chua}</p>
+              {errors.capacity && (
+                <p className="mt-1 text-xs text-danger">{errors.capacity}</p>
               )}
             </div>
           </div>
@@ -191,8 +191,8 @@ export const RoomModal: React.FC<RoomModalProps> = ({
               {t('meetings.modalRoom.statusLabel')}
             </label>
             <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              value={trangThai}
+              onChange={(e) => setTrangThai(e.target.value)}
               className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer font-medium"
             >
               <option value="AVAILABLE">{t('meetings.status.available')}</option>
@@ -213,8 +213,8 @@ export const RoomModal: React.FC<RoomModalProps> = ({
               placeholder={t('meetings.modalRoom.amenitiesPlaceholder')}
               className="w-full px-3.5 py-2 text-sm rounded-xl border border-border bg-surface text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
             />
-            {errors.thiet_bi && (
-              <p className="mt-1 text-xs text-danger">{errors.thiet_bi}</p>
+            {errors.amenities && (
+              <p className="mt-1 text-xs text-danger">{errors.amenities}</p>
             )}
           </div>
 

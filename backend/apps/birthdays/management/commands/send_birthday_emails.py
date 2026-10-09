@@ -78,7 +78,7 @@ class Command(BaseCommand):
             name = detail["full_name"]
             if detail.get("skipped"):
                 _safe_write(self.stdout.write, self.style.WARNING(f"Bỏ qua: {name} - {detail['reason']}"))
-            elif detail.get("status") == "SUCCESS":
+            elif detail.get("trang_thai") == "SUCCESS":
                 _safe_write(self.stdout.write, self.style.SUCCESS(f"Đã gửi: {name}"))
             else:
                 _safe_write(self.stderr.write, self.style.ERROR(f"Cần xử lý: {name} - {detail.get('error', '')}"))
