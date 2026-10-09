@@ -42,10 +42,10 @@ describe('MeetingsPage Component (Issue #22)', () => {
   const mockRooms = [
     {
       id: 1,
-      ten_phong: 'Phòng Hội thảo A',
-      vi_tri: 'Tầng 2, Tòa A',
-      suc_chua: 30,
-      thiet_bi: 'Máy chiếu 4K, 2 Micro không dây',
+      name: 'Phòng Hội thảo A',
+      location: 'Tầng 2, Tòa A',
+      capacity: 30,
+      amenities: 'Máy chiếu 4K, 2 Micro không dây',
       is_public: true,
       trang_thai: 'AVAILABLE',
       ghi_chu: '',
@@ -54,10 +54,10 @@ describe('MeetingsPage Component (Issue #22)', () => {
     },
     {
       id: 2,
-      ten_phong: 'Phòng Họp B',
-      vi_tri: 'Tầng 3, Tòa B',
-      suc_chua: 10,
-      thiet_bi: 'Bảng trắng',
+      name: 'Phòng Họp B',
+      location: 'Tầng 3, Tòa B',
+      capacity: 10,
+      amenities: 'Bảng trắng',
       is_public: false,
       trang_thai: 'MAINTENANCE',
       ghi_chu: 'Bảo trì',
@@ -69,25 +69,26 @@ describe('MeetingsPage Component (Issue #22)', () => {
   const mockBookings = [
     {
       id: 101,
-      phong_hop: 1,
-      phong_hop_detail: mockRooms[0],
-      nguoi_dat: 1,
-      nguoi_dat_detail: {
+      room: 1,
+      room_detail: mockRooms[0],
+      organizer: 1,
+      organizer_detail: {
         id: 1,
         username: 'hieu_staff',
         full_name: 'Nguyễn Phan Minh Hiệu',
         department: 'Phòng Hành chính - Tổng hợp',
         role: 'staff',
       },
-      don_vi_to_chuc: 'Phòng Hành chính - Tổng hợp',
-      tieu_de: 'Họp giao ban tuần 40',
-      thoi_gian_bat_dau: '2026-09-23T09:00:00Z',
-      thoi_gian_ket_thuc: '2026-09-23T10:30:00Z',
-      so_nguoi_tham_gia: 15,
+      department: 1,
+      department_name: 'Phòng Hành chính - Tổng hợp',
+      title: 'Họp giao ban tuần 40',
+      date: '2026-09-23',
+      start_time: '09:00:00',
+      end_time: '10:30:00',
+      attendees_count: 15,
       trang_thai: 'CONFIRMED',
-      ghi_chu: 'Chuẩn bị micro và trà nước',
+      purpose: 'Chuẩn bị micro và trà nước',
       created_at: '2026-09-22T08:00:00Z',
-      updated_at: '2026-09-22T08:00:00Z',
     },
   ];
 
@@ -239,7 +240,7 @@ describe('MeetingsPage Component (Issue #22)', () => {
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith(
         '/api/meeting-bookings/101/cancel/',
-        expect.objectContaining({ ly_do_huy: '' })
+        expect.objectContaining({ cancel_reason: '' })
       );
     });
   });
@@ -249,8 +250,9 @@ describe('MeetingsPage Component (Issue #22)', () => {
       ...mockBookings[0],
       id: 102,
       trang_thai: 'COMPLETED',
-      thoi_gian_bat_dau: '2026-09-20T08:00:00Z',
-      thoi_gian_ket_thuc: '2026-09-20T09:00:00Z',
+      date: '2026-09-20',
+      start_time: '08:00:00',
+      end_time: '09:00:00',
     };
 
     getMockFn().mockImplementation((url: string) => {

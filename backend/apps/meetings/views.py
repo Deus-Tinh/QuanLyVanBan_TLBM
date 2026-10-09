@@ -121,14 +121,9 @@ class MeetingRoomViewSet(viewsets.ModelViewSet):
             "-capacity",
             "created_at",
             "-created_at",
-            "ten_phong",
-            "-ten_phong",
-            "suc_chua",
-            "-suc_chua",
         ]
         if ordering in valid_orderings:
-            mapped_ordering = ordering.replace("ten_phong", "name").replace("suc_chua", "capacity")
-            queryset = queryset.order_by(mapped_ordering)
+            queryset = queryset.order_by(ordering)
         else:
             queryset = queryset.order_by("name")
 
@@ -159,9 +154,7 @@ class MeetingRoomViewSet(viewsets.ModelViewSet):
         except (ProtectedError, RestrictedError):
             return Response(
                 {
-                    "error": "meetings.messages.cannotDeleteRoomHasBookings",
                     "detail": "meetings.messages.cannotDeleteRoomHasBookings",
-                    "code": "meetings.messages.cannotDeleteRoomHasBookings",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -206,7 +199,7 @@ class IsOwnerOrAdminForBooking(permissions.BasePermission):
 class MeetingBookingViewSet(viewsets.ModelViewSet):
     """
     API ViewSet quản lý Đặt lịch phòng họp:
-    - GET /api/meeting-bookings/ : Danh sách lịch đặt (hỗ trợ lọc theo date, room_id, trang_thai)
+    - GET /api/meeting-bookings/ : Danh sách lịch đặt (hỗ trợ lọc theo date, room, trang_thai)
     - POST /api/meeting-bookings/ : Tạo lịch đặt mới (Database Lock chống race condition)
     - GET /api/meeting-bookings/{id}/ : Chi tiết lịch đặt
     - PUT/PATCH /api/meeting-bookings/{id}/ : Cập nhật lịch đặt
@@ -233,15 +226,15 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
             else:
                 qs = qs.filter(room__is_public=True)
 
-        # 1. Lọc theo phòng họp an toàn (chống ValueError 500 khi room_id không phải số)
-        room_param = self.request.query_params.get("room_id") or self.request.query_params.get("phong_hop") or self.request.query_params.get("room")
+        # 1. Lọc theo phòng họp an toàn (chống ValueError 500 khi room không phải số)
+        room_param = self.request.query_params.get("room")
         if room_param:
             try:
                 valid_room_id = int(room_param)
                 qs = qs.filter(room_id=valid_room_id)
             except (ValueError, TypeError):
                 raise ValidationError({
-                    "room_id": "meetings.messages.invalidRoomId"
+                    "room": "meetings.messages.invalidRoomId"
                 })
 
         # 2. Lọc theo trạng thái an toàn (chống 500 DataError trên PostgreSQL ENUM)
@@ -332,9 +325,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                     if not has_perm:
                         return Response(
                             {
-                                "error": "meetings.messages.privateRoomForbidden",
                                 "detail": "meetings.messages.privateRoomForbidden",
-                                "code": "meetings.messages.privateRoomForbidden",
                             },
                             status=status.HTTP_403_FORBIDDEN,
                         )
@@ -342,9 +333,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                 if locked_room.trang_thai in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
                     return Response(
                         {
-                            "error": "meetings.messages.roomUnavailable",
                             "detail": "meetings.messages.roomUnavailable",
-                            "code": "meetings.messages.roomUnavailable",
                             "params": {
                                 "room_name": locked_room.name,
                                 "room_trang_thai": locked_room.trang_thai,
@@ -369,9 +358,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                     c_date = conflict.date.strftime("%d/%m/%Y")
                     return Response(
                         {
-                            "error": "meetings.messages.roomTimeConflict",
                             "detail": "meetings.messages.roomTimeConflict",
-                            "code": "meetings.messages.roomTimeConflict",
                             "params": {
                                 "room_name": locked_room.name,
                                 "conflict_title": conflict.title,
@@ -390,9 +377,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
             # Bắt lỗi ràng buộc chống trùng cấp CSDL (PostgreSQL GiST excl_room_time)
             return Response(
                 {
-                    "error": "meetings.messages.roomTimeConflict",
                     "detail": "meetings.messages.roomTimeConflict",
-                    "code": "meetings.messages.roomTimeConflict",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -414,9 +399,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         if instance.effective_status == MeetingBooking.Status.COMPLETED:
             return Response(
                 {
-                    "error": "meetings.messages.bookingAlreadyEnded",
                     "detail": "meetings.messages.bookingAlreadyEnded",
-                    "code": "meetings.messages.bookingAlreadyEnded",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -425,9 +408,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         if instance.trang_thai == MeetingBooking.Status.CANCELLED:
             return Response(
                 {
-                    "error": "meetings.messages.bookingAlreadyCancelled",
                     "detail": "meetings.messages.bookingAlreadyCancelled",
-                    "code": "meetings.messages.bookingAlreadyCancelled",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -452,9 +433,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                     if not has_perm:
                         return Response(
                             {
-                                "error": "meetings.messages.privateRoomForbidden",
                                 "detail": "meetings.messages.privateRoomForbidden",
-                                "code": "meetings.messages.privateRoomForbidden",
                             },
                             status=status.HTTP_403_FORBIDDEN,
                         )
@@ -463,9 +442,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                     if locked_room.trang_thai in [MeetingRoom.Status.MAINTENANCE, MeetingRoom.Status.UNAVAILABLE]:
                         return Response(
                             {
-                                "error": "meetings.messages.roomUnavailable",
                                 "detail": "meetings.messages.roomUnavailable",
-                                "code": "meetings.messages.roomUnavailable",
                                 "params": {
                                     "room_name": locked_room.name,
                                     "room_trang_thai": locked_room.trang_thai,
@@ -490,9 +467,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
                         c_date = conflict.date.strftime("%d/%m/%Y")
                         return Response(
                             {
-                                "error": "meetings.messages.roomTimeConflict",
                                 "detail": "meetings.messages.roomTimeConflict",
-                                "code": "meetings.messages.roomTimeConflict",
                                 "params": {
                                     "room_name": locked_room.name,
                                     "conflict_title": conflict.title,
@@ -510,9 +485,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         except IntegrityError:
             return Response(
                 {
-                    "error": "meetings.messages.roomTimeConflict",
                     "detail": "meetings.messages.roomTimeConflict",
-                    "code": "meetings.messages.roomTimeConflict",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -525,9 +498,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         """
         return Response(
             {
-                "error": "meetings.messages.deleteBookingNotAllowed",
                 "detail": "meetings.messages.deleteBookingNotAllowed",
-                "code": "meetings.messages.deleteBookingNotAllowed",
             },
             status=status.HTTP_405_METHOD_NOT_ALLOWED,
         )
@@ -543,9 +514,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         if booking.effective_status == MeetingBooking.Status.COMPLETED:
             return Response(
                 {
-                    "error": "meetings.messages.bookingAlreadyEnded",
                     "detail": "meetings.messages.bookingAlreadyEnded",
-                    "code": "meetings.messages.bookingAlreadyEnded",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -553,15 +522,13 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         if booking.trang_thai == MeetingBooking.Status.CANCELLED:
             return Response(
                 {
-                    "error": "meetings.messages.bookingAlreadyCancelled",
                     "detail": "meetings.messages.bookingAlreadyCancelled",
-                    "code": "meetings.messages.bookingAlreadyCancelled",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         booking.trang_thai = MeetingBooking.Status.CANCELLED
-        reason = (request.data.get("ly_do_huy") or request.data.get("cancel_reason") or "").strip()
+        reason = (request.data.get("cancel_reason") or "").strip()
         if reason:
             booking.purpose = (booking.purpose + f"\n---\n{reason}").strip() if booking.purpose else reason
         booking.save()
@@ -570,13 +537,7 @@ class MeetingBookingViewSet(viewsets.ModelViewSet):
         return Response(
             {
                 "detail": "meetings.messages.cancelSuccess",
-                "code": "meetings.messages.cancelSuccess",
                 "booking": serializer.data,
             },
             status=status.HTTP_200_OK,
         )
-
-
-# Aliases cho backward-compatibility
-PhongHopViewSet = MeetingRoomViewSet
-DatPhongHopViewSet = MeetingBookingViewSet

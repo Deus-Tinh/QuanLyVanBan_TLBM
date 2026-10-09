@@ -31,19 +31,7 @@ interface BookingFormProps {
 
 const padZero = (n: number): string => n.toString().padStart(2, '0');
 
-const parseLocalIso = (isoStr: string) => {
-  try {
-    const d = new Date(isoStr);
-    if (!isNaN(d.getTime())) {
-      const date = `${d.getFullYear()}-${padZero(d.getMonth() + 1)}-${padZero(d.getDate())}`;
-      const time = `${padZero(d.getHours())}:${padZero(d.getMinutes())}`;
-      return { date, time };
-    }
-  } catch {
-    // fallback
-  }
-  return null;
-};
+const toHHMM = (value: string): string => (value || '').slice(0, 5);
 
 interface FormInitialValues {
   roomId: number | '';
@@ -68,20 +56,18 @@ const BookingForm: React.FC<BookingFormProps> = ({
   // Tính toán giá trị mặc định ban đầu
   const initialValues = useMemo<FormInitialValues>(() => {
     if (bookingToEdit) {
-      const startParsed = parseLocalIso(bookingToEdit.thoi_gian_bat_dau);
-      const endParsed = parseLocalIso(bookingToEdit.thoi_gian_ket_thuc);
       return {
-        roomId: bookingToEdit.phong_hop,
-        title: bookingToEdit.tieu_de || '',
-        department: bookingToEdit.don_vi_to_chuc || '',
-        date: startParsed?.date || initialDate || (() => {
+        roomId: bookingToEdit.room,
+        title: bookingToEdit.title || '',
+        department: bookingToEdit.department_name || '',
+        date: bookingToEdit.date || initialDate || (() => {
           const now = new Date();
           return `${now.getFullYear()}-${padZero(now.getMonth() + 1)}-${padZero(now.getDate())}`;
         })(),
-        startTime: startParsed?.time || '09:00',
-        endTime: endParsed?.time || '10:00',
-        attendees: bookingToEdit.so_nguoi_tham_gia || 5,
-        note: bookingToEdit.ghi_chu || '',
+        startTime: toHHMM(bookingToEdit.start_time) || '09:00',
+        endTime: toHHMM(bookingToEdit.end_time) || '10:00',
+        attendees: bookingToEdit.attendees_count || 5,
+        note: bookingToEdit.purpose || '',
       };
     }
 
@@ -107,7 +93,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
   const [roomId, setRoomId] = useState<number | ''>(initialValues.roomId);
   const [title, setTitle] = useState(initialValues.title);
-  const [department, setDepartment] = useState(initialValues.department);
+  const department = initialValues.department;
   const [date, setDate] = useState(initialValues.date);
   const [startTime, setStartTime] = useState(initialValues.startTime);
   const [endTime, setEndTime] = useState(initialValues.endTime);
@@ -126,30 +112,30 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const errors: Record<string, string> = {};
 
     if (!roomId) {
-      errors.phong_hop = t('meetings.messages.roomRequired');
+      errors.room = t('meetings.messages.roomRequired');
     }
     if (!title.trim()) {
-      errors.tieu_de = t('meetings.messages.titleRequired');
+      errors.title = t('meetings.messages.titleRequired');
     }
     if (!date) {
       errors.date = t('meetings.messages.dateRequired');
     }
 
     if (!startTime) {
-      errors.thoi_gian_bat_dau = t('meetings.messages.startTimeRequired');
+      errors.start_time = t('meetings.messages.startTimeRequired');
     }
     if (!endTime) {
-      errors.thoi_gian_ket_thuc = t('meetings.messages.endTimeRequired');
+      errors.end_time = t('meetings.messages.endTimeRequired');
     } else if (startTime && startTime >= endTime) {
-      errors.thoi_gian_ket_thuc = t('meetings.messages.invalidTimeRange');
+      errors.end_time = t('meetings.messages.invalidTimeRange');
     }
 
     if (!attendees || attendees <= 0) {
-      errors.so_nguoi_tham_gia = t('meetings.messages.attendeesRequired');
-    } else if (selectedRoom && attendees > selectedRoom.suc_chua) {
-      errors.so_nguoi_tham_gia = t('meetings.messages.capacityExceeded', {
-        room: selectedRoom.ten_phong,
-        max: selectedRoom.suc_chua,
+      errors.attendees_count = t('meetings.messages.attendeesRequired');
+    } else if (selectedRoom && attendees > selectedRoom.capacity) {
+      errors.attendees_count = t('meetings.messages.capacityExceeded', {
+        room: selectedRoom.name,
+        max: selectedRoom.capacity,
       });
     }
 
@@ -172,31 +158,28 @@ const BookingForm: React.FC<BookingFormProps> = ({
     setErrorMsg(null);
     setFieldErrors({});
 
-    const startIso = `${date}T${startTime}:00`;
-    const endIso = `${date}T${endTime}:00`;
-
     setLoading(true);
     try {
       if (bookingToEdit) {
         const updatePayload: UpdateBookingDTO = {
-          phong_hop: Number(roomId),
-          tieu_de: title.trim(),
-          don_vi_to_chuc: department.trim(),
-          thoi_gian_bat_dau: startIso,
-          thoi_gian_ket_thuc: endIso,
-          so_nguoi_tham_gia: Number(attendees),
-          ghi_chu: note.trim(),
+          room: Number(roomId),
+          title: title.trim(),
+          date,
+          start_time: startTime,
+          end_time: endTime,
+          attendees_count: Number(attendees),
+          purpose: note.trim(),
         };
         await apiClient.put(`/api/meeting-bookings/${bookingToEdit.id}/`, updatePayload);
       } else {
         const createPayload: CreateBookingDTO = {
-          phong_hop: Number(roomId),
-          tieu_de: title.trim(),
-          don_vi_to_chuc: department.trim(),
-          thoi_gian_bat_dau: startIso,
-          thoi_gian_ket_thuc: endIso,
-          so_nguoi_tham_gia: Number(attendees),
-          ghi_chu: note.trim(),
+          room: Number(roomId),
+          title: title.trim(),
+          date,
+          start_time: startTime,
+          end_time: endTime,
+          attendees_count: Number(attendees),
+          purpose: note.trim(),
         };
         await apiClient.post('/api/meeting-bookings/', createPayload);
       }
@@ -303,19 +286,19 @@ const BookingForm: React.FC<BookingFormProps> = ({
             value={roomId}
             onChange={(e) => {
               setRoomId(e.target.value ? Number(e.target.value) : '');
-              if (fieldErrors.phong_hop) {
-                setFieldErrors((prev) => ({ ...prev, phong_hop: '' }));
+              if (fieldErrors.room) {
+                setFieldErrors((prev) => ({ ...prev, room: '' }));
               }
             }}
             required
             className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all ${
-              fieldErrors.phong_hop ? 'border-danger' : 'border-border-subtle'
+              fieldErrors.room ? 'border-danger' : 'border-border-subtle'
             }`}
           >
             <option value="" disabled>{t('meetings.modalBooking.roomPlaceholder')}</option>
             {rooms.map((r) => {
               const isAvailable = (r.trang_thai || 'AVAILABLE') === 'AVAILABLE';
-              const isDisabled = !isAvailable && r.id !== bookingToEdit?.phong_hop;
+              const isDisabled = !isAvailable && r.id !== bookingToEdit?.room;
 
               let statusLabel = '';
               if (r.trang_thai === 'MAINTENANCE') {
@@ -328,13 +311,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
               return (
                 <option key={r.id} value={r.id} disabled={isDisabled}>
-                  {r.ten_phong} ({t('meetings.fields.capacity')}: {r.suc_chua} {t('meetings.fields.people')}) {r.vi_tri ? `- ${r.vi_tri}` : ''}{statusLabel}{visibilityLabel}
+                  {r.name} ({t('meetings.fields.capacity')}: {r.capacity} {t('meetings.fields.people')}) {r.location ? `- ${r.location}` : ''}{statusLabel}{visibilityLabel}
                 </option>
               );
             })}
           </select>
-          {fieldErrors.phong_hop && (
-            <p className="mt-1 text-xs text-danger">{fieldErrors.phong_hop}</p>
+          {fieldErrors.room && (
+            <p className="mt-1 text-xs text-danger">{fieldErrors.room}</p>
           )}
 
           {/* Room quick details preview */}
@@ -342,18 +325,18 @@ const BookingForm: React.FC<BookingFormProps> = ({
             <div className="mt-2 p-2.5 rounded-lg bg-surface-elevated border border-border-subtle text-xs text-secondary flex flex-wrap items-center gap-x-4 gap-y-1">
               <span>
                 <i className="fa-solid fa-users text-primary mr-1" /> {t('meetings.fields.capacity')}:{' '}
-                <strong className="text-main">{selectedRoom.suc_chua} {t('meetings.fields.people')}</strong>
+                <strong className="text-main">{selectedRoom.capacity} {t('meetings.fields.people')}</strong>
               </span>
-              {selectedRoom.vi_tri && (
+              {selectedRoom.location && (
                 <span>
                   <i className="fa-solid fa-location-dot text-primary mr-1" /> {t('meetings.fields.location')}:{' '}
-                  <strong className="text-main">{selectedRoom.vi_tri}</strong>
+                  <strong className="text-main">{selectedRoom.location}</strong>
                 </span>
               )}
-              {selectedRoom.thiet_bi && (
+              {selectedRoom.amenities && (
                 <span className="truncate max-w-full">
                   <i className="fa-solid fa-tv text-primary mr-1" /> {t('meetings.fields.amenities')}:{' '}
-                  <span className="text-main">{selectedRoom.thiet_bi}</span>
+                  <span className="text-main">{selectedRoom.amenities}</span>
                 </span>
               )}
             </div>
@@ -375,17 +358,17 @@ const BookingForm: React.FC<BookingFormProps> = ({
             value={title}
             onChange={(e) => {
               setTitle(e.target.value);
-              if (fieldErrors.tieu_de) {
-                setFieldErrors((prev) => ({ ...prev, tieu_de: '' }));
+              if (fieldErrors.title) {
+                setFieldErrors((prev) => ({ ...prev, title: '' }));
               }
             }}
             required
             className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all ${
-              fieldErrors.tieu_de ? 'border-danger' : 'border-border-subtle'
+              fieldErrors.title ? 'border-danger' : 'border-border-subtle'
             }`}
           />
-          {fieldErrors.tieu_de && (
-            <p className="mt-1 text-xs text-danger">{fieldErrors.tieu_de}</p>
+          {fieldErrors.title && (
+            <p className="mt-1 text-xs text-danger">{fieldErrors.title}</p>
           )}
         </div>
 
@@ -403,8 +386,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
               type="text"
               placeholder={t('meetings.modalBooking.departmentPlaceholder')}
               value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-border-subtle text-main placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all"
+              readOnly
+              className="w-full px-3.5 py-2.5 rounded-xl bg-surface-elevated border border-border-subtle text-main placeholder:text-muted focus:outline-none text-sm font-medium transition-all"
             />
           </div>
 
@@ -423,17 +406,17 @@ const BookingForm: React.FC<BookingFormProps> = ({
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10) || 0;
                 setAttendees(val);
-                if (fieldErrors.so_nguoi_tham_gia) {
-                  setFieldErrors((prev) => ({ ...prev, so_nguoi_tham_gia: '' }));
+                if (fieldErrors.attendees_count) {
+                  setFieldErrors((prev) => ({ ...prev, attendees_count: '' }));
                 }
               }}
               required
               className={`w-full px-3.5 py-2.5 rounded-xl bg-surface border text-main focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary text-sm font-medium transition-all ${
-                fieldErrors.so_nguoi_tham_gia ? 'border-danger' : 'border-border-subtle'
+                fieldErrors.attendees_count ? 'border-danger' : 'border-border-subtle'
               }`}
             />
-            {fieldErrors.so_nguoi_tham_gia && (
-              <p className="mt-1 text-xs text-danger">{fieldErrors.so_nguoi_tham_gia}</p>
+            {fieldErrors.attendees_count && (
+              <p className="mt-1 text-xs text-danger">{fieldErrors.attendees_count}</p>
             )}
           </div>
         </div>
@@ -476,7 +459,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 onChange={(e) => setStartTime(e.target.value)}
                 required
                 className={`w-full px-3 py-2 rounded-lg bg-surface border text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary font-medium ${
-                  fieldErrors.thoi_gian_bat_dau ? 'border-danger' : 'border-border-subtle'
+                  fieldErrors.start_time ? 'border-danger' : 'border-border-subtle'
                 }`}
               />
             </div>
@@ -495,13 +478,13 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 onChange={(e) => setEndTime(e.target.value)}
                 required
                 className={`w-full px-3 py-2 rounded-lg bg-surface border text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary font-medium ${
-                  fieldErrors.thoi_gian_ket_thuc ? 'border-danger' : 'border-border-subtle'
+                  fieldErrors.end_time ? 'border-danger' : 'border-border-subtle'
                 }`}
               />
             </div>
           </div>
-          {fieldErrors.thoi_gian_ket_thuc && (
-            <p className="text-xs text-danger font-medium">{fieldErrors.thoi_gian_ket_thuc}</p>
+          {fieldErrors.end_time && (
+            <p className="text-xs text-danger font-medium">{fieldErrors.end_time}</p>
           )}
         </div>
 

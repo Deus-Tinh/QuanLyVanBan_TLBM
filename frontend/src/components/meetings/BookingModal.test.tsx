@@ -44,10 +44,10 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
   const mockRooms: MeetingRoom[] = [
     {
       id: 1,
-      ten_phong: 'Phòng Hội thảo A',
-      vi_tri: 'Tầng 2, Tòa A',
-      suc_chua: 20,
-      thiet_bi: 'Máy chiếu, Mic',
+      name: 'Phòng Hội thảo A',
+      location: 'Tầng 2, Tòa A',
+      capacity: 20,
+      amenities: 'Máy chiếu, Mic',
       is_public: true,
       ghi_chu: '',
       created_at: '2026-09-20T08:00:00Z',
@@ -55,10 +55,10 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
     },
     {
       id: 2,
-      ten_phong: 'Phòng VIP',
-      vi_tri: 'Tầng 5',
-      suc_chua: 8,
-      thiet_bi: 'Tivi 85 inch',
+      name: 'Phòng VIP',
+      location: 'Tầng 5',
+      capacity: 8,
+      amenities: 'Tivi 85 inch',
       is_public: true,
       ghi_chu: '',
       created_at: '2026-09-20T08:00:00Z',
@@ -162,11 +162,12 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
       expect(apiClient.post).toHaveBeenCalledWith(
         '/api/meeting-bookings/',
         expect.objectContaining({
-          phong_hop: 1,
-          tieu_de: 'Họp đồ án tốt nghiệp',
-          thoi_gian_bat_dau: '2026-10-01T09:00:00',
-          thoi_gian_ket_thuc: '2026-10-01T10:00:00',
-          so_nguoi_tham_gia: 5,
+          room: 1,
+          title: 'Họp đồ án tốt nghiệp',
+          date: '2026-10-01',
+          start_time: '09:00',
+          end_time: '10:00',
+          attendees_count: 5,
         })
       );
       expect(defaultProps.onSuccess).toHaveBeenCalled();
@@ -202,10 +203,10 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
     const testRooms: MeetingRoom[] = [
       {
         id: 1,
-        ten_phong: 'Phòng Hội thảo A',
-        vi_tri: 'Tầng 2',
-        suc_chua: 20,
-        thiet_bi: 'Máy chiếu',
+        name: 'Phòng Hội thảo A',
+        location: 'Tầng 2',
+        capacity: 20,
+        amenities: 'Máy chiếu',
         is_public: true,
         trang_thai: 'AVAILABLE',
         ghi_chu: '',
@@ -214,10 +215,10 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
       },
       {
         id: 2,
-        ten_phong: 'Phòng Bảo Trì B',
-        vi_tri: 'Tầng 3',
-        suc_chua: 10,
-        thiet_bi: 'Bảng trắng',
+        name: 'Phòng Bảo Trì B',
+        location: 'Tầng 3',
+        capacity: 10,
+        amenities: 'Bảng trắng',
         is_public: true,
         trang_thai: 'MAINTENANCE',
         ghi_chu: 'Đang sửa chữa',
@@ -226,10 +227,10 @@ describe('BookingModal Component (Issue #22 - Phase 3)', () => {
       },
       {
         id: 3,
-        ten_phong: 'Phòng Ban Giám Đốc',
-        vi_tri: 'Tầng 5',
-        suc_chua: 8,
-        thiet_bi: 'Màn hình LED',
+        name: 'Phòng Ban Giám Đốc',
+        location: 'Tầng 5',
+        capacity: 8,
+        amenities: 'Màn hình LED',
         is_public: false,
         trang_thai: 'AVAILABLE',
         ghi_chu: 'Nội bộ',

@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier, Lock
 import time
+from unittest import skipUnless
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -9,7 +10,7 @@ from django.contrib.auth.models import Permission
 from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 from django.test import TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.utils import timezone
 from django.urls import reverse
@@ -403,3 +404,21 @@ class BirthdayEmailConcurrencyTests(TransactionTestCase):
         self.assertEqual(send_call_count, 1)
         self.assertEqual(sum(result["sent_count"] for result in results), 1)
         self.assertEqual(log.trang_thai, BirthdayEmailStatus.SUCCESS)
+
+
+@skipUnless(connection.vendor == "postgresql", "Kiểu ENUM chỉ có trên PostgreSQL")
+class BirthdaysReleaseDdlSchemaTests(TestCase):
+    """Cột trang_thai tạo từ migration phải dùng đúng kiểu ENUM của release_DDL.sql."""
+
+    def test_trang_thai_uses_ddl_enum_types(self):
+        with connection.cursor() as cursor:
+            for table, enum_type in [
+                ("birthdays_birthdaywish", "birthdaywish_status"),
+                ("birthdays_birthdayemaillog", "emaillog_status"),
+            ]:
+                cursor.execute(
+                    "SELECT udt_name FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() AND table_name = %s AND column_name = 'trang_thai'",
+                    [table],
+                )
+                self.assertEqual(cursor.fetchone()[0], enum_type)

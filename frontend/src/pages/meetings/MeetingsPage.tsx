@@ -151,7 +151,7 @@ export const MeetingsPage: React.FC = () => {
 
     let url = `/api/meeting-bookings/?date=${selectedDate}&page_size=100`;
     if (selectedRoomFilter !== 'all') {
-      url += `&room_id=${selectedRoomFilter}`;
+      url += `&room=${selectedRoomFilter}`;
     }
     if (selectedStatusFilter !== 'all') {
       url += `&trang_thai=${selectedStatusFilter}`;
@@ -195,7 +195,7 @@ export const MeetingsPage: React.FC = () => {
     setIsSubmittingCancel(true);
     try {
       await apiClient.post(`/api/meeting-bookings/${cancellingBooking.id}/cancel/`, {
-        ly_do_huy: cancelReason.trim(),
+        cancel_reason: cancelReason.trim(),
       });
       showToast('success', t('meetings.messages.cancelSuccess'));
       setCancellingBooking(null);
@@ -218,13 +218,13 @@ export const MeetingsPage: React.FC = () => {
     setIsSubmittingDelete(true);
     try {
       await apiClient.delete(`/api/meeting-rooms/${deletingRoom.id}/`);
-      showToast('success', t('meetings.messages.deleteRoomSuccess', { name: deletingRoom.ten_phong }));
+      showToast('success', t('meetings.messages.deleteRoomSuccess', { name: deletingRoom.name }));
       setDeletingRoom(null);
       setReloadRoomsTrigger((prev) => prev + 1);
       setReloadBookingsTrigger((prev) => prev + 1);
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        showToast('error', err.message || (err.data?.error as string) || t('meetings.messages.deleteRoomError'));
+        showToast('error', err.message || (err.data?.detail as string) || t('meetings.messages.deleteRoomError'));
       } else {
         showToast('error', t('meetings.messages.unexpectedError'));
       }
@@ -243,9 +243,9 @@ export const MeetingsPage: React.FC = () => {
   // Lọc danh mục phòng ở Tab 2
   const filteredRooms = rooms.filter((r) => {
     const matchesSearch =
-      r.ten_phong.toLowerCase().includes(roomSearchTerm.toLowerCase()) ||
-      (r.vi_tri && r.vi_tri.toLowerCase().includes(roomSearchTerm.toLowerCase())) ||
-      (r.thiet_bi && r.thiet_bi.toLowerCase().includes(roomSearchTerm.toLowerCase()));
+      r.name.toLowerCase().includes(roomSearchTerm.toLowerCase()) ||
+      (r.location && r.location.toLowerCase().includes(roomSearchTerm.toLowerCase())) ||
+      (r.amenities && r.amenities.toLowerCase().includes(roomSearchTerm.toLowerCase()));
 
     const currentStatus = r.trang_thai || 'AVAILABLE';
     const matchesStatus =
@@ -475,7 +475,7 @@ export const MeetingsPage: React.FC = () => {
                   <option value="all">{t('meetings.allRooms')}</option>
                   {rooms.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.ten_phong}
+                      {r.name}
                     </option>
                   ))}
                 </select>
@@ -530,17 +530,9 @@ export const MeetingsPage: React.FC = () => {
           ) : (
             <div className="space-y-3">
               {bookings.map((booking) => {
-                const start = new Date(booking.thoi_gian_bat_dau);
-                const end = new Date(booking.thoi_gian_ket_thuc);
-                const timeRangeStr = `${start.toLocaleTimeString('vi-VN', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })} - ${end.toLocaleTimeString('vi-VN', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}`;
+                const timeRangeStr = `${booking.start_time.slice(0, 5)} - ${booking.end_time.slice(0, 5)}`;
 
-                const isOwner = currentUser && booking.nguoi_dat === currentUser.id;
+                const isOwner = currentUser && booking.organizer === currentUser.id;
                 const canModify = (isOwner && canChangeOwnBooking) || canChangeAnyBooking;
 
                 return (
@@ -559,13 +551,13 @@ export const MeetingsPage: React.FC = () => {
                         <div className="w-24 shrink-0 text-center bg-surface-elevated p-2.5 rounded-xl border border-border-subtle">
                           <p className="text-xs font-bold text-primary">{timeRangeStr}</p>
                           <p className="text-[10px] text-muted mt-0.5">
-                            {start.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                            {`${booking.date.slice(8, 10)}/${booking.date.slice(5, 7)}`}
                           </p>
                         </div>
 
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-black text-base text-main">{booking.tieu_de}</span>
+                            <span className="font-black text-base text-main">{booking.title}</span>
                             {booking.trang_thai === 'CONFIRMED' && (
                               <Badge variant="success" size="sm" withDot>
                                 {t('meetings.status.confirmed')}
@@ -587,33 +579,33 @@ export const MeetingsPage: React.FC = () => {
                           <div className="flex items-center gap-4 text-xs text-secondary flex-wrap pt-1">
                             <span className="flex items-center gap-1.5 font-bold text-primary">
                               <i className="fa-solid fa-door-open" />
-                              {booking.phong_hop_detail?.ten_phong || t('meetings.table.roomFallback', { id: booking.phong_hop })}
-                              {booking.phong_hop_detail?.vi_tri && ` (${booking.phong_hop_detail.vi_tri})`}
+                              {booking.room_detail?.name || t('meetings.table.roomFallback', { id: booking.room })}
+                              {booking.room_detail?.location && ` (${booking.room_detail.location})`}
                             </span>
 
                             <span className="flex items-center gap-1.5">
                               <i className="fa-solid fa-user-tie text-muted" />
                               {t('meetings.table.organizer')}:{' '}
                               <strong className="text-main font-semibold">
-                                {booking.nguoi_dat_detail?.full_name || booking.nguoi_dat_detail?.username || t('meetings.table.staffFallback')}
+                                {booking.organizer_detail?.full_name || booking.organizer_detail?.username || t('meetings.table.staffFallback')}
                               </strong>
                             </span>
 
-                            {booking.don_vi_to_chuc && (
+                            {booking.department_name && (
                               <span className="flex items-center gap-1.5">
                                 <i className="fa-solid fa-building text-muted" />
-                                {t('meetings.modalBooking.departmentLabel')}: {booking.don_vi_to_chuc}
+                                {t('meetings.modalBooking.departmentLabel')}: {booking.department_name}
                               </span>
                             )}
 
                             <span className="flex items-center gap-1.5">
                               <i className="fa-solid fa-users text-muted" />
-                              {t('meetings.table.attendees')}: {booking.so_nguoi_tham_gia}
+                              {t('meetings.table.attendees')}: {booking.attendees_count}
                             </span>
                           </div>
 
-                          {booking.ghi_chu && (() => {
-                            const parts = booking.ghi_chu.split('\n---\n');
+                          {booking.purpose && (() => {
+                            const parts = booking.purpose.split('\n---\n');
                             const purposeText = parts[0]?.trim();
                             const cancelReasonText = parts[1]?.trim();
                             return (
@@ -753,10 +745,10 @@ export const MeetingsPage: React.FC = () => {
                   <div>
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div>
-                        <h3 className="text-base font-bold text-main">{room.ten_phong}</h3>
+                        <h3 className="text-base font-bold text-main">{room.name}</h3>
                         <p className="text-xs text-muted flex items-center gap-1.5 mt-0.5">
                           <i className="fa-solid fa-location-dot text-primary" />
-                          {room.vi_tri || t('meetings.table.notUpdated')}
+                          {room.location || t('meetings.table.notUpdated')}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
@@ -786,7 +778,7 @@ export const MeetingsPage: React.FC = () => {
                       <span className="text-xs text-secondary font-medium">{t('meetings.table.capacityMax')}</span>
                       <span className="text-sm font-black text-primary flex items-center gap-1">
                         <i className="fa-solid fa-users text-xs" />
-                        {room.suc_chua} {t('meetings.table.attendees')}
+                        {room.capacity} {t('meetings.table.attendees')}
                       </span>
                     </div>
 
@@ -794,7 +786,7 @@ export const MeetingsPage: React.FC = () => {
                     <div className="space-y-1 mb-4">
                       <p className="text-[11px] font-bold text-muted uppercase tracking-wider">{t('meetings.table.amenitiesLabel')}</p>
                       <p className="text-xs text-secondary line-clamp-2">
-                        {room.thiet_bi || t('meetings.table.noAmenities')}
+                        {room.amenities || t('meetings.table.noAmenities')}
                       </p>
                     </div>
 
@@ -910,7 +902,7 @@ export const MeetingsPage: React.FC = () => {
             </div>
 
             <p className="text-sm text-secondary">
-              {t('meetings.modalCancel.desc', { title: cancellingBooking.tieu_de })}
+              {t('meetings.modalCancel.desc', { title: cancellingBooking.title })}
             </p>
 
             <div>
@@ -970,7 +962,7 @@ export const MeetingsPage: React.FC = () => {
             </div>
 
             <p className="text-sm text-secondary">
-              {t('meetings.modalDeleteRoom.desc', { name: deletingRoom.ten_phong })}
+              {t('meetings.modalDeleteRoom.desc', { name: deletingRoom.name })}
             </p>
             <p className="text-xs text-warning-text bg-warning-subtle p-2.5 rounded-lg border border-warning-border">
               <i className="fa-solid fa-circle-info mr-1" />
