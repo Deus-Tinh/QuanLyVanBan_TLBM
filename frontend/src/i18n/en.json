@@ -75,9 +75,7 @@
     "unreadCount": "{count} unread"
   },
   "footer": {
-    "group1Notice": "Group 1 currently in active development",
-    "advisorPrefix": "Advisor",
-    "layoutLead": "Layout & Workplace Lead"
+    "copyright": "Version v2.0 • Copyright © {year} Bao Long Insurance"
   },
   "dashboardDetails": {
     "greeting": "Welcome, Staff Member",
@@ -799,9 +797,6 @@
       "yellow": "Click to make me sway!"
     }
   },
-  "footer": {
-    "copyright": "Version v2.0 • Copyright © {year} Bao Long Insurance"
-  },
   "birthdayPage": {
     "title": "Staff birthday calendar",
     "description": "View birthdays and staff lists by date.",
@@ -985,5 +980,26 @@
     "confirmDeleteTypeSub": "This action cannot be undone once completed.",
     "deleteTypeBtn": "Delete Type",
     "understood": "Understood"
+  },
+  "documents_incoming_page": {
+    "pageTitle": "Incoming Documents List",
+    "searchTitle": "Subject / Title",
+    "year": "Year",
+    "searchBtn": "Search",
+    "addBtn": "Add",
+    "importBtn": "Import file",
+    "exportBtn": "Export Excel",
+    "viewing": "Showing",
+    "colAction": "Actions",
+    "colIncomingDate": "Date Received",
+    "colIncomingNum": "In. No.",
+    "colOfficer": "Officer",
+    "colRefNum": "Ref Code",
+    "colDocDate": "Doc Date",
+    "colTypeSummary": "Type & Summary",
+    "colRecipient": "Recipient",
+    "colIssueDate": "Issue Date",
+    "colNotes": "Notes",
+    "noData": "No data available"
   }
 }
