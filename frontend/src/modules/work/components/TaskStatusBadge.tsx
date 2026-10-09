@@ -1,6 +1,5 @@
 import React from 'react';
 import { TASK_STATUS_LABELS, TaskStatus } from '../types/task';
-import './TaskStatusBadge.css';
 
 interface StatusStyle {
   icon: string;
@@ -11,33 +10,33 @@ interface StatusStyle {
 const STATUS_STYLES: Record<TaskStatus, StatusStyle> = {
   CHO_XU_LY: {
     icon: 'fa-regular fa-hourglass-half',
-    color: 'var(--badge-gray-text)',
-    background: 'var(--badge-gray-bg)',
+    color: 'var(--color-task-badge-gray-text)',
+    background: 'var(--color-task-badge-gray-bg)',
   },
   DANG_XU_LY: {
     icon: 'fa-solid fa-pen-ruler',
-    color: 'var(--badge-blue-text)',
-    background: 'var(--badge-blue-bg)',
+    color: 'var(--color-task-badge-blue-text)',
+    background: 'var(--color-task-badge-blue-bg)',
   },
   CHO_DUYET: {
     icon: 'fa-regular fa-clock',
-    color: 'var(--badge-purple-text)',
-    background: 'var(--badge-purple-bg)',
+    color: 'var(--color-task-badge-purple-text)',
+    background: 'var(--color-task-badge-purple-bg)',
   },
   HOAN_THANH: {
     icon: 'fa-solid fa-circle-check',
-    color: 'var(--badge-green-text)',
-    background: 'var(--badge-green-bg)',
+    color: 'var(--color-task-badge-green-text)',
+    background: 'var(--color-task-badge-green-bg)',
   },
   CHUA_HOAN_THANH: {
     icon: 'fa-solid fa-triangle-exclamation',
-    color: 'var(--badge-amber-text)',
-    background: 'var(--badge-amber-bg)',
+    color: 'var(--color-task-badge-amber-text)',
+    background: 'var(--color-task-badge-amber-bg)',
   },
   QUA_HAN: {
     icon: 'fa-solid fa-circle-exclamation',
-    color: 'var(--badge-red-text)',
-    background: 'var(--badge-red-bg)',
+    color: 'var(--color-task-badge-red-text)',
+    background: 'var(--color-task-badge-red-bg)',
   },
 };
 
