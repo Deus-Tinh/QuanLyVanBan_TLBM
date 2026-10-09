@@ -16,11 +16,11 @@ export interface Unit {
   khoi_ten?: string;
   stt_uu_tien: number;
   ten: string;
-  dia_chi: string;
-  dien_thoai: string;
-  email: string;
+  dia_chi: string | null;
+  dien_thoai: string | null;
+  email: string | null;
   is_public: boolean;
-  ghi_chu: string;
+  ghi_chu: string | null;
   created_at?: string;
   updated_at?: string;
 }

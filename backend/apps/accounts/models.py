@@ -4,12 +4,20 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
+from django.db.models.functions import Now
 
 # Regex kiểm tra số điện thoại Việt Nam chuẩn
 vietnam_phone_regex = RegexValidator(
     regex=r"^(0|\+84)[1-9][0-9]{7,9}$",
     message="employees.messages.invalidPhone",
 )
+
+
+class DbNow(Now):
+    """DEFAULT now() như release_DDL.sql (Now() của Django sinh STATEMENT_TIMESTAMP() trên PostgreSQL)."""
+
+    def as_postgresql(self, compiler, connection, **extra_context):
+        return self.as_sql(compiler, connection, template="now()", **extra_context)
 
 
 # accounts_position.display_order là INTEGER (32 bit) trong DDL: vượt giá trị này PostgreSQL báo "integer out of range".
@@ -138,11 +146,13 @@ class Employee(AbstractBaseUser, PermissionsMixin):
     chuc_vu = models.ForeignKey(
         Position,
         on_delete=models.PROTECT,
+        db_index=False,
         related_name="employees",
         verbose_name="Chức vụ",
     )
     chuc_danh = models.CharField(
         max_length=150,
+        null=True,
         blank=True,
         default="",
         verbose_name="Chức danh (tự do)",
@@ -150,6 +160,7 @@ class Employee(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=254, unique=True, null=True, blank=True, verbose_name="Email")
     sdt = models.CharField(
         max_length=20,
+        null=True,
         blank=True,
         default="",
         validators=[vietnam_phone_regex],
@@ -158,22 +169,33 @@ class Employee(AbstractBaseUser, PermissionsMixin):
     don_vi = models.ForeignKey(
         "organizations.DonVi",
         on_delete=models.PROTECT,
+        db_index=False,
         related_name="employees",
         verbose_name="Đơn vị / Phòng ban",
     )
     username = models.CharField(max_length=150, unique=True, verbose_name="Tên đăng nhập")
-    is_active = models.BooleanField(default=True, verbose_name="Đang hoạt động")
-    is_staff = models.BooleanField(default=False, verbose_name="Quyền truy cập trang quản trị")
-    is_public = models.BooleanField(default=True, verbose_name="Hiển thị công khai")
+    # DDL: password VARCHAR(255) (AbstractBaseUser mặc định 128)
+    password = models.CharField(max_length=255, verbose_name="password")
+    is_active = models.BooleanField(default=True, db_default=True, verbose_name="Đang hoạt động")
+    is_staff = models.BooleanField(default=False, db_default=False, verbose_name="Quyền truy cập trang quản trị")
+    is_superuser = models.BooleanField(
+        default=False,
+        db_default=False,
+        verbose_name="superuser status",
+        help_text="Designates that this user has all permissions without explicitly assigning them.",
+    )
+    is_public = models.BooleanField(default=True, db_default=True, verbose_name="Hiển thị công khai")
+    # Cột trang_thai dùng ENUM employee_work_status của DDL (đổi kiểu trong migration 0005).
     trang_thai = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.LAM_VIEC,
+        db_default=Status.LAM_VIEC,
         verbose_name="Trạng thái làm việc",
     )
-    ghi_chu = models.TextField(blank=True, default="", verbose_name="Ghi chú")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày tạo")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Cập nhật lần cuối")
+    ghi_chu = models.TextField(null=True, blank=True, default="", verbose_name="Ghi chú")
+    created_at = models.DateTimeField(auto_now_add=True, db_default=DbNow(), verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, db_default=DbNow(), verbose_name="Cập nhật lần cuối")
 
     objects = EmployeeManager()
 
@@ -186,6 +208,11 @@ class Employee(AbstractBaseUser, PermissionsMixin):
         verbose_name = "Cán bộ nhân viên"
         verbose_name_plural = "Cán bộ nhân viên"
         ordering = ["don_vi__stt_uu_tien", "chuc_vu__display_order", "ho_ten", "id"]
+        indexes = [
+            models.Index(fields=["don_vi"], name="idx_employee_donvi"),
+            models.Index(fields=["chuc_vu"], name="idx_employee_chucvu"),
+            models.Index(fields=["is_active"], name="idx_employee_is_active"),
+        ]
         default_permissions = ()
         permissions = [
             ("view_list_cbnv", "Xem danh sách CBNV"),
