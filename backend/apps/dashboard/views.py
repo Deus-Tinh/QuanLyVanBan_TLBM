@@ -6,6 +6,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from documents.selectors import van_ban_xem_duoc
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /api/dashboard/overview/
@@ -54,16 +56,28 @@ def overview_view(request):
     today = timezone.localdate()
     tomorrow = today + timedelta(days=1)
 
-    # ── 1-4. Văn bản và phòng họp ───────────────────────────────────
-    # Nguồn dữ liệu duy nhất là DDL (documents_vanbanden, documents_vanbandi,
-    # meetings_*). Dashboard không giữ bảng riêng và không tự viết lại quy tắc
-    # "văn bản xem được" (#68 mục C5). Khi các module trên vào staging, nối
-    # tại đây qua van_ban_xem_duoc(user, loai) của Nhóm 2; đến lúc đó khối trả rỗng.
-    incoming_total = 0
-    outgoing_total = 0
+    # ── 1-3. Văn bản ────────────────────────────────────────────────
+    # Cả bộ đếm và danh sách dùng selector chung để không lộ HAN_CHE.
+    incoming = van_ban_xem_duoc(request.user, "DEN")
+    outgoing = van_ban_xem_duoc(request.user, "DI")
+    incoming_total = incoming.filter(ngay_van_ban__year=today.year).count()
+    outgoing_total = outgoing.filter(ngay_van_ban__year=today.year).count()
     tasks_pending = 0  # Placeholder — sẽ tích hợp khi Nhóm 6 hoàn tất API Tasks
-    recent_incoming = []
-    recent_outgoing = []
+
+    def recent_documents(queryset):
+        return [
+            {
+                "id": document.pk,
+                "code": document.so_hieu,
+                "title": document.trich_yeu,
+                "date": timezone.localtime(document.ngay_van_ban).strftime("%d/%m/%Y"),
+            }
+            for document in queryset.order_by("-ngay_van_ban", "-pk")[:5]
+        ]
+
+    recent_incoming = recent_documents(incoming)
+    recent_outgoing = recent_documents(outgoing)
+    # Lịch họp lấy từ module Nhóm 7 sau khi PR #122 được tích hợp vào staging.
     today_meetings = []
 
     stats = {
