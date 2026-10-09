@@ -1,10 +1,6 @@
 import React from 'react';
 import { TASK_STATUS_LABELS, TaskStatus } from '../types/task';
-
-/**
- * Nhãn màu hiển thị trạng thái công việc.
- * Trạng thái do backend tính, frontend chỉ hiển thị — không tự suy ra từ ngày tháng.
- */
+import './TaskStatusBadge.css';
 
 interface StatusStyle {
   icon: string;
@@ -12,37 +8,36 @@ interface StatusStyle {
   background: string;
 }
 
-// Mỗi trạng thái có nền + chữ riêng (chốt với trưởng nhóm); icon kèm theo để Chờ duyệt / Chưa hoàn thành không nhầm tông.
 const STATUS_STYLES: Record<TaskStatus, StatusStyle> = {
   CHO_XU_LY: {
     icon: 'fa-regular fa-hourglass-half',
-    color: '#6B7280',
-    background: '#F3F4F6',
+    color: 'var(--badge-gray-text)',
+    background: 'var(--badge-gray-bg)',
   },
   DANG_XU_LY: {
     icon: 'fa-solid fa-pen-ruler',
-    color: '#1D4ED8',
-    background: '#DBEAFE',
+    color: 'var(--badge-blue-text)',
+    background: 'var(--badge-blue-bg)',
   },
   CHO_DUYET: {
     icon: 'fa-regular fa-clock',
-    color: '#6D28D9',
-    background: '#EDE9FE',
+    color: 'var(--badge-purple-text)',
+    background: 'var(--badge-purple-bg)',
   },
   HOAN_THANH: {
     icon: 'fa-solid fa-circle-check',
-    color: '#065F46',
-    background: '#D1FAE5',
+    color: 'var(--badge-green-text)',
+    background: 'var(--badge-green-bg)',
   },
   CHUA_HOAN_THANH: {
     icon: 'fa-solid fa-triangle-exclamation',
-    color: '#D97706',
-    background: '#FEF3C7',
+    color: 'var(--badge-amber-text)',
+    background: 'var(--badge-amber-bg)',
   },
   QUA_HAN: {
     icon: 'fa-solid fa-circle-exclamation',
-    color: '#DC2626',
-    background: '#FEE2E2',
+    color: 'var(--badge-red-text)',
+    background: 'var(--badge-red-bg)',
   },
 };
 
