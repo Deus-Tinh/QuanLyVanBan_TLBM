@@ -38,12 +38,22 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen && documentId) {
-      fetchDetail(documentId);
+      Promise.resolve().then(() => {
+        if (!cancelled) void fetchDetail(documentId);
+      });
     } else {
-      setDocument(null);
-      setError(null);
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setDocument(null);
+          setError(null);
+        }
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, documentId, fetchDetail]);
 
   // Đóng bằng phím ESC

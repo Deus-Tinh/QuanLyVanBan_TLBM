@@ -36,7 +36,13 @@ export const InboundDocumentPage: React.FC = () => {
 
   useEffect(() => {
     if (loaiVanBanParam) {
-      setFilters(prev => ({ ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+      let cancelled = false;
+      Promise.resolve().then(() => {
+        if (!cancelled) setFilters(prev => ({ ...prev, loai_van_ban: loaiVanBanParam, page: 1 }));
+      });
+      return () => {
+        cancelled = true;
+      };
     }
   }, [loaiVanBanParam]);
 
@@ -47,7 +53,7 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Quản lý modal Thêm/Sửa & Import Excel (từ PR #34 của Tân)
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
-  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; soHieu: string } | null>(null);
   const [alertMsg, setAlertMsg] = useState<string>('');
@@ -97,8 +103,16 @@ export const InboundDocumentPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchYears();
-    fetchStats();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        void fetchYears();
+        void fetchStats();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fetchYears, fetchStats]);
 
   // Gọi API lấy danh sách văn bản đến
@@ -124,7 +138,7 @@ export const InboundDocumentPage: React.FC = () => {
         setDocuments(response.results);
         setTotalCount(response.count || 0);
         if (response.results.length > 0) {
-          const docYears = Array.from(new Set(response.results.map((d: any) => d.nam).filter(Boolean))) as number[];
+          const docYears = Array.from(new Set(response.results.map((document) => document.nam).filter(Boolean))) as number[];
           setAvailableYears(prev => {
             const merged = Array.from(new Set([...prev, ...docYears])).sort((a, b) => b - a);
             return merged;
@@ -150,7 +164,13 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Nạp dữ liệu khi bộ lọc thay đổi
   useEffect(() => {
-    fetchDocuments();
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) void fetchDocuments();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [fetchDocuments]);
 
   // Xử lý đổi trang
@@ -223,8 +243,8 @@ export const InboundDocumentPage: React.FC = () => {
       a.download = `Danh_Sach_Van_Ban_Den_${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setAlertMsg(e.message || String(e));
+    } catch (error: unknown) {
+      setAlertMsg(error instanceof Error ? error.message : String(error));
       setIsAlertOpen(true);
     }
   };

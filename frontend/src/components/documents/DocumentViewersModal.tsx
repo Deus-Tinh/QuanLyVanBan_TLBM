@@ -41,7 +41,7 @@ export const DocumentViewersModal: React.FC<DocumentViewersModalProps> = ({
         setViewers([]);
         setTotalCount(0);
       }
-    } catch (err: unknown) {
+    } catch {
       // Nếu API trả về lỗi hoặc chạy offline
       const session = authService.getSession();
       const currentUserName = session?.fullName || session?.username || 'Cán bộ hiện tại';
@@ -66,14 +66,24 @@ export const DocumentViewersModal: React.FC<DocumentViewersModalProps> = ({
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     if (isOpen && documentId) {
-      fetchViewers(documentId);
+      Promise.resolve().then(() => {
+        if (!cancelled) void fetchViewers(documentId);
+      });
     } else {
-      setViewers([]);
-      setTotalCount(0);
-      setSearchTerm('');
-      setError(null);
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setViewers([]);
+          setTotalCount(0);
+          setSearchTerm('');
+          setError(null);
+        }
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, documentId, fetchViewers]);
 
   // Đóng bằng phím ESC
