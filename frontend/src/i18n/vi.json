@@ -75,9 +75,7 @@
     "unreadCount": "{count} chưa đọc"
   },
   "footer": {
-    "group1Notice": "Nhóm 1 đang trong quá trình phát triển",
-    "advisorPrefix": "GVHD",
-    "layoutLead": "Phụ trách Layout & Trang chủ"
+    "copyright": "Phiên bản v2.0 • Bản quyền © {year} Bảo Long Insurance"
   },
   "dashboardDetails": {
     "greeting": "Xin chào, Cán bộ nhân viên",
@@ -799,9 +797,6 @@
       "yellow": "Click để tớ lắc lư!"
     }
   },
-  "footer": {
-    "copyright": "Phiên bản v2.0 • Bản quyền © {year} Bảo Long Insurance"
-  },
   "birthdayPage": {
     "title": "Lịch sinh nhật cán bộ nhân viên",
     "description": "Xem lịch sinh nhật và danh sách cán bộ nhân viên theo ngày.",
@@ -985,5 +980,26 @@
     "confirmDeleteTypeSub": "Hành động này không thể hoàn tác sau khi thực hiện.",
     "deleteTypeBtn": "Xóa loại tài liệu",
     "understood": "Đã hiểu"
+  },
+  "documents_incoming_page": {
+    "pageTitle": "Danh mục văn bản đến",
+    "searchTitle": "Tiêu đề",
+    "year": "Năm",
+    "searchBtn": "Tìm kiếm",
+    "addBtn": "Thêm",
+    "importBtn": "Import file",
+    "exportBtn": "Xuất Excel",
+    "viewing": "Đang xem",
+    "colAction": "Tác vụ",
+    "colIncomingDate": "Ngày đến",
+    "colIncomingNum": "Số đến",
+    "colOfficer": "Cán bộ",
+    "colRefNum": "Số, ký hiệu",
+    "colDocDate": "Ngày văn bản",
+    "colTypeSummary": "Tên loại và trích yếu",
+    "colRecipient": "Đơn vị hoặc người nhận",
+    "colIssueDate": "Ngày ban hành",
+    "colNotes": "Ghi chú",
+    "noData": "Không có dữ liệu"
   }
 }
