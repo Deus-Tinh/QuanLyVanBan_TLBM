@@ -38,7 +38,7 @@ interface SuggestedDoc {
 }
 
 interface FormState {
-  loai: 'DEN';
+  loai: 'DEN' | 'DI';
   nam: number;
   so_hieu: string;
   so_thu_tu?: number | null;
@@ -65,6 +65,7 @@ interface Props {
   onClose: () => void;
   initial?: InitialDocType | null;
   onSaved?: (doc: Record<string, unknown>) => void;
+  defaultLoai?: 'DEN' | 'DI';
 }
 
 const DEFAULT_UNITS = [
@@ -114,14 +115,14 @@ function getFileIcon(fileName: string) {
   return 'fa-solid fa-file text-slate-400';
 }
 
-function buildInitialForm(initDocInput?: InitialDocType | null): FormState {
+function buildInitialForm(initDocInput?: InitialDocType | null, defaultLoai: 'DEN' | 'DI' = 'DEN'): FormState {
   const now = new Date();
   const defaultDate = toLocalDateString(now);
   const initDoc = initDocInput as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
 
   if (!initDoc) {
     return {
-      loai: 'DEN',
+      loai: defaultLoai,
       nam: now.getFullYear(),
       so_hieu: '',
       so_thu_tu: undefined,
@@ -152,11 +153,11 @@ function buildInitialForm(initDocInput?: InitialDocType | null): FormState {
   }
 
   return {
-    loai: 'DEN',
+    loai: ((initDoc.loai as 'DEN' | 'DI') || defaultLoai),
     nam: (initDoc.nam as number) ?? now.getFullYear(),
     so_hieu: (initDoc.so_hieu as string) ?? (initDoc.soHieu as string) ?? '',
     so_thu_tu: (initDoc.so_thu_tu as number) ?? (initDoc.soDen as number) ?? undefined,
-    ngay_den: toLocalDateString((initDoc.ngay_den || initDoc.ngayDen) as string) || defaultDate,
+    ngay_den: toLocalDateString((initDoc.ngay_den || initDoc.ngayDen || initDoc.ngay_ban_hanh || initDoc.ngayBanHanh) as string) || defaultDate,
     ngay_van_ban: toLocalDateString((initDoc.ngay_van_ban || initDoc.ngayVanBan || initDoc.ngay_thang_van_ban) as string) || defaultDate,
     noi_ban_hanh: (initDoc.noi_ban_hanh || initDoc.coQuanBanHanh || initDoc.co_quan_ban_hanh || '') as string,
     trich_yeu: (initDoc.trich_yeu || initDoc.trichYeu || '') as string,
@@ -175,11 +176,11 @@ function buildInitialForm(initDocInput?: InitialDocType | null): FormState {
   };
 }
 
-export default function DocumentFormModal({ open, onClose, initial, onSaved }: Props) {
+export default function DocumentFormModal({ open, onClose, initial, onSaved, defaultLoai = 'DEN' }: Props) {
   const initDoc = initial as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
   const [loading, setLoading] = useState(false);
   const [prevInitial, setPrevInitial] = useState(initial);
-  const [form, setForm] = useState<FormState>(() => buildInitialForm(initial));
+  const [form, setForm] = useState<FormState>(() => buildInitialForm(initial, defaultLoai));
   const [units, setUnits] = useState<string[]>(DEFAULT_UNITS);
   const [staff, setStaff] = useState<UserOption[]>([]);
   const [selectedUnit, setSelectedUnit] = useState<string>(() => (initDoc?.don_vi_nhan as string) || '');
@@ -211,7 +212,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
 
   if (initial !== prevInitial) {
     setPrevInitial(initial);
-    setForm(buildInitialForm(initial));
+    setForm(buildInitialForm(initial, defaultLoai));
     setFiles([]);
     setIsDragging(false);
     setReplacementSuggestions([]);
@@ -473,7 +474,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
     setLoading(true);
     try {
       const payload = new FormData();
-      payload.append('loai', 'DEN');
+      payload.append('loai', form.loai || defaultLoai);
       payload.append('nam', String(form.nam));
       payload.append('so_hieu', form.so_hieu.trim());
       payload.append('noi_ban_hanh', form.noi_ban_hanh.trim());
@@ -483,8 +484,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
       payload.append('hien_thi', form.hien_thi ? 'true' : 'false');
       payload.append('gui_mail_toan_he_thong', form.pham_vi === 'HAN_CHE' ? 'false' : (form.gui_mail_toan_he_thong ? 'true' : 'false'));
 
-      if (form.ngay_den) {
-        payload.append('ngay_den', form.ngay_den);
+      if (form.loai === 'DI') {
+        if (form.ngay_den) {
+          payload.append('ngay_ban_hanh', form.ngay_den);
+        }
+      } else {
+        if (form.ngay_den) {
+          payload.append('ngay_den', form.ngay_den);
+        }
       }
       if (form.ngay_van_ban) {
         payload.append('ngay_van_ban', form.ngay_van_ban);
@@ -594,12 +601,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
             </span>
             <div>
               <h3 className="text-base font-bold text-main m-0">
-                {initial?.id ? 'Cập Nhật Văn Bản Đến' : 'Thêm Mới Văn Bản Đến'}
+                {initial?.id
+                  ? (form.loai === 'DI' ? 'Cập Nhật Văn Bản Đi' : 'Cập Nhật Văn Bản Đến')
+                  : (form.loai === 'DI' ? 'Thêm Mới Văn Bản Đi' : 'Thêm Mới Văn Bản Đến')}
               </h3>
               <p className="text-xs text-muted m-0">
                 {initial?.id
                   ? `Chỉnh sửa thông tin hồ sơ văn bản ${form.so_hieu || ''}`
-                  : 'Tiếp nhận, vào sổ công văn đến và phân phối xử lý nội bộ'}
+                  : (form.loai === 'DI' ? 'Vào sổ công văn đi và quản lý phát hành nội bộ' : 'Tiếp nhận, vào sổ công văn đến và phân phối xử lý nội bộ')}
               </p>
             </div>
           </div>
@@ -641,10 +650,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Số đến */}
+              {/* Số đến / Số đi */}
               <div className="col-span-12 sm:col-span-3">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Số đến <span className="text-muted font-normal text-xs">(Tự động)</span>
+                  {form.loai === 'DI' ? 'Số đi' : 'Số đến'} <span className="text-muted font-normal text-xs">(Tự động)</span>
                 </label>
                 <input
                   readOnly
@@ -654,10 +663,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                 />
               </div>
 
-              {/* Ngày đến */}
+              {/* Ngày đến / Ngày ban hành */}
               <div className="col-span-12 sm:col-span-4">
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Ngày đến <span className="text-danger">*</span>
+                  {form.loai === 'DI' ? 'Ngày ban hành' : 'Ngày đến'} <span className="text-danger">*</span>
                 </label>
                 <input
                   type="date"
@@ -805,7 +814,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved }: P
                   rows={3}
                   value={form.trich_yeu}
                   onChange={e => setForm({ ...form, trich_yeu: e.target.value })}
-                  placeholder="Nhập tóm tắt ngắn gọn mục đích và nội dung cốt lõi của văn bản đến..."
+                  placeholder="Nhập tóm tắt ngắn gọn mục đích và nội dung cốt lõi của văn bản..."
                   className="w-full text-sm bg-surface border border-border-subtle rounded-xl p-3 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast resize-y"
                   required
                 />

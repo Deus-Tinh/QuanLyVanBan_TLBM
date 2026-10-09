@@ -17,6 +17,7 @@ export interface DocumentTableProps {
   onEdit?: (doc: DocumentItem) => void;
   onDelete?: (id: number, soHieu: string) => void;
   isConfidential?: boolean;
+  loai?: 'DEN' | 'DI';
 }
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
@@ -31,6 +32,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   onEdit,
   onDelete,
   isConfidential = false,
+  loai = 'DEN',
 }) => {
   // Quản lý menu 3 chấm ⋮ mở trên dòng nào
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
@@ -86,7 +88,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         <table className="w-full text-left text-sm border-collapse min-w-[950px]">
           <thead>
             <tr className="bg-surface-elevated/70 text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
-              <th className="px-4 py-3 text-center w-16">Số đến</th>
+              <th className="px-4 py-3 text-center w-16">{loai === 'DI' ? 'Số đi' : 'Số đến'}</th>
               <th className="px-4 py-3 w-40">Số, ký hiệu</th>
               <th className="px-4 py-3 w-40">Ngày văn bản</th>
               <th className="px-4 py-3 min-w-[280px]">Trích yếu nội dung</th>
@@ -135,7 +137,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       <i className="fa-solid fa-folder-open text-muted" />
                     </div>
                     <span className="text-sm font-semibold text-secondary">
-                      Không tìm thấy văn bản đến nào
+                      {loai === 'DI' ? 'Không tìm thấy văn bản đi nào' : 'Không tìm thấy văn bản đến nào'}
                     </span>
                     <span className="text-xs text-muted max-w-sm">
                       Không có văn bản nào phù hợp với điều kiện tìm kiếm. Hãy thử chọn năm khác hoặc đặt lại bộ lọc.

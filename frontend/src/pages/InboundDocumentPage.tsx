@@ -13,7 +13,7 @@ import { Button } from '@components/common/Button';
 import apiClient from '@lib/apiClient';
 
 export const InboundDocumentPage: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const loaiVanBanParam = searchParams.get('loai_van_ban');
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -41,6 +41,13 @@ export const InboundDocumentPage: React.FC = () => {
       });
     }
   }, [loaiVanBanParam]);
+
+  const handleClearLoaiVanBan = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('loai_van_ban');
+    setSearchParams(nextParams);
+    setFilters(prev => ({ ...prev, loai_van_ban: undefined, page: 1 }));
+  };
 
   // Quản lý modal xem chi tiết & modal danh sách người đọc
   const [selectedDocId, setSelectedDocId] = useState<number | null>(null);
@@ -82,7 +89,8 @@ export const InboundDocumentPage: React.FC = () => {
   // Lấy thống kê số lượng văn bản theo trạng thái (loại bỏ các văn bản hết hiệu lực)
   const fetchStats = useCallback(async () => {
     try {
-      const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DEN&page_size=1000');
+      const extraQuery = filters.loai_van_ban ? `&loai_van_ban=${encodeURIComponent(String(filters.loai_van_ban))}` : '';
+      const res = await apiClient.get<PaginatedResponse<DocumentItem>>(`/api/documents/?loai=DEN&page_size=1000${extraQuery}`);
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
       const partial = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
@@ -96,7 +104,7 @@ export const InboundDocumentPage: React.FC = () => {
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
     }
-  }, []);
+  }, [filters.loai_van_ban]);
 
   useEffect(() => {
     let ignore = false;
@@ -184,6 +192,9 @@ export const InboundDocumentPage: React.FC = () => {
 
   // Đặt lại bộ lọc
   const handleResetFilters = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('loai_van_ban');
+    setSearchParams(nextParams);
     setFilters({
       q: '',
       nam: '',
@@ -193,6 +204,7 @@ export const InboundDocumentPage: React.FC = () => {
       page: 1,
       page_size: 10,
       loai: 'DEN',
+      loai_van_ban: undefined,
     });
   };
 
@@ -385,7 +397,28 @@ export const InboundDocumentPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Thanh Tìm Kiếm & Bộ Lọc Đa Tiêu Chí */}
+      {/* 3. Chỉ báo lọc Loại văn bản từ URL (Nhóm 3 liên kết) */}
+      {filters.loai_van_ban && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 mb-4 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary shadow-2xs">
+          <div className="flex items-center gap-2">
+            <i className="fa-solid fa-filter text-primary" />
+            <span>
+              Đang lọc danh sách theo Loại văn bản (từ phân hệ Hồ sơ): <strong>#{filters.loai_van_ban}</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearLoaiVanBan}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-main text-xs border border-border-subtle transition-all cursor-pointer shadow-2xs"
+            title="Xóa bộ lọc loại văn bản"
+          >
+            <i className="fa-solid fa-xmark text-danger" />
+            <span>Bỏ lọc</span>
+          </button>
+        </div>
+      )}
+
+      {/* 4. Thanh Tìm Kiếm & Bộ Lọc Đa Tiêu Chí */}
       <FilterBar
         filters={filters}
         onFilterChange={setFilters}

@@ -11,7 +11,6 @@ vi.mock('@lib/apiClient', async () => {
   const mockClient = vi.fn() as unknown as typeof apiClientModule.apiClient;
   mockClient.get = vi.fn();
   mockClient.post = vi.fn();
-  mockClient.patch = vi.fn();
   mockClient.put = vi.fn();
   mockClient.delete = vi.fn();
 
@@ -278,5 +277,27 @@ describe('InboundDocumentPage Component (Phân hệ Văn bản Đến)', () => {
         expect(screen.getByText(/Đã xóa văn bản "101\/QĐ-TLBM" thành công/i)).toBeInTheDocument();
       });
     });
+
+    it('hiển thị badge lọc và gửi param loai_van_ban khi có trên URL, và cho phép bỏ lọc', async () => {
+      render(
+        <MemoryRouter initialEntries={['/documents/incoming?loai_van_ban=5']}>
+          <InboundDocumentPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Đang lọc danh sách theo Loại văn bản/i)).toBeInTheDocument();
+        expect(screen.getByText('#5')).toBeInTheDocument();
+        expect(mockedApiClient.get).toHaveBeenCalledWith(expect.stringContaining('loai_van_ban=5'));
+      });
+
+      const clearBtn = screen.getByRole('button', { name: /Bỏ lọc/i });
+      fireEvent.click(clearBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Đang lọc danh sách theo Loại văn bản/i)).not.toBeInTheDocument();
+      });
+    });
   });
 });
+
