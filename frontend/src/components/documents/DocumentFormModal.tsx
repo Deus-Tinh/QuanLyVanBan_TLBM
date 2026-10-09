@@ -12,9 +12,14 @@ export type InitialDocType =
 
 interface UserOption {
   id: number;
-  full_name: string;
+  ho_ten?: string;
+  full_name?: string;
   username: string;
+  don_vi_id?: number;
+  don_vi_ten?: string;
   department?: string;
+  chuc_vu_id?: number;
+  chuc_vu_ten?: string;
 }
 
 interface ExistingAttachment {
@@ -106,13 +111,13 @@ const DEFAULT_UNITS = [
 
 const MOCK_STAFF_BY_UNIT: Record<string, UserOption[]> = {
   'Ban Giám hiệu': [
-    { id: 1, full_name: 'Quản trị viên (Admin)', username: 'admin', department: 'Ban Giám hiệu' },
+    { id: 1, ho_ten: 'Quản trị viên (Admin)', username: 'admin', don_vi_ten: 'Ban Giám hiệu' },
   ],
   'Phòng Hành chính - Tổng hợp': [
-    { id: 2, full_name: 'Trần Cán Bộ', username: 'canbo', department: 'Phòng Hành chính - Tổng hợp' },
+    { id: 2, ho_ten: 'Trần Cán Bộ', username: 'canbo', don_vi_ten: 'Phòng Hành chính - Tổng hợp' },
   ],
   'Phòng Đào tạo': [
-    { id: 3, full_name: 'Lê Cán Bộ 2', username: 'canbo2', department: 'Phòng Đào tạo' },
+    { id: 3, ho_ten: 'Lê Cán Bộ 2', username: 'canbo2', don_vi_ten: 'Phòng Đào tạo' },
   ],
 };
 
@@ -261,7 +266,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     try {
       const data = await apiClient.get<UserOption[] | PaginatedResponse<UserOption>>('/api/accounts/staffs/');
       const items = Array.isArray(data) ? data : data?.results || [];
-      const depts = Array.from(new Set(items.map((u) => u.department).filter(Boolean))) as string[];
+      const depts = Array.from(new Set(items.map((u) => u.don_vi_ten || u.department).filter(Boolean))) as string[];
       if (depts.length > 0) {
         const merged = Array.from(new Set([...depts, ...DEFAULT_UNITS]));
         setUnits(merged);
@@ -1259,7 +1264,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                             }}
                             className="rounded border-border-subtle text-primary focus:ring-primary"
                           />
-                          <span className="font-medium">{s.full_name || s.username}</span>
+                          <span className="font-medium">{s.ho_ten || s.full_name || s.username}</span>
                           <span className="text-xs text-muted">(@{s.username})</span>
                         </label>
                       );

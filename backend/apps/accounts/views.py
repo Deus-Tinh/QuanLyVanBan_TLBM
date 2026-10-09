@@ -245,13 +245,10 @@ def staffs_view(request):
         data.append({
             "id": u.id,
             "username": u.username,
-            "full_name": full_name,
             "ho_ten": full_name,
-            "department": dept_name,
-            "don_vi_ten": dept_name,
             "don_vi_id": u.don_vi_id,
+            "don_vi_ten": dept_name,
             "chuc_vu_id": u.chuc_vu_id,
-            "position": position_name,
             "chuc_vu_ten": position_name,
         })
     return Response(data, status=status.HTTP_200_OK)
