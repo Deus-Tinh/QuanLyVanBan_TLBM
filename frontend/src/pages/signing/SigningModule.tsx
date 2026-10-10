@@ -9,6 +9,7 @@ import { DangTai, LoiTai } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { coQuyen, SigningContext, useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
+import './signing.css';
 
 const DanhSachPage = lazy(() => import('./DanhSachPage'));
 const TaoHoSoPage = lazy(() => import('./TaoHoSoPage'));
@@ -37,7 +38,7 @@ export default function SigningModule() {
 
   return (
     <SigningContext.Provider value={ngu_canh}>
-      <div className="w-full space-y-5 animate-in fade-in duration-150">
+      <div className="signing-scope space-y-5 animate-in fade-in duration-150">
         <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">

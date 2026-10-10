@@ -3,6 +3,7 @@
  * CSS theo Design Tokens (class Tailwind ngữ nghĩa), không mã màu cứng.
  */
 import React, { useEffect, useId } from 'react';
+import { createPortal } from 'react-dom';
 import { Badge, Button } from '@components/common';
 import type { BadgeProps } from '@components/common/Badge';
 import { useSigningT } from '@lib/signing/i18n';
@@ -88,10 +89,11 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
     return () => window.removeEventListener('keydown', esc);
   }, [mo, onDong]);
   if (!mo) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-backdrop p-4 animate-fade-in">
+  // Render vào body như modal dùng chung (phủ cả header, sidebar); khung hộp thoại tự giữ cỡ chữ phân hệ (signing-zoom)
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-backdrop p-4 animate-fade-in">
       <div role="dialog" aria-modal="true" aria-labelledby={id}
-        className="w-full max-w-2xl rounded-2xl border border-border-subtle bg-surface-elevated shadow-xl animate-slide-in-bottom">
+        className="signing-zoom w-full max-w-2xl rounded-2xl border border-border-subtle bg-surface-elevated shadow-xl animate-slide-in-bottom">
         <div className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
           <h2 id={id} className="text-xl font-bold text-main">{moTieuDe}</h2>
           <button type="button" onClick={onDong} className="rounded-full p-1.5 text-secondary hover:text-main hover:bg-surface-hover transition-colors" aria-label={t('chung.dong')}>
@@ -101,7 +103,8 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
         <div className="px-6 py-5 space-y-4">{children}</div>
         {chanDuoi && <div className="flex justify-end gap-2.5 border-t border-border-subtle px-6 py-4">{chanDuoi}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

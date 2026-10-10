@@ -442,7 +442,7 @@ html, body {
   font-family: var(--font-sans);
   background-color: var(--bg-canvas, #f1f4f9);
   color: var(--text-main);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.5;
   overflow: hidden;
   transition: background-color var(--transition-normal), color var(--transition-normal);

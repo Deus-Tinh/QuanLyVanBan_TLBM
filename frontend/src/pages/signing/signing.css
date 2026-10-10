@@ -1,0 +1,25 @@
+/*
+ * Phạm vi riêng của phân hệ Trình ký (Nhóm 5): giữ cỡ chữ và khoảng cách theo gốc 16px như thiết kế của nhóm,
+ * trong khi layout chung của dự án dùng gốc 14px. Chỉ áp dụng bên trong .signing-scope, không ảnh hưởng nhóm khác.
+ * 16 / 14 = 1.142857; text-xs giữ 0.875rem (hiển thị 14px sau khi phóng).
+ */
+.signing-scope,
+.signing-zoom {
+  zoom: 1.142857;
+}
+
+.signing-scope {
+  width: 87.5%; /* 14 / 16: bề rộng sau khi phóng bằng đúng khung nội dung, không tràn ngang */
+}
+
+/* Hộp thoại render vào body (ngoài .signing-scope) nên tự phóng; khung không vượt màn hình nhỏ */
+.signing-zoom {
+  max-height: 87.5vh;
+  overflow-y: auto;
+}
+
+.signing-scope .text-xs,
+.signing-zoom .text-xs {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
