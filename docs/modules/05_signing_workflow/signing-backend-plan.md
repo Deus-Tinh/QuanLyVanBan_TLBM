@@ -245,6 +245,7 @@ GVHD đã chốt bỏ văn bản mật hành chính. Tài liệu nội bộ hạ
 - **Redis:** broker Celery, khóa ngắn hạn nếu cần; challenge khóa ký chỉ dùng Redis khi chuyển sang challenge ngẫu nhiên (mục 3.4).
 - **Celery worker:** gửi thông báo, nhắc hạn, escalation, phẳng hóa PDF, chốt bằng chứng tổng hợp. Task chỉ nhận ID, retry có backoff và jitter, idempotent.
 - **Outbox:** dùng chính bảng `signing_notification`. Bản ghi `CHO_GUI` được tạo trong cùng transaction nghiệp vụ; sau commit (`transaction.on_commit`) mới đẩy task gửi; một tác vụ định kỳ quét các bản ghi `CHO_GUI` bị sót. Không tạo bảng outbox riêng trong MVP.
+- Đã triển khai (`services/thong_bao.py`): sự kiện `CAN_KY` (người ký vừa được mở), `HOAN_THANH`, `TU_CHOI`, `YEU_CAU_SUA`, `HUY` tạo bản ghi kênh `IN_APP` (hiện ở tab Thông báo, API `GET /thong-bao/`) và `EMAIL` (khi người nhận có email) trong cùng transaction, `khoa_chong_gui_trung` chống trùng; email gửi sau commit, lỗi ghi `THAT_BAI` + `loi_gui`, lệnh `manage.py gui_thong_bao_trinh_ky` gửi lại (chạy định kỳ thay cho Celery trong MVP). Cấu hình: `SIGNING_EMAIL_BACKEND` (trống: dùng email chung của dự án), `SIGNING_FRONTEND_URL` (liên kết trong email).
 
 ### 4.2. Transaction và xử lý đồng thời
 
