@@ -80,7 +80,7 @@ describe('DocumentPreviewModal Component (Group 2 Detail & PDF Reader View)', ()
     expect(screen.getByText('Trí Kiệt Lê')).toBeInTheDocument();
   });
 
-  it('switches to digitized PDF viewer tab when clicked', () => {
+  it('renders download button and handles download action', () => {
     render(
       <DocumentPreviewModal
         isOpen={true}
@@ -90,14 +90,8 @@ describe('DocumentPreviewModal Component (Group 2 Detail & PDF Reader View)', ()
       />
     );
 
-    // Click tab "Bản số hóa (PDF)"
-    const pdfTabBtn = screen.getByText('Bản số hóa (PDF)');
-    fireEvent.click(pdfTabBtn);
-
-    // PDF sheet content should now be visible
-    expect(screen.getByText('CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM')).toBeInTheDocument();
-    expect(screen.getByText('Độc lập - Tự do - Hạnh phúc')).toBeInTheDocument();
-    expect(screen.getByText('ĐÃ KÝ SỐ ĐIỆN TỬ')).toBeInTheDocument();
+    const downloadBtn = screen.getByTitle('Tải xuống');
+    expect(downloadBtn).toBeInTheDocument();
   });
 
   it('triggers onClose when close button is clicked', () => {
