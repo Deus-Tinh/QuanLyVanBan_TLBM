@@ -56,7 +56,7 @@ export default function TaiLieuPage() {
       <Card className="p-4 sm:p-5">
         <form className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 lg:grid-cols-12"
           onSubmit={(e) => { e.preventDefault(); dat({ q: tuKhoa.trim() }); }}>
-          <label className="block lg:col-span-5">
+          <label className="block lg:col-span-4">
             <span className={LOP_NHAN}><i className="fa-solid fa-magnifying-glass text-primary" aria-hidden="true" />{t('danhSach.timKiem')}</span>
             <span className="relative block">
               <input className={`${LOP_O_NHAP} pl-9`} type="search" value={tuKhoa} placeholder={t('taiLieu.goiYTim')}
@@ -71,15 +71,15 @@ export default function TaiLieuPage() {
               {LOAI.map((l) => <option key={l} value={l}>{t(`taiLieu.loai.${l}`)}</option>)}
             </select>
           </label>
-          <label className="block lg:col-span-1">
+          <label className="block lg:col-span-2">
             <span className={LOP_NHAN}>{t('danhSach.tuNgay')}</span>
             <input className={LOP_O_NHAP} type="date" value={loc.tu_ngay ?? ''} onChange={(e) => dat({ tu_ngay: e.target.value })} />
           </label>
-          <label className="block lg:col-span-1">
+          <label className="block lg:col-span-2">
             <span className={LOP_NHAN}>{t('danhSach.denNgay')}</span>
             <input className={LOP_O_NHAP} type="date" value={loc.den_ngay ?? ''} onChange={(e) => dat({ den_ngay: e.target.value })} />
           </label>
-          <div className="flex gap-2 lg:col-span-3">
+          <div className="flex gap-2 lg:col-span-2">
             <Button type="submit" size="sm" icon="fa-filter">{t('danhSach.loc')}</Button>
             {coLoc && (
               <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left" onClick={() => { setTuKhoa(''); setLoc({}); }}>

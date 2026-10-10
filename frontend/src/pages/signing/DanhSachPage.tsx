@@ -61,7 +61,7 @@ function BoLoc({ hop, loc, onDoi }: { hop: Hop; loc: BoLocHoSo; onDoi: (loc: BoL
       <TheNhanh hop={hop} chon={loc.nhanh ?? ''} onChon={(khoa) => dat({ nhanh: khoa })} />
       <form className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 lg:grid-cols-12"
         onSubmit={(e) => { e.preventDefault(); dat({ q: tuKhoa.trim() }); }}>
-        <label className="block lg:col-span-4">
+        <label className="block lg:col-span-6">
           <span className={LOP_NHAN}><i className="fa-solid fa-magnifying-glass text-primary" aria-hidden="true" />{t('danhSach.timKiem')}</span>
           <span className="relative block">
             <input className={`${LOP_O_NHAP} pl-9`} type="search" value={tuKhoa} placeholder={t('danhSach.goiYTim')}
@@ -75,29 +75,29 @@ function BoLoc({ hop, loc, onDoi }: { hop: Hop; loc: BoLocHoSo; onDoi: (loc: BoL
             )}
           </span>
         </label>
-        <label className="block lg:col-span-2">
+        <label className="block lg:col-span-3">
           <span className={LOP_NHAN}><i className="fa-solid fa-bolt text-primary" aria-hidden="true" />{t('danhSach.mucDo')}</span>
           <select className={LOP_O_NHAP} value={loc.muc_do ?? ''} onChange={(e) => dat({ muc_do: e.target.value })}>
             <option value="">{t('danhSach.tatCa')}</option>
             {MUC_DO.map((m) => <option key={m} value={m}>{t(`mucDo.${m}`)}</option>)}
           </select>
         </label>
-        <label className="block lg:col-span-2">
+        <label className="block lg:col-span-3">
           <span className={LOP_NHAN}><i className="fa-solid fa-diagram-project text-primary" aria-hidden="true" />{t('danhSach.quyTrinh')}</span>
           <select className={LOP_O_NHAP} value={loc.quy_trinh ?? ''} onChange={(e) => dat({ quy_trinh: e.target.value })}>
             <option value="">{t('danhSach.tatCa')}</option>
             {quyTrinh.duLieu?.map((q) => <option key={q.id} value={String(q.id)}>{q.ten_quy_trinh} (v{q.phien_ban})</option>)}
           </select>
         </label>
-        <label className="block lg:col-span-1">
+        <label className="block lg:col-span-3">
           <span className={LOP_NHAN}>{t('danhSach.tuNgay')}</span>
           <input className={LOP_O_NHAP} type="date" value={loc.tu_ngay ?? ''} onChange={(e) => dat({ tu_ngay: e.target.value })} />
         </label>
-        <label className="block lg:col-span-1">
+        <label className="block lg:col-span-3">
           <span className={LOP_NHAN}>{t('danhSach.denNgay')}</span>
           <input className={LOP_O_NHAP} type="date" value={loc.den_ngay ?? ''} onChange={(e) => dat({ den_ngay: e.target.value })} />
         </label>
-        <div className="flex gap-2 lg:col-span-2">
+        <div className="flex gap-2 lg:col-span-6">
           <Button type="submit" size="sm" icon="fa-filter">{t('danhSach.loc')}</Button>
           {coLoc && (
             <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left" onClick={() => { setTuKhoa(''); onDoi({}); }}>
