@@ -117,9 +117,9 @@ export default function TaiLieuPage() {
                   const van_ban = [tep.van_ban.so_hieu, tep.van_ban.trich_yeu].filter(Boolean).join(' — ');
                   return (
                     <tr key={`${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="hover:bg-surface-hover transition-colors">
-                      <td className="px-4 py-3.5 font-semibold text-main">
+                      <td className="px-4 py-3.5 font-semibold text-main text-base">
                         <div className="flex items-center gap-2">
-                          <i className={`fa-solid ${BIEU_TUONG[tep.loai]} text-sm shrink-0`} aria-hidden="true" />
+                          <i className={`fa-solid ${BIEU_TUONG[tep.loai]} text-base shrink-0`} aria-hidden="true" />
                           <span className="truncate max-w-xs">{tep.ten_tep}</span>
                         </div>
                       </td>

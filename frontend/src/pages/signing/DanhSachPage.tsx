@@ -156,8 +156,8 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                       <Link to={`/approvals/${h.id}`} className="hover:underline">#{h.id}</Link>
                     </td>
                     <td className="px-4 py-3.5">
-                      <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
-                        <i className="fa-solid fa-file-contract text-primary/70 text-xs shrink-0" aria-hidden="true" />
+                      <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 text-base" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
+                        <i className="fa-solid fa-file-contract text-primary/70 text-sm shrink-0" aria-hidden="true" />
                         <span className="truncate max-w-xs xl:max-w-md">{moTaVanBan(h.van_ban, h.van_ban_id)}</span>
                       </Link>
                     </td>

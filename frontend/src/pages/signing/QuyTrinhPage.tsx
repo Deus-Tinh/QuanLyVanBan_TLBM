@@ -310,7 +310,7 @@ export default function QuyTrinhPage() {
         {hienThi.map((q) => (
           <Card key={q.id} className="p-4 sm:p-5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-base font-bold text-main">{q.ten_quy_trinh}</span>
+              <span className="text-xl font-bold text-main">{q.ten_quy_trinh}</span>
               <div className="flex items-center gap-1.5">
                 <TrangThaiBadge trangThai={q.trang_thai} />
                 <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
