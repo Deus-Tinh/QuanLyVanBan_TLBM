@@ -1,21 +1,21 @@
 export interface Position {
   id: number;
-  stt_uu_tien: number;
-  ten_chuc_vu: string;
+  display_order: number;
+  name: string;
   is_public: boolean;
-  ghi_chu: string | null;
+  note: string | null;
 }
 
 export interface PositionFormData {
-  stt_uu_tien?: number | null;
-  ten_chuc_vu: string;
+  display_order?: number | null;
+  name: string;
   is_public: boolean;
-  ghi_chu: string;
+  note: string;
 }
 
 export interface PositionImportError {
   row: number;
-  field: 'stt_uu_tien' | 'ten_chuc_vu' | 'is_public';
+  field: 'display_order' | 'name' | 'is_public';
   code: string;
   value: string;
 }

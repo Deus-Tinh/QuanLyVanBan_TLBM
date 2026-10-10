@@ -36,6 +36,10 @@ urlpatterns = [
     # API Quản lý Khối & Đơn vị: /api/organizations/...
     path("api/organizations/", include("organizations.urls", namespace="organizations")),
 
+    # ── Module Nhóm 7 — Bảo (Issue #22) ──────────────────────────────────
+    # API Quản lý Phòng họp & Đặt phòng: /api/meeting-rooms/, /api/meeting-bookings/
+    path("api/", include("meetings.urls", namespace="meetings")),
+
     # ── Module Nhóm 7 — Khánh (Issue #24) ──────────────────────────────────
     # API Quản lý Cán bộ Nhân viên (CBNV): /api/accounts/...
     path("api/accounts/", include("accounts.employee_urls", namespace="employee_management")),
