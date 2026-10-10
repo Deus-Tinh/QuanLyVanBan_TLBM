@@ -101,15 +101,15 @@ export default function TaiLieuPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-subtle text-left">
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.tep')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.loaiTep')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('danhSach.maHoSo')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('danhSach.vanBan')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('danhSach.quyTrinh')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.phienBan')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('chiTiet.maBam')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.ngay')}</th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary" />
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('taiLieu.tep')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('taiLieu.loaiTep')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('danhSach.maHoSo')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('danhSach.vanBan')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('taiLieu.phienBan')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('chiTiet.maBam')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted">{t('taiLieu.ngay')}</th>
+                  <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted" />
                 </tr>
               </thead>
               <tbody>

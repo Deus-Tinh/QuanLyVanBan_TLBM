@@ -202,7 +202,7 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
           </dl>
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border-subtle bg-surface-subtle text-xs font-semibold uppercase tracking-wider text-secondary">
+              <tr className="border-b border-border-subtle bg-surface-subtle text-xs font-bold uppercase tracking-wider text-muted">
                 <th className="px-3 py-2">#</th><th className="px-3 py-2">{t('quyTrinh.capKy')}</th>
                 <th className="px-3 py-2">{t('quyTrinh.nguoiKy')}</th><th className="px-3 py-2">{t('quyTrinh.soGioNhan')}</th>
               </tr>

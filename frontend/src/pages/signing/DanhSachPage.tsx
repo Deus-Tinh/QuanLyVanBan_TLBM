@@ -130,7 +130,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
-                <tr className="border-b border-border-subtle bg-surface-elevated/50 text-xs font-semibold uppercase tracking-wider text-secondary">
+                <tr className="border-b border-border-subtle bg-surface-subtle text-xs font-bold uppercase tracking-wider text-muted">
                   <th className="px-4 py-3">{t('danhSach.maHoSo')}</th>
                   <th className="px-4 py-3">{t('danhSach.vanBan')}</th>
                   <th className="px-4 py-3">{t('danhSach.quyTrinh')}</th>

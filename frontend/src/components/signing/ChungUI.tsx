@@ -91,15 +91,15 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-backdrop p-4 animate-fade-in">
       <div role="dialog" aria-modal="true" aria-labelledby={id}
-        className="w-full max-w-2xl rounded-xl border border-border-subtle bg-surface-elevated shadow-lg animate-slide-in-bottom">
-        <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
-          <h2 id={id} className="text-lg font-bold text-main">{moTieuDe}</h2>
-          <button type="button" onClick={onDong} className="text-secondary hover:text-main" aria-label={t('chung.dong')}>
+        className="w-full max-w-2xl rounded-2xl border border-border-subtle bg-surface-elevated shadow-xl animate-slide-in-bottom">
+        <div className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
+          <h2 id={id} className="text-xl font-bold text-main">{moTieuDe}</h2>
+          <button type="button" onClick={onDong} className="rounded-full p-1.5 text-secondary hover:text-main hover:bg-surface-hover transition-colors" aria-label={t('chung.dong')}>
             <i className="fa-solid fa-xmark" aria-hidden="true" />
           </button>
         </div>
-        <div className="px-5 py-4 space-y-3">{children}</div>
-        {chanDuoi && <div className="flex justify-end gap-2 border-t border-border-subtle px-5 py-3">{chanDuoi}</div>}
+        <div className="px-6 py-5 space-y-4">{children}</div>
+        {chanDuoi && <div className="flex justify-end gap-2.5 border-t border-border-subtle px-6 py-4">{chanDuoi}</div>}
       </div>
     </div>
   );
