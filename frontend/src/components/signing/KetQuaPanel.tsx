@@ -45,7 +45,7 @@ export default function KetQuaPanel({ hoSo, luot, onTaiLai }: {
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="font-bold text-sm text-main">{t('chiTiet.ketQua')}</h3>
+      <h3 className="text-lg font-bold text-main">{t('chiTiet.ketQua')}</h3>
       <div className="rounded-lg border border-success-border bg-success-subtle px-3 py-2 text-sm font-bold text-success">
         <i className="fa-solid fa-stamp mr-2" aria-hidden="true" />{t('chiTiet.nhanDien')}
       </div>

@@ -46,7 +46,7 @@ export default function TraoDoiPanel({ hoSo, onXong }: { hoSo: HoSoChiTiet; onXo
 
   return (
     <Card className="p-4 space-y-3">
-      <h3 className="font-bold text-sm text-main">{t('traoDoi.tieuDe')}</h3>
+      <h3 className="text-lg font-bold text-main">{t('traoDoi.tieuDe')}</h3>
       <div className="rounded-lg border border-purple-border bg-purple-subtle p-3 text-sm">
         <div className="font-bold text-purple">{thread.tieu_de}</div>
         <div className="text-main whitespace-pre-wrap">{thread.ly_do}</div>

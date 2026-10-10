@@ -130,7 +130,7 @@ export default function ChiTietPage() {
           {hoSo.trang_thai === 'HUY' && hoSo.ly_do_huy && <ThongBao loai="canh_bao">{t('chiTiet.lyDoHuy')}: {hoSo.ly_do_huy}</ThongBao>}
         </Card>
         <Card className="p-4 space-y-2">
-          <h3 className="font-bold text-sm text-main">{t('chiTiet.taiLieu')}</h3>
+          <h3 className="text-lg font-bold text-main">{t('chiTiet.taiLieu')}</h3>
           {loiTep ? <LoiTai thongBao={loi(loiTep)} /> : tep ? <XemPdf duLieu={tep} khung={khung} /> : <DangTai />}
         </Card>
       </div>
@@ -154,7 +154,7 @@ export default function ChiTietPage() {
         {coTraoDoi && luot?.trang_thai === 'YEU_CAU_SUA' && <TraoDoiPanel hoSo={hoSo} onXong={capNhat} />}
         {luot && (
           <Card className="p-4 space-y-2">
-            <h3 className="font-bold text-sm text-main">{t('chiTiet.tienTrinh')} · {t('chiTiet.luot', { so: luot.so_luot })}</h3>
+            <h3 className="text-lg font-bold text-main">{t('chiTiet.tienTrinh')} · {t('chiTiet.luot', { so: luot.so_luot })}</h3>
             <TienTrinh luot={luot} toiId={toi?.id} />
           </Card>
         )}
@@ -167,7 +167,7 @@ export default function ChiTietPage() {
           </details>
         ))}
         <Card className="p-4 space-y-2">
-          <h3 className="font-bold text-sm text-main">{t('chiTiet.lichSu')}</h3>
+          <h3 className="text-lg font-bold text-main">{t('chiTiet.lichSu')}</h3>
           <ol className="space-y-1 text-xs">
             {hoSo.lich_su.map((e) => (
               <li key={e.id} className="flex justify-between gap-2">

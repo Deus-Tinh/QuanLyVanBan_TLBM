@@ -47,7 +47,7 @@ export default function TaiLieuPanel({ hoSo }: { hoSo: HoSoChiTiet }) {
 
   return (
     <Card className="p-4 space-y-2">
-      <h3 className="font-bold text-sm text-main">{t('chiTiet.danhSachTep')}</h3>
+      <h3 className="text-lg font-bold text-main">{t('chiTiet.danhSachTep')}</h3>
       <ul className="divide-y divide-border-subtle">
         {hoSo.luot_trinh.length === 0 && dong('nhap', t('chiTiet.banDuThao', { so: hoSo.phien_ban_van_ban }),
           `${t('chiTiet.maBam')}: ${hoSo.ma_bam_tai_lieu.slice(0, 16)}…`,

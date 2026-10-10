@@ -93,7 +93,7 @@ export default function KhoaPage() {
         )}
         {sanSang && (
           <div className="space-y-3 border-t border-border-subtle pt-3">
-            <h3 className="text-sm font-bold text-main">{t('khoa.doiPin')}</h3>
+            <h3 className="text-lg font-bold text-main">{t('khoa.doiPin')}</h3>
             <OPin nhan={t('khoa.pinCu')} gia_tri={pinCu} onDoi={setPinCu} />
             <OPin nhan={t('khoa.pin')} gia_tri={pin} onDoi={setPin} />
             <OPin nhan={t('khoa.pinNhapLai')} gia_tri={pin2} onDoi={setPin2} />
