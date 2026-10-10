@@ -40,16 +40,15 @@ export default function SigningModule() {
       <div className="w-full space-y-5 animate-in fade-in duration-150">
         <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold text-sm">
-                <i className="fa-solid fa-file-signature text-base" aria-hidden="true" />
-              </span>
-              <h1 className="text-xl md:text-2xl font-bold text-main m-0">{t('tieuDe')}</h1>
+            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+              <i className="fa-solid fa-file-signature" aria-hidden="true" />
+              <span>{t('nhanPhanHe') || 'KÝ SỐ VÀ PHÊ DUYỆT ĐIỆN TỬ'}</span>
             </div>
-            <p className="text-xs md:text-sm text-secondary m-0">{t('moTa')}</p>
+            <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
+            <p className="m-0 mt-1 text-sm text-secondary">{t('moTa')}</p>
           </div>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
-            <Button size="sm" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
+            <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
           )}
         </header>
         <nav className="flex flex-wrap gap-1 border-b border-border-subtle" aria-label={t('tieuDe')}>
