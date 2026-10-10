@@ -267,3 +267,29 @@ Khi các nhóm Backend tiếp tục phát triển:
    python manage.py test dashboard
    ```
 
+### 5.4. Email chúc mừng sinh nhật
+
+Ứng dụng dùng backend email console nếu chưa cấu hình SMTP. Để gửi email thật, đặt các biến sau trong `.env` ở thư mục gốc dự án hoặc trong `backend/.env`:
+
+```dotenv
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=true
+EMAIL_HOST_USER=account@example.com
+EMAIL_HOST_PASSWORD=<secret>
+DEFAULT_FROM_EMAIL=account@example.com
+```
+
+Không commit `.env` hoặc mật khẩu SMTP. `BRAND_NAME` và `ORGANIZATION_NAME` có thể đặt để đổi thương hiệu trong tiêu đề và nội dung thư; mặc định là `Bảo Long Insurance`.
+
+Chạy thủ công từ thư mục `backend`:
+
+```bash
+python manage.py send_birthday_emails
+python manage.py send_birthday_emails --date=YYYY-MM-DD
+```
+
+`--allow-locmem` chỉ dành cho kiểm thử. Kết quả gửi được ghi trong `birthdays_birthdayemaillog`; hiện API nhật ký chỉ cho superuser xem cho đến khi DDL bổ sung quyền riêng.
+
+Để chạy định kỳ trên Linux, dùng `deploy/birthday-email.cron.example`, thay đường dẫn, phút và giờ theo lịch đã được nhóm chốt; đặt timezone của scheduler thành `Asia/Ho_Chi_Minh`. Trên Windows, tạo tác vụ hằng ngày trong Task Scheduler: chương trình là Python của môi trường ảo, tham số là `manage.py send_birthday_emails`, thư mục bắt đầu là `backend`. Tài khoản chạy tác vụ phải nhận được các biến SMTP từ môi trường hoặc secret store.
+

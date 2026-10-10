@@ -108,27 +108,27 @@ class PositionListTests(PositionBaseTestCase):
         res = self.client_for["pos_manager"].get(LIST_URL)
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         body = res.json()
-        results = [p for p in body["results"] if p["ten_chuc_vu"] != "__holder__"]
-        self.assertEqual([p["stt_uu_tien"] for p in results], [1, 2, 3, 4])
-        self.assertEqual(results[0]["ten_chuc_vu"], "Tổng Giám đốc")
-        self.assertEqual(set(results[0]), {"id", "stt_uu_tien", "ten_chuc_vu", "is_public", "ghi_chu"})
+        results = [p for p in body["results"] if p["name"] != "__holder__"]
+        self.assertEqual([p["display_order"] for p in results], [1, 2, 3, 4])
+        self.assertEqual(results[0]["name"], "Tổng Giám đốc")
+        self.assertEqual(set(results[0]), {"id", "display_order", "name", "is_public", "note"})
 
     def test_internal_position_hidden_from_non_admin(self):
         res = self.client_for["pos_viewer"].get(LIST_URL)
-        names = [p["ten_chuc_vu"] for p in res.json()["results"]]
+        names = [p["name"] for p in res.json()["results"]]
         self.assertNotIn("Cộng tác viên", names)
         self.assertEqual(res.json()["count"], 3)
 
     def test_internal_position_visible_to_admin_and_flagged(self):
         for username in ("pos_manager", "pos_root"):
             res = self.client_for[username].get(LIST_URL)
-            internal = [p for p in res.json()["results"] if p["ten_chuc_vu"] == "Cộng tác viên"]
+            internal = [p for p in res.json()["results"] if p["name"] == "Cộng tác viên"]
             self.assertEqual(len(internal), 1)
             self.assertFalse(internal[0]["is_public"])
 
     def test_search_by_name_case_insensitive(self):
         res = self.client_for["pos_manager"].get(LIST_URL, {"search": "trưởng"})
-        self.assertEqual([p["ten_chuc_vu"] for p in res.json()["results"]], ["Trưởng phòng"])
+        self.assertEqual([p["name"] for p in res.json()["results"]], ["Trưởng phòng"])
 
     def test_search_no_match_returns_empty(self):
         res = self.client_for["pos_manager"].get(LIST_URL, {"search": "khong-ton-tai"})
@@ -166,67 +166,67 @@ class PositionWriteTests(PositionBaseTestCase):
 
     def test_create_without_stt_assigns_max_plus_one(self):
         Position.objects.create(display_order=7, name="Có sẵn")
-        res = self.post({"ten_chuc_vu": "Mới"})
+        res = self.post({"name": "Mới"})
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(res.json()["stt_uu_tien"], 8)
+        self.assertEqual(res.json()["display_order"], 8)
         self.assertTrue(res.json()["is_public"])
 
     def test_create_first_position_gets_stt_1(self):
-        self.assertEqual(self.post({"ten_chuc_vu": "Đầu tiên"}).json()["stt_uu_tien"], 1)
+        self.assertEqual(self.post({"name": "Đầu tiên"}).json()["display_order"], 1)
 
     def test_create_with_explicit_stt_and_fields(self):
-        res = self.post({"stt_uu_tien": 10, "ten_chuc_vu": "Giám đốc", "is_public": False, "ghi_chu": "Ghi chú"})
+        res = self.post({"display_order": 10, "name": "Giám đốc", "is_public": False, "note": "Ghi chú"})
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         obj = Position.objects.get(pk=res.json()["id"])
         self.assertEqual((obj.display_order, obj.name, obj.is_public, obj.note), (10, "Giám đốc", False, "Ghi chú"))
 
     def test_create_trims_name_and_collapses_spaces(self):
-        res = self.post({"ten_chuc_vu": "   Phó   phòng  "})
-        self.assertEqual(res.json()["ten_chuc_vu"], "Phó phòng")
+        res = self.post({"name": "   Phó   phòng  "})
+        self.assertEqual(res.json()["name"], "Phó phòng")
 
     def test_create_whitespace_only_name_rejected(self):
-        res = self.post({"ten_chuc_vu": "     "})
+        res = self.post({"name": "     "})
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(res.json()["ten_chuc_vu"], ["positions.messages.nameRequired"])
+        self.assertEqual(res.json()["name"], ["positions.messages.nameRequired"])
 
     def test_create_missing_name_rejected(self):
-        res = self.post({"stt_uu_tien": 3})
+        res = self.post({"display_order": 3})
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("ten_chuc_vu", res.json())
+        self.assertIn("name", res.json())
 
     def test_create_name_too_long_rejected(self):
-        res = self.post({"ten_chuc_vu": "x" * 256})
-        self.assertEqual(res.json()["ten_chuc_vu"], ["positions.messages.nameTooLong"])
+        res = self.post({"name": "x" * 256})
+        self.assertEqual(res.json()["name"], ["positions.messages.nameTooLong"])
 
     def test_create_duplicate_name_after_trim_and_case_rejected(self):
         Position.objects.create(display_order=1, name="Trưởng phòng")
         for variant in ("trưởng phòng", "  TRƯỞNG PHÒNG  ", "Trưởng   phòng"):
-            res = self.post({"ten_chuc_vu": variant})
+            res = self.post({"name": variant})
             self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST, variant)
-            self.assertEqual(res.json()["ten_chuc_vu"], ["positions.messages.nameExists"])
+            self.assertEqual(res.json()["name"], ["positions.messages.nameExists"])
 
     def test_create_duplicate_stt_rejected(self):
         Position.objects.create(display_order=5, name="A")
-        res = self.post({"stt_uu_tien": 5, "ten_chuc_vu": "B"})
+        res = self.post({"display_order": 5, "name": "B"})
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(res.json()["stt_uu_tien"], ["positions.messages.sttExists"])
+        self.assertEqual(res.json()["display_order"], ["positions.messages.sttExists"])
 
     def test_create_invalid_stt_rejected(self):
         for bad in (0, -3, "abc", 1.5):
-            res = self.post({"stt_uu_tien": bad, "ten_chuc_vu": f"X{bad}"})
+            res = self.post({"display_order": bad, "name": f"X{bad}"})
             self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST, bad)
-            self.assertEqual(res.json()["stt_uu_tien"], ["positions.messages.sttInvalid"])
+            self.assertEqual(res.json()["display_order"], ["positions.messages.sttInvalid"])
 
     def test_create_requires_add_permission(self):
-        self.assertEqual(self.post({"ten_chuc_vu": "A"}, user="pos_viewer").status_code, 403)
-        self.assertEqual(self.post({"ten_chuc_vu": "A"}, user="pos_noperm").status_code, 403)
+        self.assertEqual(self.post({"name": "A"}, user="pos_viewer").status_code, 403)
+        self.assertEqual(self.post({"name": "A"}, user="pos_noperm").status_code, 403)
         self.assertEqual(self.others().count(), 0)
 
     def test_create_unauthenticated_401(self):
-        self.assertEqual(self.anon.post(LIST_URL, {"ten_chuc_vu": "A"}, format="json").status_code, 401)
+        self.assertEqual(self.anon.post(LIST_URL, {"name": "A"}, format="json").status_code, 401)
 
     def test_superuser_can_write_without_explicit_permissions(self):
-        self.assertEqual(self.post({"ten_chuc_vu": "Root tạo"}, user="pos_root").status_code, 201)
+        self.assertEqual(self.post({"name": "Root tạo"}, user="pos_root").status_code, 201)
 
     def test_auto_stt_retries_when_number_taken_concurrently(self):
         """Hai request cùng chọn MAX+1: lần lưu đầu va unique, phải thử lại với số kế tiếp."""
@@ -241,16 +241,16 @@ class PositionWriteTests(PositionBaseTestCase):
             return real_next()
 
         with mock.patch.object(Position, "get_next_display_order", side_effect=flaky_next):
-            res = self.post({"ten_chuc_vu": "Sau retry"})
+            res = self.post({"name": "Sau retry"})
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(res.json()["stt_uu_tien"], 2)
+        self.assertEqual(res.json()["display_order"], 2)
         self.assertEqual(calls["n"], 2)
 
     def test_put_updates_all_fields(self):
         pos = Position.objects.create(display_order=1, name="Cũ")
         res = self.client_for["pos_manager"].put(
             detail_url(pos.pk),
-            {"stt_uu_tien": 9, "ten_chuc_vu": "Mới", "is_public": False, "ghi_chu": "x"},
+            {"display_order": 9, "name": "Mới", "is_public": False, "note": "x"},
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
@@ -259,7 +259,7 @@ class PositionWriteTests(PositionBaseTestCase):
 
     def test_put_without_stt_keeps_current_stt(self):
         pos = Position.objects.create(display_order=4, name="Giữ STT")
-        res = self.client_for["pos_manager"].put(detail_url(pos.pk), {"ten_chuc_vu": "Đổi tên"}, format="json")
+        res = self.client_for["pos_manager"].put(detail_url(pos.pk), {"name": "Đổi tên"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         pos.refresh_from_db()
         self.assertEqual(pos.display_order, 4)
@@ -267,7 +267,7 @@ class PositionWriteTests(PositionBaseTestCase):
     def test_put_same_name_and_stt_on_itself_allowed(self):
         pos = Position.objects.create(display_order=2, name="Chính nó")
         res = self.client_for["pos_manager"].put(
-            detail_url(pos.pk), {"stt_uu_tien": 2, "ten_chuc_vu": "chính nó"}, format="json"
+            detail_url(pos.pk), {"display_order": 2, "name": "chính nó"}, format="json"
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
@@ -275,10 +275,10 @@ class PositionWriteTests(PositionBaseTestCase):
         Position.objects.create(display_order=1, name="Khác")
         pos = Position.objects.create(display_order=2, name="Tôi")
         client = self.client_for["pos_manager"]
-        res = client.put(detail_url(pos.pk), {"ten_chuc_vu": "khác"}, format="json")
-        self.assertEqual(res.json()["ten_chuc_vu"], ["positions.messages.nameExists"])
-        res = client.put(detail_url(pos.pk), {"stt_uu_tien": 1, "ten_chuc_vu": "Tôi"}, format="json")
-        self.assertEqual(res.json()["stt_uu_tien"], ["positions.messages.sttExists"])
+        res = client.put(detail_url(pos.pk), {"name": "khác"}, format="json")
+        self.assertEqual(res.json()["name"], ["positions.messages.nameExists"])
+        res = client.put(detail_url(pos.pk), {"display_order": 1, "name": "Tôi"}, format="json")
+        self.assertEqual(res.json()["display_order"], ["positions.messages.sttExists"])
 
     def test_patch_partial(self):
         pos = Position.objects.create(display_order=1, name="Giữ tên", note="n")
@@ -289,15 +289,15 @@ class PositionWriteTests(PositionBaseTestCase):
 
     def test_update_requires_change_permission(self):
         pos = Position.objects.create(display_order=1, name="X")
-        res = self.client_for["pos_viewer"].put(detail_url(pos.pk), {"ten_chuc_vu": "Y"}, format="json")
+        res = self.client_for["pos_viewer"].put(detail_url(pos.pk), {"name": "Y"}, format="json")
         self.assertEqual(res.status_code, 403)
-        res = self.client_for["pos_viewer"].patch(detail_url(pos.pk), {"ten_chuc_vu": "Y"}, format="json")
+        res = self.client_for["pos_viewer"].patch(detail_url(pos.pk), {"name": "Y"}, format="json")
         self.assertEqual(res.status_code, 403)
         pos.refresh_from_db()
         self.assertEqual(pos.name, "X")
 
     def test_update_not_found(self):
-        res = self.client_for["pos_manager"].put(detail_url(999999), {"ten_chuc_vu": "Y"}, format="json")
+        res = self.client_for["pos_manager"].put(detail_url(999999), {"name": "Y"}, format="json")
         self.assertEqual(res.status_code, 404)
 
     def test_delete_success(self):
@@ -405,14 +405,14 @@ class PositionImportTests(PositionBaseTestCase):
         self.assertEqual(
             errors,
             {
-                (3, "ten_chuc_vu"): "positions.messages.nameRequired",
-                (4, "ten_chuc_vu"): "positions.messages.nameExists",
-                (6, "ten_chuc_vu"): "positions.import.errors.duplicateNameInFile",
-                (7, "stt_uu_tien"): "positions.messages.sttExists",
-                (8, "stt_uu_tien"): "positions.import.errors.invalidStt",
-                (9, "stt_uu_tien"): "positions.import.errors.invalidStt",
+                (3, "name"): "positions.messages.nameRequired",
+                (4, "name"): "positions.messages.nameExists",
+                (6, "name"): "positions.import.errors.duplicateNameInFile",
+                (7, "display_order"): "positions.messages.sttExists",
+                (8, "display_order"): "positions.import.errors.invalidStt",
+                (9, "display_order"): "positions.import.errors.invalidStt",
                 (10, "is_public"): "positions.import.errors.invalidPublic",
-                (12, "stt_uu_tien"): "positions.import.errors.duplicateSttInFile",
+                (12, "display_order"): "positions.import.errors.duplicateSttInFile",
             },
         )
         self.assertEqual([e["row"] for e in body["errors"]], sorted(e["row"] for e in body["errors"]))
