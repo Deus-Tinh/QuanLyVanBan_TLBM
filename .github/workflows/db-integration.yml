@@ -27,6 +27,8 @@ concurrency:
 
 env:
   DJANGO_SETTINGS_MODULE: config.settings_ci
+  # Chỉ dùng cho CI: settings.py bắt buộc DJANGO_SECRET_KEY từ khi chuẩn bị cấu hình production.
+  DJANGO_SECRET_KEY: ci-only-insecure-secret-key
   POSTGRES_HOST: localhost
   POSTGRES_PORT: '5432'
   POSTGRES_DB: tlbm_ci
@@ -91,17 +93,10 @@ jobs:
             -d tlbm_ddl_expected -v ON_ERROR_STOP=1 -q \
             -f ../docs/common/database/release_DDL.sql
 
-          PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
-            -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" \
-            -d tlbm_ddl_expected --schema-only --no-owner --no-privileges --no-comments |
-            sed -E '/^\\(un)?restrict /d' > /tmp/ddl-schema.sql
-
-          PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
-            -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" \
-            -d "$POSTGRES_DB" --schema-only --no-owner --no-privileges --no-comments |
-            sed -E '/^\\(un)?restrict /d' > /tmp/django-schema.sql
-
-          diff -u /tmp/ddl-schema.sql /tmp/django-schema.sql
+          # So theo catalog (không so văn bản pg_dump), bỏ qua khác biệt Django luôn sinh ra.
+          # Lệch đã biết nằm trong baseline; lệch mới hoặc baseline đã hết lệch đều làm job fail.
+          python ../.github/scripts/compare_schema_ddl.py \
+            "$POSTGRES_DB" tlbm_ddl_expected ../docs/common/database/schema_drift_baseline.txt
 
       - name: Django tests trên PostgreSQL
         run: python manage.py test
