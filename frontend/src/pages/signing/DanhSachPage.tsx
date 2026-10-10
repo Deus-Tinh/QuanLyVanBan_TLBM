@@ -101,7 +101,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                   <td className="px-2 py-2 font-bold">
                     <Link to={`/approvals/${h.id}`} className="text-primary hover:underline">#{h.id}</Link>
                   </td>
-                  <td className="px-2 py-2 max-w-xs truncate text-main" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
+                  <td className="px-2 py-2 max-w-md xl:max-w-2xl truncate text-main" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
                     {moTaVanBan(h.van_ban, h.van_ban_id)}
                   </td>
                   <td className="px-2 py-2 text-secondary">{h.ten_quy_trinh}</td>

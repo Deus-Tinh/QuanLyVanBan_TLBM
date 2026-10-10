@@ -35,16 +35,19 @@ export default function SigningModule() {
 
   return (
     <SigningContext.Provider value={ngu_canh}>
-      <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h1 className="text-xl font-bold text-main">
-              <i className="fa-solid fa-file-signature mr-2 text-primary" aria-hidden="true" />{t('tieuDe')}
-            </h1>
-            <p className="text-sm text-secondary">{t('moTa')}</p>
+      <div className="w-full space-y-5 p-2 sm:p-4 md:p-6 animate-in fade-in duration-150">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="mb-1 flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-subtle text-sm font-bold text-primary">
+                <i className="fa-solid fa-file-signature text-base" aria-hidden="true" />
+              </span>
+              <h1 className="m-0 text-xl font-bold text-main md:text-2xl">{t('tieuDe')}</h1>
+            </div>
+            <p className="m-0 text-xs text-secondary md:text-sm">{t('moTa')}</p>
           </div>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
-            <Button icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
+            <Button size="sm" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
           )}
         </header>
         <nav className="flex flex-wrap gap-1 border-b border-border-subtle" aria-label={t('tieuDe')}>

@@ -204,7 +204,10 @@
     "nguoiKy": "Signers",
     "soGioNhan": "Processing hours",
     "xacNhanXoa": "Delete draft process “{ten}”? This cannot be undone.",
-    "khongThayNguoiDung": "No matching accounts."
+    "khongThayNguoiDung": "No matching accounts.",
+    "chuaCoChucVu": "No position",
+    "goiYTim": "Code, process name, department…",
+    "khongKhopLoc": "No processes match the filters."
   },
   "khoa": {
     "gioiThieu": "Your signing key is created and kept in this browser, protected by an 8-digit PIN. The server never receives your PIN or private key.",

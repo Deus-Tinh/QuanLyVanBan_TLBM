@@ -204,7 +204,10 @@
     "nguoiKy": "Người ký",
     "soGioNhan": "Số giờ xử lý",
     "xacNhanXoa": "Xóa quy trình nháp “{ten}”? Thao tác này không hoàn tác được.",
-    "khongThayNguoiDung": "Không tìm thấy tài khoản phù hợp."
+    "khongThayNguoiDung": "Không tìm thấy tài khoản phù hợp.",
+    "chuaCoChucVu": "Chưa có chức vụ",
+    "goiYTim": "Mã, tên quy trình, đơn vị…",
+    "khongKhopLoc": "Không có quy trình nào khớp bộ lọc."
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo và giữ trên trình duyệt này, bảo vệ bằng PIN 8 chữ số. Máy chủ không nhận PIN hay khóa bí mật.",

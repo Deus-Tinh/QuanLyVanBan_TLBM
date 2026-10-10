@@ -14,8 +14,8 @@ import type { NguoiDungTim, PhamViQuyTrinh, QuyTrinh, VaiTroKy } from '@lib/sign
 
 /** Người ký trong form: theo tài khoản (`nguoi_ky`) hoặc theo chức vụ (giữ nguyên khi sửa quy trình nháp). */
 interface NguoiKyNhap {
-  khoa: string; ten: string; nguoi_ky: number | null; chuc_vu_id: number | null; pham_vi_chuc_vu: string | null;
-  vai_tro_ky: VaiTroKy; chan_ky_chinh: boolean;
+  khoa: string; ten: string; chuc_danh?: string; nguoi_ky: number | null; chuc_vu_id: number | null;
+  pham_vi_chuc_vu: string | null; vai_tro_ky: VaiTroKy; chan_ky_chinh: boolean;
 }
 interface CapNhap { ten_cap_ky: string; so_gio_xu_ly: string; don_vi_id: number | null; nguoi_ky: NguoiKyNhap[] }
 
@@ -31,25 +31,35 @@ function capTuQuyTrinh(q: QuyTrinh, theoChucVu: string): CapNhap[] {
   }));
 }
 
+/** Chức danh đầy đủ của tài khoản: chức vụ · đơn vị (Nhóm 7). */
+function chucDanh(u: NguoiDungTim, khongCo: string): string {
+  return [u.chuc_vu, u.don_vi].filter(Boolean).join(' · ') || khongCo;
+}
+
 function ChonNguoiDung({ onChon }: { onChon: (u: NguoiDungTim) => void }) {
   const { t } = useSigningT();
   const [q, setQ] = useState('');
-  const du = q.trim().length >= 2;
-  const ds = useTai(() => (du ? signingApi.timNguoiDung(q.trim()) : Promise.resolve([])), [q]);
+  const [mo, setMo] = useState(false);
+  const ds = useTai(() => (mo ? signingApi.timNguoiDung(q.trim()) : Promise.resolve([])), [q, mo]);
   return (
     <div className="space-y-1">
-      <input className={LOP_O_NHAP} placeholder={t('quyTrinh.timNguoiDung')} value={q} onChange={(e) => setQ(e.target.value)} />
-      {!!ds.duLieu?.length && (
-        <div className="max-h-32 overflow-y-auto rounded-lg border border-border-subtle">
+      <input className={LOP_O_NHAP} placeholder={t('quyTrinh.timNguoiDung')} value={q}
+        onFocus={() => setMo(true)} onBlur={() => setMo(false)} onChange={(e) => setQ(e.target.value)} />
+      {mo && !!ds.duLieu?.length && (
+        <ul className="max-h-60 overflow-y-auto rounded-lg border border-border-subtle bg-surface shadow-sm" role="listbox">
           {ds.duLieu.map((u) => (
-            <button type="button" key={u.id} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-hover text-main"
-              onClick={() => { onChon(u); setQ(''); }}>
-              {u.ten} <span className="text-muted">({[u.ten_dang_nhap, u.chuc_vu, u.don_vi].filter(Boolean).join(' · ')})</span>
-            </button>
+            <li key={u.id}>
+              <button type="button" className="block w-full px-3 py-2 text-left hover:bg-surface-hover"
+                onMouseDown={(e) => e.preventDefault()} onClick={() => { onChon(u); setQ(''); }}>
+                <span className="block text-sm font-semibold text-main">{u.ten}</span>
+                <span className="block text-xs text-secondary">{chucDanh(u, t('quyTrinh.chuaCoChucVu'))}</span>
+                <span className="block text-xs text-muted">{u.ten_dang_nhap}</span>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-      {du && !ds.dangTai && ds.duLieu?.length === 0 && <p className="text-xs text-muted">{t('quyTrinh.khongThayNguoiDung')}</p>}
+      {mo && !ds.dangTai && ds.duLieu?.length === 0 && <p className="text-xs text-muted">{t('quyTrinh.khongThayNguoiDung')}</p>}
     </div>
   );
 }
@@ -133,7 +143,10 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
             </div>
             {c.nguoi_ky.map((n, j) => (
               <div key={n.khoa} className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-main">{n.ten}</span>
+                <span className="text-main">
+                  <span className="font-semibold">{n.ten}</span>
+                  {n.chuc_danh && <span className="ml-1 text-xs text-secondary">({n.chuc_danh})</span>}
+                </span>
                 <select className={`${LOP_O_NHAP} w-auto`} value={n.vai_tro_ky}
                   onChange={(e) => sua(i, { nguoi_ky: c.nguoi_ky.map((x, k) => (k === j ? { ...x, vai_tro_ky: e.target.value as VaiTroKy } : x)) })}>
                   <option value="KY_CHINH">{t('vaiTro.KY_CHINH')}</option>
@@ -154,7 +167,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
             ))}
             <ChonNguoiDung onChon={(u: NguoiDungTim) => !c.nguoi_ky.some((n) => n.nguoi_ky === u.id)
               && sua(i, { nguoi_ky: [...c.nguoi_ky, {
-                khoa: `u${u.id}`, ten: u.ten, nguoi_ky: u.id, chuc_vu_id: null, pham_vi_chuc_vu: null,
+                khoa: `u${u.id}`, ten: u.ten, chuc_danh: chucDanh(u, ''), nguoi_ky: u.id, chuc_vu_id: null, pham_vi_chuc_vu: null,
                 vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true,
               }] })} />
           </div>
@@ -225,6 +238,13 @@ export default function QuyTrinhPage() {
   const { t, loi } = useSigningT();
   const { toi } = useToi();
   const ds = useTai(() => signingApi.quyTrinh());
+  const [tim, setTim] = useState('');
+  const [locTrangThai, setLocTrangThai] = useState('');
+  const [locPhamVi, setLocPhamVi] = useState('');
+  const tuKhoa = tim.trim().toLowerCase();
+  const hienThi = (ds.duLieu ?? []).filter((q) => (!locTrangThai || q.trang_thai === locTrangThai)
+    && (!locPhamVi || q.pham_vi === locPhamVi)
+    && (!tuKhoa || [q.ma_quy_trinh, q.ten_quy_trinh, q.ten_don_vi_ap_dung ?? ''].some((x) => x.toLowerCase().includes(tuKhoa))));
   const [taoMo, setTaoMo] = useState(false);
   const [dangSua, setDangSua] = useState<QuyTrinh | null>(null);
   const [xemId, setXemId] = useState<number | null>(null);
@@ -255,17 +275,39 @@ export default function QuyTrinhPage() {
 
   return (
     <div className="space-y-3">
-      {quanLy ? (
-        <div className="flex justify-end">
-          <Button icon="fa-plus" onClick={() => setTaoMo(true)}>{t('quyTrinh.tao')}</Button>
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs text-secondary">
+            {t('danhSach.timKiem')}
+            <input className={LOP_O_NHAP} type="search" value={tim} placeholder={t('quyTrinh.goiYTim')} onChange={(e) => setTim(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-secondary">
+            {t('danhSach.trangThai')}
+            <select className={`${LOP_O_NHAP} w-auto`} value={locTrangThai} onChange={(e) => setLocTrangThai(e.target.value)}>
+              <option value="">{t('danhSach.tatCa')}</option>
+              {['NHAP', 'HOAT_DONG', 'NGUNG'].map((s) => <option key={s} value={s}>{t(`trangThai.${s}`)}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-secondary">
+            {t('quyTrinh.phamVi')}
+            <select className={`${LOP_O_NHAP} w-auto`} value={locPhamVi} onChange={(e) => setLocPhamVi(e.target.value)}>
+              <option value="">{t('danhSach.tatCa')}</option>
+              <option value="CONG_TY">{t('phamVi.CONG_TY')}</option>
+              <option value="PHONG_BAN">{t('phamVi.PHONG_BAN')}</option>
+            </select>
+          </label>
+          {quanLy && <Button className="ml-auto" icon="fa-plus" onClick={() => setTaoMo(true)}>{t('quyTrinh.tao')}</Button>}
         </div>
-      ) : <ThongBao loai="thong_tin">{t('quyTrinh.chiQuanLy')}</ThongBao>}
+      </Card>
+      {!quanLy && <ThongBao loai="thong_tin">{t('quyTrinh.chiQuanLy')}</ThongBao>}
       {thongBao && <ThongBao>{thongBao}</ThongBao>}
       {ds.dangTai && <DangTai />}
       {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
-      {ds.duLieu?.length === 0 && <Rong icon="fa-diagram-project">{t('quyTrinh.rong')}</Rong>}
-      <div className="grid gap-3 md:grid-cols-2">
-        {ds.duLieu?.map((q) => (
+      {ds.duLieu && hienThi.length === 0 && (
+        <Rong icon="fa-diagram-project">{t(ds.duLieu.length ? 'quyTrinh.khongKhopLoc' : 'quyTrinh.rong')}</Rong>
+      )}
+      <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        {hienThi.map((q) => (
           <Card key={q.id} className="p-4 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-bold text-main">{q.ten_quy_trinh}</span>

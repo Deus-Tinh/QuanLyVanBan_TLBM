@@ -191,6 +191,23 @@ describe('QuyTrinhPage', () => {
   });
 });
 
+describe('QuyTrinhPage bộ lọc', () => {
+  it('lọc quy trình theo từ khóa, trạng thái và phạm vi', async () => {
+    const mau = (id: number, ten: string, trang_thai: 'NHAP' | 'HOAT_DONG', pham_vi: 'CONG_TY' | 'PHONG_BAN'): QuyTrinh => ({
+      id, ma_quy_trinh: `QT-${id}`, ten_quy_trinh: ten, mo_ta: '', phien_ban: 1, trang_thai, pham_vi,
+      don_vi_ap_dung_id: null, ten_don_vi_ap_dung: null, cap_ky: [],
+    });
+    api.quyTrinh.mockResolvedValue([mau(1, 'Duyệt tờ trình', 'HOAT_DONG', 'CONG_TY'), mau(2, 'Duyệt hợp đồng', 'NHAP', 'PHONG_BAN')]);
+    boc(<QuyTrinhPage />);
+    await screen.findByText('Duyệt tờ trình');
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'hợp đồng' } });
+    expect(screen.queryByText('Duyệt tờ trình')).not.toBeInTheDocument();
+    expect(screen.getByText('Duyệt hợp đồng')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Trạng thái' }), { target: { value: 'HOAT_DONG' } });
+    expect(screen.getByText('Không có quy trình nào khớp bộ lọc.')).toBeInTheDocument();
+  });
+});
+
 describe('ThongBaoPage', () => {
   it('hiện thông báo của tôi với loại, văn bản và liên kết tới hồ sơ', async () => {
     api.thongBao.mockResolvedValue([{
