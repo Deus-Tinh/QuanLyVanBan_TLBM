@@ -21,6 +21,8 @@
             document.documentElement.setAttribute('data-theme', t);
           }
           document.documentElement.setAttribute('data-ui-style', 'modern');
+          var z = localStorage.getItem('tlbm_display_zoom') || '1.25';
+          document.documentElement.style.zoom = z;
         } catch (e) {}
       })();
     </script>
