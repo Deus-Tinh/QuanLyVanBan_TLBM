@@ -276,20 +276,20 @@ export default function QuyTrinhPage() {
   return (
     <div className="space-y-3">
       <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium text-secondary">
-            {t('danhSach.timKiem')}
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex min-w-48 flex-1 flex-col gap-1.5 text-xs font-semibold text-secondary">
+            <span><i className="fa-solid fa-magnifying-glass text-primary text-xs mr-1" aria-hidden="true" />{t('danhSach.timKiem')}</span>
             <input className={LOP_O_NHAP} type="search" value={tim} placeholder={t('quyTrinh.goiYTim')} onChange={(e) => setTim(e.target.value)} />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-secondary">
-            {t('danhSach.trangThai')}
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-secondary">
+            <span><i className="fa-solid fa-filter text-primary text-xs mr-1" aria-hidden="true" />{t('danhSach.trangThai')}</span>
             <select className={`${LOP_O_NHAP} w-auto`} value={locTrangThai} onChange={(e) => setLocTrangThai(e.target.value)}>
               <option value="">{t('danhSach.tatCa')}</option>
               {['NHAP', 'HOAT_DONG', 'NGUNG'].map((s) => <option key={s} value={s}>{t(`trangThai.${s}`)}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium text-secondary">
-            {t('quyTrinh.phamVi')}
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-secondary">
+            <span><i className="fa-solid fa-diagram-project text-primary text-xs mr-1" aria-hidden="true" />{t('quyTrinh.phamVi')}</span>
             <select className={`${LOP_O_NHAP} w-auto`} value={locPhamVi} onChange={(e) => setLocPhamVi(e.target.value)}>
               <option value="">{t('danhSach.tatCa')}</option>
               <option value="CONG_TY">{t('phamVi.CONG_TY')}</option>
@@ -306,15 +306,17 @@ export default function QuyTrinhPage() {
       {ds.duLieu && hienThi.length === 0 && (
         <Rong icon="fa-diagram-project">{t(ds.duLieu.length ? 'quyTrinh.khongKhopLoc' : 'quyTrinh.rong')}</Rong>
       )}
-      <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {hienThi.map((q) => (
-          <Card key={q.id} className="p-4 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+          <Card key={q.id} className="p-4 sm:p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-base font-bold text-main">{q.ten_quy_trinh}</span>
-              <TrangThaiBadge trangThai={q.trang_thai} />
-              <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
+              <div className="flex items-center gap-1.5">
+                <TrangThaiBadge trangThai={q.trang_thai} />
+                <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
+              </div>
             </div>
-            <div className="text-sm text-secondary">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
+            <div className="text-xs text-muted font-mono">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
             <ol className="space-y-1 text-sm">
               {q.cap_ky.map((c) => (
                 <li key={c.id} className="text-main">

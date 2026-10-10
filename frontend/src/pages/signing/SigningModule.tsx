@@ -37,26 +37,28 @@ export default function SigningModule() {
 
   return (
     <SigningContext.Provider value={ngu_canh}>
-      <div className="w-full space-y-6 animate-in fade-in duration-150">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+      <div className="w-full space-y-5 animate-in fade-in duration-150">
+        <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
-            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
-              <i className="fa-solid fa-file-signature" aria-hidden="true" />
-              {t('tieuDe')}
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold text-sm">
+                <i className="fa-solid fa-file-signature text-base" aria-hidden="true" />
+              </span>
+              <h1 className="text-xl md:text-2xl font-bold text-main m-0">{t('tieuDe')}</h1>
             </div>
-            <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
-            <p className="m-0 mt-1 text-sm text-secondary">{t('moTa')}</p>
+            <p className="text-xs md:text-sm text-secondary m-0">{t('moTa')}</p>
           </div>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
-            <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
+            <Button size="sm" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
           )}
         </header>
         <nav className="flex flex-wrap gap-1 border-b border-border-subtle" aria-label={t('tieuDe')}>
           {tab.map((m) => (
             <NavLink key={m.den} to={m.den} end={m.end}
-              className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold transition-colors duration-fast ${
-                isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main'}`}>
-              <i className={`fa-solid ${m.icon}`} aria-hidden="true" />{m.nhan}
+              className={({ isActive }) => `-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors duration-fast ${
+                isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
+              <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
+              <span>{m.nhan}</span>
             </NavLink>
           ))}
         </nav>

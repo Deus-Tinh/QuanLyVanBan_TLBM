@@ -25,7 +25,7 @@ const THE_NHANH: { khoa: LocNhanh | ''; icon: string }[] = [
   { khoa: 'tu_choi', icon: 'fa-circle-xmark' },
   { khoa: 'huy', icon: 'fa-ban' },
 ];
-const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-sm font-medium text-secondary';
+const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-secondary';
 
 function TheNhanh({ hop, chon, onChon }: { hop: Hop; chon: string; onChon: (khoa: LocNhanh | '') => void }) {
   const { t } = useSigningT();
@@ -38,11 +38,18 @@ function TheNhanh({ hop, chon, onChon }: { hop: Hop; chon: string; onChon: (khoa
         if (khoa && !dangChon && so === 0) return null;  // ẩn thẻ rỗng cho gọn
         return (
           <button key={khoa || 'tat_ca'} type="button" aria-pressed={dangChon} onClick={() => onChon(khoa)}
-            className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors duration-fast ${
-              dangChon ? 'border-primary bg-primary-subtle text-primary' : 'border-border-subtle text-secondary hover:border-primary hover:text-main'}`}>
+            className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              dangChon
+                ? 'border-primary bg-primary text-white shadow-sm'
+                : 'border-border-subtle bg-surface text-secondary hover:border-primary/40 hover:text-main hover:bg-surface-hover'}`}>
             <i className={`fa-solid ${icon}`} aria-hidden="true" />
-            {t(`danhSach.nhanh.${khoa || 'tat_ca'}`)}
-            {so !== undefined && <span className="rounded-full bg-surface-hover px-1.5 text-xs text-main">{so}</span>}
+            <span>{t(`danhSach.nhanh.${khoa || 'tat_ca'}`)}</span>
+            {so !== undefined && (
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                dangChon ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary'}`}>
+                {so}
+              </span>
+            )}
           </button>
         );
       })}
@@ -130,32 +137,51 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
-                <tr className="border-b border-border-subtle bg-surface-subtle text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-4 py-3">{t('danhSach.maHoSo')}</th>
-                  <th className="px-4 py-3">{t('danhSach.vanBan')}</th>
-                  <th className="px-4 py-3">{t('danhSach.quyTrinh')}</th>
-                  <th className="px-4 py-3">{t('danhSach.mucDo')}</th>
-                  <th className="px-4 py-3">{t('danhSach.trangThai')}</th>
-                  <th className="px-4 py-3">{t('danhSach.dangCho')}</th>
-                  <th className="px-4 py-3">{t('danhSach.nguoiTao')}</th>
-                  <th className="px-4 py-3">{t('danhSach.hanChot')}</th>
+                <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
+                  <th className="px-4 py-3 text-center w-20">{t('danhSach.maHoSo')}</th>
+                  <th className="px-4 py-3 min-w-[260px]">{t('danhSach.vanBan')}</th>
+                  <th className="px-4 py-3 w-44">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-4 py-3 text-center w-32">{t('danhSach.mucDo')}</th>
+                  <th className="px-4 py-3 text-center w-36">{t('danhSach.trangThai')}</th>
+                  <th className="px-4 py-3 w-40">{t('danhSach.dangCho')}</th>
+                  <th className="px-4 py-3 w-36">{t('danhSach.nguoiTao')}</th>
+                  <th className="px-4 py-3 w-36">{t('danhSach.hanChot')}</th>
+                  <th className="px-4 py-3 text-center w-20">{t('danhSach.thaoTac')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {ds.duLieu.map((h) => (
                   <tr key={h.id} className="hover:bg-surface-hover transition-colors">
-                    <td className="px-4 py-3.5 font-bold whitespace-nowrap">
-                      <Link to={`/approvals/${h.id}`} className="text-primary hover:underline">#{h.id}</Link>
+                    <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap">
+                      <Link to={`/approvals/${h.id}`} className="hover:underline">#{h.id}</Link>
                     </td>
-                    <td className="px-4 py-3.5 max-w-md xl:max-w-2xl truncate text-main" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
-                      {moTaVanBan(h.van_ban, h.van_ban_id)}
+                    <td className="px-4 py-3.5">
+                      <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
+                        <i className="fa-solid fa-file-contract text-primary/70 text-xs shrink-0" aria-hidden="true" />
+                        <span className="truncate max-w-xs xl:max-w-md">{moTaVanBan(h.van_ban, h.van_ban_id)}</span>
+                      </Link>
                     </td>
                     <td className="px-4 py-3.5 text-secondary">{h.ten_quy_trinh}</td>
-                    <td className="px-4 py-3.5 whitespace-nowrap"><MucDoBadge mucDo={h.muc_do} /></td>
-                    <td className="px-4 py-3.5 whitespace-nowrap"><TrangThaiBadge trangThai={h.trang_thai} /></td>
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap"><MucDoBadge mucDo={h.muc_do} /></td>
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap"><TrangThaiBadge trangThai={h.trang_thai} /></td>
                     <td className="px-4 py-3.5 text-secondary">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
-                    <td className="px-4 py-3.5 text-secondary whitespace-nowrap">{h.ten_nguoi_tao}</td>
-                    <td className="px-4 py-3.5 text-secondary whitespace-nowrap">{dinhDangNgay(h.han_chot, lang)}</td>
+                    <td className="px-4 py-3.5 text-secondary whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <i className="fa-regular fa-user text-muted text-xs" aria-hidden="true" />
+                        <span>{h.ten_nguoi_tao}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-secondary whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <i className="fa-regular fa-calendar text-muted text-xs" aria-hidden="true" />
+                        <span>{dinhDangNgay(h.han_chot, lang)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      <Link to={`/approvals/${h.id}`} className="inline-flex items-center justify-center p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-primary-subtle transition-colors" title={t('chiTiet.xemChiTiet')}>
+                        <i className="fa-solid fa-eye text-sm" aria-hidden="true" />
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>

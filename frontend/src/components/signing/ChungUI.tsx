@@ -108,7 +108,7 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
 export function TruongNhap({ nhan, children, ghiChu }: { nhan: string; children: React.ReactNode; ghiChu?: string }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-main">{nhan}</span>
+      <span className="block text-xs font-semibold text-secondary">{nhan}</span>
       {children}
       {ghiChu && <span className="block text-xs text-muted">{ghiChu}</span>}
     </label>
