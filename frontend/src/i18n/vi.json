@@ -69,7 +69,8 @@
     "meetings": "Lịch Họp",
     "markAllRead": "Đã đọc tất cả",
     "viewAll": "Xem tất cả",
-    "unreadCount": "{count} chưa đọc"
+    "unreadCount": "{count} chưa đọc",
+    "emptyConfidential": "Không có văn bản mật mới"
   },
   "footer": {
     "group1Notice": "Nhóm 1 đang trong quá trình phát triển",

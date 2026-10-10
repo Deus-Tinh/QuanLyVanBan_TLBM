@@ -69,7 +69,8 @@
     "meetings": "Meetings",
     "markAllRead": "Mark all read",
     "viewAll": "View all",
-    "unreadCount": "{count} unread"
+    "unreadCount": "{count} unread",
+    "emptyConfidential": "No new confidential documents"
   },
   "footer": {
     "group1Notice": "Group 1 currently in active development",

@@ -86,11 +86,12 @@ export default function NotificationStreams() {
               </div>
             </div>
 
-            {/* Streams Tab Navigation: Đến, Đi, Lịch Họp */}
+            {/* Streams Tab Navigation: Đến, Đi, Mật, Lịch Họp */}
             <div className="flex items-center p-1.5 bg-surface border-b border-subtle gap-1 overflow-x-auto">
               {SAMPLE_STREAMS.map((stream) => {
                 const streamLabelKey = `notifications.${stream.type}`;
                 const streamLabel = t(streamLabelKey) !== streamLabelKey ? t(streamLabelKey) : stream.label;
+                const isConfidential = stream.type === 'confidential';
 
                 return (
                   <button
@@ -98,15 +99,25 @@ export default function NotificationStreams() {
                     type="button"
                     className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors duration-fast whitespace-nowrap ${
                       activeTab === stream.type
-                        ? 'bg-surface-elevated text-primary font-semibold shadow-sm'
-                        : 'text-text-muted hover:text-text-main hover:bg-surface-hover'
+                        ? isConfidential
+                          ? 'bg-danger/10 text-danger border border-danger/25 font-semibold shadow-sm'
+                          : 'bg-surface-elevated text-primary font-semibold shadow-sm'
+                        : isConfidential
+                          ? 'text-danger/80 hover:text-danger hover:bg-danger/5'
+                          : 'text-text-muted hover:text-text-main hover:bg-surface-hover'
                     }`}
                     onClick={() => setActiveTab(stream.type)}
                   >
                     <i className={`fa-solid ${stream.icon} text-xs`} />
                     <span>{streamLabel}</span>
                     {stream.unreadCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-primary-subtle text-primary">
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                          isConfidential
+                            ? 'bg-danger-subtle text-danger'
+                            : 'bg-primary-subtle text-primary'
+                        }`}
+                      >
                         {stream.unreadCount}
                       </span>
                     )}
@@ -119,9 +130,17 @@ export default function NotificationStreams() {
             <div className="flex-1 overflow-y-auto divide-y divide-subtle p-1 max-h-[360px]">
               {currentStream.items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-center text-text-muted">
-                  <i className={`fa-solid ${currentStream.icon} text-2xl mb-2 opacity-30`} />
+                  <i
+                    className={`fa-solid ${currentStream.icon} text-2xl mb-2 ${
+                      activeTab === 'confidential' ? 'opacity-40 text-danger' : 'opacity-30'
+                    }`}
+                  />
                   <span className="text-xs font-medium">
-                    {activeTab === 'meetings' ? 'Chưa có lịch họp mới' : 'Không có thông báo mới'}
+                    {activeTab === 'meetings'
+                      ? 'Chưa có lịch họp mới'
+                      : activeTab === 'confidential'
+                        ? (t('notifications.emptyConfidential') || 'Không có văn bản mật mới')
+                        : 'Không có thông báo mới'}
                   </span>
                 </div>
               ) : (
@@ -131,11 +150,22 @@ export default function NotificationStreams() {
                     onClick={() => handleOpenDoc(item)}
                     className="p-3 hover:bg-surface-hover rounded-lg transition-colors duration-fast cursor-pointer flex flex-col"
                   >
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-surface border border-subtle text-text-secondary">
                         {item.code}
                       </span>
-                      {/* Badge hiển thị mã văn bản */}
+                      {(item.priority === 'confidential' || item.scope === 'HAN_CHE' || activeTab === 'confidential') && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-danger-subtle text-danger border border-danger/25 flex items-center gap-1">
+                          <i className="fa-solid fa-lock text-[9px]" />
+                          <span>Mật</span>
+                        </span>
+                      )}
+                      {item.priority === 'urgent' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-warning-subtle text-warning flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-warning inline-block" />
+                          <span>Khẩn</span>
+                        </span>
+                      )}
                     </div>
                     <div className="font-medium text-xs text-text-main line-clamp-2 leading-relaxed">
                       {item.title}

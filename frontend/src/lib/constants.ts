@@ -337,6 +337,14 @@ export const SAMPLE_STREAMS: StreamData[] = [
     items: [],
   },
   {
+    type: 'confidential',
+    label: 'Mật / Hạn Chế',
+    icon: 'fa-shield-halved',
+    color: 'rose',
+    unreadCount: 0,
+    items: [],
+  },
+  {
     type: 'meetings',
     label: 'Lịch Họp',
     icon: 'fa-calendar-days',
