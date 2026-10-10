@@ -159,7 +159,8 @@
     "banDuThao": "Bản dự thảo (phiên bản {so})",
     "banLuot": "Lượt {so} · phiên bản {ban}",
     "maBam": "Mã băm",
-    "bangChungJson": "Tải bằng chứng (JSON)"
+    "bangChungJson": "Tải bằng chứng (JSON)",
+    "xemChiTiet": "Xem chi tiết"
   },
   "hanhDong": {
     "kyDuyet": "Ký duyệt",

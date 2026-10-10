@@ -159,7 +159,8 @@
     "banDuThao": "Draft (version {so})",
     "banLuot": "Round {so} · version {ban}",
     "maBam": "Hash",
-    "bangChungJson": "Download evidence (JSON)"
+    "bangChungJson": "Download evidence (JSON)",
+    "xemChiTiet": "View details"
   },
   "hanhDong": {
     "kyDuyet": "Sign and approve",

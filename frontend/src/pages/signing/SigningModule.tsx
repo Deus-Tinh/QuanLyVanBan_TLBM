@@ -42,7 +42,7 @@ export default function SigningModule() {
           <div>
             <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
               <i className="fa-solid fa-file-signature" aria-hidden="true" />
-              <span>{t('nhanPhanHe') || 'KÝ SỐ VÀ PHÊ DUYỆT ĐIỆN TỬ'}</span>
+              <span>{t('nhanPhanHe')}</span>
             </div>
             <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
             <p className="m-0 mt-1 text-sm text-secondary">{t('moTa')}</p>
