@@ -14,6 +14,7 @@ const TaoHoSoPage = lazy(() => import('./TaoHoSoPage'));
 const ChiTietPage = lazy(() => import('./ChiTietPage'));
 const QuyTrinhPage = lazy(() => import('./QuyTrinhPage'));
 const KhoaPage = lazy(() => import('./KhoaPage'));
+const ThongBaoPage = lazy(() => import('./ThongBaoPage'));
 
 export default function SigningModule() {
   const { t, loi } = useSigningT();
@@ -24,6 +25,7 @@ export default function SigningModule() {
     { den: '/approvals', nhan: t('nav.canToiKy'), icon: 'fa-pen-nib', end: true },
     { den: '/approvals/toi-gui', nhan: t('nav.toiGui'), icon: 'fa-paper-plane' },
     { den: '/approvals/tat-ca', nhan: t('nav.tatCa'), icon: 'fa-folder-open' },
+    { den: '/approvals/thong-bao', nhan: t('nav.thongBao'), icon: 'fa-bell' },
     ...(coQuyen(toi.duLieu, 'add_trinhky') ? [{ den: '/approvals/tao-moi', nhan: t('nav.taoMoi'), icon: 'fa-plus' }] : []),
     ...(coQuyen(toi.duLieu, 'manage_signing_process') || coQuyen(toi.duLieu, 'view_trinhky')
       ? [{ den: '/approvals/quy-trinh', nhan: t('nav.quyTrinh'), icon: 'fa-diagram-project' }] : []),
@@ -53,12 +55,13 @@ export default function SigningModule() {
         {toi.duLieu && (
           <Suspense fallback={<DangTai />}>
             <Routes>
-              <Route index element={<DanhSachPage hop="can_toi_ky" />} />
-              <Route path="toi-gui" element={<DanhSachPage hop="toi_gui" />} />
-              <Route path="tat-ca" element={<DanhSachPage hop="tat_ca" />} />
+              <Route index element={<DanhSachPage key="can_toi_ky" hop="can_toi_ky" />} />
+              <Route path="toi-gui" element={<DanhSachPage key="toi_gui" hop="toi_gui" />} />
+              <Route path="tat-ca" element={<DanhSachPage key="tat_ca" hop="tat_ca" />} />
               <Route path="tao-moi" element={<TaoHoSoPage />} />
               <Route path="quy-trinh" element={<QuyTrinhPage />} />
               <Route path="khoa" element={<KhoaPage />} />
+              <Route path="thong-bao" element={<ThongBaoPage />} />
               <Route path=":id" element={<ChiTietPage />} />
             </Routes>
           </Suspense>

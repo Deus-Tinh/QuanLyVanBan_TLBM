@@ -7,7 +7,8 @@
     "tatCa": "Hồ sơ theo quyền",
     "taoMoi": "Tạo hồ sơ trình ký",
     "quyTrinh": "Quy trình",
-    "khoaCuaToi": "Khóa ký & PIN"
+    "khoaCuaToi": "Khóa ký & PIN",
+    "thongBao": "Thông báo"
   },
   "chung": {
     "dangTai": "Đang tải…",
@@ -76,8 +77,15 @@
     "nguoiTao": "Người trình",
     "ngayGui": "Ngày gửi",
     "hanChot": "Hạn chót",
-    "locTrangThai": "Lọc theo trạng thái",
-    "tatCaTrangThai": "Tất cả trạng thái"
+    "tatCaTrangThai": "Tất cả trạng thái",
+    "timKiem": "Tìm kiếm",
+    "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
+    "tatCa": "Tất cả",
+    "tuNgay": "Từ ngày",
+    "denNgay": "Đến ngày",
+    "loc": "Lọc",
+    "xoaLoc": "Xóa lọc",
+    "khongKhopLoc": "Không có hồ sơ nào khớp bộ lọc."
   },
   "tao": {
     "buoc1": "Thông tin hồ sơ",
@@ -127,7 +135,16 @@
     "khongAiCho": "Không có người ký nào đang chờ.",
     "lyDoTuChoi": "Lý do không đồng ý",
     "lyDoHuy": "Lý do hủy",
-    "hoSoGoc": "Trình lại từ hồ sơ #{so}"
+    "hoSoGoc": "Trình lại từ hồ sơ #{so}",
+    "suaHoSo": "Sửa hồ sơ",
+    "ghiChu": "Ghi chú",
+    "thayTep": "Thay tệp PDF (tùy chọn)",
+    "goiYThayTep": "Để trống nếu giữ tệp hiện tại; thay tệp sẽ tăng phiên bản văn bản.",
+    "danhSachTep": "Danh sách tệp",
+    "banDuThao": "Bản dự thảo (phiên bản {so})",
+    "banLuot": "Lượt {so} · phiên bản {ban}",
+    "maBam": "Mã băm",
+    "bangChungJson": "Tải bằng chứng (JSON)"
   },
   "hanhDong": {
     "kyDuyet": "Ký duyệt",
@@ -177,7 +194,16 @@
     "ngung": "Ngừng",
     "nhanBan": "Tạo phiên bản mới",
     "chiQuanLy": "Chỉ quản trị (quy trình công ty) và lãnh đạo đơn vị (quy trình phòng ban) được cấu hình quy trình.",
-    "boNguoiKy": "Bỏ người ký"
+    "boNguoiKy": "Bỏ người ký",
+    "sua": "Sửa quy trình",
+    "xoa": "Xóa quy trình",
+    "xemChiTiet": "Xem chi tiết",
+    "chiTiet": "Chi tiết quy trình",
+    "phienBanNhan": "Phiên bản",
+    "moTa": "Mô tả",
+    "nguoiKy": "Người ký",
+    "soGioNhan": "Số giờ xử lý",
+    "xacNhanXoa": "Xóa quy trình nháp “{ten}”? Thao tác này không hoàn tác được."
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo và giữ trên trình duyệt này, bảo vệ bằng PIN 8 chữ số. Máy chủ không nhận PIN hay khóa bí mật.",
@@ -243,5 +269,15 @@
     "TAO_TEP_HOAN_TAT": "Tạo tệp hoàn tất",
     "LOI_TAO_TEP_HOAN_TAT": "Lỗi tạo tệp hoàn tất",
     "TAO_LAI_TEP_HOAN_TAT": "Tạo lại tệp hoàn tất"
+  },
+  "thongBao": {
+    "rong": "Chưa có thông báo nào.",
+    "loai": {
+      "CAN_KY": "Cần ký duyệt",
+      "HOAN_THANH": "Đã hoàn tất duyệt nội bộ",
+      "TU_CHOI": "Không đồng ý ban hành",
+      "YEU_CAU_SUA": "Trả lại để sửa",
+      "HUY": "Hồ sơ đã hủy"
+    }
   }
 }

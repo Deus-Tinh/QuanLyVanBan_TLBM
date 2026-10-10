@@ -1,13 +1,16 @@
 /**
  * Chi tiết hồ sơ (#80 mục E): PDF của lượt hiện hành kèm lớp phủ chữ ký, tiến trình, người đang chờ, vai trò,
- * hạn xử lý, lịch sử; hành động theo quyền/trạng thái; trao đổi khi trả sửa; kết quả khi hoàn tất.
+ * hạn xử lý, lịch sử; hành động theo quyền/trạng thái; trao đổi khi trả sửa; kết quả khi hoàn tất; sửa hồ sơ nháp;
+ * danh sách tệp mọi lượt (trang tài liệu).
  */
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Card } from '@components/common';
+import { Button, Card } from '@components/common';
 import { DangTai, LoiTai, MucDoBadge, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
 import HanhDong from '@components/signing/HanhDong';
 import KetQuaPanel from '@components/signing/KetQuaPanel';
+import SuaNhapDialog from '@components/signing/SuaNhapDialog';
+import TaiLieuPanel from '@components/signing/TaiLieuPanel';
 import TienTrinh from '@components/signing/TienTrinh';
 import TraoDoiPanel from '@components/signing/TraoDoiPanel';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
@@ -37,6 +40,7 @@ export default function ChiTietPage() {
   const luot = hoSo?.luot_trinh[0] || null;
   const [tepTai, setTepTai] = useState<{ khoa: string; buf: ArrayBuffer | null; maBam: string | null; loi: unknown } | null>(null);
   const [anh, setAnh] = useState<Record<number, string>>({});
+  const [dangSua, setDangSua] = useState(false);
 
   const { setDuLieu, tai } = ct;
   const capNhat = useCallback((moi?: HoSoChiTiet) => {
@@ -116,6 +120,9 @@ export default function ChiTietPage() {
             <MucDoBadge mucDo={hoSo.muc_do} />
           </div>
           <div className="text-sm text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
+          {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
+            <Button size="sm" variant="secondary" icon="fa-pen" onClick={() => setDangSua(true)}>{t('chiTiet.suaHoSo')}</Button>
+          )}
           <HanhDong hoSo={hoSo} luot={luot} maBamTepDangXem={maBam} onXong={capNhat} />
           {hoSo.trang_thai === 'TU_CHOI' && hoSo.ly_do_tu_choi && (
             <ThongBao>{t('chiTiet.lyDoTuChoi')}: {hoSo.ly_do_tu_choi}</ThongBao>
@@ -143,6 +150,7 @@ export default function ChiTietPage() {
           )}
         </Card>
         {hoSo.trang_thai === 'HOAN_THANH' && luot && <KetQuaPanel hoSo={hoSo} luot={luot} onTaiLai={capNhat} />}
+        <TaiLieuPanel hoSo={hoSo} />
         {coTraoDoi && luot?.trang_thai === 'YEU_CAU_SUA' && <TraoDoiPanel hoSo={hoSo} onXong={capNhat} />}
         {luot && (
           <Card className="p-4 space-y-2">
@@ -172,6 +180,7 @@ export default function ChiTietPage() {
           </ol>
         </Card>
       </div>
+      {dangSua && <SuaNhapDialog hoSo={hoSo} onDong={() => setDangSua(false)} onXong={(moi) => { setDangSua(false); capNhat(moi); }} />}
     </div>
   );
 }

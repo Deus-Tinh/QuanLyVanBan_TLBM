@@ -236,6 +236,29 @@ export interface VanBanDi {
   trich_yeu: string;
 }
 
+/** Bộ lọc danh sách hồ sơ (server kiểm tham số; ngày dạng YYYY-MM-DD). */
+export interface BoLocHoSo {
+  trang_thai?: string;
+  muc_do?: string;
+  quy_trinh?: string;
+  q?: string;
+  tu_ngay?: string;
+  den_ngay?: string;
+}
+
+export type LoaiThongBao = 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY';
+
+/** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP). */
+export interface ThongBaoTrinhKy {
+  id: number;
+  loai_thong_bao: LoaiThongBao;
+  trinh_ky: number;
+  van_ban: string;
+  trang_thai_ho_so: TrangThaiHoSo;
+  ten_quy_trinh: string;
+  created_at: string;
+}
+
 /** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */
 export interface DonViLuaChon {
   id: number;
