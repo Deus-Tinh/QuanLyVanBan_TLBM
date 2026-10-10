@@ -2,6 +2,7 @@ import base64
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -29,12 +30,13 @@ from .services import hanh_dong_ky as hanh_dong_service
 from .services import keys as key_service
 from .services import pin as pin_service
 from .services import process as process_service
+from .services import thong_bao as thong_bao_service
 from .services import tep_hoan_tat as tep_hoan_tat_service
 from .services import trinh_ky as trinh_ky_service
 from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
 from .tich_hop import to_chuc
-from .tich_hop.van_ban import tim_van_ban_di
+from .tich_hop.van_ban import id_van_ban_khop, tim_van_ban_di
 
 
 @api_view(["GET"])
@@ -80,9 +82,30 @@ class QuyTrinhListCreateView(SigningAPIView):
 
 
 class QuyTrinhDetailView(SigningAPIView):
+    """GET chi tiết; PUT sửa quy trình nháp (thay toàn bộ cấp ký); DELETE xóa quy trình nháp chưa có hồ sơ dùng."""
+
     def get(self, request, pk):
         process = get_object_or_404(_quy_trinh_xem_duoc(request.user), pk=pk)
         return Response(QuyTrinhSerializer(process).data)
+
+    def _quan_ly(self, request, pk):
+        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
+        process = get_object_or_404(_quy_trinh_xem_duoc(request.user), pk=pk)
+        process_service.yeu_cau_quan_ly(request.user, process.pham_vi, process.don_vi_ap_dung_id)
+        return process
+
+    def put(self, request, pk):
+        process = self._quan_ly(request, pk)
+        data = QuyTrinhInputSerializer(data={**request.data, "ma_quy_trinh": process.ma_quy_trinh})
+        data.is_valid(raise_exception=True)
+        process_service.yeu_cau_quan_ly(request.user, data.validated_data["pham_vi"],
+                                        data.validated_data.get("don_vi_ap_dung_id"))
+        process = process_service.sua_quy_trinh(process, request.user, **data.validated_data)
+        return Response(QuyTrinhSerializer(_quy_trinh_xem_duoc(request.user).get(pk=process.pk)).data)
+
+    def delete(self, request, pk):
+        process_service.xoa_quy_trinh(self._quan_ly(request, pk), request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class QuyTrinhActionView(SigningAPIView):
@@ -231,6 +254,34 @@ def _ho_so_xem_duoc(request, pk):
     return get_object_or_404(trinh_ky_service.trinh_ky_xem_duoc(request.user), pk=pk)
 
 
+def _loc_ho_so(queryset, tham_so):
+    """Bộ lọc danh sách: trạng thái, mức độ, quy trình (id), từ khóa (số hiệu, trích yếu văn bản, mã/tên quy trình,
+    ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
+    for ten in ("trang_thai", "muc_do"):
+        if tham_so.get(ten):
+            queryset = queryset.filter(**{ten: tham_so[ten]})
+    if tham_so.get("quy_trinh"):
+        if not tham_so["quy_trinh"].isdigit():
+            raise SigningError(code="tham_so_khong_hop_le", detail="quy_trinh phải là số.",
+                               fields={"quy_trinh": ["Giá trị không hợp lệ."]})
+        queryset = queryset.filter(quy_trinh_id=int(tham_so["quy_trinh"]))
+    tu_khoa = (tham_so.get("q") or "").strip()[:100]
+    if tu_khoa:
+        dieu_kien = (Q(van_ban_id__in=id_van_ban_khop(tu_khoa)) | Q(quy_trinh__ten_quy_trinh__icontains=tu_khoa)
+                     | Q(quy_trinh__ma_quy_trinh__icontains=tu_khoa) | Q(ghi_chu__icontains=tu_khoa))
+        if tu_khoa.lstrip("#").isdigit():
+            dieu_kien |= Q(pk=int(tu_khoa.lstrip("#")))
+        queryset = queryset.filter(dieu_kien)
+    for ten, phep in (("tu_ngay", "gte"), ("den_ngay", "lte")):
+        if tham_so.get(ten):
+            ngay = parse_date(tham_so[ten])
+            if ngay is None:
+                raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
+                                   fields={ten: ["Ngày không hợp lệ."]})
+            queryset = queryset.filter(**{f"created_at__date__{phep}": ngay})
+    return queryset
+
+
 class TrinhKyListCreateView(SigningAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
@@ -245,9 +296,7 @@ class TrinhKyListCreateView(SigningAPIView):
         else:
             raise SigningError(code="tham_so_khong_hop_le", detail="hop phải là can_toi_ky, toi_gui hoặc tat_ca.",
                                fields={"hop": ["Giá trị không hợp lệ."]})
-        for ten in ("trang_thai", "muc_do"):
-            if request.query_params.get(ten):
-                queryset = queryset.filter(**{ten: request.query_params[ten]})
+        queryset = _loc_ho_so(queryset, request.query_params)
         queryset = queryset.select_related("quy_trinh").order_by("-created_at")
         return Response(TrinhKySerializer(queryset, many=True).data)
 
@@ -307,11 +356,21 @@ class TrinhKyActionView(SigningAPIView):
 
 
 class TrinhKyTepView(SigningAPIView):
-    """GET /trinh-ky/<pk>/tep/: tệp của lượt trình hiện hành (hoặc dự thảo khi còn nháp), kiểm quyền xem."""
+    """
+    GET /trinh-ky/<pk>/tep/: tệp của lượt trình hiện hành (hoặc dự thảo khi còn nháp), kiểm quyền xem.
+    `?luot=<id>`: tệp của một lượt trình cụ thể của hồ sơ (trang tài liệu: mọi phiên bản đã trình).
+    """
 
     def get(self, request, pk):
         ho_so = _ho_so_xem_duoc(request, pk)
-        luot = trinh_ky_service.luot_hien_hanh(ho_so)
+        luot_id = request.query_params.get("luot")
+        if luot_id:
+            luot = get_object_or_404(ho_so.luot_trinh_set, pk=luot_id) if luot_id.isdigit() else None
+            if luot is None:
+                raise SigningError(code="tham_so_khong_hop_le", detail="luot phải là số.",
+                                   fields={"luot": ["Giá trị không hợp lệ."]})
+        else:
+            luot = trinh_ky_service.luot_hien_hanh(ho_so)
         vi_tri = luot.vi_tri_luu_tep if luot else ho_so.vi_tri_luu_tep
         try:
             data = get_storage().read_bytes(vi_tri)
@@ -319,7 +378,8 @@ class TrinhKyTepView(SigningAPIView):
             raise SigningError(code="khong_doc_duoc_tep", detail="Không đọc được tệp của hồ sơ.",
                                status_code=status.HTTP_404_NOT_FOUND)
         response = HttpResponse(data, content_type="application/pdf")
-        response["Content-Disposition"] = f'inline; filename="trinh-ky-{ho_so.pk}.pdf"'
+        ten_tep = f"trinh-ky-{ho_so.pk}-luot-{luot.so_luot}.pdf" if luot else f"trinh-ky-{ho_so.pk}.pdf"
+        response["Content-Disposition"] = f'inline; filename="{ten_tep}"'
         response["Cache-Control"] = "no-store"
         return response
 
@@ -476,6 +536,21 @@ class AnhChuKyView(SigningAPIView):
         response["Cache-Control"] = "no-store"
         response["X-Content-Type-Options"] = "nosniff"
         return response
+
+
+class ThongBaoView(SigningAPIView):
+    """GET /thong-bao/: thông báo trong ứng dụng của người dùng hiện tại (mới nhất trước, tối đa 50)."""
+
+    def get(self, request):
+        ket_qua = []
+        for tb in thong_bao_service.cua_toi(request.user):
+            _, _, ten_van_ban = thong_bao_service.noi_dung(tb)
+            ket_qua.append({
+                "id": tb.pk, "loai_thong_bao": tb.loai_thong_bao, "trinh_ky": tb.trinh_ky_id,
+                "van_ban": ten_van_ban, "trang_thai_ho_so": tb.trinh_ky.trang_thai,
+                "ten_quy_trinh": tb.trinh_ky.quy_trinh.ten_quy_trinh, "created_at": tb.created_at,
+            })
+        return Response(ket_qua)
 
 
 class DonViView(SigningAPIView):

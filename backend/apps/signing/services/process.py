@@ -4,7 +4,7 @@ from rest_framework import status
 
 from .. import enums
 from ..errors import ConflictError, SigningError
-from ..models import SigningProcess, SigningProcessStep, SigningProcessStepSigner
+from ..models import SigningProcess, SigningProcessStep, SigningProcessStepSigner, SigningRequest
 from ..permissions import QUAN_LY_QUY_TRINH, XEM_TRINH_KY, co_quyen
 from ..tich_hop import to_chuc
 from .audit import ghi_nhat_ky
@@ -214,6 +214,41 @@ def ngung(process, nguoi_thuc_hien):
     ghi_nhat_ky(nguoi_thuc_hien, LOAI, process.pk, "NGUNG_QUY_TRINH",
                 trang_thai_truoc=truoc, trang_thai_sau=process.trang_thai)
     return process
+
+
+@transaction.atomic
+def sua_quy_trinh(process, nguoi_thuc_hien, *, ten_quy_trinh, pham_vi, don_vi_ap_dung_id=None, mo_ta="",
+                  cau_hinh_nhac_han=None, cap_ky=(), ma_quy_trinh=None):
+    """Sửa quy trình nháp: cập nhật thông tin và thay toàn bộ cấp ký, người ký. Mã quy trình giữ nguyên."""
+    process = _khoa(process.pk)
+    _yeu_cau_ban_nhap(process)
+    kiem_tra_pham_vi(pham_vi, don_vi_ap_dung_id)
+    to_chuc.kiem_tra_don_vi(don_vi_ap_dung_id, "don_vi_ap_dung_id")
+    process.ten_quy_trinh, process.mo_ta, process.pham_vi = ten_quy_trinh, mo_ta, pham_vi
+    process.don_vi_ap_dung_id = don_vi_ap_dung_id
+    process.cau_hinh_nhac_han = cau_hinh_nhac_han or process.cau_hinh_nhac_han or CAU_HINH_NHAC_HAN_MAC_DINH
+    process.update_by = nguoi_thuc_hien
+    process.save()
+    process.cap_ky_set.all().delete()  # cascade người ký cấu hình; quy trình nháp chưa có hồ sơ dùng
+    for cap in cap_ky:
+        them_cap_ky(process, nguoi_thuc_hien, **cap, _ghi_nhat_ky=False)
+    ghi_nhat_ky(nguoi_thuc_hien, LOAI, process.pk, "SUA_QUY_TRINH", trang_thai_sau=process.trang_thai,
+                du_lieu_kem_theo={"so_cap": len(cap_ky)})
+    return process
+
+
+@transaction.atomic
+def xoa_quy_trinh(process, nguoi_thuc_hien):
+    """Xóa quy trình nháp chưa có hồ sơ nào dùng; quy trình đã dùng thì chỉ ngừng (giữ lịch sử)."""
+    process = _khoa(process.pk)
+    if process.trang_thai != enums.TrangThaiQuyTrinh.NHAP:
+        raise ConflictError(code="quy_trinh_khong_the_xoa",
+                            detail="Chỉ xóa được quy trình nháp; quy trình đã kích hoạt hãy ngừng sử dụng.")
+    if SigningRequest.objects.filter(quy_trinh=process).exists():
+        raise ConflictError(code="quy_trinh_da_duoc_dung", detail="Quy trình đã có hồ sơ dùng, không xóa được.")
+    ghi_nhat_ky(nguoi_thuc_hien, LOAI, process.pk, "XOA_QUY_TRINH", trang_thai_truoc=process.trang_thai,
+                du_lieu_kem_theo={"ma_quy_trinh": process.ma_quy_trinh, "phien_ban": process.phien_ban})
+    process.delete()
 
 
 @transaction.atomic

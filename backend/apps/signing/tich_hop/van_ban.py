@@ -71,6 +71,11 @@ def mo_ta_van_ban(document_type, van_ban_id):
     return {"so_hieu": van_ban.so_hieu or "", "trich_yeu": van_ban.trich_yeu or ""}
 
 
+def id_van_ban_khop(tu_khoa):
+    """Id văn bản đi có số hiệu hoặc trích yếu chứa từ khóa (dùng cho bộ lọc danh sách hồ sơ)."""
+    return VanBanDi.objects.filter(Q(so_hieu__icontains=tu_khoa) | Q(trich_yeu__icontains=tu_khoa)).values("id")
+
+
 TOI_DA_TIM = 20
 
 
