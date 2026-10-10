@@ -6,7 +6,7 @@ pg_dump, và bỏ qua các khác biệt do Django luôn sinh ra mà không phả
 - FK của Django luôn DEFERRABLE INITIALLY DEFERRED; ON DELETE RESTRICT/NO ACTION được Django
   xử lý ở tầng ứng dụng (on_delete=PROTECT/RESTRICT);
 - index *_like (varchar_pattern_ops) Django tự thêm cho cột varchar có index/unique;
-- index thừa (Django tự tạo index cho cột FK) không làm sai dữ liệu;
+- index thường thừa (Django tự tạo index cho cột FK) không làm sai dữ liệu; index UNIQUE thừa vẫn báo;
 - bảng của framework: django_*, token_blacklist_*.
 
 Các lệch đã biết, đang chờ nhóm phụ trách sửa, ghi trong file baseline (mỗi dòng một lệch,
@@ -133,6 +133,10 @@ def drift(migration_db, ddl_db):
             found.append(f"{table}: constraint không có trong DDL {item}")
         for item in sorted(ddl_idx - mig_idx):
             found.append(f"{table}: thiếu index {item}")
+        for item in sorted(mig_idx - ddl_idx):
+            # Index thường thừa không làm sai dữ liệu; UNIQUE thừa là ràng buộc nghiệp vụ DDL không có.
+            if item.startswith("UNIQUE "):
+                found.append(f"{table}: index UNIQUE không có trong DDL {item}")
     for enum in sorted(set(mig_enums) | set(ddl_enums)):
         if enum not in mig_enums:
             found.append(f"ENUM {enum}: thiếu ({ddl_enums[enum]})")
