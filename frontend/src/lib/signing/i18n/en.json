@@ -8,7 +8,8 @@
     "taoMoi": "New signing request",
     "quyTrinh": "Workflows",
     "khoaCuaToi": "Signing key & PIN",
-    "thongBao": "Notifications"
+    "thongBao": "Notifications",
+    "taiLieu": "Documents"
   },
   "chung": {
     "dangTai": "Loading…",
@@ -294,6 +295,21 @@
       "TU_CHOI": "Rejected for issuance",
       "YEU_CAU_SUA": "Returned for revision",
       "HUY": "Request cancelled"
+    }
+  },
+  "taiLieu": {
+    "goiYTim": "Number, summary, request ID, process…",
+    "loaiTep": "File type",
+    "tep": "File",
+    "phienBan": "Round / version",
+    "ngay": "Date",
+    "luotBan": "Round {so} · v{ban}",
+    "rong": "No files yet.",
+    "khongKhopLoc": "No files match the filters.",
+    "loai": {
+      "DU_THAO": "Draft",
+      "LUOT": "Submitted file",
+      "HOAN_TAT": "Completed file"
     }
   }
 }

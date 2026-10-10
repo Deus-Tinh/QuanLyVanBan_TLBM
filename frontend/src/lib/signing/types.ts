@@ -253,6 +253,30 @@ export interface BoLocHoSo {
   den_ngay?: string;
 }
 
+export type LoaiTepTaiLieu = 'DU_THAO' | 'LUOT' | 'HOAN_TAT';
+
+/** Một tệp trên trang tài liệu (`GET /tai-lieu/`). */
+export interface TepTaiLieu {
+  trinh_ky: number;
+  trang_thai_ho_so: TrangThaiHoSo;
+  ten_quy_trinh: string;
+  van_ban: { so_hieu?: string; trich_yeu?: string };
+  loai: LoaiTepTaiLieu;
+  luot: number | null;
+  so_luot: number | null;
+  phien_ban: string | null;
+  ma_bam: string;
+  thoi_diem: string;
+  ten_tep: string;
+}
+
+export interface BoLocTaiLieu {
+  q?: string;
+  loai?: LoaiTepTaiLieu | '';
+  tu_ngay?: string;
+  den_ngay?: string;
+}
+
 export type LoaiThongBao = 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY';
 
 /** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP). */

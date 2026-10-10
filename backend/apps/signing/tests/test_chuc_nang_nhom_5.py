@@ -225,3 +225,19 @@ class LocNhanhTests(KyBase):
         r = self.c.get(f"{BASE}/", {"hop": "toi_gui", "nhanh": "sai"})
         self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"))
 
+    def test_document_page_lists_files_of_visible_requests(self):
+        da_gui = self.ho_so_da_gui()["id"]
+        nhap = self.tao_nhap().data["id"]
+        r = self.c.get("/api/v1/signing/tai-lieu/")
+        self.assertEqual(r.status_code, 200)
+        theo_ho_so = {(x["trinh_ky"], x["loai"]) for x in r.data}
+        self.assertIn((da_gui, "LUOT"), theo_ho_so)
+        self.assertIn((nhap, "DU_THAO"), theo_ho_so)
+        luot = next(x for x in r.data if x["trinh_ky"] == da_gui)
+        self.assertEqual((luot["so_luot"], luot["ten_tep"]), (1, f"trinh-ky-{da_gui}-luot-1.pdf"))
+        self.assertEqual({x["loai"] for x in self.c.get("/api/v1/signing/tai-lieu/", {"loai": "DU_THAO"}).data}, {"DU_THAO"})
+        self.assertEqual(self.c.get("/api/v1/signing/tai-lieu/", {"q": f"#{nhap}"}).data[0]["trinh_ky"], nhap)
+        self.assertEqual(self.client_cua(self.la).get("/api/v1/signing/tai-lieu/").data, [])  # không liên quan: không thấy
+        r = self.c.get("/api/v1/signing/tai-lieu/", {"loai": "SAI"})
+        self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"))
+

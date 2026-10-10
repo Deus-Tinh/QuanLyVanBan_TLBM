@@ -5,7 +5,7 @@
  */
 import apiClient, { ApiError } from '@lib/apiClient';
 import type {
-  BangChung, BoLocHoSo, DonViLuaChon, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
+  BangChung, BoLocHoSo, BoLocTaiLieu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
   ThamSoKdf, ThongBaoTrinhKy, TinNhan, TraoDoi, VanBanDi, ViTriKy,
 } from './types';
 
@@ -118,6 +118,11 @@ export const signingApi = {
   timNguoiDung: (q: string) =>
     apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?q=${encodeURIComponent(q)}`),
   donVi: () => apiClient.get<DonViLuaChon[]>(`${SIGNING_BASE}/don-vi/`),
+  taiLieu: (loc: BoLocTaiLieu = {}) => {
+    const tham_so = new URLSearchParams();
+    Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
+    return apiClient.get<TepTaiLieu[]>(`${SIGNING_BASE}/tai-lieu/?${tham_so}`);
+  },
   thongBao: () => apiClient.get<ThongBaoTrinhKy[]>(`${SIGNING_BASE}/thong-bao/`),
   timVanBanDi: (q: string) => apiClient.get<VanBanDi[]>(`${SIGNING_BASE}/van-ban-di/?q=${encodeURIComponent(q)}`),
 

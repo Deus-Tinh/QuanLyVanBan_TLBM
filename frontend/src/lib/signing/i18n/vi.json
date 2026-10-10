@@ -8,7 +8,8 @@
     "taoMoi": "Tạo hồ sơ trình ký",
     "quyTrinh": "Quy trình",
     "khoaCuaToi": "Khóa ký & PIN",
-    "thongBao": "Thông báo"
+    "thongBao": "Thông báo",
+    "taiLieu": "Tài liệu"
   },
   "chung": {
     "dangTai": "Đang tải…",
@@ -294,6 +295,21 @@
       "TU_CHOI": "Không đồng ý ban hành",
       "YEU_CAU_SUA": "Trả lại để sửa",
       "HUY": "Hồ sơ đã hủy"
+    }
+  },
+  "taiLieu": {
+    "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
+    "loaiTep": "Loại tệp",
+    "tep": "Tệp",
+    "phienBan": "Lượt / phiên bản",
+    "ngay": "Ngày",
+    "luotBan": "Lượt {so} · bản {ban}",
+    "rong": "Chưa có tệp nào.",
+    "khongKhopLoc": "Không có tệp nào khớp bộ lọc.",
+    "loai": {
+      "DU_THAO": "Bản dự thảo",
+      "LUOT": "Bản trình ký",
+      "HOAN_TAT": "Bản hoàn tất"
     }
   }
 }

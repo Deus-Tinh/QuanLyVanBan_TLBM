@@ -38,7 +38,7 @@ from .services import trinh_ky as trinh_ky_service
 from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
 from .tich_hop import to_chuc
-from .tich_hop.van_ban import id_van_ban_khop, tim_van_ban_di
+from .tich_hop.van_ban import id_van_ban_khop, mo_ta_nhieu, tim_van_ban_di
 
 
 @api_view(["GET"])
@@ -580,6 +580,62 @@ class ThongKeHoSoView(SigningAPIView):
         queryset = _gan_luot_cuoi(SigningRequest.objects.filter(pk__in=_ho_so_theo_hop(request).values("pk")))
         dem = {"tat_ca": queryset.count(), **{k: queryset.filter(v).count() for k, v in _dieu_kien_nhanh().items()}}
         return Response(dem)
+
+
+class TaiLieuView(SigningAPIView):
+    """
+    GET /tai-lieu/: trang tài liệu — mọi tệp của các hồ sơ người dùng được xem: bản dự thảo (hồ sơ chưa gửi), tệp của
+    từng lượt trình, tệp hoàn tất. Lọc `q` (như danh sách hồ sơ), `loai` (DU_THAO | LUOT | HOAN_TAT), `tu_ngay`,
+    `den_ngay`; mới nhất trước. Tải tệp qua `tep/`, `tep/?luot=`, `tep-hoan-tat/` (kiểm quyền từng hồ sơ).
+    """
+
+    LOAI = ("DU_THAO", "LUOT", "HOAN_TAT")
+    TOI_DA = 300
+
+    def get(self, request):
+        ts = request.query_params
+        loai = ts.get("loai", "")
+        if loai and loai not in self.LOAI:
+            raise SigningError(code="tham_so_khong_hop_le", detail="loai phải là DU_THAO, LUOT hoặc HOAN_TAT.",
+                               fields={"loai": ["Giá trị không hợp lệ."]})
+        khoang = {}
+        for ten in ("tu_ngay", "den_ngay"):
+            if ts.get(ten):
+                khoang[ten] = parse_date(ts[ten])
+                if khoang[ten] is None:
+                    raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
+                                       fields={ten: ["Ngày không hợp lệ."]})
+        xem_duoc = _loc_ho_so(trinh_ky_service.trinh_ky_xem_duoc(request.user), {"q": ts.get("q", "")})
+        ho_so = list(SigningRequest.objects.filter(pk__in=xem_duoc.values("pk")).select_related("quy_trinh")
+                     .prefetch_related("luot_trinh_set").order_by("-created_at")[:500])
+        mo_ta = mo_ta_nhieu(h.van_ban_id for h in ho_so)
+        tep = []
+        for h in ho_so:
+            chung = {"trinh_ky": h.pk, "trang_thai_ho_so": h.trang_thai, "ten_quy_trinh": h.quy_trinh.ten_quy_trinh,
+                     "van_ban": mo_ta.get(h.van_ban_id, {})}
+            cac_luot = sorted(h.luot_trinh_set.all(), key=lambda x: x.so_luot)
+            if not cac_luot and h.vi_tri_luu_tep:
+                tep.append({**chung, "loai": "DU_THAO", "luot": None, "so_luot": None, "phien_ban": h.phien_ban_van_ban,
+                            "ma_bam": h.ma_bam_tai_lieu, "thoi_diem": h.created_at,
+                            "ten_tep": f"trinh-ky-{h.pk}-du-thao.pdf"})
+            for luot in cac_luot:
+                tep.append({**chung, "loai": "LUOT", "luot": luot.pk, "so_luot": luot.so_luot,
+                            "phien_ban": luot.phien_ban_van_ban, "ma_bam": luot.ma_bam_tai_lieu,
+                            "thoi_diem": luot.thoi_diem_gui or luot.created_at,
+                            "ten_tep": f"trinh-ky-{h.pk}-luot-{luot.so_luot}.pdf"})
+                if luot.trang_thai_tep_hoan_tat == enums.TrangThaiTepHoanTat.THANH_CONG and luot.vi_tri_tep_hoan_tat:
+                    tep.append({**chung, "loai": "HOAN_TAT", "luot": luot.pk, "so_luot": luot.so_luot,
+                                "phien_ban": luot.phien_ban_van_ban, "ma_bam": luot.ma_bam_tep_hoan_tat,
+                                "thoi_diem": luot.thoi_diem_hoan_thanh or luot.created_at,
+                                "ten_tep": f"trinh-ky-{h.pk}-ban-duyet-noi-bo.pdf"})
+        if loai:
+            tep = [x for x in tep if x["loai"] == loai]
+        if khoang.get("tu_ngay"):
+            tep = [x for x in tep if timezone.localdate(x["thoi_diem"]) >= khoang["tu_ngay"]]
+        if khoang.get("den_ngay"):
+            tep = [x for x in tep if timezone.localdate(x["thoi_diem"]) <= khoang["den_ngay"]]
+        tep.sort(key=lambda x: x["thoi_diem"], reverse=True)
+        return Response(tep[: self.TOI_DA])
 
 
 class ThongBaoView(SigningAPIView):

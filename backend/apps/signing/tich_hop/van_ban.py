@@ -76,6 +76,12 @@ def id_van_ban_khop(tu_khoa):
     return VanBanDi.objects.filter(Q(so_hieu__icontains=tu_khoa) | Q(trich_yeu__icontains=tu_khoa)).values("id")
 
 
+def mo_ta_nhieu(van_ban_ids):
+    """{id: {"so_hieu", "trich_yeu"}} của nhiều văn bản đi trong một truy vấn (trang tài liệu)."""
+    return {v["id"]: {"so_hieu": v["so_hieu"] or "", "trich_yeu": v["trich_yeu"] or ""}
+            for v in VanBanDi.objects.filter(pk__in=set(van_ban_ids)).values("id", "so_hieu", "trich_yeu")}
+
+
 TOI_DA_TIM = 20
 
 

@@ -14,12 +14,13 @@ import type { HoSoChiTiet, NguoiDungHienTai, QuyTrinh } from '@lib/signing/types
 import DanhSachPage from './DanhSachPage';
 import QuyTrinhPage from './QuyTrinhPage';
 import SigningModule from './SigningModule';
+import TaiLieuPage from './TaiLieuPage';
 import ThongBaoPage from './ThongBaoPage';
 
 vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
-    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
+    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
     xoaQuyTrinh: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
   } };
 });
@@ -236,6 +237,26 @@ describe('ThongBaoPage', () => {
     api.thongBao.mockResolvedValue([]);
     boc(<ThongBaoPage />);
     expect(await screen.findByText('Chưa có thông báo nào.')).toBeInTheDocument();
+  });
+});
+
+describe('TaiLieuPage', () => {
+  it('liệt kê tệp mọi hồ sơ, lọc theo loại và tải đúng lượt', async () => {
+    api.taiLieu.mockResolvedValue([{
+      trinh_ky: 12, trang_thai_ho_so: 'CHO_KY', ten_quy_trinh: 'Duyệt mua sắm', van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
+      loai: 'LUOT', luot: 5, so_luot: 1, phien_ban: '1', ma_bam: 'a'.repeat(64), thoi_diem: '2026-10-07T01:00:00Z',
+      ten_tep: 'trinh-ky-12-luot-1.pdf',
+    }]);
+    api.tepCuaLuot.mockResolvedValue(new Blob(['%PDF-']));
+    URL.createObjectURL = vi.fn(() => 'blob:tep');
+    URL.revokeObjectURL = vi.fn();
+    boc(<TaiLieuPage />);
+    expect(await screen.findByText('trinh-ky-12-luot-1.pdf')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '#12' })).toHaveAttribute('href', '/approvals/12');
+    fireEvent.change(screen.getByRole('combobox', { name: /Loại tệp/ }), { target: { value: 'HOAN_TAT' } });
+    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'HOAN_TAT' }));
+    fireEvent.click(screen.getByRole('button', { name: /Tải về/ }));
+    await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
   });
 });
 
