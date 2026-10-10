@@ -131,7 +131,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
         )}
       </div>
       <div className="space-y-2 max-h-80 overflow-y-auto">
-        <div className="text-xs font-bold text-secondary">{t('quyTrinh.capKy')}</div>
+        <div className="text-sm font-bold text-main">{t('quyTrinh.capKy')}</div>
         {cap.map((c, i) => (
           <div key={i} className="space-y-2 rounded-lg border border-border-subtle p-2">
             <div className="flex gap-2">
@@ -153,7 +153,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
                   <option value="KY_NHAY">{t('vaiTro.KY_NHAY')}</option>
                 </select>
                 {n.vai_tro_ky === 'KY_NHAY' && (
-                  <label className="flex items-center gap-1 text-xs text-secondary">
+                  <label className="flex items-center gap-1.5 text-sm text-secondary">
                     <input type="checkbox" checked={n.chan_ky_chinh}
                       onChange={(e) => sua(i, { nguoi_ky: c.nguoi_ky.map((x, k) => (k === j ? { ...x, chan_ky_chinh: e.target.checked } : x)) })} />
                     {t('quyTrinh.chanKyChinh')}
@@ -200,19 +200,19 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
             <dd className="text-main">{t(`phamVi.${q.pham_vi}`)}{q.ten_don_vi_ap_dung ? ` · ${q.ten_don_vi_ap_dung}` : ''}</dd>
             {q.mo_ta && <><dt className="text-secondary">{t('quyTrinh.moTa')}</dt><dd className="text-main">{q.mo_ta}</dd></>}
           </dl>
-          <table className="w-full text-left">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border-subtle text-xs text-secondary">
-                <th className="px-2 py-1">#</th><th className="px-2 py-1">{t('quyTrinh.capKy')}</th>
-                <th className="px-2 py-1">{t('quyTrinh.nguoiKy')}</th><th className="px-2 py-1">{t('quyTrinh.soGioNhan')}</th>
+              <tr className="border-b border-border-subtle bg-surface-subtle text-xs font-semibold uppercase tracking-wider text-secondary">
+                <th className="px-3 py-2">#</th><th className="px-3 py-2">{t('quyTrinh.capKy')}</th>
+                <th className="px-3 py-2">{t('quyTrinh.nguoiKy')}</th><th className="px-3 py-2">{t('quyTrinh.soGioNhan')}</th>
               </tr>
             </thead>
             <tbody>
               {q.cap_ky.map((c) => (
-                <tr key={c.id} className="border-b border-border-subtle align-top">
-                  <td className="px-2 py-1 font-bold text-main">{c.thu_tu}</td>
-                  <td className="px-2 py-1 text-main">{c.ten_cap_ky}</td>
-                  <td className="px-2 py-1">
+                <tr key={c.id} className="border-b border-border-subtle hover:bg-surface-hover align-top">
+                  <td className="px-3 py-2.5 font-bold text-main">{c.thu_tu}</td>
+                  <td className="px-3 py-2.5 text-main font-medium">{c.ten_cap_ky}</td>
+                  <td className="px-3 py-2.5">
                     <ul className="space-y-0.5">
                       {c.nguoi_ky.map((n) => (
                         <li key={n.id} className="text-main">
@@ -223,7 +223,7 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
                       ))}
                     </ul>
                   </td>
-                  <td className="px-2 py-1 text-secondary">{c.so_gio_xu_ly ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-secondary">{c.so_gio_xu_ly ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -277,18 +277,18 @@ export default function QuyTrinhPage() {
     <div className="space-y-3">
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-2">
-          <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs text-secondary">
+          <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium text-secondary">
             {t('danhSach.timKiem')}
             <input className={LOP_O_NHAP} type="search" value={tim} placeholder={t('quyTrinh.goiYTim')} onChange={(e) => setTim(e.target.value)} />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-secondary">
+          <label className="flex flex-col gap-1 text-sm font-medium text-secondary">
             {t('danhSach.trangThai')}
             <select className={`${LOP_O_NHAP} w-auto`} value={locTrangThai} onChange={(e) => setLocTrangThai(e.target.value)}>
               <option value="">{t('danhSach.tatCa')}</option>
               {['NHAP', 'HOAT_DONG', 'NGUNG'].map((s) => <option key={s} value={s}>{t(`trangThai.${s}`)}</option>)}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs text-secondary">
+          <label className="flex flex-col gap-1 text-sm font-medium text-secondary">
             {t('quyTrinh.phamVi')}
             <select className={`${LOP_O_NHAP} w-auto`} value={locPhamVi} onChange={(e) => setLocPhamVi(e.target.value)}>
               <option value="">{t('danhSach.tatCa')}</option>
@@ -310,11 +310,11 @@ export default function QuyTrinhPage() {
         {hienThi.map((q) => (
           <Card key={q.id} className="p-4 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-bold text-main">{q.ten_quy_trinh}</span>
+              <span className="text-base font-bold text-main">{q.ten_quy_trinh}</span>
               <TrangThaiBadge trangThai={q.trang_thai} />
               <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
             </div>
-            <div className="text-xs text-secondary">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
+            <div className="text-sm text-secondary">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
             <ol className="space-y-1 text-sm">
               {q.cap_ky.map((c) => (
                 <li key={c.id} className="text-main">

@@ -46,7 +46,7 @@ export default function SigningModule() {
               </span>
               <h1 className="m-0 text-xl font-bold text-main md:text-2xl">{t('tieuDe')}</h1>
             </div>
-            <p className="m-0 text-xs text-secondary md:text-sm">{t('moTa')}</p>
+            <p className="m-0 text-sm text-secondary">{t('moTa')}</p>
           </div>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
             <Button size="sm" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>

@@ -78,7 +78,7 @@ export default function TraoDoiPanel({ hoSo, onXong }: { hoSo: HoSoChiTiet; onXo
       {dangMo && laNguoiTao && (
         <div className="space-y-2 border-t border-border-subtle pt-3">
           <div className="text-sm font-bold text-main">{t('traoDoi.taiBanSua')}</div>
-          <p className="text-xs text-secondary">{t('traoDoi.ghiChuGiaiQuyet')}</p>
+          <p className="text-sm text-secondary">{t('traoDoi.ghiChuGiaiQuyet')}</p>
           <input type="file" accept="application/pdf" aria-label={t('traoDoi.chonTep')} className={LOP_O_NHAP}
             onChange={(e) => setTep(e.target.files?.[0] || null)} />
           <Button size="sm" icon="fa-upload" isLoading={dangGui} disabled={!tep}

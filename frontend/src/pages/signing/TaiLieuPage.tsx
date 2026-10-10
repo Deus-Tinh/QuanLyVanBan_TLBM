@@ -16,7 +16,7 @@ const LOAI: LoaiTepTaiLieu[] = ['DU_THAO', 'LUOT', 'HOAN_TAT'];
 const BIEU_TUONG: Record<LoaiTepTaiLieu, string> = {
   DU_THAO: 'fa-file-pen text-secondary', LUOT: 'fa-file-pdf text-danger', HOAN_TAT: 'fa-file-circle-check text-success',
 };
-const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-secondary';
+const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-sm font-medium text-secondary';
 
 function luuTep(blob: Blob, ten: string) {
   const url = URL.createObjectURL(blob);
@@ -100,16 +100,16 @@ export default function TaiLieuPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border-subtle text-left text-xs text-secondary">
-                  <th className="px-2 py-2">{t('taiLieu.tep')}</th>
-                  <th className="px-2 py-2">{t('taiLieu.loaiTep')}</th>
-                  <th className="px-2 py-2">{t('danhSach.maHoSo')}</th>
-                  <th className="px-2 py-2">{t('danhSach.vanBan')}</th>
-                  <th className="px-2 py-2">{t('danhSach.quyTrinh')}</th>
-                  <th className="px-2 py-2">{t('taiLieu.phienBan')}</th>
-                  <th className="px-2 py-2">{t('chiTiet.maBam')}</th>
-                  <th className="px-2 py-2">{t('taiLieu.ngay')}</th>
-                  <th className="px-2 py-2" />
+                <tr className="border-b border-border-subtle bg-surface-subtle text-left">
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.tep')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.loaiTep')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('danhSach.maHoSo')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('danhSach.vanBan')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.phienBan')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('chiTiet.maBam')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary">{t('taiLieu.ngay')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-secondary" />
                 </tr>
               </thead>
               <tbody>
@@ -117,22 +117,22 @@ export default function TaiLieuPage() {
                   const van_ban = [tep.van_ban.so_hieu, tep.van_ban.trich_yeu].filter(Boolean).join(' — ');
                   return (
                     <tr key={`${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="border-b border-border-subtle hover:bg-surface-hover">
-                      <td className="px-2 py-2 font-semibold text-main">
+                      <td className="px-4 py-3.5 font-semibold text-main">
                         <i className={`fa-solid ${BIEU_TUONG[tep.loai]} mr-1.5`} aria-hidden="true" />{tep.ten_tep}
                       </td>
-                      <td className="px-2 py-2"><Badge variant="info" size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
-                      <td className="px-2 py-2">
+                      <td className="px-4 py-3.5"><Badge variant="info" size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
+                      <td className="px-4 py-3.5">
                         <Link to={`/approvals/${tep.trinh_ky}`} className="font-bold text-primary hover:underline">#{tep.trinh_ky}</Link>
                         <span className="ml-2"><TrangThaiBadge trangThai={tep.trang_thai_ho_so} /></span>
                       </td>
-                      <td className="px-2 py-2 max-w-xs xl:max-w-md truncate text-main" title={van_ban}>{van_ban || '—'}</td>
-                      <td className="px-2 py-2 text-secondary">{tep.ten_quy_trinh}</td>
-                      <td className="px-2 py-2 text-secondary">
+                      <td className="px-4 py-3.5 max-w-xs xl:max-w-md truncate text-main" title={van_ban}>{van_ban || '—'}</td>
+                      <td className="px-4 py-3.5 text-secondary">{tep.ten_quy_trinh}</td>
+                      <td className="px-4 py-3.5 text-secondary">
                         {tep.so_luot ? t('taiLieu.luotBan', { so: tep.so_luot, ban: tep.phien_ban ?? '' }) : tep.phien_ban}
                       </td>
-                      <td className="px-2 py-2 font-mono text-xs text-secondary" title={tep.ma_bam}>{tep.ma_bam.slice(0, 12)}…</td>
-                      <td className="px-2 py-2 text-secondary">{dinhDangNgay(tep.thoi_diem, lang)}</td>
-                      <td className="px-2 py-2 text-right">
+                      <td className="px-4 py-3.5 font-mono text-xs text-secondary" title={tep.ma_bam}>{tep.ma_bam.slice(0, 12)}…</td>
+                      <td className="px-4 py-3.5 text-secondary">{dinhDangNgay(tep.thoi_diem, lang)}</td>
+                      <td className="px-4 py-3.5 text-right">
                         <Button size="sm" variant="ghost" icon="fa-download" onClick={() => tai(tep)}>{t('chung.taiVe')}</Button>
                       </td>
                     </tr>

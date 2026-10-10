@@ -152,7 +152,7 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <Card className="p-4 space-y-3">
         <h2 className="text-lg font-bold text-main">2. {t('tao.buoc2')}</h2>
-        <p className="text-xs text-secondary">{t('tao.datViTri')}</p>
+        <p className="text-sm text-secondary">{t('tao.datViTri')}</p>
         <XemPdf duLieu={tep} khung={khung} khungDangDat={dangDat}
           onDat={(id, trang, x, y) => {
             setViTri((v) => ({ ...v, [id]: khungTuDiemBam(trang, x, y) }));
@@ -162,7 +162,7 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
       </Card>
       <Card className="p-4 space-y-3 self-start lg:sticky lg:top-4">
         <div className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{hoSo.ma_bam_tai_lieu}</code></div>
-        <h3 className="text-base font-bold text-main">{t('tao.nguoiKyDuKien')}</h3>
+        <h3 className="text-lg font-bold text-main">{t('tao.nguoiKyDuKien')}</h3>
         <ul className="space-y-2">
           {nguoiKy.map((n) => (
             <li key={n.id} className="rounded-lg border border-border-subtle p-2 text-sm space-y-1">

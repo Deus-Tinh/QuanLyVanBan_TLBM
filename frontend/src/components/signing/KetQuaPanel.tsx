@@ -63,7 +63,7 @@ export default function KetQuaPanel({ hoSo, luot, onTaiLai }: {
       )}
       {trangThai === 'THANH_CONG' && (
         <div className="space-y-2">
-          <div className="text-xs text-secondary">{t('chiTiet.tepHoanTat')}</div>
+          <div className="text-sm text-secondary">{t('chiTiet.tepHoanTat')}</div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" icon="fa-download" isLoading={dangLam}
               onClick={() => lam(async () => taiXuong(await signingApi.tepHoanTat(hoSo.id),
@@ -80,7 +80,7 @@ export default function KetQuaPanel({ hoSo, luot, onTaiLai }: {
           <ThongBao loai={bangChung.xac_minh.hop_le ? 'thanh_cong' : 'loi'}>
             {t(bangChung.xac_minh.hop_le ? 'chiTiet.bangChungHopLe' : 'chiTiet.bangChungKhongHopLe')}
           </ThongBao>
-          <ul className="text-xs text-secondary">
+          <ul className="text-sm text-secondary">
             {bangChung.xac_minh.chu_ky.map((c) => (
               <li key={c.ten_nguoi_ky}>
                 <i className={`fa-solid ${c.hop_le ? 'fa-check text-success' : 'fa-xmark text-danger'} mr-1`} aria-hidden="true" />

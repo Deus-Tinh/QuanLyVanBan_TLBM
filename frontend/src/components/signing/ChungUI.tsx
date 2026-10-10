@@ -93,7 +93,7 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
       <div role="dialog" aria-modal="true" aria-labelledby={id}
         className="w-full max-w-2xl rounded-xl border border-border-subtle bg-surface-elevated shadow-lg animate-slide-in-bottom">
         <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
-          <h2 id={id} className="text-base font-bold text-main">{moTieuDe}</h2>
+          <h2 id={id} className="text-lg font-bold text-main">{moTieuDe}</h2>
           <button type="button" onClick={onDong} className="text-secondary hover:text-main" aria-label={t('chung.dong')}>
             <i className="fa-solid fa-xmark" aria-hidden="true" />
           </button>
@@ -107,8 +107,8 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
 
 export function TruongNhap({ nhan, children, ghiChu }: { nhan: string; children: React.ReactNode; ghiChu?: string }) {
   return (
-    <label className="block space-y-1">
-      <span className="text-xs font-bold text-secondary">{nhan}</span>
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium text-main">{nhan}</span>
       {children}
       {ghiChu && <span className="block text-xs text-muted">{ghiChu}</span>}
     </label>

@@ -144,7 +144,7 @@ export default function ChiTietPage() {
             {hoSo.dang_cho.length ? hoSo.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') : t('chiTiet.khongAiCho')}
           </DongThongTin>
           {hoSo.ho_so_goc && (
-            <Link to={`/approvals/${hoSo.ho_so_goc}`} className="text-xs text-primary hover:underline">
+            <Link to={`/approvals/${hoSo.ho_so_goc}`} className="text-sm font-medium text-primary hover:underline">
               {t('chiTiet.hoSoGoc', { so: hoSo.ho_so_goc })}
             </Link>
           )}
@@ -168,7 +168,7 @@ export default function ChiTietPage() {
         ))}
         <Card className="p-4 space-y-2">
           <h3 className="text-lg font-bold text-main">{t('chiTiet.lichSu')}</h3>
-          <ol className="space-y-1 text-xs">
+          <ol className="space-y-1.5 text-sm">
             {hoSo.lich_su.map((e) => (
               <li key={e.id} className="flex justify-between gap-2">
                 <span className="text-main">
