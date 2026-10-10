@@ -19,7 +19,7 @@ import ThongBaoPage from './ThongBaoPage';
 vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
-    toi: vi.fn(), danhSach: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
+    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
     xoaQuyTrinh: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
   } };
 });
@@ -54,6 +54,7 @@ const boc = (ui: React.ReactNode, toi: NguoiDungHienTai = TOI) => render(
 beforeEach(() => {
   vi.clearAllMocks();
   api.quyTrinh.mockResolvedValue([]);
+  api.thongKe.mockResolvedValue({ tat_ca: 3, nhap: 0, cho_ky: 1, tra_lai: 1, qua_han: 1, hoan_thanh: 0, tu_choi: 0, huy: 0 });
   localStorage.setItem('tlbm_lang', 'vi');
 });
 
@@ -107,6 +108,17 @@ describe('DanhSachPage', () => {
     expect(await screen.findByText('Không có hồ sơ nào khớp bộ lọc.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Xóa lọc/ }));
     await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', {}));
+  });
+
+  it('thẻ lọc nhanh hiện số lượng, ẩn thẻ rỗng, bấm thẻ là lọc', async () => {
+    api.danhSach.mockResolvedValue([]);
+    boc(<DanhSachPage hop="toi_gui" />);
+    const quaHan = await screen.findByRole('button', { name: /Quá hạn/ });
+    expect(quaHan).toHaveTextContent('1');
+    expect(screen.queryByRole('button', { name: /Hoàn tất/ })).not.toBeInTheDocument();  // số lượng 0
+    fireEvent.click(quaHan);
+    await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { nhanh: 'qua_han' }));
+    expect(screen.getByRole('button', { name: /Quá hạn/ })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('lỗi tải có nút thử lại', async () => {

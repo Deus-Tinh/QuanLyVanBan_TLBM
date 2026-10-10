@@ -237,7 +237,14 @@ export interface VanBanDi {
 }
 
 /** Bộ lọc danh sách hồ sơ (server kiểm tham số; ngày dạng YYYY-MM-DD). */
+/** Thẻ lọc nhanh của danh sách hồ sơ (server: tham số `nhanh`). */
+export type LocNhanh = 'nhap' | 'cho_ky' | 'tra_lai' | 'qua_han' | 'hoan_thanh' | 'tu_choi' | 'huy';
+
+/** Số hồ sơ theo từng thẻ lọc nhanh của hộp (`GET /trinh-ky/thong-ke/`). */
+export type ThongKeHoSo = Record<LocNhanh | 'tat_ca', number>;
+
 export interface BoLocHoSo {
+  nhanh?: LocNhanh | '';
   trang_thai?: string;
   muc_do?: string;
   quy_trinh?: string;

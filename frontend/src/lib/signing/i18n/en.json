@@ -85,7 +85,19 @@
     "denNgay": "To",
     "loc": "Filter",
     "xoaLoc": "Clear filters",
-    "khongKhopLoc": "No requests match the filters."
+    "khongKhopLoc": "No requests match the filters.",
+    "locNhanh": "Quick filters",
+    "xoaTuKhoa": "Clear keyword",
+    "nhanh": {
+      "tat_ca": "All",
+      "cho_ky": "Awaiting signature",
+      "tra_lai": "Returned for revision",
+      "qua_han": "Overdue",
+      "nhap": "Draft",
+      "hoan_thanh": "Completed",
+      "tu_choi": "Rejected",
+      "huy": "Cancelled"
+    }
   },
   "tao": {
     "buoc1": "Request details",

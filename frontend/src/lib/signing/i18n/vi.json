@@ -85,7 +85,19 @@
     "denNgay": "Đến ngày",
     "loc": "Lọc",
     "xoaLoc": "Xóa lọc",
-    "khongKhopLoc": "Không có hồ sơ nào khớp bộ lọc."
+    "khongKhopLoc": "Không có hồ sơ nào khớp bộ lọc.",
+    "locNhanh": "Lọc nhanh",
+    "xoaTuKhoa": "Xóa từ khóa",
+    "nhanh": {
+      "tat_ca": "Tất cả",
+      "cho_ky": "Đang chờ ký",
+      "tra_lai": "Bị trả lại để sửa",
+      "qua_han": "Quá hạn",
+      "nhap": "Nháp",
+      "hoan_thanh": "Hoàn tất",
+      "tu_choi": "Không đồng ý",
+      "huy": "Đã hủy"
+    }
   },
   "tao": {
     "buoc1": "Thông tin hồ sơ",

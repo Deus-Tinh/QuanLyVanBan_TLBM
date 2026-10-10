@@ -195,3 +195,33 @@ class TaiLieuTests(TrinhKyBase):
         self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"))
         khac = self.tao_nhap().data["id"]  # lượt của hồ sơ khác không tải được qua hồ sơ này
         self.assertEqual(self.c.get(f"{BASE}/{khac}/tep/", {"luot": luot}).status_code, 404)
+
+
+class LocNhanhTests(KyBase):
+    """Thẻ lọc nhanh và số lượng: nháp, đang chờ ký, bị trả lại để sửa, quá hạn, hoàn tất, không đồng ý, đã hủy."""
+
+    def test_quick_filters_and_counts(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        cho = self.pk  # hồ sơ đã gửi ở setUp, đang chờ ký
+        nhap = self.tao_nhap().data["id"]
+        tra = self.ho_so_da_gui()["id"]
+        self.pk = tra
+        self.assertEqual(self.hanh_dong(self.ky1, "yeu-cau-sua", tieu_de="Sửa", ly_do="Sai").status_code, 200)
+        tre = self.ho_so_da_gui()["id"]
+        SigningRequest.objects.filter(pk=tre).update(han_chot=timezone.now() - timedelta(hours=1))
+
+        def ids(nhanh):
+            r = self.c.get(f"{BASE}/", {"hop": "toi_gui", "nhanh": nhanh})
+            self.assertEqual(r.status_code, 200, r.data)
+            return {h["id"] for h in r.data}
+        self.assertEqual(ids("nhap"), {nhap})
+        self.assertEqual(ids("cho_ky"), {cho, tre})
+        self.assertEqual(ids("tra_lai"), {tra})
+        self.assertEqual(ids("qua_han"), {tre})
+        dem = self.c.get(f"{BASE}/thong-ke/", {"hop": "toi_gui"}).data
+        self.assertEqual((dem["tat_ca"], dem["nhap"], dem["cho_ky"], dem["tra_lai"], dem["qua_han"], dem["hoan_thanh"]),
+                         (4, 1, 2, 1, 1, 0))
+        r = self.c.get(f"{BASE}/", {"hop": "toi_gui", "nhanh": "sai"})
+        self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"))
+

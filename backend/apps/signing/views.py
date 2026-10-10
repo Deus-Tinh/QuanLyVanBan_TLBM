@@ -2,7 +2,8 @@ import base64
 import unicodedata
 
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Exists, OuterRef, Q, Subquery
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -11,9 +12,9 @@ from rest_framework.decorators import api_view
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from . import crypto
+from . import crypto, enums
 from .errors import ConflictError, SigningAPIView, SigningError
-from .models import SigningKey, SigningRequest, SigningSignature
+from .models import SigningAttempt, SigningKey, SigningRequest, SigningRequestStep, SigningSignature
 from .permissions import (
     GUI_TRINH_KY, HUY_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
     yeu_cau_quyen,
@@ -255,12 +256,54 @@ def _ho_so_xem_duoc(request, pk):
     return get_object_or_404(trinh_ky_service.trinh_ky_xem_duoc(request.user), pk=pk)
 
 
+NHANH = ("nhap", "cho_ky", "tra_lai", "qua_han", "hoan_thanh", "tu_choi", "huy")
+
+
+def _dieu_kien_nhanh():
+    """Điều kiện của từng thẻ lọc nhanh; cần queryset đã gắn `trang_thai_luot_cuoi` (`_gan_luot_cuoi`)."""
+    tt, luot = enums.TrangThaiYeuCau, enums.TrangThaiLuotTrinh
+    qua_han_cap = Exists(SigningRequestStep.objects.filter(
+        luot_trinh__trinh_ky=OuterRef("pk"), trang_thai=enums.TrangThaiCapKy.DANG_KY, han_xu_ly__lt=timezone.now()))
+    return {
+        "nhap": Q(trang_thai=tt.NHAP),
+        "cho_ky": Q(trang_thai=tt.CHO_KY, trang_thai_luot_cuoi=luot.CHO_KY),
+        "tra_lai": Q(trang_thai=tt.CHO_KY, trang_thai_luot_cuoi=luot.YEU_CAU_SUA),
+        "qua_han": Q(trang_thai=tt.CHO_KY) & (Q(han_chot__lt=timezone.now()) | qua_han_cap),
+        "hoan_thanh": Q(trang_thai=tt.HOAN_THANH),
+        "tu_choi": Q(trang_thai=tt.TU_CHOI),
+        "huy": Q(trang_thai=tt.HUY),
+    }
+
+
+def _gan_luot_cuoi(queryset):
+    luot_cuoi = SigningAttempt.objects.filter(trinh_ky=OuterRef("pk")).order_by("-so_luot").values("trang_thai")[:1]
+    return queryset.annotate(trang_thai_luot_cuoi=Subquery(luot_cuoi))
+
+
+def _ho_so_theo_hop(request):
+    hop = request.query_params.get("hop", "tat_ca")
+    if hop == "can_toi_ky":
+        return trinh_ky_service.dang_cho_toi_ky(request.user)
+    if hop == "toi_gui":
+        return SigningRequest.objects.filter(create_by=request.user)
+    if hop == "tat_ca":
+        return trinh_ky_service.trinh_ky_xem_duoc(request.user)
+    raise SigningError(code="tham_so_khong_hop_le", detail="hop phải là can_toi_ky, toi_gui hoặc tat_ca.",
+                       fields={"hop": ["Giá trị không hợp lệ."]})
+
+
 def _loc_ho_so(queryset, tham_so):
     """Bộ lọc danh sách: trạng thái, mức độ, quy trình (id), từ khóa (số hiệu, trích yếu văn bản, mã/tên quy trình,
     ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
     for ten in ("trang_thai", "muc_do"):
         if tham_so.get(ten):
             queryset = queryset.filter(**{ten: tham_so[ten]})
+    if tham_so.get("nhanh"):
+        if tham_so["nhanh"] not in NHANH:
+            raise SigningError(code="tham_so_khong_hop_le", detail=f"nhanh phải là một trong {', '.join(NHANH)}.",
+                               fields={"nhanh": ["Giá trị không hợp lệ."]})
+        queryset = _gan_luot_cuoi(SigningRequest.objects.filter(pk__in=queryset.values("pk"))).filter(
+            _dieu_kien_nhanh()[tham_so["nhanh"]])
     if tham_so.get("quy_trinh"):
         if not tham_so["quy_trinh"].isdigit():
             raise SigningError(code="tham_so_khong_hop_le", detail="quy_trinh phải là số.",
@@ -287,17 +330,7 @@ class TrinhKyListCreateView(SigningAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
-        hop = request.query_params.get("hop", "tat_ca")
-        if hop == "can_toi_ky":
-            queryset = trinh_ky_service.dang_cho_toi_ky(request.user)
-        elif hop == "toi_gui":
-            queryset = SigningRequest.objects.filter(create_by=request.user)
-        elif hop == "tat_ca":
-            queryset = trinh_ky_service.trinh_ky_xem_duoc(request.user)
-        else:
-            raise SigningError(code="tham_so_khong_hop_le", detail="hop phải là can_toi_ky, toi_gui hoặc tat_ca.",
-                               fields={"hop": ["Giá trị không hợp lệ."]})
-        queryset = _loc_ho_so(queryset, request.query_params)
+        queryset = _loc_ho_so(_ho_so_theo_hop(request), request.query_params)
         queryset = queryset.select_related("quy_trinh").order_by("-created_at")
         return Response(TrinhKySerializer(queryset, many=True).data)
 
@@ -537,6 +570,16 @@ class AnhChuKyView(SigningAPIView):
         response["Cache-Control"] = "no-store"
         response["X-Content-Type-Options"] = "nosniff"
         return response
+
+
+class ThongKeHoSoView(SigningAPIView):
+    """GET /trinh-ky/thong-ke/?hop=: số hồ sơ theo từng thẻ lọc nhanh của hộp (bộ lọc danh sách)."""
+
+    def get(self, request):
+        # Hộp có thể là queryset distinct qua nhiều bảng: lấy tập id trước rồi đếm trên bảng hồ sơ
+        queryset = _gan_luot_cuoi(SigningRequest.objects.filter(pk__in=_ho_so_theo_hop(request).values("pk")))
+        dem = {"tat_ca": queryset.count(), **{k: queryset.filter(v).count() for k, v in _dieu_kien_nhanh().items()}}
+        return Response(dem)
 
 
 class ThongBaoView(SigningAPIView):

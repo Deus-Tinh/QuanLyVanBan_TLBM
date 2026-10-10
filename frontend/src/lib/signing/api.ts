@@ -5,7 +5,7 @@
  */
 import apiClient, { ApiError } from '@lib/apiClient';
 import type {
-  BangChung, BoLocHoSo, DonViLuaChon, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
+  BangChung, BoLocHoSo, DonViLuaChon, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
   ThamSoKdf, ThongBaoTrinhKy, TinNhan, TraoDoi, VanBanDi, ViTriKy,
 } from './types';
 
@@ -62,6 +62,8 @@ export const signingApi = {
     Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
     return apiClient.get<HoSo[]>(`${SIGNING_BASE}/trinh-ky/?${tham_so}`);
   },
+  thongKe: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca') =>
+    apiClient.get<ThongKeHoSo>(`${SIGNING_BASE}/trinh-ky/thong-ke/?hop=${hop}`),
   chiTiet: (id: number) => apiClient.get<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`),
   taoNhap: (form: FormData) => postForm<HoSoChiTiet>('/trinh-ky/', form),
   /** Sửa hồ sơ nháp: mức độ, hạn chót, ghi chú, thay tệp (multipart). */

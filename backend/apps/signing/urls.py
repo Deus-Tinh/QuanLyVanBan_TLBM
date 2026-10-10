@@ -30,6 +30,7 @@ urlpatterns = [
 
     # Hồ sơ trình ký (Phase 7, #80)
     path("trinh-ky/", views.TrinhKyListCreateView.as_view(), name="trinh-ky-list"),
+    path("trinh-ky/thong-ke/", views.ThongKeHoSoView.as_view(), name="trinh-ky-thong-ke"),
     path("trinh-ky/<int:pk>/", views.TrinhKyDetailView.as_view(), name="trinh-ky-detail"),
     path("trinh-ky/<int:pk>/tep/", views.TrinhKyTepView.as_view(), name="trinh-ky-tep"),
     path("trinh-ky/<int:pk>/gui/", views.TrinhKyActionView.as_view(action="gui"), name="trinh-ky-gui"),
