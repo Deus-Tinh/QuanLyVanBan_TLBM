@@ -1,4 +1,5 @@
 import base64
+import unicodedata
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -564,27 +565,32 @@ class DonViView(SigningAPIView):
 class NguoiDungView(SigningAPIView):
     """
     GET /nguoi-dung/?q=: tìm tài khoản đang hoạt động để chọn người ký khi cấu hình quy trình (manage_signing_process).
-    Chỉ trả thông tin hiển thị; danh bạ đầy đủ do Nhóm 7 cung cấp.
+    Tìm theo họ tên, tên đăng nhập, chức vụ, đơn vị; không phân biệt hoa thường và dấu tiếng Việt. Chỉ trả thông tin
+    hiển thị; danh bạ đầy đủ do Nhóm 7 cung cấp.
     """
 
     TOI_DA = 20
 
+    @staticmethod
+    def _bo_dau(chuoi):
+        chuoi = unicodedata.normalize("NFD", chuoi.lower()).replace("đ", "d")
+        return "".join(c for c in chuoi if unicodedata.category(c) != "Mn")
+
     def get(self, request):
         yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
-        tu_khoa = request.query_params.get("q", "").strip()
+        tu_khoa = self._bo_dau(request.query_params.get("q", "").strip())
         User = get_user_model()
-        queryset = User.objects.filter(is_active=True)
-        if tu_khoa:
-            dieu_kien = Q(username__icontains=tu_khoa)
-            for truong in ("ho_ten", "first_name", "last_name"):
-                if any(f.name == truong for f in User._meta.get_fields()):
-                    dieu_kien |= Q(**{f"{truong}__icontains": tu_khoa})
-            queryset = queryset.filter(dieu_kien)
-        return Response([
-            {"id": u.pk, "ten": to_chuc.ten_hien_thi(u), "ten_dang_nhap": u.get_username(),
-             "chuc_vu": to_chuc.ten_chuc_vu(u) or None, "don_vi_id": to_chuc.don_vi_cua(u)}
-            for u in queryset.order_by("pk")[: self.TOI_DA]
-        ])
+        lien_quan = [f for f in ("chuc_vu", "don_vi") if any(x.name == f for x in User._meta.get_fields())]
+        ket_qua = []
+        for u in User.objects.filter(is_active=True).select_related(*lien_quan).order_by("pk").iterator(chunk_size=500):
+            ten, chuc_vu, don_vi = to_chuc.ten_hien_thi(u), to_chuc.ten_chuc_vu(u), to_chuc.ten_don_vi(u)
+            if tu_khoa and tu_khoa not in self._bo_dau(" ".join((ten, u.get_username(), chuc_vu, don_vi))):
+                continue
+            ket_qua.append({"id": u.pk, "ten": ten, "ten_dang_nhap": u.get_username(), "chuc_vu": chuc_vu or None,
+                            "don_vi_id": to_chuc.don_vi_cua(u), "don_vi": don_vi or None})
+            if len(ket_qua) >= self.TOI_DA:
+                break
+        return Response(ket_qua)
 
 
 class ToiView(SigningAPIView):

@@ -3,7 +3,8 @@
  * Tab chỉ là bộ lọc hiển thị; quyền đọc/ghi do server kiểm ở từng API.
  */
 import { lazy, Suspense, useMemo } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Button } from '@components/common';
 import { DangTai, LoiTai } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { coQuyen, SigningContext, useTai } from '@lib/signing/hooks';
@@ -19,6 +20,7 @@ const ThongBaoPage = lazy(() => import('./ThongBaoPage'));
 export default function SigningModule() {
   const { t, loi } = useSigningT();
   const toi = useTai(() => signingApi.toi());
+  const dieuHuong = useNavigate();
   const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai }), [toi.duLieu, toi.tai]);
 
   const tab = [
@@ -26,7 +28,6 @@ export default function SigningModule() {
     { den: '/approvals/toi-gui', nhan: t('nav.toiGui'), icon: 'fa-paper-plane' },
     { den: '/approvals/tat-ca', nhan: t('nav.tatCa'), icon: 'fa-folder-open' },
     { den: '/approvals/thong-bao', nhan: t('nav.thongBao'), icon: 'fa-bell' },
-    ...(coQuyen(toi.duLieu, 'add_trinhky') ? [{ den: '/approvals/tao-moi', nhan: t('nav.taoMoi'), icon: 'fa-plus' }] : []),
     ...(coQuyen(toi.duLieu, 'manage_signing_process') || coQuyen(toi.duLieu, 'view_trinhky')
       ? [{ den: '/approvals/quy-trinh', nhan: t('nav.quyTrinh'), icon: 'fa-diagram-project' }] : []),
     ...(coQuyen(toi.duLieu, 'sign_trinhky') ? [{ den: '/approvals/khoa', nhan: t('nav.khoaCuaToi'), icon: 'fa-key' }] : []),
@@ -35,11 +36,16 @@ export default function SigningModule() {
   return (
     <SigningContext.Provider value={ngu_canh}>
       <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
-        <header className="space-y-1">
-          <h1 className="text-xl font-bold text-main">
-            <i className="fa-solid fa-file-signature mr-2 text-primary" aria-hidden="true" />{t('tieuDe')}
-          </h1>
-          <p className="text-sm text-secondary">{t('moTa')}</p>
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-xl font-bold text-main">
+              <i className="fa-solid fa-file-signature mr-2 text-primary" aria-hidden="true" />{t('tieuDe')}
+            </h1>
+            <p className="text-sm text-secondary">{t('moTa')}</p>
+          </div>
+          {coQuyen(toi.duLieu, 'add_trinhky') && (
+            <Button icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
+          )}
         </header>
         <nav className="flex flex-wrap gap-1 border-b border-border-subtle" aria-label={t('tieuDe')}>
           {tab.map((m) => (

@@ -120,3 +120,16 @@ class ToChucNhom7Tests(TestCase):
         c = APIClient()
         c.force_authenticate(self.ky)
         return c
+
+    def test_user_search_by_name_position_unit_without_accents(self):
+        User.objects.filter(pk=self.ky.pk).update(ho_ten="Trần Đức Trưởng", chuc_vu=self.chuc_vu, don_vi=self.don_vi)
+
+        def tim(q):
+            return [u["ten_dang_nhap"] for u in self.c.get("/api/v1/signing/nguoi-dung/", {"q": q}).data]
+        self.assertIn("nguoi_ky_qt", tim("tran duc"))  # không dấu
+        self.assertIn("nguoi_ky_qt", tim("ĐỨC TRƯỞNG"))  # hoa, có dấu
+        self.assertIn("nguoi_ky_qt", tim(self.chuc_vu.name.lower()))  # chức vụ
+        self.assertIn("nguoi_ky_qt", tim(self.don_vi.ten))  # đơn vị
+        self.assertEqual(tim("khong-co-ai"), [])
+        r = self.c.get("/api/v1/signing/nguoi-dung/", {"q": "tran duc"}).data[0]
+        self.assertEqual((r["chuc_vu"], r["don_vi"]), (self.chuc_vu.name, self.don_vi.ten))

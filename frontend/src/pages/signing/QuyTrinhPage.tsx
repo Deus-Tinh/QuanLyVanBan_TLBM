@@ -34,7 +34,8 @@ function capTuQuyTrinh(q: QuyTrinh, theoChucVu: string): CapNhap[] {
 function ChonNguoiDung({ onChon }: { onChon: (u: NguoiDungTim) => void }) {
   const { t } = useSigningT();
   const [q, setQ] = useState('');
-  const ds = useTai(() => (q.trim().length >= 2 ? signingApi.timNguoiDung(q) : Promise.resolve([])), [q]);
+  const du = q.trim().length >= 2;
+  const ds = useTai(() => (du ? signingApi.timNguoiDung(q.trim()) : Promise.resolve([])), [q]);
   return (
     <div className="space-y-1">
       <input className={LOP_O_NHAP} placeholder={t('quyTrinh.timNguoiDung')} value={q} onChange={(e) => setQ(e.target.value)} />
@@ -43,11 +44,12 @@ function ChonNguoiDung({ onChon }: { onChon: (u: NguoiDungTim) => void }) {
           {ds.duLieu.map((u) => (
             <button type="button" key={u.id} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-hover text-main"
               onClick={() => { onChon(u); setQ(''); }}>
-              {u.ten} <span className="text-muted">({u.ten_dang_nhap}{u.chuc_vu ? ` · ${u.chuc_vu}` : ''})</span>
+              {u.ten} <span className="text-muted">({[u.ten_dang_nhap, u.chuc_vu, u.don_vi].filter(Boolean).join(' · ')})</span>
             </button>
           ))}
         </div>
       )}
+      {du && !ds.dangTai && ds.duLieu?.length === 0 && <p className="text-xs text-muted">{t('quyTrinh.khongThayNguoiDung')}</p>}
     </div>
   );
 }

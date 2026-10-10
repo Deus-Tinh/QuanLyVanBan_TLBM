@@ -64,6 +64,14 @@ describe('SigningModule', () => {
     render(<MemoryRouter initialEntries={['/approvals']}><SigningModule /></MemoryRouter>);
     expect(await screen.findByRole('link', { name: /Cần tôi ký duyệt/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Khóa ký & PIN/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Tạo hồ sơ trình ký/ })).not.toBeInTheDocument();
+  });
+
+  it('có quyền tạo thì có nút riêng "Tạo hồ sơ trình ký" ở đầu trang, không nằm trong tab', async () => {
+    api.toi.mockResolvedValue({ ...TOI, quyen: { ...TOI.quyen, add_trinhky: true } });
+    api.danhSach.mockResolvedValue([]);
+    render(<MemoryRouter initialEntries={['/approvals']}><SigningModule /></MemoryRouter>);
+    expect(await screen.findByRole('button', { name: /Tạo hồ sơ trình ký/ })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Tạo hồ sơ trình ký/ })).not.toBeInTheDocument();
   });
 });

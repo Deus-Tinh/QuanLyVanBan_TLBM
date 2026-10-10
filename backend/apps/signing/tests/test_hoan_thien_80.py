@@ -105,7 +105,7 @@ class PhamViQuyTrinhTests(TrinhKyBase):
         c = self.client_cua(User.objects.get(pk=self.quan_tri.pk))
         r = c.get("/api/v1/signing/nguoi-dung/", {"q": "ke_t"})
         self.assertEqual([u["ten_dang_nhap"] for u in r.data], ["ke_toan"])
-        self.assertEqual(set(r.data[0]), {"id", "ten", "ten_dang_nhap", "chuc_vu", "don_vi_id"})
+        self.assertEqual(set(r.data[0]), {"id", "ten", "ten_dang_nhap", "chuc_vu", "don_vi_id", "don_vi"})
         self.assertEqual(self.c.get("/api/v1/signing/nguoi-dung/").status_code, 403)
 
 

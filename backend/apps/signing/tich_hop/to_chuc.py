@@ -50,6 +50,11 @@ def kiem_tra_chuc_vu(chuc_vu_id, truong):
                            fields={truong: ["Không tồn tại."]})
 
 
+def ten_don_vi(nguoi_dung):
+    don_vi = getattr(nguoi_dung, "don_vi", None)
+    return getattr(don_vi, "ten", "") or "" if don_vi else ""
+
+
 def _co_du_lieu_to_chuc():
     fields = {f.name for f in get_user_model()._meta.get_fields()}
     return {"chuc_vu", "don_vi"} <= fields

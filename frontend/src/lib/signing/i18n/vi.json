@@ -187,7 +187,7 @@
     "capKy": "Cấp ký",
     "themCap": "Thêm cấp",
     "themNguoiKy": "Thêm người ký",
-    "timNguoiDung": "Tìm tài khoản…",
+    "timNguoiDung": "Tìm theo tên, tài khoản, chức vụ, đơn vị…",
     "soGio": "Số giờ xử lý (tùy chọn)",
     "chanKyChinh": "Ký nháy phải xong trước ký chính",
     "kichHoat": "Kích hoạt",
@@ -203,7 +203,8 @@
     "moTa": "Mô tả",
     "nguoiKy": "Người ký",
     "soGioNhan": "Số giờ xử lý",
-    "xacNhanXoa": "Xóa quy trình nháp “{ten}”? Thao tác này không hoàn tác được."
+    "xacNhanXoa": "Xóa quy trình nháp “{ten}”? Thao tác này không hoàn tác được.",
+    "khongThayNguoiDung": "Không tìm thấy tài khoản phù hợp."
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo và giữ trên trình duyệt này, bảo vệ bằng PIN 8 chữ số. Máy chủ không nhận PIN hay khóa bí mật.",

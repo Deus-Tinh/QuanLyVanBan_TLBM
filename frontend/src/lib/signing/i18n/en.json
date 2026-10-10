@@ -187,7 +187,7 @@
     "capKy": "Levels",
     "themCap": "Add level",
     "themNguoiKy": "Add signer",
-    "timNguoiDung": "Search accounts…",
+    "timNguoiDung": "Search by name, username, position, department…",
     "soGio": "Hours to process (optional)",
     "chanKyChinh": "Initials must complete before the main signature",
     "kichHoat": "Activate",
@@ -203,7 +203,8 @@
     "moTa": "Description",
     "nguoiKy": "Signers",
     "soGioNhan": "Processing hours",
-    "xacNhanXoa": "Delete draft process “{ten}”? This cannot be undone."
+    "xacNhanXoa": "Delete draft process “{ten}”? This cannot be undone.",
+    "khongThayNguoiDung": "No matching accounts."
   },
   "khoa": {
     "gioiThieu": "Your signing key is created and kept in this browser, protected by an 8-digit PIN. The server never receives your PIN or private key.",

@@ -271,6 +271,7 @@ export interface NguoiDungTim {
   ten_dang_nhap: string;
   chuc_vu: string | null;
   don_vi_id: number | null;
+  don_vi: string | null;
 }
 
 /** Lỗi nghiệp vụ chuẩn của backend: {code, detail, fields}. */
