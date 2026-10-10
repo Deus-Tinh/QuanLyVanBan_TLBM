@@ -1,15 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SAMPLE_STREAMS } from '@lib/constants';
-import { NotificationStreamType } from '@app-types/notification';
+import { NotificationStreamType, NotificationItem } from '@app-types/notification';
 import { useTranslation } from '@i18n/translate';
+import DocumentPreviewModal from '@components/dashboard/DocumentPreviewModal';
+import { DocumentItem } from '@components/dashboard/ModernDashboardView';
 
 export default function NotificationStreams() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NotificationStreamType>('incoming');
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleOpenDoc = (item: NotificationItem) => {
+    setIsOpen(false);
+    setPreviewDoc({
+      code: item.code,
+      title: item.title,
+      date: item.time,
+      sender: item.senderOrDept,
+    });
+  };
 
   // Close when clicking outside (support both pointerdown and touchstart)
   useEffect(() => {
@@ -115,6 +128,7 @@ export default function NotificationStreams() {
                 currentStream.items.map((item) => (
                   <div
                     key={item.id}
+                    onClick={() => handleOpenDoc(item)}
                     className="p-3 hover:bg-surface-hover rounded-lg transition-colors duration-fast cursor-pointer flex flex-col"
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -152,6 +166,16 @@ export default function NotificationStreams() {
               </div>
             )}
           </div>
+      )}
+
+      {/* Modal Xem Trước Văn Bản khi bấm vào thông báo */}
+      {previewDoc && (
+        <DocumentPreviewModal
+          isOpen={!!previewDoc}
+          onClose={() => setPreviewDoc(null)}
+          document={previewDoc}
+          docType={activeTab === 'outgoing' ? 'outgoing' : 'incoming'}
+        />
       )}
     </div>
   );
