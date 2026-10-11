@@ -27,6 +27,7 @@ concurrency:
 
 env:
   DJANGO_SETTINGS_MODULE: config.settings_ci
+  DJANGO_SECRET_KEY: "ci-only-not-for-production"
   POSTGRES_HOST: localhost
   POSTGRES_PORT: '5432'
   POSTGRES_DB: tlbm_ci
