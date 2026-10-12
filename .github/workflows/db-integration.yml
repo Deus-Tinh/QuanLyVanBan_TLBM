@@ -27,8 +27,7 @@ concurrency:
 
 env:
   DJANGO_SETTINGS_MODULE: config.settings_ci
-  # Chỉ dùng cho CI: settings.py bắt buộc DJANGO_SECRET_KEY từ khi chuẩn bị cấu hình production.
-  DJANGO_SECRET_KEY: ci-only-insecure-secret-key
+  DJANGO_SECRET_KEY: "ci-only-not-for-production"
   POSTGRES_HOST: localhost
   POSTGRES_PORT: '5432'
   POSTGRES_DB: tlbm_ci
