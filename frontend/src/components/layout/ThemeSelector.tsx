@@ -1,6 +1,8 @@
-﻿import React from 'react';
+import React from 'react';
 import { ThemeMode } from '@app-types/theme';
 import { THEME_OPTIONS, isLightThemeMode } from '@lib/constants';
+
+import { useTranslation } from '@i18n/translate';
 
 interface ThemeSelectorProps {
   currentTheme: ThemeMode;
@@ -17,6 +19,7 @@ export default function ThemeSelector({
   preferredLightTheme = 'light',
   preferredDarkTheme = 'dark',
 }: ThemeSelectorProps) {
+  const { currentLang } = useTranslation();
   const isLight = isLightThemeMode(currentTheme);
   const activeOption = THEME_OPTIONS.find((t) => t.id === currentTheme) || THEME_OPTIONS[0];
   const lightOption = THEME_OPTIONS.find((t) => t.id === preferredLightTheme) || THEME_OPTIONS[1];
@@ -30,7 +33,18 @@ export default function ThemeSelector({
     }
   };
 
-  const nextModeName = isLight ? `Tối (${darkOption.name})` : `Sáng (${lightOption.name})`;
+  const nextModeName = isLight
+    ? currentLang === 'en'
+      ? `Dark (${darkOption.name})`
+      : `Tối (${darkOption.name})`
+    : currentLang === 'en'
+    ? `Light (${lightOption.name})`
+    : `Sáng (${lightOption.name})`;
+
+  const titleText =
+    currentLang === 'en'
+      ? `Active: ${activeOption.name} · Click to switch to ${nextModeName}`
+      : `Đang hiển thị: ${activeOption.name} · Nhấp để chuyển sang Giao diện ${nextModeName}`;
 
   return (
     <div className="relative">
@@ -42,8 +56,8 @@ export default function ThemeSelector({
             : 'bg-info-subtle border-info-border hover:border-info'
         }`}
         onClick={handleToggle}
-        title={`Đang hiển thị: ${activeOption.name} · Nhấp để chuyển sang Giao diện ${nextModeName}`}
-        aria-label={`Chuyển sang giao diện ${nextModeName}`}
+        title={titleText}
+        aria-label={titleText}
       >
         <i
           className={`fa-solid ${isLight ? 'fa-sun text-warning-text' : 'fa-moon text-info'} text-base transition-transform duration-300 hover:scale-110`}

@@ -45,6 +45,8 @@ venv.bak/
 backend/db.sqlite3
 backend/media/
 media/
+data/chroma_db/
+Folder/
 backend/static_root/
 static_root/
 seed_data.py

@@ -60,6 +60,7 @@ urlpatterns = [
     path("api/documents", ai_views.documents),
     path("api/documents/<path:filename>/preview", ai_views.preview_document),
     path("api/documents/<path:filename>/file", ai_views.document_file),
+    path("api/documents/<path:filename>/", ai_views.document_detail),
     path("api/documents/<path:filename>", ai_views.document_detail),
     path("api/categories", ai_views.categories),
     path("api/reclassify/<path:filename>", ai_views.reclassify),

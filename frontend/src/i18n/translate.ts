@@ -58,6 +58,8 @@ export function setLanguage(lang: SupportedLanguage): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY, lang);
     document.documentElement.setAttribute('lang', lang);
+    window.dispatchEvent(new CustomEvent('tlbm_lang_changed', { detail: lang }));
+    window.dispatchEvent(new Event('storage'));
   }
   // Kích hoạt re-render cho tất cả subscribers
   listeners.forEach((listener) => listener());

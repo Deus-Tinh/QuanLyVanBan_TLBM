@@ -1593,12 +1593,175 @@ CÂU HỎI HIỆN TẠI CỦA NGƯỜI DÙNG:
 {question}
 """
 
+CONVERSATIONAL_SYSTEM_PROMPT = """
+Bạn là Trợ lý AI TLBM thông minh, tận tâm và tinh tế của Hệ thống Quản lý Văn bản và Tài liệu (TLBM).
+Bạn đang giao tiếp trực tiếp với cán bộ, công chức, nhân viên trong cơ quan/doanh nghiệp.
+
+MỤC TIÊU:
+Phản hồi các lời chào hỏi, giao tiếp xã giao và chia sẻ cảm xúc của người dùng một cách tự nhiên, lịch thiệp, ấm áp và đồng cảm sâu sắc.
+
+HƯỚNG DẪN XỬ LÝ THEO NGỮ CẢNH VÀ CẢM XÚC:
+1. Lời chào hỏi (xin chào, hello, hi, chào bạn, chào buổi sáng...):
+   - Chủ động chào lại một cách thân thiện, niềm nở và tự nhiên.
+   - Thể hiện tinh thần sẵn sàng hỗ trợ công việc, tra cứu tài liệu hoặc giải đáp quy trình khi họ cần.
+2. Chia sẻ cảm xúc buồn bã, mệt mỏi, áp lực, thất vọng:
+   - Thể hiện sự thấu cảm chân thành, lắng nghe và động viên nhẹ nhàng, tích cực.
+   - Nhắc nhở người dùng chú ý nghỉ ngơi, giữ gìn sức khỏe.
+   - Không đưa ra lời khuyên sáo rỗng hay phán xét.
+3. Chia sẻ cảm xúc vui vẻ, hào hứng, tích cực:
+   - Chung vui và lan tỏa năng lượng tích cực cùng người dùng một cách hồ hởi, chân tình.
+4. Lời nói đùa, hài hước, trêu chọc:
+   - Đáp lại hóm hỉnh, vui vẻ, duyên dáng và giữ đúng mực chuẩn mực công sở.
+5. Lời cảm ơn, biết ơn, khen ngợi:
+   - Đón nhận khiêm tốn, lịch sự (ví dụ: "Rất vui vì đã hỗ trợ được bạn", "Không có chi bạn nhé!").
+6. Lời hỏi thăm về bản thân bạn (bạn là ai, làm được gì...):
+   - Giới thiệu ngắn gọn, thân thiện: bạn là Trợ lý AI TLBM, chuyên hỗ trợ tra cứu văn bản, quy trình nội bộ, biểu mẫu và xử lý hồ sơ.
+7. Lời tạm biệt, chúc lành:
+   - Chúc người dùng một ngày làm việc thuận lợi hoặc buổi tối vui vẻ, nghỉ ngơi thoải mái.
+
+QUY TẮC BẮT BUỘC:
+- Trả lời trực tiếp, tự nhiên, súc tích (khoảng 2 đến 4 câu).
+- Tuyệt đối KHÔNG trả lời máy móc hay rập khuôn.
+- KHÔNG lặp lại nguyên văn câu nói của người dùng.
+- KHÔNG tự suy diễn cảm xúc khi người dùng chưa thể hiện rõ.
+- Luôn giữ thái độ văn minh, tôn trọng, lịch sự và gần gũi.
+""".strip()
+
+DOC_INQUIRY_TERMS = (
+    "van ban", "tai lieu", "ho so", "quy trinh", "quy dinh", "quy che",
+    "noi quy", "nghi dinh", "thong tu", "quyet dinh", "chi thi", "luat",
+    "dieu khoan", "dieu le", "mau bieu", "bieu mau", "to trinh", "cong van",
+    "bao cao", "so hieu", "han xu ly", "thoi han", "bao mat", "tuyet mat",
+    "toi mat", "can bo", "nhan su", "phong ban", "don vi", "chuc vu",
+    "chuc danh", "phan quyen", "vai tro", "rbac", "tra cuu", "tim kiem",
+    "tom tat", "trich xuat", "ky so", "trinh ky", "phe duyet", "tiep nhan",
+    "vao so", "ban hanh", "phat hanh", "phan phoi", "luan chuyen", "luu tru",
+    "hop dong", "bien ban", "ke hoach", "de an", "huong dan", "thu tuc",
+    "cach tao", "cach duyet", "cach ky", "cach lam", "lam sao de", "danh muc",
+    "co cau", "so do", "dinh kem", "tap tin", "tieu chuan", "dieu kien",
+)
+
+INQUIRY_REQUEST_WORDS = (
+    "nhu the nao", "the nao", "ra sao", "o dau", "khi nao", "bao nhieu",
+    "la gi", "la ai", "ai la", "ai ky", "ngay nao", "tra cuu", "tim kiem",
+    "tim cho", "cho toi xem", "cho xem", "tom tat", "trich xuat", "cho biet",
+    "cho toi hoi", "cho hoi", "huong dan", "giai thich", "quy dinh nhu the nao",
+    "dieu kien la gi", "thu tuc gi", "co duoc khong", "lam sao", "cach nao",
+    "quy trinh nao", "thu tuc nao", "kiem tra",
+)
+
+EMOTIONAL_PATTERNS = (
+    # Cảm xúc mệt mỏi, buồn bã, áp lực
+    "met moi", "met qua", "met that", "met ghe", "duoi qua", "oai qua",
+    "kiet suc", "ap luc", "stress", "chan qua", "chan that", "that vong",
+    "bat luc", "chan nan", "nan long", "nan qua", "sau qua", "tam trang te",
+    "te qua", "khong vui", "be tac", "co don", "chan doi", "sao buon the",
+    # Cảm xúc vui vẻ, hào hứng
+    "vui qua", "vui that", "vui ghe", "vui mung", "hanh phuc", "thich qua", "tuyet qua",
+    "tuyet voi qua", "phan khoi", "hao hung", "haha", "hihi", "hehe",
+    "kaka", "kkk", "cuoi xiu", "hai huoc", "vui tinh", "suong qua",
+    # Ngạc nhiên, bất ngờ
+    "bat ngo qua", "ngac nhien", "o wow", "that a", "that khong", "that sao",
+    # Đùa giỡn, chuyện phiếm
+    "ke chuyen cuoi", "ke chuyen vui", "ke chuyen hai", "yeu toi khong",
+    "thich toi khong", "lam nguoi yeu", "dang yeu the", "cute the",
+    "de thuong the", "dua ti", "treu ti",
+    # Cảm ơn, biết ơn
+    "cam on", "thanks", "thank you", "tks", "biet on", "gioi qua",
+    "thong minh qua", "dinh qua", "dinh that", "tot lam", "duoc day",
+)
+
+GREETING_PATTERNS = (
+    "xin chao", "chao ban", "hello", "chao bot", "chao tro ly", "hi ban",
+    "chao em", "chao anh", "chao chi", "chao buoi sang", "chao ngay moi",
+    "good morning", "good afternoon", "good evening", "alo", "hey",
+    "ban la ai", "ban ten gi", "ban khoe khong", "co khoe khong",
+    "khoe khong ban", "dao nay the nao", "hom nay the nao", "ban lam duoc gi",
+    "ban giup duoc gi", "chuc nang cua ban", "gioi thieu ban than",
+    "gioi thieu ve ban", "ai tao ra ban",
+    "tam biet", "bye", "bye bye", "hen gap lai", "chuc ngu ngon", "ngu ngon",
+    "chuc mot ngay tot lanh",
+)
+
+
+def has_doc_terms(normalized: str) -> bool:
+    return any(term in normalized for term in DOC_INQUIRY_TERMS)
+
+
+def has_inquiry_request(normalized: str) -> bool:
+    return any(req in normalized for req in INQUIRY_REQUEST_WORDS)
+
+
+def is_conversational_or_emotional(question: str) -> bool:
+    norm = normalize_for_match(question)
+    if not norm:
+        return True
+
+    has_emotion = any(p in norm for p in EMOTIONAL_PATTERNS)
+    has_greeting = any(p in norm for p in GREETING_PATTERNS) or norm in ("chao", "hi", "alo", "chao nhe", "bye", "cam on")
+
+    # Nếu người dùng biểu lộ cảm xúc hoặc chào hỏi:
+    # Chỉ chuyển sang RAG khi có câu hỏi/yêu cầu tra cứu dữ liệu cụ thể đi kèm
+    if has_emotion or has_greeting:
+        if has_inquiry_request(norm):
+            return False
+        return True
+
+    # Nếu câu hỏi có chứa các từ khóa tra cứu hồ sơ/văn bản cụ thể -> Ưu tiên RAG
+    if has_doc_terms(norm):
+        return False
+
+    # Các câu ngắn (dưới 8 từ) mang tính chuyện trò xã giao
+    words = norm.split()
+    if len(words) <= 8:
+        return True
+
+    return False
+
+
+def generate_conversational_response(question: str, history=None) -> str:
+    setup_llamaindex()
+    turns = normalize_chat_history(history)
+    history_lines = []
+    for turn in turns[-6:]:
+        speaker = "Người dùng" if turn["role"] == "user" else "Trợ lý"
+        history_lines.append(f"{speaker}: {turn['content']}")
+    history_str = "\n".join(history_lines)
+
+    prompt_parts = [CONVERSATIONAL_SYSTEM_PROMPT]
+    if history_str:
+        prompt_parts.append(f"\n--- LỊCH SỬ TRÒ CHUYỆN GẦN ĐÂY ---\n{history_str}")
+    prompt_parts.append(f"\n--- TIN NHẮN HIỆN TẠI CỦA NGƯỜI DÙNG ---\n{question}\n\nTRẢ LỜI CỦA TRỢ LÝ AI:")
+
+    prompt = "\n".join(prompt_parts)
+    try:
+        answer = str(Settings.llm.complete(prompt)).strip()
+        if answer:
+            return answer
+    except Exception as exc:
+        print(f"Conversational LLM generation failed: {exc}")
+
+    # Fallback tự nhiên nếu có lỗi kết nối
+    norm = normalize_for_match(question)
+    if any(k in norm for k in ("buon", "met", "ap luc", "stress", "that vong")):
+        return "Mình hiểu cảm giác của bạn lúc này. Bạn nhớ nghỉ ngơi một chút và giữ gìn sức khỏe nhé. Bất cứ khi nào cần hỗ trợ công việc, mình luôn ở đây!"
+    return "Xin chào bạn! Mình là Trợ lý AI TLBM. Mình luôn sẵn sàng lắng nghe và hỗ trợ bạn tra cứu văn bản, quy trình nội bộ khi cần nhé!"
+
 
 def ask_document(question: str, history=None, category: str | None = None, user=None, employee_id=None):
     question = (question or "").strip()
     if is_inappropriate_message(question):
         return {
             "answer": "Mình sẵn sàng hỗ trợ về tài liệu và các chủ đề liên quan. Bạn vui lòng diễn đạt lịch sự hơn nhé.",
+            "sources": [],
+        }
+
+    # Phân loại ý định: Nếu là tin nhắn chào hỏi, xã giao hoặc chia sẻ cảm xúc
+    # -> Phản hồi trực tiếp, KHÔNG gọi RAG hay truy xuất vector database không cần thiết
+    if is_conversational_or_emotional(question):
+        answer = generate_conversational_response(question, history)
+        return {
+            "answer": answer,
             "sources": [],
         }
 

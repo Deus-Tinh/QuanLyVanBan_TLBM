@@ -32,12 +32,53 @@ export interface ResourceAttachment {
 
 export interface ResourceCategory {
   id: number;
+  parent_id?: number | null;
   stt_uu_tien: number;
   ky_hieu?: string;
   ten_tai_lieu: string;
   ghi_chu?: string;
   ngay_lap?: string;
   nguoi_lap_name?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Mô hình Thư mục nhiều cấp (Nested / Hierarchical Folders)
+// ═══════════════════════════════════════════════════════════════════
+
+export interface FolderItem {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  path: string;
+  depth: number;
+  order: number;
+  description?: string;
+  full_path_display?: string;
+  children_count?: number;
+  files_count?: number;
+  children?: FolderItem[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FolderFileItem {
+  id: number;
+  folder: number;
+  file_name: string;
+  file_path?: string;
+  file_size: number;
+  file_type?: string;
+  description?: string;
+  uploaded_by?: number | null;
+  uploaded_by_name?: string;
+  created_at: string;
+}
+
+export interface FolderBreadcrumb {
+  id: number;
+  name: string;
+  depth: number;
+  path: string;
 }
 
 export interface ResourceType {
