@@ -13,15 +13,17 @@ const STATUS_STYLES: Record<TaskStatus, StatusStyle> = {
     color: 'var(--color-task-badge-gray-text)',
     background: 'var(--color-task-badge-gray-bg)',
   },
+  // Theo yêu cầu GVHD: chỉ còn 3 màu — xanh lá (hoàn thành), đỏ (quá hạn),
+  // còn lại dùng y hệt bộ trắng xám của "Chờ xử lý". Giữ nguyên icon.
   DANG_XU_LY: {
     icon: 'fa-solid fa-pen-ruler',
-    color: 'var(--color-task-badge-blue-text)',
-    background: 'var(--color-task-badge-blue-bg)',
+    color: 'var(--color-task-badge-gray-text)',
+    background: 'var(--color-task-badge-gray-bg)',
   },
   CHO_DUYET: {
     icon: 'fa-regular fa-clock',
-    color: 'var(--color-task-badge-purple-text)',
-    background: 'var(--color-task-badge-purple-bg)',
+    color: 'var(--color-task-badge-gray-text)',
+    background: 'var(--color-task-badge-gray-bg)',
   },
   HOAN_THANH: {
     icon: 'fa-solid fa-circle-check',
@@ -30,8 +32,8 @@ const STATUS_STYLES: Record<TaskStatus, StatusStyle> = {
   },
   CHUA_HOAN_THANH: {
     icon: 'fa-solid fa-triangle-exclamation',
-    color: 'var(--color-task-badge-amber-text)',
-    background: 'var(--color-task-badge-amber-bg)',
+    color: 'var(--color-task-badge-gray-text)',
+    background: 'var(--color-task-badge-gray-bg)',
   },
   QUA_HAN: {
     icon: 'fa-solid fa-circle-exclamation',

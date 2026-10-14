@@ -20,19 +20,19 @@ interface TaskTableProps {
 }
 
 const COLUMNS: { label: string; width?: string }[] = [
-  { label: 'TT', width: '52px' },
-  { label: 'Nội dung công việc', width: '220px' },
-  { label: 'Người giao', width: '150px' },
-  { label: 'Yêu cầu xử lý', width: '220px' },
-  { label: 'Người thực hiện', width: '190px' },
-  { label: 'Ngày giao', width: '100px' },
-  { label: 'Hạn xử lý', width: '100px' },
-  { label: 'Trạng thái', width: '140px' },
-  { label: 'Tác vụ', width: '150px' },
+  { label: 'TT', width: '40px' },
+  { label: 'Nội dung công việc', width: '188px' },
+  { label: 'Người giao', width: '124px' },
+  { label: 'Yêu cầu xử lý', width: '178px' },
+  { label: 'Người thực hiện', width: '150px' },
+  { label: 'Ngày giao', width: '86px' },
+  { label: 'Hạn xử lý', width: '86px' },
+  { label: 'Trạng thái', width: '116px' },
+  { label: 'Tác vụ', width: '120px' },
 ];
 
 const cellStyle: React.CSSProperties = {
-  padding: '12px',
+  padding: '10px 8px',
   borderBottom: '1px solid var(--border-subtle)',
   verticalAlign: 'top',
   fontSize: '0.85rem',
@@ -59,7 +59,7 @@ export default function TaskTable({
 }: TaskTableProps) {
   return (
     <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-      <table style={{ width: '100%', minWidth: '1180px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+      <table style={{ width: '100%', minWidth: '960px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         <colgroup>
           {COLUMNS.map((column) => (
             <col key={column.label} style={{ width: column.width }} />
@@ -72,7 +72,7 @@ export default function TaskTable({
                 key={column.label}
                 scope="col"
                 style={{
-                  padding: '10px 12px',
+                  padding: '10px 8px',
                   textAlign: column.label === 'TT' ? 'center' : 'left',
                   fontSize: '0.78rem',
                   fontWeight: 700,

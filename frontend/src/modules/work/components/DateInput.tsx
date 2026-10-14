@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- file này export kèm vài hàm tiện ích dùng chung; quy ước module chỉ có 4 thư mục api/components/pages/types nên không tách utils riêng. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import './DateInput.css';
 
 /**
  * Ô nhập ngày luôn hiển thị dd/mm/yyyy, kèm lịch tự vẽ.
@@ -271,6 +272,7 @@ export default function DateInput({
         <input
           id={id}
           type="text"
+          className="work-date-input-field"
           inputMode="numeric"
           autoComplete="off"
           aria-label={ariaLabel || 'Ngày theo định dạng ngày/tháng/năm'}
