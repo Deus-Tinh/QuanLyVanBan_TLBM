@@ -1177,8 +1177,8 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (chiều ngang chiếm 25% thanh w-1/4, viền phân cách thẳng hàng với hàng dưới) */}
-          <div className={`relative w-1/4 min-w-[220px] shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
+          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (chiều ngang chiếm 20% thanh w-1/5, viền phân cách thẳng hàng với hàng dưới) */}
+          <div className={`relative w-1/5 min-w-[180px] shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
             <button
               type="button"
               onClick={() => {
@@ -1404,8 +1404,8 @@ export default function ResourceManagementPage() {
               )}
             </div>
 
-            {/* Cột dropdown Loại tài liệu ở góc phải (chiều ngang chiếm 25% thanh w-1/4, viền phân cách thẳng hàng với hàng trên) */}
-            <div className="relative w-1/4 min-w-[220px] shrink-0 flex items-stretch border-l border-border-subtle rounded-br-xl" ref={typeDropdownRef}>
+            {/* Cột dropdown Loại tài liệu ở góc phải (chiều ngang chiếm 20% thanh w-1/5, viền phân cách thẳng hàng với hàng trên) */}
+            <div className="relative w-1/5 min-w-[180px] shrink-0 flex items-stretch border-l border-border-subtle rounded-br-xl" ref={typeDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
