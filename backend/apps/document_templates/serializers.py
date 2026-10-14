@@ -160,18 +160,29 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
         instance = TaiLieuChiTiet.objects.create(**validated_data)
         if loai_tai_lieu:
             instance.loai_tai_lieu.set(loai_tai_lieu)
-        if file_dinh_kem:
+
+        # Hỗ trợ đính kèm nhiều tệp từ request.FILES ('files' hoặc 'file_dinh_kem')
+        request = self.context.get('request')
+        uploaded_files = []
+        if request and hasattr(request, 'FILES'):
+            uploaded_files = request.FILES.getlist('files') or request.FILES.getlist('file_dinh_kem')
+        if not uploaded_files and file_dinh_kem:
+            uploaded_files = [file_dinh_kem]
+
+        if uploaded_files:
             from django.core.files.storage import default_storage
-            file_path = default_storage.save(f"documents/templates/{file_dinh_kem.name}", file_dinh_kem)
-            storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
-            ChiTietTaiLieuAttachment.objects.create(
-                document=instance,
-                name=file_dinh_kem.name,
-                path=storage_path,
-                file_size=getattr(file_dinh_kem, 'size', None),
-                mime_type=getattr(file_dinh_kem, 'content_type', None),
-                nguoi_tao=instance.nguoi_tao
-            )
+            for f in uploaded_files:
+                validate_document_file(f)
+                file_path = default_storage.save(f"documents/templates/{f.name}", f)
+                storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
+                ChiTietTaiLieuAttachment.objects.create(
+                    document=instance,
+                    name=f.name,
+                    path=storage_path,
+                    file_size=getattr(f, 'size', None),
+                    mime_type=getattr(f, 'content_type', None),
+                    nguoi_tao=instance.nguoi_tao
+                )
         return instance
 
     def update(self, instance, validated_data):
@@ -183,16 +194,33 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
         instance.save()
         if loai_tai_lieu is not None:
             instance.loai_tai_lieu.set(loai_tai_lieu)
-        if file_dinh_kem:
+
+        request = self.context.get('request')
+        # Hỗ trợ xóa các tệp đính kèm được chọn xóa
+        if request and hasattr(request, 'data'):
+            deleted_ids = request.data.getlist('deleted_attachment_ids')
+            if deleted_ids:
+                instance.attachments.filter(id__in=deleted_ids).update(is_deleted=True)
+
+        # Hỗ trợ thêm nhiều tệp đính kèm khi cập nhật
+        uploaded_files = []
+        if request and hasattr(request, 'FILES'):
+            uploaded_files = request.FILES.getlist('files') or request.FILES.getlist('file_dinh_kem')
+        if not uploaded_files and file_dinh_kem:
+            uploaded_files = [file_dinh_kem]
+
+        if uploaded_files:
             from django.core.files.storage import default_storage
-            file_path = default_storage.save(f"documents/templates/{file_dinh_kem.name}", file_dinh_kem)
-            storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
-            ChiTietTaiLieuAttachment.objects.create(
-                document=instance,
-                name=file_dinh_kem.name,
-                path=storage_path,
-                file_size=getattr(file_dinh_kem, 'size', None),
-                mime_type=getattr(file_dinh_kem, 'content_type', None),
-                nguoi_tao=instance.nguoi_tao
-            )
+            for f in uploaded_files:
+                validate_document_file(f)
+                file_path = default_storage.save(f"documents/templates/{f.name}", f)
+                storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
+                ChiTietTaiLieuAttachment.objects.create(
+                    document=instance,
+                    name=f.name,
+                    path=storage_path,
+                    file_size=getattr(f, 'size', None),
+                    mime_type=getattr(f, 'content_type', None),
+                    nguoi_tao=instance.nguoi_tao
+                )
         return instance

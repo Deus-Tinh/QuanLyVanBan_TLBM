@@ -310,4 +310,33 @@ describe('ResourceTable Component', () => {
     expect(screen.queryByText(/d881270d/i)).not.toBeInTheDocument();
     expect(screen.getByText('PDF')).toBeInTheDocument();
   });
+
+  it('calls onViewDetail and does NOT call onDrillDown when clicking on row or file badge', () => {
+    const handleViewDetail = vi.fn();
+    const handleDrillDown = vi.fn();
+    render(
+      <ResourceTable
+        items={mockItems}
+        currentPage={1}
+        totalPages={1}
+        pageSize={10}
+        totalCount={3}
+        onPageChange={vi.fn()}
+        onViewDetail={handleViewDetail}
+        onDrillDown={handleDrillDown}
+      />
+    );
+
+    // Bấm vào badge Tệp
+    const fileBadges = screen.getAllByText('PDF');
+    fireEvent.click(fileBadges[0]);
+    expect(handleViewDetail).toHaveBeenCalledWith(mockItems[0]);
+    expect(handleDrillDown).not.toHaveBeenCalled();
+
+    // Bấm vào dòng
+    const rowTitle = screen.getByText('Quy chế quản lý nội bộ 2026');
+    fireEvent.click(rowTitle);
+    expect(handleViewDetail).toHaveBeenCalledWith(mockItems[0]);
+    expect(handleDrillDown).not.toHaveBeenCalled();
+  });
 });
