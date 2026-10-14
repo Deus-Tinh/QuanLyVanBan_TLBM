@@ -88,43 +88,23 @@ export default function ResourceManagementPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialFilterState = useMemo(() => getInitialFilterState(searchParams), [searchParams]);
 
-  // Khởi tạo từ localStorage (mặc định để trống hoàn toàn)
+  // Khởi tạo trạng thái rỗng và dọn dẹp sạch toàn bộ cache dữ liệu mẫu cũ trong localStorage
   const [documents, setDocuments] = useState<ResourceItem[]>(() => {
     try {
-      // Dọn dẹp dữ liệu mẫu / thử nghiệm cũ trước đó
       localStorage.removeItem('tlbm_custom_documents_v1');
       localStorage.removeItem('tlbm_custom_categories_v1');
       localStorage.removeItem('tlbm_custom_types_v1');
-
-      const saved = localStorage.getItem(STORAGE_DOCS);
-      if (saved !== null) {
-        return JSON.parse(saved);
-      }
+      localStorage.removeItem(STORAGE_DOCS);
+      localStorage.removeItem(STORAGE_CATS);
+      localStorage.removeItem(STORAGE_TYPES);
     } catch {
       /* ignore */
     }
     return [];
   });
 
-  const [categories, setCategories] = useState<ResourceCategory[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_CATS);
-      if (saved !== null) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
-    return [];
-  });
-
-  const [types, setTypes] = useState<ResourceType[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_TYPES);
-      if (saved !== null) return JSON.parse(saved);
-    } catch {
-      /* ignore */
-    }
-    return [];
-  });
+  const [categories, setCategories] = useState<ResourceCategory[]>([]);
+  const [types, setTypes] = useState<ResourceType[]>([]);
 
   // Danh sách ID các danh mục được tick chọn để hiển thị trên thanh chính
   const [visibleCategoryIds, setVisibleCategoryIds] = useState<number[]>(() => {
@@ -233,20 +213,21 @@ export default function ResourceManagementPage() {
     setIsLoading(true);
     try {
       const [catsRes, typesRes, docsRes] = await Promise.all([
-        apiClient<ResourceCategory[]>('/api/resources/categories/').catch(() => null),
-        apiClient<ResourceType[]>('/api/resources/types/').catch(() => null),
-        apiClient<ResourceItem[]>('/api/resources/documents/').catch(() => null),
+        apiClient<any>('/api/resources/categories/').catch(() => null),
+        apiClient<any>('/api/resources/types/').catch(() => null),
+        apiClient<any>('/api/resources/documents/').catch(() => null),
       ]);
 
-      if (catsRes && Array.isArray(catsRes)) {
-        setCategories(catsRes);
-      }
-      if (typesRes && Array.isArray(typesRes)) {
-        setTypes(typesRes);
-      }
-      if (docsRes && Array.isArray(docsRes)) {
-        setDocuments(docsRes);
-      }
+      const normalizeList = <T,>(data: any): T[] => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (data && Array.isArray(data.results)) return data.results;
+        return [];
+      };
+
+      setCategories(normalizeList<ResourceCategory>(catsRes));
+      setTypes(normalizeList<ResourceType>(typesRes));
+      setDocuments(normalizeList<ResourceItem>(docsRes));
     } catch (e) {
       console.warn('Lỗi khi tải dữ liệu từ API backend:', e);
     } finally {
@@ -259,30 +240,7 @@ export default function ResourceManagementPage() {
     fetchResources();
   }, [fetchResources]);
 
-  // Tự động lưu dữ liệu danh mục, loại và tài liệu vào localStorage dự phòng
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_DOCS, JSON.stringify(documents));
-    } catch {
-      /* ignore */
-    }
-  }, [documents]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_CATS, JSON.stringify(categories));
-    } catch {
-      /* ignore */
-    }
-  }, [categories]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_TYPES, JSON.stringify(types));
-    } catch {
-      /* ignore */
-    }
-  }, [types]);
 
   // ============================================================================
   // BỘ LỌC ĐA NĂNG & PHÂN TẦNG:
