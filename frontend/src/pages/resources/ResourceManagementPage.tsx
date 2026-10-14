@@ -1096,9 +1096,7 @@ export default function ResourceManagementPage() {
       <div className="bg-surface rounded-xl border border-border-subtle shadow-xs">
         {/* Hàng tab chính (Row 1 - Danh mục Cấp 1) */}
         {(() => {
-          const hasBottomRow =
-            (selectedCategory !== 'all' && availableTypesForFilter.length > 0) ||
-            (selectedCategory === 'all' && categories.length > 0);
+          const hasBottomRow = Boolean(selectedCategory !== 'all' && availableTypesForFilter.length > 0);
           return (
             <div className={`relative z-20 flex items-stretch h-11 ${hasBottomRow ? 'border-b border-border-subtle' : ''}`}>
               {/* Cột 1: Tab Tất cả (cố định bên trái, độ rộng w-[130px]) */}
@@ -1336,16 +1334,18 @@ export default function ResourceManagementPage() {
         {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu */}
         {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (
           <div className="relative z-10 flex items-stretch h-11 bg-slate-50/70 dark:bg-slate-800/40 border-t border-border-subtle rounded-b-xl">
-            {/* Vùng phân loại bên trái: Label icon + Chips */}
+            {/* Cột 1 (Cố định bên trái): Nhãn Loại tài liệu tách biệt độc lập, không bị lăn/cuộn theo */}
+            <div className="w-[130px] shrink-0 flex items-center justify-center gap-1.5 px-2 border-r border-border-subtle rounded-bl-xl select-none text-[11px] font-bold uppercase tracking-wider text-muted">
+              <i className="fa-solid fa-tags text-xs text-primary shrink-0" />
+              <span className="truncate">{t('resourceManagement.fieldType')}:</span>
+            </div>
+
+            {/* Vùng chip cuộn ngang ở giữa (chỉ cuộn các chip) */}
             <div
               ref={typeBarRef}
-              className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 px-4 py-1 select-none cursor-grab active:cursor-grabbing"
+              className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 px-3 py-1 select-none cursor-grab active:cursor-grabbing"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
             >
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted shrink-0 mr-1 select-none">
-                <i className="fa-solid fa-tags text-xs text-primary" />
-                <span>{t('resourceManagement.fieldType')}:</span>
-              </div>
 
               {/* Chip "Tất cả" loại tài liệu */}
               <button
