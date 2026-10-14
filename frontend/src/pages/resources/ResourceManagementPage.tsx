@@ -1179,21 +1179,21 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (chiều ngang to rộng w-56) */}
-          <div className={`relative w-56 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
+          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (chiều ngang to rộng w-64, chữ to text-sm font-bold) */}
+          <div className={`relative w-64 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen((prev) => !prev);
                 setIsTypeDropdownOpen(false);
               }}
-              className={`w-full px-6 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
+              className={`w-full px-6 text-sm font-bold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
               title="Mở danh sách tất cả Danh mục"
               aria-label="Danh sách tất cả Danh mục"
             >
-              <i className="fa-solid fa-folder-tree text-xs text-primary shrink-0" />
-              <span className="font-semibold tracking-wide">Danh mục</span>
-              <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 shrink-0 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+              <i className="fa-solid fa-folder-tree text-sm text-primary shrink-0" />
+              <span className="font-bold tracking-wide">Danh mục</span>
+              <i className={`fa-solid fa-chevron-down text-xs transition-transform duration-200 shrink-0 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
 
             {isCategoryDropdownOpen && (
@@ -1335,15 +1335,15 @@ export default function ResourceManagementPage() {
 
         {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu */}
         {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (
-          <div className="relative z-10 px-4 py-2 bg-slate-50/70 dark:bg-slate-800/40 border-t border-border-subtle rounded-b-xl flex items-center justify-between gap-3">
+          <div className="relative z-10 flex items-stretch h-11 bg-slate-50/70 dark:bg-slate-800/40 border-t border-border-subtle rounded-b-xl">
             {/* Vùng phân loại bên trái: Label icon + Chips */}
             <div
               ref={typeBarRef}
-              className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 py-0.5 select-none cursor-grab active:cursor-grabbing"
+              className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 px-4 py-1 select-none cursor-grab active:cursor-grabbing"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
             >
-              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted shrink-0 mr-1 select-none">
-                <i className="fa-solid fa-tags text-[11px] text-primary" />
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted shrink-0 mr-1 select-none">
+                <i className="fa-solid fa-tags text-xs text-primary" />
                 <span>{t('resourceManagement.fieldType')}:</span>
               </div>
 
@@ -1404,22 +1404,22 @@ export default function ResourceManagementPage() {
               )}
             </div>
 
-            {/* Cột dropdown Loại tài liệu ở góc phải (chiều ngang to rộng min-w-[180px]) */}
-            <div className="relative shrink-0" ref={typeDropdownRef}>
+            {/* Cột dropdown Loại tài liệu ở góc phải (kiểu dáng đồng bộ 100% với cột Danh mục: w-64, border-l, h-full, text-sm font-bold) */}
+            <div className="relative w-64 shrink-0 flex items-stretch border-l border-border-subtle rounded-br-xl" ref={typeDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
                   setIsTypeDropdownOpen((prev) => !prev);
                   setIsCategoryDropdownOpen(false);
                 }}
-                className="px-6 py-1.5 text-xs font-semibold text-secondary hover:text-primary rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer shadow-2xs whitespace-nowrap min-w-[180px]"
+                className="w-full px-6 text-sm font-bold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap rounded-br-xl"
                 title="Mở danh sách tất cả Loại tài liệu"
                 aria-haspopup="listbox"
                 aria-expanded={isTypeDropdownOpen}
               >
-                <i className="fa-solid fa-tags text-[11px] text-primary shrink-0" />
-                <span className="font-semibold tracking-wide">Loại tài liệu</span>
-                <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 shrink-0 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+                <i className="fa-solid fa-tags text-sm text-primary shrink-0" />
+                <span className="font-bold tracking-wide">Loại tài liệu</span>
+                <i className={`fa-solid fa-chevron-down text-xs transition-transform duration-200 shrink-0 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
 
               {isTypeDropdownOpen && (
