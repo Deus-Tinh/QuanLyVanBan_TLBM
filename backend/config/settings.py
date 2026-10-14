@@ -46,6 +46,21 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+# Chạy sau reverse proxy HTTPS (Nginx). Local để trống các biến này.
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if os.getenv("DJANGO_SECURE_PROXY_SSL_HEADER", "False").lower() == "true":
+    # Chỉ bật khi proxy luôn ghi đè X-Forwarded-Proto, nếu không client có thể giả scheme.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() == "true"
+SESSION_COOKIE_SECURE = os.getenv("DJANGO_SECURE_COOKIES", str(not DEBUG)).lower() == "true"
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+# Chỉ đặt > 0 khi HTTPS đã chạy ổn định; trình duyệt nhớ HSTS theo số giây này.
+SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "0"))
+
 
 # Application definition
 
@@ -182,7 +197,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Media files (File uploads)
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR.parent / "media"
+# Server đặt DJANGO_MEDIA_ROOT ra thư mục dùng chung để file không nằm trong thư mục release.
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT") or BASE_DIR.parent / "media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
