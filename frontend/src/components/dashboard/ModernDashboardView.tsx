@@ -598,7 +598,7 @@ export default function ModernDashboardView({
                             size: ext === 'docx' ? '145 KB' : ext === 'xlsx' ? '180 KB' : '2.1 MB',
                             date: '01/10/2026',
                             type: ext === 'docx' ? 'word' : ext === 'xlsx' ? 'excel' : 'pdf',
-                            format: ext as any,
+                            format: (ext === 'xlsx' || ext === 'docx' || ext === 'pdf') ? ext : undefined,
                           },
                         ],
                       };
@@ -615,7 +615,7 @@ export default function ModernDashboardView({
                               size: rExt === 'docx' ? '145 KB' : rExt === 'xlsx' ? '180 KB' : '2.1 MB',
                               date: '01/10/2026',
                               type: rExt === 'docx' ? 'word' : rExt === 'xlsx' ? 'excel' : 'pdf',
-                              format: rExt as any,
+                              format: (rExt === 'xlsx' || rExt === 'docx' || rExt === 'pdf') ? rExt : undefined,
                             },
                           ],
                         };

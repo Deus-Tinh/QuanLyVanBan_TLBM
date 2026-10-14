@@ -101,7 +101,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     return () => {
       isMounted = false;
     };
-  }, [reloadTrigger]);
+  }, [reloadTrigger, navigate]);
 
   // 1. Trạng thái Đang tải (Loading Skeleton)
   if (isLoading) {

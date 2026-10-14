@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Badge } from '@components/common';
 import { TaskItem } from './ModernDashboardView';
-import { useTranslation } from '@i18n/translate';
 
 export interface TaskDetailModalProps {
   isOpen: boolean;
@@ -16,7 +15,6 @@ export default function TaskDetailModal({
   task,
   onNavigateTasks,
 }: TaskDetailModalProps) {
-  const { t } = useTranslation();
 
   // Đóng bằng phím Escape
   useEffect(() => {

@@ -10,6 +10,8 @@ djangorestframework>=3.15.0
 # JWT Authentication
 djangorestframework-simplejwt>=5.3.0
 
-# Utilities
+# Utilities & Excel Processing
 python-dotenv>=1.0.1
 pytz>=2024.1
+openpyxl>=3.1.2
+django-filter>=24.2

@@ -17,7 +17,7 @@ export interface DocumentPreviewModalProps {
 }
 
 // Kiểm tra định dạng tệp có phải là tài liệu Word (.doc / .docx) hay không
-export const isDocFile = (att: DocumentAttachment): boolean => {
+const isDocFile = (att: DocumentAttachment): boolean => {
   const name = (att.name || '').toLowerCase();
   const type = (att.type || '').toLowerCase();
   const format = (att.format || '').toLowerCase();
@@ -35,7 +35,7 @@ export const isDocFile = (att: DocumentAttachment): boolean => {
 // Khởi tạo trang HTML xem trước văn bản số hóa mở trong tab mới
 function generateDocumentPreviewHtml(
   doc: DocumentItem,
-  meta: any,
+  meta: Record<string, unknown>,
   att: DocumentAttachment
 ): string {
   const isExcel =
@@ -584,7 +584,7 @@ export default function DocumentPreviewModal({
     };
 
     // Mỗi một mục văn bản CHỈ CÓ ĐÚNG 1 tệp đính kèm duy nhất
-    let attachments: DocumentAttachment[] = [];
+    let attachments: DocumentAttachment[];
     if (document.attachments && document.attachments.length > 0) {
       attachments = [document.attachments[0]];
     } else {
@@ -729,7 +729,7 @@ Ngày ký: ${document.date}
     const blobUrl = URL.createObjectURL(blob);
     const newWindow = window.open(blobUrl, '_blank');
     if (!newWindow) {
-      window.location.href = blobUrl;
+      window.open(blobUrl, '_self');
     }
   };
 

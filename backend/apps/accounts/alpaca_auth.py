@@ -101,6 +101,8 @@ def check_alpaca_auth(username: str, password: str) -> dict:
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     }
 
+    req_timeout = 0.5 if getattr(settings, "TESTING", False) else 3.5
+
     try:
         req = urllib.request.Request(
             url,
@@ -108,7 +110,7 @@ def check_alpaca_auth(username: str, password: str) -> dict:
             headers=headers,
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
+        with urllib.request.urlopen(req, timeout=req_timeout) as resp:
             body = resp.read().decode("utf-8")
             data = json.loads(body)
             # Phản hồi từ SIT API: {"Success": true, "Data": 7, "StatusCode": "200"}
