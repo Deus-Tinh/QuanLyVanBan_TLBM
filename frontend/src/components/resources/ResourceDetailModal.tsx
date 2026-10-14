@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
-import { FilePreviewModal } from './FilePreviewModal';
 
 export interface ResourceDetailModalProps {
   isOpen: boolean;
@@ -24,7 +23,6 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   onDownloadFile,
 }) => {
   const { t } = useTranslation();
-  const [previewFile, setPreviewFile] = useState<ResourceAttachment | null>(null);
   // Lắng nghe phím ESC để đóng Modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -336,15 +334,25 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
               <div className="space-y-2">
                 {filesList.map((file, idx) => {
                   const ext = getFileExt(file.name || file.path, file.mime_type);
+                  const targetUrl = file.id
+                    ? `/api/resources/attachments/${file.id}/view/`
+                    : (file.path || item.file_dinh_kem);
+
                   return (
                     <div
                       key={idx}
-                      className="p-3 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3 text-xs sm:text-sm hover:border-primary/40 transition-colors"
+                      onClick={() => {
+                        if (targetUrl) {
+                          window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                      className="p-3 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3 text-xs sm:text-sm hover:border-primary/50 hover:bg-primary-subtle/10 transition-all cursor-pointer group"
+                      title="Bấm để mở xem nội dung tệp trong tab mới"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <i className={`fa-solid ${getFileIcon(ext)} text-lg shrink-0`} />
+                        <i className={`fa-solid ${getFileIcon(ext)} text-lg shrink-0 group-hover:scale-110 transition-transform`} />
                         <div className="min-w-0">
-                          <p className="font-semibold text-main truncate" title={file.name}>
+                          <p className="font-semibold text-main truncate group-hover:text-primary transition-colors" title={file.name}>
                             {file.name}
                           </p>
                           <p className="text-[11px] text-muted font-mono">
@@ -354,29 +362,19 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewFile(file)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover shadow-2xs transition-colors cursor-pointer"
-                          title="Xem trước tệp này"
-                          aria-label={`Xem trước ${file.name}`}
-                        >
-                          <i className="fa-solid fa-eye text-xs" />
-                          <span>Xem trước</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => onDownloadFile?.(item, file.name, file.path)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
-                          title="Tải tệp này về máy"
-                          aria-label={`Tải về ${file.name}`}
-                        >
-                          <i className="fa-solid fa-download text-xs" />
-                          <span className="hidden sm:inline">Tải về</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDownloadFile?.(item, file.name, file.path);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-primary hover:border-primary/40 hover:bg-surface-elevated transition-colors cursor-pointer shrink-0"
+                        title="Tải tệp này về máy"
+                        aria-label={`Tải về ${file.name}`}
+                      >
+                        <i className="fa-solid fa-download text-xs" />
+                        <span>Tải về</span>
+                      </button>
                     </div>
                   );
                 })}
@@ -445,17 +443,6 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* MODAL XEM TRƯỚC TỆP ĐÍNH KÈM (PDF, EXCEL, HÌNH ẢNH...) */}
-      {previewFile && (
-        <FilePreviewModal
-          isOpen={Boolean(previewFile)}
-          onClose={() => setPreviewFile(null)}
-          file={previewFile}
-          documentTitle={item.tieu_de}
-          onDownload={() => onDownloadFile?.(item, previewFile.name, previewFile.path)}
-        />
-      )}
     </div>,
     document.body
   );

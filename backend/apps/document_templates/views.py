@@ -390,6 +390,39 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
         instance.is_deleted = True
         instance.save()
 
+    @action(detail=True, methods=['get'], url_path='view')
+    def view_file(self, request, pk=None):
+        """
+        Mở xem trực tiếp tệp trong tab trình duyệt (inline display, không bắt buộc tải về)
+        """
+        import os
+        import mimetypes
+        from django.conf import settings
+        from django.http import FileResponse, Http404
+
+        att = self.get_object()
+        file_url = att.path
+        rel_path = file_url.replace('/media/', '', 1) if file_url.startswith('/media/') else file_url
+        disk_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+        if not os.path.exists(disk_path):
+            raise Http404("Tệp không tồn tại trên máy chủ")
+
+        content_type, _ = mimetypes.guess_type(disk_path)
+        if not content_type:
+            ext = att.name.split('.')[-1].lower() if '.' in att.name else ''
+            if ext == 'pdf':
+                content_type = 'application/pdf'
+            elif ext in ['xlsx', 'xls']:
+                content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if ext == 'xlsx' else 'application/vnd.ms-excel'
+            elif ext in ['png', 'jpg', 'jpeg']:
+                content_type = f'image/{ext}'
+            else:
+                content_type = 'application/octet-stream'
+
+        response = FileResponse(open(disk_path, 'rb'), content_type=content_type, as_attachment=False)
+        response['Content-Disposition'] = f'inline; filename="{att.name}"'
+        return response
+
     @action(detail=True, methods=['get'], url_path='preview')
     def preview(self, request, pk=None):
         """
