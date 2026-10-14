@@ -21,6 +21,7 @@ const STORAGE_KEY = 'tlbm_resources_filter_state';
 const STORAGE_DOCS = 'tlbm_documents_v2';
 const STORAGE_CATS = 'tlbm_categories_v2';
 const STORAGE_TYPES = 'tlbm_types_v2';
+const STORAGE_VISIBLE_CATS = 'tlbm_visible_categories_v1';
 
 interface PersistedResourceState {
   category?: string;
@@ -123,6 +124,59 @@ export default function ResourceManagementPage() {
     }
     return [];
   });
+
+  // Danh sách ID các danh mục được tick chọn để hiển thị trên thanh chính
+  const [visibleCategoryIds, setVisibleCategoryIds] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+    } catch {
+      /* ignore */
+    }
+    return [];
+  });
+
+  // Tự động đồng bộ các danh mục hiển thị khi nạp danh mục lần đầu
+  useEffect(() => {
+    if (categories.length > 0) {
+      setVisibleCategoryIds((prev) => {
+        const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
+        if (saved === null && prev.length === 0) {
+          return categories.map((c) => c.id);
+        }
+        return prev;
+      });
+    }
+  }, [categories]);
+
+  // Lưu cấu hình ghim danh mục vào localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_VISIBLE_CATS, JSON.stringify(visibleCategoryIds));
+    } catch {
+      /* ignore */
+    }
+  }, [visibleCategoryIds]);
+
+  const toggleCategoryVisibility = (catId: number) => {
+    setVisibleCategoryIds((prev) => {
+      if (prev.includes(catId)) {
+        return prev.filter((id) => id !== catId);
+      } else {
+        return [...prev, catId];
+      }
+    });
+  };
+
+  const toggleAllCategoriesVisibility = (selectAll: boolean) => {
+    if (selectAll) {
+      setVisibleCategoryIds(categories.map((c) => c.id));
+    } else {
+      setVisibleCategoryIds([]);
+    }
+  };
 
   // Trạng thái đang tải dữ liệu từ Backend API
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -397,7 +451,7 @@ export default function ResourceManagementPage() {
       cleanupTab?.();
       cleanupType?.();
     };
-  }, [sortedCategories, availableTypesForFilter, selectedCategory]);
+  }, [sortedCategories, availableTypesForFilter, selectedCategory, visibleCategoryIds]);
 
   // Đổi Thư mục: Tự động reset Loại tài liệu về 'all' và về trang 1
   const handleCategorySelect = (newCat: string) => {
@@ -666,6 +720,7 @@ export default function ResourceManagementPage() {
         };
         const savedCat = await apiClient.post<ResourceCategory>('/api/resources/categories/', payload);
         setCategories((prev) => [...prev, savedCat]);
+        setVisibleCategoryIds((prev) => [...prev, savedCat.id]);
 
         // Nếu có danh sách loại con khởi tạo kèm theo:
         if (childTypes && childTypes.length > 0) {
@@ -705,6 +760,7 @@ export default function ResourceManagementPage() {
     try {
       await apiClient.delete(`/api/resources/categories/${id}/`);
       setCategories((prev) => prev.filter((c) => c.id !== id));
+      setVisibleCategoryIds((prev) => prev.filter((cid) => cid !== id));
       setTypes((prev) => prev.filter((t) => t.dm_tai_lieu !== id));
       setDocuments((prev) => prev.filter((d) => d.dm_tai_lieu !== id));
       showToast(`Đã xóa thành công thư mục Cấp 1: "${cat?.ten_tai_lieu || id}"`, 'danger', 'Xóa Thư mục');
@@ -982,43 +1038,50 @@ export default function ResourceManagementPage() {
             })()}
           </div>
 
-          {/* Vùng danh mục cuộn ngang (Hỗ trợ con lăn chuột mượt mà, cách ly hoàn toàn) */}
+          {/* Vùng danh mục cuộn ngang (Chỉ hiển thị các danh mục được tick chọn trong dropdown) */}
           <div
             ref={tabBarRef}
             className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1 min-w-0"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
           >
-            {sortedCategories.map((cat) => {
-              const isSelected = selectedCategory === String(cat.id);
-              const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
+            {sortedCategories
+              .filter((cat) => visibleCategoryIds.includes(cat.id))
+              .map((cat) => {
+                const isSelected = selectedCategory === String(cat.id);
+                const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
 
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => handleCategorySelect(String(cat.id))}
-                  className={`flex items-center gap-1.5 px-3.5 h-full text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
-                    isSelected
-                      ? 'border-primary text-primary bg-primary/5 font-bold'
-                      : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
-                  }`}
-                  aria-current={isSelected ? 'page' : undefined}
-                  title={cat.ghi_chu || cat.ten_tai_lieu}
-                >
-                  <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
-                  <span>{cat.ten_tai_lieu}</span>
-                  <span
-                    className={`px-1.5 py-0.5 text-[11px] rounded-full font-bold ${
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => handleCategorySelect(String(cat.id))}
+                    className={`flex items-center gap-1.5 px-3.5 h-full text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
                       isSelected
-                        ? 'bg-primary text-white'
-                        : 'bg-surface-elevated text-muted border border-border-subtle'
+                        ? 'border-primary text-primary bg-primary/5 font-bold'
+                        : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
                     }`}
+                    aria-current={isSelected ? 'page' : undefined}
+                    title={cat.ghi_chu || cat.ten_tai_lieu}
                   >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+                    <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
+                    <span>{cat.ten_tai_lieu}</span>
+                    <span
+                      className={`px-1.5 py-0.5 text-[11px] rounded-full font-bold ${
+                        isSelected
+                          ? 'bg-primary text-white'
+                          : 'bg-surface-elevated text-muted border border-border-subtle'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            {sortedCategories.filter((cat) => visibleCategoryIds.includes(cat.id)).length === 0 && (
+              <div className="flex items-center px-4 text-xs text-muted italic">
+                Chưa có danh mục nào được tick hiển thị. Bấm "Danh mục" ở góc phải để chọn.
+              </div>
+            )}
           </div>
 
           {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (cố định w-36) */}
@@ -1039,11 +1102,27 @@ export default function ResourceManagementPage() {
             </button>
 
             {isCategoryDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-72 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-1.5 animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
+              <div className="absolute right-0 top-full mt-1.5 w-80 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                   <span>Danh mục tài liệu</span>
                   <span className="text-[10px] text-primary lowercase font-medium">Cấp 1</span>
                 </div>
+
+                <div className="px-2 pb-1.5 text-[11px] text-secondary flex items-center justify-between border-b border-border-subtle mb-1.5">
+                  <span className="text-[10px] text-muted">Tick chọn để hiện ra thanh chính:</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleAllCategoriesVisibility(visibleCategoryIds.length < categories.length);
+                    }}
+                    className="text-[10px] text-primary hover:underline font-semibold cursor-pointer"
+                  >
+                    {visibleCategoryIds.length === categories.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                </div>
+
+                {/* Nút 'Tất cả thư mục' */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1071,46 +1150,65 @@ export default function ResourceManagementPage() {
                   </span>
                 </button>
 
-                <div className="my-1 border-t border-border-subtle" />
+                <div className="my-1.5 border-t border-border-subtle" />
 
-                <div className="max-h-56 overflow-y-auto space-y-0.5 pr-0.5">
+                {/* Danh sách danh mục kèm checkbox */}
+                <div className="max-h-60 overflow-y-auto space-y-1 pr-0.5">
                   {sortedCategories.map((cat) => {
                     const isSelected = selectedCategory === String(cat.id);
+                    const isVisibleOnBar = visibleCategoryIds.includes(cat.id);
                     const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
+
                     return (
-                      <button
+                      <div
                         key={cat.id}
-                        type="button"
-                        onClick={() => {
-                          handleCategorySelect(String(cat.id));
-                          setIsCategoryDropdownOpen(false);
-                        }}
-                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                        className={`w-full px-2 py-1.5 rounded-lg text-xs flex items-center justify-between gap-2 transition-colors ${
                           isSelected
-                            ? 'bg-primary text-white font-bold'
+                            ? 'bg-primary/10 border border-primary/20 text-primary font-bold'
                             : 'text-main hover:bg-surface-elevated'
                         }`}
-                        title={cat.ghi_chu || cat.ten_tai_lieu}
                       >
-                        <span className="flex items-center gap-2 truncate">
-                          <i className={`fa-solid ${isSelected ? 'fa-folder-open' : 'fa-folder'} text-xs`} />
+                        <label
+                          className="flex items-center gap-2 cursor-pointer shrink-0 select-none"
+                          title={isVisibleOnBar ? 'Bỏ tick để ẩn khỏi thanh chính' : 'Tick chọn để hiển thị trên thanh chính'}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isVisibleOnBar}
+                            onChange={() => toggleCategoryVisibility(cat.id)}
+                            className="w-4 h-4 rounded border-border-subtle text-primary focus:ring-primary/20 cursor-pointer accent-primary"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCategorySelect(String(cat.id));
+                            setIsCategoryDropdownOpen(false);
+                          }}
+                          className="flex items-center gap-2 truncate flex-1 text-left cursor-pointer hover:text-primary transition-colors py-0.5"
+                          title={cat.ghi_chu || cat.ten_tai_lieu}
+                        >
+                          <i
+                            className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs shrink-0`}
+                          />
                           <span className="truncate">{cat.ten_tai_lieu}</span>
-                        </span>
+                        </button>
                         <span
-                          className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                          className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
                             isSelected
-                              ? 'bg-white/20 text-white'
+                              ? 'bg-primary text-white'
                               : 'bg-surface-elevated text-secondary border border-border-subtle'
                           }`}
                         >
                           {count}
                         </span>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
 
-                <div className="my-1 border-t border-border-subtle" />
+                <div className="my-1.5 border-t border-border-subtle" />
 
                 <button
                   type="button"
