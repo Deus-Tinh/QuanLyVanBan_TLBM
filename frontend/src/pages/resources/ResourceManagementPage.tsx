@@ -1179,23 +1179,20 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (rộng rãi w-48) */}
-          <div className={`relative w-48 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
+          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (chiều ngang to rộng w-56) */}
+          <div className={`relative w-56 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen((prev) => !prev);
                 setIsTypeDropdownOpen(false);
               }}
-              className={`w-full px-3.5 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
+              className={`w-full px-6 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
               title="Mở danh sách tất cả Danh mục"
               aria-label="Danh sách tất cả Danh mục"
             >
               <i className="fa-solid fa-folder-tree text-xs text-primary shrink-0" />
-              <span className="font-semibold">Danh mục</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20">
-                {orderedVisibleCategories.length}/{categories.length}
-              </span>
+              <span className="font-semibold tracking-wide">Danh mục</span>
               <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 shrink-0 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
 
@@ -1407,7 +1404,7 @@ export default function ResourceManagementPage() {
               )}
             </div>
 
-            {/* Cột dropdown Loại tài liệu ở góc phải (rộng rãi min-w-[150px]) */}
+            {/* Cột dropdown Loại tài liệu ở góc phải (chiều ngang to rộng min-w-[180px]) */}
             <div className="relative shrink-0" ref={typeDropdownRef}>
               <button
                 type="button"
@@ -1415,16 +1412,13 @@ export default function ResourceManagementPage() {
                   setIsTypeDropdownOpen((prev) => !prev);
                   setIsCategoryDropdownOpen(false);
                 }}
-                className="px-4 py-1.5 text-xs font-semibold text-secondary hover:text-primary rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs whitespace-nowrap min-w-[150px]"
+                className="px-6 py-1.5 text-xs font-semibold text-secondary hover:text-primary rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer shadow-2xs whitespace-nowrap min-w-[180px]"
                 title="Mở danh sách tất cả Loại tài liệu"
                 aria-haspopup="listbox"
                 aria-expanded={isTypeDropdownOpen}
               >
                 <i className="fa-solid fa-tags text-[11px] text-primary shrink-0" />
-                <span className="font-semibold">Loại tài liệu</span>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20">
-                  {orderedVisibleTypes.length}/{availableTypesForFilter.length}
-                </span>
+                <span className="font-semibold tracking-wide">Loại tài liệu</span>
                 <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 shrink-0 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
 
