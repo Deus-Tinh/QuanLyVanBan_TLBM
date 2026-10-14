@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { ActivePageId } from '@app-types/navigation';
 import { MAIN_MODULES } from '@lib/constants';
 import { useTranslation } from '@i18n/translate';
@@ -51,7 +51,7 @@ export default function TopSubNav({
       className="top-subnav h-11 px-4 sm:px-6 bg-app flex items-center justify-between shrink-0 overflow-x-auto select-none"
       aria-label="Điều hướng phân hệ con"
     >
-      <div className="flex items-center gap-4 w-full min-w-max">
+      <div className="flex items-center gap-4 w-full min-w-0">
         {/* 1. Breadcrumb định hướng nhanh */}
         {isAccountPage ? (
           <div className="flex items-center gap-2.5 shrink-0">
@@ -122,7 +122,10 @@ export default function TopSubNav({
           </div>
         )}
 
-        {/* 2. Danh sách các Tab con nằm ngang (Chỉ hiển thị khi phân hệ có nhiều hơn 1 mục con) */}
+        {/* 2. Slot dành cho thanh tìm kiếm thu nhỏ khi cuộn Dashboard */}
+        <div id="top-subnav-slot" className="flex-1 flex items-center min-w-0" />
+
+        {/* 3. Danh sách các Tab con nằm ngang (Chỉ hiển thị khi phân hệ có nhiều hơn 1 mục con) */}
         {activeModule.subItems.length > 1 && (
           <div className="flex items-center gap-1.5 overflow-x-auto">
             {activeModule.subItems.map((sub) => {

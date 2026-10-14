@@ -51,12 +51,20 @@ INSTALLED_APPS = [
     # Third-party apps
     "rest_framework",
     "rest_framework_simplejwt",
-    "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
     # Các app nghiệp vụ
     "accounts",
     "dashboard",
     "birthdays",
+    "organizations",
+    "authorization",
 ]
+
+# Custom User Model theo SQL_Fix4 / release_DDL: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo release_DDL: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -201,8 +209,8 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     # Cấp refresh token mới mỗi lần dùng
     "ROTATE_REFRESH_TOKENS": True,
-    # Đưa refresh token cũ vào blacklist sau khi cấp mới
-    "BLACKLIST_AFTER_ROTATION": True,
+    # Đưa refresh token cũ vào blacklist sau khi cấp mới (tắt vì dùng JWT stateless không bảng blacklist)
+    "BLACKLIST_AFTER_ROTATION": False,
     # Header chuẩn: Authorization: Bearer <token>
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
@@ -210,4 +218,17 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+
+# ─────────────────────────────────────────────────
+# Bảo Long Insurance (Alpaca) Authentication Config
+# ─────────────────────────────────────────────────
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "9089e45b638cee8f83ab423d2cb498b5")
+ALPACA_CHECK_AUTH_URL = os.getenv(
+    "ALPACA_CHECK_AUTH_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-auth-user",
+)
+ALPACA_CHECK_USER_URL = os.getenv(
+    "ALPACA_CHECK_USER_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-user-exist",
+)
 

@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from accounts.models import StaffProfile
+from django.contrib.auth import get_user_model
 from .models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
@@ -55,8 +55,31 @@ def _get_release_ddl_data(today, is_admin):
                     ORDER BY ngay_den DESC, id DESC
                     LIMIT 5
                 """)
+            in_rows = cursor.fetchall()
+
+            # Đọc tệp đính kèm cho Văn bản đến từ bảng documents_vanbanden_attachment
+            in_att_map = {}
+            cursor.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents_vanbanden_attachment'"
+            )
+            if cursor.fetchone():
+                cursor.execute("""
+                    SELECT document_id, name, path
+                    FROM documents_vanbanden_attachment
+                    WHERE is_deleted = FALSE
+                """)
+                for d_id, a_name, a_path in cursor.fetchall():
+                    ext = a_name.split('.')[-1].lower() if '.' in a_name else 'pdf'
+                    a_type = 'excel' if ext in ['xls', 'xlsx'] else ('word' if ext in ['doc', 'docx'] else ('image' if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp'] else 'pdf'))
+                    in_att_map.setdefault(d_id, []).append({
+                        "name": a_name,
+                        "url": a_path,
+                        "type": a_type,
+                        "size": "612 KB" if ext == "pdf" else ("98 KB" if ext in ["doc", "docx"] else ("12 KB" if ext in ["xls", "xlsx"] else "1.4 MB")),
+                    })
+
             recent_incoming = []
-            for r in cursor.fetchall():
+            for r in in_rows:
                 doc_date = r[3] or r[4]
                 date_str = doc_date.strftime("%d/%m/%Y") if doc_date else today.strftime("%d/%m/%Y")
                 recent_incoming.append({
@@ -66,6 +89,7 @@ def _get_release_ddl_data(today, is_admin):
                     "date": date_str,
                     "sender": r[5] or "Cơ quan ban hành",
                     "scope": r[6],
+                    "attachments": in_att_map.get(r[0], []),
                 })
 
             # 3. Top 5 văn bản đi
@@ -84,8 +108,31 @@ def _get_release_ddl_data(today, is_admin):
                     ORDER BY ngay_ban_hanh DESC, id DESC
                     LIMIT 5
                 """)
+            out_rows = cursor.fetchall()
+
+            # Đọc tệp đính kèm cho Văn bản đi từ bảng documents_vanbandi_attachment
+            out_att_map = {}
+            cursor.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'documents_vanbandi_attachment'"
+            )
+            if cursor.fetchone():
+                cursor.execute("""
+                    SELECT document_id, name, path
+                    FROM documents_vanbandi_attachment
+                    WHERE is_deleted = FALSE
+                """)
+                for d_id, a_name, a_path in cursor.fetchall():
+                    ext = a_name.split('.')[-1].lower() if '.' in a_name else 'pdf'
+                    a_type = 'excel' if ext in ['xls', 'xlsx'] else ('word' if ext in ['doc', 'docx'] else ('image' if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp'] else 'pdf'))
+                    out_att_map.setdefault(d_id, []).append({
+                        "name": a_name,
+                        "url": a_path,
+                        "type": a_type,
+                        "size": "612 KB" if ext == "pdf" else ("98 KB" if ext in ["doc", "docx"] else ("12 KB" if ext in ["xls", "xlsx"] else "1.4 MB")),
+                    })
+
             recent_outgoing = []
-            for r in cursor.fetchall():
+            for r in out_rows:
                 doc_date = r[3] or r[4]
                 date_str = doc_date.strftime("%d/%m/%Y") if doc_date else today.strftime("%d/%m/%Y")
                 recent_outgoing.append({
@@ -95,6 +142,7 @@ def _get_release_ddl_data(today, is_admin):
                     "date": date_str,
                     "recipient": r[5] or "Nơi nhận",
                     "scope": r[6],
+                    "attachments": out_att_map.get(r[0], []),
                 })
 
             # 4. Sinh nhật từ accounts_employee nếu có
@@ -125,6 +173,73 @@ def _get_release_ddl_data(today, is_admin):
                         "label": "Hôm nay",
                     })
 
+            # 5. Danh sách nhiệm vụ từ task_congviec
+            tasks_list = []
+            cursor.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'task_congviec'"
+            )
+            if cursor.fetchone():
+                cursor.execute("""
+                    SELECT id, noi_dung, ngay_tao_cv, ngay_xu_ly, opened_at, approved_at
+                    FROM task_congviec
+                    WHERE hien_thi = TRUE
+                    ORDER BY id DESC
+                    LIMIT 20
+                """)
+                for t_row in cursor.fetchall():
+                    t_id, t_title, t_created, t_due, t_opened, t_approved = t_row
+                    t_due_date = t_due if hasattr(t_due, 'strftime') else today
+                    due_str = t_due_date.strftime("%d/%m/%Y") if hasattr(t_due_date, 'strftime') else str(t_due)
+
+                    if t_approved is not None:
+                        t_status = 'completed'
+                        t_status_label = 'Đã hoàn thành'
+                        t_variant = 'success'
+                    elif t_due < today:
+                        t_status = 'overdue'
+                        t_status_label = 'Quá hạn xử lý'
+                        t_variant = 'danger'
+                    elif t_opened is None:
+                        t_status = 'pending'
+                        t_status_label = 'Đang chờ duyệt'
+                        t_variant = 'warning'
+                    else:
+                        t_status = 'processing'
+                        t_status_label = 'Đang xử lý'
+                        t_variant = 'info'
+
+                    tasks_list.append({
+                        "id": str(t_id),
+                        "title": t_title,
+                        "due": due_str,
+                        "status": t_status,
+                        "statusLabel": t_status_label,
+                        "variant": t_variant,
+                    })
+
+            # 6. Danh sách biểu mẫu từ records_chitiettailieu
+            resources_list = []
+            cursor.execute(
+                "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'records_chitiettailieu'"
+            )
+            if cursor.fetchone():
+                cursor.execute("""
+                    SELECT c.id, c.ky_hieu, c.tieu_de, COALESCE(a.name, 'BM.docx')
+                    FROM records_chitiettailieu c
+                    LEFT JOIN records_chitiettailieu_attachment a ON a.document_id = c.id
+                    WHERE c.hieu_luc = 'CON_HIEU_LUC'
+                    ORDER BY c.id ASC
+                    LIMIT 5
+                """)
+                for r_row in cursor.fetchall():
+                    r_id, r_code, r_title, r_att_name = r_row
+                    ext = r_att_name.split('.')[-1].upper() if '.' in r_att_name else 'DOCX'
+                    resources_list.append({
+                        "code": r_code or f"BM-{r_id:02d}",
+                        "title": r_title,
+                        "format": ext,
+                    })
+
             return {
                 "incoming_total": incoming_total,
                 "outgoing_total": outgoing_total,
@@ -132,6 +247,8 @@ def _get_release_ddl_data(today, is_admin):
                 "recent_incoming": recent_incoming,
                 "recent_outgoing": recent_outgoing,
                 "birthdays_list": birthdays_list,
+                "tasks_list": tasks_list,
+                "resources_list": resources_list,
             }
     except Exception:
         return None
@@ -153,8 +270,7 @@ def overview_view(request):
     tomorrow = today + timedelta(days=1)
 
     user = request.user
-    profile = getattr(user, "profile", None)
-    is_admin = user.is_superuser or (profile and profile.role == "admin")
+    is_admin = getattr(user, "is_superuser", False) or getattr(user, "is_staff", False)
 
     # Kiểm tra và ưu tiên truy vấn trực tiếp từ bảng chuẩn release_DDL.sql trên PostgreSQL
     ddl_data = _get_release_ddl_data(today, is_admin)
@@ -165,7 +281,9 @@ def overview_view(request):
         recent_incoming = ddl_data["recent_incoming"]
         recent_outgoing = ddl_data["recent_outgoing"]
         birthdays_list = ddl_data["birthdays_list"]
-        tasks_pending = 0
+        tasks_list = ddl_data.get("tasks_list", [])
+        resources_list = ddl_data.get("resources_list", [])
+        tasks_pending = len([t for t in tasks_list if t["status"] in ["processing", "pending", "overdue"]])
 
         stats = {
             "incoming_total": incoming_total,
@@ -184,7 +302,8 @@ def overview_view(request):
                 "kpis": kpis,
                 "recentIncoming": recent_incoming,
                 "recentOutgoing": recent_outgoing,
-                "tasks": [],
+                "tasks": tasks_list,
+                "resources": resources_list,
                 "meetingRooms": [],
                 "birthdays": birthdays_list,
                 "stats": stats,

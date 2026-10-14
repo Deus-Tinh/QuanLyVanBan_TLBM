@@ -19,13 +19,17 @@ interface RouterProps {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(() => {
-    return Boolean(localStorage.getItem('tlbm_session'));
-  });
+  const checkAuth = () => {
+    const hasToken = Boolean(localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token'));
+    const hasSession = Boolean(localStorage.getItem('tlbm_session'));
+    return hasToken && hasSession;
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(checkAuth);
 
   React.useEffect(() => {
     const handleAuth = () => {
-      setIsAuthenticated(Boolean(localStorage.getItem('tlbm_session')));
+      setIsAuthenticated(checkAuth());
     };
     window.addEventListener('tlbm_auth_changed', handleAuth);
     window.addEventListener('storage', handleAuth);

@@ -16,6 +16,421 @@ export interface DocumentPreviewModalProps {
   totalDocs?: number;
 }
 
+// Kiểm tra định dạng tệp có phải là tài liệu Word (.doc / .docx) hay không
+export const isDocFile = (att: DocumentAttachment): boolean => {
+  const name = (att.name || '').toLowerCase();
+  const type = (att.type || '').toLowerCase();
+  const format = (att.format || '').toLowerCase();
+  return (
+    name.endsWith('.doc') ||
+    name.endsWith('.docx') ||
+    type === 'doc' ||
+    type === 'docx' ||
+    type === 'word' ||
+    format === 'doc' ||
+    format === 'docx'
+  );
+};
+
+// Khởi tạo trang HTML xem trước văn bản số hóa mở trong tab mới
+function generateDocumentPreviewHtml(
+  doc: DocumentItem,
+  meta: any,
+  att: DocumentAttachment
+): string {
+  const isExcel =
+    att.type === 'excel' ||
+    (att.name || '').toLowerCase().endsWith('.xlsx') ||
+    (att.name || '').toLowerCase().endsWith('.xls');
+
+  return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${att.name} - Xem Trước Văn Bản Số Hóa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #0b1329;
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .top-toolbar {
+      position: sticky;
+      top: 0;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      z-index: 100;
+      color: #f8fafc;
+    }
+    .toolbar-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .toolbar-badge {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-primary { background: #2563eb; color: #ffffff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+    .preview-container {
+      width: 100%;
+      max-width: 900px;
+      margin: 32px auto 60px;
+      padding: 0 16px;
+    }
+    .document-paper {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px -15px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+      padding: 64px 72px;
+      min-height: 1050px;
+      position: relative;
+    }
+    .doc-header-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .header-left { text-align: center; }
+    .header-left .agency {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e293b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      line-height: 1.4;
+    }
+    .header-left .doc-no {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2563eb;
+      margin-top: 8px;
+    }
+    .header-right { text-align: center; }
+    .motto-country {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: 0.5px;
+    }
+    .motto-sub {
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-top: 4px;
+    }
+    .motto-divider {
+      width: 140px;
+      height: 1px;
+      background: #0f172a;
+      margin: 6px auto;
+    }
+    .doc-date {
+      font-size: 13px;
+      font-style: italic;
+      color: #64748b;
+      margin-top: 8px;
+    }
+    .doc-title-block {
+      margin: 40px 0 32px;
+      text-align: center;
+    }
+    .doc-title-main {
+      font-size: 19px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.45;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .doc-title-desc {
+      font-size: 14px;
+      font-style: italic;
+      color: #475569;
+    }
+    .doc-body {
+      font-size: 15px;
+      line-height: 1.8;
+      color: #1e293b;
+      margin-bottom: 40px;
+    }
+    .doc-body p {
+      margin-bottom: 16px;
+      text-align: justify;
+    }
+    .doc-body .clause-title {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .doc-footer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .recipients-block {
+      font-size: 13px;
+      color: #334155;
+    }
+    .recipients-title {
+      font-weight: 700;
+      font-style: italic;
+      margin-bottom: 6px;
+    }
+    .recipients-list {
+      list-style-type: none;
+      line-height: 1.6;
+    }
+    .signature-block {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .signer-role {
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+    .seal-stamp {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed #dc2626;
+      border-radius: 12px;
+      padding: 10px 18px;
+      background: rgba(220, 38, 38, 0.04);
+      color: #dc2626;
+      margin: 12px 0;
+    }
+    .seal-stamp-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .seal-stamp-desc {
+      font-size: 11px;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+    .signer-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 6px;
+    }
+    .security-badge {
+      margin-top: 36px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .excel-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13px;
+    }
+    .excel-table th, .excel-table td {
+      border: 1px solid #cbd5e1;
+      padding: 10px 12px;
+      text-align: left;
+    }
+    .excel-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .top-toolbar { display: none; }
+      .preview-container { margin: 0; max-width: 100%; padding: 0; }
+      .document-paper { box-shadow: none; border-radius: 0; padding: 15mm 15mm; min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top-toolbar">
+    <div class="toolbar-title">
+      <i class="fa-solid fa-file-pdf" style="color: #ef4444; font-size: 18px;"></i>
+      <span>${att.name}</span>
+      <span class="toolbar-badge">${att.size || 'Bản số hóa'}</span>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn btn-secondary" onclick="window.print()" title="In văn bản hoặc xuất PDF">
+        <i class="fa-solid fa-print"></i> In / Xuất PDF
+      </button>
+      <button class="btn btn-primary" onclick="window.close()" title="Đóng cửa sổ xem trước">
+        <i class="fa-solid fa-xmark"></i> Đóng
+      </button>
+    </div>
+  </div>
+
+  <div class="preview-container">
+    <div class="document-paper">
+      <div class="doc-header-grid">
+        <div class="header-left">
+          <div class="agency">${meta.place || 'CƠ QUAN BAN HÀNH'}</div>
+          <div class="doc-no">Số: ${doc.code}</div>
+        </div>
+        <div class="header-right">
+          <div class="motto-country">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
+          <div class="motto-sub">Độc lập - Tự do - Hạnh phúc</div>
+          <div class="motto-divider"></div>
+          <div class="doc-date">Ngày ${doc.date}</div>
+        </div>
+      </div>
+
+      <div class="doc-title-block">
+        <h1 class="doc-title-main">${doc.title}</h1>
+        <div class="doc-title-desc">Bản số hóa chính thức trích xuất từ Hệ thống Quản lý Văn bản và Tài liệu Bảo Long</div>
+      </div>
+
+      <div class="doc-body">
+        <p><strong>Căn cứ:</strong> Luật Quản lý Văn bản và Lưu trữ số 33/2024/QH15;</p>
+        <p><strong>Căn cứ:</strong> Quy chế công tác văn thư và bảo vệ bí mật cơ quan;</p>
+        <p><strong>Căn cứ:</strong> Tờ trình đề xuất của đơn vị chủ trì và ý kiến phê duyệt của Ban Lãnh đạo;</p>
+        
+        <p style="margin-top: 20px;"><span class="clause-title">Điều 1.</span> Ban hành kèm theo văn bản này danh mục tài liệu số hóa và nội dung tác nghiệp nghiệp vụ: <em>"${doc.title}"</em>.</p>
+        <p><span class="clause-title">Điều 2.</span> Văn bản này có hiệu lực kể từ ngày ký. Các phòng ban, đơn vị trực thuộc và các cá nhân liên quan chịu trách nhiệm thi hành.</p>
+        <p><span class="clause-title">Điều 3.</span> Giao Văn thư cơ quan và Bộ phận Công nghệ thông tin theo dõi tiến độ, lưu trữ hồ sơ theo đúng thời hạn quy định.</p>
+
+        ${isExcel ? `
+          <div style="margin-top: 24px;">
+            <p class="clause-title" style="margin-bottom: 8px;">PHỤ LỤC THỐNG KÊ CHI TIẾT ĐÍNH KÈM:</p>
+            <table class="excel-table">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">STT</th>
+                  <th>Hạng Mục Nghiệp Vụ</th>
+                  <th style="width: 140px;">Đơn Vị Chủ Trì</th>
+                  <th style="width: 120px;">Trạng Thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>01</td>
+                  <td>Tiếp nhận và lập hồ sơ số hóa ban đầu</td>
+                  <td>Văn phòng ITC</td>
+                  <td><span style="color: #16a34a; font-weight: 600;">Hoàn tất</span></td>
+                </tr>
+                <tr>
+                  <td>02</td>
+                  <td>Thẩm định tính toàn vẹn và chữ ký số</td>
+                  <td>Ban Giám Hiệu</td>
+                  <td><span style="color: #2563eb; font-weight: 600;">Đã xác thực</span></td>
+                </tr>
+                <tr>
+                  <td>03</td>
+                  <td>Phân phối và lưu trữ kho hồ sơ điện tử</td>
+                  <td>Tổ Lưu trữ</td>
+                  <td><span style="color: #16a34a; font-weight: 600;">Đang lưu kho</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="doc-footer-grid">
+        <div class="recipients-block">
+          <div class="recipients-title">Nơi nhận:</div>
+          <ul class="recipients-list">
+            <li>- Như Điều 2;</li>
+            <li>- Ban Giám đốc (để b/c);</li>
+            <li>- Các đơn vị liên quan;</li>
+            <li>- Lưu: VT, HS.</li>
+          </ul>
+        </div>
+        <div class="signature-block">
+          <div class="signer-role">${meta.signerRole || 'LÃNH ĐẠO ĐƠN VỊ'}</div>
+          <div class="seal-stamp">
+            <i class="fa-solid fa-stamp" style="font-size: 18px; margin-bottom: 4px;"></i>
+            <div class="seal-stamp-title">XÁC THỰC KÝ SỐ</div>
+            <div class="seal-stamp-desc">Ký bởi: ${meta.signer || 'Ban Lãnh Đạo'}</div>
+            <div class="seal-stamp-desc">Thời gian: ${doc.date} 09:00:00</div>
+          </div>
+          <div class="signer-name">${meta.signer || 'Ban Lãnh Đạo'}</div>
+        </div>
+      </div>
+
+      <div class="security-badge">
+        <span><i class="fa-solid fa-shield-halved" style="color: #16a34a;"></i> Văn bản số hóa đã được kiểm tra tính toàn vẹn và xác thực PKI</span>
+        <span>Mã tra cứu: <strong>${doc.code}</strong></span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 export default function DocumentPreviewModal({
   isOpen,
   onClose,
@@ -112,34 +527,74 @@ export default function DocumentPreviewModal({
       }
     }
 
-    // Attachments
-    let attachments: DocumentAttachment[] = document.attachments || [];
-    if (attachments.length === 0) {
-      const sanitizedName = document.code.toLowerCase().replace(/[/\\?%*:|"<>]/g, '_');
-      if (document.code.includes('215/TB-STC')) {
-        attachments = [
-          {
-            name: `huong_dan_lap_du_toan_ngan_sach_${sanitizedName}.pdf`,
-            size: '2.4 MB',
-            date: document.date,
-            type: 'pdf',
-          },
-          {
-            name: 'bieu_mau_tong_hop_chi_tiet.xlsx',
-            size: '156 KB',
-            date: document.date,
-            type: 'excel',
-          },
-        ];
+
+
+    // Danh sách 5 tệp demo chuẩn lấy từ thư mục File_test
+    const DEMO_TEST_FILES: DocumentAttachment[] = [
+      {
+        name: '0. TB Chieu sinh Tieng Anh dau ra Dot 4 - 2026.pdf',
+        size: '612 KB',
+        date: document.date,
+        type: 'pdf',
+        url: '/demo_files/0. TB Chieu sinh Tieng Anh dau ra Dot 4 - 2026.pdf',
+      },
+      {
+        name: 'BaiTap_Buoi06_506250495.docx',
+        size: '98 KB',
+        date: document.date,
+        type: 'word',
+        url: '/demo_files/BaiTap_Buoi06_506250495.docx',
+      },
+      {
+        name: 'THỜI _KHÓA _BIỂU.xlsx',
+        size: '12 KB',
+        date: document.date,
+        type: 'excel',
+        url: '/demo_files/TH%E1%BB%9CI%20_KH%C3%93A%20_BI%E1%BB%82U.xlsx',
+      },
+      {
+        name: 'anhtest.jpg',
+        size: '1.4 MB',
+        date: document.date,
+        type: 'image',
+        url: '/demo_files/anhtest.jpg',
+      },
+      {
+        name: 'test.png',
+        size: '394 KB',
+        date: document.date,
+        type: 'image',
+        url: '/demo_files/test.png',
+      },
+    ];
+
+    // Bảng chỉ định tệp demo cụ thể cho từng mục văn bản chính (mỗi mục đúng 1 file)
+    const SPECIFIC_DOC_FILE_MAP: Record<string, number> = {
+      '128/QĐ-UBND': 0, // 0. TB Chieu sinh... (PDF - Mở tab mới xem trước)
+      '45/CV-STTTT': 1,  // BaiTap_Buoi06... (Word - Tự động tải về)
+      '09/BC-TTr': 2,    // THỜI _KHÓA _BIỂU.xlsx (Excel - Mở tab mới)
+      '88/TB-VP': 3,     // anhtest.jpg (Ảnh JPG - Mở tab mới)
+      '12/KH-SNV': 4,    // test.png (Ảnh PNG - Mở tab mới)
+      '52/TTr-ITC': 1,   // BaiTap_Buoi06... (Word - Tự động tải về)
+      '104/GM-VP': 0,    // 0. TB Chieu sinh... (PDF - Mở tab mới)
+      '77/TB-BGD': 2,    // THỜI _KHÓA _BIỂU.xlsx (Excel - Mở tab mới)
+      '33/CV-CNTT': 3,   // anhtest.jpg (Ảnh JPG - Mở tab mới)
+      '15/QĐ-ITC': 4,    // test.png (Ảnh PNG - Mở tab mới)
+      '56/NQ-HĐND': 0,   // 0. TB Chieu sinh... (PDF - Test case modal)
+    };
+
+    // Mỗi một mục văn bản CHỈ CÓ ĐÚNG 1 tệp đính kèm duy nhất
+    let attachments: DocumentAttachment[] = [];
+    if (document.attachments && document.attachments.length > 0) {
+      attachments = [document.attachments[0]];
+    } else {
+      const mappedIdx = SPECIFIC_DOC_FILE_MAP[document.code];
+      if (mappedIdx !== undefined) {
+        attachments = [DEMO_TEST_FILES[mappedIdx]];
       } else {
-        attachments = [
-          {
-            name: `${sanitizedName}.pdf`,
-            size: '1.8 MB',
-            date: document.date,
-            type: 'pdf',
-          },
-        ];
+        const codeNum = parseInt(document.code.match(/\d+/)?.[0] || '0', 10);
+        const idx = Math.abs(codeNum) % DEMO_TEST_FILES.length;
+        attachments = [DEMO_TEST_FILES[idx]];
       }
     }
 
@@ -163,6 +618,7 @@ export default function DocumentPreviewModal({
 
   if (!isOpen || !document || !docMeta) return null;
 
+  // Tải về bản thông tin tóm tắt định dạng text
   const handleDownload = () => {
     const content = `=====================================================
 ${t('documentPreview.companyName')}
@@ -202,8 +658,92 @@ ${t('documentPreview.signDate')} ${document.date}
     URL.revokeObjectURL(url);
   };
 
-  const handleOpenFile = (_att: DocumentAttachment) => {
-    handleDownload();
+  // 1. Tự động tải về khi người dùng ấn vào tệp định dạng Word (.doc / .docx)
+  const downloadDocFile = (att: DocumentAttachment) => {
+    if (att.url) {
+      const link = window.document.createElement('a');
+      link.href = att.url;
+      link.download = att.name;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      return;
+    }
+
+    const wordContent = `=====================================================
+${t('documentPreview.companyName')}
+${t('documentPreview.nationalRepublic')}
+${t('documentPreview.nationalMotto')}
+=====================================================
+TÀI LIỆU VĂN BẢN ĐÍNH KÈM (MICROSOFT WORD)
+Tên tệp: ${att.name}
+Mã / Số hiệu văn bản: ${document.code}
+Ngày văn bản: ${document.date}
+Cơ quan ban hành: ${docMeta.place}
+Người ký: ${docMeta.signer} (${docMeta.signerRole})
+Trạng thái hiệu lực: ${docMeta.validityLabel}
+
+TRÍCH YẾU NỘI DUNG:
+${document.title}
+
+NỘI DUNG VĂN BẢN / DỰ THẢO:
+${t('documentPreview.article1')} ${document.title}
+${t('documentPreview.article2')}
+
+NƠI NHẬN:
+- ${t('documentPreview.recipientsBgd')}
+- ${t('documentPreview.recipientsDepts')}
+- ${t('documentPreview.recipientsArchive')}
+
+${docMeta.signerRole}
+[Chữ ký điện tử số hóa xác thực]
+${docMeta.signer}
+Ngày ký: ${document.date}
+=====================================================`;
+
+    const isOldDoc = att.name.toLowerCase().endsWith('.doc');
+    const mimeType = isOldDoc
+      ? 'application/msword'
+      : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+    const blob = new Blob([wordContent], { type: `${mimeType};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement('a');
+    link.href = url;
+    link.download = att.name;
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // 2. Tự động mở cửa sổ mới trên web để xem trước đối với các định dạng khác (PDF, PNG, Excel...)
+  const previewFileInNewWindow = (att: DocumentAttachment) => {
+    if (att.url) {
+      window.open(att.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    const previewHtml = generateDocumentPreviewHtml(document, docMeta, att);
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const newWindow = window.open(blobUrl, '_blank');
+    if (!newWindow) {
+      window.location.href = blobUrl;
+    }
+  };
+
+  // Bộ điều hướng hành vi tệp đính kèm theo quy chuẩn
+  const handleAttachmentAction = (att: DocumentAttachment) => {
+    if (isDocFile(att)) {
+      downloadDocFile(att);
+    } else {
+      previewFileInNewWindow(att);
+    }
+  };
+
+  const handleOpenFile = (att: DocumentAttachment) => {
+    handleAttachmentAction(att);
   };
 
   const modalTitle =
@@ -454,55 +994,74 @@ ${t('documentPreview.signDate')} ${document.date}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {docMeta.attachments.map((att, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-2xl border border-border-subtle bg-surface hover:bg-surface-subtle transition-all flex items-center justify-between gap-3 group shadow-xs"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-xl border ${
-                        att.type === 'excel' || att.name.endsWith('.xlsx')
-                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                          : att.type === 'word' || att.name.endsWith('.docx')
-                          ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                          : 'bg-red-500/10 text-red-500 border-red-500/20'
-                      }`}
-                    >
-                      {att.type === 'excel' || att.name.endsWith('.xlsx') ? (
-                        <i className="fa-solid fa-file-excel" />
-                      ) : att.type === 'word' || att.name.endsWith('.docx') ? (
-                        <i className="fa-solid fa-file-word" />
-                      ) : (
-                        <i className="fa-solid fa-file-pdf" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div
-                        className="text-sm font-bold text-main truncate group-hover:text-primary transition-colors"
-                        title={att.name}
-                      >
-                        {att.name}
-                      </div>
-                      <div className="text-xs text-muted mt-0.5">
-                        {att.size || '1.8 MB'} • {att.date || document.date}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
+            <div className={docMeta.attachments.length === 1 ? 'grid grid-cols-1' : 'grid grid-cols-1 sm:grid-cols-2 gap-3'}>
+              {docMeta.attachments.map((att, idx) => {
+                const isDoc = isDocFile(att);
+                return (
+                  <div
+                    key={idx}
                     onClick={() => handleOpenFile(att)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-surface border border-border-subtle text-main hover:bg-primary hover:text-white hover:border-primary transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
-                    title={`${t('documentPreview.downloadFile')} ${att.name}`}
+                    className="p-3.5 rounded-2xl border border-border-subtle bg-surface hover:bg-surface-subtle transition-all flex items-center justify-between gap-3 group shadow-xs cursor-pointer"
+                    title={isDoc ? `Tải về tệp ${att.name}` : `Mở xem trước ${att.name} trong cửa sổ mới`}
                   >
-                    <i className="fa-solid fa-arrow-down text-xs" />
-                    <span>{t('documentPreview.downloadFile')}</span>
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-xl border ${
+                          att.type === 'excel' || att.name.endsWith('.xlsx')
+                            ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                            : isDoc
+                            ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                            : att.type === 'image' || att.name.match(/\.(jpg|jpeg|png|webp|gif)$/i)
+                            ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                            : 'bg-red-500/10 text-red-500 border-red-500/20'
+                        }`}
+                      >
+                        {att.type === 'excel' || att.name.endsWith('.xlsx') ? (
+                          <i className="fa-solid fa-file-excel" />
+                        ) : isDoc ? (
+                          <i className="fa-solid fa-file-word" />
+                        ) : att.type === 'image' || att.name.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                          <i className="fa-solid fa-file-image" />
+                        ) : (
+                          <i className="fa-solid fa-file-pdf" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div
+                          className="text-sm font-bold text-main truncate group-hover:text-primary transition-colors flex items-center gap-1.5"
+                          title={att.name}
+                        >
+                          <span className="truncate">{att.name}</span>
+                          {!isDoc && (
+                            <i className="fa-solid fa-arrow-up-right-from-square text-[11px] text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                        <div className="text-xs text-muted mt-0.5">
+                          {att.size || '1.8 MB'} • {att.date || document.date}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenFile(att);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer ${
+                        isDoc
+                          ? 'bg-surface border-border-subtle text-main hover:bg-primary hover:text-white hover:border-primary'
+                          : 'bg-primary-subtle border-primary/30 text-primary hover:bg-primary hover:text-white hover:border-primary'
+                      }`}
+                      title={isDoc ? `Tải về tệp ${att.name}` : `Mở xem trước ${att.name} trong tab mới`}
+                    >
+                      <i className={`text-xs ${isDoc ? 'fa-solid fa-download' : 'fa-solid fa-arrow-up-right-from-square'}`} />
+                      <span>{isDoc ? t('documentPreview.downloadFile') : t('documentPreview.previewFile')}</span>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

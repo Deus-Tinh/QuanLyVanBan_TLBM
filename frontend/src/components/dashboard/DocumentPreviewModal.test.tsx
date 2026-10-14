@@ -149,4 +149,82 @@ describe('DocumentPreviewModal Component (Group 2 Detail & PDF Reader View)', ()
     fireEvent.click(prevBtn);
     expect(handlePrev).toHaveBeenCalledTimes(1);
   });
+
+  it('displays exactly one attachment per document', () => {
+    render(
+      <DocumentPreviewModal
+        isOpen={true}
+        onClose={vi.fn()}
+        document={mockDoc}
+        docType="incoming"
+      />
+    );
+
+    // Section title shows exactly (1) attachment
+    expect(screen.getByText('TỆP ĐÍNH KÈM (1)')).toBeInTheDocument();
+    expect(screen.getByText(/0\. TB Chieu sinh Tieng Anh dau ra Dot 4 - 2026\.pdf/i)).toBeInTheDocument();
+  });
+
+  it('opens preview in a new window for PDF attachment', () => {
+    const originalOpen = window.open;
+    const windowOpenSpy = vi.fn();
+    window.open = windowOpenSpy;
+
+    render(
+      <DocumentPreviewModal
+        isOpen={true}
+        onClose={vi.fn()}
+        document={mockDoc}
+        docType="incoming"
+      />
+    );
+
+    const pdfAttachment = screen.getByText(/0\. TB Chieu sinh Tieng Anh dau ra Dot 4 - 2026\.pdf/i);
+    expect(pdfAttachment).toBeInTheDocument();
+    fireEvent.click(pdfAttachment);
+
+    expect(windowOpenSpy).toHaveBeenCalledWith(
+      '/demo_files/0. TB Chieu sinh Tieng Anh dau ra Dot 4 - 2026.pdf',
+      '_blank',
+      'noopener,noreferrer'
+    );
+
+    window.open = originalOpen;
+  });
+
+  it('auto-downloads DOCX attachment when clicked', () => {
+    const mockWordDoc: DocumentItem = {
+      ...mockDoc,
+      code: '45/CV-STTTT',
+      title: 'Công văn hướng dẫn chuyển đổi số',
+    };
+
+    const linkClickSpy = vi.fn();
+    const originalCreateElement = window.document.createElement.bind(window.document);
+    vi.spyOn(window.document, 'createElement').mockImplementation((tagName: string) => {
+      const el = originalCreateElement(tagName);
+      if (tagName.toLowerCase() === 'a') {
+        el.click = linkClickSpy;
+      }
+      return el;
+    });
+
+    render(
+      <DocumentPreviewModal
+        isOpen={true}
+        onClose={vi.fn()}
+        document={mockWordDoc}
+        docType="incoming"
+      />
+    );
+
+    const docxAttachment = screen.getByText(/BaiTap_Buoi06_506250495\.docx/i);
+    expect(docxAttachment).toBeInTheDocument();
+    fireEvent.click(docxAttachment);
+
+    expect(linkClickSpy).toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+  });
 });
+

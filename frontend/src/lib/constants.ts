@@ -345,9 +345,9 @@ export const SAMPLE_STREAMS: StreamData[] = [
     items: [],
   },
   {
-    type: 'meetings',
-    label: 'Lịch Họp',
-    icon: 'fa-calendar-days',
+    type: 'approvals',
+    label: 'Chờ Duyệt',
+    icon: 'fa-signature',
     color: 'amber',
     unreadCount: 0,
     items: [],

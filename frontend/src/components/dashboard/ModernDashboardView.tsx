@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ActivePageId } from '@app-types/navigation';
 import { useTranslation } from '@i18n/translate';
 import { Badge } from '@components/common';
 import BirthdaysWidget, { BirthdayEmployee } from './BirthdaysWidget';
 import DocumentPreviewModal from './DocumentPreviewModal';
+import TaskDetailModal from './TaskDetailModal';
 
 export interface TaskItem {
   id: string;
@@ -12,6 +14,10 @@ export interface TaskItem {
   status: 'processing' | 'completed' | 'overdue' | 'pending';
   statusLabel: string;
   variant: 'success' | 'warning' | 'info' | 'danger';
+  assignee?: string;
+  creator?: string;
+  description?: string;
+  createdDate?: string;
 }
 
 export interface DocumentAttachment {
@@ -20,6 +26,7 @@ export interface DocumentAttachment {
   type?: 'pdf' | 'excel' | 'word' | 'docx' | 'xlsx' | string;
   format?: 'pdf' | 'docx' | 'xlsx';
   date?: string;
+  url?: string;
 }
 
 export interface DocumentItem {
@@ -77,10 +84,45 @@ export default function ModernDashboardView({
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [taskFilter, setTaskFilter] = useState<'processing' | 'completed' | 'overdue' | 'pending'>('processing');
+  const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const [previewType, setPreviewType] = useState<'incoming' | 'outgoing' | 'resource'>('incoming');
   const [previewList, setPreviewList] = useState<DocumentItem[]>([]);
   const [previewIndex, setPreviewIndex] = useState<number>(0);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const compactInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const updateTarget = () => {
+      const target = document.getElementById('top-subnav-slot');
+      if (target) {
+        setPortalTarget(target);
+      }
+    };
+    updateTarget();
+    const timer = setTimeout(updateTarget, 100);
+
+    const scrollContainer = document.querySelector('.page-viewport');
+
+    const handleScroll = () => {
+      const scrollY = (scrollContainer ? scrollContainer.scrollTop : 0) || window.scrollY || document.documentElement.scrollTop || 0;
+      setIsScrolled(scrollY > 75);
+    };
+
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      clearTimeout(timer);
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   const handleOpenPreview = (doc: DocumentItem, type: 'incoming' | 'outgoing' | 'resource', list: DocumentItem[]) => {
     setPreviewDoc(doc);
@@ -135,7 +177,47 @@ export default function ModernDashboardView({
   }, [resources, searchTerm]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
+      {/* Thanh tìm kiếm thu nhỏ tự động neo bên cạnh breadcrumb 'Home' khi lăn chuột xuống */}
+      {portalTarget &&
+        createPortal(
+          <div
+            className={`transition-all duration-300 ease-out flex items-center w-full max-w-sm ml-2 ${
+              isScrolled
+                ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto'
+                : 'opacity-0 -translate-x-4 scale-95 pointer-events-none'
+            }`}
+          >
+            <div className="relative w-full flex items-center">
+              <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
+              <input
+                ref={compactInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={t('dashboardDetails.compactSearchPlaceholder')}
+                className="w-full pl-8 pr-7 py-1 h-8 rounded-lg border border-border-subtle bg-surface text-main text-xs shadow-2xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('');
+                    compactInputRef.current?.focus();
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-0.5 rounded-full hover:bg-surface-hover cursor-pointer transition-colors"
+                  title="Xóa tìm kiếm nhanh"
+                  aria-label="Xóa nội dung tìm kiếm nhanh"
+                >
+                  <i className="fa-solid fa-xmark text-xs" />
+                </button>
+              )}
+            </div>
+          </div>,
+          portalTarget
+        )}
+
+      <div className="flex flex-col gap-6">
       {/* 1. Thanh tìm kiếm nhanh & Nút Đặt phòng họp đặt ngang hàng */}
       <div className="flex items-center gap-3 w-full">
         <div className="flex-1 relative">
@@ -252,9 +334,9 @@ export default function ModernDashboardView({
             <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
           </div>
 
-          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+          <div className="flex-1 min-h-[160px] flex flex-col justify-start">
             {filteredIncoming.length === 0 ? (
-              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+              <div className="flex-1 p-8 text-center text-muted flex flex-col items-center justify-center">
                 <i className="fa-solid fa-inbox text-3xl mb-2 opacity-30 text-primary" />
                 <span className="text-sm font-medium">{t('dashboardDetails.noIncomingData')}</span>
               </div>
@@ -302,7 +384,7 @@ export default function ModernDashboardView({
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+          <div className="mt-auto pt-3 border-t border-border-subtle text-left">
             <button
               type="button"
               onClick={() => onNavigate('documents_incoming')}
@@ -324,9 +406,9 @@ export default function ModernDashboardView({
             <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
           </div>
 
-          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+          <div className="flex-1 min-h-[160px] flex flex-col justify-start">
             {filteredOutgoing.length === 0 ? (
-              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+              <div className="flex-1 p-8 text-center text-muted flex flex-col items-center justify-center">
                 <i className="fa-solid fa-paper-plane text-3xl mb-2 opacity-30 text-success" />
                 <span className="text-sm font-medium">{t('dashboardDetails.noOutgoingData')}</span>
               </div>
@@ -374,7 +456,7 @@ export default function ModernDashboardView({
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+          <div className="mt-auto pt-3 border-t border-border-subtle text-left">
             <button
               type="button"
               onClick={() => onNavigate('documents_outgoing')}
@@ -432,9 +514,9 @@ export default function ModernDashboardView({
           </div>
 
           {/* Task Rows or Clean Empty State */}
-          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+          <div className="flex-1 min-h-[160px] flex flex-col justify-start">
             {filteredTasks.length === 0 ? (
-              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+              <div className="flex-1 p-8 text-center text-muted flex flex-col items-center justify-center">
                 <i className="fa-solid fa-list-check text-3xl mb-2 opacity-30 text-purple" />
                 <span className="text-sm font-medium">{t('dashboardDetails.noTasksData')}</span>
               </div>
@@ -443,11 +525,12 @@ export default function ModernDashboardView({
                 {filteredTasks.slice(0, 5).map((t) => (
                   <div
                     key={t.id}
-                    onClick={() => onNavigate('tasks')}
-                    className="py-3 flex items-center justify-between gap-3 hover:bg-surface-hover transition-colors cursor-pointer text-sm"
+                    onClick={() => setSelectedTask(t)}
+                    className="py-3 flex items-center justify-between gap-3 hover:bg-surface-hover transition-colors cursor-pointer text-sm group"
+                    title="Bấm để xem chi tiết nhiệm vụ"
                   >
                     <div className="flex-1 min-w-0 pr-2">
-                      <span className="font-semibold text-main hover:text-primary transition-colors truncate block">
+                      <span className="font-semibold text-main group-hover:text-primary transition-colors truncate block">
                         {t.title}
                       </span>
                     </div>
@@ -463,7 +546,7 @@ export default function ModernDashboardView({
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+          <div className="mt-auto pt-3 border-t border-border-subtle text-left">
             <button
               type="button"
               onClick={() => onNavigate('tasks')}
@@ -485,9 +568,9 @@ export default function ModernDashboardView({
             <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
           </div>
 
-          <div className="flex-1 min-h-[160px] flex flex-col justify-center">
+          <div className="flex-1 min-h-[160px] flex flex-col justify-start">
             {filteredResources.length === 0 ? (
-              <div className="p-8 text-center text-muted flex flex-col items-center justify-center">
+              <div className="flex-1 p-8 text-center text-muted flex flex-col items-center justify-center">
                 <i className="fa-solid fa-file-lines text-3xl mb-2 opacity-30 text-primary" />
                 <span className="text-sm font-medium">{t('dashboardDetails.noResourcesData')}</span>
               </div>
@@ -503,16 +586,40 @@ export default function ModernDashboardView({
                   </thead>
                   <tbody>
                     {filteredResources.slice(0, 5).map((row, idx) => {
+                      const ext = (row.format || 'docx').toLowerCase();
+                      const sanitizedCode = row.code.replace(/[/\\?%*:|"<>]/g, '_');
                       const resourceAsDoc: DocumentItem = {
                         code: row.code,
                         title: row.title,
                         date: '01/10/2026',
+                        attachments: [
+                          {
+                            name: `${sanitizedCode}.${ext}`,
+                            size: ext === 'docx' ? '145 KB' : ext === 'xlsx' ? '180 KB' : '2.1 MB',
+                            date: '01/10/2026',
+                            type: ext === 'docx' ? 'word' : ext === 'xlsx' ? 'excel' : 'pdf',
+                            format: ext as any,
+                          },
+                        ],
                       };
-                      const resourceDocsList: DocumentItem[] = filteredResources.slice(0, 5).map((r) => ({
-                        code: r.code,
-                        title: r.title,
-                        date: '01/10/2026',
-                      }));
+                      const resourceDocsList: DocumentItem[] = filteredResources.slice(0, 5).map((r) => {
+                        const rExt = (r.format || 'docx').toLowerCase();
+                        const rCode = r.code.replace(/[/\\?%*:|"<>]/g, '_');
+                        return {
+                          code: r.code,
+                          title: r.title,
+                          date: '01/10/2026',
+                          attachments: [
+                            {
+                              name: `${rCode}.${rExt}`,
+                              size: rExt === 'docx' ? '145 KB' : rExt === 'xlsx' ? '180 KB' : '2.1 MB',
+                              date: '01/10/2026',
+                              type: rExt === 'docx' ? 'word' : rExt === 'xlsx' ? 'excel' : 'pdf',
+                              format: rExt as any,
+                            },
+                          ],
+                        };
+                      });
                       return (
                         <tr
                           key={idx}
@@ -541,7 +648,7 @@ export default function ModernDashboardView({
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-border-subtle text-left">
+          <div className="mt-auto pt-3 border-t border-border-subtle text-left">
             <button
               type="button"
               onClick={() => onNavigate('resources')}
@@ -568,7 +675,16 @@ export default function ModernDashboardView({
         currentIndex={previewIndex}
         totalDocs={previewList.length}
       />
+
+      {/* Modal Xem Chi Tiết Nhiệm Vụ Được Giao (Nhóm 6) */}
+      <TaskDetailModal
+        isOpen={!!selectedTask}
+        onClose={() => setSelectedTask(null)}
+        task={selectedTask}
+        onNavigateTasks={() => onNavigate('tasks')}
+      />
     </div>
+    </>
   );
 }
 

@@ -136,8 +136,8 @@ export default function NotificationStreams() {
                     }`}
                   />
                   <span className="text-xs font-medium">
-                    {activeTab === 'meetings'
-                      ? 'Chưa có lịch họp mới'
+                    {activeTab === 'approvals'
+                      ? 'Không có hồ sơ trình ký chờ duyệt'
                       : activeTab === 'confidential'
                         ? (t('notifications.emptyConfidential') || 'Không có văn bản mật mới')
                         : 'Không có thông báo mới'}
@@ -179,19 +179,19 @@ export default function NotificationStreams() {
               )}
             </div>
 
-            {/* Footer xem thêm khi ở tab Lịch Họp */}
-            {activeTab === 'meetings' && (
+            {/* Footer xem thêm khi ở tab Chờ Duyệt (Trình ký) */}
+            {activeTab === 'approvals' && (
               <div className="p-2.5 border-t border-subtle bg-surface/50 text-center select-none">
                 <button
                   type="button"
                   onClick={() => {
                     setIsOpen(false);
-                    navigate('/meetings');
+                    navigate('/approvals');
                   }}
-                  className="text-xs text-primary font-semibold hover:underline flex items-center justify-center gap-1 mx-auto"
+                  className="text-xs text-primary font-semibold hover:underline flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
                 >
-                  <i className="fa-regular fa-calendar-check text-xs" />
-                  <span>Xem lịch phòng họp chi tiết & đăng ký »</span>
+                  <i className="fa-solid fa-file-signature text-xs" />
+                  <span>Xem quy trình trình ký số điện tử »</span>
                 </button>
               </div>
             )}

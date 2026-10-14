@@ -1,0 +1,124 @@
+"""
+Unit tests cho cơ chế xác thực kép:
+1. Admin set pass (Xác thực cục bộ & Quản trị viên đổi mật khẩu)
+2. API check pass (Xác thực qua API Ngân hàng Bảo Long / Alpaca theo tài liệu GVHD)
+"""
+from django.test import TestCase
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
+from rest_framework import status
+
+from apps.accounts.alpaca_auth import (
+    generate_alpaca_auth_mac,
+    generate_alpaca_user_exist_mac,
+    check_alpaca_auth,
+)
+
+User = get_user_model()
+
+
+class DualAuthenticationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.secret_key = "9089e45b638cee8f83ab423d2cb498b5"
+
+        # 1. Tạo tài khoản Admin nội bộ (admin set pass)
+        self.admin = User.objects.create_superuser(
+            username="admin_test",
+            password="AdminPassword@2026",
+            email="admin_test@baolong.vn",
+            ho_ten="Quản Trị Viên Test",
+        )
+
+        # 2. Tạo tài khoản nhân viên thường
+        self.staff = User.objects.create_user(
+            username="staff_test",
+            password="InitialPassword@123",
+            email="staff_test@baolong.vn",
+            ho_ten="Cán Bộ Test",
+        )
+
+    def test_mac_generation_matches_specification(self):
+        """Kiểm tra thuật toán sinh mã MAC khớp 100% với tài liệu và ảnh minh họa."""
+        # Test case 1: check-user-exist (Ảnh 1 và 3 trong tài liệu)
+        mac_user_exist = generate_alpaca_user_exist_mac("phanquocdung", self.secret_key)
+        self.assertEqual(mac_user_exist, "E23232F0A22FABB7FBC751D851B1B124")
+
+        # Test case 2: check-auth-user (Ảnh 5 và 6 trong tài liệu)
+        # Sắp xếp alphabet: password đứng trước userName
+        mac_auth = generate_alpaca_auth_mac("phanquocdung", "Alpaca#2025", self.secret_key)
+        self.assertEqual(mac_auth, "CAA667FD71C897E5EF8FD3BA7FC48BC4")
+
+    def test_admin_set_pass_login(self):
+        """Xác thực thành công với tài khoản do Admin set mật khẩu trong hệ thống (Local Auth)."""
+        response = self.client.post(
+            "/api/auth/login/",
+            {"username": "admin_test", "password": "AdminPassword@2026"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertIn("token", response.data)
+        self.assertIn("access", response.data)
+        self.assertEqual(response.data["auth_provider"], "local")
+
+    def test_api_check_pass_login(self):
+        """Xác thực thành công với tài khoản Ngân hàng Bảo Long qua API check pass."""
+        # Tài khoản mẫu trong tài liệu của GVHD: phanquocdung / Alpaca#2025
+        response = self.client.post(
+            "/api/auth/login/",
+            {"username": "phanquocdung", "password": "Alpaca#2025"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertIn("token", response.data)
+        self.assertEqual(response.data["auth_provider"], "alpaca_api")
+
+        # Kiểm tra user được tự động đồng bộ vào database
+        self.assertTrue(User.objects.filter(username="phanquocdung").exists())
+        user = User.objects.get(username="phanquocdung")
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.ho_ten, "Phan Quốc Dũng")
+
+    def test_admin_set_password_endpoint(self):
+        """Admin đổi mật khẩu cho nhân viên, sau đó nhân viên đăng nhập bằng mật khẩu mới."""
+        # Xác thực bằng admin
+        self.client.force_authenticate(user=self.admin)
+        res_change = self.client.post(
+            "/api/auth/admin-set-password/",
+            {"username": "staff_test", "new_password": "NewSecretPass#2026"},
+            format="json",
+        )
+        self.assertEqual(res_change.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_change.data["success"])
+
+        # Bỏ authenticate admin và thử đăng nhập bằng mật khẩu mới của staff
+        self.client.force_authenticate(user=None)
+        res_login_old = self.client.post(
+            "/api/auth/login/",
+            {"username": "staff_test", "password": "InitialPassword@123"},
+            format="json",
+        )
+        # Mật khẩu cũ không còn đúng
+        self.assertEqual(res_login_old.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Mật khẩu mới đăng nhập thành công
+        res_login_new = self.client.post(
+            "/api/auth/login/",
+            {"username": "staff_test", "password": "NewSecretPass#2026"},
+            format="json",
+        )
+        self.assertEqual(res_login_new.status_code, status.HTTP_200_OK)
+        self.assertTrue(res_login_new.data["success"])
+        self.assertEqual(res_login_new.data["auth_provider"], "local")
+
+    def test_login_invalid_credentials(self):
+        """Nhập sai thông tin đăng nhập bị từ chối 401."""
+        response = self.client.post(
+            "/api/auth/login/",
+            {"username": "non_existent_user", "password": "WrongPassword!999"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertFalse(response.data["success"])
