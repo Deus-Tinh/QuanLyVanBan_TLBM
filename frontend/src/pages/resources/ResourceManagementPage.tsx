@@ -21,8 +21,8 @@ const STORAGE_KEY = 'tlbm_resources_filter_state';
 const STORAGE_DOCS = 'tlbm_documents_v2';
 const STORAGE_CATS = 'tlbm_categories_v2';
 const STORAGE_TYPES = 'tlbm_types_v2';
-const STORAGE_VISIBLE_CATS = 'tlbm_visible_categories_v1';
-const STORAGE_VISIBLE_TYPES = 'tlbm_visible_types_v1';
+const STORAGE_VISIBLE_CATS = 'tlbm_visible_categories_v2';
+const STORAGE_VISIBLE_TYPES = 'tlbm_visible_types_v2';
 
 interface PersistedResourceState {
   category?: string;
@@ -94,6 +94,8 @@ export default function ResourceManagementPage() {
       localStorage.removeItem('tlbm_custom_documents_v1');
       localStorage.removeItem('tlbm_custom_categories_v1');
       localStorage.removeItem('tlbm_custom_types_v1');
+      localStorage.removeItem('tlbm_visible_categories_v1');
+      localStorage.removeItem('tlbm_visible_types_v1');
       localStorage.removeItem(STORAGE_DOCS);
       localStorage.removeItem(STORAGE_CATS);
       localStorage.removeItem(STORAGE_TYPES);
@@ -106,7 +108,7 @@ export default function ResourceManagementPage() {
   const [categories, setCategories] = useState<ResourceCategory[]>([]);
   const [types, setTypes] = useState<ResourceType[]>([]);
 
-  // Danh sách ID các danh mục được tick chọn để hiển thị trên thanh chính
+  // Danh sách ID các danh mục được tick chọn để hiển thị trên thanh chính (Mặc định tick chọn tất cả)
   const [visibleCategoryIds, setVisibleCategoryIds] = useState<number[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
@@ -119,15 +121,19 @@ export default function ResourceManagementPage() {
     return [];
   });
 
-  // Tự động đồng bộ các danh mục hiển thị khi nạp danh mục lần đầu
+  // Tự động đồng bộ các danh mục hiển thị khi nạp danh mục: mặc định tick full toàn bộ danh mục
   useEffect(() => {
     if (categories.length > 0) {
       setVisibleCategoryIds((prev) => {
+        const allCatIds = categories.map((c) => c.id);
         const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
-        if (saved === null && prev.length === 0) {
-          return categories.map((c) => c.id);
+        if (saved === null) {
+          return allCatIds;
         }
-        return prev;
+        const existing = prev.filter((id) => allCatIds.includes(id));
+        const newCats = allCatIds.filter((id) => !prev.includes(id));
+        const combined = [...existing, ...newCats];
+        return combined.length > 0 ? combined : allCatIds;
       });
     }
   }, [categories]);
@@ -159,7 +165,7 @@ export default function ResourceManagementPage() {
     }
   };
 
-  // Danh sách ID các loại tài liệu được tick chọn để hiển thị trên thanh sub-chips
+  // Danh sách ID các loại tài liệu được tick chọn để hiển thị trên thanh sub-chips (Mặc định tick chọn tất cả)
   const [visibleTypeIds, setVisibleTypeIds] = useState<number[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_VISIBLE_TYPES);
@@ -172,15 +178,19 @@ export default function ResourceManagementPage() {
     return [];
   });
 
-  // Tự động đồng bộ các loại tài liệu hiển thị khi nạp loại tài liệu lần đầu
+  // Tự động đồng bộ các loại tài liệu hiển thị: mặc định tick full toàn bộ loại tài liệu
   useEffect(() => {
     if (types.length > 0) {
       setVisibleTypeIds((prev) => {
+        const allTypeIds = types.map((t) => t.id);
         const saved = localStorage.getItem(STORAGE_VISIBLE_TYPES);
-        if (saved === null && prev.length === 0) {
-          return types.map((t) => t.id);
+        if (saved === null) {
+          return allTypeIds;
         }
-        return prev;
+        const existing = prev.filter((id) => allTypeIds.includes(id));
+        const newTypes = allTypeIds.filter((id) => !prev.includes(id));
+        const combined = [...existing, ...newTypes];
+        return combined.length > 0 ? combined : allTypeIds;
       });
     }
   }, [types]);
@@ -1169,25 +1179,28 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (cố định w-36) */}
-          <div className={`relative w-36 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
+          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (rộng rãi w-48) */}
+          <div className={`relative w-48 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen((prev) => !prev);
                 setIsTypeDropdownOpen(false);
               }}
-              className={`w-full px-3 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
+              className={`w-full px-3.5 text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
               title="Mở danh sách tất cả Danh mục"
               aria-label="Danh sách tất cả Danh mục"
             >
-              <i className="fa-solid fa-folder-tree text-xs text-primary" />
-              <span>Danh mục</span>
-              <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+              <i className="fa-solid fa-folder-tree text-xs text-primary shrink-0" />
+              <span className="font-semibold">Danh mục</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20">
+                {orderedVisibleCategories.length}/{categories.length}
+              </span>
+              <i className={`fa-solid fa-chevron-down text-[10px] transition-transform duration-200 shrink-0 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
 
             {isCategoryDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-80 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full mt-1.5 w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                   <span>Danh mục tài liệu</span>
                   <span className="text-[10px] text-primary lowercase font-medium">Cấp 1</span>
@@ -1394,7 +1407,7 @@ export default function ResourceManagementPage() {
               )}
             </div>
 
-            {/* Cột dropdown Loại tài liệu ở góc phải */}
+            {/* Cột dropdown Loại tài liệu ở góc phải (rộng rãi min-w-[150px]) */}
             <div className="relative shrink-0" ref={typeDropdownRef}>
               <button
                 type="button"
@@ -1402,18 +1415,21 @@ export default function ResourceManagementPage() {
                   setIsTypeDropdownOpen((prev) => !prev);
                   setIsCategoryDropdownOpen(false);
                 }}
-                className="px-3 py-1 text-xs font-semibold text-secondary hover:text-primary rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+                className="px-4 py-1.5 text-xs font-semibold text-secondary hover:text-primary rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs whitespace-nowrap min-w-[150px]"
                 title="Mở danh sách tất cả Loại tài liệu"
                 aria-haspopup="listbox"
                 aria-expanded={isTypeDropdownOpen}
               >
-                <i className="fa-solid fa-tags text-[11px] text-primary" />
-                <span>Loại tài liệu</span>
-                <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+                <i className="fa-solid fa-tags text-[11px] text-primary shrink-0" />
+                <span className="font-semibold">Loại tài liệu</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {orderedVisibleTypes.length}/{availableTypesForFilter.length}
+                </span>
+                <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 shrink-0 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
 
               {isTypeDropdownOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-80 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute right-0 top-full mt-1.5 w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100">
                   <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                     <span>Loại tài liệu</span>
                     <span className="text-[10px] text-primary lowercase font-medium">Cấp 2</span>
