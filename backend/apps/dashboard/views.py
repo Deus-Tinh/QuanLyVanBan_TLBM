@@ -398,43 +398,44 @@ def overview_view(request):
     ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
-    today_profiles = StaffProfile.objects.filter(
-        birthday__month=today.month,
-        birthday__day=today.day,
-    ).select_related("user")
+    User = get_user_model()
+    today_users = User.objects.filter(
+        ngay_sinh__month=today.month,
+        ngay_sinh__day=today.day,
+    ).select_related("chuc_vu", "don_vi")
 
-    tomorrow_profiles = StaffProfile.objects.filter(
-        birthday__month=tomorrow.month,
-        birthday__day=tomorrow.day,
-    ).select_related("user")
+    tomorrow_users = User.objects.filter(
+        ngay_sinh__month=tomorrow.month,
+        ngay_sinh__day=tomorrow.day,
+    ).select_related("chuc_vu", "don_vi")
 
     # Mảng phẳng birthdays chuẩn BirthdayEmployee của React
     birthdays_list = []
-    for p in today_profiles:
+    for u in today_users:
         birthdays_list.append({
-            "id": p.id,
-            "name": p.full_name,
-            "fullName": p.full_name,
-            "full_name": p.full_name,
+            "id": u.id,
+            "name": u.ho_ten or u.username,
+            "fullName": u.ho_ten or u.username,
+            "full_name": u.ho_ten or u.username,
             "birthdate": f"{today.strftime('%d/%m')} (Hôm nay)",
-            "position": p.position or "Chuyên viên",
-            "roleTitle": p.position or "Chuyên viên",
-            "department": p.department or "Ban Quản lý",
-            "unit": p.department or "Ban Quản lý",
+            "position": u.chuc_vu.name if u.chuc_vu else "Chuyên viên",
+            "roleTitle": u.chuc_vu.name if u.chuc_vu else "Chuyên viên",
+            "department": u.don_vi.ten if u.don_vi else "Ban Quản lý",
+            "unit": u.don_vi.ten if u.don_vi else "Ban Quản lý",
             "isToday": True,
             "label": "Hôm nay",
         })
-    for p in tomorrow_profiles:
+    for u in tomorrow_users:
         birthdays_list.append({
-            "id": p.id,
-            "name": p.full_name,
-            "fullName": p.full_name,
-            "full_name": p.full_name,
+            "id": u.id,
+            "name": u.ho_ten or u.username,
+            "fullName": u.ho_ten or u.username,
+            "full_name": u.ho_ten or u.username,
             "birthdate": f"{tomorrow.strftime('%d/%m')} (Ngày mai)",
-            "position": p.position or "Chuyên viên",
-            "roleTitle": p.position or "Chuyên viên",
-            "department": p.department or "Ban Quản lý",
-            "unit": p.department or "Ban Quản lý",
+            "position": u.chuc_vu.name if u.chuc_vu else "Chuyên viên",
+            "roleTitle": u.chuc_vu.name if u.chuc_vu else "Chuyên viên",
+            "department": u.don_vi.ten if u.don_vi else "Ban Quản lý",
+            "unit": u.don_vi.ten if u.don_vi else "Ban Quản lý",
             "isToday": False,
             "label": "Ngày mai",
         })
@@ -442,19 +443,19 @@ def overview_view(request):
     birthdays_by_day = {
         "today": [
             {
-                "full_name": p.full_name,
-                "department": p.department,
-                "position": p.position,
+                "full_name": u.ho_ten or u.username,
+                "department": u.don_vi.ten if u.don_vi else "Ban Quản lý",
+                "position": u.chuc_vu.name if u.chuc_vu else "Chuyên viên",
             }
-            for p in today_profiles
+            for u in today_users
         ],
         "tomorrow": [
             {
-                "full_name": p.full_name,
-                "department": p.department,
-                "position": p.position,
+                "full_name": u.ho_ten or u.username,
+                "department": u.don_vi.ten if u.don_vi else "Ban Quản lý",
+                "position": u.chuc_vu.name if u.chuc_vu else "Chuyên viên",
             }
-            for p in tomorrow_profiles
+            for u in tomorrow_users
         ],
     }
 
