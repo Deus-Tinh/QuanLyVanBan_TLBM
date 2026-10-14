@@ -120,32 +120,19 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
 
   // Trích xuất đuôi tệp
-  const getFileExt = (urlOrName?: string, attachments?: ResourceAttachment[]) => {
-    if (attachments && attachments.length > 0) {
-      const first = attachments[0];
-      if (first.name) {
-        const cleanName = first.name.split('?')[0].split('#')[0];
-        const nameParts = cleanName.split('.');
-        if (nameParts.length > 1) {
-          const ext = nameParts.pop()?.toUpperCase() || '';
-          if (/^[A-Z0-9]{1,6}$/.test(ext)) {
-            return ext;
-          }
-        }
-      }
-      if (first.mime_type) {
-        if (first.mime_type.includes('pdf')) return 'PDF';
-        if (first.mime_type.includes('word') || first.mime_type.includes('officedocument.wordprocessingml')) return 'DOCX';
-        if (first.mime_type.includes('sheet') || first.mime_type.includes('excel')) return 'XLSX';
-        if (first.mime_type.includes('presentation') || first.mime_type.includes('powerpoint')) return 'PPTX';
-        if (first.mime_type.includes('image')) return 'IMG';
-        if (first.mime_type.includes('zip') || first.mime_type.includes('compressed')) return 'ZIP';
-      }
+  const getFileExt = (urlOrName?: string, mimeType?: string) => {
+    if (mimeType) {
+      if (mimeType.includes('pdf')) return 'PDF';
+      if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) return 'DOCX';
+      if (mimeType.includes('sheet') || mimeType.includes('excel') || mimeType.includes('csv')) return 'XLSX';
+      if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'PPTX';
+      if (mimeType.includes('image')) return 'IMG';
+      if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'ZIP';
     }
 
     if (!urlOrName) return 'FILE';
 
-    // Xử lý an toàn blob URL (không split dấu chấm của 127.0.0.1 hay port)
+    // Xử lý an toàn blob URL
     if (urlOrName.startsWith('blob:')) {
       return 'PDF';
     }
@@ -159,7 +146,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         return ext;
       }
     }
-    return 'PDF';
+    return 'FILE';
   };
 
   // Lấy icon font-awesome theo đuôi file
@@ -185,6 +172,83 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         return 'fa-file-lines text-secondary';
     }
   };
+
+  // Hiển thị các badge loại file đính kèm (bỏ nút Tải về, hiển thị màu sắc theo loại tệp)
+  const renderFileBadges = (item: ResourceItem) => {
+    const fileList: { name: string; ext: string }[] = [];
+    if (item.attachments && item.attachments.length > 0) {
+      item.attachments.forEach((att) => {
+        fileList.push({
+          name: att.name || 'Tệp đính kèm',
+          ext: getFileExt(att.name || att.path, att.mime_type),
+        });
+      });
+    } else if (item.file_dinh_kem) {
+      fileList.push({
+        name: item.file_dinh_kem.split('/').pop() || 'Tệp đính kèm',
+        ext: getFileExt(item.file_dinh_kem),
+      });
+    }
+
+    if (fileList.length === 0) {
+      return <span className="text-muted text-xs italic">-</span>;
+    }
+
+    // Đếm số lượng theo từng loại extension: { PDF: 2, DOCX: 1, ... }
+    const counts: Record<string, number> = {};
+    const names: Record<string, string[]> = {};
+    fileList.forEach((f) => {
+      counts[f.ext] = (counts[f.ext] || 0) + 1;
+      if (!names[f.ext]) names[f.ext] = [];
+      names[f.ext].push(f.name);
+    });
+
+    const getBadgeStyle = (extension: string) => {
+      switch (extension) {
+        case 'PDF':
+          return 'bg-rose-50 text-rose-600 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/60';
+        case 'DOC':
+        case 'DOCX':
+          return 'bg-blue-50 text-blue-600 border-blue-200/80 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/60';
+        case 'XLS':
+        case 'XLSX':
+        case 'CSV':
+          return 'bg-emerald-50 text-emerald-600 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60';
+        case 'ZIP':
+        case 'RAR':
+        case '7Z':
+          return 'bg-purple-50 text-purple-600 border-purple-200/80 dark:bg-purple-950/40 dark:text-purple-400 dark:border-purple-800/60';
+        case 'JPG':
+        case 'JPEG':
+        case 'PNG':
+        case 'WEBP':
+          return 'bg-amber-50 text-amber-600 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/60';
+        default:
+          return 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+      }
+    };
+
+    return (
+      <div
+        className="inline-flex items-center justify-center gap-1.5 flex-wrap cursor-pointer"
+        onClick={() => onViewDetail?.(item)}
+        title={fileList.map((f) => f.name).join('\n')}
+      >
+        {Object.entries(counts).map(([extension, count]) => (
+          <span
+            key={extension}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border hover:opacity-80 transition-all ${getBadgeStyle(
+              extension
+            )}`}
+          >
+            <i className={`fa-solid ${getFileIcon(extension)} text-xs`} />
+            <span>{extension}{count > 1 ? ` (${count})` : ''}</span>
+          </span>
+        ))}
+      </div>
+    );
+  };
+
 
   const renderStatusBadge = (hieuLuc: HieuLucType) => {
     switch (hieuLuc) {
@@ -429,9 +493,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                   ? 'bg-slate-100/70 dark:bg-slate-800/60 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/80'
                   : 'hover:bg-slate-50 dark:hover:bg-slate-800/40 text-main';
 
-                const ext = getFileExt(item.file_dinh_kem, item.attachments);
-                const hasMultipleFiles = Boolean(item.attachments && item.attachments.length > 1);
-
                 return (
                   <tr
                     key={item.id}
@@ -507,83 +568,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       {renderStatusBadge(item.hieu_luc)}
                     </td>
 
-                    {/* Cột 6: Tệp đính kèm (Icon & Nút tải về cố định độ rộng để thẳng hàng tuyệt đối) */}
-                    <td
-                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
-                      onClick={(e) => e.stopPropagation()}
-                      data-dropdown-root
-                    >
-                      {hasMultipleFiles ? (
-                        // Trường hợp nhiều tệp: hiện badge số tệp và dropdown tải từng tệp
-                        <div className="relative inline-block text-left">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setActiveFileMenuId(activeFileMenuId === item.id ? null : item.id)
-                            }
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg bg-surface-elevated hover:bg-border-subtle/50 text-main border border-border-subtle transition-colors cursor-pointer"
-                            title="Xem danh sách tệp đính kèm"
-                            aria-label={`Có ${item.attachments?.length} tệp đính kèm`}
-                          >
-                            <i className="fa-solid fa-paperclip text-primary text-[11px]" />
-                            <span>{item.attachments?.length} tệp</span>
-                            <i className="fa-solid fa-chevron-down text-[9px] text-muted" />
-                          </button>
-
-                          {activeFileMenuId === item.id && (
-                            <div className="absolute right-0 mt-1 w-64 rounded-xl bg-surface border border-border-subtle shadow-lg z-20 py-1.5 animate-fade-in text-left">
-                              <div className="px-3 py-1.5 text-[11px] font-bold text-muted border-b border-border-subtle uppercase">
-                                Danh sách tệp đính kèm
-                              </div>
-                              <div className="max-h-48 overflow-y-auto divide-y divide-border-subtle/50">
-                                {item.attachments?.map((att, attIdx) => {
-                                  const attExt = getFileExt(att.name || att.path);
-                                  return (
-                                    <div
-                                      key={attIdx}
-                                      className="px-3 py-2 flex items-center justify-between gap-2 hover:bg-surface-elevated transition-colors text-xs"
-                                    >
-                                      <div className="flex items-center gap-1.5 min-w-0">
-                                        <i className={`fa-solid ${getFileIcon(attExt)} text-sm shrink-0`} />
-                                        <span className="truncate text-main font-medium" title={att.name}>
-                                          {att.name}
-                                        </span>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        onClick={() => onDownloadFile?.(item, att.name, att.path)}
-                                        className="shrink-0 p-1 text-primary hover:text-primary-hover hover:bg-primary-subtle rounded transition-colors"
-                                        title="Tải về"
-                                        aria-label={`Tải về ${att.name}`}
-                                      >
-                                        <i className="fa-solid fa-download text-xs" />
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : item.file_dinh_kem ? (
-                        // Trường hợp 1 tệp: hiện icon + Ext + nút Tải về với chiều rộng cố định để thẳng hàng
-                        <div className="inline-flex items-center justify-center gap-1.5 text-xs">
-                          <i className={`fa-solid ${getFileIcon(ext)} text-sm shrink-0`} />
-                          <span className="font-semibold text-secondary text-[11px] w-9 inline-block text-left">{ext}</span>
-                          <button
-                            type="button"
-                            onClick={() => onDownloadFile?.(item)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold text-primary hover:text-primary-hover hover:bg-primary-subtle rounded-md transition-colors cursor-pointer"
-                            title="Tải về tệp đính kèm"
-                            aria-label={`Tải về tệp ${ext}`}
-                          >
-                            <i className="fa-solid fa-download text-[11px]" />
-                            <span>{t('resourceManagement.download')}</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-muted text-xs italic">-</span>
-                      )}
+                    {/* Cột 6: Tệp đính kèm (Badge dạng tệp theo màu sắc, không có nút tải về) */}
+                    <td className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100">
+                      {renderFileBadges(item)}
                     </td>
 
                     {/* Cột 7: Thao tác — Menu "⋯": Xem chi tiết, Chỉnh sửa, Xóa */}

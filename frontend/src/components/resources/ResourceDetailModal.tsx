@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
+import { FilePreviewModal } from './FilePreviewModal';
 
 export interface ResourceDetailModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   onDownloadFile,
 }) => {
   const { t } = useTranslation();
+  const [previewFile, setPreviewFile] = useState<ResourceAttachment | null>(null);
   // Lắng nghe phím ESC để đóng Modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -62,27 +64,14 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   };
 
   // Trích xuất đuôi tệp
-  const getFileExt = (urlOrName?: string, attachments?: ResourceAttachment[]) => {
-    if (attachments && attachments.length > 0) {
-      const first = attachments[0];
-      if (first.name) {
-        const cleanName = first.name.split('?')[0].split('#')[0];
-        const nameParts = cleanName.split('.');
-        if (nameParts.length > 1) {
-          const ext = nameParts.pop()?.toUpperCase() || '';
-          if (/^[A-Z0-9]{1,6}$/.test(ext)) {
-            return ext;
-          }
-        }
-      }
-      if (first.mime_type) {
-        if (first.mime_type.includes('pdf')) return 'PDF';
-        if (first.mime_type.includes('word') || first.mime_type.includes('officedocument.wordprocessingml')) return 'DOCX';
-        if (first.mime_type.includes('sheet') || first.mime_type.includes('excel')) return 'XLSX';
-        if (first.mime_type.includes('presentation') || first.mime_type.includes('powerpoint')) return 'PPTX';
-        if (first.mime_type.includes('image')) return 'IMG';
-        if (first.mime_type.includes('zip') || first.mime_type.includes('compressed')) return 'ZIP';
-      }
+  const getFileExt = (urlOrName?: string, mimeType?: string) => {
+    if (mimeType) {
+      if (mimeType.includes('pdf')) return 'PDF';
+      if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) return 'DOCX';
+      if (mimeType.includes('sheet') || mimeType.includes('excel') || mimeType.includes('csv')) return 'XLSX';
+      if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'PPTX';
+      if (mimeType.includes('image')) return 'IMG';
+      if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'ZIP';
     }
 
     if (!urlOrName) return 'FILE';
@@ -100,7 +89,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         return ext;
       }
     }
-    return 'PDF';
+    return 'FILE';
   };
 
   // Icon theo loại tệp
@@ -346,7 +335,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             {filesList.length > 0 ? (
               <div className="space-y-2">
                 {filesList.map((file, idx) => {
-                  const ext = getFileExt(file.name || file.path, item.attachments);
+                  const ext = getFileExt(file.name || file.path, file.mime_type);
                   return (
                     <div
                       key={idx}
@@ -365,16 +354,29 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => onDownloadFile?.(item, file.name, file.path)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-subtle text-primary hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
-                        title="Tải tệp này về máy"
-                        aria-label={`Tải về ${file.name}`}
-                      >
-                        <i className="fa-solid fa-download text-xs" />
-                        <span>Tải về</span>
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewFile(file)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover shadow-2xs transition-colors cursor-pointer"
+                          title="Xem trước tệp này"
+                          aria-label={`Xem trước ${file.name}`}
+                        >
+                          <i className="fa-solid fa-eye text-xs" />
+                          <span>Xem trước</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onDownloadFile?.(item, file.name, file.path)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
+                          title="Tải tệp này về máy"
+                          aria-label={`Tải về ${file.name}`}
+                        >
+                          <i className="fa-solid fa-download text-xs" />
+                          <span className="hidden sm:inline">Tải về</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -443,6 +445,17 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* MODAL XEM TRƯỚC TỆP ĐÍNH KÈM (PDF, EXCEL, HÌNH ẢNH...) */}
+      {previewFile && (
+        <FilePreviewModal
+          isOpen={Boolean(previewFile)}
+          onClose={() => setPreviewFile(null)}
+          file={previewFile}
+          documentTitle={item.tieu_de}
+          onDownload={() => onDownloadFile?.(item, previewFile.name, previewFile.path)}
+        />
+      )}
     </div>,
     document.body
   );

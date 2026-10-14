@@ -26,6 +26,8 @@ export interface ResourceFormData {
   ghi_chu: string;
   hien_thi: HienThiType;
   file?: File | null;
+  files?: File[];
+  deleted_attachment_ids?: number[];
 }
 
 export interface ResourceFormModalProps {
@@ -43,7 +45,73 @@ export interface ResourceFormModalProps {
 
 const MAX_FILE_SIZE_MB = 20;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.zip', '.rar'];
+const ALLOWED_EXTENSIONS = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.csv',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.zip',
+  '.rar',
+];
+
+const getFileDisplay = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf':
+      return {
+        icon: 'fa-solid fa-file-pdf',
+        color: 'text-red-500',
+        bg: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/50',
+      };
+    case 'xls':
+    case 'xlsx':
+    case 'csv':
+      return {
+        icon: 'fa-solid fa-file-excel',
+        color: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50',
+      };
+    case 'doc':
+    case 'docx':
+      return {
+        icon: 'fa-solid fa-file-word',
+        color: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/50',
+      };
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+      return {
+        icon: 'fa-solid fa-file-image',
+        color: 'text-purple-600 dark:text-purple-400',
+        bg: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900/50',
+      };
+    case 'zip':
+    case 'rar':
+      return {
+        icon: 'fa-solid fa-file-zipper',
+        color: 'text-amber-600 dark:text-amber-400',
+        bg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50',
+      };
+    default:
+      return {
+        icon: 'fa-solid fa-file',
+        color: 'text-gray-500',
+        bg: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+      };
+  }
+};
+
+const formatSize = (bytes?: number) => {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
 
 export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   isOpen,
@@ -77,9 +145,14 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     ghi_chu: '',
     hien_thi: 'TAT_CA',
     file: null,
+    files: [],
   });
 
-  const [existingFileName, setExistingFileName] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [existingFiles, setExistingFiles] = useState<
+    { id?: number; name: string; size?: number; path?: string }[]
+  >([]);
+  const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fileError, setFileError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -107,14 +180,26 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           ghi_chu: initialData.ghi_chu || '',
           hien_thi: initialData.hien_thi || 'TAT_CA',
           file: null,
+          files: [],
         });
-        setExistingFileName(
-          initialData.attachments?.[0]?.name ||
-            (initialData.file_dinh_kem?.startsWith('blob:')
+        if (initialData.attachments && initialData.attachments.length > 0) {
+          setExistingFiles(
+            initialData.attachments.map((att) => ({
+              id: att.id,
+              name: att.name,
+              size: att.file_size,
+              path: att.path,
+            }))
+          );
+        } else if (initialData.file_dinh_kem) {
+          const fallbackName =
+            initialData.file_dinh_kem.startsWith('blob:')
               ? `${initialData.tieu_de || 'Tệp đính kèm'}.pdf`
-              : initialData.file_dinh_kem?.split('?')[0].split('/').pop()) ||
-            null
-        );
+              : initialData.file_dinh_kem.split('?')[0].split('/').pop() || 'Tệp đính kèm';
+          setExistingFiles([{ name: fallbackName, path: initialData.file_dinh_kem }]);
+        } else {
+          setExistingFiles([]);
+        }
       } else {
         setFormData({
           dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
@@ -130,9 +215,12 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           ghi_chu: '',
           hien_thi: 'TAT_CA',
           file: null,
+          files: [],
         });
-        setExistingFileName(null);
+        setExistingFiles([]);
       }
+      setSelectedFiles([]);
+      setDeletedAttachmentIds([]);
       setErrors({});
       setFileError(null);
       setIsDirty(false);
@@ -198,37 +286,55 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     }
   };
 
-  // Xử lý kiểm tra và gán file
-  const validateAndSetFile = (selectedFile: File) => {
+  // Xử lý kiểm tra và thêm nhiều file
+  const validateAndAddFiles = (newFiles: FileList | File[]) => {
     setFileError(null);
-    const fileNameLower = selectedFile.name.toLowerCase();
-    const isAllowedExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
+    const fileArray = Array.from(newFiles);
+    const validFiles: File[] = [];
+    const errMessages: string[] = [];
 
-    if (!isAllowedExt) {
-      setFileError(
-        `Định dạng tệp không được hỗ trợ. Vui lòng chọn tệp: ${ALLOWED_EXTENSIONS.join(', ')}`
-      );
-      return false;
+    for (const file of fileArray) {
+      const fileNameLower = file.name.toLowerCase();
+      const isAllowedExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
+
+      if (!isAllowedExt) {
+        errMessages.push(`Tệp "${file.name}" không đúng định dạng cho phép.`);
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        errMessages.push(`Tệp "${file.name}" vượt quá ${MAX_FILE_SIZE_MB}MB.`);
+        continue;
+      }
+
+      validFiles.push(file);
     }
 
-    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
-      setFileError(`Dung lượng tệp vượt quá giới hạn cho phép (tối đa ${MAX_FILE_SIZE_MB}MB).`);
-      return false;
+    if (errMessages.length > 0) {
+      setFileError(errMessages.join(' '));
     }
 
-    setIsDirty(true);
-    setFormData((prev) => ({ ...prev, file: selectedFile }));
-    setExistingFileName(null);
-    if (errors.file) {
-      setErrors((prev) => ({ ...prev, file: '' }));
+    if (validFiles.length > 0) {
+      setIsDirty(true);
+      setSelectedFiles((prev) => {
+        const filtered = validFiles.filter(
+          (vf) => !prev.some((pf) => pf.name === vf.name && pf.size === vf.size)
+        );
+        const next = [...prev, ...filtered];
+        setFormData((f) => ({ ...f, files: next, file: next[0] || null }));
+        return next;
+      });
+      if (errors.file) {
+        setErrors((prev) => ({ ...prev, file: '' }));
+      }
     }
-    return true;
   };
 
   // Chọn file qua input
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      validateAndSetFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      validateAndAddFiles(e.target.files);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -236,9 +342,29 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndSetFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      validateAndAddFiles(e.dataTransfer.files);
     }
+  };
+
+  const handleRemoveSelectedFile = (index: number) => {
+    setIsDirty(true);
+    setSelectedFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      setFormData((f) => ({ ...f, files: next, file: next[0] || null }));
+      return next;
+    });
+  };
+
+  const handleRemoveExistingFile = (index: number) => {
+    setIsDirty(true);
+    setExistingFiles((prev) => {
+      const target = prev[index];
+      if (target?.id) {
+        setDeletedAttachmentIds((dIds) => [...dIds, target.id!]);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   // Validate form trước khi submit
@@ -272,8 +398,9 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     }
 
     // Bắt buộc có tệp khi tạo mới
-    if (!isEditMode && !formData.file && !existingFileName) {
-      newErrors.file = 'Vui lòng đính kèm tệp tài liệu';
+    const totalFilesCount = selectedFiles.length + existingFiles.length;
+    if (!isEditMode && totalFilesCount === 0) {
+      newErrors.file = 'Vui lòng đính kèm ít nhất một tệp tài liệu';
     }
 
     setErrors(newErrors);
@@ -317,11 +444,26 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     if (formData.link_thay_the) {
       data.append('link_thay_the', formData.link_thay_the.trim());
     }
-    if (formData.file) {
-      data.append('file_dinh_kem', formData.file);
-    }
 
-    await onSubmit({ formData: data, payload: formData });
+    // Gửi toàn bộ các tệp mới đính kèm
+    selectedFiles.forEach((file) => {
+      data.append('files', file);
+      data.append('file_dinh_kem', file);
+    });
+
+    // Gửi danh sách ID tệp bị xóa (nếu có)
+    deletedAttachmentIds.forEach((id) => {
+      data.append('deleted_attachment_ids', String(id));
+    });
+
+    await onSubmit({
+      formData: data,
+      payload: {
+        ...formData,
+        files: selectedFiles,
+        deleted_attachment_ids: deletedAttachmentIds,
+      },
+    });
   };
 
   return createPortal(
@@ -770,6 +912,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 className="hidden"
                 accept={ALLOWED_EXTENSIONS.join(',')}
                 onChange={handleFileChange}
@@ -778,42 +921,98 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 <i className="fa-solid fa-cloud-arrow-up" />
               </div>
               <p className="text-xs sm:text-sm font-semibold text-main mb-1">
-                Kéo thả tệp vào đây hoặc <span className="text-primary underline">chọn tệp</span>
+                Kéo thả các tệp vào đây hoặc <span className="text-primary underline">chọn tệp từ thiết bị</span>
               </p>
               <p className="text-[11px] text-muted">
-                Hỗ trợ PDF, DOC, DOCX, JPG, PNG, ZIP · Tối đa 20MB/tệp
+                Hỗ trợ PDF, Excel (XLSX, XLS), DOCX, Ảnh, ZIP · Tối đa 20MB/tệp · Cho phép chọn nhiều tệp
               </p>
             </div>
 
             {/* Danh sách tệp đã chọn hoặc tệp hiện có */}
-            {(formData.file || existingFileName) && (
-              <div className="p-3 rounded-lg bg-surface border border-border-subtle flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <i className="fa-solid fa-paperclip text-primary shrink-0" />
-                  <span className="truncate font-medium text-main">
-                    {formData.file ? formData.file.name : existingFileName}
+            {(existingFiles.length > 0 || selectedFiles.length > 0) && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-semibold text-main">
+                    Tệp đính kèm ({existingFiles.length + selectedFiles.length})
                   </span>
-                  {formData.file && (
-                    <span className="text-[11px] text-muted font-mono shrink-0">
-                      ({(formData.file.size / (1024 * 1024)).toFixed(2)} MB)
+                  {selectedFiles.length > 0 && (
+                    <span className="text-[11px] text-primary font-medium">
+                      +{selectedFiles.length} tệp mới
                     </span>
                   )}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDirty(true);
-                    setFormData((prev) => ({ ...prev, file: null }));
-                    setExistingFileName(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                  }}
-                  className="p-1 text-muted hover:text-danger rounded transition-colors"
-                  title="Xóa tệp này"
-                  aria-label="Xóa tệp"
-                >
-                  <i className="fa-solid fa-trash-can text-xs" />
-                </button>
+                <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                  {/* Danh sách tệp hiện có */}
+                  {existingFiles.map((file, idx) => {
+                    const display = getFileDisplay(file.name);
+                    return (
+                      <div
+                        key={`existing-${file.id || idx}`}
+                        className={`p-2.5 rounded-lg border ${display.bg} flex items-center justify-between gap-3 text-xs transition-colors`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <i className={`${display.icon} ${display.color} text-sm shrink-0`} />
+                          <span className="truncate font-medium text-main" title={file.name}>
+                            {file.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-muted shrink-0 font-medium">
+                            Hiện có
+                          </span>
+                          {file.size && (
+                            <span className="text-[11px] text-muted font-mono shrink-0">
+                              ({formatSize(file.size)})
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingFile(idx)}
+                          className="p-1 text-muted hover:text-danger rounded transition-colors"
+                          title="Xóa tệp này"
+                          aria-label="Xóa tệp"
+                        >
+                          <i className="fa-solid fa-trash-can text-xs" />
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {/* Danh sách tệp mới tải lên */}
+                  {selectedFiles.map((file, idx) => {
+                    const display = getFileDisplay(file.name);
+                    return (
+                      <div
+                        key={`selected-${file.name}-${idx}`}
+                        className={`p-2.5 rounded-lg border ${display.bg} flex items-center justify-between gap-3 text-xs transition-colors`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <i className={`${display.icon} ${display.color} text-sm shrink-0`} />
+                          <span className="truncate font-medium text-main" title={file.name}>
+                            {file.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold border border-primary/20 shrink-0">
+                            Mới thêm
+                          </span>
+                          <span className="text-[11px] text-muted font-mono shrink-0">
+                            ({formatSize(file.size)})
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSelectedFile(idx)}
+                          className="p-1 text-muted hover:text-danger rounded transition-colors"
+                          title="Xóa tệp này"
+                          aria-label="Xóa tệp"
+                        >
+                          <i className="fa-solid fa-trash-can text-xs" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

@@ -1,5 +1,5 @@
 import io
-from datetime import datetime
+from datetime import datetime, date
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -374,9 +374,11 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
     queryset = ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).select_related('document', 'nguoi_tao')
     serializer_class = ChiTietTaiLieuAttachmentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['document']
     search_fields = ['name']
+    ordering_fields = ['id', 'created_at', 'name', 'file_size']
+    ordering = ['id']
 
     def perform_create(self, serializer):
         kwargs = {}
@@ -387,5 +389,82 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.is_deleted = True
         instance.save()
+
+    @action(detail=True, methods=['get'], url_path='preview')
+    def preview(self, request, pk=None):
+        """
+        API xem trước chi tiết tệp đính kèm:
+        - Excel (.xlsx, .xls): đọc dữ liệu các sheet trả về mảng bảng tính JSON
+        - PDF: trả về thông tin và URL trực tiếp
+        - Image: trả về thông tin và URL trực tiếp
+        - Khác: trả về thông tin tệp
+        """
+        att = self.get_object()
+        file_name = att.name
+        ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
+        file_url = att.path
+
+        if ext in ['xlsx', 'xls']:
+            sheets_data = []
+            try:
+                from django.conf import settings
+                import os
+                rel_path = file_url.replace('/media/', '', 1) if file_url.startswith('/media/') else file_url
+                disk_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+                if os.path.exists(disk_path):
+                    wb = openpyxl.load_workbook(disk_path, data_only=True)
+                    for s_name in wb.sheetnames[:5]:
+                        ws = wb[s_name]
+                        rows_data = []
+                        for row in ws.iter_rows(max_row=100, max_col=26, values_only=True):
+                            row_vals = [
+                                cell.strftime('%d/%m/%Y') if isinstance(cell, (datetime, date))
+                                else str(cell) if cell is not None
+                                else ""
+                                for cell in row
+                            ]
+                            if any(v != "" for v in row_vals):
+                                rows_data.append(row_vals)
+                        sheets_data.append({
+                            'name': s_name,
+                            'rows': rows_data
+                        })
+                    wb.close()
+            except Exception:
+                pass
+            return Response({
+                'id': att.id,
+                'name': att.name,
+                'file_type': 'EXCEL',
+                'file_size': att.file_size,
+                'file_url': file_url,
+                'sheets': sheets_data
+            })
+
+        if ext == 'pdf':
+            return Response({
+                'id': att.id,
+                'name': att.name,
+                'file_type': 'PDF',
+                'file_size': att.file_size,
+                'file_url': file_url,
+            })
+
+        if ext in ['png', 'jpg', 'jpeg', 'webp', 'gif']:
+            return Response({
+                'id': att.id,
+                'name': att.name,
+                'file_type': 'IMAGE',
+                'file_size': att.file_size,
+                'file_url': file_url,
+            })
+
+        return Response({
+            'id': att.id,
+            'name': att.name,
+            'file_type': ext.upper() or 'DOCUMENT',
+            'file_size': att.file_size,
+            'file_url': file_url,
+        })
 
 
