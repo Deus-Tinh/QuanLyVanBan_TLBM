@@ -231,7 +231,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     return (
       <div
         className="inline-flex items-center justify-center gap-1.5 flex-wrap cursor-pointer"
-        onClick={() => onViewDetail?.(item)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onViewDetail?.(item);
+        }}
         title={fileList.map((f) => f.name).join('\n')}
       >
         {Object.entries(counts).map(([extension, count]) => (
@@ -497,14 +500,11 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                   <tr
                     key={item.id}
                     onClick={() => {
-                      // Bấm dòng → Drill-down vào thư mục + loại tài liệu của mục đó
-                      if (onDrillDown) {
-                        const firstType = item.loai_tai_lieu?.[0];
-                        onDrillDown(item.dm_tai_lieu, firstType);
-                      }
+                      // Bấm dòng → Chỉ hiện chi tiết của tài liệu đó
+                      onViewDetail?.(item);
                     }}
                     className={`transition-colors duration-fast cursor-pointer select-none ${rowClass}`}
-                    title="Bấm để đi vào thư mục của tài liệu"
+                    title="Bấm để xem chi tiết tài liệu"
                   >
                     {/* Cột 1: Ký hiệu (thống nhất font sans chuẩn hệ thống, ngay hàng thẳng lối) */}
                     <td className="px-4 py-3.5 align-middle whitespace-nowrap">
@@ -569,7 +569,13 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     </td>
 
                     {/* Cột 6: Tệp đính kèm (Badge dạng tệp theo màu sắc, không có nút tải về) */}
-                    <td className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100">
+                    <td
+                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewDetail?.(item);
+                      }}
+                    >
                       {renderFileBadges(item)}
                     </td>
 
