@@ -1110,7 +1110,7 @@ export default function ResourceManagementPage() {
                       key="all"
                       type="button"
                       onClick={() => handleCategorySelect('all')}
-                      className={`w-full flex items-center justify-center gap-2 px-3 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer rounded-tl-xl ${
+                      className={`w-full flex items-center justify-center gap-2 px-3 text-xs sm:text-[13px] font-semibold whitespace-nowrap transition-all cursor-pointer rounded-tl-xl ${
                         !hasBottomRow ? 'rounded-bl-xl' : ''
                       } ${
                         isAll
@@ -1150,7 +1150,7 @@ export default function ResourceManagementPage() {
                   key={cat.id}
                   type="button"
                   onClick={() => handleCategorySelect(String(cat.id))}
-                  className={`flex items-center gap-1.5 px-3.5 h-full text-xs font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
+                  className={`flex items-center gap-1.5 px-3.5 h-full text-xs sm:text-[13px] font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
                     isSelected
                       ? 'border-primary text-primary bg-primary/5 font-bold'
                       : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
@@ -1179,21 +1179,21 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (chiều ngang to rộng w-64, chữ to text-sm font-bold) */}
-          <div className={`relative w-64 shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
+          {/* Cột dropdown chọn Danh mục trực tiếp ở góc phải (chiều ngang chiếm 25% thanh w-1/4, viền phân cách thẳng hàng với hàng dưới) */}
+          <div className={`relative w-1/4 min-w-[220px] shrink-0 flex items-stretch border-l border-border-subtle ${!hasBottomRow ? 'rounded-br-xl' : ''}`} ref={categoryDropdownRef}>
             <button
               type="button"
               onClick={() => {
                 setIsCategoryDropdownOpen((prev) => !prev);
                 setIsTypeDropdownOpen(false);
               }}
-              className={`w-full px-6 text-sm font-bold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
+              className={`w-full px-4 text-xs sm:text-[13px] font-semibold text-secondary hover:text-primary hover:bg-surface-elevated/70 transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap rounded-tr-xl ${!hasBottomRow ? 'rounded-br-xl' : ''}`}
               title="Mở danh sách tất cả Danh mục"
               aria-label="Danh sách tất cả Danh mục"
             >
-              <i className="fa-solid fa-folder-tree text-sm text-primary shrink-0" />
-              <span className="font-bold tracking-wide">Danh mục</span>
-              <i className={`fa-solid fa-chevron-down text-xs transition-transform duration-200 shrink-0 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+              <i className="fa-solid fa-folder-tree text-xs text-primary shrink-0" />
+              <span>Danh mục</span>
+              <i className={`fa-solid fa-chevron-down text-[11px] transition-transform duration-200 shrink-0 ${isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
             </button>
 
             {isCategoryDropdownOpen && (
@@ -1342,7 +1342,7 @@ export default function ResourceManagementPage() {
               className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 px-4 py-1 select-none cursor-grab active:cursor-grabbing"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
             >
-              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted shrink-0 mr-1 select-none">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted shrink-0 mr-1 select-none">
                 <i className="fa-solid fa-tags text-xs text-primary" />
                 <span>{t('resourceManagement.fieldType')}:</span>
               </div>
@@ -1351,14 +1351,14 @@ export default function ResourceManagementPage() {
               <button
                 type="button"
                 onClick={() => { setSelectedType('all'); setCurrentPage(1); }}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs sm:text-[13px] font-semibold transition-all cursor-pointer shrink-0 ${
                   selectedType === 'all'
                     ? 'bg-primary text-white shadow-2xs font-bold'
                     : 'bg-surface text-secondary border border-border-subtle hover:border-primary/50 hover:text-primary hover:bg-surface'
                 }`}
               >
                 <span>{t('resourceManagement.all')}</span>
-                <span className={`text-[10px] font-bold ${
+                <span className={`text-[11px] font-bold ${
                   selectedType === 'all' ? 'text-white/80' : 'text-muted'
                 }`}>
                   ({documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length})
@@ -1378,7 +1378,7 @@ export default function ResourceManagementPage() {
                     key={t.id}
                     type="button"
                     onClick={() => { setSelectedType(String(t.id)); setCurrentPage(1); }}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs sm:text-[13px] font-semibold transition-all cursor-pointer shrink-0 ${
                       isActive
                         ? 'bg-primary text-white shadow-2xs font-bold'
                         : 'bg-surface text-secondary border border-border-subtle hover:border-primary/50 hover:text-primary hover:bg-surface'
@@ -1386,10 +1386,10 @@ export default function ResourceManagementPage() {
                     title={t.ghi_chu || t.ten_loai}
                   >
                     {!t.is_public && (
-                      <i className="fa-solid fa-lock text-[9px] opacity-70" />
+                      <i className="fa-solid fa-lock text-[10px] opacity-70" />
                     )}
                     <span>{t.ten_loai}</span>
-                    <span className={`text-[10px] font-bold ${
+                    <span className={`text-[11px] font-bold ${
                       isActive ? 'text-white/80' : 'text-muted'
                     }`}>
                       ({docCount})
@@ -1404,22 +1404,22 @@ export default function ResourceManagementPage() {
               )}
             </div>
 
-            {/* Cột dropdown Loại tài liệu ở góc phải (kiểu dáng đồng bộ 100% với cột Danh mục: w-64, border-l, h-full, text-sm font-bold) */}
-            <div className="relative w-64 shrink-0 flex items-stretch border-l border-border-subtle rounded-br-xl" ref={typeDropdownRef}>
+            {/* Cột dropdown Loại tài liệu ở góc phải (chiều ngang chiếm 25% thanh w-1/4, viền phân cách thẳng hàng với hàng trên) */}
+            <div className="relative w-1/4 min-w-[220px] shrink-0 flex items-stretch border-l border-border-subtle rounded-br-xl" ref={typeDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
                   setIsTypeDropdownOpen((prev) => !prev);
                   setIsCategoryDropdownOpen(false);
                 }}
-                className="w-full px-6 text-sm font-bold text-secondary hover:text-primary hover:bg-surface-elevated transition-colors flex items-center justify-center gap-2.5 cursor-pointer whitespace-nowrap rounded-br-xl"
+                className="w-full px-4 text-xs sm:text-[13px] font-semibold text-secondary hover:text-primary hover:bg-surface-elevated/70 transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap rounded-br-xl"
                 title="Mở danh sách tất cả Loại tài liệu"
                 aria-haspopup="listbox"
                 aria-expanded={isTypeDropdownOpen}
               >
-                <i className="fa-solid fa-tags text-sm text-primary shrink-0" />
-                <span className="font-bold tracking-wide">Loại tài liệu</span>
-                <i className={`fa-solid fa-chevron-down text-xs transition-transform duration-200 shrink-0 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+                <i className="fa-solid fa-tags text-xs text-primary shrink-0" />
+                <span>Loại tài liệu</span>
+                <i className={`fa-solid fa-chevron-down text-[11px] transition-transform duration-200 shrink-0 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
 
               {isTypeDropdownOpen && (
