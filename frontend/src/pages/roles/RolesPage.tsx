@@ -43,6 +43,8 @@ export default function RolesPage() {
   };
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId) || null;
+  // Năm nhóm chuẩn của DDL (có mã nhóm quyền) không đổi tên, không xóa được; quyền vẫn chỉnh được.
+  const isProtectedRole = !!selectedRole?.ma_nhom_quyen;
 
   // Tải toàn bộ danh sách quyền hệ thống (1 lần, dùng chung cho mọi nhóm quyền)
   useEffect(() => {
@@ -68,6 +70,17 @@ export default function RolesPage() {
         ? (err as { data?: { detail?: string } }).data?.detail
         : undefined;
     return detail || 'roles.messages.fetchError';
+  };
+
+  // Lấy key i18n lỗi từ phản hồi lưu quyền (vd nhóm ADMIN bắt buộc giữ quyền quản lý nhóm quyền)
+  const saveErrorKey = (err: unknown): string => {
+    const data =
+      err && typeof err === 'object' && 'data' in err
+        ? (err as { data?: { detail?: unknown; permission_ids?: unknown } }).data
+        : undefined;
+    const candidates = [data?.detail, ...(Array.isArray(data?.permission_ids) ? data.permission_ids : [])];
+    const key = candidates.find((c) => typeof c === 'string' && c.startsWith('roles.'));
+    return (key as string | undefined) || 'roles.messages.fetchError';
   };
 
   // Tải lần đầu / khi bấm "Thử lại" (trạng thái đang tải ban đầu đã là true, nút Thử lại tự đặt lại trước khi đổi retryToken)
@@ -135,8 +148,8 @@ export default function RolesPage() {
       });
       showToast('roles.messages.updateSuccess');
       await reloadRoles();
-    } catch {
-      showToast('roles.messages.fetchError', true);
+    } catch (err: unknown) {
+      showToast(saveErrorKey(err), true);
     } finally {
       setIsSavingPermissions(false);
     }
@@ -236,7 +249,7 @@ export default function RolesPage() {
                 size="sm"
                 variant="ghost"
                 icon="fa-pen"
-                disabled={!selectedRole}
+                disabled={!selectedRole || isProtectedRole}
                 onClick={() => {
                   if (selectedRole) {
                     setEditingRole(selectedRole);
@@ -252,7 +265,7 @@ export default function RolesPage() {
                 size="sm"
                 variant="ghost"
                 icon="fa-xmark"
-                disabled={!selectedRole}
+                disabled={!selectedRole || isProtectedRole}
                 onClick={() => {
                   if (selectedRole) {
                     setDeletingRole(selectedRole);

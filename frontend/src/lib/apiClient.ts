@@ -57,7 +57,9 @@ async function handleResponse<T>(res: Response): Promise<T> {
     const text = await res.text();
     const isHtml =
       Boolean(contentType?.includes('text/html')) || /^\s*<!doctype\s+html|^\s*<html\b/i.test(text);
-    data = isHtml ? { error: 'Máy chủ gặp lỗi khi xử lý dữ liệu. Vui lòng kiểm tra log backend.' } : text;
+    data = !res.ok && isHtml
+      ? { error: t('common.apiError', { status: String(res.status) }) }
+      : text;
   } else {
     data = {};
   }

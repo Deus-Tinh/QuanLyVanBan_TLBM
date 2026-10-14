@@ -13,6 +13,7 @@ import SettingsPage from '@pages/settings/SettingsPage';
 import InboundDocumentPage from '@pages/InboundDocumentPage';
 import OutboundDocumentPage from '@pages/OutboundDocumentPage';
 import OrganizationsPage from '@pages/organizations/OrganizationsPage';
+import MeetingsPage from '@pages/meetings/MeetingsPage';
 import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
@@ -106,7 +107,7 @@ export default function AppRouter({
           }
         />
         <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
-        <Route path="/meetings" element={<SyllabusPreview activePage="meetings" />} />
+        <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/birthdays" element={<BirthdayPage />} />
 
         {/* Phân hệ Quản trị hệ thống & Nhân sự (Nhóm 7 & Nhóm 8 phụ trách theo đề cương) */}

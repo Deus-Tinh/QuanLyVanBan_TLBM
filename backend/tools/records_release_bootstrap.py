@@ -258,9 +258,22 @@ def record_guards_preflight(connection):
     print("RECORDS_DDL_GUARDS_FOR_ADOPTION = PASS", flush=True)
 
 def final_migration_targets(verifier):
-    """Keep only the final target per app, including post-adoption upgrades."""
+    """Check current app leaves without proposing rollback to adoption pins.
+
+    validate_graph still enforces the separately pinned bootstrap trial before
+    any adoption writes. Readiness checks must account for newer migrations
+    installed by project synchronization.
+    """
+    from django.db.migrations.loader import MigrationLoader
+
     targets = dict(verifier.CORE_TARGETS + verifier.SYSTEM_TARGETS)
     targets.update(verifier.POST_ADOPTION_TARGETS)
+    loader = MigrationLoader(None)
+    for app in targets:
+        leaves = loader.graph.leaf_nodes(app)
+        if len(leaves) != 1:
+            raise ValueError("Expected one current migration leaf for " + app)
+        targets[app] = leaves[0][1]
     return list(targets.items())
 
 def bootstrap(connection, manifest, verifier):
