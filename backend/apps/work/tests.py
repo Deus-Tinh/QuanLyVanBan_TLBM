@@ -15,7 +15,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from organizations.models import DonVi
-from documents.models import VanBanDen, VanBanDi
+from documents.models import PhamVi, VanBanDen, VanBanDi
 
 from work.models import (
     AttachmentKind,
@@ -265,17 +265,22 @@ class TaskDepartmentAndDocumentApiTests(WorkTestBase):
 
     def setUp(self):
         super().setUp()
+        # Văn bản HAN_CHE: chỉ người tạo/người nhận/đơn vị nhận xem được (quy tắc selectors nhóm 2).
+        # Dùng HAN_CHE để test "người ngoài không có quyền xem" đúng với van_ban_xem_duoc,
+        # vì văn bản NOI_BO công khai (hien_thi=True) thì ai cũng xem được.
         self.document_incoming = VanBanDen.objects.create(
             nam=self.today.year,
             so_hieu="VB-DEN-WORK",
             trich_yeu="Văn bản đến cho kiểm thử công việc",
             nguoi_tao=self.creator,
+            pham_vi=PhamVi.HAN_CHE,
         )
         self.document_outgoing = VanBanDi.objects.create(
             nam=self.today.year,
             so_hieu="VB-DI-WORK",
             trich_yeu="Văn bản đi cho kiểm thử công việc",
             nguoi_tao=self.creator,
+            pham_vi=PhamVi.HAN_CHE,
         )
 
     def payload(self, **overrides):
