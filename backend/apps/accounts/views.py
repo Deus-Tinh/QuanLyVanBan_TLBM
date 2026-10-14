@@ -64,13 +64,20 @@ def login_view(request):
     user = authenticate(request, username=username, password=password)
 
     if user is None:
-        # ── Cơ chế API CHECK PASS (Ngân hàng Bảo Long / Alpaca) ─────────────
+        # ── [Áp dụng tài liệu 9_TinNhan: "API user của app Ngân hàng Bảo Long.docx/.md"] ──────
+        # Mục 2 trong tài liệu: "API kiểm tra Username, password và thông tin của User"
+        # Endpoint: POST https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-auth-user
+        # Quy tắc mã MAC: UpperCase(MD5(SECRET_KEY + sorted_params))
+        # Dòng này kích hoạt cơ chế xác thực kép (Dual Authentication) qua API Ngân hàng Bảo Long:
         alpaca_res = check_alpaca_auth(username, password)
+
+        # Trạng thái 7: PASSWORD_CORRECT (mật khẩu chính xác theo quy định trong tài liệu Thầy)
         if alpaca_res.get("success"):
             UserModel = get_user_model()
             user = UserModel.objects.filter(username=username).first()
             if not user:
                 # Tự động tạo hồ sơ cán bộ khi xác thực qua API Bảo Long thành công
+                # (Bao gồm tài khoản mẫu: phanquocdung / Alpaca#2025 cung cấp trong tài liệu 9_TinNhan)
                 user = UserModel.objects.create_user(
                     username=username,
                     password=password,
@@ -83,7 +90,9 @@ def login_view(request):
                 user.save()
             auth_provider = "alpaca_api"
         else:
-            # Kiểm tra trạng thái đặc biệt từ API Bảo Long (BLOCK / DISABLE)
+            # Xử lý các mã trạng thái trả về theo bảng mã lỗi trong tài liệu 9_TinNhan của Thầy:
+            # status = 0: DISABLE (Tài khoản đã bị vô hiệu hóa)
+            # status = 3: BLOCK (Tài khoản đang bị khóa trong hệ thống Bảo Long)
             if alpaca_res.get("status") in (0, 3):
                 msg = alpaca_res.get("message") or "Tài khoản đã bị vô hiệu hóa hoặc khóa."
                 return Response(
