@@ -12,10 +12,15 @@ export interface CategoryManagementModalProps {
   onClose: () => void;
   categories: ResourceCategory[];
   types: ResourceType[];
-  onSaveCategory: (category: ResourceCategory, isEdit: boolean, childCount?: number) => void;
-  onDeleteCategory: (id: number) => void;
-  onSaveType: (type: ResourceType, isEdit: boolean, silent?: boolean) => void;
-  onDeleteType: (id: number) => void;
+  onSaveCategory: (
+    category: ResourceCategory,
+    isEdit: boolean,
+    childCount?: number,
+    childTypes?: string[]
+  ) => void | Promise<void>;
+  onDeleteCategory: (id: number) => void | Promise<void>;
+  onSaveType: (type: ResourceType, isEdit: boolean, silent?: boolean) => void | Promise<void>;
+  onDeleteType: (id: number) => void | Promise<void>;
 }
 
 export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
@@ -373,25 +378,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         finalChildTypes.push(pendingChild);
       }
 
-      onSaveCategory(payload, Boolean(editingCatId), finalChildTypes.length);
-
-      // Nếu tạo mới thư mục và có thêm kèm các loại con
-      if (!editingCatId && finalChildTypes.length > 0) {
-        finalChildTypes.forEach((typeName, idx) => {
-          onSaveType(
-            {
-              id: Date.now() + idx + 1,
-              dm_tai_lieu: categoryId,
-              ten_loai: typeName.trim(),
-              is_public: true,
-              ghi_chu: `Khởi tạo cùng thư mục ${catForm.ten_tai_lieu.trim()}`,
-              ngay_lap: catForm.ngay_lap,
-            },
-            false,
-            true
-          );
-        });
-      }
+      onSaveCategory(payload, Boolean(editingCatId), finalChildTypes.length, finalChildTypes);
 
       setIsUnifiedDirty(false);
       setIsConfirmDiscardUnifiedOpen(false);

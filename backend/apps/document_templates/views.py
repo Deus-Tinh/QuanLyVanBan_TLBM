@@ -33,6 +33,7 @@ class DanhMucTaiLieuViewSet(viewsets.ModelViewSet):
     queryset = DanhMucTaiLieu.objects.select_related('nguoi_lap').all()
     serializer_class = DanhMucTaiLieuSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['ten_tai_lieu', 'ky_hieu', 'ghi_chu']
     ordering_fields = ['stt_uu_tien', 'id', 'created_at', 'ten_tai_lieu']
@@ -121,6 +122,7 @@ class LoaiTaiLieuViewSet(viewsets.ModelViewSet):
     queryset = LoaiTaiLieu.objects.select_related('dm_tai_lieu').all()
     serializer_class = LoaiTaiLieuSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['dm_tai_lieu', 'is_public']
     search_fields = ['ten_loai', 'ghi_chu']
@@ -140,6 +142,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
     """
     serializer_class = TaiLieuChiTietSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TaiLieuChiTietFilter
     search_fields = ['tieu_de', 'ky_hieu', 'noi_ban_hanh', 'ghi_chu']

@@ -1,10 +1,11 @@
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.mail import send_mail
 from django.core.validators import validate_email
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.html import escape
 from accounts.models import Employee
@@ -13,6 +14,9 @@ from .models import BirthdayEmailLog, BirthdayEmailStatus
 PRE_ACCEPTANCE_SMTP_ERRORS = (
     Exception,
 )
+
+STALE_SENDING_NOTE = "Kết quả gửi không xác định, cần đối soát."
+SKIPPED_EMAIL_PREFIX = "Bỏ qua:"
 
 
 def is_birthday_on_date(birth_date: date, target_date: date, leap_year_strategy: str = "FEB_28") -> bool:
@@ -70,9 +74,13 @@ def generate_birthday_email_html(employee: Employee, card_template: str = "GOLDE
     TUÂN THỦ QUY ĐỊNH BẢO MẬT:
     - Tuyệt đối không hiển thị tuổi hoặc năm sinh trong nội dung thư chúc mừng.
     """
-    department_name = employee.don_vi.ten if employee.don_vi else "Trường Cao Đẳng Công Nghệ Thông Tin TP.HCM (ITC)"
+    brand_name = getattr(settings, "BRAND_NAME", "Bảo Long Insurance")
+    organization_name = getattr(settings, "ORGANIZATION_NAME", brand_name)
+    department_name = employee.don_vi.ten if employee.don_vi else organization_name
     day_month_str = f"{employee.ngay_sinh.day:02d}/{employee.ngay_sinh.month:02d}" if employee.ngay_sinh else ""
     safe_name = escape(employee.ho_ten)
+    safe_brand = escape(brand_name)
+    safe_organization = escape(organization_name)
     safe_department = escape(department_name)
     safe_unit = escape(employee.don_vi.ten if employee.don_vi else "Cơ quan")
     safe_position = escape(employee.chuc_vu.name if employee.chuc_vu else "Cán bộ")
@@ -99,14 +107,14 @@ def generate_birthday_email_html(employee: Employee, card_template: str = "GOLDE
     <div class="card-container">
         <div class="header-banner">
             <h1>🎂 CHÚC MỪNG SINH NHẬT 🎂</h1>
-            <p>Hệ thống Quản lý Văn bản &amp; Tài liệu Mật (QLVB&amp;TL)</p>
+            <p>{safe_brand}</p>
         </div>
         <div class="content-body">
             <div class="greeting-title">
                 Kính gửi Đồng chí <span class="staff-highlight">{safe_name}</span>
             </div>
             <p>
-                Nhân dịp ngày sinh nhật ({day_month_str}), Ban Giám hiệu, Công đoàn cùng toàn thể cán bộ nhân viên <strong>{safe_department}</strong> thân ái gửi đến đồng chí lời chúc mừng nồng nhiệt và tốt đẹp nhất!
+                Nhân dịp ngày sinh nhật ({day_month_str}), Ban lãnh đạo và tập thể cán bộ nhân viên <strong>{safe_organization}</strong> thân ái gửi đến đồng chí lời chúc mừng nồng nhiệt và tốt đẹp nhất!
             </p>
             <div class="message-box">
                 "Kính chúc đồng chí luôn dồi dào sức khỏe, ngập tràn niềm vui, hạnh phúc bền lâu và luôn hoàn thành xuất sắc mọi trọng trách công tác được giao phó!"
@@ -115,8 +123,8 @@ def generate_birthday_email_html(employee: Employee, card_template: str = "GOLDE
                 Đơn vị: <strong>{safe_unit}</strong> · Chức vụ: <strong>{safe_position}</strong>
             </p>
             <div class="footer-signature">
-                <p>Thư gửi tự động từ <strong>Hệ Thống Tiện Ích Hành Chính QLVB&amp;TL</strong></p>
-                <p>© {timezone.localdate().year} Trường Cao Đẳng Công Nghệ Thông Tin TP.HCM (ITC)</p>
+                <p>Thư gửi tự động từ <strong>{safe_brand}</strong></p>
+                <p>© {timezone.localdate().year} {safe_organization}</p>
             </div>
         </div>
     </div>
@@ -133,7 +141,7 @@ def _email_log(employee: Employee, sent_date: date, recipient: str, subject: str
             "recipient_email": recipient or "unknown",
             "subject": subject,
             "card_template": "GOLDEN",
-            "status": BirthdayEmailStatus.PENDING,
+            "trang_thai": BirthdayEmailStatus.PENDING,
         },
     )
     return log
@@ -150,7 +158,7 @@ def _claim_delivery(log: BirthdayEmailLog, recipient: str, subject: str, max_ret
     """
     Claim delivery of a birthday email using select_for_update within transaction.atomic.
     Only rows in eligible states (PENDING or RETRY/FAILED with retry_count <= max_retries)
-    can be claimed. Sets status to SENDING.
+    can be claimed. Sets trang_thai to SENDING.
     """
     with transaction.atomic():
         locked_log = (
@@ -162,25 +170,28 @@ def _claim_delivery(log: BirthdayEmailLog, recipient: str, subject: str, max_ret
             return False
 
         is_eligible = (
-            locked_log.status == BirthdayEmailStatus.PENDING
+            locked_log.trang_thai == BirthdayEmailStatus.PENDING
             or (
-                locked_log.status in (BirthdayEmailStatus.RETRY, BirthdayEmailStatus.FAILED)
+                locked_log.trang_thai in (BirthdayEmailStatus.RETRY, BirthdayEmailStatus.FAILED)
                 and locked_log.retry_count <= max_retries
+                and not (locked_log.error_message or "").startswith(STALE_SENDING_NOTE)
             )
         )
+        if locked_log.next_retry_at and locked_log.next_retry_at > timezone.now():
+            is_eligible = False
         if not is_eligible:
             log.refresh_from_db()
             return False
 
         now = timezone.now()
-        locked_log.status = BirthdayEmailStatus.SENDING
+        locked_log.trang_thai = BirthdayEmailStatus.SENDING
         locked_log.recipient_email = recipient
         locked_log.subject = subject
         locked_log.error_message = None
         locked_log.sent_at = now
         locked_log.save(
             update_fields=[
-                "status",
+                "trang_thai",
                 "recipient_email",
                 "subject",
                 "error_message",
@@ -211,30 +222,52 @@ def _record_delivery_result(
             .filter(pk=log.pk)
             .first()
         )
-        if not locked_log or locked_log.status != BirthdayEmailStatus.SENDING:
+        if not locked_log or locked_log.trang_thai != BirthdayEmailStatus.SENDING:
             return False
 
         now = timezone.now()
-        locked_log.status = new_status
-        update_fields = ["status", "updated_at"]
+        locked_log.trang_thai = new_status
+        update_fields = ["trang_thai", "updated_at"]
 
         if new_status == BirthdayEmailStatus.SUCCESS:
             locked_log.sent_at = sent_at or now
             locked_log.error_message = None
             locked_log.smtp_response_code = smtp_response_code or "250"
-            update_fields.extend(["sent_at", "error_message", "smtp_response_code"])
+            locked_log.next_retry_at = None
+            update_fields.extend(["sent_at", "error_message", "smtp_response_code", "next_retry_at"])
         elif new_status in (BirthdayEmailStatus.RETRY, BirthdayEmailStatus.FAILED):
             locked_log.retry_count = locked_log.retry_count + 1
             locked_log.error_message = error_message
+            locked_log.next_retry_at = None
             if smtp_response_code:
                 locked_log.smtp_response_code = smtp_response_code
                 update_fields.append("smtp_response_code")
-            update_fields.extend(["retry_count", "error_message"])
+            update_fields.extend(["retry_count", "error_message", "next_retry_at"])
         else:
             locked_log.error_message = error_message
             update_fields.append("error_message")
 
         locked_log.save(update_fields=update_fields)
+
+    log.refresh_from_db()
+    return True
+
+
+def _mark_invalid_email(log: BirthdayEmailLog, reason: str) -> bool:
+    """Persist invalid or missing recipients without adding a new trang_thai value to the DDL enum."""
+    with transaction.atomic():
+        locked_log = BirthdayEmailLog.objects.select_for_update().filter(pk=log.pk).first()
+        if (
+            not locked_log
+            or locked_log.trang_thai in (BirthdayEmailStatus.SUCCESS, BirthdayEmailStatus.SENDING)
+            or (locked_log.error_message or "").startswith(STALE_SENDING_NOTE)
+        ):
+            return False
+
+        locked_log.trang_thai = BirthdayEmailStatus.FAILED
+        locked_log.error_message = f"{SKIPPED_EMAIL_PREFIX} {reason}"
+        locked_log.next_retry_at = None
+        locked_log.save(update_fields=["trang_thai", "error_message", "next_retry_at", "updated_at"])
 
     log.refresh_from_db()
     return True
@@ -247,8 +280,8 @@ def send_automated_birthday_emails(
     allow_test_email_backend: bool = False,
 ) -> dict:
     """
-    Send each active employee at most one accepted birthday message per date.
-    Uses SQL_Fix4 ENUM: PENDING, SENDING, SUCCESS, FAILED, RETRY.
+    Send birthday messages for the target date and due RETRY rows from the prior
+    three days. A stale SENDING row is marked FAILED for manual reconciliation.
     """
     if target_date is None:
         target_date = timezone.localdate()
@@ -282,6 +315,18 @@ def send_automated_birthday_emails(
     if leap_year_strategy not in ("SKIP", "FEB_28", "MAR_01"):
         raise ValueError("Invalid leap-year birthday strategy")
 
+    now = timezone.now()
+    stale_cutoff = now - timedelta(minutes=30)
+    stale_failed_count = BirthdayEmailLog.objects.filter(
+        trang_thai=BirthdayEmailStatus.SENDING,
+        updated_at__lt=stale_cutoff,
+    ).update(
+        trang_thai=BirthdayEmailStatus.FAILED,
+        error_message=STALE_SENDING_NOTE,
+        next_retry_at=None,
+        updated_at=now,
+    )
+
     active_employees = (
         Employee.objects.filter(is_active=True)
         .exclude(ngay_sinh__isnull=True)
@@ -292,68 +337,90 @@ def send_automated_birthday_emails(
         for emp in active_employees
         if is_birthday_on_date(emp.ngay_sinh, target_date, leap_year_strategy=leap_year_strategy)
     ]
+    retry_start_date = target_date - timedelta(days=3)
+    retry_logs = list(
+        BirthdayEmailLog.objects.filter(
+            trang_thai=BirthdayEmailStatus.RETRY,
+            sent_date__gte=retry_start_date,
+            sent_date__lte=target_date,
+        )
+        .filter(Q(next_retry_at__isnull=True) | Q(next_retry_at__lte=now))
+        .select_related("employee", "employee__don_vi", "employee__chuc_vu")
+        .order_by("sent_date", "id")
+    )
+    candidate_keys = {(employee.id, target_date) for employee in eligible_employees}
+    candidate_keys.update((log.employee_id, log.sent_date) for log in retry_logs)
 
     results = {
         "target_date": target_date.strftime("%d/%m/%Y"),
-        "total_eligible": len(eligible_employees),
+        "total_eligible": len(candidate_keys),
         "sent_count": 0,
         "skipped_count": 0,
-        "failed_count": 0,
+        "failed_count": stale_failed_count,
+        "stale_failed_count": stale_failed_count,
         "retry_count": 0,
         "details": [],
     }
-    sender_email = getattr(settings, "DEFAULT_FROM_EMAIL", "admin@qlvb.local")
 
-    for emp in eligible_employees:
-        log = None
+    brand_name = getattr(settings, "BRAND_NAME", "Bảo Long Insurance")
+    sender_email = getattr(settings, "DEFAULT_FROM_EMAIL", "") or None
+
+    def process_delivery(employee: Employee, sent_date: date, existing_log=None) -> None:
+        recipient = (
+            existing_log.recipient_email
+            if existing_log is not None
+            else (employee.email or "")
+        ).strip()
+        subject = (
+            existing_log.subject
+            if existing_log is not None
+            else f"[{brand_name}] Thư chúc mừng sinh nhật cán bộ nhân viên: {employee.ho_ten}"
+        )
+        log = existing_log or _email_log(employee, sent_date, recipient, subject)
+
         try:
-            recipient = (emp.email or "").strip()
-            subject = f"[QLVB&TL] Thư chúc mừng sinh nhật cán bộ nhân viên: {emp.ho_ten}"
-
-            # Check if email is valid
             try:
                 validate_email(recipient)
             except ValidationError:
-                # Không gửi được do email không hợp lệ, không tạo log hoặc bỏ qua
+                _mark_invalid_email(log, "Địa chỉ email không hợp lệ hoặc bị để trống.")
                 results["skipped_count"] += 1
                 results["details"].append({
-                    "employee_id": emp.id,
-                    "full_name": emp.ho_ten,
+                    "employee_id": employee.id,
+                    "full_name": employee.ho_ten,
                     "skipped": True,
+                    "trang_thai": BirthdayEmailStatus.FAILED,
                     "reason": "Địa chỉ email không hợp lệ hoặc bị để trống.",
                 })
-                continue
+                return
 
-            log = _email_log(emp, target_date, recipient, subject)
-
-            html_content = generate_birthday_email_html(emp)
-
-            # Claim delivery lock
             if not _claim_delivery(log, recipient, subject, max_retries):
                 reason = {
                     BirthdayEmailStatus.SUCCESS: "Đã gửi thành công trước đó.",
                     BirthdayEmailStatus.SENDING: "Đang được xử lý bởi tiến trình khác.",
-                    BirthdayEmailStatus.FAILED: "Đã hết số lần thử lại.",
-                }.get(log.status, "Không thể nhận quyền gửi.")
+                    BirthdayEmailStatus.FAILED: (
+                        STALE_SENDING_NOTE
+                        if (log.error_message or "").startswith(STALE_SENDING_NOTE)
+                        else "Đã hết số lần thử lại hoặc cần đối soát."
+                    ),
+                }.get(log.trang_thai, "Không thể nhận quyền gửi.")
                 results["skipped_count"] += 1
                 results["details"].append({
-                    "employee_id": emp.id,
-                    "full_name": emp.ho_ten,
+                    "employee_id": employee.id,
+                    "full_name": employee.ho_ten,
                     "skipped": True,
-                    "status": log.status,
+                    "trang_thai": log.trang_thai,
                     "reason": reason,
                 })
-                continue
+                return
 
-            # Attempt sending
             send_error = None
             try:
                 accepted = send_mail(
                     subject=subject,
-                    message=f"Kính chúc đồng chí {emp.ho_ten} sinh nhật vui vẻ, hạnh phúc và thành công!",
+                    message=f"Kính chúc đồng chí {employee.ho_ten} sinh nhật vui vẻ, hạnh phúc và thành công!",
                     from_email=sender_email,
                     recipient_list=[recipient],
-                    html_message=html_content,
+                    html_message=generate_birthday_email_html(employee),
                     fail_silently=False,
                 )
                 if accepted != 1:
@@ -362,7 +429,6 @@ def send_automated_birthday_emails(
                 send_error = exc
 
             if send_error is not None:
-                # Decide RETRY or FAILED
                 next_status = BirthdayEmailStatus.RETRY if log.retry_count < max_retries else BirthdayEmailStatus.FAILED
                 _record_delivery_result(
                     log=log,
@@ -373,9 +439,9 @@ def send_automated_birthday_emails(
                 if next_status == BirthdayEmailStatus.RETRY:
                     results["retry_count"] += 1
                 results["details"].append({
-                    "employee_id": emp.id,
-                    "full_name": emp.ho_ten,
-                    "status": next_status,
+                    "employee_id": employee.id,
+                    "full_name": employee.ho_ten,
+                    "trang_thai": next_status,
                     "error": _safe_error(send_error),
                 })
             else:
@@ -387,14 +453,14 @@ def send_automated_birthday_emails(
                 )
                 results["sent_count"] += 1
                 results["details"].append({
-                    "employee_id": emp.id,
-                    "full_name": emp.ho_ten,
-                    "status": "SUCCESS",
+                    "employee_id": employee.id,
+                    "full_name": employee.ho_ten,
+                    "trang_thai": "SUCCESS",
                     "recipient_email": recipient,
                 })
-
         except Exception as exc:
-            if log is not None and log.status == BirthdayEmailStatus.SENDING:
+            log.refresh_from_db()
+            if log.trang_thai == BirthdayEmailStatus.SENDING:
                 try:
                     _record_delivery_result(
                         log=log,
@@ -405,10 +471,22 @@ def send_automated_birthday_emails(
                     pass
             results["failed_count"] += 1
             results["details"].append({
-                "employee_id": emp.id,
-                "full_name": emp.ho_ten,
-                "status": "RETRY",
+                "employee_id": employee.id,
+                "full_name": employee.ho_ten,
+                "trang_thai": "RETRY",
                 "error": _safe_error(exc),
             })
+
+    processed_keys = set()
+    for retry_log in retry_logs:
+        key = (retry_log.employee_id, retry_log.sent_date)
+        processed_keys.add(key)
+        process_delivery(retry_log.employee, retry_log.sent_date, existing_log=retry_log)
+
+    for employee in eligible_employees:
+        key = (employee.id, target_date)
+        if key in processed_keys:
+            continue
+        process_delivery(employee, target_date)
 
     return results

@@ -20,5 +20,13 @@ openpyxl>=3.1.5
 # Utilities
 python-dotenv>=1.2,<2
 pytz>=2024.1
+
+# Signing: Ed25519 verify
+cryptography>=43.0.0
+
+# Signing: tệp PDF hoàn tất (ghép trang, in trang phê duyệt tiếng Việt)
+pypdf>=5.0,<7
+reportlab>=4.2,<5
 # PostgreSQL Database Driver
 psycopg[binary]>=3.2.0
+gunicorn>=23,<24
