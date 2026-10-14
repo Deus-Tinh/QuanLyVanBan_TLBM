@@ -57,4 +57,15 @@ describe('RecordModal', () => {
     expect(screen.getByLabelText(/Reference/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add new' })).toBeInTheDocument();
   });
+
+  it('submits the document type date and note after native input events', () => {
+    act(() => setLanguage('en'));
+    const onSubmit = vi.fn();
+    render(<RecordModal open mode="documentType" value={null} onClose={vi.fn()} onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByLabelText(/Document type name/), { target: { value: '  New category  ' } });
+    fireEvent.input(screen.getByLabelText(/date/i), { target: { value: '2026-10-15' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /note/i }), { target: { value: '  Updated note  ' } });
+    fireEvent.submit(screen.getByRole('dialog'));
+    expect(onSubmit).toHaveBeenCalledWith({ ten_loai: 'New category', ngay_lap: '2026-10-15', ghi_chu: 'Updated note' });
+  });
 });
