@@ -276,6 +276,7 @@ export default function ResourceManagementPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [formInitialData, setFormInitialData] = useState<ResourceItem | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   // Modal Xóa Tài liệu
@@ -540,16 +541,9 @@ export default function ResourceManagementPage() {
     try {
       setIsDeleting(true);
 
-      // Thử gọi API Backend nếu có kết nối
-      const baseUrl = import.meta.env.VITE_API_URL || '';
-      const endpoint = `/api/resources/documents/${deleteItem.id}/`;
-      const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token');
-
-      await fetch(`${baseUrl}${endpoint}`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      }).catch(() => {
-        // Backend offline / mock mode -> không chặn xóa local
+      // Gọi API Backend xóa tài liệu
+      await apiClient.delete(`/api/resources/documents/${deleteItem.id}/`).catch((e) => {
+        console.warn('Lỗi khi xóa tài liệu trên backend:', e);
       });
 
       // Xóa khỏi danh sách tài liệu
@@ -577,175 +571,219 @@ export default function ResourceManagementPage() {
 
   // Xử lý Submit Form Thêm/Sửa Tài liệu
   const handleFormSubmit = async (data: { formData: FormData; payload: ResourceFormData }) => {
-    const payload = data.payload;
+    const { formData, payload } = data;
     const cat = categories.find((c) => c.id === Number(payload.dm_tai_lieu));
     const selectedTypeNames = types
       .filter((t) => payload.loai_tai_lieu.includes(t.id))
       .map((t) => t.ten_loai);
 
-    const fileUrl = payload.file
-      ? URL.createObjectURL(payload.file)
-      : (formInitialData?.file_dinh_kem || '');
+    try {
+      setIsSubmittingDoc(true);
 
-    const attachments: ResourceAttachment[] = payload.file
-      ? [
-          {
-            id: Date.now(),
-            name: payload.file.name,
-            path: fileUrl,
-            file_size: payload.file.size,
-            mime_type: payload.file.type,
-          },
-        ]
-      : (formInitialData?.attachments && formInitialData.attachments.length > 0
-          ? formInitialData.attachments
-          : fileUrl
-            ? [
-                {
-                  id: Date.now(),
-                  name: fileUrl.startsWith('blob:')
-                    ? `${payload.tieu_de || 'tai_lieu'}.pdf`
-                    : (fileUrl.split('?')[0].split('/').pop() || 'tai_lieu.pdf'),
-                  path: fileUrl,
-                },
-              ]
-            : []);
+      let savedDoc: ResourceItem;
 
-    const creatorName =
-      payload.nguoi_tao_name?.trim() ||
-      authService.getSession()?.fullName ||
-      authService.getSession()?.username ||
-      'Thượng Mạnh Quỳnh';
+      if (formInitialData) {
+        // Cập nhật tài liệu qua Backend API
+        savedDoc = await apiClient<ResourceItem>(`/api/resources/documents/${formInitialData.id}/`, {
+          method: 'PATCH',
+          body: formData,
+        });
 
-    if (formInitialData) {
-      // Cập nhật
-      setDocuments((prev) =>
-        prev.map((d) =>
-          d.id === formInitialData.id
-            ? {
-              ...d,
-              dm_tai_lieu: Number(payload.dm_tai_lieu),
-              dm_tai_lieu_name: cat?.ten_tai_lieu,
-              loai_tai_lieu: payload.loai_tai_lieu,
-              loai_tai_lieu_names: selectedTypeNames,
-              ky_hieu: payload.ky_hieu,
-              tieu_de: payload.tieu_de,
-              ngay_dang: payload.ngay_dang,
-              noi_ban_hanh: payload.noi_ban_hanh,
-              hieu_luc: payload.hieu_luc,
-              ngay_het_hieu_luc: payload.ngay_het_hieu_luc,
-              link_thay_the: payload.link_thay_the,
-              ghi_chu: payload.ghi_chu,
-              hien_thi: payload.hien_thi,
-              file_dinh_kem: fileUrl,
-              attachments: attachments,
-              nguoi_tao_name: payload.nguoi_tao_name?.trim() || d.nguoi_tao_name || creatorName,
-            }
-            : d
-        )
-      );
-    } else {
-      // Tạo mới
-      const newDoc: ResourceItem = {
-        id: Date.now(),
-        dm_tai_lieu: Number(payload.dm_tai_lieu),
-        dm_tai_lieu_name: cat?.ten_tai_lieu,
-        loai_tai_lieu: payload.loai_tai_lieu,
-        loai_tai_lieu_names: selectedTypeNames,
-        ky_hieu: payload.ky_hieu,
-        tieu_de: payload.tieu_de,
-        ngay_dang: payload.ngay_dang,
-        noi_ban_hanh: payload.noi_ban_hanh,
-        hieu_luc: payload.hieu_luc,
-        ngay_het_hieu_luc: payload.ngay_het_hieu_luc,
-        link_thay_the: payload.link_thay_the,
-        ghi_chu: payload.ghi_chu,
-        hien_thi: payload.hien_thi,
-        file_dinh_kem: fileUrl,
-        attachments: attachments,
-        nguoi_tao_name: creatorName,
-      };
-      setDocuments((prev) => [newDoc, ...prev]);
-    }
+        // Đảm bảo tên danh mục và loại tài liệu hiển thị tức thì trên giao diện
+        savedDoc = {
+          ...savedDoc,
+          dm_tai_lieu_name: savedDoc.dm_tai_lieu_name || cat?.ten_tai_lieu,
+          loai_tai_lieu_names:
+            savedDoc.loai_tai_lieu_names && savedDoc.loai_tai_lieu_names.length > 0
+              ? savedDoc.loai_tai_lieu_names
+              : selectedTypeNames,
+        };
 
-    setIsFormOpen(false);
-    if (formInitialData) {
-      showToast(`Đã cập nhật thành công tài liệu: "${payload.tieu_de}"`, 'success', 'Cập nhật tài liệu');
-    } else {
-      showToast(`Đã thêm mới thành công tài liệu: "${payload.tieu_de}"`, 'success', 'Thêm mới tài liệu');
+        setDocuments((prev) =>
+          prev.map((d) => (d.id === formInitialData.id ? savedDoc : d))
+        );
+        setIsFormOpen(false);
+        showToast(`Đã cập nhật thành công tài liệu: "${savedDoc.tieu_de}"`, 'success', 'Cập nhật tài liệu');
+      } else {
+        // Tạo mới tài liệu qua Backend API
+        savedDoc = await apiClient<ResourceItem>('/api/resources/documents/', {
+          method: 'POST',
+          body: formData,
+        });
+
+        savedDoc = {
+          ...savedDoc,
+          dm_tai_lieu_name: savedDoc.dm_tai_lieu_name || cat?.ten_tai_lieu,
+          loai_tai_lieu_names:
+            savedDoc.loai_tai_lieu_names && savedDoc.loai_tai_lieu_names.length > 0
+              ? savedDoc.loai_tai_lieu_names
+              : selectedTypeNames,
+        };
+
+        setDocuments((prev) => [savedDoc, ...prev]);
+        setIsFormOpen(false);
+        showToast(`Đã thêm mới thành công tài liệu: "${savedDoc.tieu_de}"`, 'success', 'Thêm mới tài liệu');
+      }
+    } catch (error) {
+      console.error('Lỗi khi lưu tài liệu lên server:', error);
+      showToast('Không thể lưu tài liệu lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
+    } finally {
+      setIsSubmittingDoc(false);
     }
   };
 
   // Quản lý Danh mục Cấp 1
-  const handleSaveCategory = (category: ResourceCategory, isEdit: boolean, childCount?: number) => {
-    if (isEdit) {
-      setCategories((prev) => prev.map((c) => (c.id === category.id ? category : c)));
-      setDocuments((prev) =>
-        prev.map((d) =>
-          d.dm_tai_lieu === category.id ? { ...d, dm_tai_lieu_name: category.ten_tai_lieu } : d
-        )
-      );
-      showToast(`Đã cập nhật thành công thư mục: "${category.ten_tai_lieu}"`, 'success', 'Cập nhật Thư mục');
-    } else {
-      setCategories((prev) => [...prev, category]);
-      const extraMsg = childCount && childCount > 0 ? ` (kèm ${childCount} loại con)` : '';
-      showToast(`Đã thêm mới thành công thư mục: "${category.ten_tai_lieu}"${extraMsg}`, 'success', 'Thêm mới Thư mục');
+  const handleSaveCategory = async (
+    category: ResourceCategory,
+    isEdit: boolean,
+    childCount?: number,
+    childTypes?: string[]
+  ) => {
+    try {
+      if (isEdit) {
+        const payload = {
+          stt_uu_tien: category.stt_uu_tien,
+          ky_hieu: category.ky_hieu || '',
+          ten_tai_lieu: category.ten_tai_lieu,
+          ngay_lap: category.ngay_lap || null,
+          ghi_chu: category.ghi_chu || '',
+        };
+        const updated = await apiClient.put<ResourceCategory>(`/api/resources/categories/${category.id}/`, payload);
+        setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        setDocuments((prev) =>
+          prev.map((d) =>
+            d.dm_tai_lieu === updated.id ? { ...d, dm_tai_lieu_name: updated.ten_tai_lieu } : d
+          )
+        );
+        showToast(`Đã cập nhật thành công thư mục: "${updated.ten_tai_lieu}"`, 'success', 'Cập nhật Thư mục');
+      } else {
+        const payload = {
+          stt_uu_tien: category.stt_uu_tien,
+          ky_hieu: category.ky_hieu || '',
+          ten_tai_lieu: category.ten_tai_lieu,
+          ngay_lap: category.ngay_lap || null,
+          ghi_chu: category.ghi_chu || '',
+        };
+        const savedCat = await apiClient.post<ResourceCategory>('/api/resources/categories/', payload);
+        setCategories((prev) => [...prev, savedCat]);
+
+        // Nếu có danh sách loại con khởi tạo kèm theo:
+        if (childTypes && childTypes.length > 0) {
+          const createdTypes: ResourceType[] = [];
+          for (const typeName of childTypes) {
+            const typePayload = {
+              dm_tai_lieu: savedCat.id,
+              ten_loai: typeName.trim(),
+              is_public: true,
+              ghi_chu: `Khởi tạo cùng thư mục ${savedCat.ten_tai_lieu}`,
+              ngay_lap: savedCat.ngay_lap || new Date().toISOString(),
+            };
+            const savedType = await apiClient.post<ResourceType>('/api/resources/types/', typePayload).catch((e) => {
+              console.error('Lỗi khi tạo loại con:', e);
+              return null;
+            });
+            if (savedType) {
+              createdTypes.push(savedType);
+            }
+          }
+          if (createdTypes.length > 0) {
+            setTypes((prev) => [...prev, ...createdTypes]);
+          }
+        }
+
+        const extraMsg = childCount && childCount > 0 ? ` (kèm ${childCount} loại con)` : '';
+        showToast(`Đã thêm mới thành công thư mục: "${savedCat.ten_tai_lieu}"${extraMsg}`, 'success', 'Thêm mới Thư mục');
+      }
+    } catch (e) {
+      console.error('Lỗi khi lưu thư mục lên máy chủ:', e);
+      showToast('Không thể lưu thư mục lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
     }
   };
 
-  const handleDeleteCategory = (id: number) => {
+  const handleDeleteCategory = async (id: number) => {
     const cat = categories.find((c) => c.id === id);
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    setTypes((prev) => prev.filter((t) => t.dm_tai_lieu !== id));
-    setDocuments((prev) => prev.filter((d) => d.dm_tai_lieu !== id));
-    showToast(`Đã xóa thành công thư mục Cấp 1: "${cat?.ten_tai_lieu || id}"`, 'danger', 'Xóa Thư mục');
-    if (selectedCategory === String(id)) {
-      setSelectedCategory('all');
+    try {
+      await apiClient.delete(`/api/resources/categories/${id}/`);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      setTypes((prev) => prev.filter((t) => t.dm_tai_lieu !== id));
+      setDocuments((prev) => prev.filter((d) => d.dm_tai_lieu !== id));
+      showToast(`Đã xóa thành công thư mục Cấp 1: "${cat?.ten_tai_lieu || id}"`, 'danger', 'Xóa Thư mục');
+      if (selectedCategory === String(id)) {
+        setSelectedCategory('all');
+      }
+    } catch (e) {
+      console.error('Lỗi khi xóa danh mục trên máy chủ:', e);
+      showToast('Không thể xóa thư mục trên hệ thống máy chủ', 'danger', 'Lỗi thao tác');
     }
   };
 
   // Quản lý Loại biểu mẫu Cấp 2
-  const handleSaveType = (typeItem: ResourceType, isEdit: boolean, silent?: boolean) => {
-    if (isEdit) {
-      setTypes((prev) => prev.map((t) => (t.id === typeItem.id ? typeItem : t)));
-      setDocuments((prev) =>
-        prev.map((d) => {
-          if (d.loai_tai_lieu?.includes(typeItem.id)) {
-            const updatedTypes = types.map((t) => (t.id === typeItem.id ? typeItem : t));
-            const newNames = updatedTypes
-              .filter((t) => d.loai_tai_lieu.includes(t.id))
-              .map((t) => t.ten_loai);
-            return { ...d, loai_tai_lieu_names: newNames };
-          }
-          return d;
-        })
-      );
-      if (!silent) {
-        showToast(`Đã cập nhật thành công loại tài liệu: "${typeItem.ten_loai}"`, 'success', 'Cập nhật Loại tài liệu');
+  const handleSaveType = async (typeItem: ResourceType, isEdit: boolean, silent?: boolean) => {
+    try {
+      if (isEdit) {
+        const payload = {
+          dm_tai_lieu: typeItem.dm_tai_lieu,
+          ten_loai: typeItem.ten_loai,
+          is_public: typeItem.is_public,
+          ghi_chu: typeItem.ghi_chu || '',
+        };
+        const updated = await apiClient.put<ResourceType>(`/api/resources/types/${typeItem.id}/`, payload);
+        setTypes((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+        setDocuments((prev) =>
+          prev.map((d) => {
+            if (d.loai_tai_lieu?.includes(updated.id)) {
+              const updatedTypes = types.map((t) => (t.id === updated.id ? updated : t));
+              const newNames = updatedTypes
+                .filter((t) => d.loai_tai_lieu.includes(t.id))
+                .map((t) => t.ten_loai);
+              return { ...d, loai_tai_lieu_names: newNames };
+            }
+            return d;
+          })
+        );
+        if (!silent) {
+          showToast(`Đã cập nhật thành công loại tài liệu: "${updated.ten_loai}"`, 'success', 'Cập nhật Loại tài liệu');
+        }
+      } else {
+        const payload = {
+          dm_tai_lieu: typeItem.dm_tai_lieu,
+          ten_loai: typeItem.ten_loai,
+          is_public: typeItem.is_public,
+          ghi_chu: typeItem.ghi_chu || '',
+        };
+        const saved = await apiClient.post<ResourceType>('/api/resources/types/', payload);
+        setTypes((prev) => [...prev, saved]);
+        if (!silent) {
+          showToast(`Đã thêm mới thành công loại tài liệu: "${saved.ten_loai}"`, 'success', 'Thêm mới Loại tài liệu');
+        }
       }
-    } else {
-      setTypes((prev) => [...prev, typeItem]);
-      if (!silent) {
-        showToast(`Đã thêm mới thành công loại tài liệu: "${typeItem.ten_loai}"`, 'success', 'Thêm mới Loại tài liệu');
-      }
+    } catch (e) {
+      console.error('Lỗi khi lưu loại tài liệu lên máy chủ:', e);
+      showToast('Không thể lưu loại tài liệu lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
     }
   };
 
-  const handleDeleteType = (id: number) => {
+  const handleDeleteType = async (id: number) => {
     const typeItem = types.find((t) => t.id === id);
-    setTypes((prev) => prev.filter((t) => t.id !== id));
-    setDocuments((prev) =>
-      prev.map((d) => ({
-        ...d,
-        loai_tai_lieu: (d.loai_tai_lieu || []).filter((tid) => tid !== id),
-        loai_tai_lieu_names: (d.loai_tai_lieu_names || []).filter(
-          (name) => name !== typeItem?.ten_loai
-        ),
-      }))
-    );
-    showToast(`Đã xóa thành công loại tài liệu: "${typeItem?.ten_loai || id}"`, 'danger', 'Xóa Loại tài liệu');
-    if (selectedType === String(id)) {
-      setSelectedType('all');
+    try {
+      await apiClient.delete(`/api/resources/types/${id}/`);
+      setTypes((prev) => prev.filter((t) => t.id !== id));
+      setDocuments((prev) =>
+        prev.map((d) => ({
+          ...d,
+          loai_tai_lieu: (d.loai_tai_lieu || []).filter((tid) => tid !== id),
+          loai_tai_lieu_names: (d.loai_tai_lieu_names || []).filter(
+            (name) => name !== typeItem?.ten_loai
+          ),
+        }))
+      );
+      showToast(`Đã xóa thành công loại tài liệu: "${typeItem?.ten_loai || id}"`, 'danger', 'Xóa Loại tài liệu');
+      if (selectedType === String(id)) {
+        setSelectedType('all');
+      }
+    } catch (e) {
+      console.error('Lỗi khi xóa loại tài liệu trên máy chủ:', e);
+      showToast('Không thể xóa loại tài liệu trên hệ thống máy chủ', 'danger', 'Lỗi thao tác');
     }
   };
 
@@ -1525,6 +1563,7 @@ export default function ResourceManagementPage() {
         initialData={formInitialData}
         categories={categories}
         types={types}
+        isLoading={isSubmittingDoc}
       />
 
       {/* MODAL QUẢN LÝ CẤU TRÚC DANH MỤC CẤP 1 & LOẠI BIỂU MẪU CẤP 2 (MỤC 8) */}
