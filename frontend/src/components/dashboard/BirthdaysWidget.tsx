@@ -49,18 +49,24 @@ export default function BirthdaysWidget({
 
   return (
     <div className="bg-surface border border-border-subtle rounded-xl shadow-sm px-4 py-3 flex items-center gap-3.5 overflow-hidden relative select-none">
-      {/* Label / Badge cố định bên trái */}
+      {/* Label / Badge cố định bên trái (Trên điện thoại chỉ hiển thị icon để tối đa hóa không gian Marquee) */}
       {hasBirthdays ? (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success text-white text-sm font-bold shrink-0 shadow-xs">
-          <i className="fa-solid fa-cake-candles text-xs" />
-          <span className="whitespace-nowrap">
+        <div
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-success text-white text-sm font-bold shrink-0 shadow-xs"
+          title={t('dashboardDetails.happyBirthday') || 'Chúc mừng sinh nhật:'}
+        >
+          <i className="fa-solid fa-cake-candles text-sm sm:text-xs" />
+          <span className="hidden sm:inline whitespace-nowrap">
             {t('dashboardDetails.happyBirthday') || 'Chúc mừng sinh nhật:'}
           </span>
         </div>
       ) : (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 text-sm font-bold shrink-0 shadow-xs">
-          <i className="fa-regular fa-calendar-days text-xs" />
-          <span className="whitespace-nowrap">
+        <div
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 text-sm font-bold shrink-0 shadow-xs"
+          title={t('dashboardDetails.birthdayCalendarBadge') || 'Lịch sinh nhật:'}
+        >
+          <i className="fa-regular fa-calendar-days text-sm sm:text-xs" />
+          <span className="hidden sm:inline whitespace-nowrap">
             {t('dashboardDetails.birthdayCalendarBadge') || 'Lịch sinh nhật:'}
           </span>
         </div>
