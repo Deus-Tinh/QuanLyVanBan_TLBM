@@ -457,9 +457,9 @@ export default function ResourceManagementPage() {
   }, [documents]);
 
 
-  // Hỗ trợ cuộn ngang mượt mà bằng con lăn chuột (Mouse Wheel), cách ly hoàn toàn không làm trôi trang
+  // Hỗ trợ cuộn ngang mượt mà: con lăn chuột (Mouse Wheel), vuốt cảm ứng/trackpad và kéo giữ chuột (Drag to Scroll)
   useEffect(() => {
-    const attachWheelScroll = (el: HTMLDivElement | null) => {
+    const attachHorizontalScroll = (el: HTMLDivElement | null) => {
       if (!el) return undefined;
 
       let isAnimating = false;
@@ -506,18 +506,72 @@ export default function ResourceManagementPage() {
         }
       };
 
+      // Kéo giữ chuột để trượt ngang (Drag to scroll)
+      let isMouseDown = false;
+      let startX = 0;
+      let scrollLeftStart = 0;
+      let hasDragged = false;
+
+      const onMouseDown = (e: MouseEvent) => {
+        if (e.button !== 0) return; // Chỉ nhận chuột trái
+        isMouseDown = true;
+        hasDragged = false;
+        startX = e.pageX - el.offsetLeft;
+        scrollLeftStart = el.scrollLeft;
+        if (isAnimating && animationFrameId !== null) {
+          cancelAnimationFrame(animationFrameId);
+          isAnimating = false;
+        }
+      };
+
+      const onMouseMove = (e: MouseEvent) => {
+        if (!isMouseDown) return;
+        const x = e.pageX - el.offsetLeft;
+        const walk = x - startX;
+        if (Math.abs(walk) > 4) {
+          hasDragged = true;
+          el.scrollLeft = scrollLeftStart - walk;
+        }
+      };
+
+      const onMouseUp = () => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        if (hasDragged) {
+          // Ngăn chặn sự kiện click vào button con khi người dùng vừa nhả chuột sau khi kéo
+          const captureClick = (clickEvent: MouseEvent) => {
+            clickEvent.stopPropagation();
+            clickEvent.preventDefault();
+            window.removeEventListener('click', captureClick, true);
+          };
+          window.addEventListener('click', captureClick, true);
+        }
+      };
+
+      const onMouseLeave = () => {
+        isMouseDown = false;
+      };
+
       el.addEventListener('wheel', onWheel, { passive: false });
+      el.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+      el.addEventListener('mouseleave', onMouseLeave);
 
       return () => {
         el.removeEventListener('wheel', onWheel);
+        el.removeEventListener('mousedown', onMouseDown);
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        el.removeEventListener('mouseleave', onMouseLeave);
         if (animationFrameId !== null) {
           cancelAnimationFrame(animationFrameId);
         }
       };
     };
 
-    const cleanupTab = attachWheelScroll(tabBarRef.current);
-    const cleanupType = attachWheelScroll(typeBarRef.current);
+    const cleanupTab = attachHorizontalScroll(tabBarRef.current);
+    const cleanupType = attachHorizontalScroll(typeBarRef.current);
 
     return () => {
       cleanupTab?.();
@@ -1116,7 +1170,7 @@ export default function ResourceManagementPage() {
           {/* Vùng danh mục cuộn ngang (Hiển thị theo đúng thứ tự tick chọn 1, 2, 3...) */}
           <div
             ref={tabBarRef}
-            className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1 min-w-0"
+            className="flex items-stretch gap-0 overflow-x-auto scrollbar-none flex-1 min-w-0 select-none cursor-grab active:cursor-grabbing"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
           >
             {orderedVisibleCategories.map((cat) => {
@@ -1317,7 +1371,7 @@ export default function ResourceManagementPage() {
             {/* Vùng phân loại bên trái: Label icon + Chips */}
             <div
               ref={typeBarRef}
-              className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 py-0.5"
+              className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1 min-w-0 py-0.5 select-none cursor-grab active:cursor-grabbing"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', overscrollBehavior: 'contain' }}
             >
               <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted shrink-0 mr-1 select-none">
