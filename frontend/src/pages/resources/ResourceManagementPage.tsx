@@ -1754,7 +1754,7 @@ export default function ResourceManagementPage() {
         </div>
 
         <Button
-          variant="outline"
+          variant="excel"
           size="sm"
           icon="fa-file-excel"
           onClick={handleExportExcel}

@@ -100,7 +100,8 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         return 'fa-file-word text-blue-500';
       case 'XLS':
       case 'XLSX':
-        return 'fa-file-excel text-emerald-500';
+      case 'CSV':
+        return 'fa-file-excel text-[#107C41] dark:text-emerald-400';
       case 'ZIP':
       case 'RAR':
       case '7Z':

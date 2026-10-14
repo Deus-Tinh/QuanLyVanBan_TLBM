@@ -159,7 +159,8 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         return 'fa-file-word text-blue-500';
       case 'XLS':
       case 'XLSX':
-        return 'fa-file-excel text-emerald-500';
+      case 'CSV':
+        return 'fa-file-excel text-[#107C41] dark:text-emerald-400';
       case 'ZIP':
       case 'RAR':
       case '7Z':
@@ -213,7 +214,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         case 'XLS':
         case 'XLSX':
         case 'CSV':
-          return 'bg-emerald-50 text-emerald-600 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60';
+          return 'bg-emerald-50 text-[#107C41] border-emerald-600/40 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60';
         case 'ZIP':
         case 'RAR':
         case '7Z':
