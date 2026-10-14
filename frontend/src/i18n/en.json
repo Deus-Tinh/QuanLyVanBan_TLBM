@@ -94,7 +94,7 @@
     "searchDevAlert": "Group 1 is currently developing database-connected search!",
     "kpiTitle": "Annual Incoming & Outgoing Documents Statistics (2024 - 2026)",
     "kpiVerifiedTag": "✓ Spec Compliant (Group 1)",
-    "incomingCard": "INCOMING DOCS (2026)",
+    "incomingCard": "INCOMING DOCS",
     "incomingToday": "↑ +12 new documents today",
     "outgoingCard": "INTERNAL OUTGOING DOCS",
     "outgoingStatus": "↑ 100% issued",

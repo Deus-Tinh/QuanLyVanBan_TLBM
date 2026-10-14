@@ -253,24 +253,24 @@ export default function ModernDashboardView({
         </button>
       </div>
 
-      {/* 2. Modern KPI Deck (3 cards thẻ thống kê - Cỡ chữ to rõ ràng) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      {/* 2. Modern KPI Deck (Trên điện thoại thu gọn thành 1 hàng 3 cột để tối ưu chiều cao, trên desktop hiển thị đầy đủ) */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3.5 md:gap-5">
         {/* Card 1: VB Đến */}
         <div
           onClick={() => onNavigate('documents_incoming')}
-          className="bg-surface border border-border-subtle rounded-2xl p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-primary-border transition-colors"
+          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2.5 sm:p-3.5 md:p-5 flex flex-col md:flex-row md:items-center gap-1.5 sm:gap-2.5 md:gap-4 shadow-2xs md:shadow-sm cursor-pointer hover:border-primary-border transition-all"
         >
-          <div className="w-14 h-14 rounded-2xl bg-primary-subtle text-primary flex items-center justify-center text-2xl shrink-0 shadow-xs">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-lg md:rounded-2xl bg-primary-subtle text-primary flex items-center justify-center text-sm sm:text-base md:text-2xl shrink-0 shadow-2xs">
             <i className="fa-solid fa-inbox" />
           </div>
-          <div>
-            <div className="text-sm uppercase tracking-wider font-semibold text-muted">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider font-semibold text-muted truncate">
               {t('dashboardDetails.incomingCard')} ({new Date().getFullYear()})
             </div>
-            <div className="text-3xl lg:text-4xl font-bold text-main mt-0.5">
+            <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main mt-0.5">
               {incomingCount.toLocaleString()}
             </div>
-            <div className="text-sm text-secondary mt-1.5">
+            <div className="hidden md:block text-sm text-secondary mt-1.5 truncate">
               {incomingCount > 0 ? `+${incomingCount} ${t('dashboardDetails.newIncomingToday')}` : t('dashboardDetails.noIncomingToday')}
             </div>
           </div>
@@ -279,19 +279,19 @@ export default function ModernDashboardView({
         {/* Card 2: VB Đi */}
         <div
           onClick={() => onNavigate('documents_outgoing')}
-          className="bg-surface border border-border-subtle rounded-2xl p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-success-border transition-colors"
+          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2.5 sm:p-3.5 md:p-5 flex flex-col md:flex-row md:items-center gap-1.5 sm:gap-2.5 md:gap-4 shadow-2xs md:shadow-sm cursor-pointer hover:border-success-border transition-all"
         >
-          <div className="w-14 h-14 rounded-2xl bg-success-subtle text-success flex items-center justify-center text-2xl shrink-0 shadow-xs">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-lg md:rounded-2xl bg-success-subtle text-success flex items-center justify-center text-sm sm:text-base md:text-2xl shrink-0 shadow-2xs">
             <i className="fa-solid fa-paper-plane" />
           </div>
-          <div>
-            <div className="text-sm uppercase tracking-wider font-semibold text-muted">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider font-semibold text-muted truncate">
               {t('dashboardDetails.outgoingCard')}
             </div>
-            <div className="text-3xl lg:text-4xl font-bold text-main mt-0.5">
+            <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main mt-0.5">
               {outgoingCount.toLocaleString()}
             </div>
-            <div className="text-sm text-secondary mt-1.5">
+            <div className="hidden md:block text-sm text-secondary mt-1.5 truncate">
               {outgoingCount > 0 ? `+${outgoingCount} ${t('dashboardDetails.issuedToday')}` : t('dashboardDetails.noOutgoingToday')}
             </div>
           </div>
@@ -300,19 +300,19 @@ export default function ModernDashboardView({
         {/* Card 3: Nhiệm vụ */}
         <div
           onClick={() => onNavigate('tasks')}
-          className="bg-surface border border-border-subtle rounded-2xl p-5 flex items-center gap-4 shadow-sm cursor-pointer hover:border-purple-border transition-colors"
+          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2.5 sm:p-3.5 md:p-5 flex flex-col md:flex-row md:items-center gap-1.5 sm:gap-2.5 md:gap-4 shadow-2xs md:shadow-sm cursor-pointer hover:border-purple-border transition-all"
         >
-          <div className="w-14 h-14 rounded-2xl bg-purple-subtle text-purple flex items-center justify-center text-2xl shrink-0 shadow-xs">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-14 md:h-14 rounded-lg md:rounded-2xl bg-purple-subtle text-purple flex items-center justify-center text-sm sm:text-base md:text-2xl shrink-0 shadow-2xs">
             <i className="fa-solid fa-list-check" />
           </div>
-          <div>
-            <div className="text-sm uppercase tracking-wider font-semibold text-muted">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wider font-semibold text-muted truncate">
               {t('dashboardDetails.tasksCard')}
             </div>
-            <div className="text-3xl lg:text-4xl font-bold text-main mt-0.5">
+            <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main mt-0.5">
               {tasksCount.toLocaleString()}
             </div>
-            <div className="text-sm text-secondary mt-1.5">
+            <div className="hidden md:block text-sm text-secondary mt-1.5 truncate">
               {tasksCount > 0 ? `${tasksCount} ${t('dashboardDetails.tasksToProcess')}` : t('dashboardDetails.noTasksPending')}
             </div>
           </div>
