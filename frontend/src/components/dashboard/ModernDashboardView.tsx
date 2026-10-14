@@ -253,68 +253,77 @@ export default function ModernDashboardView({
         </button>
       </div>
 
-      {/* 2. Modern KPI Deck (Trên điện thoại thu nhỏ cỡ chữ để hiển thị đầy đủ 100% nội dung trên 1 hàng 3 cột) */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3.5 md:gap-5">
+      {/* 2. Modern KPI Deck (Icon nằm ngang với số đếm, tiêu đề hàng trên hiển thị trọn vẹn, bố cục luôn cân đối trên mọi màn hình) */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3 md:gap-5">
         {/* Card 1: VB Đến */}
         <div
           onClick={() => onNavigate('documents_incoming')}
-          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2 sm:p-3.5 md:p-5 flex flex-col md:flex-row md:items-center gap-1 sm:gap-2.5 md:gap-4 shadow-2xs md:shadow-sm cursor-pointer hover:border-primary-border transition-all"
+          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2 sm:p-3 md:p-5 flex flex-col justify-between shadow-2xs md:shadow-sm cursor-pointer hover:border-primary-border transition-all"
         >
-          <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-14 md:h-14 rounded-lg md:rounded-2xl bg-primary-subtle text-primary flex items-center justify-center text-xs sm:text-base md:text-2xl shrink-0 shadow-2xs">
-            <i className="fa-solid fa-inbox" />
+          <div>
+            <div className="text-[10px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-normal md:tracking-wider font-semibold text-muted leading-tight md:leading-normal truncate">
+              <span className="md:hidden">{t('dashboardDetails.incomingCardShort') || 'VĂN BẢN ĐẾN'}</span>
+              <span className="hidden md:inline">{t('dashboardDetails.incomingCard')} ({new Date().getFullYear()})</span>
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2.5 mt-1 sm:mt-1.5 md:mt-2">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 rounded-md md:rounded-2xl bg-primary-subtle text-primary flex items-center justify-center text-xs sm:text-base md:text-2xl shrink-0 shadow-2xs">
+                <i className="fa-solid fa-inbox" />
+              </div>
+              <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main leading-none">
+                {incomingCount.toLocaleString()}
+              </div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-[10px] sm:text-xs md:text-sm uppercase tracking-wider font-semibold text-muted leading-tight">
-              {t('dashboardDetails.incomingCard')} ({new Date().getFullYear()})
-            </div>
-            <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main my-0.5 sm:my-1 leading-none">
-              {incomingCount.toLocaleString()}
-            </div>
-            <div className="text-[10px] sm:text-xs md:text-sm text-secondary leading-tight">
-              {incomingCount > 0 ? `+${incomingCount} ${t('dashboardDetails.newIncomingToday')}` : t('dashboardDetails.noIncomingToday')}
-            </div>
+          <div className="hidden md:block text-sm text-secondary md:mt-1 truncate">
+            {incomingCount > 0 ? `+${incomingCount} ${t('dashboardDetails.newIncomingToday')}` : t('dashboardDetails.noIncomingToday')}
           </div>
         </div>
 
         {/* Card 2: VB Đi */}
         <div
           onClick={() => onNavigate('documents_outgoing')}
-          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2 sm:p-3.5 md:p-5 flex flex-col md:flex-row md:items-center gap-1 sm:gap-2.5 md:gap-4 shadow-2xs md:shadow-sm cursor-pointer hover:border-success-border transition-all"
+          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2 sm:p-3 md:p-5 flex flex-col justify-between shadow-2xs md:shadow-sm cursor-pointer hover:border-success-border transition-all"
         >
-          <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-14 md:h-14 rounded-lg md:rounded-2xl bg-success-subtle text-success flex items-center justify-center text-xs sm:text-base md:text-2xl shrink-0 shadow-2xs">
-            <i className="fa-solid fa-paper-plane" />
+          <div>
+            <div className="text-[10px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-normal md:tracking-wider font-semibold text-muted leading-tight md:leading-normal truncate">
+              <span className="md:hidden">{t('dashboardDetails.outgoingCardShort') || 'VĂN BẢN ĐI'}</span>
+              <span className="hidden md:inline">{t('dashboardDetails.outgoingCard')}</span>
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2.5 mt-1 sm:mt-1.5 md:mt-2">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 rounded-md md:rounded-2xl bg-success-subtle text-success flex items-center justify-center text-xs sm:text-base md:text-2xl shrink-0 shadow-2xs">
+                <i className="fa-solid fa-paper-plane" />
+              </div>
+              <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main leading-none">
+                {outgoingCount.toLocaleString()}
+              </div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-[10px] sm:text-xs md:text-sm uppercase tracking-wider font-semibold text-muted leading-tight">
-              {t('dashboardDetails.outgoingCard')}
-            </div>
-            <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main my-0.5 sm:my-1 leading-none">
-              {outgoingCount.toLocaleString()}
-            </div>
-            <div className="text-[10px] sm:text-xs md:text-sm text-secondary leading-tight">
-              {outgoingCount > 0 ? `+${outgoingCount} ${t('dashboardDetails.issuedToday')}` : t('dashboardDetails.noOutgoingToday')}
-            </div>
+          <div className="hidden md:block text-sm text-secondary md:mt-1 truncate">
+            {outgoingCount > 0 ? `+${outgoingCount} ${t('dashboardDetails.issuedToday')}` : t('dashboardDetails.noOutgoingToday')}
           </div>
         </div>
 
         {/* Card 3: Nhiệm vụ */}
         <div
           onClick={() => onNavigate('tasks')}
-          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2 sm:p-3.5 md:p-5 flex flex-col md:flex-row md:items-center gap-1 sm:gap-2.5 md:gap-4 shadow-2xs md:shadow-sm cursor-pointer hover:border-purple-border transition-all"
+          className="bg-surface border border-border-subtle rounded-xl md:rounded-2xl p-2 sm:p-3 md:p-5 flex flex-col justify-between shadow-2xs md:shadow-sm cursor-pointer hover:border-purple-border transition-all"
         >
-          <div className="w-7 h-7 sm:w-9 sm:h-9 md:w-14 md:h-14 rounded-lg md:rounded-2xl bg-purple-subtle text-purple flex items-center justify-center text-xs sm:text-base md:text-2xl shrink-0 shadow-2xs">
-            <i className="fa-solid fa-list-check" />
+          <div>
+            <div className="text-[10px] sm:text-xs md:text-sm uppercase tracking-tight sm:tracking-normal md:tracking-wider font-semibold text-muted leading-tight md:leading-normal truncate">
+              <span className="md:hidden">{t('dashboardDetails.tasksCardShort') || 'NHIỆM VỤ'}</span>
+              <span className="hidden md:inline">{t('dashboardDetails.tasksCard')}</span>
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2.5 mt-1 sm:mt-1.5 md:mt-2">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 rounded-md md:rounded-2xl bg-purple-subtle text-purple flex items-center justify-center text-xs sm:text-base md:text-2xl shrink-0 shadow-2xs">
+                <i className="fa-solid fa-list-check" />
+              </div>
+              <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main leading-none">
+                {tasksCount.toLocaleString()}
+              </div>
+            </div>
           </div>
-          <div className="min-w-0">
-            <div className="text-[10px] sm:text-xs md:text-sm uppercase tracking-wider font-semibold text-muted leading-tight">
-              {t('dashboardDetails.tasksCard')}
-            </div>
-            <div className="text-base sm:text-2xl md:text-4xl font-extrabold text-main my-0.5 sm:my-1 leading-none">
-              {tasksCount.toLocaleString()}
-            </div>
-            <div className="text-[10px] sm:text-xs md:text-sm text-secondary leading-tight">
-              {tasksCount > 0 ? `${tasksCount} ${t('dashboardDetails.tasksToProcess')}` : t('dashboardDetails.noTasksPending')}
-            </div>
+          <div className="hidden md:block text-sm text-secondary md:mt-1 truncate">
+            {tasksCount > 0 ? `${tasksCount} ${t('dashboardDetails.tasksToProcess')}` : t('dashboardDetails.noTasksPending')}
           </div>
         </div>
       </div>
@@ -325,13 +334,12 @@ export default function ModernDashboardView({
       {/* 4. Hai Bảng Song Song: Văn Bản Đến & Văn Bản Đi (Cỡ chữ to rõ ràng) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Top Văn Bản Đến */}
-        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+        <div className="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 md:p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-3">
-            <div className="font-bold text-base text-main flex items-center gap-2.5">
-              <i className="fa-solid fa-inbox text-primary text-lg" />
+            <div className="font-bold text-sm sm:text-base text-main flex items-center gap-2 sm:gap-2.5">
+              <i className="fa-solid fa-inbox text-primary text-sm sm:text-base md:text-lg shrink-0" />
               <span>{t('dashboardDetails.recentIncomingTitle')}</span>
             </div>
-            <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
           </div>
 
           <div className="flex-1 min-h-[160px] flex flex-col justify-start">
@@ -397,13 +405,12 @@ export default function ModernDashboardView({
         </div>
 
         {/* Top Văn Bản Đi */}
-        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+        <div className="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 md:p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-3">
-            <div className="font-bold text-base text-main flex items-center gap-2.5">
-              <i className="fa-solid fa-paper-plane text-success text-lg" />
+            <div className="font-bold text-sm sm:text-base text-main flex items-center gap-2 sm:gap-2.5">
+              <i className="fa-solid fa-paper-plane text-success text-sm sm:text-base md:text-lg shrink-0" />
               <span>{t('dashboardDetails.recentOutgoingTitle')}</span>
             </div>
-            <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
           </div>
 
           <div className="flex-1 min-h-[160px] flex flex-col justify-start">
@@ -472,24 +479,16 @@ export default function ModernDashboardView({
       {/* 5. Hai Bảng Song Song: Nhiệm Vụ Được Giao & Tài Liệu Biểu Mẫu (Hàng dưới chia đôi - Chữ to rõ ràng) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Cột Trái: Danh Sách Nhiệm Vụ Được Giao (Top 5) */}
-        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+        <div className="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 md:p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-3">
-            <div className="font-bold text-base text-main flex items-center gap-2.5">
-              <i className="fa-solid fa-list-check text-purple text-lg" />
+            <div className="font-bold text-sm sm:text-base text-main flex items-center gap-2 sm:gap-2.5">
+              <i className="fa-solid fa-list-check text-purple text-sm sm:text-base md:text-lg shrink-0" />
               <span>{t('dashboardDetails.recentTasksTitle')}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigate('tasks')}
-              className="text-sm font-semibold text-purple hover:underline inline-flex items-center gap-1 cursor-pointer"
-            >
-              <span>{t('dashboardDetails.viewMoreTasks')}</span>
-              <i className="fa-solid fa-arrow-right text-xs" />
-            </button>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex gap-2 mb-3 flex-wrap">
+          {/* Filter Pills: Đang xử lý / Hoàn thành / Quá hạn / Chờ duyệt - Đảm bảo chỉ hiện trên 1 hàng */}
+          <div className="grid grid-cols-4 gap-1 sm:gap-2 mb-3">
             {(
               [
                 { id: 'processing', label: t('dashboardDetails.filterProcessing') },
@@ -502,9 +501,9 @@ export default function ModernDashboardView({
                 key={item.id}
                 type="button"
                 onClick={() => setTaskFilter(item.id)}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border border-border-subtle transition-colors cursor-pointer ${
+                className={`w-full py-1 sm:py-1.5 px-0.5 sm:px-3 rounded-full text-[11px] sm:text-sm font-semibold border border-border-subtle transition-colors cursor-pointer text-center truncate ${
                   taskFilter === item.id
-                    ? 'bg-purple text-white border-purple'
+                    ? 'bg-purple text-white border-purple shadow-xs'
                     : 'bg-surface-elevated text-secondary hover:text-main'
                 }`}
               >
@@ -559,13 +558,12 @@ export default function ModernDashboardView({
         </div>
 
         {/* Cột Phải: Danh Sách Tài Liệu & Biểu Mẫu Mới Nhất (Top 5) - Nhóm 4 */}
-        <div className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm flex flex-col">
+        <div className="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 md:p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-3">
-            <div className="font-bold text-base text-main flex items-center gap-2.5">
-              <i className="fa-solid fa-file-lines text-primary text-lg" />
+            <div className="font-bold text-sm sm:text-base text-main flex items-center gap-2 sm:gap-2.5">
+              <i className="fa-solid fa-file-lines text-primary text-sm sm:text-base md:text-lg shrink-0" />
               <span>{t('dashboardDetails.recentResourcesTitle')}</span>
             </div>
-            <span className="text-sm text-muted">{t('dashboardDetails.updatedLatest')}</span>
           </div>
 
           <div className="flex-1 min-h-[160px] flex flex-col justify-start">
