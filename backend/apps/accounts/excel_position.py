@@ -10,7 +10,7 @@ import openpyxl
 from django.db import IntegrityError, transaction
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-from .models import Position
+from .models import MAX_DISPLAY_ORDER, Position
 
 HEADERS = ["STT ưu tiên", "Tên chức vụ (*)", "Hiển thị công khai (Có/Không)", "Ghi chú"]
 MAX_ROWS = 1000
@@ -94,6 +94,8 @@ def _parse_stt(raw):
             return None, "positions.import.errors.invalidStt"
     if not isinstance(raw, int) or raw < 1:
         return None, "positions.import.errors.invalidStt"
+    if raw > MAX_DISPLAY_ORDER:
+        return None, "positions.messages.sttTooLarge"
     return raw, None
 
 
@@ -157,27 +159,27 @@ def import_positions_from_excel(file_obj) -> dict:
 
         name = " ".join(str(name_raw or "").split())
         if not name:
-            add_error(row_number, "ten_chuc_vu", "positions.messages.nameRequired")
+            add_error(row_number, "name", "positions.messages.nameRequired")
             row_errors += 1
         elif len(name) > 255:
-            add_error(row_number, "ten_chuc_vu", "positions.messages.nameTooLong", name[:40])
+            add_error(row_number, "name", "positions.messages.nameTooLong", name[:40])
             row_errors += 1
         elif name.casefold() in existing_names:
-            add_error(row_number, "ten_chuc_vu", "positions.messages.nameExists", name)
+            add_error(row_number, "name", "positions.messages.nameExists", name)
             row_errors += 1
         elif name.casefold() in seen_names:
-            add_error(row_number, "ten_chuc_vu", "positions.import.errors.duplicateNameInFile", name)
+            add_error(row_number, "name", "positions.import.errors.duplicateNameInFile", name)
             row_errors += 1
 
         stt, stt_error = _parse_stt(stt_raw)
         if stt_error:
-            add_error(row_number, "stt_uu_tien", stt_error, stt_raw)
+            add_error(row_number, "display_order", stt_error, stt_raw)
             row_errors += 1
         elif stt is not None and stt in existing_stt:
-            add_error(row_number, "stt_uu_tien", "positions.messages.sttExists", stt)
+            add_error(row_number, "display_order", "positions.messages.sttExists", stt)
             row_errors += 1
         elif stt is not None and stt in seen_stt:
-            add_error(row_number, "stt_uu_tien", "positions.import.errors.duplicateSttInFile", stt)
+            add_error(row_number, "display_order", "positions.import.errors.duplicateSttInFile", stt)
             row_errors += 1
 
         is_public, public_error = _parse_public(public_raw)
@@ -196,6 +198,9 @@ def import_positions_from_excel(file_obj) -> dict:
     # Dòng không có STT lấy số lớn nhất + 1, tránh cả các STT khai báo tường minh trong file.
     reserved = existing_stt | set(seen_stt)
     next_stt = max(reserved, default=0) + 1
+    if next_stt > MAX_DISPLAY_ORDER:
+        # STT lớn nhất đã chạm trần cột INTEGER: bắt đầu tìm số trống từ 1 (vòng while bên dưới bỏ qua số đã dùng).
+        next_stt = 1
     imported = 0
     for row_number, stt, name, is_public, note in candidates:
         if stt is None:
@@ -208,7 +213,7 @@ def import_positions_from_excel(file_obj) -> dict:
                 Position.objects.create(display_order=stt, name=name, is_public=is_public, note=note)
             imported += 1
         except IntegrityError:
-            add_error(row_number, "stt_uu_tien", "positions.messages.sttExists", stt)
+            add_error(row_number, "display_order", "positions.messages.sttExists", stt)
 
     errors.sort(key=lambda e: e["row"])
     return {

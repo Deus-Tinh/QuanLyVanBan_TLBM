@@ -301,6 +301,37 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertEqual(res.data["detail"], "organizations.messages.unitHasEmployees")
         self.assertTrue(DonVi.objects.filter(pk=self.unit.id).exists())
 
+    def test_invalid_input_returns_400_not_500(self):
+        """Đầu vào vượt giới hạn cột DDL hoặc sai kiểu phải trả 400 kèm key, không lỗi 500."""
+        cases = [
+            ("get", "/api/organizations/units/?region_id=abc", None, "detail", "organizations.messages.regionNotFound"),
+            ("get", "/api/organizations/units/export/?region_id=1x", None, "detail", "organizations.messages.regionNotFound"),
+            ("post", "/api/organizations/regions/", {"ten": "K" * 256}, "ten", "organizations.messages.nameTooLong"),
+            ("post", "/api/organizations/regions/", {"ten": "Khối lớn", "thu_tu_hien_thi": 2147483648}, "thu_tu_hien_thi",
+             "organizations.messages.displayOrderInvalid"),
+            ("post", "/api/organizations/units/", {"khoi": self.region.id, "ten": "D" * 256}, "ten",
+             "organizations.messages.nameTooLong"),
+            ("post", "/api/organizations/units/", {"khoi": self.region.id, "ten": "Đơn vị lớn", "stt_uu_tien": 2147483648},
+             "stt_uu_tien", "organizations.messages.priorityTooLarge"),
+            ("post", "/api/organizations/units/", {"khoi": self.region.id, "ten": "Đơn vị địa chỉ", "dia_chi": "a" * 256},
+             "dia_chi", "organizations.messages.addressTooLong"),
+        ]
+        for method, url, data, key, message in cases:
+            with self.subTest(url=url, key=key):
+                res = getattr(self.client, method)(url, data, format="json") if data else getattr(self.client, method)(url)
+                self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+                value = res.data[key]
+                self.assertEqual(value if isinstance(value, str) else value[0], message)
+
+    def test_unit_nullable_columns_accept_null(self):
+        """DDL cho dia_chi, dien_thoai, email, ghi_chu nhận NULL."""
+        res = self.client.post(
+            "/api/organizations/units/",
+            {"khoi": self.region.id, "ten": "Đơn vị NULL", "dia_chi": None, "dien_thoai": None, "email": None, "ghi_chu": None},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+
     def test_unauthenticated_access_denied(self):
         """Kiểm tra bắt buộc xác thực đăng nhập (401 Unauthorized)."""
         unauthenticated_client = APIClient()

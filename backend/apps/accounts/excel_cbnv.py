@@ -153,16 +153,28 @@ def import_cbnv_from_excel(file_obj) -> dict:
     except Exception as e:
         return {
             "success": False,
-            "message": f"Không thể đọc tệp Excel. Lỗi: {str(e)}",
-            "errors": [{"row": 0, "message": "Tệp tải lên không phải định dạng Excel hợp lệ (.xlsx)."}],
+            "message": "employees.import.errors.invalidFile",
+            "errors": [{
+                "row": 0,
+                "field": "file",
+                "code": "employees.import.errors.invalidFile",
+                "value": "",
+                "message": f"Không thể đọc tệp Excel. Lỗi: {str(e)}",
+            }],
         }
 
     rows = list(ws.iter_rows(values_only=True))
     if len(rows) <= 1:
         return {
             "success": False,
-            "message": "Tệp Excel không có dòng dữ liệu nào ngoài dòng tiêu đề.",
-            "errors": [{"row": 0, "message": "Tệp Excel trống."}],
+            "message": "employees.import.errors.emptyFile",
+            "errors": [{
+                "row": 0,
+                "field": "file",
+                "code": "employees.import.errors.emptyFile",
+                "value": "",
+                "message": "Tệp Excel trống hoặc không có dữ liệu ngoài dòng tiêu đề.",
+            }],
         }
 
     # Tự động phát hiện có cột STT ở đầu hay không
@@ -172,6 +184,15 @@ def import_cbnv_from_excel(file_obj) -> dict:
     errors = []
     valid_records = []
     seen_emails_in_file = set()
+
+    def add_error(row: int, field: str, code: str, value="", message=""):
+        errors.append({
+            "row": row,
+            "field": field,
+            "code": code,
+            "value": "" if value is None else str(value),
+            "message": message,
+        })
 
     for idx, row in enumerate(rows[1:], start=2):
         if not any(row):
@@ -201,25 +222,66 @@ def import_cbnv_from_excel(file_obj) -> dict:
 
         # 1. Validate Họ và tên
         if not ho_ten:
-            errors.append({"row": idx, "message": "Họ và tên không được để trống."})
+            add_error(idx, "ho_ten", "employees.validation.nameRequired", "", "Họ và tên không được để trống.")
 
         # 2. Validate Ngày sinh
         birthday = _parse_date(raw_birthday)
         if not birthday:
-            errors.append({
-                "row": idx,
-                "message": f"Ngày sinh '{raw_birthday}' không đúng định dạng (hỗ trợ YYYY-MM-DD hoặc DD/MM/YYYY).",
-            })
+            add_error(
+                idx,
+                "ngay_sinh",
+                "employees.import.errors.invalidBirthday",
+                str(raw_birthday or ""),
+                f"Ngày sinh '{raw_birthday}' không đúng định dạng (hỗ trợ YYYY-MM-DD hoặc DD/MM/YYYY).",
+            )
+        else:
+            today = date.today()
+            if birthday > today:
+                add_error(
+                    idx,
+                    "ngay_sinh",
+                    "employees.messages.birthdayInFuture",
+                    str(raw_birthday or ""),
+                    "Ngày sinh không thể ở trong tương lai.",
+                )
+            else:
+                age = today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
+                if age < 18 or age > 100:
+                    add_error(
+                        idx,
+                        "ngay_sinh",
+                        "employees.messages.birthdayOutOfRange",
+                        str(raw_birthday or ""),
+                        "Độ tuổi của cán bộ nhân viên phải từ 18 đến 100 tuổi.",
+                    )
 
         # 3. Validate Email
         if not raw_email:
-            errors.append({"row": idx, "message": "Email không được để trống."})
+            add_error(idx, "email", "employees.validation.emailRequired", "", "Email không được để trống.")
         elif not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", raw_email):
-            errors.append({"row": idx, "message": f"Email '{raw_email}' không đúng định dạng."})
+            add_error(
+                idx,
+                "email",
+                "employees.import.errors.invalidEmail",
+                raw_email,
+                f"Email '{raw_email}' không đúng định dạng.",
+            )
         elif raw_email in seen_emails_in_file:
-            errors.append({"row": idx, "message": f"Email '{raw_email}' bị trùng lặp trong chính tệp Excel tải lên."})
+            add_error(
+                idx,
+                "email",
+                "employees.import.errors.duplicateEmailInFile",
+                raw_email,
+                f"Email '{raw_email}' bị trùng lặp trong chính tệp Excel tải lên.",
+            )
         elif get_user_model().objects.filter(email__iexact=raw_email).exists():
-            errors.append({"row": idx, "message": f"Email '{raw_email}' đã tồn tại trên hệ thống."})
+            add_error(
+                idx,
+                "email",
+                "employees.messages.emailExists",
+                raw_email,
+                f"Email '{raw_email}' đã tồn tại trên hệ thống.",
+            )
         else:
             seen_emails_in_file.add(raw_email)
 
@@ -227,29 +289,56 @@ def import_cbnv_from_excel(file_obj) -> dict:
         if sdt:
             sdt_clean = sdt.replace(" ", "").replace(".", "")
             if not re.match(r"^(0|\+84)[1-9][0-9]{7,9}$", sdt_clean):
-                errors.append({"row": idx, "message": f"Số điện thoại '{sdt}' không hợp lệ theo chuẩn Việt Nam."})
+                add_error(
+                    idx,
+                    "sdt",
+                    "employees.validation.phoneInvalid",
+                    sdt,
+                    f"Số điện thoại '{sdt}' không hợp lệ theo chuẩn Việt Nam.",
+                )
         else:
             sdt_clean = ""
 
         # 5. Validate Đơn vị / Phòng ban
         don_vi_instance = None
         if not don_vi_name:
-            errors.append({"row": idx, "message": "Tên Đơn vị / Phòng ban không được để trống."})
+            add_error(idx, "don_vi", "employees.import.errors.unitRequired", "", "Tên Đơn vị / Phòng ban không được để trống.")
         else:
-            don_vi_instance = DonVi.objects.filter(ten__iexact=don_vi_name).first()
-            if not don_vi_instance:
-                errors.append({"row": idx, "message": f"Không tìm thấy Đơn vị có tên '{don_vi_name}' trong hệ thống."})
+            matching_units = DonVi.objects.filter(ten__iexact=don_vi_name)
+            unit_count = matching_units.count()
+            if unit_count == 0:
+                add_error(
+                    idx,
+                    "don_vi",
+                    "employees.messages.unitNotFound",
+                    don_vi_name,
+                    f"Không tìm thấy Đơn vị có tên '{don_vi_name}' trong hệ thống.",
+                )
+            elif unit_count > 1:
+                add_error(
+                    idx,
+                    "don_vi",
+                    "employees.messages.unitAmbiguous",
+                    don_vi_name,
+                    f"Tên Đơn vị '{don_vi_name}' trùng lặp giữa nhiều Khối/Khu vực. Vui lòng ghi rõ hoặc chọn đơn vị chính xác.",
+                )
+            else:
+                don_vi_instance = matching_units.first()
 
         # 6. Validate Chức vụ
         chuc_vu_instance = None
         if not chuc_vu_name:
-            errors.append({"row": idx, "message": "Tên Chức vụ không được để trống."})
+            add_error(idx, "chuc_vu", "employees.import.errors.positionRequired", "", "Tên Chức vụ không được để trống.")
         else:
             chuc_vu_instance = Position.objects.filter(name__iexact=chuc_vu_name).first()
             if not chuc_vu_instance:
-                # Nếu chưa có, tạo tự động chức vụ mới
-                next_order = Position.get_next_display_order()
-                chuc_vu_instance = Position.objects.create(name=chuc_vu_name, display_order=next_order)
+                add_error(
+                    idx,
+                    "chuc_vu",
+                    "employees.messages.positionNotFound",
+                    chuc_vu_name,
+                    f"Không tìm thấy Chức vụ có tên '{chuc_vu_name}' trong hệ thống.",
+                )
 
         # 7. Validate Trạng thái
         trang_thai = Employee.Status.LAM_VIEC
@@ -272,7 +361,7 @@ def import_cbnv_from_excel(file_obj) -> dict:
         return {
             "success": False,
             "errors": errors,
-            "message": f"Phát hiện {len(errors)} lỗi trong tệp Excel. Vui lòng kiểm tra và sửa lại trước khi nhập.",
+            "message": "employees.messages.importHasErrors",
         }
 
     # Nếu toàn bộ dữ liệu hợp lệ, tiến hành lưu nguyên tử (atomic) vào CSDL
@@ -306,7 +395,7 @@ def import_cbnv_from_excel(file_obj) -> dict:
 
     return {
         "success": True,
-        "message": f"Nhập thành công {created_count} cán bộ nhân viên.",
+        "message": "employees.messages.importSuccess",
         "created_count": created_count,
         "errors": [],
     }

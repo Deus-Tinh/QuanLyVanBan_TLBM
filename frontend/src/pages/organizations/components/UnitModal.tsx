@@ -94,12 +94,10 @@ export const UnitModal: React.FC<UnitModalProps> = ({
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'data' in err) {
         const apiErr = (err as { data?: Record<string, string[] | string> }).data;
-        if (apiErr?.ten) {
-          setErrorKey(Array.isArray(apiErr.ten) ? apiErr.ten[0] : apiErr.ten);
-        } else if (apiErr?.stt_uu_tien) {
-          setErrorKey(Array.isArray(apiErr.stt_uu_tien) ? apiErr.stt_uu_tien[0] : apiErr.stt_uu_tien);
-        } else if (apiErr?.dien_thoai) {
-          setErrorKey(Array.isArray(apiErr.dien_thoai) ? apiErr.dien_thoai[0] : apiErr.dien_thoai);
+        const fieldKey = (['khoi', 'ten', 'stt_uu_tien', 'dia_chi', 'dien_thoai', 'email'] as const).find((f) => apiErr?.[f]);
+        if (fieldKey && apiErr) {
+          const value = apiErr[fieldKey];
+          setErrorKey(Array.isArray(value) ? value[0] : value);
         } else if (apiErr?.detail) {
           setErrorKey(apiErr.detail as string);
         } else {

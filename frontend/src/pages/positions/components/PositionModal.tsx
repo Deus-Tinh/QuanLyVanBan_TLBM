@@ -21,10 +21,10 @@ const inputClass =
 
 export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit, initialData, isLoading = false }) => {
   const { t } = useTranslation();
-  const [stt, setStt] = useState<string>(initialData ? String(initialData.stt_uu_tien) : '');
-  const [name, setName] = useState<string>(initialData?.ten_chuc_vu ?? '');
+  const [stt, setStt] = useState<string>(initialData ? String(initialData.display_order) : '');
+  const [name, setName] = useState<string>(initialData?.name ?? '');
   const [isPublic, setIsPublic] = useState<boolean>(initialData?.is_public ?? true);
-  const [note, setNote] = useState<string>(initialData?.ghi_chu ?? '');
+  const [note, setNote] = useState<string>(initialData?.note ?? '');
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,6 +34,7 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
     const next: FieldErrors = {};
     if (!cleanName) next.name = 'positions.messages.nameRequired';
     if (cleanStt && (!/^\d+$/.test(cleanStt) || Number(cleanStt) < 1)) next.stt = 'positions.messages.sttInvalid';
+    else if (cleanStt && Number(cleanStt) > 2147483647) next.stt = 'positions.messages.sttTooLarge';
     if (next.name || next.stt) {
       setErrors(next);
       return;
@@ -41,10 +42,10 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
 
     try {
       await onSubmit({
-        stt_uu_tien: cleanStt ? Number(cleanStt) : undefined,
-        ten_chuc_vu: cleanName,
+        display_order: cleanStt ? Number(cleanStt) : undefined,
+        name: cleanName,
         is_public: isPublic,
-        ghi_chu: note.trim(),
+        note: note.trim(),
       });
       onClose();
     } catch (err: unknown) {
@@ -55,8 +56,8 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
       const first = (value: unknown): string | undefined =>
         Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined;
       const detail = typeof data.detail === 'string' ? data.detail : undefined;
-      const fieldName = first(data.ten_chuc_vu);
-      const fieldStt = first(data.stt_uu_tien);
+      const fieldName = first(data.name);
+      const fieldStt = first(data.display_order);
       setErrors({
         name: fieldName,
         stt: fieldStt,
@@ -70,7 +71,7 @@ export const PositionModal: React.FC<PositionModalProps> = ({ onClose, onSubmit,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fade-in">
       <div
         role="dialog"
         aria-modal="true"
