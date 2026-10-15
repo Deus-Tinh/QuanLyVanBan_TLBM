@@ -353,9 +353,9 @@ export default function ModernDashboardView({
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-muted text-left">
-                      <th className="p-2.5">{t('dashboardDetails.docNumber')}</th>
+                      <th className="p-2.5 whitespace-nowrap min-w-[130px] sm:min-w-[140px]">{t('dashboardDetails.docNumber')}</th>
                       <th className="p-2.5">{t('dashboardDetails.docSummary')}</th>
-                      <th className="p-2.5 w-28">{t('dashboardDetails.docDate')}</th>
+                      <th className="p-2.5 w-28 whitespace-nowrap">{t('dashboardDetails.docDate')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -366,16 +366,16 @@ export default function ModernDashboardView({
                         className="border-b border-border-subtle hover:bg-primary-subtle/30 transition-colors cursor-pointer group"
                         title={t('documentPreview.clickToPreview') || 'Bấm để xem chi tiết văn bản'}
                       >
-                        <td className="p-2.5 font-semibold text-primary group-hover:underline">
-                          <div className="flex items-center justify-between">
-                            <span>{row.code}</span>
+                        <td className="p-2.5 font-semibold text-primary group-hover:underline whitespace-nowrap">
+                          <div className="flex items-center justify-between gap-1.5 whitespace-nowrap">
+                            <span className="whitespace-nowrap">{row.code}</span>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleOpenPreview(row, 'incoming', filteredIncoming);
                               }}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-primary-subtle text-primary transition-all text-xs cursor-pointer"
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-primary-subtle text-primary transition-all text-xs cursor-pointer shrink-0"
                               title={t('documentPreview.clickToPreview') || 'Xem chi tiết văn bản'}
                             >
                               <i className="fa-solid fa-arrow-up-right-from-square" />
@@ -383,7 +383,7 @@ export default function ModernDashboardView({
                           </div>
                         </td>
                         <td className="p-2.5 text-main group-hover:text-primary transition-colors">{row.title}</td>
-                        <td className="p-2.5 text-muted">{row.date}</td>
+                        <td className="p-2.5 text-muted whitespace-nowrap">{row.date}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -424,9 +424,9 @@ export default function ModernDashboardView({
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-muted text-left">
-                      <th className="p-2.5">{t('dashboardDetails.docNumber')}</th>
+                      <th className="p-2.5 whitespace-nowrap min-w-[130px] sm:min-w-[140px]">{t('dashboardDetails.docNumber')}</th>
                       <th className="p-2.5">{t('dashboardDetails.docSummary')}</th>
-                      <th className="p-2.5 w-28">{t('dashboardDetails.docDate')}</th>
+                      <th className="p-2.5 w-28 whitespace-nowrap">{t('dashboardDetails.docDate')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -437,16 +437,16 @@ export default function ModernDashboardView({
                         className="border-b border-border-subtle hover:bg-success-subtle/30 transition-colors cursor-pointer group"
                         title={t('documentPreview.clickToPreview') || 'Bấm để xem chi tiết văn bản'}
                       >
-                        <td className="p-2.5 font-semibold text-success group-hover:underline">
-                          <div className="flex items-center justify-between">
-                            <span>{row.code}</span>
+                        <td className="p-2.5 font-semibold text-success group-hover:underline whitespace-nowrap">
+                          <div className="flex items-center justify-between gap-1.5 whitespace-nowrap">
+                            <span className="whitespace-nowrap">{row.code}</span>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleOpenPreview(row, 'outgoing', filteredOutgoing);
                               }}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-success-subtle text-success transition-all text-xs cursor-pointer"
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-success-subtle text-success transition-all text-xs cursor-pointer shrink-0"
                               title={t('documentPreview.clickToPreview') || 'Xem chi tiết văn bản'}
                             >
                               <i className="fa-solid fa-arrow-up-right-from-square" />
@@ -454,7 +454,7 @@ export default function ModernDashboardView({
                           </div>
                         </td>
                         <td className="p-2.5 text-main group-hover:text-success transition-colors">{row.title}</td>
-                        <td className="p-2.5 text-muted">{row.date}</td>
+                        <td className="p-2.5 text-muted whitespace-nowrap">{row.date}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -533,7 +533,7 @@ export default function ModernDashboardView({
                         {t.title}
                       </span>
                     </div>
-                    <span className="text-muted text-xs shrink-0">{t.due}</span>
+                    <span className="text-muted text-xs shrink-0 whitespace-nowrap">{t.due}</span>
                     <div className="shrink-0 text-right">
                       <Badge variant={t.variant} size="sm">
                         {t.statusLabel}
@@ -577,9 +577,9 @@ export default function ModernDashboardView({
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-border-subtle text-muted text-left">
-                      <th className="p-2.5">{t('dashboardDetails.resourceCode')}</th>
+                      <th className="p-2.5 whitespace-nowrap min-w-[120px]">{t('dashboardDetails.resourceCode')}</th>
                       <th className="p-2.5">{t('dashboardDetails.resourceName')}</th>
-                      <th className="p-2.5 w-24 text-center">{t('dashboardDetails.resourceFormat')}</th>
+                      <th className="p-2.5 w-24 text-center whitespace-nowrap">{t('dashboardDetails.resourceFormat')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -625,14 +625,14 @@ export default function ModernDashboardView({
                           className="border-b border-border-subtle hover:bg-purple-subtle/30 transition-colors cursor-pointer group"
                           title={t('documentPreview.clickToPreview') || 'Bấm để xem chi tiết biểu mẫu'}
                         >
-                          <td className="p-2.5 font-semibold text-primary group-hover:underline">
-                            <div className="flex items-center gap-1.5">
-                              <i className="fa-solid fa-file-lines text-purple text-xs opacity-70 group-hover:opacity-100" />
-                              <span>{row.code}</span>
+                          <td className="p-2.5 font-semibold text-primary group-hover:underline whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
+                              <i className="fa-solid fa-file-lines text-purple text-xs opacity-70 group-hover:opacity-100 shrink-0" />
+                              <span className="whitespace-nowrap">{row.code}</span>
                             </div>
                           </td>
                           <td className="p-2.5 text-main group-hover:text-primary transition-colors">{row.title}</td>
-                          <td className="p-2.5 text-center">
+                          <td className="p-2.5 text-center whitespace-nowrap">
                             <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-primary-subtle text-primary uppercase">
                               {row.format}
                             </span>
