@@ -58,7 +58,9 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
           return val;
         }
       }
-    } catch {}
+    } catch {
+      // Ignore localStorage access errors
+    }
     return 72; // Mặc định 72px trên thanh footer
   });
 
@@ -71,7 +73,9 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
     if (e.button !== 0) return;
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {}
+    } catch {
+      // Ignore pointer capture errors
+    }
     dragStartYRef.current = e.clientY;
     initialBottomRef.current = bottomPos;
     hasMovedRef.current = false;
@@ -93,13 +97,17 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
     if (!isDragging) return;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
+    } catch {
+      // Ignore pointer release errors
+    }
     setIsDragging(false);
 
     if (hasMovedRef.current) {
       try {
         localStorage.setItem('tlbm_ai_bottom_pos', bottomPos.toString());
-      } catch {}
+      } catch {
+        // Ignore localStorage save errors
+      }
     } else {
       setIsOpen(true);
       setIsMinimized(false);

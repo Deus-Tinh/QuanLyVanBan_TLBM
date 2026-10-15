@@ -8,6 +8,30 @@ import { DocumentItem } from '@components/dashboard/ModernDashboardView';
 
 import { apiClient } from '@lib/apiClient';
 
+interface ApiDocumentItem {
+  id?: number | string;
+  code?: string;
+  title?: string;
+  sender?: string;
+  recipient?: string;
+  date?: string;
+  scope?: 'NOI_BO' | 'HAN_CHE' | string;
+}
+
+interface ApiTaskItem {
+  id?: number | string;
+  title?: string;
+  status?: string;
+  statusLabel?: string;
+  due?: string;
+}
+
+interface DashboardOverviewApiResponse {
+  recentIncoming?: ApiDocumentItem[];
+  recentOutgoing?: ApiDocumentItem[];
+  tasks?: ApiTaskItem[];
+}
+
 export default function NotificationStreams() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -22,7 +46,7 @@ export default function NotificationStreams() {
     const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token');
     if (!token) return;
 
-    apiClient<any>('/api/dashboard/overview/')
+    apiClient<DashboardOverviewApiResponse>('/api/dashboard/overview/')
       .then((data) => {
         if (!data) return;
         const recentIncoming = data.recentIncoming || [];
@@ -30,36 +54,36 @@ export default function NotificationStreams() {
         const tasks = data.tasks || [];
 
         const inItems: NotificationItem[] = recentIncoming
-          .filter((d: any) => d.scope !== 'HAN_CHE')
-          .map((d: any) => ({
+          .filter((d: ApiDocumentItem) => d.scope !== 'HAN_CHE')
+          .map((d: ApiDocumentItem) => ({
             id: `in-${d.id}`,
-            code: d.code,
-            title: d.title,
+            code: d.code || '',
+            title: d.title || '',
             senderOrDept: d.sender || 'Cơ quan ban hành',
             time: d.date || '',
             isRead: false,
-            scope: d.scope,
+            scope: (d.scope === 'HAN_CHE' ? 'HAN_CHE' : 'NOI_BO') as 'NOI_BO' | 'HAN_CHE',
           }));
 
         const outItems: NotificationItem[] = recentOutgoing
-          .filter((d: any) => d.scope !== 'HAN_CHE')
-          .map((d: any) => ({
+          .filter((d: ApiDocumentItem) => d.scope !== 'HAN_CHE')
+          .map((d: ApiDocumentItem) => ({
             id: `out-${d.id}`,
-            code: d.code,
-            title: d.title,
+            code: d.code || '',
+            title: d.title || '',
             senderOrDept: d.recipient || 'Nơi nhận',
             time: d.date || '',
             isRead: false,
-            scope: d.scope,
+            scope: (d.scope === 'HAN_CHE' ? 'HAN_CHE' : 'NOI_BO') as 'NOI_BO' | 'HAN_CHE',
           }));
 
         const confItems: NotificationItem[] = [
-          ...recentIncoming.filter((d: any) => d.scope === 'HAN_CHE'),
-          ...recentOutgoing.filter((d: any) => d.scope === 'HAN_CHE'),
-        ].map((d: any) => ({
+          ...recentIncoming.filter((d: ApiDocumentItem) => d.scope === 'HAN_CHE'),
+          ...recentOutgoing.filter((d: ApiDocumentItem) => d.scope === 'HAN_CHE'),
+        ].map((d: ApiDocumentItem) => ({
           id: `conf-${d.id}`,
-          code: d.code,
-          title: d.title,
+          code: d.code || '',
+          title: d.title || '',
           senderOrDept: d.sender || d.recipient || 'Mật / Hạn chế',
           time: d.date || '',
           isRead: false,
@@ -68,11 +92,11 @@ export default function NotificationStreams() {
         }));
 
         const approvalItems: NotificationItem[] = tasks
-          .filter((t: any) => t.status === 'pending')
-          .map((t: any) => ({
+          .filter((t: ApiTaskItem) => t.status === 'pending')
+          .map((t: ApiTaskItem) => ({
             id: `task-${t.id}`,
             code: `CV-${t.id}`,
-            title: t.title,
+            title: t.title || '',
             senderOrDept: t.statusLabel || 'Chờ duyệt',
             time: t.due || '',
             isRead: false,
