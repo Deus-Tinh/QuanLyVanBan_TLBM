@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
   ResourceItem,
-  ResourceAttachment,
   ResourceCategory,
   ResourceType,
 } from '@app-types/resource';
@@ -14,7 +13,6 @@ import { CategoryManagementModal } from '@components/resources/CategoryManagemen
 import { Button } from '@components/common/Button';
 import { Toast, ToastNotification } from '@components/resources/Toast';
 import { useTranslation } from '@i18n/translate';
-import { authService } from '@lib/authService';
 import { apiClient } from '@lib/apiClient';
 
 const STORAGE_KEY = 'tlbm_resources_filter_state';
@@ -123,6 +121,7 @@ export default function ResourceManagementPage() {
 
   // Tự động đồng bộ các danh mục hiển thị khi nạp danh mục: mặc định tick full toàn bộ danh mục
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (categories.length > 0) {
       setVisibleCategoryIds((prev) => {
         const allCatIds = categories.map((c) => c.id);
@@ -180,6 +179,7 @@ export default function ResourceManagementPage() {
 
   // Tự động đồng bộ các loại tài liệu hiển thị: mặc định tick full toàn bộ loại tài liệu
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (types.length > 0) {
       setVisibleTypeIds((prev) => {
         const allTypeIds = types.map((t) => t.id);
@@ -223,15 +223,17 @@ export default function ResourceManagementPage() {
     setIsLoading(true);
     try {
       const [catsRes, typesRes, docsRes] = await Promise.all([
-        apiClient<any>('/api/resources/categories/').catch(() => null),
-        apiClient<any>('/api/resources/types/').catch(() => null),
-        apiClient<any>('/api/resources/documents/').catch(() => null),
+        apiClient<unknown>('/api/resources/categories/').catch(() => null),
+        apiClient<unknown>('/api/resources/types/').catch(() => null),
+        apiClient<unknown>('/api/resources/documents/').catch(() => null),
       ]);
 
-      const normalizeList = <T,>(data: any): T[] => {
+      const normalizeList = <T,>(data: unknown): T[] => {
         if (!data) return [];
-        if (Array.isArray(data)) return data;
-        if (data && Array.isArray(data.results)) return data.results;
+        if (Array.isArray(data)) return data as T[];
+        if (data && typeof data === 'object' && 'results' in data && Array.isArray((data as { results: unknown }).results)) {
+          return (data as { results: T[] }).results;
+        }
         return [];
       };
 
@@ -246,7 +248,6 @@ export default function ResourceManagementPage() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchResources();
   }, [fetchResources]);
 

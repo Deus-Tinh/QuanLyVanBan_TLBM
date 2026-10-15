@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
+import { ResourceItem, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { useTranslation } from '@i18n/translate';
 
@@ -35,7 +35,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   onViewDetail,
   onEdit,
   onDelete,
-  onDownloadFile,
   onPageSizeChange,
   onClearFilters,
   onDrillDown,
@@ -45,8 +44,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
   // Vị trí fixed của dropdown menu — giải quyết lỗi bị clip bởi overflow-x-auto
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
-  // Dropdown danh sách tệp cho dòng có nhiều tệp
-  const [activeFileMenuId, setActiveFileMenuId] = useState<number | null>(null);
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 

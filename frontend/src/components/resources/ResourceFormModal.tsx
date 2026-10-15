@@ -167,10 +167,19 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   // Tải danh sách CBNV từ CSDL để gợi ý khi nhập người tạo
   useEffect(() => {
     if (isOpen) {
-      apiClient.get<any>('/api/accounts/staffs/')
-        .then((res: any) => {
-          const list = Array.isArray(res) ? res : (res?.results || []);
-          setStaffSuggestions(list);
+      apiClient
+        .get<
+          | { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[]
+          | { results?: { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[] }
+        >('/api/accounts/staffs/')
+        .then((res) => {
+          if (Array.isArray(res)) {
+            setStaffSuggestions(res);
+          } else if (res && Array.isArray(res.results)) {
+            setStaffSuggestions(res.results);
+          } else {
+            setStaffSuggestions([]);
+          }
         })
         .catch(() => setStaffSuggestions([]));
     }

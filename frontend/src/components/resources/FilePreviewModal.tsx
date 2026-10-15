@@ -68,6 +68,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
   // Nếu là file Excel, gọi API backend để lấy cấu trúc dữ liệu các sheet
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (!isOpen || !file || !isExcel) {
       setExcelData(null);
       setIsLoadingExcel(false);
