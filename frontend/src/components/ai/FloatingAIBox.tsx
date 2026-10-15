@@ -48,14 +48,63 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const windowRef = useRef<HTMLDivElement>(null);
 
-  // Dọn dẹp vị trí cũ trong localStorage để cố định hẳn góc dưới bên phải
-  useEffect(() => {
+  // Vị trí dọc (khoảng cách tính từ đáy màn hình)
+  const [bottomPos, setBottomPos] = useState<number>(() => {
     try {
-      localStorage.removeItem('tlbm_ai_box_pos');
-    } catch {
-      // ignore
+      const saved = localStorage.getItem('tlbm_ai_bottom_pos');
+      if (saved) {
+        const val = parseInt(saved, 10);
+        if (!isNaN(val) && val >= 68 && val <= window.innerHeight - 90) {
+          return val;
+        }
+      }
+    } catch {}
+    return 72; // Mặc định 72px trên thanh footer
+  });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartYRef = useRef<number>(0);
+  const initialBottomRef = useRef<number>(72);
+  const hasMovedRef = useRef<boolean>(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+    dragStartYRef.current = e.clientY;
+    initialBottomRef.current = bottomPos;
+    hasMovedRef.current = false;
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    const deltaY = dragStartYRef.current - e.clientY; // Di chuột lên thì deltaY > 0 -> bottom tăng
+    if (Math.abs(deltaY) > 4) {
+      hasMovedRef.current = true;
     }
-  }, []);
+    const maxBottom = Math.max(72, window.innerHeight - 90);
+    const newBottom = Math.max(72, Math.min(maxBottom, initialBottomRef.current + deltaY));
+    setBottomPos(newBottom);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {}
+    setIsDragging(false);
+
+    if (hasMovedRef.current) {
+      try {
+        localStorage.setItem('tlbm_ai_bottom_pos', bottomPos.toString());
+      } catch {}
+    } else {
+      setIsOpen(true);
+      setIsMinimized(false);
+    }
+  };
 
   // Cuộn xuống tin nhắn mới nhất
   useEffect(() => {
@@ -120,37 +169,61 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
   return (
     <>
-      {/* 1. NÚT AI ROBOT NỔI CỐ ĐỊNH XUỐNG GÓC DƯỚI BÊN PHẢI (Nhích lên để không che thanh footer) */}
+      {/* 1. NÚT AI ROBOT NỔI (Có thể kéo di chuyển lên xuống tự do) */}
       {!isOpen && (
-        <div className="fixed bottom-[72px] right-6 sm:right-8 z-[9998]">
-          <button
-            type="button"
-            className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 via-primary to-cyan-400 p-[2.5px] shadow-xl hover:shadow-2xl shadow-primary/25 cursor-pointer flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 group"
-            onClick={() => {
-              setIsOpen(true);
-              setIsMinimized(false);
-            }}
-            title="Trợ Lý AI Tra Cứu TLBM (Cố định góc dưới bên phải - Bấm để mở)"
+        <div
+          className="fixed right-6 sm:right-8 z-[9998] select-none"
+          style={{
+            bottom: `${bottomPos}px`,
+            transition: isDragging ? 'none' : 'bottom 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <div
+            role="button"
+            tabIndex={0}
+            className={`relative w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 via-primary to-cyan-400 p-[2.5px] shadow-xl hover:shadow-2xl shadow-primary/25 flex items-center justify-center transition-transform duration-150 active:scale-95 group touch-none select-none ${
+              isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab hover:scale-110'
+            }`}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={() => setIsDragging(false)}
+            title="Trợ Lý AI TLBM (Nhấn giữ để kéo di chuyển lên/xuống • Nhấp để mở)"
             aria-label="Mở Trợ Lý AI TLBM"
           >
             {/* Vòng hào quang sáng xung quanh */}
-            <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping -z-10" />
-            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-primary text-2xl shadow-inner group-hover:bg-primary group-hover:text-white transition-colors duration-fast">
+            {!isDragging && (
+              <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping -z-10" />
+            )}
+
+            {/* Thân nút robot */}
+            <div className="w-full h-full rounded-full bg-surface-elevated flex items-center justify-center text-primary text-2xl shadow-inner group-hover:bg-primary group-hover:text-white transition-colors duration-fast pointer-events-none">
               <i className="fa-solid fa-robot" />
             </div>
+
             {/* Chấm trạng thái trực tuyến */}
-            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-surface shadow-xs" />
-          </button>
+            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-surface shadow-xs pointer-events-none" />
+
+            {/* Tay nắm điều hướng lên/xuống báo hiệu trực quan có thể kéo */}
+            <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center gap-0.5 bg-surface-elevated/95 backdrop-blur-md px-1 py-1.5 rounded-full border border-subtle shadow-xs opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none">
+              <i className="fa-solid fa-caret-up text-[9px] text-text-muted" />
+              <div className="w-1 h-1 rounded-full bg-text-muted" />
+              <i className="fa-solid fa-caret-down text-[9px] text-text-muted" />
+            </div>
+          </div>
         </div>
       )}
 
-      {/* 2. CỬA SỔ HỘI THOẠI AI CHATBOX (Cố định góc dưới bên phải, nằm trên thanh footer) */}
+      {/* 2. CỬA SỔ HỘI THOẠI AI CHATBOX (Theo dõi độ cao của nút robot) */}
       {isOpen && (
         <div
           ref={windowRef}
-          className={`fixed bottom-[68px] right-6 z-[9999] w-[390px] max-w-[calc(100vw-32px)] rounded-2xl bg-surface-elevated/95 backdrop-blur-xl border border-subtle shadow-2xl flex flex-col overflow-hidden transition-all duration-fast animate-in fade-in slide-in-from-bottom-4 ${
+          className={`fixed right-6 z-[9999] w-[390px] max-w-[calc(100vw-32px)] rounded-2xl bg-surface-elevated/95 backdrop-blur-xl border border-subtle shadow-2xl flex flex-col overflow-hidden transition-all duration-fast animate-in fade-in slide-in-from-bottom-4 ${
             isMinimized ? 'h-14' : 'h-[540px] max-h-[calc(100vh-120px)]'
           }`}
+          style={{
+            bottom: `${Math.max(68, Math.min(bottomPos, window.innerHeight - (isMinimized ? 70 : 560)))}px`,
+          }}
         >
           {/* Thanh tiêu đề (Header) */}
           <div className="p-3 bg-surface border-b border-subtle flex items-center justify-between select-none">
