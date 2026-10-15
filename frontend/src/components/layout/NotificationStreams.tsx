@@ -167,7 +167,12 @@ export default function NotificationStreams() {
       >
         <i className="fa-regular fa-bell text-base" />
         {totalUnread > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-danger ring-2 ring-header" />
+          <span
+            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center shadow-md ring-2 ring-header leading-none select-none"
+            aria-label={`${totalUnread} thông báo mới`}
+          >
+            {totalUnread > 99 ? '99+' : totalUnread}
+          </span>
         )}
       </button>
 
