@@ -27,7 +27,7 @@ if %errorlevel% neq 0 (
 )
 
 :: 3. Khoi dong Backend va Frontend
-echo [3/3] Dang khoi dong Backend va Frontend...
+echo [3/3] Dang khoi dong Backend va Frontend tren PostgreSQL local...
 echo.
 
 echo   * Dang bat Backend Django tai http://127.0.0.1:8000 ...
@@ -37,7 +37,7 @@ popd
 
 echo   * Dang bat Frontend React tai http://localhost:5173 ...
 pushd "%~dp0frontend"
-start "QLVB - Frontend [React :5173]" cmd /k "chcp 65001 >nul & title QLVB - Frontend [React :5173] & call npm run dev"
+start "QLVB - Frontend [React :5173]" cmd /k "chcp 65001 >nul & title QLVB - Frontend [React :5173] & call pnpm dev"
 popd
 
 echo.
@@ -49,24 +49,27 @@ start http://localhost:5173
 
 cls
 echo ===============================================================================
-echo        HE THONG QUAN LY VAN BAN VA TAI LIEU MAT - NHOM 2
+echo        HE THONG QUAN LY VAN BAN VA TAI LIEU - NHOM 2
 echo ===============================================================================
 echo.
-echo   [TRANG THAI] Backend va Frontend dang chay trong 2 cua so CMD rieng biet:
+echo   [TRANG THAI] He thong dang chay truc tiep tren PostgreSQL Windows (Sieu nhe):
 echo.
 echo   + Frontend [Giao dien React]:     http://localhost:5173
 echo   + Backend API [Django REST]:      http://127.0.0.1:8000/
 echo   + Trang quan tri Django Admin:    http://127.0.0.1:8000/admin/
+echo   + Co so du lieu:                  PostgreSQL Windows (Database: qlvb_dev)
 echo.
 echo   -----------------------------------------------------------------------------
-echo   [TAI KHOAN DANG NHAP THU NGHIEM]:
-echo   + Quan tri vien [Admin]:    admin    /  Admin@123   - Toan quyen quan tri
-echo   + Can bo xu ly [Staff]:     canbo    /  Canbo@123   - Quan ly van ban
+echo   [TAI KHOAN DANG NHAP THU NGHIEM (NHOM 7)]:
+echo   + Quan tri vien [Admin]:          admin             /  Admin@123
+echo   + Truong Phong CNTT:              truongphong_cntt  /  Admin@123
+echo   + Van Thu Luu Tru:                vanthu_cntt       /  Admin@123
+echo   + Chuyen Vien CNTT:               chuyenvien_cntt   /  Admin@123
 echo   -----------------------------------------------------------------------------
 echo.
-echo   [HUONG DAN]:
-echo   - Giu 2 cua so CMD Backend va Frontend mo trong suot qua trinh test.
-echo   - De dung he thong, chay file DUNG_DU_AN.bat hoac dong 2 cua so CMD do.
+echo   [UU DIEM]:
+echo   - Khong can mo Docker Desktop (tiet kiem 100%% RAM va CPU cho may).
+echo   - De dung he thong, chi can click dup file: DUNG_DU_AN.bat
 echo ===============================================================================
 echo.
 pause
