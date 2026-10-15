@@ -54,6 +54,7 @@ function RecordModalForm(props: RecordModalProps) {
   const [note, setNote] = React.useState(dossier?.ghi_chu ?? documentType?.ghi_chu ?? '');
   const [validation, setValidation] = React.useState<string | null>(null);
   const dialogRef = React.useRef<HTMLFormElement>(null);
+  const initialFocusRef = React.useRef<HTMLInputElement>(null);
   const [previousFocus] = React.useState(() => document.activeElement);
   const typeProps = props.mode === 'documentType' ? props : null;
 
@@ -82,8 +83,12 @@ function RecordModalForm(props: RecordModalProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, isLoading, onClose]);
 
-  React.useEffect(() => () => {
-    if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+  React.useEffect(() => {
+    // StrictMode replays setup after cleanup restores the opener's focus.
+    initialFocusRef.current?.focus();
+    return () => {
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
   }, [previousFocus]);
 
   const isEditing = Boolean(value);
@@ -186,7 +191,7 @@ function RecordModalForm(props: RecordModalProps) {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold text-secondary">
                 {t('records.modal.fields.reference')} *
-                <input className={`${fieldClass} mt-1.5`} value={code} onChange={(e) => setCode(e.target.value)} maxLength={255} autoFocus />
+                <input ref={initialFocusRef} className={`${fieldClass} mt-1.5`} value={code} onChange={(e) => setCode(e.target.value)} maxLength={255} />
               </label>
               <label className="block text-sm font-semibold text-secondary">
                 {t('records.modal.fields.priority')}
@@ -206,7 +211,7 @@ function RecordModalForm(props: RecordModalProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={255}
-              autoFocus={mode !== 'dossier'}
+              ref={mode !== 'dossier' ? initialFocusRef : undefined}
             />
           </label>
 
