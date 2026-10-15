@@ -41,8 +41,8 @@ start "QLVB - Frontend [React :5173]" cmd /k "chcp 65001 >nul & title QLVB - Fro
 popd
 
 echo.
-echo Dang cho cac dich vu khoi dong [khoang 3 giay]...
-ping -n 4 127.0.0.1 >nul
+echo Dang cho Backend va Frontend khoi dong san sang [khoang 5 giay]...
+timeout /t 5 /nobreak >nul 2>nul || ping -n 6 127.0.0.1 >nul
 
 echo Dang mo giao dien he thong tren trinh duyet...
 start http://localhost:5173

@@ -36,8 +36,8 @@ Write-Host "  * Dang bat Frontend React tai http://localhost:5173 ..." -Foregrou
 Start-Process cmd.exe -ArgumentList "/k", "chcp 65001 >nul & cd /d `"$projectRoot\frontend`" & pnpm dev"
 
 Write-Host ""
-Write-Host "Dang cho cac dich vu khoi dong (khoang 3 giay)..." -ForegroundColor Gray
-Start-Sleep -Seconds 3
+Write-Host "Dang cho Backend va Frontend khoi dong san sang (khoang 5 giay)..." -ForegroundColor Gray
+Start-Sleep -Seconds 5
 
 Start-Process "http://localhost:5173"
 
