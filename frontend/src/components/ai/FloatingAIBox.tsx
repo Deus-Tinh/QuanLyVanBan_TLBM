@@ -203,13 +203,6 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
 
             {/* Chấm trạng thái trực tuyến */}
             <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-surface shadow-xs pointer-events-none" />
-
-            {/* Tay nắm điều hướng lên/xuống báo hiệu trực quan có thể kéo */}
-            <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center gap-0.5 bg-surface-elevated/95 backdrop-blur-md px-1 py-1.5 rounded-full border border-subtle shadow-xs opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none">
-              <i className="fa-solid fa-caret-up text-[9px] text-text-muted" />
-              <div className="w-1 h-1 rounded-full bg-text-muted" />
-              <i className="fa-solid fa-caret-down text-[9px] text-text-muted" />
-            </div>
           </div>
         </div>
       )}
