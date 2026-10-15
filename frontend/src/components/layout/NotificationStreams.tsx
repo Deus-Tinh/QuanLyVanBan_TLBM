@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SAMPLE_STREAMS } from '@lib/constants';
-import { NotificationStreamType, NotificationItem } from '@app-types/notification';
+import { NotificationStreamType, NotificationItem, StreamData } from '@app-types/notification';
 import { useTranslation } from '@i18n/translate';
 import DocumentPreviewModal from '@components/dashboard/DocumentPreviewModal';
 import { DocumentItem } from '@components/dashboard/ModernDashboardView';
+
+import { apiClient } from '@lib/apiClient';
 
 export default function NotificationStreams() {
   const navigate = useNavigate();
@@ -12,7 +14,109 @@ export default function NotificationStreams() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NotificationStreamType>('incoming');
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  const [streams, setStreams] = useState<StreamData[]>(SAMPLE_STREAMS);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Nạp dữ liệu thực tế từ CSDL thông qua API overview
+  useEffect(() => {
+    const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token');
+    if (!token) return;
+
+    apiClient<any>('/api/dashboard/overview/')
+      .then((data) => {
+        if (!data) return;
+        const recentIncoming = data.recentIncoming || [];
+        const recentOutgoing = data.recentOutgoing || [];
+        const tasks = data.tasks || [];
+
+        const inItems: NotificationItem[] = recentIncoming
+          .filter((d: any) => d.scope !== 'HAN_CHE')
+          .map((d: any) => ({
+            id: `in-${d.id}`,
+            code: d.code,
+            title: d.title,
+            senderOrDept: d.sender || 'Cơ quan ban hành',
+            time: d.date || '',
+            isRead: false,
+            scope: d.scope,
+          }));
+
+        const outItems: NotificationItem[] = recentOutgoing
+          .filter((d: any) => d.scope !== 'HAN_CHE')
+          .map((d: any) => ({
+            id: `out-${d.id}`,
+            code: d.code,
+            title: d.title,
+            senderOrDept: d.recipient || 'Nơi nhận',
+            time: d.date || '',
+            isRead: false,
+            scope: d.scope,
+          }));
+
+        const confItems: NotificationItem[] = [
+          ...recentIncoming.filter((d: any) => d.scope === 'HAN_CHE'),
+          ...recentOutgoing.filter((d: any) => d.scope === 'HAN_CHE'),
+        ].map((d: any) => ({
+          id: `conf-${d.id}`,
+          code: d.code,
+          title: d.title,
+          senderOrDept: d.sender || d.recipient || 'Mật / Hạn chế',
+          time: d.date || '',
+          isRead: false,
+          priority: 'confidential',
+          scope: 'HAN_CHE',
+        }));
+
+        const approvalItems: NotificationItem[] = tasks
+          .filter((t: any) => t.status === 'pending')
+          .map((t: any) => ({
+            id: `task-${t.id}`,
+            code: `CV-${t.id}`,
+            title: t.title,
+            senderOrDept: t.statusLabel || 'Chờ duyệt',
+            time: t.due || '',
+            isRead: false,
+          }));
+
+        setStreams([
+          {
+            type: 'incoming',
+            label: 'Văn Bản Đến',
+            icon: 'fa-inbox',
+            color: 'blue',
+            unreadCount: inItems.length,
+            items: inItems,
+          },
+          {
+            type: 'outgoing',
+            label: 'Văn Bản Đi',
+            icon: 'fa-paper-plane',
+            color: 'emerald',
+            unreadCount: outItems.length,
+            items: outItems,
+          },
+          {
+            type: 'confidential',
+            label: 'Mật / Hạn Chế',
+            icon: 'fa-shield-halved',
+            color: 'rose',
+            unreadCount: confItems.length,
+            items: confItems,
+          },
+          {
+            type: 'approvals',
+            label: 'Chờ Duyệt',
+            icon: 'fa-signature',
+            color: 'amber',
+            unreadCount: approvalItems.length,
+            items: approvalItems,
+          },
+        ]);
+      })
+      .catch(() => {
+        // Dự phòng giữ mảng mặc định nếu chưa đăng nhập hoặc lỗi mạng
+      });
+  }, []);
 
   const handleOpenDoc = (item: NotificationItem) => {
     setIsOpen(false);
@@ -22,6 +126,16 @@ export default function NotificationStreams() {
       date: item.time,
       sender: item.senderOrDept,
     });
+  };
+
+  const handleMarkAllRead = () => {
+    setStreams((prev) =>
+      prev.map((s) => ({
+        ...s,
+        unreadCount: 0,
+        items: s.items.map((item) => ({ ...item, isRead: true })),
+      }))
+    );
   };
 
   // Close when clicking outside (support both pointerdown and touchstart)
@@ -39,8 +153,8 @@ export default function NotificationStreams() {
     };
   }, []);
 
-  const totalUnread = SAMPLE_STREAMS.reduce((acc, s) => acc + s.unreadCount, 0);
-  const currentStream = SAMPLE_STREAMS.find((s) => s.type === activeTab) || SAMPLE_STREAMS[0];
+  const totalUnread = streams.reduce((acc, s) => acc + s.unreadCount, 0);
+  const currentStream = streams.find((s) => s.type === activeTab) || streams[0];
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -70,7 +184,7 @@ export default function NotificationStreams() {
                 <button
                   type="button"
                   className="text-xs text-primary font-semibold hover:underline bg-transparent border-0 cursor-pointer"
-                  onClick={() => alert('Đã đánh dấu đã đọc tất cả!')}
+                  onClick={handleMarkAllRead}
                 >
                   {t('notifications.markAllRead')}
                 </button>
