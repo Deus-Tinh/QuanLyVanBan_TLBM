@@ -1032,6 +1032,7 @@
     "welcomeDesc": "AI Virtual Assistant is ready to help you look up administrative documents, regulations and procedures.",
     "suggestedTitle": "Suggested questions:",
     "inputPlaceholder": "Type your question about procedures, documents... (Enter to send)",
+    "inputPlaceholderMobile": "Ask AI assistant...",
     "voiceMode": "Voice Mode",
     "voiceActive": "Listening...",
     "voiceListening": "Listening to voice input...",

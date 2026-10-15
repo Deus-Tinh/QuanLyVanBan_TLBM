@@ -723,8 +723,32 @@ function CitationsBox({
 export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const { t, currentLang } = useTranslation();
   const currentUser = getSessionUser();
-  // Sidebar states
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // Sidebar & Responsive states (Tự động thu gọn trên thiết bị di động <= 860px)
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth <= 860;
+    }
+    return false;
+  });
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth > 860;
+    }
+    return true;
+  });
+
+  // Tự động đóng mở sidebar và cập nhật isMobile khi chuyển đổi giữa Desktop và Mobile
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(max-width: 860px)');
+    const handler = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+      setIsSidebarOpen(!e.matches);
+    };
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
   const [sidebarTab, setSidebarTab] = useState<'sessions' | 'docs'>('sessions');
   const [sessionSearch, setSessionSearch] = useState('');
   const [docSearch, setDocSearch] = useState('');
@@ -806,7 +830,6 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const [inputVal, setInputVal] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -816,7 +839,29 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Giải phóng pollTimerRef khi unmount tránh rò rỉ bộ nhớ
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current !== null) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Tự động co giãn chiều cao textarea theo nội dung, loại bỏ thanh cuộn
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      if (scrollHeight > 0) {
+        textareaRef.current.style.height = `${Math.min(scrollHeight, 120)}px`;
+      }
+    }
+  }, [inputVal]);
 
   // Load tài liệu & cấu hình ban đầu
   const loadDocuments = useCallback(async () => {
@@ -879,6 +924,9 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newId);
     setInputVal('');
+    if (typeof window !== 'undefined' && window.innerWidth <= 860) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const handleDeleteSession = (e: React.MouseEvent, id: string) => {
@@ -903,6 +951,13 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   // Upload file và theo dõi tiến độ
   const handleFileUpload = async (file: File) => {
     if (!file) return;
+
+    // Hủy bỏ polling timer cũ nếu đang chạy
+    if (pollTimerRef.current !== null) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+
     try {
       setUploadProgress({
         status: 'uploading',
@@ -916,15 +971,29 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
           try {
             const prog = await getUploadProgress(jobId);
             setUploadProgress(prog);
-            if (prog.status === 'completed' || prog.status === 'failed') {
+
+            const isSuccess = prog.status === 'done' || prog.status === 'completed';
+            const isFailed = prog.status === 'error' || prog.status === 'failed';
+
+            if (isSuccess || isFailed) {
               if (pollTimerRef.current !== null) {
                 clearInterval(pollTimerRef.current);
                 pollTimerRef.current = null;
               }
-              setTimeout(() => {
-                setUploadProgress(null);
-                refreshDocuments();
-              }, 2000);
+
+              if (isSuccess) {
+                // Tự động tải lại danh sách tài liệu NGAY LẬP TỨC
+                await refreshDocuments();
+                // Giữ badge báo thành công trong 2.5s rồi tự đóng
+                setTimeout(() => {
+                  setUploadProgress(null);
+                }, 2500);
+              } else {
+                // Báo lỗi và tự đóng sau 4s
+                setTimeout(() => {
+                  setUploadProgress(null);
+                }, 4000);
+              }
             }
           } catch {
             if (pollTimerRef.current !== null) {
@@ -933,10 +1002,16 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             }
             setUploadProgress(null);
           }
-        }, 1500);
+        }, 1200);
       } else {
-        setUploadProgress(null);
-        refreshDocuments();
+        await refreshDocuments();
+        setUploadProgress({
+          status: 'done',
+          message: currentLang === 'en' ? 'Upload and indexing successful.' : 'Tải lên và lập chỉ mục thành công.',
+        });
+        setTimeout(() => {
+          setUploadProgress(null);
+        }, 2500);
       }
     } catch (err: unknown) {
       alert(getErrorMessage(err, currentLang === 'en' ? 'Failed to upload document.' : 'Lỗi tải lên tài liệu.'));
@@ -986,13 +1061,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   // Gửi câu hỏi đến AI
   const handleSend = async (overrideText?: string) => {
     const text = (overrideText || inputVal).trim();
-    if (!text && !attachedFile) return;
-
-    // Nếu có file đính kèm, upload trước
-    if (attachedFile) {
-      await handleFileUpload(attachedFile);
-      setAttachedFile(null);
-    }
+    if (!text) return;
 
     const userMsg: ChatMessage = {
       id: `user-${activeSessionId}-${Date.now()}`,
@@ -1243,6 +1312,17 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
   return (
     <div className="ai-chat-page-root">
+      {/* Backdrop overlay khi mở Sidebar trên điện thoại */}
+      {isSidebarOpen && (
+        <div
+          className="ai-sidebar-mobile-backdrop"
+          onClick={() => setIsSidebarOpen(false)}
+          role="button"
+          tabIndex={0}
+          aria-label="Đóng thanh bên"
+        />
+      )}
+
       {/* ====================================================================
          1. SIDEBAR (LỊCH SỬ CHAT & KHO TÀI LIỆU)
          ==================================================================== */}
@@ -1337,7 +1417,12 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                         key={s.id}
                         type="button"
                         className={`session-item-btn ${s.id === activeSessionId ? 'active' : ''}`}
-                        onClick={() => setActiveSessionId(s.id)}
+                        onClick={() => {
+                          setActiveSessionId(s.id);
+                          if (typeof window !== 'undefined' && window.innerWidth <= 860) {
+                            setIsSidebarOpen(false);
+                          }
+                        }}
                         title={s.title}
                       >
                         <i className="fa-regular fa-message session-item-icon" />
@@ -1408,8 +1493,22 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
               {/* Progress indicator */}
               {uploadProgress && (
-                <div className="sidebar-upload-progress">
-                  <i className="fa-solid fa-circle-notch fa-spin text-primary" />
+                <div
+                  className={`sidebar-upload-progress ${
+                    uploadProgress.status === 'done' || uploadProgress.status === 'completed'
+                      ? 'is-success'
+                      : uploadProgress.status === 'error' || uploadProgress.status === 'failed'
+                      ? 'is-error'
+                      : ''
+                  }`}
+                >
+                  {uploadProgress.status === 'done' || uploadProgress.status === 'completed' ? (
+                    <i className="fa-solid fa-circle-check text-success" />
+                  ) : uploadProgress.status === 'error' || uploadProgress.status === 'failed' ? (
+                    <i className="fa-solid fa-circle-exclamation text-danger" />
+                  ) : (
+                    <i className="fa-solid fa-circle-notch fa-spin text-primary" />
+                  )}
                   <span>{uploadProgress.message}</span>
                 </div>
               )}
@@ -1896,24 +1995,41 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
         {/* 3. THANH NHẬP LIỆU Ở ĐÁY */}
         <footer className="ai-chat-bottom-input">
-          {/* Tệp đính kèm xem trước */}
-          {attachedFile && (
-            <div className="attached-file-preview">
-              <i className="fa-solid fa-paperclip" />
-              <span className="attached-name">{attachedFile.name}</span>
-              <button
-                type="button"
-                className="remove-file-btn"
-                onClick={() => setAttachedFile(null)}
-                title={t('aiAssistant.removeAttachment')}
-              >
-                <i className="fa-solid fa-xmark" />
-              </button>
+          {/* Thông báo tiến độ khi upload tệp trực tiếp */}
+          {uploadProgress && (
+            <div
+              className={`chat-upload-indicator ${
+                uploadProgress.status === 'done' || uploadProgress.status === 'completed'
+                  ? 'is-success'
+                  : uploadProgress.status === 'error' || uploadProgress.status === 'failed'
+                  ? 'is-error'
+                  : ''
+              }`}
+            >
+              {uploadProgress.status === 'done' || uploadProgress.status === 'completed' ? (
+                <i className="fa-solid fa-circle-check text-success" />
+              ) : uploadProgress.status === 'error' || uploadProgress.status === 'failed' ? (
+                <i className="fa-solid fa-circle-exclamation text-danger" />
+              ) : (
+                <i className="fa-solid fa-circle-notch fa-spin text-primary" />
+              )}
+              <span>
+                {uploadProgress.message ||
+                  (currentLang === 'en' ? 'Processing document...' : 'Đang tải lên & lập chỉ mục tài liệu...')}
+              </span>
             </div>
           )}
 
-          <div className="input-box-container">
-            {/* Input file ẩn */}
+          <div
+            className="input-box-container"
+            onClick={(e) => {
+              // Chạm vào bất kỳ khoảng trống nào trong thanh chat sẽ tự động focus vào textarea để bật bàn phím ảo
+              if (!(e.target as HTMLElement).closest('button')) {
+                textareaRef.current?.focus();
+              }
+            }}
+          >
+            {/* Input file ẩn: Tải lên ngay lập tức khi vừa chọn tệp */}
             {currentUser.isAdmin && (
               <input
                 ref={fileInputRef}
@@ -1921,14 +2037,15 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
-                    setAttachedFile(e.target.files[0]);
+                    handleFileUpload(e.target.files[0]);
+                    e.target.value = '';
                   }
                 }}
                 accept=".pdf,.doc,.docx,.txt"
               />
             )}
 
-            {/* Nút Đính kèm file */}
+            {/* Nút Đính kèm file (icon kẹp giấy) - Giữ nguyên theo yêu cầu */}
             {currentUser.isAdmin && (
               <button
                 type="button"
@@ -1942,11 +2059,24 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
             {/* Khung gõ câu hỏi */}
             <textarea
+              ref={textareaRef}
               className="chat-textarea"
-              placeholder={t('aiAssistant.inputPlaceholder')}
+              placeholder={
+                isMobile
+                  ? (t('aiAssistant.inputPlaceholderMobile') || 'Hỏi trợ lý AI...')
+                  : t('aiAssistant.inputPlaceholder')
+              }
               rows={1}
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
+              onFocus={() => {
+                // Trên điện thoại, tự động cuộn nhẹ để giữ thanh chat nằm ngay trên bàn phím ảo
+                if (isMobile) {
+                  setTimeout(() => {
+                    textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                  }, 250);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -1954,6 +2084,9 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 }
               }}
               disabled={isGenerating}
+              enterKeyHint="send"
+              autoCapitalize="sentences"
+              autoComplete="on"
             />
 
             {/* Nút Nhập giọng nói */}
@@ -1970,18 +2103,12 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             <button
               type="button"
               className="send-message-btn"
-              disabled={(!inputVal.trim() && !attachedFile) || isGenerating}
+              disabled={!inputVal.trim() || isGenerating}
               onClick={() => handleSend()}
               title={t('aiAssistant.send')}
             >
               <i className="fa-solid fa-paper-plane" />
             </button>
-          </div>
-
-          <div className="chat-disclaimer">
-            <span>
-              {t('aiAssistant.disclaimer')}
-            </span>
           </div>
         </footer>
       </main>

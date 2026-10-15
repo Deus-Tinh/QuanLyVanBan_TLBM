@@ -1032,6 +1032,7 @@
     "welcomeDesc": "Trợ lý ảo AI sẵn sàng hỗ trợ bạn tra cứu văn bản điều hành, thông tư quy chế và hướng dẫn nghiệp vụ.",
     "suggestedTitle": "Gợi ý câu hỏi phổ biến:",
     "inputPlaceholder": "Nhập câu hỏi cần tra cứu quy trình, văn bản... (Enter để gửi)",
+    "inputPlaceholderMobile": "Hỏi trợ lý AI...",
     "voiceMode": "Chế độ giọng nói",
     "voiceActive": "Đang lắng nghe...",
     "voiceListening": "Đang lắng nghe giọng nói...",
