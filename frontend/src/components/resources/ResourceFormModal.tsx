@@ -126,15 +126,10 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const { t } = useTranslation();
   const isEditMode = Boolean(initialData);
 
-  // Lấy tên tài khoản cán bộ đang đăng nhập thực hiện thao tác
-  const getDefaultAuthor = useCallback(() => {
-    const session = authService.getSession();
-    if (!session) return 'Quản trị hệ thống';
-    if (session.fullName && session.username && session.fullName !== session.username) {
-      return `${session.fullName} (@${session.username})`;
-    }
-    return session.fullName || session.username || 'Quản trị hệ thống';
-  }, []);
+  const defaultAuthor =
+    authService.getSession()?.fullName ||
+    authService.getSession()?.username ||
+    '';
 
   // Form State
   const [formData, setFormData] = useState<ResourceFormData>({
@@ -144,7 +139,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     tieu_de: '',
     ngay_dang: new Date().toISOString().split('T')[0],
     noi_ban_hanh: '',
-    nguoi_tao_name: getDefaultAuthor(),
+    nguoi_tao_name: defaultAuthor,
     hieu_luc: 'CON_HIEU_LUC',
     ngay_het_hieu_luc: '',
     link_thay_the: '',
@@ -165,13 +160,28 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const [isDirty, setIsDirty] = useState(false);
   const [isConfirmDiscardOpen, setIsConfirmDiscardOpen] = useState(false);
 
+  const [staffSuggestions, setStaffSuggestions] = useState<
+    { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[]
+  >([]);
+
+  // Tải danh sách CBNV từ CSDL để gợi ý khi nhập người tạo
+  useEffect(() => {
+    if (isOpen) {
+      apiClient.get<any>('/api/accounts/staffs/')
+        .then((res: any) => {
+          const list = Array.isArray(res) ? res : (res?.results || []);
+          setStaffSuggestions(list);
+        })
+        .catch(() => setStaffSuggestions([]));
+    }
+  }, [isOpen]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Khởi tạo form khi mở modal
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (isOpen) {
-      const defaultAuthor = getDefaultAuthor();
       if (initialData) {
         setFormData({
           dm_tai_lieu: initialData.dm_tai_lieu,
@@ -225,21 +235,6 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           files: [],
         });
         setExistingFiles([]);
-
-        // Lấy thông tin tài khoản đăng nhập từ CSDL backend để đồng bộ chính xác 100%
-        apiClient
-          .get<{ username?: string; fullName?: string; full_name?: string }>('/api/auth/profile/')
-          .then((profile) => {
-            if (profile) {
-              const uname = profile.username || '';
-              const fname = profile.fullName || profile.full_name || uname;
-              const authorText = fname && uname && fname !== uname ? `${fname} (@${uname})` : (fname || uname || 'Quản trị hệ thống');
-              setFormData((prev) => ({ ...prev, nguoi_tao_name: authorText }));
-            }
-          })
-          .catch(() => {
-            // Đã có fallback từ defaultAuthor
-          });
       }
       setSelectedFiles([]);
       setDeletedAttachmentIds([]);
@@ -248,7 +243,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       setIsDirty(false);
       setIsConfirmDiscardOpen(false);
     }
-  }, [isOpen, initialData, categories, getDefaultAuthor]);
+  }, [isOpen, initialData, categories, defaultAuthor]);
 
   // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
   const handleSafeClose = useCallback(() => {
@@ -719,37 +714,35 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 />
               </div>
 
-              {/* Người tạo tài liệu (Tự động lấy theo tài khoản cán bộ thực hiện tạo) */}
+              {/* Người tạo tài liệu (Tự do set theo Cán bộ hoặc Nhân viên) */}
               <div>
                 <label
                   htmlFor="field-nguoi_tao_name"
-                  className="text-xs font-semibold text-main mb-1 flex items-center justify-between"
+                  className="text-xs font-semibold text-main block mb-1"
                 >
-                  <span>Người tạo tài liệu</span>
-                  <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 px-1.5 py-0.2 rounded">
-                    Tài khoản tạo
-                  </span>
+                  Người tạo tài liệu <span className="text-muted font-normal text-xs">(nhập tự do hoặc chọn theo CBNV)</span>
                 </label>
                 <div className="relative">
-                  <i className="fa-solid fa-user-check absolute left-3 top-1/2 -translate-y-1/2 text-primary text-xs pointer-events-none" />
                   <input
                     id="field-nguoi_tao_name"
                     type="text"
-                    readOnly
-                    disabled
-                    value={formData.nguoi_tao_name || getDefaultAuthor()}
-                    className="w-full pl-9 pr-3 py-2 bg-surface-elevated/70 border border-border-subtle rounded-lg text-sm text-main font-semibold cursor-not-allowed select-none opacity-90 transition-colors"
-                    title={isEditMode ? 'Người tạo tài liệu ban đầu' : 'Tài khoản người dùng thực hiện tạo tài liệu'}
+                    list="cbnv-staff-list"
+                    placeholder="Nhập họ tên người tạo hoặc chọn cán bộ..."
+                    value={formData.nguoi_tao_name || ''}
+                    onChange={(e) => {
+                      setIsDirty(true);
+                      setFormData((prev) => ({ ...prev, nguoi_tao_name: e.target.value }));
+                    }}
+                    className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
                   />
+                  <datalist id="cbnv-staff-list">
+                    {staffSuggestions.map((s) => (
+                      <option key={s.id} value={s.ho_ten}>
+                        {s.ho_ten}{s.chuc_vu_ten ? ` — ${s.chuc_vu_ten}` : ''}{s.don_vi_ten ? ` (${s.don_vi_ten})` : ''}
+                      </option>
+                    ))}
+                  </datalist>
                 </div>
-                <p className="text-[11px] text-muted mt-1.5 flex items-center gap-1.5">
-                  <i className="fa-solid fa-circle-check text-emerald-500 text-[10px] shrink-0" />
-                  <span>
-                    {isEditMode
-                      ? 'Người tạo tài liệu được hệ thống lưu vết bảo vệ, không thể sửa đổi'
-                      : 'Hệ thống tự động ghi nhận chính xác theo tài khoản đang đăng nhập'}
-                  </span>
-                </p>
               </div>
             </div>
           </div>

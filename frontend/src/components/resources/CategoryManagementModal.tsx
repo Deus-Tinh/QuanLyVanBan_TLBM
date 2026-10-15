@@ -61,6 +61,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [unifiedMode, setUnifiedMode] = useState<'create' | 'edit'>('create');
   const [unifiedTarget, setUnifiedTarget] = useState<'category' | 'type'>('category');
 
+  const currentSession = authService.getSession();
+  const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
+  const defaultAdminAuthor = currentSession?.fullName || currentSession?.username || 'Quản trị hệ thống';
+
   // State Thư mục
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
   const [catForm, setCatForm] = useState<{
@@ -74,7 +78,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     stt_uu_tien: 1,
     ky_hieu: '',
     ten_tai_lieu: '',
-    nguoi_lap_name: 'Thượng Mạnh Quỳnh',
+    nguoi_lap_name: defaultAdminAuthor,
     ngay_lap: new Date().toISOString().split('T')[0],
     ghi_chu: '',
   });
@@ -186,13 +190,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     setIsUnifiedDirty(false);
     setIsConfirmDiscardUnifiedOpen(false);
 
-    // Khởi tạo form Thư mục: Tự động điền giá trị gợi ý mặc định ban đầu, cho phép chỉnh sửa tự do cả 3 trường
-    const defaultAuthor = authService.getSession()?.fullName || 'Thượng Mạnh Quỳnh';
+    // Khởi tạo form Thư mục: Tự động điền chính xác tài khoản Admin thực hiện tạo
     setCatForm({
       stt_uu_tien: nextOrderNumber(),
       ky_hieu: '',
       ten_tai_lieu: '',
-      nguoi_lap_name: defaultAuthor,
+      nguoi_lap_name: defaultAdminAuthor,
       ngay_lap: new Date().toISOString().split('T')[0],
       ghi_chu: '',
     });
@@ -231,7 +234,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       stt_uu_tien: cat.stt_uu_tien,
       ky_hieu: cat.ky_hieu || '',
       ten_tai_lieu: cat.ten_tai_lieu,
-      nguoi_lap_name: cat.nguoi_lap_name || authService.getSession()?.fullName || 'Thượng Mạnh Quỳnh',
+      nguoi_lap_name: cat.nguoi_lap_name || defaultAdminAuthor,
       ngay_lap: cat.ngay_lap || new Date().toISOString().split('T')[0],
       ghi_chu: cat.ghi_chu || '',
     });
@@ -366,7 +369,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         stt_uu_tien: sttNum,
         ky_hieu: catForm.ky_hieu.trim(),
         ten_tai_lieu: catForm.ten_tai_lieu.trim(),
-        nguoi_lap_name: catForm.nguoi_lap_name.trim(),
+        nguoi_lap_name: (catForm.nguoi_lap_name || defaultAdminAuthor).trim(),
         ngay_lap: catForm.ngay_lap,
         ghi_chu: catForm.ghi_chu.trim(),
       };
@@ -549,6 +552,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
         {/* Body Modal */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+          {/* Cảnh báo chế độ chỉ xem nếu không phải Admin */}
+          {!isAdmin && (
+            <div className="p-3 rounded-xl bg-amber-500/10 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-xs flex items-center gap-2.5 animate-fade-in">
+              <i className="fa-solid fa-lock text-amber-500 shrink-0" />
+              <span>Chế độ chỉ xem: Danh mục cấp 1 và cấp 2 chỉ có Quản trị hệ thống (Admin) mới có quyền tạo, chỉnh sửa hoặc xóa.</span>
+            </div>
+          )}
+
           {/* Cảnh báo nếu xóa thư mục bị chặn */}
           {catDeleteBlockedMsg && (
             <div className="p-3 rounded-xl bg-danger-subtle text-danger border border-danger/30 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in">
@@ -597,9 +608,13 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   variant="primary"
                   size="sm"
                   icon="fa-plus"
-                  onClick={() => handleOpenUnifiedCreate('category')}
-                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow"
-                  title={t('resourceManagement.addNew')}
+                  disabled={!isAdmin}
+                  onClick={() => {
+                    if (!isAdmin) return;
+                    handleOpenUnifiedCreate('category');
+                  }}
+                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={isAdmin ? t('resourceManagement.addNew') : 'Chỉ Quản trị hệ thống (Admin) mới có quyền tạo Thư mục'}
                 >
                   {t('resourceManagement.addNew')}
                 </Button>
@@ -730,9 +745,13 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   variant="primary"
                   size="sm"
                   icon="fa-plus"
-                  onClick={() => handleOpenUnifiedCreate('type')}
-                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow"
-                  title="Thêm mới Thư mục hoặc Loại tài liệu"
+                  disabled={!isAdmin}
+                  onClick={() => {
+                    if (!isAdmin) return;
+                    handleOpenUnifiedCreate('type');
+                  }}
+                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={isAdmin ? 'Thêm mới Loại tài liệu' : 'Chỉ Quản trị hệ thống (Admin) mới có quyền tạo Loại tài liệu'}
                 >
                   Thêm mới
                 </Button>
@@ -996,12 +1015,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         </label>
                         <input
                           type="text"
-                          value={catForm.nguoi_lap_name}
-                          onChange={(e) => {
-                            setCatForm({ ...catForm, nguoi_lap_name: e.target.value });
-                            setIsUnifiedDirty(true);
-                          }}
-                          className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
+                          value={catForm.nguoi_lap_name || defaultAdminAuthor}
+                          readOnly
+                          className="w-full px-3 py-2 bg-surface-elevated/70 border border-border-subtle rounded-xl text-xs text-main font-semibold cursor-not-allowed select-none shadow-2xs"
+                          title="Tên tài khoản Quản trị hệ thống (Admin) thực hiện tạo"
                         />
                       </div>
 
@@ -1246,30 +1263,38 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            onClick={() => {
-              const cat = categories.find((c) => c.id === activeMenuCatId);
-              if (cat) handleOpenEditCat(cat);
-              closeAllMenus();
-            }}
-            className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
-          >
-            <i className="fa-solid fa-pen-to-square text-primary text-xs" />
-            <span>{t('resourceManagement.edit')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const cat = categories.find((c) => c.id === activeMenuCatId);
-              if (cat) handleDeleteCategoryWithCheck(cat);
-              closeAllMenus();
-            }}
-            className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
-          >
-            <i className="fa-solid fa-trash-can text-danger text-xs" />
-            <span>{t('resourceManagement.delete')}</span>
-          </button>
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const cat = categories.find((c) => c.id === activeMenuCatId);
+                  if (cat) handleOpenEditCat(cat);
+                  closeAllMenus();
+                }}
+                className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
+              >
+                <i className="fa-solid fa-pen-to-square text-primary text-xs" />
+                <span>{t('resourceManagement.edit')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cat = categories.find((c) => c.id === activeMenuCatId);
+                  if (cat) handleDeleteCategoryWithCheck(cat);
+                  closeAllMenus();
+                }}
+                className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
+              >
+                <i className="fa-solid fa-trash-can text-danger text-xs" />
+                <span>{t('resourceManagement.delete')}</span>
+              </button>
+            </>
+          ) : (
+            <div className="px-3 py-1.5 text-xs text-muted italic text-center">
+              Chỉ xem
+            </div>
+          )}
         </div>
       )}
 
@@ -1281,30 +1306,38 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           style={{ top: `${menuPos.top}px`, right: `${menuPos.right}px` }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            onClick={() => {
-              const t = types.find((item) => item.id === activeMenuTypeId);
-              if (t) handleOpenEditType(t);
-              closeAllMenus();
-            }}
-            className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
-          >
-            <i className="fa-solid fa-pen-to-square text-primary text-xs" />
-            <span>{t('resourceManagement.edit')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const t = types.find((item) => item.id === activeMenuTypeId);
-              if (t) handleDeleteTypeConfirm(t);
-              closeAllMenus();
-            }}
-            className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
-          >
-            <i className="fa-solid fa-trash-can text-danger text-xs" />
-            <span>{t('resourceManagement.delete')}</span>
-          </button>
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = types.find((item) => item.id === activeMenuTypeId);
+                  if (t) handleOpenEditType(t);
+                  closeAllMenus();
+                }}
+                className="w-full px-3 py-1.5 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 cursor-pointer font-medium"
+              >
+                <i className="fa-solid fa-pen-to-square text-primary text-xs" />
+                <span>{t('resourceManagement.edit')}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const t = types.find((item) => item.id === activeMenuTypeId);
+                  if (t) handleDeleteTypeConfirm(t);
+                  closeAllMenus();
+                }}
+                className="w-full px-3 py-1.5 text-xs text-left text-danger hover:bg-danger/10 flex items-center gap-2 cursor-pointer font-medium"
+              >
+                <i className="fa-solid fa-trash-can text-danger text-xs" />
+                <span>{t('resourceManagement.delete')}</span>
+              </button>
+            </>
+          ) : (
+            <div className="px-3 py-1.5 text-xs text-muted italic text-center">
+              Chỉ xem
+            </div>
+          )}
         </div>
       )}
 
