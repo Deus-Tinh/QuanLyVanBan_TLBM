@@ -50,7 +50,7 @@ export default function AppHeader({
             <div
               className="flex items-center cursor-pointer transition-transform hover:scale-[1.03]"
               onClick={() => onNavigate?.('dashboard')}
-              title="Bảo Long Insurance - Về Trang Chủ"
+              title={`Bảo Long Insurance - ${t('common.backToDashboard') || 'Home'}`}
             >
               <Logo size="xl" className="h-11 sm:h-12" />
             </div>

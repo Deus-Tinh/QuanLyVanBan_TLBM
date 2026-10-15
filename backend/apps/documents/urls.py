@@ -7,9 +7,13 @@ from .views import (
     DocumentViewSet,
     VanBanDenViewSet,
     VanBanDiViewSet,
+    FolderViewSet,
+    FolderFileViewSet,
 )
 
 router = DefaultRouter()
+router.register(r"folders", FolderViewSet, basename="folder")
+router.register(r"folder-files", FolderFileViewSet, basename="folder-file")
 router.register(r"documents/den", VanBanDenViewSet, basename="vanbanden")
 router.register(r"documents/di", VanBanDiViewSet, basename="vanbandi")
 router.register(r"documents", DocumentViewSet, basename="document")

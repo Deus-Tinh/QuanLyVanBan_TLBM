@@ -37,9 +37,12 @@ from .models import (
     VanBanDiAttachment,
     DocumentViewLog,
     DocumentAccessLog,
+    Folder,
+    FolderFile,
     get_document_model,
     get_attachment_model,
 )
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .selectors import (
     van_ban_xem_duoc,
     la_nguoi_xem_duoc,
@@ -52,6 +55,11 @@ from .serializers import (
     DocumentViewLogSerializer,
     VanBanDenSerializer,
     VanBanDiSerializer,
+    FolderSerializer,
+    FolderTreeSerializer,
+    FolderBreadcrumbSerializer,
+    FolderMoveSerializer,
+    FolderFileSerializer,
 )
 from .services import (
     check_and_update_expired_documents,
@@ -184,6 +192,7 @@ class DocumentViewSet(viewsets.ViewSet):
     Đảm bảo 100% tương thích ngược với React frontend và các unit tests.
     """
 
+    lookup_value_regex = r"\d+"
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = DocumentPagination
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -521,6 +530,7 @@ class DocumentViewSet(viewsets.ViewSet):
 
 class VanBanDenViewSet(viewsets.ModelViewSet):
     """API ViewSet riêng biệt cho Văn bản Đến."""
+    lookup_value_regex = r"\d+"
     queryset = VanBanDen.objects.select_related("nguoi_tao").prefetch_related("attachments", "nguoi_nhan")
     serializer_class = VanBanDenSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -573,6 +583,7 @@ class VanBanDenViewSet(viewsets.ModelViewSet):
 
 class VanBanDiViewSet(viewsets.ModelViewSet):
     """API ViewSet riêng biệt cho Văn bản Đi."""
+    lookup_value_regex = r"\d+"
     serializer_class = VanBanDiSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = DocumentPagination
@@ -620,3 +631,166 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
         ngay_ban_hanh = serializer.validated_data.get("ngay_ban_hanh") or timezone.now()
         doc = serializer.save(nguoi_tao=self.request.user, so_thu_tu=so_thu_tu, ngay_ban_hanh=ngay_ban_hanh)
         handle_attachments(doc, self.request)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Folder & FolderFile ViewSets — Thư mục nhiều cấp
+# ═══════════════════════════════════════════════════════════════════
+
+class FolderViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet quản lý Thư mục nhiều cấp (Nested / Hierarchical Folders).
+    
+    Hỗ trợ các endpoints:
+    - GET    /api/folders/                : Lấy danh sách (hỗ trợ lọc ?parent=root hoặc ?parent=<id>)
+    - POST   /api/folders/                : Tạo thư mục mới (chỉ định parent_id nếu là thư mục con)
+    - GET    /api/folders/<id>/           : Chi tiết thư mục
+    - PUT    /api/folders/<id>/           : Cập nhật thư mục
+    - PATCH  /api/folders/<id>/           : Cập nhật từng phần
+    - DELETE /api/folders/<id>/           : Xóa thư mục (cascade xóa thư mục con và file)
+    - GET    /api/folders/tree/           : Cây thư mục hoàn chỉnh (đệ quy các cấp)
+    - GET    /api/folders/<id>/breadcrumb/: Breadcrumb từ gốc đến thư mục này
+    - GET    /api/folders/<id>/children/  : Danh sách thư mục con trực tiếp
+    - POST   /api/folders/<id>/children/  : Tạo thư mục con bên trong thư mục này
+    - PATCH  /api/folders/<id>/move/      : Di chuyển thư mục (kiểm tra vòng lặp & độ sâu)
+    - GET    /api/folders/<id>/files/     : Danh sách files bên trong thư mục
+    - POST   /api/folders/<id>/files/     : Upload file vào thư mục
+    """
+    queryset = Folder.objects.all().select_related("parent", "created_by").prefetch_related("children", "files")
+    serializer_class = FolderSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        parent_param = self.request.query_params.get("parent")
+        if parent_param is not None:
+            if parent_param.lower() in ("null", "root", "none", "0"):
+                qs = qs.filter(parent__isnull=True)
+            elif parent_param.isdigit():
+                qs = qs.filter(parent_id=int(parent_param))
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user and self.request.user.is_authenticated else None
+        serializer.save(created_by=user)
+
+    @action(detail=False, methods=["get"], url_path="tree")
+    def tree(self, request):
+        """Trả về toàn bộ cây thư mục phân cấp nhiều cấp."""
+        root_id = request.query_params.get("root_id")
+        if root_id and root_id.isdigit():
+            roots = Folder.objects.filter(pk=int(root_id))
+        else:
+            roots = Folder.objects.filter(parent__isnull=True).order_by("order", "name")
+        serializer = FolderTreeSerializer(roots, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="breadcrumb")
+    def breadcrumb(self, request, pk=None):
+        """Lấy danh sách breadcrumb từ gốc đến thư mục hiện tại."""
+        folder = self.get_object()
+        trail = folder.get_breadcrumb()
+        serializer = FolderBreadcrumbSerializer(trail, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get", "post"], url_path="children")
+    def children(self, request, pk=None):
+        """Lấy danh sách hoặc tạo thư mục con trực tiếp."""
+        folder = self.get_object()
+        if request.method == "POST":
+            data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+            data["parent_id"] = folder.id
+            serializer = FolderSerializer(data=data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            user = request.user if request.user and request.user.is_authenticated else None
+            child = serializer.save(created_by=user)
+            return Response(FolderSerializer(child).data, status=status.HTTP_201_CREATED)
+
+        children = folder.children.all().order_by("order", "name")
+        serializer = FolderSerializer(children, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["patch", "post"], url_path="move")
+    def move(self, request, pk=None):
+        """Di chuyển thư mục đến vị trí cha mới với kiểm tra vòng lặp."""
+        folder = self.get_object()
+        serializer = FolderMoveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        target_parent_id = serializer.validated_data.get("target_parent_id")
+        target_parent = None
+        if target_parent_id is not None:
+            try:
+                target_parent = Folder.objects.get(pk=target_parent_id)
+            except Folder.DoesNotExist:
+                return Response(
+                    {"detail": f"Thư mục đích với ID {target_parent_id} không tồn tại."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        try:
+            folder.move_to(target_parent)
+        except DjangoValidationError as exc:
+            messages = exc.messages if hasattr(exc, "messages") else [str(exc)]
+            return Response({"detail": messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(FolderSerializer(folder).data)
+
+    @action(detail=True, methods=["get", "post"], url_path="files")
+    def files(self, request, pk=None):
+        """Lấy hoặc thêm files trong thư mục."""
+        folder = self.get_object()
+        if request.method == "POST":
+            uploaded_file = request.FILES.get("file")
+            file_name = request.data.get("file_name")
+            if uploaded_file and not file_name:
+                file_name = uploaded_file.name
+            if not file_name:
+                return Response(
+                    {"detail": "Tên file (file_name) không được để trống."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            file_size = uploaded_file.size if uploaded_file else int(request.data.get("file_size", 0))
+            file_path = request.data.get("file_path", "")
+            if uploaded_file and not file_path:
+                file_path = f"media/folder_files/{folder.id}/{uploaded_file.name}"
+
+            ext = ""
+            if "." in file_name:
+                ext = file_name.rsplit(".", 1)[-1].lower()
+
+            user = request.user if request.user and request.user.is_authenticated else None
+            item = FolderFile.objects.create(
+                folder=folder,
+                file_name=file_name,
+                file_path=file_path,
+                file_size=file_size,
+                file_type=request.data.get("file_type") or ext,
+                description=request.data.get("description", ""),
+                uploaded_by=user,
+            )
+            return Response(FolderFileSerializer(item).data, status=status.HTTP_201_CREATED)
+
+        files = folder.files.all().order_by("file_name")
+        serializer = FolderFileSerializer(files, many=True)
+        return Response(serializer.data)
+
+
+class FolderFileViewSet(viewsets.ModelViewSet):
+    """ViewSet quản lý file trong thư mục."""
+    queryset = FolderFile.objects.all().select_related("folder", "uploaded_by")
+    serializer_class = FolderFileSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        folder_id = self.request.query_params.get("folder")
+        if folder_id and folder_id.isdigit():
+            qs = qs.filter(folder_id=int(folder_id))
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user and self.request.user.is_authenticated else None
+        serializer.save(uploaded_by=user)
+

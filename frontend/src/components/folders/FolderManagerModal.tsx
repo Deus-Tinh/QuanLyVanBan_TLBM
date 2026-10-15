@@ -1,0 +1,632 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { FolderItem, FolderFileItem, FolderBreadcrumb as BreadcrumbType } from '@app-types/resource';
+import { folderService } from '@lib/folderService';
+import { Button } from '@components/common/Button';
+import { FolderTreeView } from './FolderTreeView';
+import { FolderBreadcrumb } from './FolderBreadcrumb';
+import {
+  CreateOrEditFolderModal,
+  MoveFolderModal,
+  DeleteFolderModal,
+} from './FolderActionModals';
+
+interface FolderManagerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectFolderForResource?: (folder: FolderItem) => void;
+}
+
+export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
+  isOpen,
+  onClose,
+  onSelectFolderForResource,
+}) => {
+  const [tree, setTree] = useState<FolderItem[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<FolderItem | null>(null);
+  const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbType[]>([]);
+  const [files, setFiles] = useState<FolderFileItem[]>([]);
+  const [isLoadingTree, setIsLoadingTree] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  // Modals state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createModalParent, setCreateModalParent] = useState<FolderItem | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<FolderItem | null>(null);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [movingFolder, setMovingFolder] = useState<FolderItem | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletingFolder, setDeletingFolder] = useState<FolderItem | null>(null);
+
+  // Add File State
+  const [isAddFileModalOpen, setIsAddFileModalOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const [newFileSize, setNewFileSize] = useState('');
+  const [newFileType, setNewFileType] = useState('pdf');
+  const [newFileDescription, setNewFileDescription] = useState('');
+  const [isAddingFile, setIsAddingFile] = useState(false);
+
+  // Tải lại toàn bộ cây thư mục
+  const loadTree = useCallback(async () => {
+    try {
+      setIsLoadingTree(true);
+      const data = await folderService.getTree();
+      setTree(data);
+      // Nếu folder đang chọn còn tồn tại, cập nhật lại dữ liệu của nó
+      if (selectedFolder) {
+        const found = findNodeInTree(data, selectedFolder.id);
+        if (found) setSelectedFolder(found);
+      }
+    } catch (e) {
+      console.error('Lỗi khi tải cây thư mục:', e);
+    } finally {
+      setIsLoadingTree(false);
+    }
+  }, [selectedFolder]);
+
+  // Tìm node trong tree
+  const findNodeInTree = (nodes: FolderItem[], id: number): FolderItem | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const res = findNodeInTree(node.children, id);
+        if (res) return res;
+      }
+    }
+    return null;
+  };
+
+  // Thu gom danh sách phẳng tất cả thư mục
+  const flatFolders = useMemo(() => {
+    const list: FolderItem[] = [];
+    const traverse = (items: FolderItem[]) => {
+      items.forEach((item) => {
+        list.push(item);
+        if (item.children) traverse(item.children);
+      });
+    };
+    traverse(tree);
+    return list;
+  }, [tree]);
+
+  // Tải chi tiết thư mục khi chọn
+  const loadFolderDetails = useCallback(async (folderId: number | null) => {
+    if (folderId === null) {
+      setSelectedFolder(null);
+      setBreadcrumbs([]);
+      setFiles([]);
+      return;
+    }
+
+    try {
+      setIsLoadingDetails(true);
+      const [folderData, bcData, filesData] = await Promise.all([
+        folderService.getById(folderId).catch(() => null),
+        folderService.getBreadcrumb(folderId).catch(() => []),
+        folderService.getFiles(folderId).catch(() => []),
+      ]);
+
+      if (folderData) setSelectedFolder(folderData);
+      setBreadcrumbs(bcData);
+      setFiles(filesData);
+    } catch (e) {
+      console.error('Lỗi khi tải chi tiết thư mục:', e);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadTree();
+    }
+  }, [isOpen, loadTree]);
+
+  if (!isOpen) return null;
+
+  // Thao tác Tạo thư mục (gốc hoặc con)
+  const handleCreateSubmit = async (data: { name: string; description: string; order: number }) => {
+    if (createModalParent) {
+      await folderService.createChild(createModalParent.id, data);
+    } else {
+      await folderService.create({ ...data, parent_id: null });
+    }
+    await loadTree();
+    if (createModalParent) {
+      loadFolderDetails(createModalParent.id);
+    }
+  };
+
+  // Thao tác Sửa thư mục
+  const handleEditSubmit = async (data: { name: string; description: string; order: number }) => {
+    if (!editingFolder) return;
+    await folderService.update(editingFolder.id, data);
+    await loadTree();
+    loadFolderDetails(editingFolder.id);
+  };
+
+  // Thao tác Di chuyển
+  const handleConfirmMove = async (folderId: number, targetParentId: number | null) => {
+    await folderService.move(folderId, targetParentId);
+    await loadTree();
+    loadFolderDetails(folderId);
+  };
+
+  // Thao tác Xóa
+  const handleConfirmDelete = async (folderId: number) => {
+    await folderService.delete(folderId);
+    if (selectedFolder && selectedFolder.id === folderId) {
+      setSelectedFolder(null);
+      setBreadcrumbs([]);
+      setFiles([]);
+    }
+    await loadTree();
+  };
+
+  // Thao tác thêm File vào thư mục
+  const handleAddFile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFolder || !newFileName.trim()) return;
+
+    try {
+      setIsAddingFile(true);
+      await folderService.addFile(selectedFolder.id, {
+        file_name: newFileName.trim(),
+        file_size: parseInt(newFileSize, 10) || 1024,
+        file_type: newFileType,
+        description: newFileDescription.trim(),
+      });
+      setIsAddFileModalOpen(false);
+      setNewFileName('');
+      setNewFileSize('');
+      setNewFileDescription('');
+      loadFolderDetails(selectedFolder.id);
+      loadTree();
+    } catch (err) {
+      console.error('Lỗi thêm tệp:', err);
+    } finally {
+      setIsAddingFile(false);
+    }
+  };
+
+  // Xóa file
+  const handleDeleteFile = async (fileId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa file này?')) return;
+    try {
+      await folderService.deleteFile(fileId);
+      if (selectedFolder) loadFolderDetails(selectedFolder.id);
+      loadTree();
+    } catch (err) {
+      console.error('Lỗi xóa file:', err);
+    }
+  };
+
+  // Định dạng kích thước file
+  const formatSize = (bytes: number): string => {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-surface rounded-2xl border border-border-subtle shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        {/* Header Modal */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle shrink-0 bg-surface">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <i className="fa-solid fa-folder-tree text-lg" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-main tracking-tight flex items-center gap-2">
+                Quản lý Thư mục nhiều cấp
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                  Hierarchical Folders
+                </span>
+              </h2>
+              <p className="text-xs text-secondary">
+                Hỗ trợ phân cấp không giới hạn (Level 1, 2, 3, 4...), di chuyển chống vòng lặp và quản lý tệp theo thư mục.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              icon="fa-folder-plus"
+              onClick={() => {
+                setCreateModalParent(null);
+                setIsCreateModalOpen(true);
+              }}
+            >
+              Tạo thư mục gốc
+            </Button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl text-secondary hover:text-main hover:bg-surface-elevated flex items-center justify-center transition-colors"
+            >
+              <i className="fa-solid fa-xmark text-base" />
+            </button>
+          </div>
+        </div>
+
+        {/* Thân Modal — Bố cục 2 cột (Trái: TreeView | Phải: Nội dung chi tiết thư mục) */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Cột trái: Cây thư mục */}
+          <div className="w-80 sm:w-96 border-r border-border-subtle p-3 bg-surface/50 shrink-0 flex flex-col overflow-hidden">
+            <FolderTreeView
+              tree={tree}
+              selectedFolderId={selectedFolder?.id || null}
+              onSelectFolder={(folder) => loadFolderDetails(folder.id)}
+              onCreateChild={(folder) => {
+                setCreateModalParent(folder);
+                setIsCreateModalOpen(true);
+              }}
+              onEditFolder={(folder) => {
+                setEditingFolder(folder);
+                setIsEditModalOpen(true);
+              }}
+              onMoveFolder={(folder) => {
+                setMovingFolder(folder);
+                setIsMoveModalOpen(true);
+              }}
+              onDeleteFolder={(folder) => {
+                setDeletingFolder(folder);
+                setIsDeleteModalOpen(true);
+              }}
+            />
+          </div>
+
+          {/* Cột phải: Chi tiết thư mục & Files */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-surface-elevated/20 p-5">
+            {isLoadingDetails ? (
+              <div className="flex-1 flex items-center justify-center text-secondary text-sm">
+                <i className="fa-solid fa-spinner fa-spin mr-2 text-primary text-base" />
+                Đang tải dữ liệu thư mục...
+              </div>
+            ) : selectedFolder ? (
+              <div className="flex-1 flex flex-col overflow-hidden space-y-4">
+                {/* Breadcrumb Navigation */}
+                <FolderBreadcrumb
+                  breadcrumbs={breadcrumbs}
+                  onSelect={(folderId) => loadFolderDetails(folderId)}
+                />
+
+                {/* Header Thư mục hiện tại */}
+                <div className="p-4 rounded-2xl bg-surface border border-border-subtle shadow-xs shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                        <i className="fa-solid fa-folder-open text-base" />
+                      </span>
+                      <h3 className="text-base font-bold text-main">{selectedFolder.name}</h3>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                        Độ sâu: Cấp {selectedFolder.depth || 0}
+                      </span>
+                    </div>
+                    {selectedFolder.description && (
+                      <p className="text-xs text-secondary pl-10">{selectedFolder.description}</p>
+                    )}
+                    <p className="text-[11px] text-muted pl-10 font-mono">
+                      Đường dẫn ID: {selectedFolder.path}
+                    </p>
+                  </div>
+
+                  {/* Nhóm nút hành động */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="fa-folder-plus"
+                      onClick={() => {
+                        setCreateModalParent(selectedFolder);
+                        setIsCreateModalOpen(true);
+                      }}
+                      title="Thêm thư mục con trực tiếp"
+                    >
+                      Thêm thư mục con
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon="fa-file-circle-plus"
+                      onClick={() => setIsAddFileModalOpen(true)}
+                      title="Thêm file vào thư mục này"
+                    >
+                      Thêm tệp
+                    </Button>
+                    {onSelectFolderForResource && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-check"
+                        onClick={() => {
+                          onSelectFolderForResource(selectedFolder);
+                          onClose();
+                        }}
+                      >
+                        Chọn thư mục này
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Thư mục con (nếu có) */}
+                {selectedFolder.children && selectedFolder.children.length > 0 && (
+                  <div className="shrink-0 space-y-2">
+                    <h4 className="text-xs font-bold text-secondary uppercase tracking-wider">
+                      Thư mục con ({selectedFolder.children.length})
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {selectedFolder.children.map((child) => (
+                        <div
+                          key={child.id}
+                          onClick={() => loadFolderDetails(child.id)}
+                          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-surface border border-border-subtle hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group"
+                        >
+                          <i className="fa-solid fa-folder text-amber-500 text-sm group-hover:scale-110 transition-transform" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-main truncate">{child.name}</p>
+                            <span className="text-[10px] text-muted">
+                              {child.files_count || 0} tệp
+                            </span>
+                          </div>
+                          <i className="fa-solid fa-chevron-right text-[10px] text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bảng Tệp trong thư mục */}
+                <div className="flex-1 flex flex-col overflow-hidden bg-surface rounded-2xl border border-border-subtle shadow-xs">
+                  <div className="p-3.5 border-b border-border-subtle flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-solid fa-file-lines text-primary text-xs" />
+                      <h4 className="text-xs font-bold text-main">
+                        Danh sách tệp trong thư mục ({files.length})
+                      </h4>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="fa-plus"
+                      onClick={() => setIsAddFileModalOpen(true)}
+                    >
+                      Thêm tệp
+                    </Button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {files.length === 0 ? (
+                      <div className="py-12 text-center text-xs text-muted space-y-2">
+                        <i className="fa-solid fa-file-circle-question text-3xl text-muted/40 block" />
+                        <p>Thư mục này hiện chưa có tệp nào.</p>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon="fa-upload"
+                          onClick={() => setIsAddFileModalOpen(true)}
+                        >
+                          Thêm tệp đầu tiên
+                        </Button>
+                      </div>
+                    ) : (
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead className="sticky top-0 bg-surface-elevated text-secondary font-semibold border-b border-border-subtle">
+                          <tr>
+                            <th className="py-2.5 px-3">Tên tệp</th>
+                            <th className="py-2.5 px-3">Loại</th>
+                            <th className="py-2.5 px-3">Kích thước</th>
+                            <th className="py-2.5 px-3">Mô tả</th>
+                            <th className="py-2.5 px-3 text-right">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border-subtle">
+                          {files.map((file) => (
+                            <tr key={file.id} className="hover:bg-surface-elevated/40 transition-colors">
+                              <td className="py-2.5 px-3 font-semibold text-main">
+                                <div className="flex items-center gap-2">
+                                  <i
+                                    className={`fa-solid ${
+                                      file.file_type === 'pdf'
+                                        ? 'fa-file-pdf text-danger'
+                                        : file.file_type?.includes('doc')
+                                        ? 'fa-file-word text-sky-500'
+                                        : 'fa-file text-secondary'
+                                    } text-sm`}
+                                  />
+                                  <span>{file.file_name}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-secondary uppercase font-mono text-[11px]">
+                                {file.file_type || '—'}
+                              </td>
+                              <td className="py-2.5 px-3 text-secondary">
+                                {formatSize(file.file_size)}
+                              </td>
+                              <td className="py-2.5 px-3 text-muted max-w-[200px] truncate">
+                                {file.description || '—'}
+                              </td>
+                              <td className="py-2.5 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteFile(file.id)}
+                                  className="w-7 h-7 rounded-lg hover:bg-danger/10 text-danger inline-flex items-center justify-center transition-colors"
+                                  title="Xóa tệp"
+                                >
+                                  <i className="fa-solid fa-trash text-xs" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-secondary space-y-3">
+                <div className="w-16 h-16 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
+                  <i className="fa-solid fa-sitemap text-2xl" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-main text-base">Chọn một thư mục từ cây bên trái</h3>
+                  <p className="text-xs text-secondary mt-1 max-w-sm">
+                    Khám phá cây thư mục phân cấp, xem đường dẫn breadcrumb, tạo các thư mục con hoặc tải lên tệp mới.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon="fa-folder-plus"
+                  onClick={() => {
+                    setCreateModalParent(null);
+                    setIsCreateModalOpen(true);
+                  }}
+                >
+                  Tạo thư mục gốc mới
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal tạo / sửa thư mục */}
+      <CreateOrEditFolderModal
+        isOpen={isCreateModalOpen || isEditModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setIsEditModalOpen(false);
+          setEditingFolder(null);
+          setCreateModalParent(null);
+        }}
+        onSubmit={isEditModalOpen ? handleEditSubmit : handleCreateSubmit}
+        initialData={editingFolder}
+        parentFolder={createModalParent}
+      />
+
+      {/* Modal di chuyển thư mục */}
+      <MoveFolderModal
+        isOpen={isMoveModalOpen}
+        onClose={() => {
+          setIsMoveModalOpen(false);
+          setMovingFolder(null);
+        }}
+        folder={movingFolder}
+        allFolders={flatFolders}
+        onConfirmMove={handleConfirmMove}
+      />
+
+      {/* Modal xác nhận xóa */}
+      <DeleteFolderModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingFolder(null);
+        }}
+        folder={deletingFolder}
+        onConfirmDelete={handleConfirmDelete}
+      />
+
+      {/* Modal thêm File vào thư mục */}
+      {isAddFileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-surface rounded-2xl border border-border-subtle shadow-xl w-full max-w-md p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <h3 className="font-bold text-main text-sm flex items-center gap-2">
+                <i className="fa-solid fa-file-circle-plus text-primary" />
+                Thêm tệp vào: {selectedFolder?.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddFileModalOpen(false)}
+                className="text-secondary hover:text-main"
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddFile} className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-main mb-1">
+                  Tên file <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: huong_dan.pdf, de_cuong.docx..."
+                  value={newFileName}
+                  onChange={(e) => setNewFileName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary text-main"
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-main mb-1">Định dạng</label>
+                  <select
+                    value={newFileType}
+                    onChange={(e) => setNewFileType(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary text-main"
+                  >
+                    <option value="pdf">PDF (.pdf)</option>
+                    <option value="docx">Word (.docx)</option>
+                    <option value="xlsx">Excel (.xlsx)</option>
+                    <option value="txt">Text (.txt)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-main mb-1">Kích thước (bytes)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="1048576 (1MB)"
+                    value={newFileSize}
+                    onChange={(e) => setNewFileSize(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary text-main"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-main mb-1">Mô tả</label>
+                <textarea
+                  rows={2}
+                  value={newFileDescription}
+                  onChange={(e) => setNewFileDescription(e.target.value)}
+                  placeholder="Mô tả nội dung tệp..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary text-main resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => setIsAddFileModalOpen(false)}
+                >
+                  Hủy
+                </Button>
+                <Button variant="primary" size="sm" type="submit" disabled={isAddingFile}>
+                  {isAddingFile ? 'Đang thêm...' : 'Lưu tệp'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+};
+
+export default FolderManagerModal;
