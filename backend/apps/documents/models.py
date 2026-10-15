@@ -48,6 +48,7 @@ class PhamVi(models.TextChoices):
 class LoaiVanBan(models.TextChoices):
     DEN = "DEN", "Văn bản Đến"
     DI = "DI", "Văn bản Đi"
+    MAT = "MAT", "Văn bản Mật"
 
 
 class HieuLuc(models.TextChoices):
@@ -168,7 +169,8 @@ class BaseVanBan(models.Model):
             )
 
     def save(self, *args, **kwargs):
-        if self.pk:
+        allow_scope_change = kwargs.pop("allow_scope_change", False) or getattr(self, "_allow_scope_change", False)
+        if self.pk and not allow_scope_change:
             old_inst = self.__class__.objects.filter(pk=self.pk).values("pham_vi").first()
             if old_inst and old_inst["pham_vi"] != self.pham_vi:
                 raise ValidationError("Phạm vi văn bản không được đổi sau khi tạo.")
@@ -1021,3 +1023,15 @@ class DocumentAttachmentFacade:
 
 
 DocumentAttachment = DocumentAttachmentFacade
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Backward-Compatibility Aliases (Văn bản Mật gộp vào Văn bản Hạn chế)
+# ═══════════════════════════════════════════════════════════════════
+VanBanMat = VanBanDen
+VanBanMatAttachment = VanBanDenAttachment
+VanBanMatNguoiNhan = VanBanDenNguoiNhan
+VanBanMatDonViNhan = VanBanDenDonViNhan
+VanBanMatDanhmuc = VanBanDenDanhmuc
+VanBanMatHoSo = VanBanDenHoSo
+VanBanMatNoiBanHanh = VanBanDiNoiBanHanh

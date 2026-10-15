@@ -116,7 +116,7 @@ describe('InboundDocumentPage Component (Phân hệ Văn bản Đến)', () => {
 
       expect(screen.getByText('Quản Lý Văn Bản Đến')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Thêm mới/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Nhập Excel/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /(Import Excel|Nhập Excel)/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Xuất Excel/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Làm mới/i })).toBeInTheDocument();
 
@@ -149,14 +149,20 @@ describe('InboundDocumentPage Component (Phân hệ Văn bản Đến)', () => {
       });
     });
 
-    it('mở modal Nhập Excel khi bấm nút Nhập Excel', async () => {
+    it('mở modal Nhập Excel khi bấm nút Nhập Excel và chọn tác vụ', async () => {
       renderComponent();
 
-      const importButton = screen.getByRole('button', { name: /Nhập Excel/i });
+      const importButton = screen.getByRole('button', { name: /(Import Excel|Nhập Excel)/i });
       fireEvent.click(importButton);
 
+      // Menu dropdown sổ ra lựa chọn: Nhập văn bản thường hoặc Nhập văn bản hạn chế
+      const normalOption = screen.getByText('Nhập văn bản thường');
+      expect(screen.getByText('Nhập văn bản hạn chế')).toBeInTheDocument();
+
+      fireEvent.click(normalOption);
+
       await waitFor(() => {
-        expect(screen.getByText(/Nhập Văn Bản Từ File Excel/i)).toBeInTheDocument();
+        expect(screen.getByText(/Nhập Văn Bản.*Từ File Excel/i)).toBeInTheDocument();
       });
     });
 

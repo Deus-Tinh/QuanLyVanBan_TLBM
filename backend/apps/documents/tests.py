@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 
 from documents.filters import DocumentFilter, ViewerFilter
 from documents.models import (
@@ -28,6 +28,13 @@ from documents.models import (
     VanBanDiDanhmuc,
     VanBanDiDonViNhan,
     VanBanDiNoiBanHanh,
+    VanBanMat,
+    VanBanMatAttachment,
+    VanBanMatNguoiNhan,
+    VanBanMatHoSo,
+    VanBanMatDanhmuc,
+    VanBanMatDonViNhan,
+    VanBanMatNoiBanHanh,
     DocumentViewLog,
     DocumentAccessLog,
     Document,
@@ -629,14 +636,37 @@ class DocumentPermissionOption2Tests(TestCase):
         )
 
     def test_non_admin_cannot_delete_document(self):
-        """Cán bộ thông thường không được phép xóa văn bản -> 403 Forbidden."""
+        """Cán bộ không phải người tạo không được phép xóa văn bản -> 403 Forbidden."""
+        client = APIClient()
+        client.force_authenticate(user=self.staff2)
+
+        res = client.delete(f"/api/documents/{self.doc_staff1.id}/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(VanBanDen.objects.filter(id=self.doc_staff1.id).exists())
+
+    def test_creator_can_delete_own_active_document(self):
+        """Người tạo có quyền xóa văn bản còn hiệu lực do mình tạo -> 204 No Content."""
         client = APIClient()
         client.force_authenticate(user=self.staff1)
 
         res = client.delete(f"/api/documents/{self.doc_staff1.id}/")
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(VanBanDen.objects.filter(id=self.doc_staff1.id).exists())
+
+    def test_creator_cannot_delete_expired_document(self):
+        """Người tạo không được phép xóa văn bản đã hết hiệu lực (chỉ Admin mới được xóa) -> 403 Forbidden."""
+        doc_exp = VanBanDen.objects.create(
+            nam=2026, so_hieu="11/CV-STAFF1-EXP", so_thu_tu=2,
+            trich_yeu="Văn bản hết hạn",
+            hieu_luc=HieuLuc.HET_HIEU_LUC,
+            nguoi_tao=self.staff1,
+        )
+        client = APIClient()
+        client.force_authenticate(user=self.staff1)
+
+        res = client.delete(f"/api/documents/{doc_exp.id}/")
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("Quyền xóa chỉ dành cho Quản trị viên", str(res.data))
-        self.assertTrue(VanBanDen.objects.filter(id=self.doc_staff1.id).exists())
+        self.assertTrue(VanBanDen.objects.filter(id=doc_exp.id).exists())
 
     def test_admin_can_delete_document(self):
         """Admin có quyền xóa văn bản -> 204 No Content."""
@@ -1264,6 +1294,599 @@ class DocumentPhamViFilterTests(TestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["id"], self.doc_di_hanche.id)
         self.assertEqual(response.data["results"][0]["pham_vi"], "HAN_CHE")
+
+
+class VanBanMatTests(TestCase):
+    """
+    Test suite cho phân hệ Văn bản Mật (VanBanMat / loai=MAT).
+    Kiểm tra toàn diện: Model, bảo mật nghiêm ngặt (Issue #82, #83), API endpoints, ngăn chặn xóa.
+    """
+
+    def setUp(self):
+        User = get_user_model()
+        self.creator = User.objects.create_user(
+            username="mat_creator",
+            password="password123",
+            email="creator@school.edu.vn",
+            is_staff=True,
+        )
+        self.recipient = User.objects.create_user(
+            username="mat_recipient",
+            password="password123",
+            email="recipient@school.edu.vn",
+        )
+        self.stranger = User.objects.create_user(
+            username="mat_stranger",
+            password="password123",
+            email="stranger@school.edu.vn",
+        )
+        self.superuser = User.objects.create_superuser(
+            username="mat_super",
+            password="password123",
+            email="super@school.edu.vn",
+        )
+
+        self.doc_mat = VanBanMat.objects.create(
+            nam=2026,
+            so_hieu="01/MAT-BGH",
+            trich_yeu="Kế hoạch bảo vệ an ninh và bí mật nội bộ năm 2026",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.creator,
+            pham_vi=PhamVi.HAN_CHE,
+            gui_mail_toan_he_thong=False,
+        )
+        self.doc_mat.nguoi_nhan.add(self.recipient)
+
+    def test_model_confidential_constraints(self):
+        """Văn bản mật tự động gán pham_vi=HAN_CHE và cấm gửi mail toàn hệ thống."""
+        self.assertEqual(self.doc_mat.pham_vi, PhamVi.HAN_CHE)
+        self.assertFalse(self.doc_mat.gui_mail_toan_he_thong)
+        self.assertIn(self.doc_mat.loai, ("DEN", "MAT"))
+        self.assertIn(self.doc_mat.document_kind, ("vanbanden", "vanbanmat"))
+
+    def test_admin_can_delete_confidential_document(self):
+        """Quản trị viên (Superuser/Admin) có toàn quyền xóa văn bản mật của công ty."""
+        client = APIClient()
+        client.force_authenticate(user=self.superuser)
+        res = client.delete(f"/api/documents/mat/{self.doc_mat.id}/")
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(VanBanMat.objects.filter(id=self.doc_mat.id).exists())
+
+    def test_attachment_creation_and_path(self):
+        """Tệp đính kèm văn bản mật lưu theo đường dẫn chuẩn 02_documents/..."""
+        att = VanBanMatAttachment.objects.create(
+            document=self.doc_mat,
+            name="kehoach_mat.pdf",
+        )
+        self.assertTrue(att.file.field.upload_to(att, "kehoach_mat.pdf").startswith("02_documents/"))
+
+    def test_junction_relations(self):
+        """Liên kết Hồ sơ, Danh mục, Đơn vị nhận, Nơi ban hành hoạt động trơn tru."""
+        VanBanMatHoSo.objects.create(vanbanden=self.doc_mat, hoso_id=12)
+        VanBanMatDanhmuc.objects.create(vanbanden=self.doc_mat, loaivanban_id=34)
+        VanBanMatDonViNhan.objects.create(vanbanden=self.doc_mat, donvi_id=56)
+
+        self.assertEqual(self.doc_mat.hoso.count(), 1)
+        self.assertEqual(self.doc_mat.danhmuc.count(), 1)
+        self.assertEqual(self.doc_mat.donvinhan.count(), 1)
+
+    def test_creator_and_recipient_can_access(self):
+        """Người tạo và người nhận xem được văn bản mật qua API."""
+        client = APIClient()
+
+        # Người tạo
+        client.force_authenticate(user=self.creator)
+        res = client.get("/api/documents/mat/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)
+
+        res_detail = client.get(f"/api/documents/mat/{self.doc_mat.id}/")
+        self.assertEqual(res_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_detail.data["so_hieu"], "01/MAT-BGH")
+
+        # Người nhận
+        client.force_authenticate(user=self.recipient)
+        res = client.get("/api/documents/mat/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)
+
+    def test_stranger_and_superuser_cannot_access_confidential_document(self):
+        """Người ngoài và superuser không có trong người nhận đều không xem được (404/bảo mật tuyệt đối)."""
+        client = APIClient()
+
+        # Người ngoài
+        client.force_authenticate(user=self.stranger)
+        res = client.get("/api/documents/mat/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 0)
+
+        res_detail = client.get(f"/api/documents/mat/{self.doc_mat.id}/")
+        self.assertEqual(res_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Superuser không được gán quyền nhận
+        client.force_authenticate(user=self.superuser)
+        res_super = client.get("/api/documents/mat/")
+        self.assertEqual(res_super.data["count"], 0)
+
+        res_super_detail = client.get(f"/api/documents/mat/{self.doc_mat.id}/")
+        self.assertEqual(res_super_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cannot_delete_via_api(self):
+        """Cố gắng xóa văn bản mật qua API bị từ chối 403."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+        res = client.delete(f"/api/documents/mat/{self.doc_mat.id}/")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_confidential_document_via_unified_api(self):
+        """Tạo văn bản mật qua endpoint thống nhất /api/documents/ với loai=MAT."""
+        client = APIClient()
+        client.force_authenticate(user=self.creator)
+
+        payload = {
+            "loai": "MAT",
+            "so_hieu": "02/MAT-BGH",
+            "trich_yeu": "Nội quy phòng họp mật",
+            "nam": 2026,
+            "nguoi_nhan": [self.recipient.id],
+        }
+        res = client.post("/api/documents/", payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertIn(res.data["loai"], ("DEN", "MAT"))
+        self.assertEqual(res.data["pham_vi"], "HAN_CHE")
+
+        doc = VanBanMat.objects.filter(so_hieu="02/MAT-BGH").first()
+        self.assertIsNotNone(doc)
+        self.assertTrue(doc.nguoi_nhan.filter(id=self.recipient.id).exists())
+
+
+# ═══════════════════════════════════════════════════════════════════
+# VAN BAN DI SERVICE TESTS (Phụ trách: Nguyễn Anh Đô)
+# ═══════════════════════════════════════════════════════════════════
+
+class VanBanDiServiceTests(TestCase):
+    """
+    Bộ kiểm thử Backend Services cho Văn bản Đi (Phụ trách: Nguyễn Anh Đô):
+    1. Thuật toán tự sinh Số đi (so_thu_tu) tự tăng độc lập theo năm, concurrency safe.
+    2. Khóa cứng so_thu_tu và nam khi cập nhật văn bản (PUT/PATCH).
+    3. Bộ lọc nâng cao VanBanDiFilter (năm, khoảng ngày ban hành, loại VB, hồ sơ, hiệu lực, nơi ban hành, người ký, đơn vị nhận).
+    4. Dịch vụ Excel Văn bản Đi (sinh file mẫu từ DB, Import tự cấp số đi nếu trống, Export theo bộ lọc).
+    5. Cập nhật và truy vấn lịch sử người xem DocumentViewLog (document_type='vanbandi') qua endpoint /viewers/.
+    """
+
+    def setUp(self):
+        from documents.services import generate_so_thu_tu, generate_excel_template, import_from_excel, export_to_excel
+        from documents.filters import VanBanDiFilter
+        self.creator = User.objects.create_user(
+            username="docreator",
+            password="testpassword123",
+            email="docreator@itc.edu.vn",
+        )
+        self.recipient = User.objects.create_user(
+            username="dorecipient",
+            password="testpassword123",
+            email="dorecipient@itc.edu.vn",
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.creator)
+
+    def test_di_concurrency_safe_numbering(self):
+        """Số đi tự tăng độc lập theo năm và bảo vệ chống trùng lặp."""
+        from documents.services import generate_so_thu_tu
+        so1 = generate_so_thu_tu("DI", 2026)
+        self.assertEqual(so1, 1)
+
+        doc1 = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="01/TB-ITC",
+            so_thu_tu=so1,
+            trich_yeu="Thông báo lịch nghỉ lễ 2026",
+            nguoi_tao=self.creator,
+        )
+        self.assertEqual(doc1.so_thu_tu, 1)
+
+        so2 = generate_so_thu_tu("DI", 2026)
+        self.assertEqual(so2, 2)
+
+        # Độc lập theo năm
+        so_2027 = generate_so_thu_tu("DI", 2027)
+        self.assertEqual(so_2027, 1)
+
+    def test_di_update_so_thu_tu_and_nam_strictly_immutable(self):
+        """Khóa cứng so_thu_tu và nam, chặn hoàn toàn việc sửa đổi số đi qua form cập nhật (PUT/PATCH)."""
+        doc = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="10/QĐ-ITC",
+            so_thu_tu=10,
+            trich_yeu="Quyết định ban đầu",
+            nguoi_tao=self.creator,
+            ngay_ban_hanh=timezone.now(),
+        )
+
+        # Cố gắng thay đổi so_thu_tu và nam qua PUT /api/documents/{id}/
+        res_put = self.client.put(
+            f"/api/documents/{doc.id}/",
+            {
+                "loai": "DI",
+                "so_hieu": "10/QĐ-ITC-SỬA",
+                "trich_yeu": "Quyết định sau khi sửa",
+                "nam": 2030,
+                "so_thu_tu": 999,
+                "ngay_ban_hanh": timezone.now().isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(res_put.status_code, status.HTTP_200_OK)
+        doc.refresh_from_db()
+        self.assertEqual(doc.so_thu_tu, 10)  # Vẫn giữ nguyên 10!
+        self.assertEqual(doc.nam, 2026)      # Vẫn giữ nguyên 2026!
+        self.assertEqual(doc.trich_yeu, "Quyết định sau khi sửa")
+
+        # Cố gắng thay đổi qua PATCH endpoint chuyên biệt /api/documents/di/{id}/
+        res_patch = self.client.patch(
+            f"/api/documents/di/{doc.id}/",
+            {
+                "nam": 2040,
+                "so_thu_tu": 888,
+                "trich_yeu": "Quyết định sau khi patch",
+            },
+            format="json",
+        )
+        self.assertEqual(res_patch.status_code, status.HTTP_200_OK)
+        doc.refresh_from_db()
+        self.assertEqual(doc.so_thu_tu, 10)  # Vẫn giữ nguyên 10!
+        self.assertEqual(doc.nam, 2026)      # Vẫn giữ nguyên 2026!
+
+    def test_di_advanced_filters(self):
+        """Bộ lọc nâng cao VanBanDiFilter hỗ trợ đa tiêu chí."""
+        from documents.filters import VanBanDiFilter
+        now = timezone.now()
+        doc1 = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="01/QĐ-ITC",
+            so_thu_tu=1,
+            trich_yeu="Quyết định khen thưởng giảng viên",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_ky="Hiệu trưởng",
+            nguoi_tao=self.creator,
+            ngay_ban_hanh=now - timezone.timedelta(days=10),
+        )
+        doc2 = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="02/TB-ITC",
+            so_thu_tu=2,
+            trich_yeu="Thông báo lịch thi học kỳ (Hồ sơ đào tạo)",
+            hieu_luc=HieuLuc.HET_HIEU_LUC,
+            nguoi_ky="Trưởng phòng đào tạo",
+            nguoi_tao=self.creator,
+            ngay_ban_hanh=now - timezone.timedelta(days=2),
+        )
+
+        VanBanDiNoiBanHanh.objects.create(vanbandi=doc1, donvi_id=101)
+        VanBanDiDonViNhan.objects.create(vanbandi=doc2, donvi_id=202)
+
+        qs = VanBanDi.objects.all()
+
+        # Lọc theo năm
+        f_nam = VanBanDiFilter({"nam": 2026}, queryset=qs)
+        self.assertEqual(f_nam.qs.count(), 2)
+
+        # Lọc theo khoảng ngày ban hành
+        f_date = VanBanDiFilter(
+            {"tu_ngay": (now - timezone.timedelta(days=5)).isoformat(), "den_ngay": now.isoformat()},
+            queryset=qs,
+        )
+        self.assertEqual(f_date.qs.count(), 1)
+        self.assertEqual(f_date.qs.first().id, doc2.id)
+
+        # Lọc theo loại VB
+        f_loai = VanBanDiFilter({"loai_van_ban": "Quyết định"}, queryset=qs)
+        self.assertEqual(f_loai.qs.count(), 1)
+        self.assertEqual(f_loai.qs.first().id, doc1.id)
+
+        # Lọc theo hồ sơ
+        f_hoso = VanBanDiFilter({"ho_so": "Hồ sơ đào tạo"}, queryset=qs)
+        self.assertEqual(f_hoso.qs.count(), 1)
+        self.assertEqual(f_hoso.qs.first().id, doc2.id)
+
+        # Lọc theo hiệu lực
+        f_hl = VanBanDiFilter({"hieu_luc": "CON_HIEU_LUC"}, queryset=qs)
+        self.assertEqual(f_hl.qs.count(), 1)
+        self.assertEqual(f_hl.qs.first().id, doc1.id)
+
+        # Lọc theo người ký
+        f_signer = VanBanDiFilter({"nguoi_ky": "Hiệu trưởng"}, queryset=qs)
+        self.assertEqual(f_signer.qs.count(), 1)
+        self.assertEqual(f_signer.qs.first().id, doc1.id)
+
+        # Lọc theo nơi ban hành liên kết
+        f_nbh = VanBanDiFilter({"noi_ban_hanh": "101"}, queryset=qs)
+        self.assertEqual(f_nbh.qs.count(), 1)
+        self.assertEqual(f_nbh.qs.first().id, doc1.id)
+
+        # Lọc theo đơn vị nhận
+        f_dvn = VanBanDiFilter({"don_vi_nhan": "202"}, queryset=qs)
+        self.assertEqual(f_dvn.qs.count(), 1)
+        self.assertEqual(f_dvn.qs.first().id, doc2.id)
+
+    def test_di_excel_service_template_import_export(self):
+        """Dịch vụ Excel Văn bản Đi: template, import tự cấp số nếu trống, export theo bộ lọc."""
+        from documents.services import generate_excel_template, import_from_excel, export_to_excel
+        # 1. Sinh file mẫu
+        template_bio = generate_excel_template("DI")
+        self.assertTrue(template_bio.getvalue().startswith(b"PK"))
+
+        # 2. Import Excel tự cấp Số đi nếu cột trống
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Số, ký hiệu VB", "Số đi", "Ngày ban hành", "Trích yếu nội dung", "Hiệu lực"])
+        ws.append(["11/TB-DI", "", "15/09/2026 09:00:00", "Thông báo tuyển dụng cán bộ mới", "CON_HIEU_LUC"])
+
+        in_bio = io.BytesIO()
+        wb.save(in_bio)
+        in_bio.seek(0)
+
+        result = import_from_excel(in_bio, "DI", self.creator)
+        self.assertEqual(result["created"], 1)
+
+        imported_doc = VanBanDi.objects.filter(so_hieu="11/TB-DI").first()
+        self.assertIsNotNone(imported_doc)
+        self.assertTrue(imported_doc.so_thu_tu >= 1)
+
+        # 3. Export Excel có cột Số đi
+        export_bio = export_to_excel(VanBanDi.objects.filter(so_hieu="11/TB-DI"), "DI")
+        self.assertTrue(export_bio.getvalue().startswith(b"PK"))
+
+    def test_di_viewlog_and_viewers_endpoint(self):
+        """Ghi nhận lịch sử xem DocumentViewLog (document_type='vanbandi') và query viewers."""
+        doc = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="55/TB-DI",
+            so_thu_tu=55,
+            trich_yeu="Thông báo lịch trực tuần",
+            nguoi_tao=self.creator,
+        )
+
+        # Xem văn bản qua API
+        res = self.client.get(f"/api/documents/{doc.id}/?loai=DI")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        log_entry = DocumentViewLog.objects.filter(
+            document_type="vanbandi",
+            document_id=doc.id,
+            user=self.creator,
+        ).first()
+        self.assertIsNotNone(log_entry)
+
+        # Query viewers API chuyên biệt /api/documents/di/{id}/viewers/
+        res_viewers = self.client.get(f"/api/documents/di/{doc.id}/viewers/")
+        self.assertEqual(res_viewers.status_code, status.HTTP_200_OK)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# VAN BAN MAT SERVICE TESTS (Phụ trách: Nguyễn Anh Đô)
+# ═══════════════════════════════════════════════════════════════════
+
+class VanBanMatServiceTests(TestCase):
+    """
+    Bộ kiểm thử Backend Services cho Văn bản Mật (Phụ trách: Nguyễn Anh Đô):
+    1. Bộ lọc nâng cao VanBanMatFilter: số ký hiệu, trích yếu, năm, khoảng ngày ban hành, hiệu lực.
+    2. Dịch vụ Excel cho Văn bản Mật: sinh file mẫu bảo mật (không có cột Số đi), import chặt chẽ (áp pham_vi=HAN_CHE, cấm mail).
+    3. Export Excel theo phân quyền người dùng đăng nhập (không rò rỉ dữ liệu mật cho người không được nhận).
+    4. Cập nhật logic DocumentViewLog cho document_type='vanbanmat' lưu chính xác ngày giờ phút giây.
+    5. Khóa chức năng gửi email toàn hệ thống ở cấp backend service đối với văn bản mật.
+    """
+
+    def setUp(self):
+        from documents.filters import VanBanMatFilter
+        from documents.services import (
+            generate_excel_template,
+            import_from_excel,
+            export_to_excel,
+            send_document_notification_mail,
+        )
+        self.creator = User.objects.create_user(
+            username="matcreator",
+            password="testpassword123",
+            email="creator@itc.edu.vn",
+        )
+        self.recipient = User.objects.create_user(
+            username="matrecipient",
+            password="testpassword123",
+            email="recipient@itc.edu.vn",
+        )
+        self.stranger = User.objects.create_user(
+            username="matstranger",
+            password="testpassword123",
+            email="stranger@itc.edu.vn",
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.creator)
+
+    def test_mat_advanced_filters(self):
+        """Bộ lọc nâng cao VanBanMatFilter: số ký hiệu, trích yếu, năm, khoảng ngày ban hành, hiệu lực."""
+        from documents.filters import VanBanMatFilter
+        now = timezone.now()
+        doc1 = VanBanMat.objects.create(
+            nam=2026,
+            so_hieu="01/MẬT-BGH",
+            trich_yeu="Phương án bảo mật đề thi học kỳ 1",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.creator,
+            ngay_den=now - timezone.timedelta(days=10),
+            pham_vi=PhamVi.HAN_CHE,
+        )
+        doc1.nguoi_nhan.add(self.recipient)
+
+        doc2 = VanBanMat.objects.create(
+            nam=2026,
+            so_hieu="02/MẬT-TCKT",
+            trich_yeu="Báo cáo quyết toán dự án quốc phòng",
+            hieu_luc=HieuLuc.HET_HIEU_LUC,
+            nguoi_tao=self.creator,
+            ngay_den=now - timezone.timedelta(days=2),
+            pham_vi=PhamVi.HAN_CHE,
+        )
+        doc2.nguoi_nhan.add(self.recipient)
+
+        qs = VanBanMat.objects.all()
+
+        # Tìm kiếm từ khóa theo số ký hiệu hoặc trích yếu
+        f_q = VanBanMatFilter({"q": "đề thi"}, queryset=qs)
+        self.assertEqual(f_q.qs.count(), 1)
+        self.assertEqual(f_q.qs.first().id, doc1.id)
+
+        f_so = VanBanMatFilter({"so_hieu": "02/MẬT"}, queryset=qs)
+        self.assertEqual(f_so.qs.count(), 1)
+        self.assertEqual(f_so.qs.first().id, doc2.id)
+
+        # Lọc theo năm
+        f_nam = VanBanMatFilter({"nam": 2026}, queryset=qs)
+        self.assertEqual(f_nam.qs.count(), 2)
+
+        # Lọc theo khoảng ngày ban hành
+        f_date = VanBanMatFilter(
+            {"tu_ngay": (now - timezone.timedelta(days=5)).isoformat(), "den_ngay": now.isoformat()},
+            queryset=qs,
+        )
+        self.assertEqual(f_date.qs.count(), 1)
+        self.assertEqual(f_date.qs.first().id, doc2.id)
+
+        # Lọc theo hiệu lực
+        f_hl = VanBanMatFilter({"hieu_luc": "CON_HIEU_LUC"}, queryset=qs)
+        self.assertEqual(f_hl.qs.count(), 1)
+        self.assertEqual(f_hl.qs.first().id, doc1.id)
+
+    def test_mat_excel_security_template(self):
+        """Sinh file mẫu Excel bảo mật: không có cột Số đi, có định dạng bảo mật."""
+        from documents.services import generate_excel_template
+        template_bio = generate_excel_template("MAT")
+        self.assertTrue(template_bio.getvalue().startswith(b"PK"))
+
+        from openpyxl import load_workbook
+        wb = load_workbook(template_bio, read_only=True)
+        ws = wb.active
+        headers = [cell for cell in next(ws.iter_rows(values_only=True))]
+        self.assertNotIn("Số đi", headers)
+        self.assertIn("Số, ký hiệu VB", headers)
+        self.assertIn("Trích yếu nội dung", headers)
+
+    def test_mat_excel_import_strict_validation(self):
+        """Import Excel VB Mật: kiểm tra chặt chẽ bắt buộc, áp pham_vi=HAN_CHE và cấm gửi mail."""
+        from documents.services import import_from_excel
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Số, ký hiệu VB", "Ngày ban hành", "Trích yếu nội dung", "Hiệu lực"])
+        ws.append(["99/MẬT-BGH", "10/10/2026 08:30:00", "Hồ sơ công tác nhân sự bảo mật", "CON_HIEU_LUC"])
+
+        in_bio = io.BytesIO()
+        wb.save(in_bio)
+        in_bio.seek(0)
+
+        result = import_from_excel(in_bio, "MAT", self.creator)
+        self.assertEqual(result["created"], 1)
+
+        imported = VanBanMat.objects.filter(so_hieu="99/MẬT-BGH").first()
+        self.assertIsNotNone(imported)
+        self.assertEqual(imported.pham_vi, PhamVi.HAN_CHE)
+        self.assertFalse(imported.gui_mail_toan_he_thong)
+        self.assertTrue(imported.nguoi_nhan.filter(id=self.creator.id).exists())
+
+    def test_mat_excel_export_scoped_by_user_permissions(self):
+        """Export Excel VB Mật: tuân thủ chặt chẽ phân quyền, không có cột Số đi."""
+        doc = VanBanMat.objects.create(
+            nam=2026,
+            so_hieu="77/MẬT-BGH",
+            trich_yeu="Tài liệu cơ mật của Ban Giám hiệu",
+            nguoi_tao=self.creator,
+            pham_vi=PhamVi.HAN_CHE,
+        )
+        doc.nguoi_nhan.add(self.recipient)
+
+        # Người lạ gọi export qua API chỉ nhận được danh sách rỗng (hoặc chỉ văn bản họ được xem)
+        client_stranger = APIClient()
+        client_stranger.force_authenticate(user=self.stranger)
+        res_stranger = client_stranger.get("/api/documents/mat/export/")
+        self.assertEqual(res_stranger.status_code, status.HTTP_200_OK)
+
+        from openpyxl import load_workbook
+        wb_stranger = load_workbook(io.BytesIO(res_stranger.content), read_only=True)
+        ws_stranger = wb_stranger.active
+        rows_stranger = list(ws_stranger.iter_rows(values_only=True))
+        # Chỉ có 1 hàng header, 0 hàng dữ liệu
+        self.assertEqual(len(rows_stranger), 1)
+
+        # Người nhận được phép xuất
+        client_recipient = APIClient()
+        client_recipient.force_authenticate(user=self.recipient)
+        res_recipient = client_recipient.get("/api/documents/mat/export/")
+        self.assertEqual(res_recipient.status_code, status.HTTP_200_OK)
+        wb_recipient = load_workbook(io.BytesIO(res_recipient.content), read_only=True)
+        ws_recipient = wb_recipient.active
+        rows_recipient = list(ws_recipient.iter_rows(values_only=True))
+        self.assertEqual(len(rows_recipient), 2)
+        # Xác nhận hàng header không có cột Số đi
+        self.assertNotIn("Số đi", rows_recipient[0])
+
+    def test_mat_viewlog_exact_timestamp(self):
+        """Cập nhật logic DocumentViewLog cho document_type='vanbanmat' lưu chính xác ngày giờ phút giây."""
+        doc = VanBanMat.objects.create(
+            nam=2026,
+            so_hieu="88/MẬT-VP",
+            trich_yeu="Văn bản mật kiểm tra view log",
+            nguoi_tao=self.creator,
+            pham_vi=PhamVi.HAN_CHE,
+        )
+        doc.nguoi_nhan.add(self.recipient)
+
+        client_rec = APIClient()
+        client_rec.force_authenticate(user=self.recipient)
+        res = client_rec.get(f"/api/documents/mat/{doc.id}/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        view_log = DocumentViewLog.objects.filter(
+            document_type="vanbanmat",
+            document_id=doc.id,
+            user=self.recipient,
+        ).first()
+        self.assertIsNotNone(view_log)
+        self.assertIsNotNone(view_log.viewed_at)
+
+        res_viewers = client_rec.get(f"/api/documents/mat/{doc.id}/viewers/")
+        self.assertEqual(res_viewers.status_code, status.HTTP_200_OK)
+
+    def test_mat_email_lockdown_at_service_layer(self):
+        """Khóa hoàn toàn chức năng gửi email toàn hệ thống ở cấp backend service đối với văn bản mật."""
+        from django.core.exceptions import ValidationError
+        from documents.services import send_document_notification_mail
+
+        doc = VanBanMat.objects.create(
+            nam=2026,
+            so_hieu="100/MẬT-BGH",
+            trich_yeu="Bí mật nhà nước tuyệt đối",
+            nguoi_tao=self.creator,
+            pham_vi=PhamVi.HAN_CHE,
+            gui_mail_toan_he_thong=False,
+        )
+        doc.nguoi_nhan.add(self.recipient)
+
+        # Cố gắng gửi mail toàn hệ thống ở service layer -> Bị từ chối bằng ValidationError
+        with self.assertRaises(ValidationError):
+            send_document_notification_mail(doc, force_system_wide=True)
+
+        with self.assertRaises(ValidationError):
+            send_document_notification_mail(doc, recipient_list="ALL")
+
+        # Gửi đích danh cho người nhận được cấp quyền -> Hợp lệ
+        result = send_document_notification_mail(doc)
+        self.assertTrue(result["success"])
+        self.assertTrue(result["is_confidential"])
+        self.assertIn(self.recipient.email, result["recipients"])
+
+
+
 
 
 

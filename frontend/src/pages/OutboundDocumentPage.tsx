@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DocumentItem, DocumentFilterParams, PaginatedResponse } from '@app-types/document';
 import FilterBar from '@components/documents/FilterBar';
@@ -33,23 +33,71 @@ export const OutboundDocumentPage: React.FC = () => {
     page_size: 10,
     loai: 'DI',
     loai_van_ban: loaiVanBanParam || undefined,
-    pham_vi: phamViParam || undefined,
+    pham_vi: (phamViParam as 'NOI_BO' | 'HAN_CHE' | 'ALL') || 'NOI_BO',
   });
+
+  // Hàm đồng bộ trạng thái bộ lọc lên URL query parameters
+  const syncFiltersToUrl = useCallback((currentFilters: DocumentFilterParams) => {
+    const nextParams = new URLSearchParams();
+    if (currentFilters.q) nextParams.set('q', currentFilters.q.trim());
+    if (currentFilters.nam) nextParams.set('nam', String(currentFilters.nam));
+    if (currentFilters.tu_ngay) nextParams.set('tu_ngay', currentFilters.tu_ngay);
+    if (currentFilters.den_ngay) nextParams.set('den_ngay', currentFilters.den_ngay);
+    if (currentFilters.hieu_luc) nextParams.set('hieu_luc', currentFilters.hieu_luc);
+    if (currentFilters.loai_van_ban) nextParams.set('loai_van_ban', String(currentFilters.loai_van_ban));
+    if (currentFilters.ho_so) nextParams.set('ho_so', currentFilters.ho_so);
+    if (currentFilters.pham_vi) nextParams.set('pham_vi', String(currentFilters.pham_vi));
+    if (currentFilters.page && currentFilters.page > 1) nextParams.set('page', String(currentFilters.page));
+
+    // Bảo toàn các params trạng thái modal (detail, viewers, action, edit)
+    ['detail', 'viewers', 'action', 'edit'].forEach((key) => {
+      const val = searchParams.get(key);
+      if (val) nextParams.set(key, val);
+    });
+
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Helper đồng bộ query params của Modal lên URL mà không làm mất các filter
+  const updateModalParam = useCallback((paramsToUpdate: Record<string, string | null>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(paramsToUpdate).forEach(([key, val]) => {
+        if (val) {
+          next.set(key, val);
+        } else {
+          next.delete(key);
+        }
+      });
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const handleFilterChange = (newFilters: DocumentFilterParams) => {
+    setFilters(newFilters);
+    syncFiltersToUrl(newFilters);
+  };
 
   useEffect(() => {
     let cancelled = false;
     Promise.resolve().then(() => {
       if (!cancelled) {
         setFilters(prev => {
-          const nextLoaiVanBan = loaiVanBanParam || undefined;
-          const nextPhamVi = phamViParam || undefined;
-          if (prev.loai_van_ban === nextLoaiVanBan && prev.pham_vi === nextPhamVi) {
+          const nextLoaiVanBan = searchParams.get('loai_van_ban') || undefined;
+          const rawPhamVi = searchParams.get('pham_vi');
+          const nextPhamVi: 'NOI_BO' | 'HAN_CHE' | 'ALL' =
+            rawPhamVi === 'HAN_CHE' || rawPhamVi === 'ALL' || rawPhamVi === 'NOI_BO'
+              ? rawPhamVi
+              : 'NOI_BO';
+          const nextHoSo = searchParams.get('ho_so') || undefined;
+          if (prev.loai_van_ban === nextLoaiVanBan && prev.pham_vi === nextPhamVi && prev.ho_so === nextHoSo) {
             return prev;
           }
           return {
             ...prev,
             loai_van_ban: nextLoaiVanBan,
             pham_vi: nextPhamVi,
+            ho_so: nextHoSo,
             page: 1,
           };
         });
@@ -58,20 +106,18 @@ export const OutboundDocumentPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [loaiVanBanParam, phamViParam]);
+  }, [searchParams]);
 
   const handleClearLoaiVanBan = () => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete('loai_van_ban');
-    setSearchParams(nextParams);
-    setFilters(prev => ({ ...prev, loai_van_ban: undefined, page: 1 }));
+    const next = { ...filters, loai_van_ban: undefined, page: 1 };
+    setFilters(next);
+    syncFiltersToUrl(next);
   };
 
   const handleClearPhamVi = () => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete('pham_vi');
-    setSearchParams(nextParams);
-    setFilters(prev => ({ ...prev, pham_vi: undefined, page: 1 }));
+    const next: DocumentFilterParams = { ...filters, pham_vi: 'NOI_BO', page: 1 };
+    setFilters(next);
+    syncFiltersToUrl(next);
   };
 
   // Quản lý modal xem chi tiết & modal danh sách người đọc
@@ -83,6 +129,25 @@ export const OutboundDocumentPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [isImportOpen, setIsImportOpen] = useState<boolean>(false);
+  const [importMenuOpen, setImportMenuOpen] = useState<boolean>(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState<boolean>(false);
+  const [importPhamVi, setImportPhamVi] = useState<'NOI_BO' | 'HAN_CHE'>('NOI_BO');
+  const importMenuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (importMenuRef.current && !importMenuRef.current.contains(e.target as Node)) {
+        setImportMenuOpen(false);
+      }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [pendingDelete, setPendingDelete] = useState<{ id: number; soHieu: string } | null>(null);
   const [alertMsg, setAlertMsg] = useState<string>('');
   const [isAlertOpen, setIsAlertOpen] = useState<boolean>(false);
@@ -160,7 +225,8 @@ export const OutboundDocumentPage: React.FC = () => {
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
       if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
-      if (filters.pham_vi) params.append('pham_vi', String(filters.pham_vi));
+      const targetPhamVi = filters.pham_vi || 'NOI_BO';
+      if (targetPhamVi !== 'ALL') params.append('pham_vi', targetPhamVi);
 
       const endpoint = `/api/documents/?${params.toString()}`;
       const response = await apiClient.get<PaginatedResponse<DocumentItem>>(endpoint);
@@ -203,21 +269,21 @@ export const OutboundDocumentPage: React.FC = () => {
 
   // Đổi trang
   const handlePageChange = (newPage: number) => {
-    setFilters((prev) => ({ ...prev, page: newPage }));
+    const next = { ...filters, page: newPage };
+    setFilters(next);
+    syncFiltersToUrl(next);
   };
 
   // Đổi số dòng / trang
   const handlePageSizeChange = (newPageSize: number) => {
-    setFilters((prev) => ({ ...prev, page_size: newPageSize, page: 1 }));
+    const next = { ...filters, page_size: newPageSize, page: 1 };
+    setFilters(next);
+    syncFiltersToUrl(next);
   };
 
   // Đặt lại bộ lọc
   const handleResetFilters = () => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete('loai_van_ban');
-    nextParams.delete('pham_vi');
-    setSearchParams(nextParams);
-    setFilters({
+    const defaultFilters: DocumentFilterParams = {
       q: '',
       nam: '',
       tu_ngay: '',
@@ -227,21 +293,111 @@ export const OutboundDocumentPage: React.FC = () => {
       page_size: 10,
       loai: 'DI',
       loai_van_ban: undefined,
-      pham_vi: undefined,
-    });
+      ho_so: undefined,
+      pham_vi: filters.pham_vi || 'NOI_BO',
+    };
+    setFilters(defaultFilters);
+    syncFiltersToUrl(defaultFilters);
   };
 
-  // Mở modal xem chi tiết
+  // Mở modal xem chi tiết và đồng bộ URL query param `detail`
   const handleViewDetail = (id: number) => {
     setSelectedDocId(id);
     setIsDetailOpen(true);
+    updateModalParam({ detail: String(id), viewers: null, action: null, edit: null });
   };
 
-  // Mở modal xem danh sách người đã đọc
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    setSelectedDocId(null);
+    updateModalParam({ detail: null });
+  };
+
+  // Mở modal xem danh sách người đã đọc và đồng bộ URL query param `viewers`
   const handleViewHistory = (id: number) => {
     setSelectedDocId(id);
     setIsViewersOpen(true);
+    updateModalParam({ viewers: String(id), detail: null, action: null, edit: null });
   };
+
+  const handleCloseHistory = () => {
+    setIsViewersOpen(false);
+    setSelectedDocId(null);
+    updateModalParam({ viewers: null });
+  };
+
+  // Mở modal thêm mới và đồng bộ URL query param `action=create`
+  const handleOpenCreate = () => {
+    setEditingDoc(null);
+    setIsFormOpen(true);
+    updateModalParam({ action: 'create', detail: null, viewers: null, edit: null });
+  };
+
+  // Mở modal sửa và đồng bộ URL query param `edit=id`
+  const handleOpenEdit = (doc: DocumentItem) => {
+    setEditingDoc(doc);
+    setIsFormOpen(true);
+    updateModalParam({ edit: String(doc.id), detail: null, viewers: null, action: null });
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingDoc(null);
+    updateModalParam({ action: null, edit: null });
+  };
+
+  // Lắng nghe URL query params để tự động mở modal tương ứng khi truy cập link trực tiếp
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        const detailParam = searchParams.get('detail');
+        const viewersParam = searchParams.get('viewers');
+        const actionParam = searchParams.get('action');
+        const editParam = searchParams.get('edit');
+
+        if (detailParam && !isNaN(Number(detailParam))) {
+          setSelectedDocId(Number(detailParam));
+          setIsDetailOpen(true);
+        } else {
+          setIsDetailOpen(false);
+        }
+
+        if (viewersParam && !isNaN(Number(viewersParam))) {
+          setSelectedDocId(Number(viewersParam));
+          setIsViewersOpen(true);
+        } else {
+          setIsViewersOpen(false);
+        }
+
+        if (actionParam === 'create') {
+          setEditingDoc(null);
+          setIsFormOpen(true);
+        } else if (editParam && !isNaN(Number(editParam))) {
+          const editId = Number(editParam);
+          const found = documents.find((d) => d.id === editId);
+          if (found) {
+            setEditingDoc(found);
+            setIsFormOpen(true);
+          } else {
+            apiClient.get<DocumentItem>(`/api/documents/${editId}/?loai=DI`)
+              .then(res => {
+                if (!cancelled && res) {
+                  setEditingDoc(res);
+                  setIsFormOpen(true);
+                }
+              })
+              .catch(() => undefined);
+          }
+        } else if (!actionParam && !editParam) {
+          setIsFormOpen(false);
+        }
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, documents]);
 
   // Thực hiện xóa sau khi xác nhận ConfirmModal
   const doDelete = async () => {
@@ -262,8 +418,8 @@ export const OutboundDocumentPage: React.FC = () => {
     }
   };
 
-  // Xuất file Excel văn bản đi
-  const handleExportExcel = async () => {
+  // Xuất file Excel văn bản đi (theo phạm vi: Nội bộ, Hạn chế hoặc Tất cả)
+  const handleExportExcel = async (exportPhamVi: 'NOI_BO' | 'HAN_CHE' | 'ALL' = 'NOI_BO') => {
     try {
       const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
       const params = new URLSearchParams();
@@ -274,7 +430,9 @@ export const OutboundDocumentPage: React.FC = () => {
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
       if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
-      if (filters.pham_vi) params.append('pham_vi', String(filters.pham_vi));
+      if (exportPhamVi !== 'ALL') {
+        params.append('pham_vi', exportPhamVi);
+      }
 
       const res = await fetch(`/api/documents/export/?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -284,7 +442,8 @@ export const OutboundDocumentPage: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Danh_Sach_Van_Ban_Di_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      const phamViSuffix = exportPhamVi === 'HAN_CHE' ? 'Han_Che' : exportPhamVi === 'ALL' ? 'Tat_Ca' : 'Noi_Bo';
+      a.download = `Danh_Sach_Van_Ban_Di_${phamViSuffix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: unknown) {
@@ -321,36 +480,127 @@ export const OutboundDocumentPage: React.FC = () => {
             variant="primary"
             size="sm"
             icon="fa-plus"
-            onClick={() => {
-              setEditingDoc(null);
-              setIsFormOpen(true);
-            }}
+            onClick={handleOpenCreate}
             title="Thêm văn bản đi mới"
           >
             Thêm mới
           </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            icon="fa-file-excel"
-            onClick={() => setIsImportOpen(true)}
-            title="Nhập danh sách từ tệp Excel"
-          >
-            Nhập Excel
-          </Button>
+          {/* Dropdown Import Excel */}
+          <div className="relative" ref={importMenuRef}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon="fa-file-excel"
+              onClick={() => {
+                setImportMenuOpen((prev) => !prev);
+                setExportMenuOpen(false);
+              }}
+              className={`transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${importMenuOpen ? 'border-primary/50 shadow-xs bg-surface-elevated' : ''}`}
+              title="Nhập danh sách từ tệp Excel"
+            >
+              <span>Import Excel</span>
+              <i className={`fa-solid fa-chevron-down text-[10px] ml-1 text-secondary transition-transform duration-200 ${importMenuOpen ? 'rotate-180' : ''}`} />
+            </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            icon="fa-file-export"
-            onClick={handleExportExcel}
-            title="Xuất dữ liệu ra file Excel"
-          >
-            Xuất Excel
-          </Button>
+            {importMenuOpen && (
+              <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-56 p-1.5 bg-surface/95 backdrop-blur-md border border-border-subtle rounded-2xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportMenuOpen(false);
+                    setImportPhamVi('NOI_BO');
+                    setIsImportOpen(true);
+                  }}
+                  className="group w-full text-left px-3 py-2.5 text-xs font-semibold text-main hover:text-primary rounded-xl transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200/80 dark:hover:border-slate-700/80 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-surface-elevated group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                    <i className="fa-regular fa-file-lines text-secondary group-hover:text-primary text-xs transition-colors" />
+                  </span>
+                  <span>Nhập văn bản thường</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportMenuOpen(false);
+                    setImportPhamVi('HAN_CHE');
+                    setIsImportOpen(true);
+                  }}
+                  className="group w-full text-left px-3 py-2.5 text-xs font-semibold text-main hover:text-primary rounded-xl transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200/80 dark:hover:border-slate-700/80 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-surface-elevated group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                    <i className="fa-solid fa-shield-halved text-secondary group-hover:text-primary text-xs transition-colors" />
+                  </span>
+                  <span>Nhập văn bản hạn chế</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Dropdown Xuất Excel */}
+          <div className="relative" ref={exportMenuRef}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon="fa-file-export"
+              onClick={() => {
+                setExportMenuOpen((prev) => !prev);
+                setImportMenuOpen(false);
+              }}
+              className={`transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 ${exportMenuOpen ? 'border-primary/50 shadow-xs bg-surface-elevated' : ''}`}
+              title="Xuất dữ liệu ra file Excel"
+            >
+              <span>Xuất Excel</span>
+              <i className={`fa-solid fa-chevron-down text-[10px] ml-1 text-secondary transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`} />
+            </Button>
+
+            {exportMenuOpen && (
+              <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-56 p-1.5 bg-surface/95 backdrop-blur-md border border-border-subtle rounded-2xl shadow-xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    handleExportExcel('NOI_BO');
+                  }}
+                  className="group w-full text-left px-3 py-2.5 text-xs font-semibold text-main hover:text-primary rounded-xl transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200/80 dark:hover:border-slate-700/80 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-surface-elevated group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                    <i className="fa-regular fa-file-lines text-secondary group-hover:text-primary text-xs transition-colors" />
+                  </span>
+                  <span>Xuất văn bản thường</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    handleExportExcel('HAN_CHE');
+                  }}
+                  className="group w-full text-left px-3 py-2.5 text-xs font-semibold text-main hover:text-primary rounded-xl transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200/80 dark:hover:border-slate-700/80 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-surface-elevated group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                    <i className="fa-solid fa-shield-halved text-secondary group-hover:text-primary text-xs transition-colors" />
+                  </span>
+                  <span>Xuất văn bản hạn chế</span>
+                </button>
+                <div className="h-px bg-border-subtle my-1 mx-2" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportMenuOpen(false);
+                    handleExportExcel('ALL');
+                  }}
+                  className="group w-full text-left px-3 py-2.5 text-xs font-semibold text-main hover:text-primary rounded-xl transition-all duration-150 hover:-translate-y-[1px] hover:shadow-md hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200/80 dark:hover:border-slate-700/80 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <span className="w-6 h-6 rounded-lg bg-surface-elevated group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                    <i className="fa-solid fa-layer-group text-secondary group-hover:text-primary text-xs transition-colors" />
+                  </span>
+                  <span>Xuất tất cả văn bản</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <Button
             type="button"
@@ -390,13 +640,15 @@ export const OutboundDocumentPage: React.FC = () => {
           <div className="flex items-center">
             <button
               type="button"
-              onClick={() =>
-                setFilters((prev) => ({
-                  ...prev,
-                  hieu_luc: prev.hieu_luc === 'HIEU_LUC' ? '' : 'HIEU_LUC',
+              onClick={() => {
+                const next: DocumentFilterParams = {
+                  ...filters,
+                  hieu_luc: filters.hieu_luc === 'HIEU_LUC' ? '' : 'HIEU_LUC',
                   page: 1,
-                }))
-              }
+                };
+                setFilters(next);
+                syncFiltersToUrl(next);
+              }}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
                 filters.hieu_luc === 'HIEU_LUC'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-600/30'
@@ -441,35 +693,90 @@ export const OutboundDocumentPage: React.FC = () => {
         </div>
       )}
 
-      {/* 3.1. Chỉ báo lọc Phạm vi văn bản từ URL (Văn bản hạn chế / Mật từ Nhóm 3) */}
-      {filters.pham_vi && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-800 dark:text-amber-300 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <i className="fa-solid fa-shield-halved text-amber-600 dark:text-amber-400" />
-            <span>
-              Đang lọc danh sách theo phạm vi: <strong>{filters.pham_vi === 'HAN_CHE' ? 'Văn bản hạn chế (Mật)' : filters.pham_vi}</strong> — Chỉ hiển thị văn bản bạn có thẩm quyền tiếp cận.
-            </span>
-          </div>
+      {/* 3.1. Thanh Chuyển Tab Chuyên Biệt: Nội bộ vs Hạn chế vs Tất cả (Giải pháp 1) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="inline-flex p-1 bg-surface border border-border-subtle rounded-xl shadow-2xs">
           <button
             type="button"
-            onClick={handleClearPhamVi}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-main text-xs border border-border-subtle transition-all cursor-pointer shadow-2xs"
-            title="Xóa bộ lọc phạm vi"
+            onClick={() => {
+              const next: DocumentFilterParams = { ...filters, pham_vi: 'NOI_BO', page: 1 };
+              setFilters(next);
+              syncFiltersToUrl(next);
+            }}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              filters.pham_vi === 'NOI_BO' || !filters.pham_vi
+                ? 'bg-primary text-white shadow-xs'
+                : 'text-secondary hover:text-main hover:bg-canvas/60'
+            }`}
           >
-            <i className="fa-solid fa-xmark text-danger" />
-            <span>Bỏ lọc</span>
+            <i className="fa-solid fa-folder-open text-xs" />
+            <span>Văn bản Nội bộ</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const next: DocumentFilterParams = { ...filters, pham_vi: 'HAN_CHE', page: 1 };
+              setFilters(next);
+              syncFiltersToUrl(next);
+            }}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              filters.pham_vi === 'HAN_CHE'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : 'text-secondary hover:text-main hover:bg-canvas/60'
+            }`}
+          >
+            <i className={`fa-solid fa-shield-halved text-xs ${filters.pham_vi === 'HAN_CHE' ? 'text-white' : 'text-rose-500'}`} />
+            <span>Văn bản Hạn chế</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const next: DocumentFilterParams = { ...filters, pham_vi: 'ALL', page: 1 };
+              setFilters(next);
+              syncFiltersToUrl(next);
+            }}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all cursor-pointer ${
+              filters.pham_vi === 'ALL'
+                ? 'bg-canvas-subtle text-main font-semibold border border-border-subtle'
+                : 'text-muted hover:text-secondary hover:bg-canvas/60'
+            }`}
+          >
+            <span>Tất cả</span>
           </button>
         </div>
-      )}
+
+        {filters.pham_vi === 'HAN_CHE' && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 my-1 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-800 dark:text-amber-300 shadow-2xs w-full">
+            <div className="flex items-center gap-2">
+              <i className="fa-solid fa-shield-halved text-amber-600 dark:text-amber-400" />
+              <span>
+                Đang lọc danh sách theo phạm vi: <strong>Văn bản hạn chế (Mật)</strong> — Chỉ hiển thị văn bản bạn có thẩm quyền tiếp cận.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearPhamVi}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface hover:bg-surface-elevated text-secondary hover:text-main text-xs border border-border-subtle transition-all cursor-pointer shadow-2xs"
+              title="Xóa bộ lọc phạm vi"
+            >
+              <i className="fa-solid fa-xmark text-danger" />
+              <span>Bỏ lọc</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* 4. Thanh Tìm Kiếm & Bộ Lọc Đa Tiêu Chí */}
       <FilterBar
         filters={filters}
-        onFilterChange={setFilters}
+        onFilterChange={handleFilterChange}
         onSearch={fetchDocuments}
         onReset={handleResetFilters}
         isLoading={isLoading}
         availableYears={availableYears}
+        documentType="DI"
       />
 
       {/* Thông báo lỗi nếu có */}
@@ -501,10 +808,7 @@ export const OutboundDocumentPage: React.FC = () => {
         onViewDetail={handleViewDetail}
         onViewHistory={handleViewHistory}
         loai="DI"
-        onEdit={(doc) => {
-          setEditingDoc(doc);
-          setIsFormOpen(true);
-        }}
+        onEdit={handleOpenEdit}
         onDelete={(id, soHieu) => {
           setPendingDelete({ id, soHieu });
         }}
@@ -513,27 +817,25 @@ export const OutboundDocumentPage: React.FC = () => {
       {/* 6. Modals Nghiệp Vụ */}
       <DocumentDetailModal
         isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
+        onClose={handleCloseDetail}
         documentId={selectedDocId}
+        loai="DI"
       />
 
       <DocumentViewersModal
         isOpen={isViewersOpen}
-        onClose={() => setIsViewersOpen(false)}
+        onClose={handleCloseHistory}
         documentId={selectedDocId}
+        loai="DI"
       />
 
       <DocumentFormModal
         open={isFormOpen}
         initial={editingDoc}
         defaultLoai="DI"
-        onClose={() => {
-          setIsFormOpen(false);
-          setEditingDoc(null);
-        }}
+        onClose={handleCloseForm}
         onSaved={() => {
-          setIsFormOpen(false);
-          setEditingDoc(null);
+          handleCloseForm();
           fetchDocuments();
           fetchYears();
           fetchStats();
@@ -542,6 +844,8 @@ export const OutboundDocumentPage: React.FC = () => {
 
       <ImportExcelModal
         open={isImportOpen}
+        loai="DI"
+        phamVi={importPhamVi}
         onClose={() => setIsImportOpen(false)}
         onImported={() => {
           setIsImportOpen(false);
