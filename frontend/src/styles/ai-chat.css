@@ -2283,3 +2283,171 @@
   border: none;
 }
 
+/* ==========================================================================
+   TARGET DOCUMENT DRAG & DROP AND PINNED BADGE
+   ========================================================================== */
+
+/* Con trỏ cho dòng tài liệu ở Sidebar khi kéo thả */
+.sidebar-doc-row {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
+  transition: all 0.15s ease;
+}
+
+.sidebar-doc-row:active {
+  cursor: grabbing;
+}
+
+.sidebar-doc-row.is-targeted {
+  background: var(--color-primary-subtle);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 4px;
+}
+
+.sidebar-doc-btn.pin-btn {
+  color: var(--text-muted);
+}
+
+.sidebar-doc-btn.pin-btn:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.sidebar-doc-btn.pin-btn.is-active {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+/* Hiệu ứng khi kéo tệp qua vùng chat */
+.ai-chat-bottom-input.is-chat-dragover {
+  border-top-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  transition: all 0.2s ease;
+}
+
+.ai-chat-viewport.is-chat-dragover-viewport {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: -8px;
+  background: var(--color-primary-subtle);
+  transition: all 0.2s ease;
+}
+
+.chat-drag-cue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--color-primary);
+  background: var(--bg-surface-elevated);
+  color: var(--color-primary);
+  font-size: 0.84rem;
+  font-weight: 600;
+  animation: previewFadeIn 0.2s ease-out;
+}
+
+/* Huy hiệu tài liệu được chỉ định (Target Document Pill) */
+.target-doc-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: fit-content;
+  max-width: 100%;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  animation: previewFadeIn 0.22s ease-out;
+}
+
+.target-doc-badge-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.target-doc-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.target-doc-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.target-doc-remove-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.target-doc-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+/* Tag tài liệu bên trong tin nhắn người dùng */
+.message-target-doc-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.is-user .message-target-doc-tag {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .target-doc-pinned-badge {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .target-doc-tag {
+  background: rgba(37, 99, 235, 0.3);
+  color: #93c5fd;
+}
+

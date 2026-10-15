@@ -35,6 +35,12 @@ interface CitationSource {
   type?: 'incoming' | 'outgoing' | 'confidential' | 'approval';
 }
 
+interface TargetDocInfo {
+  filename: string;
+  label?: string;
+  category?: string;
+}
+
 interface ChatMessage {
   id: string;
   sender: 'user' | 'ai';
@@ -42,6 +48,7 @@ interface ChatMessage {
   time: string;
   citations?: CitationSource[];
   quickPrompts?: string[];
+  targetDoc?: TargetDocInfo;
 }
 
 interface ChatSession {
@@ -835,6 +842,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [aiAlertOpen, setAiAlertOpen] = useState(false);
   const [aiAlertMsg, setAiAlertMsg] = useState('');
+  const [targetDocument, setTargetDocument] = useState<TargetDocInfo | null>(null);
+  const [isChatDragOver, setIsChatDragOver] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1068,6 +1077,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       sender: 'user',
       text,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      targetDoc: targetDocument || undefined,
     };
 
     const currentMessages = activeSession?.messages || [];
@@ -1107,7 +1117,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         .slice(-8)
         .map((m) => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text }));
 
-      const res = await askQuestion(text, history, selectedCategory || null);
+      const res = await askQuestion(text, history, selectedCategory || null, targetDocument?.filename || null);
 
       const aiText = res.answer || res.text || 'Không có phản hồi từ mô hình AI.';
       const aiMsg: ChatMessage = {
@@ -1608,7 +1618,23 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                       if (match) itemLabel = match[3];
 
                                       return (
-                                        <div key={d.filename} className="sidebar-doc-row">
+                                        <div
+                                          key={d.filename}
+                                          className={`sidebar-doc-row ${targetDocument?.filename === d.filename ? 'is-targeted' : ''}`}
+                                          draggable={true}
+                                          onDragStart={(e) => {
+                                            e.dataTransfer.setData(
+                                              'application/x-tlbm-doc',
+                                              JSON.stringify({ filename: d.filename, label: itemLabel, category: d.category })
+                                            );
+                                            e.dataTransfer.effectAllowed = 'copy';
+                                          }}
+                                          title={
+                                            currentLang === 'en'
+                                              ? `Drag "${itemLabel}" to chat or click crosshairs to target`
+                                              : `Kéo "${itemLabel}" vào thanh chat hoặc bấm tâm ngắm để tra cứu riêng`
+                                          }
+                                        >
                                           <div className="sidebar-doc-info" title={d.filename}>
                                             <i
                                               className={`sidebar-doc-icon fa-solid ${
@@ -1622,6 +1648,21 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                             </span>
                                           </div>
                                           <div className="sidebar-doc-actions">
+                                            {/* Nút chỉ định nhanh */}
+                                            <button
+                                              type="button"
+                                              className={`sidebar-doc-btn pin-btn ${targetDocument?.filename === d.filename ? 'is-active text-primary' : ''}`}
+                                              onClick={() => setTargetDocument(
+                                                targetDocument?.filename === d.filename ? null : { filename: d.filename, label: itemLabel, category: d.category }
+                                              )}
+                                              title={
+                                                targetDocument?.filename === d.filename
+                                                  ? (currentLang === 'en' ? 'Unpin target document' : 'Bỏ chỉ định tài liệu này')
+                                                  : (currentLang === 'en' ? 'Target this document for Q&A' : 'Chỉ định tài liệu này để hỏi đáp')
+                                              }
+                                            >
+                                              <i className="fa-solid fa-crosshairs" />
+                                            </button>
                                             <button
                                               type="button"
                                               className="sidebar-doc-btn"
@@ -1652,12 +1693,48 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                           {root.directDocs.length > 0 && (
                             <div className="sidebar-doc-list">
                               {root.directDocs.map((d) => (
-                                <div key={d.filename} className="sidebar-doc-row">
+                                <div
+                                  key={d.filename}
+                                  className={`sidebar-doc-row ${targetDocument?.filename === d.filename ? 'is-targeted' : ''}`}
+                                  draggable={true}
+                                  onDragStart={(e) => {
+                                    e.dataTransfer.setData(
+                                      'application/x-tlbm-doc',
+                                      JSON.stringify({ filename: d.filename, label: d.filename, category: d.category })
+                                    );
+                                    e.dataTransfer.effectAllowed = 'copy';
+                                  }}
+                                  title={
+                                    currentLang === 'en'
+                                      ? `Drag "${d.filename}" to chat or click crosshairs to target`
+                                      : `Kéo "${d.filename}" vào thanh chat hoặc bấm tâm ngắm để tra cứu riêng`
+                                  }
+                                >
                                   <div className="sidebar-doc-info" title={d.filename}>
-                                    <i className="sidebar-doc-icon fa-solid fa-file-lines text-primary" />
+                                    <i
+                                      className={`sidebar-doc-icon fa-solid ${
+                                        d.filename.toLowerCase().endsWith('.pdf')
+                                          ? 'fa-file-pdf text-danger'
+                                          : 'fa-file-lines text-primary'
+                                      }`}
+                                    />
                                     <span className="sidebar-doc-name">{d.filename}</span>
                                   </div>
                                   <div className="sidebar-doc-actions">
+                                    <button
+                                      type="button"
+                                      className={`sidebar-doc-btn pin-btn ${targetDocument?.filename === d.filename ? 'is-active text-primary' : ''}`}
+                                      onClick={() => setTargetDocument(
+                                        targetDocument?.filename === d.filename ? null : { filename: d.filename, label: d.filename, category: d.category }
+                                      )}
+                                      title={
+                                        targetDocument?.filename === d.filename
+                                          ? (currentLang === 'en' ? 'Unpin target document' : 'Bỏ chỉ định tài liệu này')
+                                          : (currentLang === 'en' ? 'Target this document for Q&A' : 'Chỉ định tài liệu này để hỏi đáp')
+                                      }
+                                    >
+                                      <i className="fa-solid fa-crosshairs" />
+                                    </button>
                                     <button
                                       type="button"
                                       className="sidebar-doc-btn"
@@ -1821,7 +1898,36 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         </header>
 
         {/* Vùng hiển thị tin nhắn (Scrollable) */}
-        <div className="ai-chat-viewport">
+        <div
+          className={`ai-chat-viewport ${isChatDragOver ? 'is-chat-dragover-viewport' : ''}`}
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes('application/x-tlbm-doc')) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
+              if (!isChatDragOver) setIsChatDragOver(true);
+            }
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setIsChatDragOver(false);
+            }
+          }}
+          onDrop={(e) => {
+            const raw = e.dataTransfer.getData('application/x-tlbm-doc');
+            if (raw) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsChatDragOver(false);
+              try {
+                const doc = JSON.parse(raw);
+                setTargetDocument(doc);
+                textareaRef.current?.focus();
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          }}
+        >
           {/* Lưới thẻ Prompt gợi ý ban đầu */}
           {messages.length <= 1 && (
             <div className="ai-prompt-grid-container">
@@ -1881,6 +1987,12 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                   </div>
 
                   <div className="message-bubble-body">
+                    {msg.sender === 'user' && msg.targetDoc && (
+                      <div className="message-target-doc-tag">
+                        <i className={`fa-solid ${msg.targetDoc.filename.toLowerCase().endsWith('.pdf') ? 'fa-file-pdf' : 'fa-file-lines'}`} />
+                        <span>{msg.targetDoc.label || msg.targetDoc.filename}</span>
+                      </div>
+                    )}
                     <FormattedMessage text={msg.text} />
 
                     {/* Dẫn link web & văn bản trích dẫn */}
@@ -1994,7 +2106,77 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         </div>
 
         {/* 3. THANH NHẬP LIỆU Ở ĐÁY */}
-        <footer className="ai-chat-bottom-input">
+        <footer
+          className={`ai-chat-bottom-input ${isChatDragOver ? 'is-chat-dragover' : ''}`}
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes('application/x-tlbm-doc')) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
+              if (!isChatDragOver) setIsChatDragOver(true);
+            }
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setIsChatDragOver(false);
+            }
+          }}
+          onDrop={(e) => {
+            const raw = e.dataTransfer.getData('application/x-tlbm-doc');
+            if (raw) {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsChatDragOver(false);
+              try {
+                const doc = JSON.parse(raw);
+                setTargetDocument(doc);
+                textareaRef.current?.focus();
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          }}
+        >
+          {/* Huy hiệu chỉ định tài liệu tra cứu riêng (Target Document) */}
+          {targetDocument && (
+            <div className="target-doc-pinned-badge">
+              <div className="target-doc-badge-left">
+                <i
+                  className={`fa-solid ${
+                    targetDocument.filename.toLowerCase().endsWith('.pdf')
+                      ? 'fa-file-pdf text-danger'
+                      : 'fa-file-lines text-primary'
+                  }`}
+                />
+                <span className="target-doc-label" title={targetDocument.filename}>
+                  {targetDocument.label || targetDocument.filename}
+                </span>
+                <span className="target-doc-tag">
+                  {currentLang === 'en' ? 'Targeted' : 'Đang chỉ định'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="target-doc-remove-btn"
+                onClick={() => setTargetDocument(null)}
+                title={currentLang === 'en' ? 'Clear targeted document' : 'Bỏ chỉ định tài liệu này'}
+              >
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+          )}
+
+          {/* Gợi ý khi đang kéo tệp qua thanh chat */}
+          {isChatDragOver && (
+            <div className="chat-drag-cue">
+              <i className="fa-solid fa-crosshairs text-primary fa-bounce" />
+              <span>
+                {currentLang === 'en'
+                  ? 'Drop to target this document for queries'
+                  : 'Thả vào đây để chỉ định tra cứu tài liệu này'}
+              </span>
+            </div>
+          )}
+
           {/* Thông báo tiến độ khi upload tệp trực tiếp */}
           {uploadProgress && (
             <div
@@ -2062,7 +2244,11 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               ref={textareaRef}
               className="chat-textarea"
               placeholder={
-                isMobile
+                targetDocument
+                  ? (currentLang === 'en'
+                      ? `Ask about "${targetDocument.label || targetDocument.filename}"...`
+                      : `Hỏi về tài liệu "${targetDocument.label || targetDocument.filename}"...`)
+                  : isMobile
                   ? (t('aiAssistant.inputPlaceholderMobile') || 'Hỏi trợ lý AI...')
                   : t('aiAssistant.inputPlaceholder')
               }

@@ -90,6 +90,11 @@ def chat(request):
     question = payload.get("question")
     history = payload.get("history", [])
     category = payload.get("category")
+    filename = payload.get("filename")
+    if filename and not isinstance(filename, str):
+        filename = None
+    elif filename:
+        filename = filename.strip()
     if not isinstance(question, str) or not question.strip():
         return _error("Câu hỏi không được để trống.")
     if len(question) > 4000:
@@ -110,8 +115,9 @@ def chat(request):
             category=category if isinstance(category, str) else None,
             user=request.user,
             employee_id=employee_id,
+            filename=filename,
         )
-        return JsonResponse({"question": question.strip(), "category": category or None, **result})
+        return JsonResponse({"question": question.strip(), "category": category or None, "filename": filename or None, **result})
     except SqlDocumentAccessError as exc:
         status = 401 if "danh tính" in str(exc).lower() or "đăng nhập" in str(exc).lower() else 403
         return _error(str(exc), status)

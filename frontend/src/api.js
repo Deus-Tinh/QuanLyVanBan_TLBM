@@ -18,9 +18,10 @@ export async function getUploadProgress(jobId) {
   return apiClient(apiPath(`/upload/progress/${encodeURIComponent(jobId)}`));
 }
 
-export async function askQuestion(question, history = [], category = null) {
+export async function askQuestion(question, history = [], category = null, filename = null) {
   const payload = { question, history };
   if (category) payload.category = category;
+  if (filename) payload.filename = filename;
   return apiClient.post(apiPath("/chat"), payload);
 }
 
