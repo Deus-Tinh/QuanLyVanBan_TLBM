@@ -33,7 +33,7 @@ export function resetPermissionsCache(): void {
 }
 
 export function hasPermission(me: MyPermissions | null, codename: string): boolean {
-  return !!me && (me.is_superuser || me.permissions.includes(codename));
+  return !!me && (Boolean(me.is_superuser) || (Array.isArray(me.permissions) && me.permissions.includes(codename)));
 }
 
 export function usePermissions() {

@@ -34,6 +34,7 @@ const PERMISSIONS = [
 const ROLES = [
   { id: 10, name: 'Văn thư', ma_nhom_quyen: 'VT', user_count: 2, permission_count: 1, permission_ids: [1] },
   { id: 11, name: 'Quản trị hệ thống', ma_nhom_quyen: 'ADMIN', user_count: 1, permission_count: 3, permission_ids: [1, 2, 3] },
+  { id: 12, name: 'Nhóm tự tạo', ma_nhom_quyen: null, user_count: 3, permission_count: 0, permission_ids: [] },
 ];
 
 function mockApi(options: { permissions?: string[]; rolesError?: unknown } = {}) {
@@ -157,6 +158,36 @@ describe('RolesPage (Issue #21)', () => {
     expect(await screen.findByText('Tạo nhóm quyền thành công!')).toBeInTheDocument();
   });
 
+  it('does not allow renaming or deleting a standard role but still lets its permissions be edited', async () => {
+    mockApi();
+    renderPage();
+
+    await selectRole('Văn thư');
+    expect(await screen.findByRole('button', { name: /^Sửa$/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Xóa$/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Lưu$/ })).toBeEnabled();
+
+    await selectRole('Nhóm tự tạo');
+    expect(screen.getByRole('button', { name: /^Sửa$/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^Xóa$/ })).toBeEnabled();
+  });
+
+  it('shows the backend reason when saving permissions is rejected for the admin role', async () => {
+    mockApi();
+    (mockedApiClient.put as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new ApiError(400, { permission_ids: ['roles.messages.adminPermissionsRequired'] }),
+    );
+    renderPage();
+
+    await selectRole('Quản trị hệ thống');
+    fireEvent.click((await screen.findAllByRole('checkbox'))[0]);
+    fireEvent.click(await screen.findByRole('button', { name: /^Lưu$/ }));
+
+    expect(
+      await screen.findByText(/Nhóm Quản trị hệ thống phải luôn giữ các quyền quản lý nhóm quyền/),
+    ).toBeInTheDocument();
+  });
+
   it('shows the backend reason when a role that still has users cannot be deleted', async () => {
     mockApi();
     (mockedApiClient.delete as ReturnType<typeof vi.fn>).mockRejectedValue(
@@ -164,12 +195,12 @@ describe('RolesPage (Issue #21)', () => {
     );
     renderPage();
 
-    await selectRole('Văn thư');
+    await selectRole('Nhóm tự tạo');
     fireEvent.click(await screen.findByRole('button', { name: /^Xóa$/ }));
     const deleteButtons = await screen.findAllByRole('button', { name: /^Xóa$/ });
     fireEvent.click(deleteButtons[deleteButtons.length - 1]);
 
-    await waitFor(() => expect(mockedApiClient.delete).toHaveBeenCalledWith('/api/roles/10/'));
+    await waitFor(() => expect(mockedApiClient.delete).toHaveBeenCalledWith('/api/roles/12/'));
     expect(
       await screen.findByText('Không thể xóa vì nhóm quyền này vẫn đang được gán cho một hoặc nhiều người dùng.'),
     ).toBeInTheDocument();

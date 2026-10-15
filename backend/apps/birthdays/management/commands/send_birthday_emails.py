@@ -49,6 +49,8 @@ class Command(BaseCommand):
             raise CommandError(
                 "Cần cấu hình email backend dạng SMTP trước khi gửi email sinh nhật."
             )
+        if current_backend == smtp_backend and not getattr(settings, "DEFAULT_FROM_EMAIL", "").strip():
+            raise CommandError("Cần cấu hình DEFAULT_FROM_EMAIL trước khi gửi email sinh nhật.")
 
         if options["date"]:
             try:
@@ -76,7 +78,7 @@ class Command(BaseCommand):
             name = detail["full_name"]
             if detail.get("skipped"):
                 _safe_write(self.stdout.write, self.style.WARNING(f"Bỏ qua: {name} - {detail['reason']}"))
-            elif detail.get("status") == "SUCCESS":
+            elif detail.get("trang_thai") == "SUCCESS":
                 _safe_write(self.stdout.write, self.style.SUCCESS(f"Đã gửi: {name}"))
             else:
                 _safe_write(self.stderr.write, self.style.ERROR(f"Cần xử lý: {name} - {detail.get('error', '')}"))
@@ -86,6 +88,7 @@ class Command(BaseCommand):
             f"Đã gửi: {results['sent_count']} | "
             f"Bỏ qua: {results['skipped_count']} | "
             f"Chờ gửi lại: {results.get('retry_count', 0)} | "
+            f"SENDING kẹt cần đối soát: {results.get('stale_failed_count', 0)} | "
             f"Thất bại: {results['failed_count']}"
         )
         _safe_write(self.stdout.write, summary)
