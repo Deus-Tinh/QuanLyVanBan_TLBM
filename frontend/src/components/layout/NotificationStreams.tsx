@@ -168,11 +168,9 @@ export default function NotificationStreams() {
         <i className="fa-regular fa-bell text-base" />
         {totalUnread > 0 && (
           <span
-            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center shadow-md ring-2 ring-header leading-none select-none"
-            aria-label={`${totalUnread} thông báo mới`}
-          >
-            {totalUnread > 99 ? '99+' : totalUnread}
-          </span>
+            className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-danger ring-2 ring-header shadow-sm"
+            aria-label="Có thông báo mới"
+          />
         )}
       </button>
 
@@ -205,9 +203,9 @@ export default function NotificationStreams() {
               </div>
             </div>
 
-            {/* Streams Tab Navigation: Đến, Đi, Mật, Lịch Họp */}
+            {/* Streams Tab Navigation: Đến, Đi, Mật, Chờ Duyệt (Hiển thị số lượng chi tiết từng mục) */}
             <div className="flex items-center p-1.5 bg-surface border-b border-subtle gap-1 overflow-x-auto">
-              {SAMPLE_STREAMS.map((stream) => {
+              {streams.map((stream) => {
                 const streamLabelKey = `notifications.${stream.type}`;
                 const streamLabel = t(streamLabelKey) !== streamLabelKey ? t(streamLabelKey) : stream.label;
                 const isConfidential = stream.type === 'confidential';
@@ -216,7 +214,7 @@ export default function NotificationStreams() {
                   <button
                     key={stream.type}
                     type="button"
-                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-colors duration-fast whitespace-nowrap ${
+                    className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-colors duration-fast whitespace-nowrap ${
                       activeTab === stream.type
                         ? isConfidential
                           ? 'bg-danger/10 text-danger border border-danger/25 font-semibold shadow-sm'
@@ -231,10 +229,10 @@ export default function NotificationStreams() {
                     <span>{streamLabel}</span>
                     {stream.unreadCount > 0 && (
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                        className={`text-[10px] min-w-[18px] h-[18px] px-1 rounded-full font-bold flex items-center justify-center leading-none ${
                           isConfidential
-                            ? 'bg-danger-subtle text-danger'
-                            : 'bg-primary-subtle text-primary'
+                            ? 'bg-danger text-white'
+                            : 'bg-primary text-white'
                         }`}
                       >
                         {stream.unreadCount}
