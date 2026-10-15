@@ -93,6 +93,23 @@ export default function DossiersPage() {
     };
   }, [search, year, page, reloadKey, t]);
 
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setSearch((prev) => {
+        if (prev !== trimmed) {
+          setIsLoading(true);
+          setError(null);
+          setPage(1);
+          return trimmed;
+        }
+        return prev;
+      });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const beginReload = () => {
     setIsLoading(true);
     setError(null);
@@ -105,9 +122,12 @@ export default function DossiersPage() {
 
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    beginReload();
-    setPage(1);
-    setSearch(searchInput.trim());
+    const trimmed = searchInput.trim();
+    if (search !== trimmed) {
+      beginReload();
+      setPage(1);
+      setSearch(trimmed);
+    }
   };
 
   const handleSave = async (payload: DossierPayload) => {
@@ -194,11 +214,27 @@ export default function DossiersPage() {
             <span className="sr-only">{t('records.dossiers.searchLabel')}</span>
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
-              className={`${controlClass} w-full pl-9`}
+              type="text"
+              className={`${controlClass} w-full pl-9 ${searchInput ? 'pr-8' : ''}`}
               placeholder={t('records.dossiers.searchPlaceholder')}
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
+            {searchInput && (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-0 text-muted transition hover:text-main"
+                onClick={() => {
+                  beginReload();
+                  setSearchInput('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                aria-label={t('records.actions.reset')}
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            )}
           </label>
           <label>
             <span className="sr-only">{t('records.filters.year')}</span>

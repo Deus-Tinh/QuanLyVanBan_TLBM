@@ -77,6 +77,23 @@ export default function DocumentTypesPage() {
     };
   }, [dossierId, search, year, page, reloadKey, t]);
 
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      setSearch((prev) => {
+        if (prev !== trimmed) {
+          setIsLoading(true);
+          setError(null);
+          setPage(1);
+          return trimmed;
+        }
+        return prev;
+      });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const beginReload = () => {
     setIsLoading(true);
     setError(null);
@@ -126,20 +143,39 @@ export default function DocumentTypesPage() {
           className="flex flex-col gap-3 border-b border-border-subtle p-4 md:flex-row"
           onSubmit={(event) => {
             event.preventDefault();
-            beginReload();
-            setPage(1);
-            setSearch(searchInput.trim());
+            const trimmed = searchInput.trim();
+            if (search !== trimmed) {
+              beginReload();
+              setPage(1);
+              setSearch(trimmed);
+            }
           }}
         >
           <label className="relative flex-1">
             <span className="sr-only">{t('records.documentTypes.searchLabel')}</span>
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
-              className={`${controlClass} w-full pl-9`}
+              type="text"
+              className={`${controlClass} w-full pl-9 ${searchInput ? 'pr-8' : ''}`}
               placeholder={t('records.documentTypes.searchPlaceholder')}
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
+            {searchInput && (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-0 text-muted transition hover:text-main"
+                onClick={() => {
+                  beginReload();
+                  setSearchInput('');
+                  setSearch('');
+                  setPage(1);
+                }}
+                aria-label={t('records.actions.reset')}
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            )}
           </label>
           <select
             className={`${controlClass} w-full md:w-40`}
