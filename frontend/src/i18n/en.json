@@ -1266,7 +1266,8 @@
       "delete": "Delete",
       "close": "Close",
       "saveChanges": "Save changes",
-      "addNew": "Add new"
+      "addNew": "Add new",
+      "edit": "Edit"
     },
     "filters": {
       "year": "Filter by year",
@@ -1330,7 +1331,8 @@
         "dossierNameRequired": "Enter a dossier name.",
         "documentTypeNameRequired": "Enter a document type name.",
         "referenceRequired": "Enter a dossier reference.",
-        "priorityPositive": "Priority must be a positive integer."
+        "priorityPositive": "Priority must be a positive integer.",
+        "dossierRequired": "Please choose a dossier for this document type."
       }
     },
     "documentTypes": {
@@ -1343,7 +1345,22 @@
       "loading": "Loading document types",
       "emptyTitle": "No matching document types",
       "emptyDescription": "Try changing the search filters.",
-      "name": "Document type name"
+      "name": "Document type name",
+      "description": "Add, edit and delete document types within dossiers.",
+      "add": "Add document type",
+      "closeNotice": "Dismiss notification",
+      "chooseDossier": "Choose a dossier",
+      "loadingDossiers": "Loading dossiers...",
+      "noDossiers": "No dossiers available. Create a dossier before adding a document type.",
+      "editLabel": "Edit {name}",
+      "deleteLabel": "Delete {name}",
+      "confirmDeleteTitle": "Delete document type?",
+      "confirmDeleteMessage": "Delete document type “{name}”? Deletion is blocked if documents still reference it.",
+      "notices": {
+        "created": "Document type added successfully.",
+        "updated": "Document type updated successfully.",
+        "deleted": "Document type deleted successfully."
+      }
     },
     "documents": {
       "back": "Back to level-2 documents",
@@ -1368,7 +1385,9 @@
       "missingDossier": "The requested dossier could not be identified.",
       "loadDocumentTypes": "Unable to load the level-2 document list.",
       "loadDocuments": "Unable to load documents for this dossier.",
-      "sharedSchemaUnavailable": "Group 2's shared document tables are not yet available under the approved DDL. Synchronize the schema before testing this flow."
+      "sharedSchemaUnavailable": "Group 2's shared document tables are not yet available under the approved DDL. Synchronize the schema before testing this flow.",
+      "saveDocumentType": "Unable to save the document type. Please check the data.",
+      "deleteDocumentType": "Unable to delete the document type. Please try again."
     },
     "pagination": {
       "summary": "Showing {first}–{last} of {count}",
