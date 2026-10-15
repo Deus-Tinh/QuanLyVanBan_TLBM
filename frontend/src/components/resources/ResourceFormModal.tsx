@@ -10,6 +10,7 @@ import {
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
 import { authService } from '@lib/authService';
+import { apiClient } from '@lib/apiClient';
 import { ConfirmationModal } from './ConfirmationModal';
 
 export interface ResourceFormData {
@@ -128,7 +129,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const defaultAuthor =
     authService.getSession()?.fullName ||
     authService.getSession()?.username ||
-    'Thượng Mạnh Quỳnh';
+    '';
 
   // Form State
   const [formData, setFormData] = useState<ResourceFormData>({
@@ -158,6 +159,31 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isConfirmDiscardOpen, setIsConfirmDiscardOpen] = useState(false);
+
+  const [staffSuggestions, setStaffSuggestions] = useState<
+    { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[]
+  >([]);
+
+  // Tải danh sách CBNV từ CSDL để gợi ý khi nhập người tạo
+  useEffect(() => {
+    if (isOpen) {
+      apiClient
+        .get<
+          | { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[]
+          | { results?: { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[] }
+        >('/api/accounts/staffs/')
+        .then((res) => {
+          if (Array.isArray(res)) {
+            setStaffSuggestions(res);
+          } else if (res && Array.isArray(res.results)) {
+            setStaffSuggestions(res.results);
+          } else {
+            setStaffSuggestions([]);
+          }
+        })
+        .catch(() => setStaffSuggestions([]));
+    }
+  }, [isOpen]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -697,25 +723,35 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 />
               </div>
 
-              {/* Người tạo tài liệu */}
+              {/* Người tạo tài liệu (Tự do set theo Cán bộ hoặc Nhân viên) */}
               <div>
                 <label
                   htmlFor="field-nguoi_tao_name"
                   className="text-xs font-semibold text-main block mb-1"
                 >
-                  Người tạo tài liệu
+                  Người tạo tài liệu <span className="text-muted font-normal text-xs">(nhập tự do hoặc chọn theo CBNV)</span>
                 </label>
-                <input
-                  id="field-nguoi_tao_name"
-                  type="text"
-                  placeholder="Họ tên người tạo..."
-                  value={formData.nguoi_tao_name || ''}
-                  onChange={(e) => {
-                    setIsDirty(true);
-                    setFormData((prev) => ({ ...prev, nguoi_tao_name: e.target.value }));
-                  }}
-                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
-                />
+                <div className="relative">
+                  <input
+                    id="field-nguoi_tao_name"
+                    type="text"
+                    list="cbnv-staff-list"
+                    placeholder="Nhập họ tên người tạo hoặc chọn cán bộ..."
+                    value={formData.nguoi_tao_name || ''}
+                    onChange={(e) => {
+                      setIsDirty(true);
+                      setFormData((prev) => ({ ...prev, nguoi_tao_name: e.target.value }));
+                    }}
+                    className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
+                  />
+                  <datalist id="cbnv-staff-list">
+                    {staffSuggestions.map((s) => (
+                      <option key={s.id} value={s.ho_ten}>
+                        {s.ho_ten}{s.chuc_vu_ten ? ` — ${s.chuc_vu_ten}` : ''}{s.don_vi_ten ? ` (${s.don_vi_ten})` : ''}
+                      </option>
+                    ))}
+                  </datalist>
+                </div>
               </div>
             </div>
           </div>

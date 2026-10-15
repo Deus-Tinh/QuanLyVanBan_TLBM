@@ -1135,6 +1135,7 @@
     "statusActive": "Active",
     "statusExpired": "Expired",
     "statusPartial": "Partially Effective",
+    "statusReplaced": "Expired & Replaced",
     "internal": "Internal",
     "public": "Public",
     "download": "Download",
