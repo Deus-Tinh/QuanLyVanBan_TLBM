@@ -89,10 +89,16 @@ export default function LoginPage({ onNavigate, onLoginSuccess }: LoginPageProps
             err.data?.detail ||
             'Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên.'
           );
-        } else if (err.status === 0) {
-          setErrorKey('auth.networkError');
+        } else if (err.status >= 500) {
+          const raw = err.data?.error || err.data?.detail || '';
+          if (raw.startsWith('<') || raw.includes('<!DOCTYPE')) {
+            setCustomError('Máy chủ đang gặp sự cố (500). Vui lòng thử lại sau!');
+          } else {
+            setCustomError(raw || 'Máy chủ đang gặp sự cố (500). Vui lòng thử lại sau!');
+          }
         } else {
-          setCustomError(err.data?.error || err.data?.detail || err.message);
+          const raw = err.data?.error || err.data?.detail || err.message;
+          setCustomError(raw.startsWith('<') ? 'Đã xảy ra lỗi không xác định.' : raw);
         }
       } else {
         setErrorKey('auth.networkError');
