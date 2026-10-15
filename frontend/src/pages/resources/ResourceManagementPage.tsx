@@ -556,11 +556,15 @@ export default function ResourceManagementPage() {
     setIsTypeDropdownOpen(false);
   };
 
-  // Dropdown Popovers State (Nút bấm sổ dropdown bên phải cho Danh mục & Loại tài liệu)
+  // Dropdown Popovers State (Nút bấm sổ dropdown bên phải cho Danh mục, Loại tài liệu, Năm & Hiệu lực)
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -576,6 +580,18 @@ export default function ResourceManagementPage() {
         !typeDropdownRef.current.contains(target)
       ) {
         setIsTypeDropdownOpen(false);
+      }
+      if (
+        yearDropdownRef.current &&
+        !yearDropdownRef.current.contains(target)
+      ) {
+        setIsYearDropdownOpen(false);
+      }
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(target)
+      ) {
+        setIsStatusDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -594,6 +610,8 @@ export default function ResourceManagementPage() {
     setCurrentPage(1);
     setIsCategoryDropdownOpen(false);
     setIsTypeDropdownOpen(false);
+    setIsYearDropdownOpen(false);
+    setIsStatusDropdownOpen(false);
   };
 
   const hasActiveFilters = Boolean(
@@ -1615,45 +1633,202 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Dropdown Năm ban hành - 2 cols */}
-          <div className="sm:col-span-1 md:col-span-2 relative">
-            <select
-              value={selectedYear}
-              onChange={(e) => {
-                setSelectedYear(e.target.value);
-                setCurrentPage(1);
+          {/* Custom Dropdown Năm ban hành - 2 cols */}
+          <div className="sm:col-span-1 md:col-span-2 relative" ref={yearDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsYearDropdownOpen((prev) => !prev);
+                setIsStatusDropdownOpen(false);
+                setIsCategoryDropdownOpen(false);
+                setIsTypeDropdownOpen(false);
               }}
-              className="w-full h-10 pl-3 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
+              className={`w-full h-10 px-3 text-[13px] rounded-lg bg-surface-elevated text-main border transition-colors flex items-center justify-between gap-2 cursor-pointer font-medium ${
+                isYearDropdownOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border-subtle hover:border-primary/50'
+              }`}
               aria-label="Lọc theo năm ban hành"
+              aria-haspopup="listbox"
+              aria-expanded={isYearDropdownOpen}
             >
-              <option value="all">{t('resourceManagement.allYears')}</option>
-              {availableYears.map((yr) => (
-                <option key={yr} value={yr}>
-                  {currentLang === 'en' ? `Year ${yr}` : `Năm ${yr}`}
-                </option>
-              ))}
-            </select>
-            <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-xs" />
+              <div className="flex items-center gap-2 truncate">
+                <i className={`fa-regular fa-calendar text-xs shrink-0 ${selectedYear !== 'all' ? 'text-primary' : 'text-muted'}`} />
+                <span className="truncate">
+                  {selectedYear === 'all'
+                    ? t('resourceManagement.allYears')
+                    : (currentLang === 'en' ? `Year ${selectedYear}` : `Năm ${selectedYear}`)}
+                </span>
+              </div>
+              <i className={`fa-solid fa-chevron-down text-muted text-xs transition-transform duration-200 shrink-0 ${isYearDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+            </button>
+
+            {isYearDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-full min-w-[170px] bg-surface rounded-xl border border-border-subtle shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedYear('all');
+                    setCurrentPage(1);
+                    setIsYearDropdownOpen(false);
+                  }}
+                  className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                    selectedYear === 'all'
+                      ? 'bg-primary/10 text-primary font-bold'
+                      : 'text-main hover:bg-surface-elevated'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <i className="fa-solid fa-calendar-days text-xs opacity-70" />
+                    <span>{t('resourceManagement.allYears')}</span>
+                  </span>
+                  {selectedYear === 'all' && (
+                    <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                  )}
+                </button>
+
+                <div className="my-1 border-t border-border-subtle" />
+
+                <div className="max-h-52 overflow-y-auto space-y-0.5">
+                  {availableYears.map((yr) => {
+                    const isSelected = selectedYear === yr;
+                    return (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => {
+                          setSelectedYear(yr);
+                          setCurrentPage(1);
+                          setIsYearDropdownOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary/10 text-primary font-bold'
+                            : 'text-main hover:bg-surface-elevated'
+                        }`}
+                      >
+                        <span className="truncate">{currentLang === 'en' ? `Year ${yr}` : `Năm ${yr}`}</span>
+                        {isSelected && (
+                          <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Dropdown Hiệu lực - 2 cols */}
-          <div className="sm:col-span-1 md:col-span-2 relative">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
+          {/* Custom Dropdown Hiệu lực - 2 cols */}
+          <div className="sm:col-span-1 md:col-span-2 relative" ref={statusDropdownRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsStatusDropdownOpen((prev) => !prev);
+                setIsYearDropdownOpen(false);
+                setIsCategoryDropdownOpen(false);
+                setIsTypeDropdownOpen(false);
               }}
-              className="w-full h-10 pl-3 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary cursor-pointer font-medium transition-colors appearance-none"
+              className={`w-full h-10 px-3 text-[13px] rounded-lg bg-surface-elevated text-main border transition-colors flex items-center justify-between gap-2 cursor-pointer font-medium ${
+                isStatusDropdownOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border-subtle hover:border-primary/50'
+              }`}
               aria-label="Lọc theo tình trạng hiệu lực"
+              aria-haspopup="listbox"
+              aria-expanded={isStatusDropdownOpen}
             >
-              <option value="all">{t('resourceManagement.allStatuses')}</option>
-              <option value="CON_HIEU_LUC">🟢 {t('resourceManagement.statusActive')}</option>
-              <option value="CON_HIEU_LUC_1_PHAN">🟡 {t('resourceManagement.statusPartial')}</option>
-              <option value="HET_HIEU_LUC">🔴 {t('resourceManagement.statusExpired')}</option>
-              <option value="HET_VA_THAY_THE">🟠 {t('resourceManagement.statusExpired')}</option>
-            </select>
-            <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none text-xs" />
+              <div className="flex items-center gap-2 truncate">
+                {statusFilter === 'all' ? (
+                  <i className="fa-solid fa-shield-halved text-muted text-xs shrink-0" />
+                ) : (
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      statusFilter === 'CON_HIEU_LUC'
+                        ? 'bg-emerald-500 shadow-xs shadow-emerald-500/50'
+                        : statusFilter === 'CON_HIEU_LUC_1_PHAN'
+                          ? 'bg-amber-500 shadow-xs shadow-amber-500/50'
+                          : statusFilter === 'HET_HIEU_LUC'
+                            ? 'bg-rose-500 shadow-xs shadow-rose-500/50'
+                            : 'bg-orange-500 shadow-xs shadow-orange-500/50'
+                    }`}
+                  />
+                )}
+                <span className="truncate">
+                  {statusFilter === 'all'
+                    ? t('resourceManagement.allStatuses')
+                    : statusFilter === 'CON_HIEU_LUC'
+                      ? t('resourceManagement.statusActive')
+                      : statusFilter === 'CON_HIEU_LUC_1_PHAN'
+                        ? t('resourceManagement.statusPartial')
+                        : statusFilter === 'HET_HIEU_LUC'
+                          ? t('resourceManagement.statusExpired')
+                          : t('resourceManagement.statusReplaced')}
+                </span>
+              </div>
+              <i className={`fa-solid fa-chevron-down text-muted text-xs transition-transform duration-200 shrink-0 ${isStatusDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
+            </button>
+
+            {isStatusDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-full min-w-[220px] bg-surface rounded-xl border border-border-subtle shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+                {[
+                  {
+                    value: 'all',
+                    label: t('resourceManagement.allStatuses'),
+                    dot: null,
+                    icon: 'fa-solid fa-layer-group',
+                  },
+                  {
+                    value: 'CON_HIEU_LUC',
+                    label: t('resourceManagement.statusActive'),
+                    dot: 'bg-emerald-500 shadow-xs shadow-emerald-500/50',
+                  },
+                  {
+                    value: 'CON_HIEU_LUC_1_PHAN',
+                    label: t('resourceManagement.statusPartial'),
+                    dot: 'bg-amber-500 shadow-xs shadow-amber-500/50',
+                  },
+                  {
+                    value: 'HET_HIEU_LUC',
+                    label: t('resourceManagement.statusExpired'),
+                    dot: 'bg-rose-500 shadow-xs shadow-rose-500/50',
+                  },
+                  {
+                    value: 'HET_VA_THAY_THE',
+                    label: t('resourceManagement.statusReplaced'),
+                    dot: 'bg-orange-500 shadow-xs shadow-orange-500/50',
+                  },
+                ].map((opt, idx) => {
+                  const isSelected = statusFilter === opt.value;
+                  return (
+                    <React.Fragment key={opt.value}>
+                      {idx === 1 && <div className="my-1 border-t border-border-subtle" />}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter(opt.value);
+                          setCurrentPage(1);
+                          setIsStatusDropdownOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary/10 text-primary font-bold'
+                            : 'text-main hover:bg-surface-elevated'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          {opt.dot ? (
+                            <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${opt.dot}`} />
+                          ) : (
+                            <i className={`${opt.icon} text-xs opacity-70 shrink-0`} />
+                          )}
+                          <span className="truncate">{opt.label}</span>
+                        </span>
+                        {isSelected && (
+                          <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                        )}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1709,12 +1884,12 @@ export default function ResourceManagementPage() {
                   <span>
                     Hiệu lực: {
                       statusFilter === 'CON_HIEU_LUC'
-                        ? 'Còn hiệu lực'
+                        ? t('resourceManagement.statusActive')
                         : statusFilter === 'CON_HIEU_LUC_1_PHAN'
-                          ? 'Còn hiệu lực 1 phần'
+                          ? t('resourceManagement.statusPartial')
                           : statusFilter === 'HET_HIEU_LUC'
-                            ? 'Hết hiệu lực'
-                            : 'Hết và thay thế'
+                            ? t('resourceManagement.statusExpired')
+                            : t('resourceManagement.statusReplaced')
                     }
                   </span>
                   <button
