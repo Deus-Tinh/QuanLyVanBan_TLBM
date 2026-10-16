@@ -38,8 +38,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Người gửi: {settings.DEFAULT_FROM_EMAIL}")
         if not backend.endswith("smtp.EmailBackend"):
             self.stdout.write(self.style.WARNING(
-                "Chưa bật SMTP (thiếu EMAIL_HOST, EMAIL_HOST_USER hoặc EMAIL_HOST_PASSWORD trong backend/.env); "
-                "email chỉ được in ra console."))
+                "CẢNH BÁO: thiếu EMAIL_HOST_PASSWORD trong backend/.env. Đang dùng console backend: "
+                "email chỉ in ra màn hình, KHÔNG được gửi thật."))
         try:
             so_thu = _gui([dia_chi], "Thư kiểm tra cấu hình email",
                           "Thư này được gửi bằng lệnh thu_gui_mail để kiểm tra cấu hình SMTP của hệ thống QLVB.")

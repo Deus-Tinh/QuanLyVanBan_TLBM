@@ -183,16 +183,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-# Đọc SMTP từ biến môi trường (backend/.env, không commit). Thiếu host/tài khoản/mật khẩu thì dùng console backend.
+# SMTP công ty làm mặc định; biến môi trường ghi đè. EMAIL_HOST_PASSWORD chỉ đọc từ backend/.env (không có
+# giá trị mặc định, không commit); thiếu thì dùng console backend (email không gửi thật).
 # Chạy được trên Django 5.2 (EMAIL_*) và Django 6.1 (MAILERS; 6.1 không cho khai báo đồng thời EMAIL_* cũ).
-EMAIL_HOST = os.getenv("EMAIL_HOST", "")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST = os.getenv("EMAIL_HOST") or "mail.baohiembaolong.vn"
+EMAIL_PORT = int(os.getenv("EMAIL_PORT") or "587")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER") or "qlvb@baohiembaolong.vn"
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "") or "Hệ thống QLVB <noreply@localhost>"
+EMAIL_USE_TLS = (os.getenv("EMAIL_USE_TLS") or "true").lower() == "true"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL") or "Hệ thống QLVB <qlvb@baohiembaolong.vn>"
 FRONTEND_URL = os.getenv("FRONTEND_URL", "") or "http://localhost:5173"
-_SMTP_ON = bool(EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+_SMTP_ON = bool(EMAIL_HOST and EMAIL_HOST_PASSWORD)
 if django.VERSION >= (6, 1):
     MAILERS = {
         "default": (
