@@ -36,7 +36,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Backend: {backend}")
         self.stdout.write(f"Host: {host or '(trống)'}  Port: {port or '(trống)'}  Tài khoản: {tai_khoan or '(trống)'}")
         self.stdout.write(f"Người gửi: {settings.DEFAULT_FROM_EMAIL}")
-        if not backend.endswith("smtp.EmailBackend"):
+        if not (backend.endswith("smtp.EmailBackend") or backend.endswith("BaoLongSmtpEmailBackend")):
             self.stdout.write(self.style.WARNING(
                 "CẢNH BÁO: thiếu EMAIL_HOST_PASSWORD trong backend/.env. Đang dùng console backend: "
                 "email chỉ in ra màn hình, KHÔNG được gửi thật."))

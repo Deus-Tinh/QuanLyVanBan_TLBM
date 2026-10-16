@@ -203,7 +203,7 @@ ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME", BRAND_NAME).strip()
 if email_host and email_host_password:
     MAILERS = {
         "default": {
-            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "BACKEND": "apps.signing.email_backend.BaoLongSmtpEmailBackend",
             "OPTIONS": {
                 "host": email_host,
                 "port": email_port,

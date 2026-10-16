@@ -48,10 +48,12 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--email-domain", default="",
                             help="Đặt email <username>@<domain> cho từng tài khoản (mặc định: giữ email hiện có)")
+        parser.add_argument("--mat-khau-la-username", action="store_true",
+                            help="Đặt mật khẩu của từng tài khoản trùng với username của tài khoản đó.")
 
     def handle(self, *args, **options):
         mat_khau = os.getenv("DEMO_PASSWORD") if "DEMO_PASSWORD" in os.environ else os.getenv("SIGNING_DEMO_PASSWORD", "")
-        if not mat_khau:
+        if not mat_khau and not options.get("mat_khau_la_username"):
             raise CommandError("Chưa đặt biến môi trường DEMO_PASSWORD (khai báo trong backend/.env).")
         mien = options["email_domain"].strip().lstrip("@")
         UserModel = get_user_model()
@@ -75,7 +77,7 @@ class Command(BaseCommand):
                 nguoi_dung.is_active = True
                 nguoi_dung.is_staff = quan_tri
                 nguoi_dung.is_superuser = quan_tri
-                nguoi_dung.set_password(mat_khau)
+                nguoi_dung.set_password(username if options.get("mat_khau_la_username") else mat_khau)
                 nguoi_dung.save()
                 nhom = _nhom_quyen(ma_nhom)
                 if nhom is not None:
