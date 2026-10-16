@@ -187,18 +187,20 @@ MEDIA_ROOT = BASE_DIR.parent / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Email (Django 6.1 MAILERS)
-# Keep console delivery until an SMTP host is explicitly configured.
-email_host = os.getenv("EMAIL_HOST", "").strip()
+# SMTP công ty làm mặc định; biến môi trường ghi đè. EMAIL_HOST_PASSWORD chỉ đọc từ backend/.env (không commit).
+# Thiếu EMAIL_HOST_PASSWORD thì dùng console backend (email in ra màn hình, an toàn khi chạy demo).
+email_host = os.getenv("EMAIL_HOST") or "mail.baohiembaolong.vn"
 email_port = int(os.getenv("EMAIL_PORT") or "587")
-email_use_tls = os.getenv("EMAIL_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "on"}
-email_host_user = os.getenv("EMAIL_HOST_USER", "").strip()
+email_use_tls = (os.getenv("EMAIL_USE_TLS") or "true").strip().lower() in {"1", "true", "yes", "on"}
+email_host_user = os.getenv("EMAIL_HOST_USER") or "qlvb@baohiembaolong.vn"
 email_host_password = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip()
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL") or "Hệ thống QLVB <qlvb@baohiembaolong.vn>"
+FRONTEND_URL = os.getenv("FRONTEND_URL", "") or "http://localhost:5173"
 
 BRAND_NAME = os.getenv("BRAND_NAME", "Bảo Long Insurance").strip()
 ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME", BRAND_NAME).strip()
 
-if email_host:
+if email_host and email_host_password:
     MAILERS = {
         "default": {
             "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
@@ -208,7 +210,7 @@ if email_host:
                 "use_tls": email_use_tls,
                 "username": email_host_user,
                 "password": email_host_password,
-                "timeout": 10,
+                "timeout": 15,
             },
         },
     }

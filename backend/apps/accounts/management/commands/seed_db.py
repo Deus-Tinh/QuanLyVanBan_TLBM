@@ -1,10 +1,10 @@
-import datetime
+import os
 import sys
 from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.db import transaction
 from organizations.models import KhoiKhuVuc, DonVi
-from accounts.models import Employee, Position
+from accounts.models import Position
 
 KHOI_DATA = [
     ("HỘI ĐỒNG QUẢN TRỊ", 1),
@@ -166,43 +166,12 @@ class Command(BaseCommand):
                 pos_map[name] = pos
             self.stdout.write(self.style.SUCCESS(f" [OK] Seeded {len(pos_map)} Chuc vu."))
 
-            # 4. Seed Admin account
-            UserModel = get_user_model()
-            admin_donvi = DonVi.objects.filter(ten="Ban công nghệ thông tin").first() or DonVi.objects.first()
-            admin_chucvu = pos_map.get("Quản trị viên")
-
-            def upsert_employee(username, ho_ten, chuc_vu, don_vi, sdt, **flags):
-                employee = UserModel.objects.filter(username=username).first()
-                if employee is None:
-                    employee = UserModel(username=username, email=f"{username}@baolong.vn")
-                employee.ho_ten = ho_ten
-                employee.ngay_sinh = employee.ngay_sinh or datetime.date(1990, 1, 1)
-                employee.chuc_vu = chuc_vu
-                employee.don_vi = don_vi
-                employee.sdt = sdt
-                employee.trang_thai = Employee.Status.LAM_VIEC
-                employee.is_public = True
-                employee.is_active = True
-                employee.is_staff = flags.get("is_staff", False)
-                employee.is_superuser = flags.get("is_superuser", False)
-                employee.set_password("Admin@123")
-                employee.save()
-                return employee
-
-            upsert_employee(
-                "admin", "Quản trị hệ thống", admin_chucvu, admin_donvi, "0901234567",
-                is_staff=True, is_superuser=True,
-            )
-            self.stdout.write(self.style.SUCCESS(" [OK] Seeded admin user: admin / Admin@123"))
-
-            # 5. Seed Demo Users for QA Testing
-            demo_users = [
-                ("truongphong_cntt", "Trưởng Phòng CNTT", "Trưởng phòng", admin_donvi, "0901111222"),
-                ("chuyenvien_cntt", "Chuyên Viên CNTT", "Chuyên viên", admin_donvi, "0902222333"),
-                ("vanthu_cntt", "Văn Thư Lưu Trữ", "Văn thư", admin_donvi, "0903333444"),
-            ]
-            for uname, hoten, pos_name, dvi, phone in demo_users:
-                upsert_employee(uname, hoten, pos_map.get(pos_name), dvi, phone)
-            self.stdout.write(self.style.SUCCESS(" [OK] Seeded demo users for Issue #24 testing (Admin@123)."))
+        # 4. Tài khoản demo theo quy định (admin, vanthu, chuyenvien, truongphong, giamdoc).
+        # Mật khẩu không lưu trong mã nguồn: lấy từ DEMO_PASSWORD; chưa đặt thì bỏ qua bước này.
+        if os.getenv("DEMO_PASSWORD"):
+            call_command("tao_tai_khoan_demo", stdout=self.stdout, stderr=self.stderr)
+        else:
+            self.stdout.write(self.style.WARNING(
+                " [SKIP] Chưa đặt DEMO_PASSWORD: bỏ qua tạo tài khoản demo (chạy lệnh tao_tai_khoan_demo sau)."))
 
         self.stdout.write(self.style.SUCCESS("==> Database seeding completed successfully 100%!"))
