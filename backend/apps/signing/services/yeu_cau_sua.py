@@ -13,6 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 
+from .. import email as thong_bao
 from .. import enums
 from ..errors import ConflictError, SigningError
 from ..models import (
@@ -55,6 +56,7 @@ def yeu_cau_sua(yeu_cau, nguoi, *, tieu_de, ly_do, khoa_chong_trung, dia_chi_ip=
                 luot_trinh=luot, buoc_ky=dong, trang_thai_truoc=enums.TrangThaiLuotTrinh.CHO_KY,
                 trang_thai_sau=luot.trang_thai, chi_tiet=tieu_de, dia_chi_ip=dia_chi_ip,
                 du_lieu_kem_theo={"thread": thread.pk})
+    thong_bao.thong_bao_nguoi_tao(luot.trinh_ky, "YEU_CAU_SUA", luot)
     return SigningRequest.objects.get(pk=yeu_cau.pk)
 
 

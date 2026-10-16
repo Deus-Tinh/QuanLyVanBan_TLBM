@@ -16,6 +16,8 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
+import django
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -181,11 +183,42 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
-}
+# Đọc SMTP từ biến môi trường (backend/.env, không commit). Thiếu host/tài khoản/mật khẩu thì dùng console backend.
+# Chạy được trên Django 5.2 (EMAIL_*) và Django 6.1 (MAILERS; 6.1 không cho khai báo đồng thời EMAIL_* cũ).
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "") or "Hệ thống QLVB <noreply@localhost>"
+FRONTEND_URL = os.getenv("FRONTEND_URL", "") or "http://localhost:5173"
+_SMTP_ON = bool(EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+if django.VERSION >= (6, 1):
+    MAILERS = {
+        "default": (
+            {
+                "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+                "OPTIONS": {
+                    "host": EMAIL_HOST,
+                    "port": EMAIL_PORT,
+                    "username": EMAIL_HOST_USER,
+                    "password": EMAIL_HOST_PASSWORD,
+                    "use_tls": EMAIL_USE_TLS,
+                    "timeout": 15,
+                },
+            }
+            if _SMTP_ON
+            else {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
+        ),
+    }
+    del EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS
+else:
+    EMAIL_BACKEND = (
+        "django.core.mail.backends.smtp.EmailBackend"
+        if _SMTP_ON
+        else "django.core.mail.backends.console.EmailBackend"
+    )
+    EMAIL_TIMEOUT = 15
 
 # CORS Configuration (Cho phép Frontend kết nối API)
 CORS_ALLOW_ALL_ORIGINS = True
