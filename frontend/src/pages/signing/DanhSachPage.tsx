@@ -18,55 +18,57 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
   const rong = { can_toi_ky: 'danhSach.rongCanToiKy', toi_gui: 'danhSach.rongToiGui', tat_ca: 'danhSach.rongTatCa' }[hop];
 
   return (
-    <Card className="p-4 space-y-3">
+    <div className="space-y-4">
       {hop !== 'can_toi_ky' && (
-        <label className="flex items-center gap-2 text-sm text-secondary">
-          {t('danhSach.locTrangThai')}
-          <select className={`${LOP_O_NHAP} w-auto`} value={loc} onChange={(e) => setLoc(e.target.value)}>
+        <label className="flex flex-wrap items-center gap-3 text-sm font-semibold text-secondary">
+          <span className="whitespace-nowrap">{t('danhSach.locTrangThai')}</span>
+          <select className={`${LOP_O_NHAP} sm:w-64`} value={loc} onChange={(e) => setLoc(e.target.value)}>
             <option value="">{t('danhSach.tatCaTrangThai')}</option>
             {TRANG_THAI.map((s) => <option key={s} value={s}>{t(`trangThai.${s}`)}</option>)}
           </select>
         </label>
       )}
-      {ds.dangTai && <DangTai />}
-      {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
-      {!ds.dangTai && !ds.loi && ds.duLieu?.length === 0 && <Rong>{t(rong)}</Rong>}
-      {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border-subtle text-left text-xs text-secondary">
-                <th className="px-2 py-2">{t('danhSach.maHoSo')}</th>
-                <th className="px-2 py-2">{t('danhSach.vanBan')}</th>
-                <th className="px-2 py-2">{t('danhSach.quyTrinh')}</th>
-                <th className="px-2 py-2">{t('danhSach.mucDo')}</th>
-                <th className="px-2 py-2">{t('danhSach.trangThai')}</th>
-                <th className="px-2 py-2">{t('danhSach.dangCho')}</th>
-                <th className="px-2 py-2">{t('danhSach.nguoiTao')}</th>
-                <th className="px-2 py-2">{t('danhSach.hanChot')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ds.duLieu.map((h) => (
-                <tr key={h.id} className="border-b border-border-subtle hover:bg-surface-hover">
-                  <td className="px-2 py-2 font-bold">
-                    <Link to={`/approvals/${h.id}`} className="text-primary hover:underline">#{h.id}</Link>
-                  </td>
-                  <td className="px-2 py-2 max-w-xs truncate text-main" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
-                    {moTaVanBan(h.van_ban, h.van_ban_id)}
-                  </td>
-                  <td className="px-2 py-2 text-secondary">{h.ten_quy_trinh}</td>
-                  <td className="px-2 py-2"><MucDoBadge mucDo={h.muc_do} /></td>
-                  <td className="px-2 py-2"><TrangThaiBadge trangThai={h.trang_thai} /></td>
-                  <td className="px-2 py-2 text-secondary">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
-                  <td className="px-2 py-2 text-secondary">{h.ten_nguoi_tao}</td>
-                  <td className="px-2 py-2 text-secondary">{dinhDangNgay(h.han_chot, lang)}</td>
+      <Card className="overflow-hidden">
+        {ds.dangTai && <DangTai />}
+        {ds.loi && <div className="px-4"><LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} /></div>}
+        {!ds.dangTai && !ds.loi && ds.duLieu?.length === 0 && <Rong>{t(rong)}</Rong>}
+        {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-surface-elevated text-secondary text-xs uppercase font-bold border-b border-border">
+                <tr>
+                  <th className="px-4 py-3">{t('danhSach.maHoSo')}</th>
+                  <th className="px-4 py-3">{t('danhSach.vanBan')}</th>
+                  <th className="px-4 py-3">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-4 py-3">{t('danhSach.mucDo')}</th>
+                  <th className="px-4 py-3">{t('danhSach.trangThai')}</th>
+                  <th className="px-4 py-3">{t('danhSach.dangCho')}</th>
+                  <th className="px-4 py-3">{t('danhSach.nguoiTao')}</th>
+                  <th className="px-4 py-3">{t('danhSach.hanChot')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {ds.duLieu.map((h) => (
+                  <tr key={h.id} className="hover:bg-surface-hover transition-colors">
+                    <td className="px-4 py-3 font-bold">
+                      <Link to={`/approvals/${h.id}`} className="text-primary hover:underline">#{h.id}</Link>
+                    </td>
+                    <td className="px-4 py-3 max-w-xs truncate text-main" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
+                      {moTaVanBan(h.van_ban, h.van_ban_id)}
+                    </td>
+                    <td className="px-4 py-3 text-secondary">{h.ten_quy_trinh}</td>
+                    <td className="px-4 py-3"><MucDoBadge mucDo={h.muc_do} /></td>
+                    <td className="px-4 py-3"><TrangThaiBadge trangThai={h.trang_thai} /></td>
+                    <td className="px-4 py-3 text-secondary">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
+                    <td className="px-4 py-3 text-secondary">{h.ten_nguoi_tao}</td>
+                    <td className="px-4 py-3 text-secondary">{dinhDangNgay(h.han_chot, lang)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
