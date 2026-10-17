@@ -190,7 +190,7 @@ describe('ResourceTable Component', () => {
     expect(handlePageChange).toHaveBeenCalledWith(10);
   });
 
-  it('supports quick jumping to page via input', () => {
+  it('supports quick jumping to page via input with Enter key and filters non-digits', () => {
     const handlePageChange = vi.fn();
     render(
       <ResourceTable
@@ -204,15 +204,21 @@ describe('ResourceTable Component', () => {
       />
     );
 
-    const jumpInput = screen.getByLabelText('Nhập số trang muốn chuyển tới');
-    fireEvent.change(jumpInput, { target: { value: '8' } });
+    const jumpInput = screen.getByLabelText('Nhập số trang muốn chuyển tới') as HTMLInputElement;
 
-    const goBtn = screen.getByTitle('Chuyển đến trang đã nhập');
-    fireEvent.click(goBtn);
+    // Không còn nút "Đi"
+    expect(screen.queryByTitle('Chuyển đến trang đã nhập')).not.toBeInTheDocument();
+
+    // Nhập chữ và ký tự đặc biệt -> chỉ giữ lại số
+    fireEvent.change(jumpInput, { target: { value: 'abc!@#8' } });
+    expect(jumpInput.value).toBe('8');
+
+    // Nhấn phím Enter để chuyển trang
+    fireEvent.keyDown(jumpInput, { key: 'Enter', code: 'Enter' });
     expect(handlePageChange).toHaveBeenCalledWith(8);
   });
 
-  it('renders only 3 page numbers (1, 2, 3) on page 1 of 9 pages, not 4 or 5', () => {
+  it('renders only 2 page numbers (1, 2) and last page (9) on page 1 of 9 pages (<< < 1 2 ... 9 > >>)', () => {
     render(
       <ResourceTable
         items={mockItems}
@@ -225,18 +231,24 @@ describe('ResourceTable Component', () => {
       />
     );
 
-    // Kiểm tra có các nút trang 1, 2, 3 và trang cuối 9
+    // Kiểm tra có các nút trang 1, 2 và trang cuối 9
     expect(screen.getByRole('button', { name: 'Trang 1' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Trang 2' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Trang 3' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Trang 9' })).toBeInTheDocument();
 
-    // Tuyệt đối không hiển thị nút trang 4 và 5 theo yêu cầu người dùng
+    // Tuyệt đối không hiển thị nút trang 3, 4, 5
+    expect(screen.queryByRole('button', { name: 'Trang 3' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Trang 4' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Trang 5' })).not.toBeInTheDocument();
+
+    // Có đầy đủ các nút << < > >>
+    expect(screen.getByLabelText('Về trang đầu')).toBeInTheDocument();
+    expect(screen.getByLabelText('Trang trước')).toBeInTheDocument();
+    expect(screen.getByLabelText('Trang sau')).toBeInTheDocument();
+    expect(screen.getByLabelText('Đến trang cuối')).toBeInTheDocument();
   });
 
-  it('renders only 3 page numbers (7, 8, 9) on page 9 of 9 pages, not 5 or 6', () => {
+  it('renders only first page (1) and last 2 page numbers (8, 9) on page 9 of 9 pages (<< < 1 ... 8 9 > >>)', () => {
     render(
       <ResourceTable
         items={[mockItems[0], mockItems[1]]}
@@ -249,15 +261,14 @@ describe('ResourceTable Component', () => {
       />
     );
 
-    // Kiểm tra có các nút trang 1, 7, 8, 9
+    // Kiểm tra có các nút trang 1, 8, 9
     expect(screen.getByRole('button', { name: 'Trang 1' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Trang 7' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Trang 8' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Trang 9' })).toBeInTheDocument();
 
-    // Không hiển thị 5 hay 6
-    expect(screen.queryByRole('button', { name: 'Trang 5' })).not.toBeInTheDocument();
+    // Không hiển thị 6 hay 7
     expect(screen.queryByRole('button', { name: 'Trang 6' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Trang 7' })).not.toBeInTheDocument();
   });
 
   it('renders spacer rows on the last page to stabilize table height', () => {

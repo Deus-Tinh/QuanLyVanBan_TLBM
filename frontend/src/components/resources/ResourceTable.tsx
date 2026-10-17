@@ -52,7 +52,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     const handleClose = () => {
       setActiveMenuId(null);
       setMenuPos(null);
-      setActiveFileMenuId(null);
     };
 
     const handleClickOutside = (e: MouseEvent) => {
@@ -314,9 +313,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     | { type: 'page'; num: number }
     | { type: 'ellipsis'; direction: 'prev' | 'next'; targetPage: number };
 
-  // Danh sách phần tử phân trang thông minh: rút gọn chỉ hiện 3 số (ví dụ 1 2 3 ... 9 hoặc 1 ... 7 8 9)
+  // Danh sách phần tử phân trang: rút gọn chỉ hiện 2 số ở đầu/cuối (ví dụ: 1 2 ... 6 hoặc 1 ... 5 6)
   const getPageElements = (): PageItem[] => {
-    if (totalPages <= 5) {
+    if (totalPages <= 4) {
       return Array.from({ length: totalPages }, (_, i) => ({
         type: 'page',
         num: i + 1,
@@ -326,51 +325,49 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     const items: PageItem[] = [];
 
     if (currentPage <= 2) {
-      // Đang ở gần đầu: chỉ hiện 3 số đầu 1, 2, 3 ... totalPages
-      for (let i = 1; i <= 3; i++) {
-        items.push({ type: 'page', num: i });
-      }
+      // Đang ở gần đầu: 1 2 ... totalPages (Ví dụ: 1 2 ... 6)
+      items.push({ type: 'page', num: 1 });
+      items.push({ type: 'page', num: 2 });
       items.push({
         type: 'ellipsis',
         direction: 'next',
-        targetPage: Math.min(totalPages, currentPage + 3),
+        targetPage: Math.min(totalPages, currentPage + 2),
       });
       items.push({ type: 'page', num: totalPages });
     } else if (currentPage >= totalPages - 1) {
-      // Đang ở gần cuối: 1 ... (totalPages-2) (totalPages-1) totalPages
+      // Đang ở gần cuối: 1 ... (totalPages-1) totalPages (Ví dụ: 1 ... 5 6)
       items.push({ type: 'page', num: 1 });
       items.push({
         type: 'ellipsis',
         direction: 'prev',
-        targetPage: Math.max(1, currentPage - 3),
+        targetPage: Math.max(1, currentPage - 2),
       });
-      for (let i = totalPages - 2; i <= totalPages; i++) {
-        items.push({ type: 'page', num: i });
-      }
+      items.push({ type: 'page', num: totalPages - 1 });
+      items.push({ type: 'page', num: totalPages });
     } else {
-      // Đang ở giữa: 1 ... (currentPage-1) (currentPage) (currentPage+1) ... totalPages
+      // Đang ở giữa: 1 ... currentPage ... totalPages
       items.push({ type: 'page', num: 1 });
 
       if (currentPage - 1 > 2) {
         items.push({
           type: 'ellipsis',
           direction: 'prev',
-          targetPage: Math.max(1, currentPage - 3),
+          targetPage: Math.max(1, currentPage - 2),
         });
+      } else {
+        items.push({ type: 'page', num: 2 });
       }
 
-      // Nếu currentPage === 3 thì currentPage - 1 là 2 (liền kề 1, không cần ellipsis)
-      items.push({ type: 'page', num: currentPage - 1 });
       items.push({ type: 'page', num: currentPage });
-      items.push({ type: 'page', num: currentPage + 1 });
 
-      // Nếu currentPage === totalPages - 2 thì currentPage + 1 là totalPages - 1 (liền kề totalPages, không cần ellipsis)
       if (currentPage + 1 < totalPages - 1) {
         items.push({
           type: 'ellipsis',
           direction: 'next',
-          targetPage: Math.min(totalPages, currentPage + 3),
+          targetPage: Math.min(totalPages, currentPage + 2),
         });
+      } else {
+        items.push({ type: 'page', num: totalPages - 1 });
       }
 
       items.push({ type: 'page', num: totalPages });
@@ -386,16 +383,16 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     >
       {/* Khung Bảng dữ liệu chính */}
       <div className="w-full overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse min-w-[850px]">
+        <table className="w-full text-left text-sm border-collapse min-w-full">
           <thead className="bg-surface-elevated text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle select-none">
             <tr>
-              <th className="px-4 py-3.5 w-36 min-w-[130px] whitespace-nowrap">{t('resourceManagement.colCode')}</th>
-              <th className="px-4 py-3.5 min-w-[260px]">{t('resourceManagement.colTitle')}</th>
-              <th className="px-4 py-3.5 w-48 min-w-[170px]">{t('resourceManagement.colAuthority')}</th>
-              <th className="px-3.5 py-3.5 w-32 min-w-[110px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
-              <th className="px-4 py-3.5 w-44 min-w-[150px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
-              <th className="px-3.5 py-3.5 w-40 min-w-[140px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
-              <th className="px-3.5 py-3.5 w-20 min-w-[80px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
+              <th className="hidden sm:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 w-24 sm:w-32 min-w-[80px] whitespace-nowrap">{t('resourceManagement.colCode')}</th>
+              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 min-w-[140px] sm:min-w-[200px]">{t('resourceManagement.colTitle')}</th>
+              <th className="hidden lg:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 w-36 sm:w-44 min-w-[120px]">{t('resourceManagement.colAuthority')}</th>
+              <th className="hidden lg:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-28 min-w-[85px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
+              <th className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-28 sm:w-36 min-w-[95px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
+              <th className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-32 min-w-[80px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
+              <th className="px-2 sm:px-3 py-3 sm:py-3.5 w-12 sm:w-16 min-w-[44px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -403,23 +400,23 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
               // Trạng thái Loading (Skeleton)
               Array.from({ length: pageSize > 5 ? 5 : pageSize }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
-                  <td className="px-4 py-4">
+                  <td className="hidden sm:table-cell px-4 py-4">
                     <div className="h-4 w-20 bg-surface-elevated rounded" />
                   </td>
                   <td className="px-4 py-4">
                     <div className="h-4 w-3/4 bg-surface-elevated rounded mb-1.5" />
                     <div className="h-3 w-1/3 bg-surface-elevated rounded" />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="hidden lg:table-cell px-4 py-4">
                     <div className="h-4 w-28 bg-surface-elevated rounded" />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden lg:table-cell px-4 py-4 text-center">
                     <div className="h-4 w-16 bg-surface-elevated rounded mx-auto" />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden sm:table-cell px-4 py-4 text-center">
                     <div className="h-5 w-24 bg-surface-elevated rounded-full mx-auto" />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden sm:table-cell px-4 py-4 text-center">
                     <div className="h-7 w-20 bg-surface-elevated rounded mx-auto" />
                   </td>
                   <td className="px-4 py-4 text-center">
@@ -504,15 +501,15 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     className={`transition-colors duration-fast cursor-pointer select-none ${rowClass}`}
                     title="Bấm để xem chi tiết tài liệu"
                   >
-                    {/* Cột 1: Ký hiệu (thống nhất font sans chuẩn hệ thống, ngay hàng thẳng lối) */}
-                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                    {/* Cột 1: Ký hiệu (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
+                    <td className="hidden sm:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
                       <span className="text-xs font-semibold text-main tracking-tight">
                         {item.ky_hieu || '-'}
                       </span>
                     </td>
 
                     {/* Cột 2: Tiêu đề + Loại tài liệu + Link thay thế (Cùng hàng cân đối tuyệt đối) */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-main hover:text-primary transition-colors leading-snug">
                           {item.tieu_de}
@@ -551,24 +548,24 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       )}
                     </td>
 
-                    {/* Cột 3: Nơi ban hành */}
-                    <td className="px-4 py-3.5 align-middle text-xs text-secondary leading-snug">
+                    {/* Cột 3: Nơi ban hành (Ẩn trên mobile & tablet, hiện từ lg: desktop) */}
+                    <td className="hidden lg:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle text-xs text-secondary leading-snug">
                       {item.noi_ban_hanh || '-'}
                     </td>
 
-                    {/* Cột 4: Ngày đăng (dd/mm/yyyy thường, thẳng hàng giữa) */}
-                    <td className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary leading-snug">
+                    {/* Cột 4: Ngày đăng (Ẩn trên mobile & tablet, hiện từ lg: desktop) */}
+                    <td className="hidden lg:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary leading-snug">
                       {formatDate(item.ngay_dang)}
                     </td>
 
-                    {/* Cột 5: Hiệu lực (Badge giữ độ nét 100%, thẳng hàng giữa) */}
-                    <td className="px-4 py-3.5 text-center align-middle whitespace-nowrap opacity-100">
+                    {/* Cột 5: Hiệu lực (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
+                    <td className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100">
                       {renderStatusBadge(item.hieu_luc)}
                     </td>
 
-                    {/* Cột 6: Tệp đính kèm (Badge dạng tệp theo màu sắc, không có nút tải về) */}
+                    {/* Cột 6: Tệp đính kèm (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewDetail?.(item);
@@ -579,7 +576,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
                     {/* Cột 7: Thao tác — Menu "⋯": Xem chi tiết, Chỉnh sửa, Xóa */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      className="px-2 sm:px-3 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100"
                       onClick={(e) => e.stopPropagation()}
                       data-dropdown-root
                     >
@@ -702,10 +699,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
       {/* Chân bảng: Chọn số dòng hiển thị + Thanh phân trang thông minh */}
       <div
         ref={paginationRef}
-        className="flex flex-col xl:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border-subtle text-xs text-secondary bg-surface pr-4 sm:pr-28 lg:pr-32"
+        className="flex flex-col md:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-border-subtle text-xs text-secondary bg-surface"
       >
         {/* Bên trái chân bảng: Dropdown chọn số dòng & Thông tin tổng số */}
-        <div className="flex items-center gap-2.5 shrink-0 select-none">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 select-none">
           <span className="font-medium">Hiển thị</span>
           <select
             value={pageSize}
@@ -724,31 +721,29 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         {/* Cụm điều hướng phân trang hoàn chỉnh */}
         {totalPages > 1 && (
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center select-none">
-            <div className="flex items-center gap-1">
-              {/* Nút về trang đầu (hiện khi có từ 6 trang trở lên) */}
-              {totalPages > 5 && (
-                <button
-                  type="button"
-                  disabled={currentPage <= 1 || isLoading}
-                  onClick={() => handlePageChange(1)}
-                  className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-                  title="Về trang đầu (Trang 1)"
-                  aria-label="Về trang đầu"
-                >
-                  <i className="fa-solid fa-angles-left text-[11px]" />
-                </button>
-              )}
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              {/* Nút về trang đầu */}
+              <button
+                type="button"
+                disabled={currentPage <= 1 || isLoading}
+                onClick={() => handlePageChange(1)}
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                title="Về trang đầu (Trang 1)"
+                aria-label="Về trang đầu"
+              >
+                <i className="fa-solid fa-angles-left text-[10px] sm:text-[11px]" />
+              </button>
 
               {/* Nút lùi 1 trang */}
               <button
                 type="button"
                 disabled={currentPage <= 1 || isLoading}
                 onClick={() => handlePageChange(currentPage - 1)}
-                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title="Trang trước"
                 aria-label="Trang trước"
               >
-                <i className="fa-solid fa-chevron-left text-[11px]" />
+                <i className="fa-solid fa-chevron-left text-[10px] sm:text-[11px]" />
               </button>
 
               {/* Danh sách các nút số trang + Nút ... rút gọn thông minh */}
@@ -760,17 +755,17 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       type="button"
                       disabled={isLoading}
                       onClick={() => handlePageChange(item.targetPage)}
-                      className="group min-w-[32px] h-8 px-1 text-xs font-medium rounded-lg border border-transparent hover:border-border-subtle hover:bg-surface-elevated text-muted hover:text-primary transition-all cursor-pointer flex items-center justify-center"
+                      className="group min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1 text-xs font-medium rounded-lg border border-transparent hover:border-border-subtle hover:bg-surface-elevated text-muted hover:text-primary transition-all cursor-pointer flex items-center justify-center"
                       title={
                         item.direction === 'prev'
-                          ? `Lùi 3 trang (Về trang ${item.targetPage})`
-                          : `Tiến 3 trang (Đến trang ${item.targetPage})`
+                          ? `Lùi 2 trang (Về trang ${item.targetPage})`
+                          : `Tiến 2 trang (Đến trang ${item.targetPage})`
                       }
-                      aria-label={item.direction === 'prev' ? 'Lùi 3 trang' : 'Tiến 3 trang'}
+                      aria-label={item.direction === 'prev' ? 'Lùi 2 trang' : 'Tiến 2 trang'}
                     >
-                      <span className="group-hover:hidden tracking-widest text-[11px] font-bold">•••</span>
+                      <span className="group-hover:hidden tracking-widest text-[10px] sm:text-[11px] font-bold">•••</span>
                       <i
-                        className={`hidden group-hover:inline fa-solid text-[10px] ${
+                        className={`hidden group-hover:inline fa-solid text-[9px] sm:text-[10px] ${
                           item.direction === 'prev' ? 'fa-angles-left' : 'fa-angles-right'
                         }`}
                       />
@@ -785,7 +780,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     type="button"
                     disabled={isLoading}
                     onClick={() => handlePageChange(item.num)}
-                    className={`min-w-[32px] h-8 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center ${
+                    className={`min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                       isActive
                         ? 'bg-primary text-white shadow-xs font-bold border border-primary'
                         : 'border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main'
@@ -803,52 +798,51 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 type="button"
                 disabled={currentPage >= totalPages || isLoading}
                 onClick={() => handlePageChange(currentPage + 1)}
-                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title="Trang sau"
                 aria-label="Trang sau"
               >
-                <i className="fa-solid fa-chevron-right text-[11px]" />
+                <i className="fa-solid fa-chevron-right text-[10px] sm:text-[11px]" />
               </button>
 
-              {/* Nút đến trang cuối (hiện khi có từ 6 trang trở lên) */}
-              {totalPages > 5 && (
-                <button
-                  type="button"
-                  disabled={currentPage >= totalPages || isLoading}
-                  onClick={() => handlePageChange(totalPages)}
-                  className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-                  title={`Đến trang cuối (Trang ${totalPages})`}
-                  aria-label="Đến trang cuối"
-                >
-                  <i className="fa-solid fa-angles-right text-[11px]" />
-                </button>
-              )}
+              {/* Nút đến trang cuối */}
+              <button
+                type="button"
+                disabled={currentPage >= totalPages || isLoading}
+                onClick={() => handlePageChange(totalPages)}
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                title={`Đến trang cuối (Trang ${totalPages})`}
+                aria-label="Đến trang cuối"
+              >
+                <i className="fa-solid fa-angles-right text-[10px] sm:text-[11px]" />
+              </button>
             </div>
 
-            {/* Ô nhảy nhanh đến trang (Hiện khi có nhiều trang: > 5 trang) */}
-            {totalPages > 5 && (
+            {/* Ô nhảy nhanh đến trang (Hiện khi có từ 5 trang trở lên) */}
+            {totalPages > 4 && (
               <form
                 onSubmit={handleJumpPage}
-                className="flex items-center gap-1.5 pl-2 sm:border-l sm:border-border-subtle text-secondary"
+                className="flex items-center gap-1 sm:gap-1.5 pl-1.5 sm:pl-2 border-l border-border-subtle text-secondary"
               >
-                <span className="text-[11px]">Đến trang</span>
+                <span className="text-[10px] sm:text-[11px] whitespace-nowrap">Đến trang</span>
                 <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={jumpPageInput}
-                  onChange={(e) => setJumpPageInput(e.target.value)}
+                  onChange={(e) => setJumpPageInput(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleJumpPage();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
                   placeholder={String(currentPage)}
-                  className="w-12 h-8 px-1.5 text-center bg-surface-elevated border border-border-subtle rounded-lg text-main text-xs focus:outline-hidden focus:border-primary font-medium"
+                  title="Nhập số trang và nhấn Enter"
+                  className="w-10 sm:w-12 h-7 sm:h-8 px-1 text-center bg-surface-elevated border border-border-subtle rounded-lg text-main text-xs focus:outline-hidden focus:border-primary font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   aria-label="Nhập số trang muốn chuyển tới"
                 />
-                <button
-                  type="submit"
-                  className="h-8 px-2.5 rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-xs font-semibold text-primary cursor-pointer hover:border-primary/40 transition-colors"
-                  title="Chuyển đến trang đã nhập"
-                >
-                  Đi
-                </button>
               </form>
             )}
           </div>

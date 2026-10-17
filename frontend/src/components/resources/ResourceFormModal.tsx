@@ -646,7 +646,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     setIsDirty(true);
                     setFormData((prev) => ({ ...prev, ky_hieu: e.target.value }));
                   }}
-                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main font-mono focus:outline-hidden focus:border-primary transition-colors"
+                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
                 />
               </div>
 
@@ -903,7 +903,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                           setErrors((prev) => ({ ...prev, link_thay_the: '' }));
                         }
                       }}
-                      className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors font-mono"
+                      className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
                     />
                     {errors.link_thay_the && (
                       <p className="text-danger text-xs mt-1 font-medium">
@@ -996,7 +996,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                             Hiện có
                           </span>
                           {file.size && (
-                            <span className="text-[11px] text-muted font-mono shrink-0">
+                            <span className="text-[11px] text-muted shrink-0">
                               ({formatSize(file.size)})
                             </span>
                           )}
@@ -1031,7 +1031,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold border border-primary/20 shrink-0">
                             Mới thêm
                           </span>
-                          <span className="text-[11px] text-muted font-mono shrink-0">
+                          <span className="text-[11px] text-muted shrink-0">
                             ({formatSize(file.size)})
                           </span>
                         </div>

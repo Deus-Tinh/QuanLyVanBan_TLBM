@@ -180,7 +180,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase font-mono ${getBadgeStyle(ext)}`}>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase ${getBadgeStyle(ext)}`}>
                   {ext}
                 </span>
                 <h3 className="text-sm sm:text-base font-bold text-main truncate leading-tight" title={file.name}>
