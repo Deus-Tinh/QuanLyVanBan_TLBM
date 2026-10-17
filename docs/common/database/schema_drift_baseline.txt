@@ -241,13 +241,7 @@ signing_signature.ma_bam_anh_chu_ky: migration varchar(64) null=NO default=None 
 signing_signature.ngay_ky: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
 signing_signature.trang_thai_xac_minh: migration varchar(20) null=NO default=None | DDL varchar(20) null=NO default='HOP_LE'
 signing_signature.vi_tri_anh_chu_ky: migration varchar(500) null=NO default=None | DDL varchar(500) null=NO default=''
-task_attachment: thiếu bảng
-task_comment: thiếu bảng
-task_congviec: thiếu bảng
-task_congviec_donvi: thiếu bảng
-task_participant: thiếu bảng
 ENUM chitiettailieu_hienthi: thiếu (TAT_CA,NOI_BO_PHONG_BAN)
-ENUM document_kind: thiếu (vanbanden,vanbandi)
 ENUM hieu_luc_status: thiếu (CON_HIEU_LUC,CON_HIEU_LUC_1_PHAN,HET_HIEU_LUC,HET_VA_THAY_THE)
 ENUM signing_attempt_status: thiếu (DRAFT,CHO_KY,YEU_CAU_SUA,HOAN_THANH,TU_CHOI,HUY,QUA_HAN)
 ENUM signing_manifest_status: thiếu (DRAFT,FINAL)
@@ -259,8 +253,6 @@ ENUM signing_scope: thiếu (DEPARTMENT,COMPANY)
 ENUM signing_step_status: thiếu (CHO_KY,DA_KY,TU_CHOI,BO_QUA,YEU_CAU_SUA,THU_HOI)
 ENUM signing_thread_status: thiếu (OPEN,RELEASED,RESOLVED)
 ENUM signing_verify_status: thiếu (CHUA_XAC_MINH,HOP_LE,KHONG_HOP_LE)
-ENUM task_attachment_loai: thiếu (GIAO_VIEC,BANG_CHUNG)
-ENUM task_vaitro: thiếu (CHU_TRI,CHI_DAO,THAM_GIA)
 VIEW ai_tailieu: thiếu
 VIEW ai_vanbanden: thiếu
 VIEW ai_vanbanden_donvinhan: thiếu
@@ -306,7 +298,6 @@ TRIGGER signing_audit_log.trg_signing_audit_log_immutable: thiếu
 TRIGGER signing_key_unlock.trg_signing_key_unlock_updated_at: thiếu
 TRIGGER signing_manifest.trg_signing_manifest_protect: thiếu
 TRIGGER signing_signature.trg_signing_signature_immutable: thiếu
-TRIGGER task_congviec.trg_congviec_updated_at: thiếu
 SEED accounts_employee: DDL 1 dòng, migration thiếu 1 #6c87aadfd46d97b4, thừa 0 #-
 SEED accounts_position: DDL 1 dòng, migration thiếu 1 #c25d00fbca4c7ad1, thừa 0 #-
 SEED auth_group_permissions: DDL 197 dòng, migration thiếu 4 #80ee33b886eb0c51, thừa 4 #96e5f3749f9977e2

@@ -19,6 +19,7 @@ import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
+import TasksPage from '../modules/work/pages/TasksPage';
 import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
 import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
@@ -107,7 +108,7 @@ export default function AppRouter({
             </React.Suspense>
           }
         />
-        <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
+        <Route path="/tasks" element={<TasksPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/birthdays" element={<BirthdayPage />} />
 

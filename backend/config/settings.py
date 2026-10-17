@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "records",
     "dashboard",
     "birthdays",
+    "work",
     "documents",
     "signing",
     "document_templates",
