@@ -10,30 +10,32 @@ describe('AppHeader Logo Visibility & Sidebar Coordination', () => {
     onToggleSidebar: () => {},
   };
 
-  it('renders Logo and home button when sidebar is collapsed (isSidebarOpen=false)', () => {
+  it('renders Logo and hamburger button when sidebar is collapsed (isSidebarOpen=false)', () => {
     render(
       <MemoryRouter>
         <AppHeader {...defaultProps} isSidebarOpen={false} />
       </MemoryRouter>
     );
 
-    // Nút Home đưa người dùng về trang chủ.
-    expect(screen.getByRole('button', { name: 'Home' })).toBeInTheDocument();
+    // Phải có nút hamburger
+    const menuBtn = screen.getByRole('button', { name: /mở menu điều hướng/i });
+    expect(menuBtn).toBeInTheDocument();
 
     // Phải có Logo
     const headerLogoImages = screen.getAllByAltText('Bảo Long Insurance');
     expect(headerLogoImages.length).toBeGreaterThan(0);
   });
 
-  it('hides Logo and home button when sidebar is expanded (isSidebarOpen=true) to prevent duplicate logos', () => {
+  it('hides Logo and hamburger button when sidebar is expanded (isSidebarOpen=true) to prevent duplicate logos', () => {
     render(
       <MemoryRouter>
         <AppHeader {...defaultProps} isSidebarOpen={true} />
       </MemoryRouter>
     );
 
-    // Nút Home cũng ẩn khi sidebar đã mở.
-    expect(screen.queryByRole('button', { name: 'Home' })).not.toBeInTheDocument();
+    // Không có nút hamburger
+    const menuBtn = screen.queryByRole('button', { name: /mở menu điều hướng/i });
+    expect(menuBtn).not.toBeInTheDocument();
 
     // Không có Logo ở Header
     const headerLogoImages = screen.queryAllByAltText('Bảo Long Insurance');

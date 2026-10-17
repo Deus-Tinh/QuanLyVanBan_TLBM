@@ -14,7 +14,7 @@ import {
   getAISettings,
 } from '../../api';
 import AISettingsModal from '../../components/AISettingsModal';
-import { useTranslation } from '@i18n/translate';
+import { t as translate, useTranslation, type SupportedLanguage } from '@i18n/translate';
 import '@styles/ai-chat.css';
 
 interface AiAssistantPageProps {
@@ -167,112 +167,46 @@ function parseChatSessions(raw: string | null): ChatSession[] | null {
   }
 }
 
-function createDefaultSession(id: string = 'session-default', lang: 'vi' | 'en' = 'vi'): ChatSession {
-  if (lang === 'en') {
-    return {
-      id,
-      title: 'New Conversation',
-      timeLabel: 'Hôm nay',
-      snippet: 'Start a new conversation...',
-      messages: [
-        {
-          id: `msg-welcome-${Date.now()}`,
-          sender: 'ai',
-          text: `**Welcome, Officer!**\n\nI am the **TLBM AI Assistant** — an intelligent semantic Q&A and document retrieval system for administrative procedures.\n\nI prioritize searching our digitized knowledge base (PDF, DOCX, TXT), analyzing incoming/outgoing records, and deep linking with operational modules. Choose a suggested topic below or ask any question!`,
-          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          quickPrompts: [
-            'Procedure for incoming documents?',
-            'Security regulations for confidential docs?',
-            'Electronic PKI token digital signing guide?',
-            'Staff directory & permission matrix?',
-          ],
-        },
-      ],
-    };
-  }
-
+function createDefaultSession(id: string = 'session-default', lang: SupportedLanguage = 'vi'): ChatSession {
+  const tr = (key: string) => translate(key, undefined, lang);
   return {
     id,
-    title: 'Cuộc trò chuyện mới',
+    title: tr('aiAssistant.defaultSession.title'),
     timeLabel: 'Hôm nay',
-    snippet: 'Bắt đầu cuộc trò chuyện mới...',
+    snippet: tr('aiAssistant.defaultSession.snippet'),
     messages: [
       {
         id: `msg-welcome-${Date.now()}`,
         sender: 'ai',
-        text: `**Xin chào Quý Cán bộ!**\n\nTôi là **Trợ Lý AI TLBM** — hệ thống hỏi đáp quy trình số hóa, văn bản nội bộ và hồ sơ tra cứu thông minh.\n\nTôi ưu tiên tìm kiếm trong kho tài liệu đã nạp (PDF, DOCX, TXT), phân tích văn bản đến/đi và liên kết chính xác đến các phân hệ nghiệp vụ. Bạn có thể chọn thẻ mẫu bên dưới hoặc gõ câu hỏi bất kỳ!`,
-        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        quickPrompts: [
-          'Quy trình tiếp nhận văn bản đến?',
-          'Quy định bảo mật tài liệu Tuyệt Mật?',
-          'Hướng dẫn ký số điện tử token PKI?',
-          'Xem cơ cấu và phân quyền cán bộ nhân viên?',
-        ],
+        text: tr('aiAssistant.defaultSession.welcome'),
+        time: new Date().toLocaleTimeString(lang === 'en' ? 'en-US' : 'vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        quickPrompts: [1, 2, 3, 4].map((i) => tr(`aiAssistant.defaultSession.quickPrompt${i}`)),
       },
     ],
   };
 }
 
-// 4 Thẻ gợi ý chuẩn nhận diện thương hiệu TLBM
+// 4 Thẻ gợi ý chuẩn nhận diện thương hiệu TLBM; nội dung dịch nằm ở aiAssistant.templates.<key>
 const PROMPT_TEMPLATES = [
   {
+    key: 'incoming',
     icon: 'fa-inbox',
     iconClass: 'text-primary bg-primary-subtle border-primary/30',
-    title: 'Tiếp nhận Văn bản Đến',
-    desc: 'Hỏi các bước vào sổ, scan số hóa và trình Ban Giám Hiệu bút phê.',
-    query: 'Hướng dẫn quy trình tiếp nhận và xử lý văn bản đến trong ngày?',
   },
   {
+    key: 'confidential',
     icon: 'fa-shield-halved',
     iconClass: 'text-danger bg-danger-subtle border-danger/30',
-    title: 'Xử lý Văn bản Mật',
-    desc: 'Quy chuẩn mã hóa, xác thực 2FA và quyền xem tài liệu Tuyệt Mật.',
-    query: 'Quy định bảo mật và quy trình chuyển giao văn bản tuyệt mật?',
   },
   {
+    key: 'signing',
     icon: 'fa-file-signature',
     iconClass: 'text-warning-text bg-warning-subtle border-warning/30',
-    title: 'Quy trình Trình Ký Số',
-    desc: 'Sơ đồ luồng ký số Token PKI/Cloud HSM và phát hành văn bản đi.',
-    query: 'Làm thế nào để tạo luồng trình ký số điện tử trên hệ thống?',
   },
   {
+    key: 'organization',
     icon: 'fa-sitemap',
     iconClass: 'text-success bg-success-subtle border-success/30',
-    title: 'Cơ cấu & Phân quyền',
-    desc: 'Tra cứu danh mục phòng ban Cấp 1, Cấp 2 và ma trận quyền CBNV.',
-    query: 'Hệ thống phân quyền cán bộ nhân viên hoạt động như thế nào?',
-  },
-];
-
-const PROMPT_TEMPLATES_EN = [
-  {
-    icon: 'fa-inbox',
-    iconClass: 'text-primary bg-primary-subtle border-primary/30',
-    title: 'Incoming Documents',
-    desc: 'Ask about registration, digital scanning, and forwarding to Directors.',
-    query: 'What is the standard procedure for receiving and processing incoming documents?',
-  },
-  {
-    icon: 'fa-shield-halved',
-    iconClass: 'text-danger bg-danger-subtle border-danger/30',
-    title: 'Confidential Documents',
-    desc: 'Standards for encryption, 2FA authentication, and top-secret access rights.',
-    query: 'What are security regulations and transfer procedures for top-secret documents?',
-  },
-  {
-    icon: 'fa-file-signature',
-    iconClass: 'text-warning-text bg-warning-subtle border-warning/30',
-    title: 'Digital Signing Workflow',
-    desc: 'Flowchart for PKI/Cloud HSM digital signatures and outgoing documents.',
-    query: 'How to create an electronic digital signing workflow on the system?',
-  },
-  {
-    icon: 'fa-sitemap',
-    iconClass: 'text-success bg-success-subtle border-success/30',
-    title: 'Organization & Permissions',
-    desc: 'Lookup level 1 & 2 department hierarchy and employee permission matrix.',
-    query: 'How does the staff permission and role management system work?',
   },
 ];
 
@@ -284,7 +218,7 @@ function getSessionUser() {
       return {
         username: parsed.username || 'admin',
         fullName: parsed.fullName || parsed.full_name || 'Huỳnh Vương Thanh Nhã',
-        role: parsed.roleTitle || 'Cán bộ chuyên môn (Nhóm 8)',
+        role: parsed.roleTitle || translate('aiAssistant.msg.defaultRole'),
         isAdmin: parsed.role === 'admin' || parsed.username === 'admin',
       };
     }
@@ -294,7 +228,7 @@ function getSessionUser() {
   return {
     username: 'admin',
     fullName: 'Huỳnh Vương Thanh Nhã',
-    role: 'Cán bộ chuyên môn (Nhóm 8)',
+    role: translate('aiAssistant.msg.defaultRole'),
     isAdmin: false,
   };
 }
@@ -421,7 +355,7 @@ function DocumentPreviewModal({ filename, onClose }: PreviewModalProps) {
       .catch((err: unknown) => {
         if (!cancelled) {
           const resErr = err as { response?: { data?: { detail?: string } }; message?: string };
-          const msg = resErr.response?.data?.detail || resErr.message || (currentLang === 'en' ? 'Unable to load document content.' : 'Không thể tải nội dung tài liệu.');
+          const msg = resErr.response?.data?.detail || resErr.message || translate('aiAssistant.inline.unableToLoadDocumentContent', undefined, currentLang);
           setError(msg);
           setLoading(false);
         }
@@ -460,7 +394,7 @@ function DocumentPreviewModal({ filename, onClose }: PreviewModalProps) {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert(currentLang === 'en' ? 'Unable to download file.' : 'Không thể tải file về máy.');
+      alert(t('aiAssistant.inline.unableToDownloadFile'));
     }
   };
 
@@ -478,7 +412,7 @@ function DocumentPreviewModal({ filename, onClose }: PreviewModalProps) {
       .catch((err: unknown) => {
         if (!cancelled) {
           const resErr = err as { message?: string };
-          setError(resErr.message || (currentLang === 'en' ? 'Unable to load PDF file.' : 'Không thể tải tệp PDF.'));
+          setError(resErr.message || translate('aiAssistant.inline.unableToLoadPdfFile', undefined, currentLang));
         }
       });
 
@@ -662,7 +596,7 @@ function CitationsBox({
   onPreview?: (filename: string) => void;
   onNavigate?: (page: ActivePageId) => void;
 }) {
-  const { t, currentLang } = useTranslation();
+  const { t } = useTranslation();
   if (!sources || sources.length === 0) return null;
 
   return (
@@ -674,9 +608,9 @@ function CitationsBox({
 
       <div className="citations-list">
         {sources.map((src, idx) => {
-          const defaultDocLabel = currentLang === 'en' ? `Document #${idx + 1}` : `Tài liệu #${idx + 1}`;
+          const defaultDocLabel = t('aiAssistant.inline.documentValue', { value: idx + 1 });
           const fileName = src.file_name || src.label || defaultDocLabel;
-          const code = src.code || (src.page ? `${currentLang === 'en' ? 'Page ' : 'Trang '}${src.page}` : src.section ? `${currentLang === 'en' ? 'Section ' : 'Đoạn '}${src.section}` : `${currentLang === 'en' ? 'Part ' : 'Phần '}#${idx + 1}`);
+          const code = src.code || (src.page ? `${t('aiAssistant.inline.page')}${src.page}` : src.section ? `${t('aiAssistant.inline.section')}${src.section}` : `${t('aiAssistant.inline.part')}#${idx + 1}`);
 
           const isConfidential =
             src.type === 'confidential' ||
@@ -964,7 +898,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     try {
       setUploadProgress({
         status: 'uploading',
-        message: currentLang === 'en' ? `Uploading file ${file.name}...` : `Đang tải tệp ${file.name}...`,
+        message: t('aiAssistant.inline.uploadingFileName', { name: file.name }),
       });
       const res = await uploadDocumentAsync(file);
 
@@ -1010,14 +944,14 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         await refreshDocuments();
         setUploadProgress({
           status: 'done',
-          message: currentLang === 'en' ? 'Upload and indexing successful.' : 'Tải lên và lập chỉ mục thành công.',
+          message: t('aiAssistant.inline.uploadAndIndexingSuccessful'),
         });
         setTimeout(() => {
           setUploadProgress(null);
         }, 2500);
       }
     } catch (err: unknown) {
-      alert(getErrorMessage(err, currentLang === 'en' ? 'Failed to upload document.' : 'Lỗi tải lên tài liệu.'));
+      alert(getErrorMessage(err, t('aiAssistant.inline.failedToUploadDocument')));
       setUploadProgress(null);
     }
   };
@@ -1036,7 +970,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         await deleteDocument(filename);
         await refreshDocuments();
       } catch (err: unknown) {
-        alert(getErrorMessage(err, currentLang === 'en' ? 'Failed to delete document.' : 'Lỗi khi xóa tài liệu.'));
+        alert(getErrorMessage(err, t('aiAssistant.inline.failedToDeleteDocument')));
       }
     }
   };
@@ -1047,7 +981,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         await deleteDocuments();
         await refreshDocuments();
       } catch (err: unknown) {
-        alert(getErrorMessage(err, currentLang === 'en' ? 'Failed to clear documents.' : 'Lỗi khi dọn sạch kho tài liệu.'));
+        alert(getErrorMessage(err, t('aiAssistant.inline.failedToClearDocuments')));
       }
     }
   };
@@ -1105,7 +1039,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
       const res = await askQuestion(text, history, selectedCategory || null, targetDocument?.filename || null);
 
-      const aiText = res.answer || res.text || 'Không có phản hồi từ mô hình AI.';
+      const aiText = res.answer || res.text || t('aiAssistant.msg.noModelResponse');
       const aiMsg: ChatMessage = {
         id: `ai-${activeSessionId}-${messageTimestamp}`,
         sender: 'ai',
@@ -1113,9 +1047,9 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         citations: res.sources || res.citations || [],
         quickPrompts: [
-          'Tóm tắt các điểm quan trọng',
-          'Trích xuất số liệu liên quan',
-          'Văn bản quy định căn cứ',
+          t('aiAssistant.msg.followUpSummary'),
+          t('aiAssistant.msg.followUpFigures'),
+          t('aiAssistant.msg.followUpBasis'),
         ],
       };
 
@@ -1141,7 +1075,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       const aiMsg: ChatMessage = {
         id: `ai-${activeSessionId}-${messageTimestamp}`,
         sender: 'ai',
-        text: getErrorMessage(err, 'Không thể truy cập AI lúc này. Vui lòng thử lại sau.'),
+        text: getErrorMessage(err, t('aiAssistant.msg.aiUnavailable')),
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -1173,7 +1107,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       utterance.rate = 1.0;
       window.speechSynthesis.speak(utterance);
     } else {
-      alert('Trình duyệt không hỗ trợ nhận diện giọng nói TTS.');
+      alert(t('aiAssistant.msg.ttsUnsupported'));
     }
   };
 
@@ -1185,7 +1119,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     };
     const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('Trình duyệt không hỗ trợ Web Speech API. Vui lòng sử dụng Google Chrome hoặc Microsoft Edge.');
+      alert(t('aiAssistant.msg.speechUnsupported'));
       return;
     }
 
@@ -1314,7 +1248,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
           onClick={() => setIsSidebarOpen(false)}
           role="button"
           tabIndex={0}
-          aria-label="Đóng thanh bên"
+          aria-label={t('aiAssistant.msg.closeSidebar')}
         />
       )}
 
@@ -1388,7 +1322,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             <div className="ai-sidebar-sessions-list">
               <div className="session-group">
                 <div className="session-group-title">
-                  <span>{currentLang === 'en' ? 'Chat History' : 'Lịch sử trò chuyện'}</span>
+                  <span>{t('aiAssistant.inline.chatHistory')}</span>
                   {sessions.length > 0 && (
                     <span className="session-count-badge">{sessions.length}</span>
                   )}
@@ -1525,12 +1459,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                         onClick={() => toggleRoot(root.name)}
                         title={
                           isRootCollapsed
-                            ? currentLang === 'en'
-                              ? `Expand folder ${root.name}`
-                              : `Mở rộng thư mục ${root.name}`
-                            : currentLang === 'en'
-                            ? `Collapse folder ${root.name}`
-                            : `Thu gọn thư mục ${root.name}`
+                            ? t('aiAssistant.inline.expandFolderName', { name: root.name })
+                            : t('aiAssistant.inline.collapseFolderName', { name: root.name })
                         }
                       >
                         <div className="sidebar-category-title">
@@ -1566,12 +1496,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                   onClick={() => toggleSub(subKey)}
                                   title={
                                     isSubCollapsed
-                                      ? currentLang === 'en'
-                                        ? `Expand ${sub.name}`
-                                        : `Mở rộng ${sub.name}`
-                                      : currentLang === 'en'
-                                      ? `Collapse ${sub.name}`
-                                      : `Thu gọn ${sub.name}`
+                                      ? t('aiAssistant.inline.expandName', { name: sub.name })
+                                      : t('aiAssistant.inline.collapseName', { name: sub.name })
                                   }
                                 >
                                   <div className="sidebar-subfolder-title">
@@ -1615,9 +1541,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                             e.dataTransfer.effectAllowed = 'copy';
                                           }}
                                           title={
-                                            currentLang === 'en'
-                                              ? `Drag "${itemLabel}" to chat or click crosshairs to target`
-                                              : `Kéo "${itemLabel}" vào thanh chat hoặc bấm tâm ngắm để tra cứu riêng`
+                                            t('aiAssistant.inline.dragItemlabelToChatOr', { itemLabel })
                                           }
                                         >
                                           <div className="sidebar-doc-info" title={d.filename}>
@@ -1642,8 +1566,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                               )}
                                               title={
                                                 targetDocument?.filename === d.filename
-                                                  ? (currentLang === 'en' ? 'Unpin target document' : 'Bỏ chỉ định tài liệu này')
-                                                  : (currentLang === 'en' ? 'Target this document for Q&A' : 'Chỉ định tài liệu này để hỏi đáp')
+                                                  ? (t('aiAssistant.inline.unpinTargetDocument'))
+                                                  : (t('aiAssistant.inline.targetThisDocumentForQ'))
                                               }
                                             >
                                               <i className="fa-solid fa-crosshairs" />
@@ -1692,9 +1616,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                     e.dataTransfer.effectAllowed = 'copy';
                                   }}
                                   title={
-                                    currentLang === 'en'
-                                      ? `Drag "${d.filename}" to chat or click crosshairs to target`
-                                      : `Kéo "${d.filename}" vào thanh chat hoặc bấm tâm ngắm để tra cứu riêng`
+                                    t('aiAssistant.inline.dragFilenameToChatOr', { filename: d.filename })
                                   }
                                 >
                                   <div className="sidebar-doc-info" title={d.filename}>
@@ -1716,8 +1638,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                       )}
                                       title={
                                         targetDocument?.filename === d.filename
-                                          ? (currentLang === 'en' ? 'Unpin target document' : 'Bỏ chỉ định tài liệu này')
-                                          : (currentLang === 'en' ? 'Target this document for Q&A' : 'Chỉ định tài liệu này để hỏi đáp')
+                                          ? (t('aiAssistant.inline.unpinTargetDocument'))
+                                          : (t('aiAssistant.inline.targetThisDocumentForQ'))
                                       }
                                     >
                                       <i className="fa-solid fa-crosshairs" />
@@ -1846,10 +1768,10 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 type="button"
                 className="chat-action-btn"
                 onClick={() => setShowSettingsModal(true)}
-                title={currentLang === 'en' ? 'AI Model & API Key Settings' : 'Cài đặt mô hình & API Key'}
+                title={t('aiAssistant.inline.aiModelApiKeySettings')}
               >
                 <i className="fa-solid fa-gear" />
-                <span className="hidden xl:inline">{currentLang === 'en' ? 'AI Settings' : 'Cài đặt AI'}</span>
+                <span className="hidden xl:inline">{t('aiAssistant.inline.aiSettings')}</span>
               </button>
             )}
 
@@ -1861,7 +1783,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               title={t('aiAssistant.exportChat')}
             >
               <i className="fa-solid fa-download" />
-              <span className="hidden xl:inline">{currentLang === 'en' ? 'Export' : 'Xuất'}</span>
+              <span className="hidden xl:inline">{t('aiAssistant.inline.export')}</span>
             </button>
 
             {/* Nút Làm mới */}
@@ -1869,7 +1791,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               type="button"
               className="chat-action-btn"
               onClick={() => {
-                if (confirm(currentLang === 'en' ? 'Reset this conversation?' : 'Làm mới đoạn trò chuyện này?')) {
+                if (confirm(t('aiAssistant.inline.resetThisConversation'))) {
                   setSessions((prev) =>
                     prev.map((s) =>
                       s.id === activeSessionId ? { ...s, messages: [s.messages[0]] } : s
@@ -1877,7 +1799,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                   );
                 }
               }}
-              title={currentLang === 'en' ? 'Reset conversation' : 'Làm mới cuộc trò chuyện'}
+              title={t('aiAssistant.inline.resetConversation')}
             >
               <i className="fa-solid fa-rotate-left" />
             </button>
@@ -1919,23 +1841,23 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
           {messages.length <= 1 && (
             <div className="ai-prompt-grid-container">
               <div className="prompt-grid-header">
-                <h3>{currentLang === 'en' ? 'Quick Q&A Suggestions For You' : 'Gợi Ý Tra Cứu Nhanh Dành Cho Bạn'}</h3>
-                <p>{currentLang === 'en' ? 'Click any card to automatically send a query to AI Assistant' : 'Nhấp vào thẻ bất kỳ để gửi yêu cầu tra cứu tự động đến Trợ lý AI'}</p>
+                <h3>{t('aiAssistant.inline.quickQASuggestionsFor')}</h3>
+                <p>{t('aiAssistant.inline.clickAnyCardToAutomatically')}</p>
               </div>
 
               <div className="ai-prompt-cards-grid">
-                {(currentLang === 'en' ? PROMPT_TEMPLATES_EN : PROMPT_TEMPLATES).map((tmpl, idx) => (
+                {PROMPT_TEMPLATES.map((tmpl, idx) => (
                   <div
                     key={idx}
                     className="ai-prompt-card"
-                    onClick={() => handleSend(tmpl.query)}
+                    onClick={() => handleSend(t(`aiAssistant.templates.${tmpl.key}.query`))}
                   >
                     <div className={`prompt-card-icon border ${tmpl.iconClass}`}>
                       <i className={`fa-solid ${tmpl.icon}`} />
                     </div>
                     <div className="prompt-card-body">
-                      <div className="prompt-card-title">{tmpl.title}</div>
-                      <div className="prompt-card-desc">{tmpl.desc}</div>
+                      <div className="prompt-card-title">{t(`aiAssistant.templates.${tmpl.key}.title`)}</div>
+                      <div className="prompt-card-desc">{t(`aiAssistant.templates.${tmpl.key}.desc`)}</div>
                     </div>
                     <i className="fa-solid fa-arrow-right prompt-card-arrow" />
                   </div>
@@ -1966,9 +1888,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                     <span className="sender-name">
                       {msg.sender === 'user'
                         ? currentUser.fullName
-                        : currentLang === 'en'
-                        ? `TLBM AI Assistant (${aiConfig?.provider ? aiConfig.provider.toUpperCase() : 'GPT-4o'})`
-                        : `Trợ Lý AI TLBM (${aiConfig?.provider ? aiConfig.provider.toUpperCase() : 'GPT-4o'})`}
+                        : t('aiAssistant.assistantSenderName', { provider: aiConfig?.provider ? aiConfig.provider.toUpperCase() : 'GPT-4o' })}
                     </span>
                     <span className="message-time">{msg.time}</span>
                   </div>
@@ -2027,13 +1947,11 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                         className="msg-tool-btn"
                         onClick={() => {
                           setAiAlertMsg(
-                            currentLang === 'en'
-                              ? 'Thank you for your helpful feedback!'
-                              : 'Cảm ơn bạn đã đánh giá câu trả lời hữu ích!'
+                            t('aiAssistant.inline.thankYouForYourHelpful')
                           );
                           setAiAlertOpen(true);
                         }}
-                        title={currentLang === 'en' ? 'Helpful' : 'Hữu ích'}
+                        title={t('aiAssistant.inline.helpful')}
                       >
                         <i className="fa-regular fa-thumbs-up" />
                       </button>
@@ -2043,13 +1961,11 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                         className="msg-tool-btn"
                         onClick={() => {
                           setAiAlertMsg(
-                            currentLang === 'en'
-                              ? 'System recorded your feedback to enhance the AI model!'
-                              : 'Hệ thống đã ghi nhận phản hồi để hoàn thiện mô hình AI!'
+                            t('aiAssistant.inline.systemRecordedYourFeedbackTo')
                           );
                           setAiAlertOpen(true);
                         }}
-                        title={currentLang === 'en' ? 'Needs improvement' : 'Cần cải thiện'}
+                        title={t('aiAssistant.inline.needsImprovement')}
                       >
                         <i className="fa-regular fa-thumbs-down" />
                       </button>
@@ -2061,7 +1977,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                         title={t('aiAssistant.readAloud')}
                       >
                         <i className="fa-solid fa-volume-high" />
-                        <span>{currentLang === 'en' ? 'Read' : 'Đọc'}</span>
+                        <span>{t('aiAssistant.inline.read')}</span>
                       </button>
                     </div>
                   )}
@@ -2079,9 +1995,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                   <div className="ai-thinking-card">
                     <span className="thinking-spinner" />
                     <span>
-                      {currentLang === 'en'
-                        ? 'AI Assistant is searching the TLBM document database and synthesizing response...'
-                        : 'Trợ lý AI đang tra cứu cơ sở dữ liệu văn bản TLBM và tổng hợp câu trả lời...'}
+                      {t('aiAssistant.inline.aiAssistantIsSearchingThe')}
                     </span>
                   </div>
                 </div>
@@ -2138,14 +2052,14 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                   {targetDocument.label || targetDocument.filename}
                 </span>
                 <span className="target-doc-tag">
-                  {currentLang === 'en' ? 'Targeted' : 'Đang chỉ định'}
+                  {t('aiAssistant.inline.targeted')}
                 </span>
               </div>
               <button
                 type="button"
                 className="target-doc-remove-btn"
                 onClick={() => setTargetDocument(null)}
-                title={currentLang === 'en' ? 'Clear targeted document' : 'Bỏ chỉ định tài liệu này'}
+                title={t('aiAssistant.inline.clearTargetedDocument')}
               >
                 <i className="fa-solid fa-xmark" />
               </button>
@@ -2157,9 +2071,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             <div className="chat-drag-cue">
               <i className="fa-solid fa-crosshairs text-primary fa-bounce" />
               <span>
-                {currentLang === 'en'
-                  ? 'Drop to target this document for queries'
-                  : 'Thả vào đây để chỉ định tra cứu tài liệu này'}
+                {t('aiAssistant.inline.dropToTargetThisDocument')}
               </span>
             </div>
           )}
@@ -2184,7 +2096,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               )}
               <span>
                 {uploadProgress.message ||
-                  (currentLang === 'en' ? 'Processing document...' : 'Đang tải lên & lập chỉ mục tài liệu...')}
+                  (t('aiAssistant.inline.processingDocument'))}
               </span>
             </div>
           )}
@@ -2232,9 +2144,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               className="chat-textarea"
               placeholder={
                 targetDocument
-                  ? (currentLang === 'en'
-                      ? `Ask about "${targetDocument.label || targetDocument.filename}"...`
-                      : `Hỏi về tài liệu "${targetDocument.label || targetDocument.filename}"...`)
+                  ? (t('aiAssistant.inline.askAboutValue', { value: targetDocument.label || targetDocument.filename }))
                   : isMobile
                   ? (t('aiAssistant.inputPlaceholderMobile') || 'Hỏi trợ lý AI...')
                   : t('aiAssistant.inputPlaceholder')

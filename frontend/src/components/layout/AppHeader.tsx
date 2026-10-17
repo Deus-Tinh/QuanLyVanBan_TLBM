@@ -24,6 +24,7 @@ export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleTheme,
+  onToggleSidebar,
   isSidebarOpen,
   onNavigate,
   preferredLightTheme,
@@ -40,16 +41,16 @@ export default function AppHeader({
             <button
               type="button"
               className="header-menu-btn lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-surface-hover transition-colors duration-fast cursor-pointer shrink-0"
-              onClick={() => onNavigate?.('dashboard')}
-              title={t('common.backToDashboard') || 'Trang chủ'}
-              aria-label="Home"
+              onClick={onToggleSidebar}
+              title={t('header.menuTooltip')}
+              aria-label={t('header.menuAria')}
             >
-              <i className="fa-solid fa-house text-lg" />
+              <i className="fa-solid fa-bars text-lg" />
             </button>
             <div
               className="flex items-center cursor-pointer transition-transform hover:scale-[1.03]"
               onClick={() => onNavigate?.('dashboard')}
-              title={`Bảo Long Insurance - ${t('common.backToDashboard') || 'Home'}`}
+              title="Bảo Long Insurance - Về Trang Chủ"
             >
               <Logo size="xl" className="h-11 sm:h-12" />
             </div>

@@ -42,31 +42,50 @@ class AIAccessTests(TestCase):
         self.assertTrue(is_ai_admin(self.superuser))
 
     def test_chat_requires_authentication(self):
-        response = self.client.post("/api/chat", {"question": "Tìm văn bản"}, format="json")
+        response = self.client.post("/api/ai/chat", {"question": "Tìm văn bản"}, format="json")
         self.assertEqual(response.status_code, 401)
 
     def test_chat_requires_use_aiassistant_permission(self):
         self.client.force_authenticate(self.no_perm)
-        response = self.client.post("/api/chat", {"question": "Tìm văn bản"}, format="json")
+        response = self.client.post("/api/ai/chat", {"question": "Tìm văn bản"}, format="json")
         self.assertEqual(response.status_code, 403)
 
     def test_categories_require_ai_permission(self):
         self.client.force_authenticate(self.no_perm)
-        self.assertEqual(self.client.get("/api/categories").status_code, 403)
+        self.assertEqual(self.client.get("/api/ai/categories").status_code, 403)
         self.client.force_authenticate(self.ai_user)
         with patch("backend.api.views.list_categories", return_value=[]):
-            response = self.client.get("/api/categories")
+            response = self.client.get("/api/ai/categories")
         self.assertEqual(response.status_code, 200)
+
+    def test_document_list_requires_ai_permission(self):
+        self.client.force_authenticate(self.no_perm)
+        self.assertEqual(self.client.get("/api/ai/documents").status_code, 403)
+        self.client.force_authenticate(self.ai_user)
+        with patch("backend.api.views.list_documents", return_value=[]):
+            self.assertEqual(self.client.get("/api/ai/documents").status_code, 200)
 
     def test_management_endpoints_are_superuser_only(self):
         for user in (self.no_perm, self.ai_user):
             self.client.force_authenticate(user)
-            self.assertEqual(self.client.get("/api/documents").status_code, 403)
-            self.assertEqual(self.client.get("/api/settings/ai").status_code, 403)
+            self.assertEqual(self.client.delete("/api/ai/documents").status_code, 403)
+            self.assertEqual(self.client.delete("/api/ai/documents/a.pdf").status_code, 403)
+            self.assertEqual(self.client.post("/api/ai/settings", {"provider": "gemini"}, format="json").status_code, 403)
+
+    def test_ai_user_reads_settings_without_api_key_info(self):
+        self.client.force_authenticate(self.no_perm)
+        self.assertEqual(self.client.get("/api/ai/settings").status_code, 403)
+        self.client.force_authenticate(self.ai_user)
+        response = self.client.get("/api/ai/settings")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("api_key_masked", response.json())
+        self.assertNotIn("has_api_key", response.json())
 
     def test_superuser_can_read_ai_settings(self):
         self.client.force_authenticate(self.superuser)
-        self.assertEqual(self.client.get("/api/settings/ai").status_code, 200)
+        response = self.client.get("/api/ai/settings")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("api_key_masked", response.json())
 
     def test_chat_passes_authenticated_employee_id_not_request_body(self):
         self.client.force_authenticate(self.ai_user)
@@ -74,7 +93,7 @@ class AIAccessTests(TestCase):
         fake_rag = SimpleNamespace(ask_document=ask)
         with patch.dict(sys.modules, {"backend.services.rag_service": fake_rag}):
             response = self.client.post(
-                "/api/chat",
+                "/api/ai/chat",
                 {"question": "Tìm văn bản", "employee_id": self.superuser.pk},
                 format="json",
             )

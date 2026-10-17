@@ -328,9 +328,12 @@ def ai_settings(request):
         denied = _require_ai_access(request)
         if denied:
             return denied
+        info = {"status": "ok", "provider": config.MODEL_PROVIDER, "llm_model": config.LLM_MODEL, "embed_model": config.EMBED_MODEL, "vision_model": config.VISION_MODEL}
+        if not is_ai_admin(request.user):
+            return JsonResponse(info)
         key = config.GEMINI_API_KEY if config.MODEL_PROVIDER == "gemini" else os.getenv("OPENAI_API_KEY", "")
         masked = f"{key[:6]}...{key[-4:]}" if len(key) > 10 else ("********" if key else "")
-        return JsonResponse({"status": "ok", "provider": config.MODEL_PROVIDER, "has_api_key": bool(key), "api_key_masked": masked, "llm_model": config.LLM_MODEL, "embed_model": config.EMBED_MODEL, "vision_model": config.VISION_MODEL})
+        return JsonResponse({**info, "has_api_key": bool(key), "api_key_masked": masked})
     denied = _require_ai_admin(request)
     if denied:
         return denied

@@ -19,11 +19,11 @@ export default function ThemeSelector({
   preferredLightTheme = 'light',
   preferredDarkTheme = 'dark',
 }: ThemeSelectorProps) {
-  const { currentLang } = useTranslation();
+  const { t } = useTranslation();
   const isLight = isLightThemeMode(currentTheme);
-  const activeOption = THEME_OPTIONS.find((t) => t.id === currentTheme) || THEME_OPTIONS[0];
-  const lightOption = THEME_OPTIONS.find((t) => t.id === preferredLightTheme) || THEME_OPTIONS[1];
-  const darkOption = THEME_OPTIONS.find((t) => t.id === preferredDarkTheme) || THEME_OPTIONS[0];
+  const activeOption = THEME_OPTIONS.find((o) => o.id === currentTheme) || THEME_OPTIONS[0];
+  const lightOption = THEME_OPTIONS.find((o) => o.id === preferredLightTheme) || THEME_OPTIONS[1];
+  const darkOption = THEME_OPTIONS.find((o) => o.id === preferredDarkTheme) || THEME_OPTIONS[0];
 
   const handleToggle = () => {
     if (onToggleTheme) {
@@ -34,17 +34,10 @@ export default function ThemeSelector({
   };
 
   const nextModeName = isLight
-    ? currentLang === 'en'
-      ? `Dark (${darkOption.name})`
-      : `Tối (${darkOption.name})`
-    : currentLang === 'en'
-    ? `Light (${lightOption.name})`
-    : `Sáng (${lightOption.name})`;
+    ? t('themeSelector.darkMode', { name: darkOption.name })
+    : t('themeSelector.lightMode', { name: lightOption.name });
 
-  const titleText =
-    currentLang === 'en'
-      ? `Active: ${activeOption.name} · Click to switch to ${nextModeName}`
-      : `Đang hiển thị: ${activeOption.name} · Nhấp để chuyển sang Giao diện ${nextModeName}`;
+  const titleText = t('themeSelector.title', { active: activeOption.name, next: nextModeName });
 
   return (
     <div className="relative">

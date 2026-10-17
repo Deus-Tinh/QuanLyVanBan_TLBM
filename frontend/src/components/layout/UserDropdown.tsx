@@ -16,7 +16,7 @@ interface SessionUser {
 }
 
 export default function UserDropdown({ onNavigate }: UserDropdownProps) {
-  const { t, currentLang } = useTranslation();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -67,27 +67,8 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
     };
   }, []);
 
-  let displayName = session?.fullName || session?.username || '';
-  let displayRoleOrEmail = session?.roleTitle || session?.email || '';
-
-  if (currentLang === 'en') {
-    if (session?.username === 'admin' || displayName.toLowerCase().includes('quản trị')) {
-      displayName = 'System Administrator';
-    } else if (displayName.toLowerCase().includes('khách') || !session) {
-      displayName = 'Guest User';
-    }
-
-    if (
-      displayRoleOrEmail.toLowerCase().includes('quản trị viên tối cao') ||
-      displayRoleOrEmail.toLowerCase().includes('quản trị hệ thống')
-    ) {
-      displayRoleOrEmail = 'Supreme Administrator';
-    } else if (displayRoleOrEmail.toLowerCase().includes('quản trị viên')) {
-      displayRoleOrEmail = 'Administrator';
-    } else if (displayRoleOrEmail.toLowerCase().includes('cán bộ')) {
-      displayRoleOrEmail = 'Staff Officer';
-    }
-  }
+  const displayName = session?.fullName || session?.username;
+  const displayRoleOrEmail = session?.roleTitle || session?.email || '';
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -95,8 +76,8 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
         type="button"
         className="flex items-center gap-2 p-1 sm:pr-2.5 rounded-full hover:bg-surface-hover border border-transparent hover:border-subtle transition-all duration-fast"
         onClick={() => setIsOpen(!isOpen)}
-        title={session ? (currentLang === 'en' ? 'User Profile' : 'Hồ sơ người dùng') : (currentLang === 'en' ? 'Guest Account (Not logged in)' : 'Tài khoản khách (Chưa đăng nhập)')}
-        aria-label={session ? (currentLang === 'en' ? 'User Profile' : 'Hồ sơ người dùng') : (currentLang === 'en' ? 'Guest Account' : 'Tài khoản khách')}
+        title={session ? (t('userMenu.inline.userProfile')) : (t('userMenu.inline.guestAccountNotLoggedIn'))}
+        aria-label={session ? (t('userMenu.inline.userProfile')) : (t('userMenu.inline.guestAccount'))}
       >
         {session ? (
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-semibold flex items-center justify-center text-xs">

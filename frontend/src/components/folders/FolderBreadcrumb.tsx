@@ -1,5 +1,6 @@
 import React from 'react';
 import { FolderBreadcrumb as BreadcrumbType } from '@app-types/resource';
+import { useTranslation } from '@i18n/translate';
 
 interface FolderBreadcrumbProps {
   breadcrumbs: BreadcrumbType[];
@@ -12,6 +13,7 @@ export const FolderBreadcrumb: React.FC<FolderBreadcrumbProps> = ({
   onSelect,
   className = '',
 }) => {
+  const { t } = useTranslation();
   return (
     <nav
       aria-label="Breadcrumb"
@@ -21,10 +23,10 @@ export const FolderBreadcrumb: React.FC<FolderBreadcrumbProps> = ({
         type="button"
         onClick={() => onSelect(null)}
         className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-secondary hover:text-primary hover:bg-surface-elevated transition-colors font-medium"
-        title="Thư mục gốc"
+        title={t('folders.breadcrumb.rootTitle')}
       >
         <i className="fa-solid fa-house-chimney text-xs text-primary" />
-        <span>Gốc</span>
+        <span>{t('folders.breadcrumb.root')}</span>
       </button>
 
       {breadcrumbs.map((item, index) => {
@@ -41,7 +43,7 @@ export const FolderBreadcrumb: React.FC<FolderBreadcrumbProps> = ({
                   ? 'text-primary font-bold bg-primary/10 cursor-default'
                   : 'text-secondary hover:text-primary hover:bg-surface-elevated font-medium'
               }`}
-              title={`Cấp ${item.depth}: ${item.name}`}
+              title={t('folders.breadcrumb.levelTitle', { level: item.depth, name: item.name })}
             >
               <i
                 className={`fa-solid ${
@@ -50,7 +52,7 @@ export const FolderBreadcrumb: React.FC<FolderBreadcrumbProps> = ({
               />
               <span className="max-w-[160px] truncate">{item.name}</span>
               <span className="text-[10px] px-1 py-0.2 rounded bg-surface border border-border-subtle text-muted">
-                Cấp {item.depth}
+                {t('folders.breadcrumb.level', { level: item.depth })}
               </span>
             </button>
           </React.Fragment>

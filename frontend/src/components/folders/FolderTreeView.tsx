@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { FolderItem } from '@app-types/resource';
+import { useTranslation } from '@i18n/translate';
 
 interface FolderTreeViewProps {
   tree: FolderItem[];
@@ -39,6 +40,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
   onDeleteFolder,
   searchTerm = '',
 }) => {
+  const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasChildren = Boolean(node.children && node.children.length > 0);
   const isExpanded = expandedIds.has(node.id);
@@ -109,7 +111,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
           {node.is_local && (
             <span
               className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 font-semibold border border-sky-500/20 shrink-0 flex items-center gap-0.5"
-              title={`Thư mục cục bộ: ${node.local_path || ''}`}
+              title={t('folders.tree.localFolderTitle', { path: node.local_path || '' })}
             >
               <i className="fa-solid fa-laptop text-[8px]" />
               Local
@@ -120,7 +122,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
           {(node.files_count || 0) > 0 && (
             <span
               className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary/10 text-primary font-semibold shrink-0"
-              title={`${node.files_count} tệp`}
+              title={t('folders.tree.filesTitle', { count: node.files_count })}
             >
               {node.files_count}
             </span>
@@ -134,7 +136,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
         >
           <button
             type="button"
-            title="Thêm thư mục con"
+            title={t('folders.tree.addSubfolder')}
             onClick={() => onCreateChild(node)}
             className="w-6 h-6 rounded-md hover:bg-surface text-secondary hover:text-primary flex items-center justify-center transition-colors"
           >
@@ -143,7 +145,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
 
           <button
             type="button"
-            title="Tùy chọn khác"
+            title={t('folders.tree.moreOptions')}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="w-6 h-6 rounded-md hover:bg-surface text-secondary hover:text-main flex items-center justify-center transition-colors"
           >
@@ -167,7 +169,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-secondary hover:text-primary hover:bg-primary/10 text-left transition-colors font-medium"
                 >
                   <i className="fa-solid fa-folder-plus text-primary w-4 text-center" />
-                  Thêm thư mục con
+                  {t('folders.tree.addSubfolder')}
                 </button>
                 <button
                   type="button"
@@ -178,7 +180,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-secondary hover:text-main hover:bg-surface-elevated text-left transition-colors"
                 >
                   <i className="fa-solid fa-pen-to-square text-amber-500 w-4 text-center" />
-                  Đổi tên / Sửa
+                  {t('folders.tree.rename')}
                 </button>
                 <button
                   type="button"
@@ -189,7 +191,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-secondary hover:text-main hover:bg-surface-elevated text-left transition-colors"
                 >
                   <i className="fa-solid fa-arrows-up-down-left-right text-sky-500 w-4 text-center" />
-                  Di chuyển...
+                  {t('folders.tree.move')}
                 </button>
                 <div className="h-px bg-border-subtle my-0.5" />
                 <button
@@ -201,7 +203,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
                   className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-danger hover:bg-danger/10 text-left transition-colors font-medium"
                 >
                   <i className="fa-solid fa-trash w-4 text-center" />
-                  Xóa thư mục
+                  {t('folders.tree.delete')}
                 </button>
               </div>
             </>
@@ -244,6 +246,7 @@ export const FolderTreeView: React.FC<FolderTreeViewProps> = ({
   onDeleteFolder,
   className = '',
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(() => {
     // Mặc định mở rộng cấp 0 và cấp 1
@@ -295,27 +298,27 @@ export const FolderTreeView: React.FC<FolderTreeViewProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <i className="fa-solid fa-sitemap text-primary text-xs" />
-            <span className="font-bold text-main text-xs">Cây thư mục</span>
+            <span className="font-bold text-main text-xs">{t('folders.tree.treeTitle')}</span>
           </div>
           <div className="flex items-center gap-1 text-[11px] text-secondary">
             <button
               type="button"
               onClick={handleExpandAll}
               className="px-1.5 py-0.5 rounded hover:bg-surface-elevated hover:text-primary transition-colors"
-              title="Mở rộng tất cả"
+              title={t('folders.tree.expandAllHint')}
             >
               <i className="fa-solid fa-angles-down text-[10px] mr-1" />
-              Mở hết
+              {t('folders.tree.expandAll')}
             </button>
             <span className="text-muted">|</span>
             <button
               type="button"
               onClick={handleCollapseAll}
               className="px-1.5 py-0.5 rounded hover:bg-surface-elevated hover:text-primary transition-colors"
-              title="Thu gọn tất cả"
+              title={t('folders.tree.collapseAllHint')}
             >
               <i className="fa-solid fa-angles-up text-[10px] mr-1" />
-              Thu gọn
+              {t('folders.tree.collapseAll')}
             </button>
           </div>
         </div>
@@ -327,7 +330,7 @@ export const FolderTreeView: React.FC<FolderTreeViewProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Lọc thư mục..."
+            placeholder={t('folders.tree.filterPlaceholder')}
             className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary text-main"
           />
           {searchTerm && (
@@ -347,7 +350,7 @@ export const FolderTreeView: React.FC<FolderTreeViewProps> = ({
         {tree.length === 0 ? (
           <div className="py-8 text-center text-xs text-muted">
             <i className="fa-solid fa-folder-open text-2xl mb-2 text-muted/40 block" />
-            Chưa có thư mục nào.
+            {t('folders.tree.empty')}
           </div>
         ) : (
           tree.map((node) => (

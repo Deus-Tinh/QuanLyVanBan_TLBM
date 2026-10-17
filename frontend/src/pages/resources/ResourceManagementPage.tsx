@@ -884,9 +884,9 @@ export default function ResourceManagementPage() {
             icon="fa-sitemap"
             onClick={() => setIsFolderManagerOpen(true)}
             className="h-10 px-4 rounded-xl text-xs sm:text-sm font-bold border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 shadow-2xs hover:border-primary transition-all"
-            title="Quản lý cấu trúc cây thư mục nhiều cấp (Level 1 -> Level 2 -> Level 3 -> Level 4...)"
+            title={t('folders.entry.openHint')}
           >
-            Cây thư mục nhiều cấp
+            {t('folders.entry.open')}
           </Button>
 
           {/* Nút Quản lý Danh mục (Thao tác cấu hình phụ) */}

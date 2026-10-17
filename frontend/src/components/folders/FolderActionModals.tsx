@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FolderItem } from '@app-types/resource';
 import { Button } from '@components/common/Button';
+import { useTranslation } from '@i18n/translate';
 
 // ═══════════════════════════════════════════════════════════════════
 // 1. Create or Edit Folder Modal
@@ -21,6 +22,7 @@ export const CreateOrEditFolderModal: React.FC<CreateOrEditFolderModalProps> = (
   initialData,
   parentFolder,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState(() => initialData?.name || '');
   const [description, setDescription] = useState(() => initialData?.description || '');
   const [order, setOrder] = useState<number>(() => initialData?.order || 0);
@@ -34,7 +36,7 @@ export const CreateOrEditFolderModal: React.FC<CreateOrEditFolderModalProps> = (
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Tên thư mục không được để trống.');
+      setError(t('folders.actions.nameRequired'));
       return;
     }
     try {
@@ -43,7 +45,7 @@ export const CreateOrEditFolderModal: React.FC<CreateOrEditFolderModalProps> = (
       await onSubmit({ name: name.trim(), description: description.trim(), order });
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra khi lưu thư mục.';
+      const msg = err instanceof Error ? err.message : t('folders.actions.saveError');
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -60,12 +62,12 @@ export const CreateOrEditFolderModal: React.FC<CreateOrEditFolderModalProps> = (
             </div>
             <div>
               <h3 className="font-bold text-main text-base">
-                {isEdit ? 'Chỉnh sửa thư mục' : 'Thêm thư mục mới'}
+                {isEdit ? t('folders.actions.editTitle') : t('folders.actions.createTitle')}
               </h3>
               <p className="text-xs text-secondary">
                 {parentFolder
-                  ? `Thư mục con của: "${parentFolder.name}" (Cấp ${(parentFolder.depth || 0) + 1})`
-                  : 'Thư mục cấp 0 (Gốc)'}
+                  ? t('folders.actions.subfolderOf', { name: parentFolder.name, level: (parentFolder.depth || 0) + 1 })
+                  : t('folders.actions.rootLevel')}
               </p>
             </div>
           </div>
@@ -88,21 +90,21 @@ export const CreateOrEditFolderModal: React.FC<CreateOrEditFolderModalProps> = (
 
           <div>
             <label className="block text-xs font-semibold text-main mb-1.5">
-              Tên thư mục <span className="text-danger">*</span>
+              {t('folders.actions.folderName')} <span className="text-danger">*</span>
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ví dụ: Tài liệu kỹ thuật, Python, Bài tập..."
+              placeholder={t('folders.actions.namePlaceholder')}
               className="w-full px-3 py-2 text-sm rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-main"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-main mb-1.5">Thứ tự hiển thị</label>
+            <label className="block text-xs font-semibold text-main mb-1.5">{t('folders.actions.order')}</label>
             <input
               type="number"
               min={0}
@@ -113,30 +115,30 @@ export const CreateOrEditFolderModal: React.FC<CreateOrEditFolderModalProps> = (
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-main mb-1.5">Mô tả (tùy chọn)</label>
+            <label className="block text-xs font-semibold text-main mb-1.5">{t('folders.actions.descriptionOptional')}</label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chú mục đích sử dụng của thư mục này..."
+              placeholder={t('folders.actions.descriptionPlaceholder')}
               className="w-full px-3 py-2 text-sm rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-main resize-none"
             />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
             <Button variant="secondary" size="md" type="button" onClick={onClose}>
-              Hủy
+              {t('folders.actions.cancel')}
             </Button>
             <Button variant="primary" size="md" type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <i className="fa-solid fa-spinner fa-spin mr-1.5" />
-                  Đang lưu...
+                  {t('folders.actions.saving')}
                 </>
               ) : isEdit ? (
-                'Cập nhật'
+                t('folders.actions.update')
               ) : (
-                'Tạo thư mục'
+                t('folders.actions.create')
               )}
             </Button>
           </div>
@@ -165,6 +167,7 @@ export const MoveFolderModal: React.FC<MoveFolderModalProps> = ({
   allFolders,
   onConfirmMove,
 }) => {
+  const { t } = useTranslation();
   const [selectedParentId, setSelectedParentId] = useState<string>(() =>
     folder?.parent_id ? String(folder.parent_id) : 'root'
   );
@@ -190,7 +193,7 @@ export const MoveFolderModal: React.FC<MoveFolderModalProps> = ({
       await onConfirmMove(folder.id, targetId);
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi di chuyển thư mục.';
+      const msg = err instanceof Error ? err.message : t('folders.actions.moveError');
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -206,9 +209,9 @@ export const MoveFolderModal: React.FC<MoveFolderModalProps> = ({
               <i className="fa-solid fa-arrows-up-down-left-right text-base" />
             </div>
             <div>
-              <h3 className="font-bold text-main text-base">Di chuyển thư mục</h3>
+              <h3 className="font-bold text-main text-base">{t('folders.actions.moveTitle')}</h3>
               <p className="text-xs text-secondary">
-                Chọn vị trí mới cho: <span className="font-semibold text-main">"{folder.name}"</span>
+                {t('folders.actions.moveTarget')} <span className="font-semibold text-main">"{folder.name}"</span>
               </p>
             </div>
           </div>
@@ -231,32 +234,32 @@ export const MoveFolderModal: React.FC<MoveFolderModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-main mb-1.5">
-              Thư mục cha mới
+              {t('folders.actions.newParent')}
             </label>
             <select
               value={selectedParentId}
               onChange={(e) => setSelectedParentId(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-main"
             >
-              <option value="root">📁 [Gốc] — Đặt làm thư mục cấp cao nhất</option>
+              <option value="root">{t('folders.actions.moveToRoot')}</option>
               {validTargets.map((item) => (
                 <option key={item.id} value={String(item.id)}>
-                  {`${'— '.repeat(item.depth || 0)}📂 ${item.name} (Cấp ${item.depth || 0})`}
+                  {`${'— '.repeat(item.depth || 0)}${t('folders.actions.moveOption', { name: item.name, level: item.depth || 0 })}`}
                 </option>
               ))}
             </select>
             <p className="text-[11px] text-muted mt-1.5">
               <i className="fa-solid fa-shield-halved mr-1 text-primary" />
-              Hệ thống tự động loại bỏ các thư mục con cháu để ngăn chặn vòng lặp.
+              {t('folders.actions.moveHint')}
             </p>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-subtle">
             <Button variant="secondary" size="md" type="button" onClick={onClose}>
-              Hủy
+              {t('folders.actions.cancel')}
             </Button>
             <Button variant="primary" size="md" onClick={handleMove} disabled={isSubmitting}>
-              {isSubmitting ? 'Đang di chuyển...' : 'Xác nhận di chuyển'}
+              {isSubmitting ? t('folders.actions.moving') : t('folders.actions.confirmMove')}
             </Button>
           </div>
         </div>
@@ -282,6 +285,7 @@ export const DeleteFolderModal: React.FC<DeleteFolderModalProps> = ({
   folder,
   onConfirmDelete,
 }) => {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -294,7 +298,7 @@ export const DeleteFolderModal: React.FC<DeleteFolderModalProps> = ({
       await onConfirmDelete(folder.id);
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Lỗi khi xóa thư mục.';
+      const msg = err instanceof Error ? err.message : t('folders.actions.deleteError');
       setError(msg);
     } finally {
       setIsSubmitting(false);
@@ -313,9 +317,9 @@ export const DeleteFolderModal: React.FC<DeleteFolderModalProps> = ({
               <i className="fa-solid fa-triangle-exclamation text-lg" />
             </div>
             <div>
-              <h3 className="font-bold text-main text-base">Xác nhận xóa thư mục</h3>
+              <h3 className="font-bold text-main text-base">{t('folders.actions.deleteTitle')}</h3>
               <p className="text-xs text-secondary mt-0.5">
-                Bạn có chắc chắn muốn xóa thư mục: <strong className="text-danger">"{folder.name}"</strong>?
+                {t('folders.actions.deleteConfirm')} <strong className="text-danger">"{folder.name}"</strong>?
               </p>
             </div>
           </div>
@@ -324,17 +328,17 @@ export const DeleteFolderModal: React.FC<DeleteFolderModalProps> = ({
             <div className="p-3.5 rounded-xl bg-danger/5 border border-danger/20 text-xs text-danger space-y-1">
               <p className="font-bold flex items-center gap-1.5">
                 <i className="fa-solid fa-circle-exclamation" />
-                Cảnh báo xóa phân cấp (Cascade Delete):
+                {t('folders.actions.cascadeWarning')}
               </p>
               <ul className="list-disc list-inside space-y-0.5 text-secondary pl-1">
                 {childrenCount > 0 && (
                   <li>
-                    Sẽ xóa toàn bộ <strong className="text-danger">{childrenCount} thư mục con</strong> trực thuộc.
+                    {t('folders.actions.cascadeChildren', { count: childrenCount })}
                   </li>
                 )}
                 {filesCount > 0 && (
                   <li>
-                    Sẽ xóa toàn bộ <strong className="text-danger">{filesCount} tệp đính kèm</strong> trong thư mục.
+                    {t('folders.actions.cascadeFiles', { count: filesCount })}
                   </li>
                 )}
               </ul>
@@ -349,7 +353,7 @@ export const DeleteFolderModal: React.FC<DeleteFolderModalProps> = ({
 
           <div className="flex items-center justify-end gap-3 pt-2">
             <Button variant="secondary" size="md" type="button" onClick={onClose}>
-              Hủy
+              {t('folders.actions.cancel')}
             </Button>
             <Button
               variant="danger"
@@ -357,7 +361,7 @@ export const DeleteFolderModal: React.FC<DeleteFolderModalProps> = ({
               onClick={handleDelete}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+              {isSubmitting ? t('folders.actions.deleting') : t('folders.actions.deletePermanent')}
             </Button>
           </div>
         </div>
