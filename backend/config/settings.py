@@ -290,8 +290,8 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     # Cấp refresh token mới mỗi lần dùng
     "ROTATE_REFRESH_TOKENS": True,
-    # Đưa refresh token cũ vào blacklist sau khi cấp mới (tắt vì dùng JWT stateless không bảng blacklist)
-    "BLACKLIST_AFTER_ROTATION": False,
+    # Đưa refresh token cũ vào blacklist sau khi cấp mới
+    "BLACKLIST_AFTER_ROTATION": True,
     # Header chuẩn: Authorization: Bearer <token>
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
@@ -302,7 +302,7 @@ SIMPLE_JWT = {
 # ─────────────────────────────────────────────────
 # Bảo Long Insurance (Alpaca) Authentication Config
 # ─────────────────────────────────────────────────
-ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "9089e45b638cee8f83ab423d2cb498b5")
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "")
 ALPACA_CHECK_AUTH_URL = os.getenv(
     "ALPACA_CHECK_AUTH_URL",
     "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-auth-user",

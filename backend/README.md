@@ -1,8 +1,10 @@
 # TLBM SYSTEM — BACKEND API SERVICE
-> **Phân hệ Máy chủ & API Dữ liệu (Django 5.x + Python)**  
+> **Phân hệ Máy chủ & API Dữ liệu (Django 6.1 + Python 3.12)**  
 > **Dự án**: Quản Lý Văn Bản và Tài Liệu (QLVB&TL) — Trường CĐ CNTT TP.HCM (ITC)
 
 ---
+
+## 🛠️ 1. Công nghệ & Yêu cầu môi trường
 
 - **Framework**: Django 6.1.x (Python Web Framework)
 - **Python**: Bắt buộc Python 3.12 trở lên (Django 6.1 không hỗ trợ Python thấp hơn)
