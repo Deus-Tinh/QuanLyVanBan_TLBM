@@ -120,7 +120,7 @@ Chạy tại thư mục gốc:
 
 Không cần xóa volume khi chỉ muốn dựng lại DB; dùng `pnpm db:reset` để chỉ reset đúng database local của dự án.
 
-Test backend chạy trên PostgreSQL, tạo từ DB template dựng bằng `scripts/build_db.py`; quy trình dựng DB, cách chạy test và runbook staging nằm tại `docs/common/database/build_db_runbook.md`.
+Test backend chạy trên PostgreSQL (test DB do Django dựng bằng migration); quy trình dựng DB, cách chạy test và runbook staging nằm tại `docs/common/database/build_db_runbook.md`.
 
 ---
 

@@ -20,15 +20,14 @@ python scripts/build_db.py --dbname <tên DB> [--force | --if-empty] [--seed]
 
 ## Test trên PostgreSQL
 
-Test chạy trên DB tạo từ DB template (`DATABASES["default"]["TEST"]["TEMPLATE"]`):
+Test chạy trên PostgreSQL; test DB do Django tự dựng bằng migration (không dùng template DDL):
 
 ```bash
-python scripts/build_db.py --dbname qlvb_template --force
 cd backend
-DB_ENGINE=postgresql DB_NAME=<DB runserver> DB_TEST_TEMPLATE=qlvb_template python manage.py test
+DB_ENGINE=postgresql DB_NAME=<tên DB> DB_USER=<user> DB_PASSWORD=<mật khẩu> python manage.py test
 ```
 
-Template là DB riêng, không dùng cho runserver (PostgreSQL không tạo DB từ template đang có kết nối khác). Template chứa dữ liệu khởi tạo trong `release_DDL.sql`.
+CI chạy thêm `scripts/build_db.py` trên một DB riêng để kiểm chứng DDL nạp được và migration đồng bộ được.
 
 ## Dựng lại DB staging
 

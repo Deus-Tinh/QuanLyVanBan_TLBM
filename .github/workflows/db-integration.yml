@@ -1,7 +1,7 @@
 name: DB Integration
 
 # Kiểm tra migration, schema và test trên PostgreSQL.
-# Test chạy trên DB tạo từ template dựng bằng scripts/build_db.py (release_DDL.sql + đồng bộ migration).
+# Test chạy trên PostgreSQL; test DB do Django dựng bằng migration. scripts/build_db.py được chạy để kiểm chứng DDL nạp được.
 # - pull-request: chạy trên kết quả merge của PR vào nhánh đích.
 # - all-branches: gộp thử mọi nhánh nhóm (1_* … 8_*) vào staging để phát hiện
 #   xung đột giữa các nhóm (migration, tên bảng, phụ thuộc chéo app).
@@ -34,7 +34,6 @@ env:
   DB_NAME: tlbm_ci
   DB_USER: postgres
   DB_PASSWORD: postgres
-  DB_TEST_TEMPLATE: tlbm_template
   # Biến của .github/scripts/compare_schema_ddl.py và psql.
   POSTGRES_HOST: localhost
   POSTGRES_PORT: '5432'
@@ -105,9 +104,9 @@ jobs:
           python ../.github/scripts/compare_schema_ddl.py \
             "$POSTGRES_DB" tlbm_ddl_expected ../docs/common/database/schema_drift_baseline.txt
 
-      - name: Dựng DB template từ release_DDL.sql
+      - name: Dựng DB từ release_DDL.sql (kiểm chứng script)
         working-directory: .
-        run: python scripts/build_db.py --dbname "$DB_TEST_TEMPLATE"
+        run: python scripts/build_db.py --dbname tlbm_ddl_built --seed
 
       - name: Django tests trên PostgreSQL
         run: python manage.py test
@@ -175,8 +174,8 @@ jobs:
         working-directory: backend
         run: python manage.py migrate --noinput
 
-      - name: Dựng DB template từ release_DDL.sql
-        run: python scripts/build_db.py --dbname "$DB_TEST_TEMPLATE"
+      - name: Dựng DB từ release_DDL.sql (kiểm chứng script)
+        run: python scripts/build_db.py --dbname tlbm_ddl_built --seed
 
       - name: Django tests trên PostgreSQL
         working-directory: backend

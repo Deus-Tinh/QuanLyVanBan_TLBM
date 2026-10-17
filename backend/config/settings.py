@@ -147,10 +147,6 @@ if DB_ENGINE in ("postgresql", "postgres"):
             "PORT": os.getenv("DB_PORT", "5432"),
         }
     }
-    # Test chạy trên DB tạo từ template dựng bằng scripts/build_db.py (schema theo release_DDL.sql).
-    DB_TEST_TEMPLATE = os.getenv("DB_TEST_TEMPLATE")
-    if DB_TEST_TEMPLATE:
-        DATABASES["default"]["TEST"] = {"TEMPLATE": DB_TEST_TEMPLATE}
 else:
     DATABASES = {
         "default": {
@@ -159,11 +155,8 @@ else:
         }
     }
 
-if "test" in sys.argv and not DATABASES["default"].get("TEST", {}).get("TEMPLATE"):
-    raise RuntimeError(
-        "Test chạy trên PostgreSQL: đặt DB_ENGINE=postgresql và DB_TEST_TEMPLATE=<DB template "
-        "dựng bằng scripts/build_db.py; template không được là DB đang chạy runserver."
-    )
+if "test" in sys.argv and DB_ENGINE not in ("postgresql", "postgres"):
+    raise RuntimeError("Test chạy trên PostgreSQL: đặt DB_ENGINE=postgresql và các biến DB_*.")
 
 
 # Password validation

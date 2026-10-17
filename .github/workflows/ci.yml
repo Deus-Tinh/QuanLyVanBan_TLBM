@@ -30,7 +30,6 @@ jobs:
       DB_NAME: tlbm_ci
       DB_USER: postgres
       DB_PASSWORD: postgres
-      DB_TEST_TEMPLATE: tlbm_template
     services:
       postgres:
         image: postgres:16
@@ -64,9 +63,9 @@ jobs:
       - name: Missing migrations check
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Dựng DB template từ release_DDL.sql
+      - name: Dựng DB từ release_DDL.sql (kiểm chứng script)
         working-directory: .
-        run: python scripts/build_db.py --dbname "$DB_TEST_TEMPLATE"
+        run: python scripts/build_db.py --dbname tlbm_ddl_built --seed
 
       - name: Django tests
         run: python manage.py test
