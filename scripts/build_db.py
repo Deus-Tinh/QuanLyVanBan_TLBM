@@ -1,6 +1,6 @@
 """Dựng DB PostgreSQL từ docs/common/database/release_DDL.sql rồi đồng bộ trạng thái migration Django.
 
-Một quy trình dùng chung cho local, CI, DB template của test và staging:
+Một quy trình dùng chung cho local, CI và staging:
 1. Tạo DB rỗng (hoặc dựng lại khi có --force; DB có sẵn nhưng rỗng thì dùng tại chỗ).
 2. Nạp release_DDL.sql. File này tự có BEGIN/COMMIT nên không rollback được giữa chừng.
 3. Duyệt migration theo thứ tự phụ thuộc. App có đủ bảng model trong DB thì ghi nhận migration
@@ -13,10 +13,15 @@ Bước nào thất bại thì dọn: DB do lượt chạy này tạo (hoặc th
 được trả về trạng thái rỗng (DROP SCHEMA public rồi tạo lại). DB có sẵn và không rỗng không bị xóa khi
 thiếu --force. --if-empty chỉ bỏ qua khi DB có dấu hoàn tất khớp hash DDL và yêu cầu seed.
 
+--sync: chạy trên DB đã tồn tại (không tạo/xóa DB, không nạp DDL, không ghi dấu hoàn tất, không seed). Chỉ xử lý
+migration chưa áp dụng theo thứ tự phụ thuộc: app có đủ bảng thì fake, app chưa có bảng nào thì migrate thật,
+app có một phần bảng thì báo lỗi. App được fake mà thiếu cột của model trong DB cũng báo lỗi (cần cập nhật
+release_DDL.sql rồi dựng lại bằng --force). Lỗi giữa chừng không dọn DB; thông báo nêu các migration đã ghi nhận.
+
 Kết nối lấy từ DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME (tham số dòng lệnh ghi đè, riêng mật khẩu
 chỉ đọc từ DB_PASSWORD). User kết nối cần quyền CREATEDB. Cần DJANGO_SECRET_KEY như khi chạy backend.
 
-Dùng: python scripts/build_db.py [--dbname TÊN] [--force | --if-empty] [--seed]
+Dùng: python scripts/build_db.py [--dbname TÊN] [--force | --if-empty] [--seed] | --sync
 """
 import argparse
 import hashlib
@@ -46,7 +51,11 @@ def parse_args():
     existing = parser.add_mutually_exclusive_group()
     existing.add_argument("--force", action="store_true", help="xóa và dựng lại DB đã tồn tại")
     existing.add_argument("--if-empty", action="store_true", help="bỏ qua (exit 0) nếu DB đã có bảng")
-    return parser.parse_args()
+    parser.add_argument("--sync", action="store_true", help="chỉ áp dụng migration chưa áp dụng lên DB hiện có")
+    args = parser.parse_args()
+    if args.sync and (args.force or args.if_empty or args.seed):
+        parser.error("--sync không dùng chung với --force, --if-empty, --seed")
+    return args
 
 
 def connect(args, dbname, **kwargs):
@@ -165,7 +174,7 @@ def app_tables(state):
     return tables
 
 
-def decide_fake(app_labels, tables_by_app, existing):
+def decide_fake(app_labels, tables_by_app, existing, hint):
     fake = {}
     for app in sorted(app_labels):
         tables = tables_by_app.get(app, set())
@@ -176,13 +185,31 @@ def decide_fake(app_labels, tables_by_app, existing):
             fake[app] = False
         else:
             raise SystemExit(
-                f"App '{app}' có một phần bảng trong DDL: có {sorted(present)}, "
-                f"thiếu {sorted(tables - present)}. Không thể fake một phần; cần chuẩn hóa DDL hoặc migration."
+                f"App '{app}' có một phần bảng trong DB: có {sorted(present)}, "
+                f"thiếu {sorted(tables - present)}. Không thể fake một phần. {hint}"
             )
     return fake
 
 
-def adopt_migrations():
+def check_columns(app_labels, state, fake, columns_by_table):
+    """App được fake phải có đủ cột của model trong DB, vì fake bỏ qua mọi AddField/AlterField."""
+    missing = []
+    for model in state.apps.get_models(include_auto_created=True):
+        meta = model._meta
+        if meta.app_label not in app_labels or not fake.get(meta.app_label):
+            continue
+        if not meta.managed or meta.proxy or meta.swapped:
+            continue
+        have = columns_by_table.get(meta.db_table, set())
+        missing += [f"{meta.db_table}.{f.column}" for f in meta.local_concrete_fields if f.column not in have]
+    if missing:
+        raise SystemExit(
+            f"DB thiếu cột của model: {sorted(missing)}. Không thể fake migration của app đã có bảng; "
+            "cập nhật release_DDL.sql rồi chạy `pnpm db:reset` (hoặc build_db.py --force)."
+        )
+
+
+def adopt_migrations(sync=False):
     from django.core.management import call_command
     from django.db import connection
     from django.db.migrations.executor import MigrationExecutor
@@ -190,23 +217,50 @@ def adopt_migrations():
     executor = MigrationExecutor(connection)
     loader = executor.loader
     leaves = sorted(loader.graph.leaf_nodes())
-    order = []
-    for leaf in leaves:
-        order.extend(n for n in loader.graph.forwards_plan(leaf) if n not in order)
+    if sync:
+        order = [(m.app_label, m.name) for m, _ in executor.migration_plan(leaves)]
+        if not order:
+            print("Không còn migration chưa áp dụng.")
+            return
+    else:
+        order = []
+        for leaf in leaves:
+            order.extend(n for n in loader.graph.forwards_plan(leaf) if n not in order)
 
     with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'"
+        )
+        columns_by_table = {}
+        for table, column in cursor.fetchall():
+            columns_by_table.setdefault(table, set()).add(column)
         cursor.execute(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
         )
         existing = {row[0] for row in cursor.fetchall()}
-    fake = decide_fake({app for app, _ in order}, app_tables(loader.project_state(leaves)), existing)
+    apps_in_order = {app for app, _ in order}
+    state = loader.project_state(leaves)
+    hint = (
+        "Cập nhật release_DDL.sql rồi chạy `pnpm db:reset` (hoặc build_db.py --force)."
+        if sync else "Cần chuẩn hóa DDL hoặc migration."
+    )
+    fake = decide_fake(apps_in_order, app_tables(state), existing, hint)
+    if sync:
+        check_columns(apps_in_order, state, fake, columns_by_table)
     for app, is_fake in fake.items():
-        print(f"  {app}: {'fake (bảng đã có trong DDL)' if is_fake else 'migrate thật'}")
+        print(f"  {app}: {'fake (bảng đã có trong DB)' if is_fake else 'migrate thật'}")
 
-    for app, name in order:
-        executor.loader.build_graph()
-        executor.migrate([(app, name)], fake=fake[app])
+    done = []
+    try:
+        for app, name in order:
+            executor.loader.build_graph()
+            executor.migrate([(app, name)], fake=fake[app])
+            done.append(f"{app}.{name}")
+    except BaseException as exc:
+        raise SystemExit(
+            f"Migration lỗi sau khi đã ghi nhận {done or 'không migration nào'}; DB không được dọn: {exc!r}"
+        ) from exc
 
     # Chạy migrate rỗng để phát tín hiệu post_migrate một lần (contenttypes, v.v.) và xác nhận kết quả.
     call_command("migrate", interactive=False, verbosity=0)
@@ -232,6 +286,10 @@ def build(args):
 
 def main():
     args = parse_args()
+    if args.sync:
+        setup_django(args)
+        adopt_migrations(sync=True)
+        return
     if not args.ddl.is_file():
         raise SystemExit(f"Không thấy file DDL: {args.ddl}")
     mode, skip = prepare_database(args)

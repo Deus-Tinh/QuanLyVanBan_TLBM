@@ -1,6 +1,6 @@
 # Dựng DB từ `release_DDL.sql` và runbook staging
 
-`docs/common/database/release_DDL.sql` là nguồn schema. `scripts/build_db.py` là quy trình dựng DB duy nhất cho local, CI, DB template của test và staging.
+`docs/common/database/release_DDL.sql` là nguồn schema. `scripts/build_db.py` là quy trình dựng DB duy nhất cho local, CI và staging.
 
 ## Script `scripts/build_db.py`
 
@@ -17,10 +17,19 @@ Dọn khi lỗi ở bất kỳ bước nào: DB do lượt chạy tạo mới ho
 
 `--if-empty` chỉ bỏ qua (exit 0) khi DB có dấu hoàn tất khớp hash DDL hiện tại và khớp yêu cầu `--seed`. DB có bảng mà không có dấu (ví dụ dựng bằng `migrate`), hoặc dấu không khớp, thì báo lỗi và gợi ý `--force`.
 
+`--sync` chạy trên DB đã tồn tại (`pnpm db:migrate` gọi chế độ này): không tạo/xóa DB, không nạp DDL, không ghi dấu hoàn tất, không seed; không dùng chung với `--force`, `--if-empty`, `--seed`. Chỉ xử lý migration chưa áp dụng, theo thứ tự phụ thuộc:
+
+- app có đủ bảng model trong DB: fake; trước đó kiểm tra mọi cột của model đều có trong DB, thiếu cột thì báo lỗi (fake bỏ qua `AddField`/`AlterField`);
+- app chưa có bảng nào: migrate thật;
+- app có một phần bảng: báo lỗi.
+
+Cả hai trường hợp lỗi yêu cầu cập nhật `release_DDL.sql` rồi dựng lại (`pnpm db:reset` hoặc `--force`). Lỗi giữa chừng không dọn DB (DB của dev có dữ liệu); thông báo nêu các migration đã ghi nhận.
+
 Kết nối đọc từ `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` (`--host`, `--port`, `--user`, `--dbname` ghi đè; mật khẩu chỉ đọc từ `DB_PASSWORD`). User cần quyền `CREATEDB`. Cần `DJANGO_SECRET_KEY` và các thư viện trong `backend/requirements.txt`.
 
 ```bash
 python scripts/build_db.py --dbname <tên DB> [--force | --if-empty] [--seed]
+python scripts/build_db.py --dbname <tên DB> --sync
 ```
 
 ## Test trên PostgreSQL

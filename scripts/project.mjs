@@ -123,7 +123,8 @@ function printLocalUrls() {
 }
 
 async function buildDatabase(...args) {
-  await runChecked(python, [path.join(projectRoot, "scripts", "build_db.py"), "--seed", ...args], {
+  const seed = args.includes("--sync") ? [] : ["--seed"];
+  await runChecked(python, [path.join(projectRoot, "scripts", "build_db.py"), ...seed, ...args], {
     env: djangoEnvironment(),
   });
 }
@@ -169,7 +170,7 @@ const actions = {
   "db-migrate": async () => {
     await ensurePythonEnvironment();
     await requireLocalDatabase();
-    await django("migrate", "--noinput");
+    await buildDatabase("--sync");
   },
   "db-migrations": async () => {
     await ensurePythonEnvironment();
