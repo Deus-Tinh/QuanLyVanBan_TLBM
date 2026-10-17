@@ -24,6 +24,25 @@ jobs:
     timeout-minutes: 10
     env:
       DJANGO_SECRET_KEY: "ci-only-not-for-production"
+      DB_ENGINE: postgresql
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_NAME: tlbm_ci
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_TEST_TEMPLATE: tlbm_template
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -44,6 +63,10 @@ jobs:
 
       - name: Missing migrations check
         run: python manage.py makemigrations --check --dry-run
+
+      - name: Dựng DB template từ release_DDL.sql
+        working-directory: .
+        run: python scripts/build_db.py --dbname "$DB_TEST_TEMPLATE"
 
       - name: Django tests
         run: python manage.py test

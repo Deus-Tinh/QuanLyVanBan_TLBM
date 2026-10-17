@@ -122,10 +122,16 @@ function printLocalUrls() {
   console.log("pgAdmin login:    admin@qlvb.local / qlvb_pgadmin_local_only");
 }
 
+async function buildDatabase(...args) {
+  await runChecked(python, [path.join(projectRoot, "scripts", "build_db.py"), "--seed", ...args], {
+    env: djangoEnvironment(),
+  });
+}
+
 async function setupDatabase() {
   await dockerCompose(["up", "--detach", "--wait", "db", "pgadmin"]);
   await ensurePythonEnvironment();
-  await django("migrate", "--noinput");
+  await buildDatabase("--if-empty");
   printLocalUrls();
 }
 
@@ -144,15 +150,9 @@ async function resetDatabase() {
   }
 
   await requireLocalDatabase();
-  await runChecked("docker", [
-    "compose", "exec", "-T", "db", "psql", "-U", "qlvb_dev", "-d", "postgres",
-    "-v", "ON_ERROR_STOP=1",
-    "-c", "DROP DATABASE IF EXISTS qlvb_dev WITH (FORCE)",
-    "-c", "CREATE DATABASE qlvb_dev OWNER qlvb_dev",
-  ]);
   await ensurePythonEnvironment();
-  await django("migrate", "--noinput");
-  console.log("Đã tạo lại DB local rỗng và áp dụng các migration Django.");
+  await buildDatabase("--force");
+  console.log("Đã dựng lại DB local từ release_DDL.sql và đồng bộ migration Django.");
 }
 
 const actions = {
