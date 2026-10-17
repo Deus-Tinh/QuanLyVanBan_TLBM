@@ -58,7 +58,7 @@ Kiểm tra dump (`test -s`, `pg_restore -l`, số entry > 0) chỉ xác nhận a
   # 3. Kiểm tra, khởi động lại backend
   MIGRATIONS="$(cd backend && DB_ENGINE=postgresql DB_NAME=qlvb python manage.py showmigrations)"
   test -n "$MIGRATIONS"
-  ! grep -q '\[ \]' <<< "$MIGRATIONS"
+  if grep -q '\[ \]' <<< "$MIGRATIONS"; then echo 'Còn migration chưa áp dụng' >&2; exit 1; fi
   sudo systemctl start <tên service backend>
 )
 ```
