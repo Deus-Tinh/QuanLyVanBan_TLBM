@@ -54,6 +54,8 @@ jobs:
           POSTGRES_DB: tlbm_ci
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          # Cluster mặc định ICU vi-VN: tlbm_ci, createdb và test DB của Django kế thừa từ template1.
+          POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=vi-VN --locale=C.UTF-8"
         ports:
           - 5432:5432
         options: >-
@@ -88,9 +90,13 @@ jobs:
       - name: Kiểm tra không còn migration chưa áp dụng
         run: python manage.py migrate --noinput --check
 
-      - name: Test bộ so schema (trigger tắt, khoảng trắng trong literal, seed, dữ liệu chỉ ở migration)
+      - name: Test bộ so schema (trigger tắt, khoảng trắng trong literal, seed, dữ liệu chỉ ở migration, collation)
         working-directory: .
         run: python -m unittest discover -s .github/scripts -p "test_*.py"
+
+      - name: Test collation của scripts/build_db.py
+        working-directory: .
+        run: python -m unittest discover -s scripts -p "test_build_db.py"
 
       - name: So sánh schema từ migration với DDL phát hành
         run: |
@@ -147,6 +153,8 @@ jobs:
           POSTGRES_DB: tlbm_ci
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          # Cluster mặc định ICU vi-VN: tlbm_ci, createdb và test DB của Django kế thừa từ template1.
+          POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=vi-VN --locale=C.UTF-8"
         ports:
           - 5432:5432
         options: >-

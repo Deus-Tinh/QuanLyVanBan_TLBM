@@ -36,11 +36,16 @@ class DriftTest(unittest.TestCase):
             for db in self.dbs:
                 conn.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db)))
 
-    def make_db(self, script):
+    def make_db(self, script, icu_locale="vi-VN"):
         name = "cmp_test_" + uuid.uuid4().hex[:10]
         with maintenance() as conn:
             conn.autocommit = True
-            conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
+            conn.execute(
+                sql.SQL(
+                    "CREATE DATABASE {} TEMPLATE template0 ENCODING 'UTF8' "
+                    "LOCALE_PROVIDER icu ICU_LOCALE {} LOCALE 'C.UTF-8'"
+                ).format(sql.Identifier(name), sql.Literal(icu_locale))
+            )
         self.dbs.append(name)
         with cmp.connect(name) as conn:
             conn.execute(script)
@@ -48,6 +53,11 @@ class DriftTest(unittest.TestCase):
 
     def drift(self, migration_script, ddl_script=BASE):
         return cmp.drift(self.make_db(migration_script), self.make_db(ddl_script))
+
+    def test_different_collation_fails_before_comparing(self):
+        with self.assertRaises(SystemExit) as raised:
+            cmp.drift(self.make_db(BASE, icu_locale="en-US"), self.make_db(BASE))
+        self.assertIn("khác collation", str(raised.exception))
 
     def test_identical_dbs_have_no_drift(self):
         self.assertEqual(self.drift(BASE), [])
