@@ -383,16 +383,16 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     >
       {/* Khung Bảng dữ liệu chính */}
       <div className="w-full overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse min-w-[720px] lg:min-w-[850px]">
+        <table className="w-full text-left text-sm border-collapse min-w-full">
           <thead className="bg-surface-elevated text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle select-none">
             <tr>
-              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 w-28 sm:w-32 min-w-[90px] whitespace-nowrap">{t('resourceManagement.colCode')}</th>
-              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 min-w-[190px] sm:min-w-[240px]">{t('resourceManagement.colTitle')}</th>
-              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 w-36 sm:w-44 min-w-[120px]">{t('resourceManagement.colAuthority')}</th>
-              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-28 min-w-[85px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
-              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-32 sm:w-40 min-w-[110px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
-              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-28 sm:w-36 min-w-[90px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
-              <th className="px-2 sm:px-3 py-3 sm:py-3.5 w-14 sm:w-16 min-w-[50px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
+              <th className="hidden sm:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 w-24 sm:w-32 min-w-[80px] whitespace-nowrap">{t('resourceManagement.colCode')}</th>
+              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 min-w-[140px] sm:min-w-[200px]">{t('resourceManagement.colTitle')}</th>
+              <th className="hidden lg:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 w-36 sm:w-44 min-w-[120px]">{t('resourceManagement.colAuthority')}</th>
+              <th className="hidden lg:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-28 min-w-[85px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
+              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-28 sm:w-36 min-w-[95px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
+              <th className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-32 min-w-[80px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
+              <th className="px-2 sm:px-3 py-3 sm:py-3.5 w-12 sm:w-16 min-w-[44px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -400,23 +400,23 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
               // Trạng thái Loading (Skeleton)
               Array.from({ length: pageSize > 5 ? 5 : pageSize }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
-                  <td className="px-4 py-4">
+                  <td className="hidden sm:table-cell px-4 py-4">
                     <div className="h-4 w-20 bg-surface-elevated rounded" />
                   </td>
                   <td className="px-4 py-4">
                     <div className="h-4 w-3/4 bg-surface-elevated rounded mb-1.5" />
                     <div className="h-3 w-1/3 bg-surface-elevated rounded" />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="hidden lg:table-cell px-4 py-4">
                     <div className="h-4 w-28 bg-surface-elevated rounded" />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden lg:table-cell px-4 py-4 text-center">
                     <div className="h-4 w-16 bg-surface-elevated rounded mx-auto" />
                   </td>
                   <td className="px-4 py-4 text-center">
                     <div className="h-5 w-24 bg-surface-elevated rounded-full mx-auto" />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden sm:table-cell px-4 py-4 text-center">
                     <div className="h-7 w-20 bg-surface-elevated rounded mx-auto" />
                   </td>
                   <td className="px-4 py-4 text-center">
@@ -501,8 +501,8 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     className={`transition-colors duration-fast cursor-pointer select-none ${rowClass}`}
                     title="Bấm để xem chi tiết tài liệu"
                   >
-                    {/* Cột 1: Ký hiệu (thống nhất font sans chuẩn hệ thống, ngay hàng thẳng lối) */}
-                    <td className="px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
+                    {/* Cột 1: Ký hiệu (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
+                    <td className="hidden sm:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
                       <span className="text-xs font-semibold text-main tracking-tight">
                         {item.ky_hieu || '-'}
                       </span>
@@ -548,13 +548,13 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       )}
                     </td>
 
-                    {/* Cột 3: Nơi ban hành */}
-                    <td className="px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle text-xs text-secondary leading-snug">
+                    {/* Cột 3: Nơi ban hành (Ẩn trên mobile & tablet, hiện từ lg: desktop) */}
+                    <td className="hidden lg:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle text-xs text-secondary leading-snug">
                       {item.noi_ban_hanh || '-'}
                     </td>
 
-                    {/* Cột 4: Ngày đăng (dd/mm/yyyy thường, thẳng hàng giữa) */}
-                    <td className="px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary leading-snug">
+                    {/* Cột 4: Ngày đăng (Ẩn trên mobile & tablet, hiện từ lg: desktop) */}
+                    <td className="hidden lg:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary leading-snug">
                       {formatDate(item.ngay_dang)}
                     </td>
 
@@ -563,9 +563,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       {renderStatusBadge(item.hieu_luc)}
                     </td>
 
-                    {/* Cột 6: Tệp đính kèm (Badge dạng tệp theo màu sắc, không có nút tải về) */}
+                    {/* Cột 6: Tệp đính kèm (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
                     <td
-                      className="px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewDetail?.(item);
