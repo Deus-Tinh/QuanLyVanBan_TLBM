@@ -37,9 +37,11 @@ export const RegionModal: React.FC<RegionModalProps> = ({
       onClose();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'data' in err) {
-        const apiErr = (err as { data?: { ten?: string[]; detail?: string; error?: string } }).data;
+        const apiErr = (err as { data?: { ten?: string[]; thu_tu_hien_thi?: string[]; detail?: string; error?: string } }).data;
         if (apiErr?.ten?.[0]) {
           setErrorKey(apiErr.ten[0]);
+        } else if (apiErr?.thu_tu_hien_thi?.[0]) {
+          setErrorKey(apiErr.thu_tu_hien_thi[0]);
         } else if (apiErr?.detail) {
           setErrorKey(apiErr.detail);
         } else {
