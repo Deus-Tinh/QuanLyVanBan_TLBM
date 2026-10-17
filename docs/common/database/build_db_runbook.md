@@ -6,24 +6,28 @@
 
 Các bước:
 
-1. Tạo DB rỗng; DB chưa có thì tạo mới, DB có sẵn nhưng rỗng thì dùng tại chỗ, DB không rỗng thì dừng trừ khi có `--force` (xóa và dựng lại) hoặc `--if-empty` (xem bên dưới).
+1. Tạo DB rỗng; DB chưa có thì tạo mới, DB có sẵn chỉ dùng tại chỗ khi còn nguyên trạng mới tạo (không schema nào ngoài `public` và schema hệ thống; không relation, type do user tạo hay function/procedure trong `public`; không extension ngoài `plpgsql`), ngược lại dừng trừ khi có `--force` (xóa và dựng lại) hoặc `--if-empty` (xem bên dưới).
 2. Nạp `release_DDL.sql`. File này tự có `BEGIN`/`COMMIT` nên không rollback được giữa chừng.
 3. Duyệt migration theo thứ tự phụ thuộc: app có đủ bảng model trong DB thì ghi nhận migration đã áp dụng (fake); app không có bảng nào thì migrate thật; app có một phần bảng thì báo lỗi và dừng. App chỉ có model `managed = False` (ví dụ `authorization`) chạy migration thật; các data migration của app này idempotent và không làm đổi số lượng quyền/nhóm quyền so với DDL.
 4. Xác nhận không còn migration chưa áp dụng.
 5. `--seed`: chạy `seed_db`.
 6. Ghi dấu hoàn tất vào `COMMENT ON DATABASE`: sha256 của `release_DDL.sql` và trạng thái seed (`build_db:v1 ddl_sha256=<hash> seed=<0|1>`).
 
-Dọn khi lỗi ở bất kỳ bước nào: DB do lượt chạy tạo mới hoặc thay bằng `--force` bị `DROP DATABASE`; DB có sẵn nhưng rỗng được trả về rỗng (`DROP SCHEMA public CASCADE` rồi tạo lại). DB có sẵn và không rỗng không bị xóa khi thiếu `--force`. Nếu việc dọn lỗi, script báo cả lỗi gốc lẫn tên DB còn sót và thoát mã khác 0.
+Dọn khi lỗi ở bất kỳ bước nào: DB do lượt chạy tạo mới hoặc thay bằng `--force` bị `DROP DATABASE`; DB có sẵn đạt nguyên trạng được trả về rỗng (`DROP SCHEMA public CASCADE` rồi tạo lại). DB có sẵn và không rỗng không bị xóa khi thiếu `--force`. Nếu việc dọn lỗi, script báo cả lỗi gốc lẫn tên DB còn sót và thoát mã khác 0.
 
 `--if-empty` chỉ bỏ qua (exit 0) khi DB có dấu hoàn tất khớp hash DDL hiện tại và khớp yêu cầu `--seed`. DB có bảng mà không có dấu (ví dụ dựng bằng `migrate`), hoặc dấu không khớp, thì báo lỗi và gợi ý `--force`.
 
-`--sync` chạy trên DB đã tồn tại (`pnpm db:migrate` gọi chế độ này): không tạo/xóa DB, không nạp DDL, không ghi dấu hoàn tất, không seed; không dùng chung với `--force`, `--if-empty`, `--seed`. Chỉ xử lý migration chưa áp dụng, theo thứ tự phụ thuộc:
+`--sync` chạy trên DB đã tồn tại (`pnpm db:migrate` gọi chế độ này): không tạo/xóa DB, không nạp DDL, không ghi dấu hoàn tất, không seed; không dùng chung với `--force`, `--if-empty`, `--seed`.
 
-- app có đủ bảng model trong DB: fake; trước đó kiểm tra mọi cột của model đều có trong DB, thiếu cột thì báo lỗi (fake bỏ qua `AddField`/`AlterField`);
+Điều kiện chạy: dấu hoàn tất có `ddl_sha256` khớp `release_DDL.sql` hiện tại, tức DB đúng bằng nguồn chuẩn. Không có dấu (DB không dựng bằng script) hoặc dấu lệch hash (DDL đã đổi) thì dừng trước mọi thay đổi và yêu cầu `pnpm db:reset` (`--force`); script không chạy migration nâng cấp trên schema DDL cũ.
+
+Khi dấu khớp, chỉ xử lý migration chưa áp dụng, theo thứ tự phụ thuộc:
+
+- app có đủ bảng model trong DB: fake (kiểm tra thêm mọi cột của model có trong DB, thiếu cột thì báo lỗi);
 - app chưa có bảng nào: migrate thật;
 - app có một phần bảng: báo lỗi.
 
-Cả hai trường hợp lỗi yêu cầu cập nhật `release_DDL.sql` rồi dựng lại (`pnpm db:reset` hoặc `--force`). Lỗi giữa chừng không dọn DB (DB của dev có dữ liệu); thông báo nêu các migration đã ghi nhận.
+Lỗi giữa chừng không dọn DB (DB của dev có dữ liệu); thông báo nêu các migration đã ghi nhận.
 
 Kết nối đọc từ `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` (`--host`, `--port`, `--user`, `--dbname` ghi đè; mật khẩu chỉ đọc từ `DB_PASSWORD`). User cần quyền `CREATEDB`. Cần `DJANGO_SECRET_KEY` và các thư viện trong `backend/requirements.txt`.
 

@@ -1,7 +1,8 @@
 """Dựng DB PostgreSQL từ docs/common/database/release_DDL.sql rồi đồng bộ trạng thái migration Django.
 
 Một quy trình dùng chung cho local, CI và staging:
-1. Tạo DB rỗng (hoặc dựng lại khi có --force; DB có sẵn nhưng rỗng thì dùng tại chỗ).
+1. Tạo DB rỗng (hoặc dựng lại khi có --force). DB có sẵn chỉ dùng tại chỗ khi còn nguyên trạng mới tạo: không
+   schema ngoài public, không relation/type/function trong public, không extension ngoài plpgsql.
 2. Nạp release_DDL.sql. File này tự có BEGIN/COMMIT nên không rollback được giữa chừng.
 3. Duyệt migration theo thứ tự phụ thuộc. App có đủ bảng model trong DB thì ghi nhận migration
    là đã áp dụng (fake); app không có bảng nào thì áp dụng thật. App có một phần bảng thì báo lỗi.
@@ -10,13 +11,14 @@ Một quy trình dùng chung cho local, CI và staging:
 6. Ghi dấu hoàn tất vào COMMENT của DB (sha256 của DDL và trạng thái seed).
 
 Bước nào thất bại thì dọn: DB do lượt chạy này tạo (hoặc thay bằng --force) bị DROP; DB có sẵn nhưng rỗng
-được trả về trạng thái rỗng (DROP SCHEMA public rồi tạo lại). DB có sẵn và không rỗng không bị xóa khi
-thiếu --force. --if-empty chỉ bỏ qua khi DB có dấu hoàn tất khớp hash DDL và yêu cầu seed.
+được trả về trạng thái rỗng (DROP SCHEMA public rồi tạo lại). DB có sẵn không đạt nguyên trạng không bị chạm
+vào khi thiếu --force. --if-empty chỉ bỏ qua khi DB có dấu hoàn tất khớp hash DDL và yêu cầu seed.
 
---sync: chạy trên DB đã tồn tại (không tạo/xóa DB, không nạp DDL, không ghi dấu hoàn tất, không seed). Chỉ xử lý
-migration chưa áp dụng theo thứ tự phụ thuộc: app có đủ bảng thì fake, app chưa có bảng nào thì migrate thật,
-app có một phần bảng thì báo lỗi. App được fake mà thiếu cột của model trong DB cũng báo lỗi (cần cập nhật
-release_DDL.sql rồi dựng lại bằng --force). Lỗi giữa chừng không dọn DB; thông báo nêu các migration đã ghi nhận.
+--sync: chạy trên DB đã tồn tại (không tạo/xóa DB, không nạp DDL, không ghi dấu hoàn tất, không seed). Chỉ chạy khi
+dấu hoàn tất có ddl_sha256 khớp release_DDL.sql hiện tại (DB đúng bằng nguồn chuẩn); không có dấu hoặc dấu lệch
+thì dừng trước mọi thay đổi và yêu cầu dựng lại bằng --force. Khi dấu khớp, chỉ xử lý migration chưa áp dụng
+theo thứ tự phụ thuộc: app có đủ bảng thì fake, app chưa có bảng nào thì migrate thật, app có một phần bảng hoặc
+thiếu cột của model thì báo lỗi. Lỗi giữa chừng không dọn DB; thông báo nêu các migration đã ghi nhận.
 
 Kết nối lấy từ DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME (tham số dòng lệnh ghi đè, riêng mật khẩu
 chỉ đọc từ DB_PASSWORD). User kết nối cần quyền CREATEDB. Cần DJANGO_SECRET_KEY như khi chạy backend.
@@ -73,15 +75,34 @@ def build_mark(args):
     return f"{MARK_PREFIX} ddl_sha256={ddl_sha256(args)} seed={int(args.seed)}"
 
 
-def object_count(args):
-    """Số bảng/view/sequence/hàm trong schema public; 0 nghĩa là DB rỗng."""
+def pristine_violations(args):
+    """Liệt kê dấu hiệu DB không còn nguyên trạng; danh sách rỗng nghĩa là DB mới tạo, chưa có gì."""
+    queries = {
+        "schema ngoài public": (
+            "SELECT nspname FROM pg_namespace WHERE nspname NOT IN ('public', 'pg_catalog', 'information_schema') "
+            "AND nspname NOT LIKE 'pg\\_toast%' AND nspname NOT LIKE 'pg\\_temp%'"
+        ),
+        "relation trong public": (
+            "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public'"
+        ),
+        "type trong public": (
+            "SELECT t.typname FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
+            "WHERE n.nspname = 'public' AND t.typtype <> 'c' AND t.typcategory <> 'A'"
+        ),
+        "function/procedure trong public": (
+            "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "WHERE n.nspname = 'public'"
+        ),
+        "extension": "SELECT extname FROM pg_extension WHERE extname <> 'plpgsql'",
+    }
+    found = []
     with connect(args, args.dbname) as conn:
-        return conn.execute(
-            "SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
-            "        WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m','S','f')) "
-            "     + (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
-            "        WHERE n.nspname = 'public')"
-        ).fetchone()[0]
+        for label, query in queries.items():
+            names = [row[0] for row in conn.execute(query).fetchall()]
+            if names:
+                found.append(f"{label}: {sorted(names)[:5]}")
+    return found
 
 
 def read_mark(conn, dbname):
@@ -106,7 +127,8 @@ def prepare_database(args):
             conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
             return "drop", False
         mark = read_mark(conn, args.dbname)
-    if mark is None and object_count(args) == 0:
+    violations = pristine_violations(args) if mark is None else ["đã có dấu hoàn tất"]
+    if not violations:
         return "reset", False
     if args.if_empty and mark == build_mark(args):
         print(f"DB {args.dbname} đã dựng hoàn tất với DDL và yêu cầu seed hiện tại; bỏ qua.")
@@ -116,7 +138,25 @@ def prepare_database(args):
             f"DB {args.dbname} không có dấu hoàn tất khớp DDL/seed hiện tại (dấu: {mark!r}). "
             "Dùng --force để xóa và dựng lại."
         )
-    raise SystemExit(f"DB {args.dbname} đã tồn tại và không rỗng. Dùng --force để xóa và dựng lại.")
+    raise SystemExit(
+        f"DB {args.dbname} đã tồn tại và không ở nguyên trạng mới tạo ({'; '.join(violations)}). "
+        "Không rõ nội dung nên không chạm vào. Dùng --force để xóa và dựng lại."
+    )
+
+
+def require_matching_mark(args):
+    """--sync chỉ chạy khi DB do script dựng từ đúng bản release_DDL.sql hiện tại."""
+    with connect(args, MAINTENANCE_DB, autocommit=True) as conn:
+        exists = conn.execute("SELECT 1 FROM pg_database WHERE datname = %s", [args.dbname]).fetchone()
+        mark = read_mark(conn, args.dbname) if exists else None
+    if not exists:
+        raise SystemExit(f"DB {args.dbname} chưa tồn tại. Chạy `pnpm db:setup` trước.")
+    if not (mark or "").startswith(f"{MARK_PREFIX} ddl_sha256={ddl_sha256(args)} "):
+        raise SystemExit(
+            f"DB {args.dbname} không có dấu hoàn tất khớp bản release_DDL.sql hiện tại (dấu: {mark!r}): "
+            "DDL đã đổi hoặc DB không dựng bằng script. Không thay đổi gì. Chạy `pnpm db:reset` "
+            "(build_db.py --force) để dựng lại."
+        )
 
 
 def cleanup(args, mode):
@@ -287,6 +327,9 @@ def build(args):
 def main():
     args = parse_args()
     if args.sync:
+        if not args.ddl.is_file():
+            raise SystemExit(f"Không thấy file DDL: {args.ddl}")
+        require_matching_mark(args)
         setup_django(args)
         adopt_migrations(sync=True)
         return
