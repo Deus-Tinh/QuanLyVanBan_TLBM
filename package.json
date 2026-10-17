@@ -14,6 +14,7 @@
     "db:migrate": "node scripts/project.mjs db-migrate",
     "db:migrations": "node scripts/project.mjs db-migrations",
     "db:reset": "node scripts/project.mjs db-reset",
-    "db:stop": "node scripts/project.mjs db-stop"
+    "db:stop": "node scripts/project.mjs db-stop",
+    "deploy:staging": "node scripts/project.mjs deploy-staging"
   }
 }

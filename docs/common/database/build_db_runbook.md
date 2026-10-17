@@ -130,13 +130,32 @@ Rollback (hàm dùng chung cho restart lỗi ở bước 6 và kiểm tra thất
 - `/etc/qlvb/backend.env` đọc được bởi user deploy (script `source` file này), có `DB_ENGINE=postgresql`, `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT`, `DB_PASSWORD`, `DJANGO_SECRET_KEY`.
 - `/srv/qlvb/tools/backup.sh` ghi dòng kết quả vào `/srv/qlvb/backups/backup.log` theo hợp đồng ở bước 4.
 
-### Chạy tay lần đầu (không qua CI)
+### Chạy tay (không qua CI)
 
-Từ máy có SSH tới host, tại thư mục gốc repo đã checkout đúng commit cần deploy (thay `<host>`, `<user deploy>`):
+Từ máy dev (Windows 10/11, Linux, macOS) có `git`, `node`, OpenSSH client (`ssh`, `scp`), tại thư mục gốc repo:
 
 ```bash
-SHA7=$(git rev-parse --short=7 HEAD) && git -c core.autocrlf=false archive --format=tar.gz -o "/tmp/qlvb-$SHA7.tar.gz" HEAD backend scripts docs/common/database && ssh -p 2150 <user deploy>@<host> 'mkdir -p ~/deploy' && scp -P 2150 "/tmp/qlvb-$SHA7.tar.gz" deploy/deploy.sh <user deploy>@<host>:deploy/ && ssh -p 2150 <user deploy>@<host> "DB_MODE=rebuild bash ~/deploy/deploy.sh $SHA7"
+pnpm deploy:staging
 ```
+
+Lệnh `git fetch origin staging` rồi deploy đúng commit `origin/staging`; không pull, không checkout, working tree và nhánh hiện tại không bị đổi. Lệnh in commit, host, `DB_MODE=rebuild` và yêu cầu gõ `DEPLOY` trước khi gửi gì lên host (`pnpm deploy:staging --yes` bỏ bước xác nhận). Tarball (`backend`, `scripts`, `docs/common/database`) và `deploy/deploy.sh` của commit đó được `scp` vào `~/deploy/`, sau đó chạy `DB_MODE=rebuild bash deploy/deploy.sh <sha7>`. Log stream ra terminal; mã thoát của lệnh là mã thoát của `deploy.sh`. File tạm được xóa sau khi chạy.
+
+Cấu hình host (không ghi IP, tên tài khoản hay mật khẩu vào repo):
+
+- `QLVB_DEPLOY_HOST` (bắt buộc): alias trong `~/.ssh/config` hoặc `user@host`. Ví dụ alias:
+
+  ```
+  Host qlvb-staging
+      HostName <host>
+      User <user deploy>
+      Port 2150
+  ```
+
+  rồi đặt `QLVB_DEPLOY_HOST=qlvb-staging`.
+- `QLVB_DEPLOY_PORT` (tùy chọn): chỉ khi đặt thì lệnh truyền `-p`/`-P`; không đặt thì cổng lấy từ cấu hình ssh (alias có `Port`, hoặc mặc định 22). Với `user@host` không qua alias, đặt `QLVB_DEPLOY_PORT=2150`.
+- Mật khẩu SSH nhập trực tiếp khi `ssh`/`scp` hỏi (mỗi lần gọi một lần); nên dùng khóa SSH để tránh nhập lặp.
+
+Điều kiện tiên quyết trên host giữ nguyên như mục trên, gồm rule sudoers `systemctl stop qlvb-backend`.
 
 ### Khôi phục từ dump
 

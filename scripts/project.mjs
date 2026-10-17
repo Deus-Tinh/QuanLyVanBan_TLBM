@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
@@ -156,6 +157,107 @@ async function resetDatabase() {
   console.log("Đã dựng lại DB local từ release_DDL.sql và đồng bộ migration Django.");
 }
 
+const deployPaths = ["backend", "scripts", "docs/common/database"];
+
+function requireCommand(command, args, hint) {
+  const result = spawnSync(command, args, { stdio: "ignore", shell: false });
+  if (result.error) {
+    throw new Error(`Không tìm thấy \`${command}\` trong PATH. ${hint}`);
+  }
+}
+
+function git(args, options = {}) {
+  const result = spawnSync("git", args, { cwd: projectRoot, shell: false, ...options });
+  if (result.error || result.status !== 0) {
+    const detail = result.stderr ? `
+${result.stderr.toString().trim()}` : "";
+    throw new Error(`Lệnh git thất bại: git ${args.join(" ")}${detail}`);
+  }
+  return result.stdout;
+}
+
+async function deployStaging(...args) {
+  if (args.includes("--help")) {
+    console.log([
+      "Dùng: pnpm deploy:staging [--yes]",
+      "Deploy origin/staging lên host staging (DB_MODE=rebuild) bằng deploy/deploy.sh.",
+      "Biến môi trường: QLVB_DEPLOY_HOST (bắt buộc; alias trong ~/.ssh/config hoặc user@host),",
+      "QLVB_DEPLOY_PORT (tùy chọn; đặt thì truyền -p/-P, không đặt thì dùng cấu hình ssh).",
+      "--yes bỏ bước gõ DEPLOY xác nhận.",
+    ].join(os.EOL));
+    return;
+  }
+
+  const target = process.env.QLVB_DEPLOY_HOST?.trim();
+  if (!target) {
+    throw new Error("Thiếu QLVB_DEPLOY_HOST. Thêm alias vào ~/.ssh/config (Host qlvb-staging / HostName / User / Port) "
+      + "rồi đặt QLVB_DEPLOY_HOST=qlvb-staging, hoặc đặt QLVB_DEPLOY_HOST=user@host kèm QLVB_DEPLOY_PORT.");
+  }
+  if (target.startsWith("-")) {
+    throw new Error("QLVB_DEPLOY_HOST không hợp lệ.");
+  }
+  const port = process.env.QLVB_DEPLOY_PORT?.trim();
+  if (port && !/^\d+$/.test(port)) {
+    throw new Error("QLVB_DEPLOY_PORT phải là số.");
+  }
+
+  requireCommand("git", ["--version"], "Cài Git rồi chạy lại.");
+  requireCommand("ssh", ["-V"], "Bật OpenSSH Client (Windows: Settings > Optional features) rồi chạy lại.");
+  requireCommand("scp", [], "Bật OpenSSH Client (Windows: Settings > Optional features) rồi chạy lại.");
+
+  console.log("Đang fetch origin/staging (không thay đổi working tree)...");
+  git(["fetch", "origin", "staging"], { stdio: "inherit" });
+  const commit = git(["rev-parse", "--verify", "origin/staging^{commit}"]).toString().trim();
+  const sha7 = git(["rev-parse", "--short=7", commit]).toString().trim();
+  const subject = git(["log", "-1", "--format=%s", commit]).toString().trim();
+
+  const tmpDir = mkdtempSync(path.join(os.tmpdir(), "qlvb-deploy-"));
+  try {
+    const tarball = `qlvb-${sha7}.tar.gz`;
+    git(["-c", "core.autocrlf=false", "archive", "--format=tar.gz", "-o", path.join(tmpDir, tarball), commit, ...deployPaths]);
+    writeFileSync(path.join(tmpDir, "deploy.sh"), git(["show", `${commit}:deploy/deploy.sh`], { maxBuffer: 16 * 1024 * 1024 }));
+
+    console.log("");
+    console.log(`Commit:  ${sha7} ${subject}`);
+    console.log(`Host:    ${target}${port ? `:${port}` : ""}`);
+    console.log("DB_MODE: rebuild");
+    console.log("Cảnh báo: DB staging sẽ bị xóa và dựng lại từ release_DDL.sql.");
+
+    if (!args.includes("--yes")) {
+      const terminal = createInterface({ input: process.stdin, output: process.stdout });
+      let answer;
+      try {
+        answer = await terminal.question("Gõ DEPLOY để tiếp tục: ");
+      } finally {
+        terminal.close();
+      }
+      if (answer !== "DEPLOY") {
+        console.log("Đã hủy; không có gì được tải lên host.");
+        process.exitCode = 1;
+        return;
+      }
+    }
+
+    const sshOptions = port ? ["-p", port] : [];
+    const scpOptions = port ? ["-P", port] : [];
+    const options = { cwd: tmpDir };
+
+    await runChecked("ssh", [...sshOptions, target, 'mkdir -p "$HOME/deploy"'], options);
+    await runChecked("scp", [...scpOptions, tarball, "deploy.sh", `${target}:deploy/`], options);
+    const code = await run("ssh", [...sshOptions, target, `DB_MODE=rebuild bash deploy/deploy.sh ${sha7}`], options);
+    if (code !== 0) {
+      process.exitCode = code;
+      console.error("");
+      console.error(`deploy.sh kết thúc với mã ${code}. Xem log /srv/qlvb/deploy.log trên host.`);
+      return;
+    }
+    console.log("");
+    console.log(`Đã deploy ${sha7} lên ${target}.`);
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 const actions = {
   "db-setup": setupDatabase,
   "db-start": async () => {
@@ -179,6 +281,7 @@ const actions = {
   },
   "db-reset": resetDatabase,
   "db-stop": async () => dockerCompose(["stop", "db", "pgadmin"]),
+  "deploy-staging": () => deployStaging(...process.argv.slice(3)),
   runserver: async () => {
     requireDockerEngine();
     await requireLocalDatabase();

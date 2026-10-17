@@ -117,6 +117,7 @@ Chạy tại thư mục gốc:
 - `pnpm db:migrations`: xem danh sách migration và trạng thái đã áp dụng/chưa áp dụng.
 - `pnpm db:reset`: xóa dữ liệu trong DB local `qlvb_dev`, dựng lại từ `release_DDL.sql` bằng `scripts/build_db.py` (kèm `seed_db`); phải gõ `RESET` để xác nhận. Lệnh này không xóa dữ liệu production.
 - `pnpm db:stop`: dừng DB và pgAdmin nhưng giữ volume (kho dữ liệu bền vững của Docker).
+- `pnpm deploy:staging`: deploy backend của `origin/staging` lên host staging với `DB_MODE=rebuild` (xóa và dựng lại DB staging). Lệnh chỉ `git fetch`, không đổi working tree hay nhánh đang checkout; gửi tarball và `deploy/deploy.sh` qua `scp`/`ssh`; phải gõ `DEPLOY` để xác nhận (`--yes` bỏ bước này). Cần `ssh`, `scp`, `git` trong PATH và biến môi trường `QLVB_DEPLOY_HOST` (chi tiết ở `docs/common/database/build_db_runbook.md`).
 
 Không cần xóa volume khi chỉ muốn dựng lại DB; dùng `pnpm db:reset` để chỉ reset đúng database local của dự án.
 
