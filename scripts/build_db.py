@@ -1,12 +1,17 @@
 """Dựng DB PostgreSQL từ docs/common/database/release_DDL.sql rồi đồng bộ trạng thái migration Django.
 
 Một quy trình dùng chung cho local, CI, DB template của test và staging:
-1. Tạo DB rỗng (hoặc dựng lại khi có --force).
-2. Nạp release_DDL.sql trong một transaction (lỗi là dừng, không để lại DB nạp dở).
-3. Duyệt các migration theo thứ tự phụ thuộc. App có đủ bảng model trong DB thì ghi nhận migration
+1. Tạo DB rỗng (hoặc dựng lại khi có --force; DB có sẵn nhưng rỗng thì dùng tại chỗ).
+2. Nạp release_DDL.sql. File này tự có BEGIN/COMMIT nên không rollback được giữa chừng.
+3. Duyệt migration theo thứ tự phụ thuộc. App có đủ bảng model trong DB thì ghi nhận migration
    là đã áp dụng (fake); app không có bảng nào thì áp dụng thật. App có một phần bảng thì báo lỗi.
 4. Xác nhận không còn migration chưa áp dụng.
 5. Tùy chọn chạy seed_db.
+6. Ghi dấu hoàn tất vào COMMENT của DB (sha256 của DDL và trạng thái seed).
+
+Bước nào thất bại thì dọn: DB do lượt chạy này tạo (hoặc thay bằng --force) bị DROP; DB có sẵn nhưng rỗng
+được trả về trạng thái rỗng (DROP SCHEMA public rồi tạo lại). DB có sẵn và không rỗng không bị xóa khi
+thiếu --force. --if-empty chỉ bỏ qua khi DB có dấu hoàn tất khớp hash DDL và yêu cầu seed.
 
 Kết nối lấy từ DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME (tham số dòng lệnh ghi đè, riêng mật khẩu
 chỉ đọc từ DB_PASSWORD). User kết nối cần quyền CREATEDB. Cần DJANGO_SECRET_KEY như khi chạy backend.
@@ -14,6 +19,7 @@ chỉ đọc từ DB_PASSWORD). User kết nối cần quyền CREATEDB. Cần D
 Dùng: python scripts/build_db.py [--dbname TÊN] [--force | --if-empty] [--seed]
 """
 import argparse
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -25,6 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "backend"
 DEFAULT_DDL = ROOT / "docs" / "common" / "database" / "release_DDL.sql"
 MAINTENANCE_DB = "postgres"
+MARK_PREFIX = "build_db:v1"
 
 
 def parse_args():
@@ -49,43 +56,90 @@ def connect(args, dbname, **kwargs):
     )
 
 
-def table_count(args):
+def ddl_sha256(args):
+    return hashlib.sha256(args.ddl.read_bytes()).hexdigest()
+
+
+def build_mark(args):
+    return f"{MARK_PREFIX} ddl_sha256={ddl_sha256(args)} seed={int(args.seed)}"
+
+
+def object_count(args):
+    """Số bảng/view/sequence/hàm trong schema public; 0 nghĩa là DB rỗng."""
     with connect(args, args.dbname) as conn:
         return conn.execute(
-            "SELECT count(*) FROM information_schema.tables "
-            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
+            "SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "        WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m','S','f')) "
+            "     + (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "        WHERE n.nspname = 'public')"
         ).fetchone()[0]
 
 
-def create_database(args):
-    """Trả về False khi bỏ qua vì DB đã khởi tạo (--if-empty)."""
+def read_mark(conn, dbname):
+    row = conn.execute(
+        "SELECT shobj_description(oid, 'pg_database') FROM pg_database WHERE datname = %s", [dbname]
+    ).fetchone()
+    return row[0] if row else None
+
+
+def prepare_database(args):
+    """Chuẩn bị DB đích. Trả về cách dọn khi lỗi: 'drop', 'reset' hoặc None; None kèm skip=True là bỏ qua."""
     name = sql.Identifier(args.dbname)
     with connect(args, MAINTENANCE_DB, autocommit=True) as conn:
         exists = conn.execute(
             "SELECT 1 FROM pg_database WHERE datname = %s", [args.dbname]
         ).fetchone()
-        if exists:
-            if args.force:
-                conn.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(name))
-            elif table_count(args) == 0:
-                return True
-            elif args.if_empty:
-                print(f"DB {args.dbname} đã có bảng; bỏ qua. Dùng --force để dựng lại.")
-                return False
-            else:
-                raise SystemExit(
-                    f"DB {args.dbname} đã có bảng. Dùng --force để xóa và dựng lại, "
-                    "hoặc --if-empty để bỏ qua."
-                )
-        conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
-    return True
+        if not exists:
+            conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
+            return "drop", False
+        if args.force:
+            conn.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(name))
+            conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
+            return "drop", False
+        mark = read_mark(conn, args.dbname)
+    if mark is None and object_count(args) == 0:
+        return "reset", False
+    if args.if_empty and mark == build_mark(args):
+        print(f"DB {args.dbname} đã dựng hoàn tất với DDL và yêu cầu seed hiện tại; bỏ qua.")
+        return None, True
+    if args.if_empty:
+        raise SystemExit(
+            f"DB {args.dbname} không có dấu hoàn tất khớp DDL/seed hiện tại (dấu: {mark!r}). "
+            "Dùng --force để xóa và dựng lại."
+        )
+    raise SystemExit(f"DB {args.dbname} đã tồn tại và không rỗng. Dùng --force để xóa và dựng lại.")
+
+
+def cleanup(args, mode):
+    """Dọn DB sau khi lỗi. Ném SystemExit nếu không dọn được."""
+    if "django" in sys.modules:
+        from django.db import connections
+
+        connections.close_all()
+    if mode == "drop":
+        with connect(args, MAINTENANCE_DB, autocommit=True) as conn:
+            conn.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(args.dbname)))
+        print(f"Đã xóa DB {args.dbname} do lượt dựng thất bại.", file=sys.stderr)
+    elif mode == "reset":
+        with connect(args, args.dbname, autocommit=True) as conn:
+            conn.execute("DROP SCHEMA public CASCADE")
+            conn.execute("CREATE SCHEMA public")
+        print(f"Đã trả DB {args.dbname} về trạng thái rỗng do lượt dựng thất bại.", file=sys.stderr)
 
 
 def load_ddl(args):
-    # Không có placeholder tham số nên psycopg gửi nguyên văn nhiều câu lệnh; lỗi ở đâu thì rollback toàn bộ.
     with connect(args, args.dbname) as conn:
         conn.execute(args.ddl.read_text(encoding="utf-8"))
     print(f"Đã nạp {args.ddl.name}.")
+
+
+def write_mark(args):
+    with connect(args, MAINTENANCE_DB, autocommit=True) as conn:
+        conn.execute(
+            sql.SQL("COMMENT ON DATABASE {} IS {}").format(
+                sql.Identifier(args.dbname), sql.Literal(build_mark(args))
+            )
+        )
 
 
 def setup_django(args):
@@ -164,12 +218,7 @@ def adopt_migrations():
     print("Không còn migration chưa áp dụng.")
 
 
-def main():
-    args = parse_args()
-    if not args.ddl.is_file():
-        raise SystemExit(f"Không thấy file DDL: {args.ddl}")
-    if not create_database(args):
-        return
+def build(args):
     load_ddl(args)
     setup_django(args)
     adopt_migrations()
@@ -177,7 +226,28 @@ def main():
         from django.core.management import call_command
 
         call_command("seed_db")
+    write_mark(args)
     print(f"Đã dựng DB {args.dbname}.")
+
+
+def main():
+    args = parse_args()
+    if not args.ddl.is_file():
+        raise SystemExit(f"Không thấy file DDL: {args.ddl}")
+    mode, skip = prepare_database(args)
+    if skip:
+        return
+    try:
+        build(args)
+    except BaseException as exc:
+        try:
+            cleanup(args, mode)
+        except Exception as cleanup_exc:
+            raise SystemExit(
+                f"Dựng DB {args.dbname} thất bại: {exc!r}. Dọn DB cũng thất bại: {cleanup_exc!r}. "
+                f"DB {args.dbname} có thể còn sót, cần xử lý thủ công."
+            ) from exc
+        raise
 
 
 if __name__ == "__main__":

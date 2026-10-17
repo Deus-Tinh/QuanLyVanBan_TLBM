@@ -108,6 +108,26 @@ jobs:
         working-directory: .
         run: python scripts/build_db.py --dbname tlbm_ddl_built --seed
 
+      - name: Smoke ENUM/trigger/function/view của DB dựng bằng script so với DB nạp DDL thô
+        working-directory: .
+        run: |
+          counts() {
+            PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER"               -d "$1" -At -F ' ' -c "
+              SELECT
+                (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+                  WHERE n.nspname = 'public' AND t.typtype = 'e'),
+                (SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal),
+                (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                  WHERE n.nspname = 'public'),
+                (SELECT count(*) FROM pg_views WHERE schemaname = 'public')"
+          }
+          built="$(counts tlbm_ddl_built)"
+          raw="$(counts tlbm_ddl_expected)"
+          echo "enum trigger function view"
+          echo "built: $built"
+          echo "raw:   $raw"
+          test "$built" = "$raw"
+
       - name: Django tests trên PostgreSQL
         run: python manage.py test
 
