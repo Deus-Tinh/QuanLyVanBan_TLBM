@@ -7,5 +7,4 @@ urlpatterns = [
     path("calendar/", views.calendar_api, name="calendar"),
     path("day/", views.day_birthdays_api, name="day_birthdays"),
     path("logs/", views.birthday_email_logs_api, name="logs"),
-    path("wishes/", views.birthday_wishes_api, name="wishes"),
 ]

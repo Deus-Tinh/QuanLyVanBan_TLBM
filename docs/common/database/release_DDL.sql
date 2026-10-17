@@ -1,7 +1,30 @@
 -- =====================================================================
+-- THAY ĐỔI PHASE 10 LÕI TRÌNH KÝ (Nhóm 5; issue #80; đánh dấu [P10] tại vị trí)
+-- Căn cứ: issue #80 mục D; signing-backend-plan.md mục 3.2 "Phẳng hóa"; migration signing 0007_tep_hoan_tat.
+--   signing_attempt thêm trang_thai_tep_hoan_tat (NULL khi lượt chưa hoàn thành; DANG_XU_LY | LOI | THANH_CONG)
+--   và loi_tep_hoan_tat (mã lỗi lần tạo gần nhất): tệp PDF hoàn tất sinh sau khi lượt hoàn thành, lỗi thì
+--   thử lại được, không yêu cầu ký lại. Giá trị trạng thái kiểm ở tầng ứng dụng như các cột trạng thái khác.
+-- =====================================================================
+-- THAY ĐỔI PHASE 7 TRÌNH KÝ (Nhóm 5; issue #80; đánh dấu [P7] tại vị trí)
+-- Căn cứ: signing-backend-plan.md mục 3.2, 3.3; migration signing 0006_ho_so_goc_pham_vi_chuc_vu_muc_do.
+--   1) signing_request thêm ho_so_goc_id (FK tự tham chiếu, RESTRICT) và index: trình lại sau từ chối
+--      tạo hồ sơ mới trỏ về hồ sơ bị từ chối; hồ sơ TU_CHOI là trạng thái kết thúc.
+--   2) signing_process_step_signer thêm pham_vi_chuc_vu (NULL khi cấu hình theo tài khoản): chức vụ
+--      hiểu tương đối trong đơn vị người tạo, đơn vị cố định của cấp hoặc toàn cơ quan.
+--   3) signing_request.muc_do giữ VARCHAR(20); giá trị THUONG | KHAN | HOA_TOC kiểm ở tầng ứng dụng.
+--   4) signing_process thêm don_vi_ap_dung_id (FK organizations_donvi, RESTRICT) và index; CHECK phạm vi
+--      PHONG_BAN bắt buộc có đơn vị, CONG_TY không gắn đơn vị (migration signing 0008_don_vi_ap_dung; dữ liệu
+--      cũ PHONG_BAN chưa có đơn vị được chuyển CONG_TY, đúng hành vi trước đó). Người tạo hồ sơ chỉ chọn
+--      quy trình CONG_TY hoặc PHONG_BAN của đơn vị mình.
+--   5) Cấp manage_signing_process cho nhóm TP (plan mục 8): lãnh đạo đơn vị quản lý quy trình PHONG_BAN
+--      của đơn vị mình; quy trình CONG_TY vẫn chỉ quản trị quản lý (kiểm ở tầng ứng dụng).
+--   6) Cột của các bảng signing_* theo tên chuẩn hóa ở #96 (nguoi_tao_id, nguoi_cap_nhat_id, updated_at,
+--      document_id); migration signing 0009_doi_ten_cot_theo_ddl_chuan_hoa đổi tên cột cho DB dựng bằng migration.
+-- Quy mô sau [P7] và [P10] (nạp sạch): 55 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 197 lượt phân quyền.
+-- =====================================================================
 -- THAY ĐỔI PHASE 6c TRÌNH KÝ (Nhóm 5; issue #79; đánh dấu [6c] tại vị trí)
 -- Căn cứ: docs/modules/05_signing_workflow/danh-gia-nghiep-vu-va-de-xuat.md mục 2 (đã chốt ở PR #78),
---   plan-trien-khai-theo-phase.md Phase 6c; migration signing 0004_bo_kieu_ky_chi_nhan_van_ban_di.
+--   plan-trien-khai-theo-phase.md Phase 6c; migration signing 0005_bo_kieu_ky_chi_nhan_van_ban_di.
 --   1) signing_process bỏ cột kieu_ky_mac_dinh; signing_request bỏ cột kieu_ky.
 --      Cấp ký luôn tuần tự theo thu_tu, người trong cùng cấp ký song song.
 --      Lý do bỏ cách thức TUAN_TU/SONG_SONG cho toàn hồ sơ:
@@ -18,7 +41,7 @@
 --      'signing_kieuky' (kieu_ky, kieu_ky_mac_dinh là VARCHAR); pg_depend không có đối tượng phụ thuộc.
 --   3) Không đổi document_kind: trình ký chỉ nhận 'vanbandi', kiểm ở tầng ứng dụng; giữ ENUM chung
 --      vì documents_view_log và task_congviec vẫn dùng 'vanbanden'.
--- Quy mô sau thay đổi: 54 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
+-- Quy mô sau thay đổi (đã ghép PR #92): 55 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 196 lượt phân quyền.
 -- =====================================================================
 -- THAY ĐỔI BỎ VĂN BẢN MẬT (GVHD đã chốt bỏ văn bản mật; đánh dấu [BỎ MẬT] tại vị trí; giữ nhãn phiên bản)
 -- Bối cảnh: khách hàng là doanh nghiệp bảo hiểm; "văn bản mật" được hiểu là tài liệu nội bộ
@@ -1004,16 +1027,22 @@ CREATE TABLE signing_process (
     phien_ban SMALLINT NOT NULL DEFAULT 1 CHECK (phien_ban >= 0),
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'NHAP',
     pham_vi VARCHAR(20) NOT NULL,
+    don_vi_ap_dung_id BIGINT REFERENCES organizations_donvi (id) ON DELETE RESTRICT, -- [P7] bắt buộc khi PHONG_BAN
     -- [6c] Bỏ kieu_ky_mac_dinh: cấp ký luôn tuần tự, song song là nhiều người trong một cấp.
     cau_hinh_nhac_han JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     nguoi_cap_nhat_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
-    CONSTRAINT uq_signing_process_ma_phien_ban UNIQUE (ma_quy_trinh, phien_ban)
+    CONSTRAINT uq_signing_process_ma_phien_ban UNIQUE (ma_quy_trinh, phien_ban),
+    CONSTRAINT chk_signing_process_don_vi_ap_dung CHECK ( -- [P7]
+        (pham_vi = 'PHONG_BAN' AND don_vi_ap_dung_id IS NOT NULL)
+        OR (pham_vi = 'CONG_TY' AND don_vi_ap_dung_id IS NULL)
+    )
 );
 
 CREATE INDEX idx_signing_process_nguoi_tao ON signing_process (nguoi_tao_id);
+CREATE INDEX idx_signing_process_don_vi_ap_dung ON signing_process (don_vi_ap_dung_id); -- [P7]
 CREATE INDEX idx_signing_process_nguoi_cap_nhat ON signing_process (nguoi_cap_nhat_id);
 
 -- 9.2. Cấp ký trong quy trình mẫu
@@ -1040,6 +1069,7 @@ CREATE TABLE signing_process_step_signer (
     buoc_quy_trinh_id BIGINT NOT NULL REFERENCES signing_process_step (id) ON DELETE CASCADE,
     nguoi_ky_id BIGINT REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     chuc_vu_id BIGINT REFERENCES accounts_position (id) ON DELETE RESTRICT,
+    pham_vi_chuc_vu VARCHAR(20), -- [P7] DON_VI_NGUOI_TAO | DON_VI_CO_DINH | TOAN_CO_QUAN; chỉ dùng khi cấu hình theo chức vụ
     vai_tro_ky VARCHAR(20) NOT NULL DEFAULT 'KY_CHINH',
     chan_ky_chinh BOOLEAN NOT NULL DEFAULT true,
     thu_tu SMALLINT NOT NULL CHECK (thu_tu >= 0),
@@ -1081,6 +1111,7 @@ CREATE TABLE signing_request (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
     nguoi_cap_nhat_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    ho_so_goc_id BIGINT REFERENCES signing_request (id) ON DELETE RESTRICT, -- [P7] trình lại sau từ chối trỏ về hồ sơ gốc
     CONSTRAINT chk_signing_request_ma_bam_sha256 CHECK (ma_bam_tai_lieu IS NULL OR ma_bam_tai_lieu ~ '^[0-9a-f]{64}$')
 );
 
@@ -1090,6 +1121,7 @@ CREATE INDEX idx_signing_request_nguoi_tao ON signing_request (nguoi_tao_id);
 CREATE INDEX idx_signing_request_quy_trinh ON signing_request (quy_trinh_id);
 CREATE INDEX idx_signing_request_nguoi_cap_nhat ON signing_request (nguoi_cap_nhat_id);
 CREATE INDEX idx_signing_request_hanchot ON signing_request (han_chot); -- Issue #47 P2.12
+CREATE INDEX idx_signing_request_ho_so_goc ON signing_request (ho_so_goc_id); -- [P7]
 
 -- 9.5. Lượt trình ký (mỗi lần nộp lại tài liệu sinh 1 lượt mới)
 -- Issue #47 P1.9: Cho phép NULL ở phien_ban_van_ban; GIỮ NOT NULL cho vi_tri_luu_tep và ma_bam_tai_lieu
@@ -1109,6 +1141,8 @@ CREATE TABLE signing_attempt (
     thoi_diem_huy TIMESTAMPTZ,
     vi_tri_tep_hoan_tat VARCHAR(500) NOT NULL DEFAULT '',
     ma_bam_tep_hoan_tat VARCHAR(64) NOT NULL DEFAULT '',
+    trang_thai_tep_hoan_tat VARCHAR(20), -- [P10] DANG_XU_LY | LOI | THANH_CONG; NULL khi lượt chưa hoàn thành
+    loi_tep_hoan_tat VARCHAR(100) NOT NULL DEFAULT '', -- [P10] mã lỗi lần tạo tệp hoàn tất gần nhất
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     nguoi_tao_id BIGINT NOT NULL REFERENCES accounts_employee (id) ON DELETE RESTRICT,
@@ -1642,199 +1676,130 @@ COMMIT;
 BEGIN;
 
 -- 1) Chèn các Khối/Khu vực (Cấp 1) — không trùng lặp (Idempotent)
+-- thu_tu_hien_thi = vị trí của khối trong danh sách liệt kê (WITH ORDINALITY), không phụ thuộc collation.
 INSERT INTO
     organizations_khoi (ten, thu_tu_hien_thi)
-SELECT DISTINCT
-    khoi,
-    ROW_NUMBER() OVER (
-        ORDER BY khoi
-    )
-FROM (
-        VALUES ('HỘI ĐỒNG QUẢN TRỊ'), ('VĂN PHÒNG HỘI ĐỒNG QUẢN TRỊ'), ('BAN TỔNG GIÁM ĐỐC'), (
-                'VĂN PHÒNG BAN ĐIỀU HÀNH TẠI TP.HCM & HÀ NỘI'
-            ), ('KHỐI KINH DOANH'), ('KHỐI NGHIỆP VỤ'), ('KHỐI HỖ TRỢ'), ('KHỐI QUẢN LÝ RỦI RO'), ('KHỐI TÀI CHÍNH'), ('KHỐI KẾ TOÁN'), ('VĂN PHÒNG 2'), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH'
-            ), ('KHU VỰC MIỀN BẮC'), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN'
-            ), ('KHU VỰC ĐÔNG NAM BỘ'), ('GIÁM ĐỊNH VÙNG')
-    ) AS t (khoi)
+SELECT t.khoi, t.vi_tri::INTEGER
+FROM unnest(
+    ARRAY[
+        'HỘI ĐỒNG QUẢN TRỊ',
+        'VĂN PHÒNG HỘI ĐỒNG QUẢN TRỊ',
+        'BAN TỔNG GIÁM ĐỐC',
+        'VĂN PHÒNG BAN ĐIỀU HÀNH TẠI TP.HCM & HÀ NỘI',
+        'KHỐI KINH DOANH',
+        'KHỐI NGHIỆP VỤ',
+        'KHỐI HỖ TRỢ',
+        'KHỐI QUẢN LÝ RỦI RO',
+        'KHỐI TÀI CHÍNH',
+        'KHỐI KẾ TOÁN',
+        'VĂN PHÒNG 2',
+        'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH',
+        'KHU VỰC MIỀN BẮC',
+        'KHU VỰC MIỀN TRUNG TÂY NGUYÊN',
+        'KHU VỰC ĐÔNG NAM BỘ',
+        'GIÁM ĐỊNH VÙNG'
+    ]
+) WITH ORDINALITY AS t (khoi, vi_tri)
 WHERE
     NOT EXISTS (
         SELECT 1
         FROM organizations_khoi
-    );
+    )
+ORDER BY t.vi_tri;
 
 -- 2) Chèn Đơn vị/phòng ban (Cấp 2), gán khoi_id theo tên Khối tương ứng
 INSERT INTO
     organizations_donvi (khoi_id, ten, stt_uu_tien)
-SELECT k.id, x.don_vi, ROW_NUMBER() OVER (
-        ORDER BY x.khoi, x.don_vi
-    )
+-- stt_uu_tien = vị trí của đơn vị trong danh sách liệt kê (cột vi_tri), không phụ thuộc collation.
+SELECT k.id, x.don_vi, x.vi_tri
 FROM (
         VALUES (
-                'HỘI ĐỒNG QUẢN TRỊ', 'Hội đồng quản trị'
-            ), (
-                'HỘI ĐỒNG QUẢN TRỊ', 'Ban kiểm toán nội bộ'
-            ), (
-                'VĂN PHÒNG HỘI ĐỒNG QUẢN TRỊ', 'Văn phòng hội đồng quản trị'
-            ), (
-                'BAN TỔNG GIÁM ĐỐC', 'Ban tổng giám đốc'
-            ), (
-                'BAN TỔNG GIÁM ĐỐC', 'Giám đốc vùng'
-            ), (
-                'VĂN PHÒNG BAN ĐIỀU HÀNH TẠI TP.HCM & HÀ NỘI', 'Văn phòng ban điều hành'
-            ), (
-                'KHỐI KINH DOANH', 'Ban khách hàng doanh nghiệp'
-            ), (
-                'KHỐI KINH DOANH', 'Ban khách hàng qua môi giới'
-            ), (
-                'KHỐI KINH DOANH', 'Ban Bancassurance'
-            ), (
-                'KHỐI KINH DOANH', 'Ban khách hàng cá nhân'
-            ), (
-                'KHỐI KINH DOANH', 'Ban chăm sóc khách hàng ĐT'
-            ), (
-                'KHỐI KINH DOANH', 'Ban dự án phát triển sản phẩm liên kết với các công ty dịch vụ viễn thông'
-            ), (
-                'KHỐI KINH DOANH', 'Ban dự án lớn'
-            ), (
-                'KHỐI KINH DOANH', 'Ban dự án khách hàng qua đại lý'
-            ), (
-                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm con người'
-            ), (
-                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm tài sản kỹ thuật'
-            ), (
-                'KHỐI NGHIỆP VỤ', 'Ban tái bảo hiểm'
-            ), (
-                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm xe cơ giới'
-            ), (
-                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm hàng hải, hàng không, dầu khí, năng lượng'
-            ), (
-                'KHỐI HỖ TRỢ', 'Lãnh đạo khối'
-            ), (
-                'KHỐI HỖ TRỢ', 'Ban hành chính quản trị'
-            ), ('KHỐI HỖ TRỢ', 'Ban nhân sự'), ('KHỐI HỖ TRỢ', 'Ban pháp chế'), (
-                'KHỐI HỖ TRỢ', 'Ban công nghệ thông tin'
-            ), (
-                'KHỐI HỖ TRỢ', 'Ban truyền thông và marketing'
-            ), (
-                'KHỐI QUẢN LÝ RỦI RO', 'Ban quản lý rủi ro và tuân thủ'
-            ), (
-                'KHỐI TÀI CHÍNH', 'Ban đầu tư'
-            ), (
-                'KHỐI TÀI CHÍNH', 'Ban tài chính kế hoạch'
-            ), (
-                'KHỐI TÀI CHÍNH', 'Ban dự án MIS'
-            ), (
-                'KHỐI KẾ TOÁN', 'Lãnh đạo khối'
-            ), ('KHỐI KẾ TOÁN', 'Ban kế toán'), ('VĂN PHÒNG 2', 'Văn phòng 2'), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Sở giao dịch Bảo Long'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long TP.HCM'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Sài Gòn'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Gia Định'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Bến Thành'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Nam Sài Gòn'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Tân Sơn Nhất'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Đông Sài Gòn'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Đông Phương'
-            ), (
-                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Trung tâm kinh doanh Thủ Thiêm'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Hà Nội'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Thủ Đô'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Thăng Long'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Thái Nguyên'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Quảng Ninh'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Hải Phòng'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Phú Thọ'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Bắc Ninh'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Hải Dương'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Nam Định'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Vĩnh Phúc'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Đông Hải'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Sở giao dịch miền Bắc'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Ninh Bình'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Thái Bình'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Đông Đô'
-            ), (
-                'KHU VỰC MIỀN BẮC', 'Bảo Long Thanh Hóa'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long KV Tây Nguyên (Daklak)'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Phú Yên'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Đà Nẵng'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Trung Bộ (Huế)'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Bắc Trung Bộ (Nghệ An)'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Khánh Hòa'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Bình Định'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Bình Thuận'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Quảng Ngãi'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Gia Lai'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Lâm Đồng'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Quảng Bình'
-            ), (
-                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Trung tâm kinh doanh Sông Hàn'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Bình Dương'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Vũng Tàu'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Đồng Nai'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Tây Ninh'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Long An'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Cần Thơ'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Cà Mau'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Kiên Giang'
-            ), (
-                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Đồng Tháp'
-            ), (
-                'GIÁM ĐỊNH VÙNG', 'Giám định vùng'
-            )
-    ) AS x (khoi, don_vi)
+                'HỘI ĐỒNG QUẢN TRỊ', 'Hội đồng quản trị', 1), (
+                'HỘI ĐỒNG QUẢN TRỊ', 'Ban kiểm toán nội bộ', 2), (
+                'VĂN PHÒNG HỘI ĐỒNG QUẢN TRỊ', 'Văn phòng hội đồng quản trị', 3), (
+                'BAN TỔNG GIÁM ĐỐC', 'Ban tổng giám đốc', 4), (
+                'BAN TỔNG GIÁM ĐỐC', 'Giám đốc vùng', 5), (
+                'VĂN PHÒNG BAN ĐIỀU HÀNH TẠI TP.HCM & HÀ NỘI', 'Văn phòng ban điều hành', 6), (
+                'KHỐI KINH DOANH', 'Ban khách hàng doanh nghiệp', 7), (
+                'KHỐI KINH DOANH', 'Ban khách hàng qua môi giới', 8), (
+                'KHỐI KINH DOANH', 'Ban Bancassurance', 9), (
+                'KHỐI KINH DOANH', 'Ban khách hàng cá nhân', 10), (
+                'KHỐI KINH DOANH', 'Ban chăm sóc khách hàng ĐT', 11), (
+                'KHỐI KINH DOANH', 'Ban dự án phát triển sản phẩm liên kết với các công ty dịch vụ viễn thông', 12), (
+                'KHỐI KINH DOANH', 'Ban dự án lớn', 13), (
+                'KHỐI KINH DOANH', 'Ban dự án khách hàng qua đại lý', 14), (
+                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm con người', 15), (
+                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm tài sản kỹ thuật', 16), (
+                'KHỐI NGHIỆP VỤ', 'Ban tái bảo hiểm', 17), (
+                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm xe cơ giới', 18), (
+                'KHỐI NGHIỆP VỤ', 'Ban bảo hiểm hàng hải, hàng không, dầu khí, năng lượng', 19), (
+                'KHỐI HỖ TRỢ', 'Lãnh đạo khối', 20), (
+                'KHỐI HỖ TRỢ', 'Ban hành chính quản trị', 21), ('KHỐI HỖ TRỢ', 'Ban nhân sự', 22), ('KHỐI HỖ TRỢ', 'Ban pháp chế', 23), (
+                'KHỐI HỖ TRỢ', 'Ban công nghệ thông tin', 24), (
+                'KHỐI HỖ TRỢ', 'Ban truyền thông và marketing', 25), (
+                'KHỐI QUẢN LÝ RỦI RO', 'Ban quản lý rủi ro và tuân thủ', 26), (
+                'KHỐI TÀI CHÍNH', 'Ban đầu tư', 27), (
+                'KHỐI TÀI CHÍNH', 'Ban tài chính kế hoạch', 28), (
+                'KHỐI TÀI CHÍNH', 'Ban dự án MIS', 29), (
+                'KHỐI KẾ TOÁN', 'Lãnh đạo khối', 30), ('KHỐI KẾ TOÁN', 'Ban kế toán', 31), ('VĂN PHÒNG 2', 'Văn phòng 2', 32), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Sở giao dịch Bảo Long', 33), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long TP.HCM', 34), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Sài Gòn', 35), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Gia Định', 36), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Bến Thành', 37), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Nam Sài Gòn', 38), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Tân Sơn Nhất', 39), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Đông Sài Gòn', 40), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Bảo Long Đông Phương', 41), (
+                'KHU VỰC THÀNH PHỐ HỒ CHÍ MINH', 'Trung tâm kinh doanh Thủ Thiêm', 42), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Hà Nội', 43), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Thủ Đô', 44), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Thăng Long', 45), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Thái Nguyên', 46), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Quảng Ninh', 47), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Hải Phòng', 48), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Phú Thọ', 49), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Bắc Ninh', 50), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Hải Dương', 51), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Nam Định', 52), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Vĩnh Phúc', 53), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Đông Hải', 54), (
+                'KHU VỰC MIỀN BẮC', 'Sở giao dịch miền Bắc', 55), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Ninh Bình', 56), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Thái Bình', 57), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Đông Đô', 58), (
+                'KHU VỰC MIỀN BẮC', 'Bảo Long Thanh Hóa', 59), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long KV Tây Nguyên (Daklak)', 60), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Phú Yên', 61), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Đà Nẵng', 62), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Trung Bộ (Huế)', 63), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Bắc Trung Bộ (Nghệ An)', 64), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Khánh Hòa', 65), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Bình Định', 66), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Bình Thuận', 67), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Quảng Ngãi', 68), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Gia Lai', 69), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Lâm Đồng', 70), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Quảng Bình', 71), (
+                'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Trung tâm kinh doanh Sông Hàn', 72), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Bình Dương', 73), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Vũng Tàu', 74), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Đồng Nai', 75), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Tây Ninh', 76), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Long An', 77), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Cần Thơ', 78), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Cà Mau', 79), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Kiên Giang', 80), (
+                'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Đồng Tháp', 81), (
+                'GIÁM ĐỊNH VÙNG', 'Giám định vùng', 82)
+    ) AS x (khoi, don_vi, vi_tri)
     JOIN organizations_khoi k ON k.ten = x.khoi
 WHERE
     NOT EXISTS (
         SELECT 1
         FROM organizations_donvi
-    );
+    )
+ORDER BY x.vi_tri;
 
 -- 3) Seed Chức vụ và Tài khoản quản trị hệ thống mẫu (Idempotent, không hard-code ID)
 INSERT INTO
@@ -2454,6 +2419,7 @@ WHERE
         'send_trinhky',
         'delegate_trinhky',
         'cancel_trinhky',
+        'manage_signing_process', -- [P7] lãnh đạo đơn vị quản lý quy trình PHONG_BAN
         'view_congviec',
         'view_dept_congviec',
         'add_congviec',

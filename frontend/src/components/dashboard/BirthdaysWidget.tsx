@@ -66,8 +66,8 @@ export default function BirthdaysWidget({
               <span
                 className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${
                   emp.isToday
-                    ? 'bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30'
-                    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    ? 'bg-danger-subtle text-danger border border-danger-border'
+                    : 'bg-success-subtle text-success border border-success-border'
                 }`}
               >
                 {formatBirthdate(emp.birthdate)}

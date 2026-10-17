@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                 ('ghi_chu', models.TextField(blank=True, null=True, verbose_name='Ghi chú')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('dm_tai_lieu', models.ForeignKey(db_column='dm_tai_lieu', on_delete=django.db.models.deletion.PROTECT, related_name='danh_sach_loai', to='document_templates.danhmuctailieu', verbose_name='Thuộc danh mục cấp 1')),
+                ('dm_tai_lieu', models.ForeignKey(db_column='dm_tai_lieu', on_delete=django.db.models.deletion.RESTRICT, related_name='danh_sach_loai', to='document_templates.danhmuctailieu', verbose_name='Thuộc danh mục cấp 1')),
             ],
             options={
                 'verbose_name': 'Loại tài liệu (Cấp 2)',
@@ -69,7 +69,7 @@ class Migration(migrations.Migration):
                 ('don_vi_id', models.BigIntegerField(blank=True, db_column='don_vi_id', db_index=True, null=True, verbose_name='Đơn vị sở hữu')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('dm_tai_lieu', models.ForeignKey(blank=True, db_column='dm_tai_lieu', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='tai_lieu_thuoc_danh_muc', to='document_templates.danhmuctailieu', verbose_name='Danh mục tài liệu (Cấp 1)')),
+                ('dm_tai_lieu', models.ForeignKey(db_column='dm_tai_lieu', on_delete=django.db.models.deletion.RESTRICT, related_name='tai_lieu_thuoc_danh_muc', to='document_templates.danhmuctailieu', verbose_name='Danh mục tài liệu (Cấp 1)')),
                 ('nguoi_tao', models.ForeignKey(blank=True, db_column='nguoi_tao', null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='Người tạo')),
             ],
             options={
