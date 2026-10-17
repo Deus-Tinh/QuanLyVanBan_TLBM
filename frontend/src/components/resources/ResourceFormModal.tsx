@@ -208,9 +208,10 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           file: null,
           files: [],
         });
-        if (initialData.attachments && initialData.attachments.length > 0) {
+        const activeAttachments = (initialData.attachments || []).filter((att) => !att.is_deleted);
+        if (activeAttachments.length > 0) {
           setExistingFiles(
-            initialData.attachments.map((att) => ({
+            activeAttachments.map((att) => ({
               id: att.id,
               name: att.name,
               size: att.file_size,

@@ -148,8 +148,9 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   };
 
   // Danh sách tệp cần hiển thị (ưu tiên attachments mảng, nếu không fallback về file_dinh_kem)
-  const filesList = item.attachments && item.attachments.length > 0
-    ? item.attachments
+  const activeAttachments = (item.attachments || []).filter((att) => !att.is_deleted);
+  const filesList = activeAttachments.length > 0
+    ? activeAttachments
     : item.file_dinh_kem
       ? [{
           name: (item.file_dinh_kem.startsWith('blob:')

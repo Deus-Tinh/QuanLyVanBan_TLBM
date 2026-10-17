@@ -174,12 +174,14 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   const renderFileBadges = (item: ResourceItem) => {
     const fileList: { name: string; ext: string }[] = [];
     if (item.attachments && item.attachments.length > 0) {
-      item.attachments.forEach((att) => {
-        fileList.push({
-          name: att.name || 'Tệp đính kèm',
-          ext: getFileExt(att.name || att.path, att.mime_type),
+      item.attachments
+        .filter((att) => !att.is_deleted)
+        .forEach((att) => {
+          fileList.push({
+            name: att.name || 'Tệp đính kèm',
+            ext: getFileExt(att.name || att.path, att.mime_type),
+          });
         });
-      });
     } else if (item.file_dinh_kem) {
       fileList.push({
         name: item.file_dinh_kem.split('/').pop() || 'Tệp đính kèm',
