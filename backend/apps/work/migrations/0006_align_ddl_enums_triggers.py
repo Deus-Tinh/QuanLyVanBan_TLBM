@@ -33,20 +33,37 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 """)
+    # Partial unique index uq_task_participant_one_host has predicate
+    # WHERE vai_tro = 'CHU_TRI'; Postgres can't validate it during
+    # ALTER COLUMN TYPE (implicit cast not IMMUTABLE). Drop → alter → recreate.
+    schema_editor.execute(
+        "DROP INDEX IF EXISTS uq_task_participant_one_host;"
+    )
     schema_editor.execute("""\
 ALTER TABLE task_participant
     ALTER COLUMN vai_tro TYPE task_vaitro USING vai_tro::task_vaitro;
+""")
+    schema_editor.execute("""\
+CREATE UNIQUE INDEX uq_task_participant_one_host
+    ON task_participant (cong_viec) WHERE vai_tro = 'CHU_TRI';
 """)
 
 
 def reverse_enum_vaitro(apps, schema_editor):
     if not is_postgres(schema_editor):
         return
+    schema_editor.execute(
+        "DROP INDEX IF EXISTS uq_task_participant_one_host;"
+    )
     schema_editor.execute("""\
 ALTER TABLE task_participant
-    ALTER COLUMN vai_tro TYPE varchar(10) USING vai_tro::text;
+    ALTER COLUMN vai_tro TYPE varchar(20) USING vai_tro::text;
 """)
     schema_editor.execute("DROP TYPE IF EXISTS task_vaitro;")
+    schema_editor.execute("""\
+CREATE UNIQUE INDEX uq_task_participant_one_host
+    ON task_participant (cong_viec) WHERE vai_tro = 'CHU_TRI';
+""")
 
 
 def forward_enum_attachment_loai(apps, schema_editor):
