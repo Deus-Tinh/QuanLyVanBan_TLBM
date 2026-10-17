@@ -110,15 +110,17 @@ Các cổng DB và pgAdmin chỉ bind vào `127.0.0.1` (chỉ truy cập từ m�
 
 Chạy tại thư mục gốc:
 
-- `pnpm db:setup`: khởi động DB và pgAdmin, tạo môi trường Python nếu thiếu, rồi chạy migration.
+- `pnpm db:setup`: khởi động DB và pgAdmin, tạo môi trường Python nếu thiếu, rồi dựng DB từ `docs/common/database/release_DDL.sql` (đồng bộ migration Django, nạp dữ liệu mẫu `seed_db`) bằng `scripts/build_db.py`. DB local đã có bảng thì giữ nguyên; dùng `pnpm db:reset` để dựng lại.
 - `pnpm db:start`: chỉ khởi động DB và pgAdmin; giữ nguyên dữ liệu local hiện có.
 - `pnpm db:status`: xem trạng thái container DB/pgAdmin và địa chỉ truy cập.
-- `pnpm db:migrate`: áp dụng migration Django mới vào DB local sau khi code có migration mới.
+- `pnpm db:migrate`: áp dụng migration Django mới vào DB local qua `scripts/build_db.py --sync`. Chỉ chạy khi DB do `pnpm db:setup`/`db:reset` dựng từ đúng bản `release_DDL.sql` hiện tại (dấu hoàn tất khớp hash DDL); khi đó migration tạo bảng đã có được ghi nhận là đã áp dụng (fake), migration tạo bảng mới chạy thật. DDL đã đổi hoặc DB không dựng bằng script thì dừng trước mọi thay đổi và yêu cầu `pnpm db:reset`. Không nạp lại DDL, không xóa dữ liệu.
 - `pnpm db:migrations`: xem danh sách migration và trạng thái đã áp dụng/chưa áp dụng.
-- `pnpm db:reset`: xóa dữ liệu trong DB local `qlvb_dev`, tạo lại DB rỗng rồi áp dụng migration; phải gõ `RESET` để xác nhận. Lệnh này không xóa dữ liệu production.
+- `pnpm db:reset`: xóa dữ liệu trong DB local `qlvb_dev`, dựng lại từ `release_DDL.sql` bằng `scripts/build_db.py` (kèm `seed_db`); phải gõ `RESET` để xác nhận. Lệnh này không xóa dữ liệu production.
 - `pnpm db:stop`: dừng DB và pgAdmin nhưng giữ volume (kho dữ liệu bền vững của Docker).
 
-Không cần xóa volume khi chỉ muốn làm DB trống; dùng `pnpm db:reset` để chỉ reset đúng database local của dự án.
+Không cần xóa volume khi chỉ muốn dựng lại DB; dùng `pnpm db:reset` để chỉ reset đúng database local của dự án.
+
+Test backend chạy trên PostgreSQL (test DB do Django dựng bằng migration); quy trình dựng DB, cách chạy test và runbook staging nằm tại `docs/common/database/build_db_runbook.md`.
 
 ---
 
