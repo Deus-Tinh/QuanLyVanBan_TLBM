@@ -6,9 +6,10 @@ Chỉ chạy trên PostgreSQL — SQLite (test mặc định) tự bỏ qua.
 Thay đổi:
 1. Tạo ENUM task_vaitro, đổi task_participant.vai_tro từ varchar → ENUM.
 2. Tạo ENUM task_attachment_loai, đổi task_attachment.loai từ varchar → ENUM.
-3. Thêm CHECK constraint chk_task_participant_role.
-4. Thêm CHECK constraint chk_task_attachment_evidence.
-5. Tạo trigger trg_congviec_updated_at (dùng function chung set_updated_at).
+3. Tạo trigger trg_congviec_updated_at (dùng function chung set_updated_at).
+
+CHECK constraints chk_task_participant_role và chk_task_attachment_evidence
+đã được tạo bởi migration 0004 (Django CheckConstraint) — không cần tạo lại.
 """
 
 from django.db import migrations
@@ -18,11 +19,6 @@ def is_postgres(schema_editor):
     return schema_editor.connection.vendor == "postgresql"
 
 
-def noop(apps, schema_editor):
-    pass
-
-
-# --- Forward helpers ---
 
 def forward_enum_vaitro(apps, schema_editor):
     if not is_postgres(schema_editor):
@@ -91,47 +87,6 @@ ALTER TABLE task_attachment
     schema_editor.execute("DROP TYPE IF EXISTS task_attachment_loai;")
 
 
-def forward_chk_participant_role(apps, schema_editor):
-    if not is_postgres(schema_editor):
-        return
-    schema_editor.execute("""\
-ALTER TABLE task_participant
-    ADD CONSTRAINT chk_task_participant_role CHECK (
-        vai_tro IN ('CHU_TRI', 'CHI_DAO', 'THAM_GIA')
-    );
-""")
-
-
-def reverse_chk_participant_role(apps, schema_editor):
-    if not is_postgres(schema_editor):
-        return
-    schema_editor.execute("""\
-ALTER TABLE task_participant
-    DROP CONSTRAINT IF EXISTS chk_task_participant_role;
-""")
-
-
-def forward_chk_attachment_evidence(apps, schema_editor):
-    if not is_postgres(schema_editor):
-        return
-    schema_editor.execute("""\
-ALTER TABLE task_attachment
-    ADD CONSTRAINT chk_task_attachment_evidence CHECK (
-        (loai = 'GIAO_VIEC' AND y_kien_id IS NULL)
-        OR (loai = 'BANG_CHUNG' AND y_kien_id IS NOT NULL)
-    );
-""")
-
-
-def reverse_chk_attachment_evidence(apps, schema_editor):
-    if not is_postgres(schema_editor):
-        return
-    schema_editor.execute("""\
-ALTER TABLE task_attachment
-    DROP CONSTRAINT IF EXISTS chk_task_attachment_evidence;
-""")
-
-
 def forward_trigger_updated_at(apps, schema_editor):
     if not is_postgres(schema_editor):
         return
@@ -171,7 +126,5 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(forward_enum_vaitro, reverse_enum_vaitro),
         migrations.RunPython(forward_enum_attachment_loai, reverse_enum_attachment_loai),
-        migrations.RunPython(forward_chk_participant_role, reverse_chk_participant_role),
-        migrations.RunPython(forward_chk_attachment_evidence, reverse_chk_attachment_evidence),
         migrations.RunPython(forward_trigger_updated_at, reverse_trigger_updated_at),
     ]
