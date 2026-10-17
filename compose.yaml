@@ -6,6 +6,7 @@ services:
       POSTGRES_DB: qlvb_dev
       POSTGRES_USER: qlvb_dev
       POSTGRES_PASSWORD: qlvb_local_only
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=vi-VN --locale=C.UTF-8"
     ports:
       - "127.0.0.1:55432:5432"
     volumes:
