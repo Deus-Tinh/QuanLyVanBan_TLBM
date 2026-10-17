@@ -66,8 +66,8 @@ graph TD
    pnpm test
    pnpm lint
    pnpm build
-   python backend/manage.py test
-   python backend/manage.py check
+   pnpm test:backend
+   pnpm manage check
    ```
 6. **Tạo PR:** Mở Pull Request trỏ đích về `staging`, điền form đầy đủ và ghi rõ `Closes #<mã_issue>`.
 

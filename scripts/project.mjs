@@ -15,6 +15,16 @@ const python = process.platform === "win32"
   ? path.join(venvDir, "Scripts", "python.exe")
   : path.join(venvDir, "bin", "python");
 
+const dbPort = process.env.QLVB_DB_PORT?.trim() || "55432";
+const pgadminPort = process.env.QLVB_PGADMIN_PORT?.trim() || "5050";
+for (const [name, value] of [["QLVB_DB_PORT", dbPort], ["QLVB_PGADMIN_PORT", pgadminPort]]) {
+  if (!/^\d+$/.test(value)) {
+    console.error(`${name} phải là số cổng (đang là "${value}").`);
+    process.exit(1);
+  }
+}
+
+// DB local do compose.yaml dựng; nguồn duy nhất cho thông tin kết nối khi chạy qua pnpm.
 const localDatabaseEnvironment = {
   DJANGO_SECRET_KEY: "qlvb-local-only-not-for-production",
   DJANGO_DEBUG: "true",
@@ -24,7 +34,7 @@ const localDatabaseEnvironment = {
   DB_USER: "qlvb_dev",
   DB_PASSWORD: "qlvb_local_only",
   DB_HOST: "127.0.0.1",
-  DB_PORT: "55432",
+  DB_PORT: dbPort,
 };
 
 function run(command, args, options = {}) {
@@ -49,21 +59,24 @@ async function runChecked(command, args, options = {}) {
 }
 
 async function dockerCompose(args) {
-  await runChecked("docker", ["compose", ...args]);
+  requireDockerEngine();
+  await runChecked("docker", ["compose", ...args], {
+    env: { ...process.env, QLVB_DB_PORT: dbPort, QLVB_PGADMIN_PORT: pgadminPort },
+  });
 }
 
 async function ensurePythonEnvironment() {
   if (!existsSync(python)) {
-    const launcher = process.platform === "win32" ? "py" : "python3.12";
+    const launcher = process.platform === "win32" ? "py" : "python3";
     const launcherArgs = process.platform === "win32"
-      ? ["-3.12", "-m", "venv", venvDir]
+      ? ["-3", "-m", "venv", venvDir]
       : ["-m", "venv", venvDir];
 
     console.log("Đang tạo môi trường Python 3.12+ trong backend/.venv...");
     try {
       await runChecked(launcher, launcherArgs);
     } catch {
-      throw new Error("Không thể tạo backend/.venv. Cài Python 3.12+ rồi chạy lại lệnh.");
+      throw new Error("Không thể tạo backend/.venv. Cài Python 3.12+ (Windows: có lệnh `py`; Linux/macOS: `python3`) rồi chạy lại lệnh.");
     }
   }
 
@@ -89,7 +102,7 @@ async function ensurePythonEnvironment() {
 }
 
 function djangoEnvironment() {
-  return { ...process.env, ...localDatabaseEnvironment };
+  return { ...process.env, ...localDatabaseEnvironment, PYTHONUTF8: "1", QLVB_DB_PORT: dbPort, QLVB_PGADMIN_PORT: pgadminPort };
 }
 
 async function django(...args) {
@@ -100,9 +113,10 @@ async function django(...args) {
 }
 
 async function requireLocalDatabase() {
+  requireDockerEngine();
   const code = await run("docker", [
     "compose", "exec", "-T", "db", "pg_isready", "-U", "qlvb_dev", "-d", "qlvb_dev",
-  ]);
+  ], { env: { ...process.env, QLVB_DB_PORT: dbPort, QLVB_PGADMIN_PORT: pgadminPort } });
   if (code !== 0) {
     throw new Error("PostgreSQL local chưa sẵn sàng. Mở Docker Desktop rồi chạy `pnpm db:start`.");
   }
@@ -112,14 +126,17 @@ function requireDockerEngine() {
   const result = spawnSync("docker", ["info", "--format", "{{.ServerVersion}}"], {
     stdio: "ignore",
   });
-  if (result.error || result.status !== 0) {
-    throw new Error("Docker Desktop/Engine chưa chạy. Mở Docker Desktop, chờ Docker sẵn sàng rồi chạy lại `pnpm runserver`.");
+  if (result.error) {
+    throw new Error("Không tìm thấy `docker` trong PATH. Cài Docker Desktop rồi chạy lại lệnh.");
+  }
+  if (result.status !== 0) {
+    throw new Error("Docker Desktop/Engine chưa chạy. Mở Docker Desktop, chờ Docker sẵn sàng rồi chạy lại lệnh.");
   }
 }
 
 function printLocalUrls() {
-  console.log("\nPostgreSQL local: 127.0.0.1:55432 / database qlvb_dev");
-  console.log("pgAdmin local:    http://127.0.0.1:5050");
+  console.log(`\nPostgreSQL local: 127.0.0.1:${dbPort} / database qlvb_dev`);
+  console.log(`pgAdmin local:    http://127.0.0.1:${pgadminPort}`);
   console.log("pgAdmin login:    admin@qlvb.local / qlvb_pgadmin_local_only");
 }
 
@@ -131,6 +148,7 @@ async function buildDatabase(...args) {
 }
 
 async function setupDatabase() {
+  requireDockerEngine();
   await dockerCompose(["up", "--detach", "--wait", "db", "pgadmin"]);
   await ensurePythonEnvironment();
   await buildDatabase("--if-empty");
@@ -283,10 +301,19 @@ const actions = {
   "db-stop": async () => dockerCompose(["stop", "db", "pgadmin"]),
   "deploy-staging": () => deployStaging(...process.argv.slice(3)),
   runserver: async () => {
-    requireDockerEngine();
     await requireLocalDatabase();
     await ensurePythonEnvironment();
     await django("runserver", "127.0.0.1:8000");
+  },
+  manage: async () => {
+    await requireLocalDatabase();
+    await ensurePythonEnvironment();
+    await django(...process.argv.slice(3));
+  },
+  "test-backend": async () => {
+    await requireLocalDatabase();
+    await ensurePythonEnvironment();
+    await django("test", ...process.argv.slice(3));
   },
 };
 

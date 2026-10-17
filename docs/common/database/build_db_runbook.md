@@ -41,9 +41,10 @@ python scripts/build_db.py --dbname <tên DB> --sync
 Test chạy trên PostgreSQL; test DB do Django tự dựng bằng migration (không dùng template DDL):
 
 ```bash
-cd backend
-DB_ENGINE=postgresql DB_NAME=<tên DB> DB_USER=<user> DB_PASSWORD=<mật khẩu> python manage.py test
+pnpm test:backend    # local: PostgreSQL của compose.yaml
 ```
+
+CI và host staging chạy `python manage.py test` trong `backend/` với `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (và `DB_ENGINE=postgresql` nếu có) trỏ tới một PostgreSQL có quyền `CREATEDB`.
 
 CI chạy thêm `scripts/build_db.py` trên một DB riêng để kiểm chứng DDL nạp được và migration đồng bộ được.
 
