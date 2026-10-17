@@ -51,6 +51,8 @@ export default function DocumentTypesPage() {
 
   React.useEffect(() => {
     let active = true;
+    setIsLoading(true);
+    setError(null);
     const request = dossierId
       ? recordsService.listDocumentTypes(dossierId, { search, year, page, pageSize: PAGE_SIZE })
       : recordsService.listDocumentTypeCatalog({ search, year, page, pageSize: PAGE_SIZE });
@@ -80,23 +82,21 @@ export default function DocumentTypesPage() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       const trimmed = searchInput.trim();
-      setSearch((prev) => {
-        if (prev !== trimmed) {
-          setIsLoading(true);
-          setError(null);
-          setPage(1);
-          return trimmed;
-        }
-        return prev;
-      });
+      if (trimmed !== search) {
+        setPage(1);
+        setSearch(trimmed);
+      }
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchInput]);
+  }, [searchInput, search]);
 
-  const beginReload = () => {
-    setIsLoading(true);
-    setError(null);
+  const handleClearSearch = () => {
+    setSearchInput('');
+    if (search !== '') {
+      setPage(1);
+      setSearch('');
+    }
   };
 
   const years = React.useMemo(() => {
@@ -145,7 +145,6 @@ export default function DocumentTypesPage() {
             event.preventDefault();
             const trimmed = searchInput.trim();
             if (search !== trimmed) {
-              beginReload();
               setPage(1);
               setSearch(trimmed);
             }
@@ -165,12 +164,7 @@ export default function DocumentTypesPage() {
               <button
                 type="button"
                 className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-0 text-muted transition hover:text-main"
-                onClick={() => {
-                  beginReload();
-                  setSearchInput('');
-                  setSearch('');
-                  setPage(1);
-                }}
+                onClick={handleClearSearch}
                 aria-label={t('records.actions.reset')}
               >
                 <i className="fa-solid fa-xmark text-sm" />
@@ -181,9 +175,11 @@ export default function DocumentTypesPage() {
             className={`${controlClass} w-full md:w-40`}
             value={year}
             onChange={(event) => {
-              beginReload();
-              setYear(event.target.value);
-              setPage(1);
+              const nextYear = event.target.value;
+              if (nextYear !== year) {
+                setYear(nextYear);
+                setPage(1);
+              }
             }}
             aria-label={t('records.filters.year')}
           >
@@ -202,7 +198,6 @@ export default function DocumentTypesPage() {
               type="button"
               variant="ghost"
               onClick={() => {
-                beginReload();
                 setSearchInput('');
                 setSearch('');
                 setYear('');
@@ -228,7 +223,6 @@ export default function DocumentTypesPage() {
               variant="secondary"
               icon="fa-rotate-right"
               onClick={() => {
-                beginReload();
                 setReloadKey((value) => value + 1);
               }}
             >
@@ -308,10 +302,7 @@ export default function DocumentTypesPage() {
               page={page}
               pageSize={PAGE_SIZE}
               count={count}
-              onChange={(value) => {
-                beginReload();
-                setPage(value);
-              }}
+              onChange={(value) => setPage(value)}
             />
           </>
         )}

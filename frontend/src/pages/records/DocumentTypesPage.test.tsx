@@ -49,4 +49,114 @@ describe('DocumentTypesPage shared-list handoff', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(screen.queryByTestId('destination')).not.toBeInTheDocument();
   });
+
+  it('debounces search input by 250ms and queries catalog', async () => {
+    vi.useFakeTimers();
+    await show();
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(1);
+
+    const input = screen.getByPlaceholderText('Search by document category name...');
+    fireEvent.change(input, { target: { value: 'Category' } });
+
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(2);
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: 'Category', page: 1 })
+    );
+
+    vi.useRealTimers();
+  });
+
+  it('does not enter loading state or initiate extra request when clearing search before debounce', async () => {
+    vi.useFakeTimers();
+    await show();
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(1);
+
+    const input = screen.getByPlaceholderText('Search by document category name...');
+    fireEvent.change(input, { target: { value: 'Cat' } });
+
+    const clearBtn = screen.getByLabelText('Reset');
+    act(() => {
+      fireEvent.click(clearBtn);
+    });
+
+    expect(input).toHaveValue('');
+    expect(screen.queryByLabelText('Loading document types')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Category A' })).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+      await Promise.resolve();
+    });
+
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(1);
+    expect(screen.queryByLabelText('Loading document types')).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('does not enter loading state when typing only whitespace and clearing', async () => {
+    vi.useFakeTimers();
+    await show();
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(1);
+
+    const input = screen.getByPlaceholderText('Search by document category name...');
+    fireEvent.change(input, { target: { value: '   ' } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+      await Promise.resolve();
+    });
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(1);
+
+    const clearBtn = screen.getByLabelText('Reset');
+    act(() => {
+      fireEvent.click(clearBtn);
+    });
+
+    expect(input).toHaveValue('');
+    expect(screen.queryByLabelText('Loading document types')).not.toBeInTheDocument();
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
+
+  it('reloads with empty search and resets to page 1 when clearing active search', async () => {
+    vi.useFakeTimers();
+    await show();
+
+    const input = screen.getByPlaceholderText('Search by document category name...');
+    fireEvent.change(input, { target: { value: 'Category A' } });
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+      await Promise.resolve();
+    });
+
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(2);
+
+    const clearBtn = screen.getByLabelText('Reset');
+    await act(async () => {
+      fireEvent.click(clearBtn);
+      await Promise.resolve();
+    });
+
+    expect(input).toHaveValue('');
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenCalledTimes(3);
+    expect(recordsService.listDocumentTypeCatalog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: '', page: 1 })
+    );
+    expect(screen.queryByLabelText('Loading document types')).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
 });
