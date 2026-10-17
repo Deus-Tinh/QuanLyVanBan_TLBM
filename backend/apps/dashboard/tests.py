@@ -1,12 +1,13 @@
 from datetime import date, timedelta, time
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from accounts.models import StaffProfile
 from dashboard.models import IncomingDocument, OutgoingDocument, MeetingRoom
+
+User = get_user_model()
 
 
 class DashboardAPITests(TestCase):
@@ -16,25 +17,19 @@ class DashboardAPITests(TestCase):
         self.tomorrow = self.today + timedelta(days=1)
 
         # 1. Staff user (cán bộ chuyên viên)
-        self.staff_user = User.objects.create_user(username="staffuser", password="password123")
-        self.staff_profile = StaffProfile.objects.create(
-            user=self.staff_user,
-            full_name="Cán Bộ Nhân Viên",
-            department="Phòng Hành chính",
-            position="Chuyên viên văn thư",
-            role="staff",
-            birthday=date(1995, self.today.month, self.today.day),
+        self.staff_user = User.objects.create_user(
+            username="staffuser",
+            password="password123",
+            ho_ten="Cán Bộ Nhân Viên",
+            ngay_sinh=date(1995, self.today.month, self.today.day),
         )
 
         # 2. Admin user (quản trị viên)
-        self.admin_user = User.objects.create_user(username="adminuser", password="password123")
-        self.admin_profile = StaffProfile.objects.create(
-            user=self.admin_user,
-            full_name="Quản Trị Viên",
-            department="Văn phòng Trung tâm",
-            position="Quản trị viên tối cao",
-            role="admin",
-            birthday=date(1990, self.tomorrow.month, self.tomorrow.day),
+        self.admin_user = User.objects.create_superuser(
+            username="adminuser",
+            password="password123",
+            ho_ten="Quản Trị Viên",
+            ngay_sinh=date(1990, self.tomorrow.month, self.tomorrow.day),
         )
 
         # 3. Tạo văn bản thường và văn bản mật

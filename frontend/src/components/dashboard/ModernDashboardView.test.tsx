@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -107,5 +107,59 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('meetings');
   });
+
+  it('opens TaskDetailModal when clicking on a task item', () => {
+    const mockTasks: TaskItem[] = [
+      { id: '1', title: 'Hoàn thiện báo cáo quý III', due: '15/10/2026', status: 'processing', statusLabel: 'Đang xử lý', variant: 'info' },
+    ];
+
+    render(
+      <MemoryRouter>
+        <ModernDashboardView tasks={mockTasks} />
+      </MemoryRouter>
+    );
+
+    const taskRow = screen.getByText('Hoàn thiện báo cáo quý III');
+    fireEvent.click(taskRow);
+    expect(screen.getByText('Chi Tiết Nhiệm Vụ Được Giao')).toBeInTheDocument();
+    expect(screen.getByText('Mã công việc: #CV-01 · Phân hệ Quản lý công việc (Nhóm 6)')).toBeInTheDocument();
+  });
+
+  it('renders compact search bar into top-subnav-slot and syncs search term', () => {
+    // Setup portal slot in DOM
+    const slot = document.createElement('div');
+    slot.id = 'top-subnav-slot';
+    document.body.appendChild(slot);
+
+    const mockIncoming: DocumentItem[] = [
+      { code: '10/CV-ITC', title: 'Công văn A', date: '17/09/2026' },
+      { code: '20/CV-ITC', title: 'Báo cáo B', date: '17/09/2026' },
+    ];
+
+    render(
+      <MemoryRouter>
+        <ModernDashboardView incomingDocuments={mockIncoming} />
+      </MemoryRouter>
+    );
+
+    const compactInput = screen.getByPlaceholderText(/Tìm nhanh văn bản, công việc/i);
+    expect(compactInput).toBeInTheDocument();
+    expect(slot).toContainElement(compactInput);
+
+    // Typing in compact search bar filters the documents
+    fireEvent.change(compactInput, { target: { value: 'Báo cáo' } });
+    expect(screen.getByText('20/CV-ITC')).toBeInTheDocument();
+    expect(screen.queryByText('10/CV-ITC')).not.toBeInTheDocument();
+
+    // Clear button appears and clicking it clears search
+    const clearBtn = screen.getByTitle('Xóa tìm kiếm nhanh');
+    fireEvent.click(clearBtn);
+    expect(screen.getByText('10/CV-ITC')).toBeInTheDocument();
+    expect(screen.getByText('20/CV-ITC')).toBeInTheDocument();
+
+    // Clean up DOM slot
+    document.body.removeChild(slot);
+  });
 });
+
 

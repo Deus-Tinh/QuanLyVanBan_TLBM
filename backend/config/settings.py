@@ -10,12 +10,18 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Tải biến môi trường từ .env
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
 
 # Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
 sys.path.insert(0, str(BASE_DIR / "apps"))
@@ -46,11 +52,20 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
     # Các app nghiệp vụ
     "accounts",
     "dashboard",
     "birthdays",
+    "organizations",
+    "authorization",
 ]
+
+# Custom User Model theo SQL_Fix4 / release_DDL: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo release_DDL: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -92,12 +107,28 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+TESTING = "test" in sys.argv
+
+DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
+
+if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "release_ddl"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
@@ -179,8 +210,8 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     # Cấp refresh token mới mỗi lần dùng
     "ROTATE_REFRESH_TOKENS": True,
-    # Đưa refresh token cũ vào blacklist sau khi cấp mới
-    "BLACKLIST_AFTER_ROTATION": True,
+    # Đưa refresh token cũ vào blacklist sau khi cấp mới (tắt vì dùng JWT stateless không bảng blacklist)
+    "BLACKLIST_AFTER_ROTATION": False,
     # Header chuẩn: Authorization: Bearer <token>
     "AUTH_HEADER_TYPES": ("Bearer",),
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
@@ -188,4 +219,17 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+
+# ─────────────────────────────────────────────────
+# Bảo Long Insurance (Alpaca) Authentication Config
+# ─────────────────────────────────────────────────
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "9089e45b638cee8f83ab423d2cb498b5")
+ALPACA_CHECK_AUTH_URL = os.getenv(
+    "ALPACA_CHECK_AUTH_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-auth-user",
+)
+ALPACA_CHECK_USER_URL = os.getenv(
+    "ALPACA_CHECK_USER_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-user-exist",
+)
 

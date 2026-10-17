@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
@@ -19,13 +19,17 @@ interface RouterProps {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(() => {
-    return Boolean(localStorage.getItem('tlbm_session'));
-  });
+  const checkAuth = () => {
+    const hasToken = Boolean(localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token'));
+    const hasSession = Boolean(localStorage.getItem('tlbm_session'));
+    return hasToken && hasSession;
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(checkAuth);
 
   React.useEffect(() => {
     const handleAuth = () => {
-      setIsAuthenticated(Boolean(localStorage.getItem('tlbm_session')));
+      setIsAuthenticated(checkAuth());
     };
     window.addEventListener('tlbm_auth_changed', handleAuth);
     window.addEventListener('storage', handleAuth);
@@ -74,7 +78,7 @@ export default function AppRouter({
         {/* Phân hệ Văn bản (Nhóm 2 phụ trách theo đề cương) */}
         <Route path="/documents/incoming" element={<SyllabusPreview activePage="documents_incoming" />} />
         <Route path="/documents/outgoing" element={<SyllabusPreview activePage="documents_outgoing" />} />
-        <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
+        <Route path="/documents/confidential" element={<Navigate to="/documents/incoming" replace />} />
 
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
         <Route path="/records" element={<SyllabusPreview activePage="records" />} />
