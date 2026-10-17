@@ -120,6 +120,8 @@ Chạy tại thư mục gốc:
 
 Không cần xóa volume khi chỉ muốn dựng lại DB; dùng `pnpm db:reset` để chỉ reset đúng database local của dự án.
 
+Collation: mọi DB do repo tạo dùng ICU `vi-VN` (thứ tự seed trong `release_DDL.sql` phụ thuộc collation). DB mới tạo bằng `scripts/build_db.py` có collation này trong mọi trường hợp; volume mới của `compose.yaml` cũng khởi tạo cluster với ICU `vi-VN`. DB local `qlvb_dev` tạo từ volume cũ (trước thay đổi này) có collation khác: `pnpm db:setup`/`pnpm db:migrate` báo lỗi và gợi ý `--force`; chạy `pnpm db:reset` để dựng lại DB với collation đúng, không cần xóa volume `qlvb_local_pgdata`. Test DB của Django do cluster cũ tạo vẫn dùng collation mặc định của cluster; muốn đồng nhất với CI thì xóa volume để cluster khởi tạo lại.
+
 Test backend chạy trên PostgreSQL (test DB do Django dựng bằng migration); quy trình dựng DB, cách chạy test và runbook staging nằm tại `docs/common/database/build_db_runbook.md`.
 
 ---

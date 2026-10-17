@@ -1,14 +1,14 @@
 """Dựng DB PostgreSQL từ docs/common/database/release_DDL.sql rồi đồng bộ trạng thái migration Django.
 
 Một quy trình dùng chung cho local, CI và staging:
-1. Tạo DB rỗng (hoặc dựng lại khi có --force). DB có sẵn chỉ dùng tại chỗ khi còn nguyên trạng mới tạo: không
+1. Tạo DB rỗng với collation ICU vi-VN (hoặc dựng lại khi có --force); DB có sẵn collation khác thì báo lỗi. DB có sẵn chỉ dùng tại chỗ khi còn nguyên trạng mới tạo: không
    schema ngoài public, không relation/type/function trong public, không extension ngoài plpgsql.
 2. Nạp release_DDL.sql. File này tự có BEGIN/COMMIT nên không rollback được giữa chừng.
 3. Duyệt migration theo thứ tự phụ thuộc. App có đủ bảng model trong DB thì ghi nhận migration
    là đã áp dụng (fake); app không có bảng nào thì áp dụng thật. App có một phần bảng thì báo lỗi.
 4. Xác nhận không còn migration chưa áp dụng.
 5. Tùy chọn chạy seed_db.
-6. Ghi dấu hoàn tất vào COMMENT của DB (sha256 của DDL và trạng thái seed).
+6. Ghi dấu hoàn tất vào COMMENT của DB (sha256 của DDL, trạng thái seed và collation).
 
 Bước nào thất bại thì dọn: DB do lượt chạy này tạo (hoặc thay bằng --force) bị DROP; DB có sẵn nhưng rỗng
 được trả về trạng thái rỗng (DROP SCHEMA public rồi tạo lại). DB có sẵn không đạt nguyên trạng không bị chạm
@@ -38,7 +38,15 @@ ROOT = Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "backend"
 DEFAULT_DDL = ROOT / "docs" / "common" / "database" / "release_DDL.sql"
 MAINTENANCE_DB = "postgres"
-MARK_PREFIX = "build_db:v1"
+MARK_PREFIX = "build_db:v2"
+# Collation của mọi DB do repo tạo: thứ tự trong seed của release_DDL.sql (ROW_NUMBER() OVER (ORDER BY ...))
+# phụ thuộc collation nên phải cố định.
+ICU_LOCALE = "vi-VN"
+LIBC_LOCALE = "C.UTF-8"
+CREATE_DATABASE = (
+    "CREATE DATABASE {} TEMPLATE template0 ENCODING 'UTF8' "
+    "LOCALE_PROVIDER icu ICU_LOCALE '" + ICU_LOCALE + "' LOCALE '" + LIBC_LOCALE + "'"
+)
 
 
 def parse_args():
@@ -72,7 +80,26 @@ def ddl_sha256(args):
 
 
 def build_mark(args):
-    return f"{MARK_PREFIX} ddl_sha256={ddl_sha256(args)} seed={int(args.seed)}"
+    return f"{MARK_PREFIX} ddl_sha256={ddl_sha256(args)} seed={int(args.seed)} collation=icu:{ICU_LOCALE}"
+
+
+def read_collation(conn, dbname):
+    """(provider, icu_locale) của DB; PG16 gọi cột là daticulocale, PG17 đổi thành datlocale."""
+    row = conn.execute(
+        "SELECT datlocprovider, coalesce(to_jsonb(d)->>'datlocale', to_jsonb(d)->>'daticulocale') "
+        "FROM pg_database d WHERE datname = %s",
+        [dbname],
+    ).fetchone()
+    return row if row else None
+
+
+def require_collation(conn, dbname):
+    collation = read_collation(conn, dbname)
+    if collation != ("i", ICU_LOCALE):
+        raise SystemExit(
+            f"DB {dbname} có collation (provider, locale) = {collation}, cần ('i', '{ICU_LOCALE}') "
+            f"(ICU {ICU_LOCALE}). Dùng --force để xóa và dựng lại với collation đúng."
+        )
 
 
 def pristine_violations(args):
@@ -120,12 +147,15 @@ def prepare_database(args):
             "SELECT 1 FROM pg_database WHERE datname = %s", [args.dbname]
         ).fetchone()
         if not exists:
-            conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
+            conn.execute(sql.SQL(CREATE_DATABASE).format(name))
+            require_collation(conn, args.dbname)
             return "drop", False
         if args.force:
             conn.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(name))
-            conn.execute(sql.SQL("CREATE DATABASE {}").format(name))
+            conn.execute(sql.SQL(CREATE_DATABASE).format(name))
+            require_collation(conn, args.dbname)
             return "drop", False
+        require_collation(conn, args.dbname)
         mark = read_mark(conn, args.dbname)
     violations = pristine_violations(args) if mark is None else ["đã có dấu hoàn tất"]
     if not violations:
@@ -149,6 +179,8 @@ def require_matching_mark(args):
     with connect(args, MAINTENANCE_DB, autocommit=True) as conn:
         exists = conn.execute("SELECT 1 FROM pg_database WHERE datname = %s", [args.dbname]).fetchone()
         mark = read_mark(conn, args.dbname) if exists else None
+        if exists:
+            require_collation(conn, args.dbname)
     if not exists:
         raise SystemExit(f"DB {args.dbname} chưa tồn tại. Chạy `pnpm db:setup` trước.")
     if not (mark or "").startswith(f"{MARK_PREFIX} ddl_sha256={ddl_sha256(args)} "):
