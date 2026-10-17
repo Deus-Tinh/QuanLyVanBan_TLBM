@@ -116,6 +116,32 @@ export const folderService = {
   deleteFile: async (fileId: number): Promise<void> => {
     return apiClient.delete<void>(`/api/folder-files/${fileId}/`);
   },
+
+  /**
+   * Quét thư mục máy tính cục bộ (Local Directory) và đồng bộ vào hệ thống.
+   * @param folderPath Đường dẫn thư mục (tùy chọn, để trống sẽ dùng thư mục 'Folder' mặc định của dự án)
+   * @param parentId ID thư mục cha nếu muốn đồng bộ vào bên trong thư mục khác
+   */
+  scanLocal: async (data?: {
+    folder_path?: string;
+    parent_id?: number | null;
+  }): Promise<{
+    status: string;
+    message: string;
+    base_folder: string;
+    root_folder_id: number;
+    folder_count: number;
+    file_count: number;
+  }> => {
+    return apiClient.post('/api/folders/scan-local/', data || {});
+  },
+
+  /**
+   * Lấy URL để tải hoặc xem tệp (hỗ trợ cả tệp local và tệp media server).
+   */
+  getDownloadUrl: (fileId: number, inline: boolean = false): string => {
+    return `/api/folder-files/${fileId}/download/${inline ? '?inline=1' : ''}`;
+  },
 };
 
 export default folderService;

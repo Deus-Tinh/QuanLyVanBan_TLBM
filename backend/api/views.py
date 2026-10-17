@@ -192,11 +192,14 @@ def upload_sync(request):
 @api_view(["GET", "DELETE"])
 @permission_classes([IsAuthenticated])
 def documents(request, filename=None):
+    if request.method == "GET":
+        denied = _require_ai_access(request)
+        if denied:
+            return denied
+        return JsonResponse({"documents": list_documents()})
     denied = _require_ai_admin(request)
     if denied:
         return denied
-    if request.method == "GET":
-        return JsonResponse({"documents": list_documents()})
     if request.method == "DELETE":
         from backend.services.rag_service import clear_vector_database
 
@@ -240,7 +243,7 @@ def document_detail(request, filename):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def document_file(request, filename):
-    denied = _require_ai_admin(request)
+    denied = _require_ai_access(request)
     if denied:
         return denied
     safe_name = Path(unquote(filename)).name
@@ -258,7 +261,7 @@ def document_file(request, filename):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def preview_document(request, filename):
-    denied = _require_ai_admin(request)
+    denied = _require_ai_access(request)
     if denied:
         return denied
     safe_name = Path(unquote(filename)).name
@@ -321,13 +324,16 @@ def reclassify(request, filename):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def ai_settings(request):
-    denied = _require_ai_admin(request)
-    if denied:
-        return denied
     if request.method == "GET":
+        denied = _require_ai_access(request)
+        if denied:
+            return denied
         key = config.GEMINI_API_KEY if config.MODEL_PROVIDER == "gemini" else os.getenv("OPENAI_API_KEY", "")
         masked = f"{key[:6]}...{key[-4:]}" if len(key) > 10 else ("********" if key else "")
         return JsonResponse({"status": "ok", "provider": config.MODEL_PROVIDER, "has_api_key": bool(key), "api_key_masked": masked, "llm_model": config.LLM_MODEL, "embed_model": config.EMBED_MODEL, "vision_model": config.VISION_MODEL})
+    denied = _require_ai_admin(request)
+    if denied:
+        return denied
     if request.method != "POST":
         return _error("Phương thức không được hỗ trợ.", 405)
     payload = _json_body(request)

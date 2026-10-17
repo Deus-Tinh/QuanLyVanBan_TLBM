@@ -105,6 +105,17 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
             C{node.depth || 0}
           </span>
 
+          {/* Local badge */}
+          {node.is_local && (
+            <span
+              className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 font-semibold border border-sky-500/20 shrink-0 flex items-center gap-0.5"
+              title={`Thư mục cục bộ: ${node.local_path || ''}`}
+            >
+              <i className="fa-solid fa-laptop text-[8px]" />
+              Local
+            </span>
+          )}
+
           {/* Badges số file / con */}
           {(node.files_count || 0) > 0 && (
             <span

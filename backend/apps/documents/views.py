@@ -9,8 +9,12 @@ Hỗ trợ 2 tầng ViewSets:
    - DocumentViewSet:   /api/documents/      (Hỗ trợ nguyên vẹn 100% frontend React và test suite)
 """
 
+import os
+import mimetypes
+from urllib.parse import quote
+from django.conf import settings
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
@@ -776,6 +780,140 @@ class FolderViewSet(viewsets.ModelViewSet):
         serializer = FolderFileSerializer(files, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["post"], url_path="scan-local")
+    def scan_local(self, request):
+        """
+        Quét thư mục máy tính (Local Directory) và đồng bộ cấu trúc Folder & FolderFile vào hệ thống
+        mà không cần người dùng upload file lên server.
+        """
+        req_path = request.data.get("folder_path", "").strip()
+        parent_id = request.data.get("parent_id")
+
+        target_parent = None
+        if parent_id:
+            try:
+                target_parent = Folder.objects.get(pk=parent_id)
+            except Folder.DoesNotExist:
+                return Response(
+                    {"detail": f"Thư mục cha với ID {parent_id} không tồn tại."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # Mặc định quét thư mục 'Folder' ở root project nếu không truyền đường dẫn
+        if not req_path:
+            candidate_parent = os.path.join(os.path.dirname(str(settings.BASE_DIR)), "Folder")
+            candidate_base = os.path.join(str(settings.BASE_DIR), "Folder")
+            if os.path.exists(candidate_parent):
+                base_folder = os.path.abspath(candidate_parent)
+            elif os.path.exists(candidate_base):
+                base_folder = os.path.abspath(candidate_base)
+            else:
+                base_folder = os.path.abspath(candidate_parent)
+        else:
+            if not os.path.isabs(req_path):
+                c_parent = os.path.join(os.path.dirname(str(settings.BASE_DIR)), req_path)
+                c_base = os.path.join(str(settings.BASE_DIR), req_path)
+                if os.path.exists(c_parent):
+                    base_folder = os.path.abspath(c_parent)
+                elif os.path.exists(c_base):
+                    base_folder = os.path.abspath(c_base)
+                else:
+                    base_folder = os.path.abspath(req_path)
+            else:
+                base_folder = os.path.abspath(req_path)
+
+        if not os.path.exists(base_folder) or not os.path.isdir(base_folder):
+            return Response(
+                {"detail": f"Đường dẫn thư mục '{base_folder}' không tồn tại hoặc không phải là thư mục."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user if request.user and request.user.is_authenticated else None
+
+        folder_count = 0
+        file_count = 0
+        dir_to_folder = {}
+
+        # Tạo hoặc lấy thư mục gốc cho lần đồng bộ này
+        root_name = os.path.basename(os.path.normpath(base_folder)) or "Folder"
+        root_folder, created = Folder.objects.get_or_create(
+            name=root_name,
+            parent=target_parent,
+            defaults={
+                "is_local": True,
+                "local_path": base_folder,
+                "description": f"Thư mục đồng bộ từ local: {base_folder}",
+                "created_by": user,
+            },
+        )
+        if not created and not root_folder.is_local:
+            root_folder.is_local = True
+            root_folder.local_path = base_folder
+            root_folder.save(update_fields=["is_local", "local_path"])
+
+        dir_to_folder[os.path.normpath(base_folder)] = root_folder
+        folder_count += 1
+
+        for current_root, dir_names, filenames in os.walk(base_folder):
+            curr_norm = os.path.normpath(current_root)
+            parent_folder = dir_to_folder.get(curr_norm, root_folder)
+
+            # Tạo các thư mục con
+            for dir_name in dir_names:
+                sub_path = os.path.normpath(os.path.join(current_root, dir_name))
+                sub_folder, s_created = Folder.objects.get_or_create(
+                    name=dir_name,
+                    parent=parent_folder,
+                    defaults={
+                        "is_local": True,
+                        "local_path": sub_path,
+                        "description": f"Thư mục con local: {dir_name}",
+                        "created_by": user,
+                    },
+                )
+                if not s_created and not sub_folder.is_local:
+                    sub_folder.is_local = True
+                    sub_folder.local_path = sub_path
+                    sub_folder.save(update_fields=["is_local", "local_path"])
+
+                dir_to_folder[sub_path] = sub_folder
+                folder_count += 1
+
+            # Lập chỉ mục các file trong current_root
+            for filename in filenames:
+                file_full_path = os.path.join(current_root, filename)
+                try:
+                    file_size = os.path.getsize(file_full_path)
+                except OSError:
+                    file_size = 0
+
+                ext = ""
+                if "." in filename:
+                    ext = filename.rsplit(".", 1)[-1].lower()
+
+                FolderFile.objects.update_or_create(
+                    folder=parent_folder,
+                    file_name=filename,
+                    defaults={
+                        "file_path": file_full_path,
+                        "file_size": file_size,
+                        "file_type": ext,
+                        "is_local": True,
+                        "description": f"File cục bộ từ: {file_full_path}",
+                        "uploaded_by": user,
+                    },
+                )
+                file_count += 1
+
+        return Response({
+            "status": "success",
+            "message": f"Đồng bộ thành công từ '{base_folder}'! Đã lập chỉ mục {folder_count} thư mục và {file_count} tệp.",
+            "base_folder": base_folder,
+            "root_folder_id": root_folder.id,
+            "folder_count": folder_count,
+            "file_count": file_count,
+        })
+
 
 class FolderFileViewSet(viewsets.ModelViewSet):
     """ViewSet quản lý file trong thư mục."""
@@ -793,4 +931,41 @@ class FolderFileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user if self.request.user and self.request.user.is_authenticated else None
         serializer.save(uploaded_by=user)
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, pk=None):
+        """Tải hoặc xem nội dung file (hỗ trợ cả file local và file media server)."""
+        file_obj = self.get_object()
+        path = file_obj.file_path
+
+        file_disk_path = None
+        if os.path.isabs(path) and os.path.exists(path):
+            file_disk_path = path
+        else:
+            candidates = [
+                os.path.join(str(settings.BASE_DIR), path),
+                os.path.join(os.path.dirname(str(settings.BASE_DIR)), path),
+                os.path.join(getattr(settings, "MEDIA_ROOT", ""), path),
+            ]
+            for cand in candidates:
+                if cand and os.path.exists(cand):
+                    file_disk_path = cand
+                    break
+
+        if not file_disk_path or not os.path.exists(file_disk_path):
+            return Response(
+                {"detail": f"Không tìm thấy file vật lý trên ổ đĩa ({path})."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        content_type, _ = mimetypes.guess_type(file_disk_path)
+        if not content_type:
+            content_type = "application/octet-stream"
+
+        response = FileResponse(open(file_disk_path, "rb"), content_type=content_type)
+        is_inline = request.query_params.get("inline", "false").lower() in ("true", "1")
+        disposition = "inline" if is_inline else "attachment"
+        encoded_name = quote(file_obj.file_name)
+        response["Content-Disposition"] = f"{disposition}; filename*=UTF-8''{encoded_name}"
+        return response
 

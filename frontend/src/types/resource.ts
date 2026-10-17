@@ -53,6 +53,8 @@ export interface FolderItem {
   depth: number;
   order: number;
   description?: string;
+  is_local?: boolean;
+  local_path?: string;
   full_path_display?: string;
   children_count?: number;
   files_count?: number;
@@ -69,6 +71,7 @@ export interface FolderFileItem {
   file_size: number;
   file_type?: string;
   description?: string;
+  is_local?: boolean;
   uploaded_by?: number | null;
   uploaded_by_name?: string;
   created_at: string;

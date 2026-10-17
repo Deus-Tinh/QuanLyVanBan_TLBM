@@ -1420,6 +1420,47 @@ def resolve_target_filename(filename: str | None) -> str | None:
     return raw_name
 
 
+def extract_target_from_question(question: str) -> str | None:
+    """Tự động phát hiện tên thư mục và tên tệp trong câu hỏi của người dùng."""
+    if not question:
+        return None
+    q = question.lower()
+
+    # 1. Phát hiện khớp mẫu: folder [1/2] và item [1/2/3]
+    f_match = re.search(r"folder\s*([12])", q)
+    i_match = re.search(r"item\s*([123])", q)
+    if f_match and i_match:
+        f_num = f_match.group(1)
+        i_num = i_match.group(1)
+        candidate = f"Folder_folder{f_num}_item{i_num}.docx"
+        return resolve_target_filename(candidate)
+
+    # 2. Phát hiện item [123] mà không nói folder -> mặc định kiểm tra folder1
+    if i_match and not f_match:
+        i_num = i_match.group(1)
+        candidate = f"Folder_folder1_item{i_num}.docx"
+        res = resolve_target_filename(candidate)
+        if res:
+            return res
+
+    # 3. Phát hiện tên tệp trực tiếp trong câu hỏi
+    try:
+        collection = get_chroma_collection()
+        all_docs = collection.get(include=["metadatas"])
+        for m in (all_docs.get("metadatas") or []):
+            fn = (m or {}).get("file_name")
+            if fn and fn.lower() in q:
+                return fn
+            if fn and "_" in fn:
+                base_part = fn.split("_")[-1].lower()
+                if len(base_part) > 4 and base_part in q:
+                    return fn
+    except Exception:
+        pass
+
+    return None
+
+
 def get_index():
     setup_llamaindex()
 
@@ -1811,6 +1852,10 @@ def ask_document(question: str, history=None, category: str | None = None, user=
 
     # Chuẩn hóa và đối chiếu tên file nếu người dùng có chỉ định tài liệu
     clean_filename = resolve_target_filename(filename) if filename else None
+    if not clean_filename:
+        clean_filename = extract_target_from_question(question)
+        if clean_filename:
+            print(f"🎯 Tự động phát hiện tài liệu từ câu hỏi: {clean_filename}")
 
     # Phân loại ý định: Nếu là tin nhắn chào hỏi, xã giao hoặc chia sẻ cảm xúc
     # CHÚ Ý: Nếu người dùng ĐÃ CHỈ ĐỊNH TÀI LIỆU (clean_filename có giá trị)

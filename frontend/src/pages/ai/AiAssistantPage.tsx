@@ -904,23 +904,22 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
       })
       .catch(console.error);
 
-    if (currentUser.isAdmin) {
-      getAISettings()
-        .then((data) => {
-          if (!cancelled) setAiConfig(data);
-        })
-        .catch(console.error);
-      getDocuments()
-        .then((data) => {
-          if (!cancelled) setDocuments(data.documents || []);
-        })
-        .catch(console.error);
-    }
+    getAISettings()
+      .then((data) => {
+        if (!cancelled) setAiConfig(data);
+      })
+      .catch(console.error);
+
+    getDocuments()
+      .then((data) => {
+        if (!cancelled) setDocuments(data.documents || []);
+      })
+      .catch(console.error);
 
     return () => {
       cancelled = true;
     };
-  }, [currentUser.isAdmin]);
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1365,17 +1364,15 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
               <i className="fa-regular fa-message" />
               <span>{t('aiAssistant.tabSessions')}</span>
             </button>
-            {currentUser.isAdmin && (
-              <button
-                type="button"
-                className={`sidebar-tab-pill ${sidebarTab === 'docs' ? 'active' : ''}`}
-                onClick={() => setSidebarTab('docs')}
-              >
-                <i className="fa-solid fa-folder-open" />
-                <span>{t('aiAssistant.tabDocs')}</span>
-                <span className="sidebar-tab-badge">{documents.length}</span>
-              </button>
-            )}
+            <button
+              type="button"
+              className={`sidebar-tab-pill ${sidebarTab === 'docs' ? 'active' : ''}`}
+              onClick={() => setSidebarTab('docs')}
+            >
+              <i className="fa-solid fa-folder-open" />
+              <span>{t('aiAssistant.tabDocs')}</span>
+              {documents.length > 0 && <span className="sidebar-tab-badge">{documents.length}</span>}
+            </button>
           </div>
         )}
 
@@ -1461,7 +1458,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
         )}
 
         {/* Tab 2: Quản lý kho tài liệu */}
-        {currentUser.isAdmin && isSidebarOpen && sidebarTab === 'docs' && (
+        {isSidebarOpen && sidebarTab === 'docs' && (
           <>
             <div className="ai-sidebar-search">
               <i className="fa-solid fa-magnifying-glass" />
@@ -1484,22 +1481,24 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
             </div>
 
             <div className="ai-sidebar-docs-list">
-              {/* Drag & Drop Upload Zone */}
-              <div
-                ref={dropZoneRef}
-                className={`sidebar-dropzone ${isDragging ? 'is-dragging' : ''}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDropFiles}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <i className="fa-solid fa-cloud-arrow-up sidebar-dropzone-icon" />
-                <div className="sidebar-dropzone-text">{t('aiAssistant.dropzoneText')}</div>
-                <div className="sidebar-dropzone-subtext">{t('aiAssistant.dropzoneSub')}</div>
-              </div>
+              {/* Drag & Drop Upload Zone - Chỉ hiển thị cho Quản trị viên */}
+              {currentUser.isAdmin && (
+                <div
+                  ref={dropZoneRef}
+                  className={`sidebar-dropzone ${isDragging ? 'is-dragging' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDropFiles}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <i className="fa-solid fa-cloud-arrow-up sidebar-dropzone-icon" />
+                  <div className="sidebar-dropzone-text">{t('aiAssistant.dropzoneText')}</div>
+                  <div className="sidebar-dropzone-subtext">{t('aiAssistant.dropzoneSub')}</div>
+                </div>
+              )}
 
               {/* Progress indicator */}
               {uploadProgress && (
@@ -1671,14 +1670,16 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                                             >
                                               <i className="fa-solid fa-eye" />
                                             </button>
-                                            <button
-                                              type="button"
-                                              className="sidebar-doc-btn delete-btn"
-                                              onClick={() => handleDeleteDoc(d.filename)}
-                                              title={t('aiAssistant.deleteDoc')}
-                                            >
-                                              <i className="fa-solid fa-trash" />
-                                            </button>
+                                            {currentUser.isAdmin && (
+                                              <button
+                                                type="button"
+                                                className="sidebar-doc-btn delete-btn"
+                                                onClick={() => handleDeleteDoc(d.filename)}
+                                                title={t('aiAssistant.deleteDoc')}
+                                              >
+                                                <i className="fa-solid fa-trash" />
+                                              </button>
+                                            )}
                                           </div>
                                         </div>
                                       );
@@ -1763,7 +1764,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
                 })
               )}
 
-              {documents.length > 0 && (
+              {currentUser.isAdmin && documents.length > 0 && (
                 <button
                   type="button"
                   className="sidebar-clear-all-btn"
