@@ -2038,7 +2038,7 @@ export default function ResourceManagementPage() {
       </div>
 
       {/* 3. THANH KẾT QUẢ TRÊN BẢNG (MỤC 4) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-secondary px-1 pr-14 sm:pr-1">
+      <div className="flex items-center justify-between gap-2 text-xs text-secondary px-1">
         <div>
           {totalCount === 0 ? (
             <span>Hiển thị <strong className="text-main font-bold">0 / 0</strong> tài liệu</span>
