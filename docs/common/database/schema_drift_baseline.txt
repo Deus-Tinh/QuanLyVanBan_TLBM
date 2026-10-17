@@ -314,9 +314,9 @@ TRIGGER signing_key_unlock.trg_signing_key_unlock_updated_at: thiếu
 TRIGGER signing_manifest.trg_signing_manifest_protect: thiếu
 TRIGGER signing_signature.trg_signing_signature_immutable: thiếu
 TRIGGER task_congviec.trg_congviec_updated_at: thiếu
-SEED accounts_employee: DDL 1 dòng, migration thiếu 1, thừa 0
-SEED accounts_position: DDL 1 dòng, migration thiếu 1, thừa 0
-SEED auth_group_permissions: DDL 197 dòng, migration thiếu 4, thừa 4
-SEED auth_permission: DDL 77 dòng, migration thiếu 4, thừa 4
-SEED organizations_donvi: DDL 82 dòng, migration thiếu 82, thừa 0
-SEED organizations_khoi: DDL 16 dòng, migration thiếu 16, thừa 0
+SEED accounts_employee: DDL 1 dòng, migration thiếu 1 #10ec2ebc8ef9a630, thừa 0 #-
+SEED accounts_position: DDL 1 dòng, migration thiếu 1 #c25d00fbca4c7ad1, thừa 0 #-
+SEED auth_group_permissions: DDL 197 dòng, migration thiếu 4 #80ee33b886eb0c51, thừa 4 #96e5f3749f9977e2
+SEED auth_permission: DDL 77 dòng, migration thiếu 4 #594bf51e4bb803ea, thừa 4 #4aee8e0a23a87f99
+SEED organizations_donvi: DDL 82 dòng, migration thiếu 82 #780f97d719fa0d18, thừa 0 #-
+SEED organizations_khoi: DDL 16 dòng, migration thiếu 16 #2300818cfb954fa4, thừa 0 #-

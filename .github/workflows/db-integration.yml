@@ -88,6 +88,10 @@ jobs:
       - name: Kiểm tra không còn migration chưa áp dụng
         run: python manage.py migrate --noinput --check
 
+      - name: Test bộ so schema (trigger tắt, khoảng trắng trong literal, seed, dữ liệu chỉ ở migration)
+        working-directory: .
+        run: python -m unittest discover -s .github/scripts -p "test_*.py"
+
       - name: So sánh schema từ migration với DDL phát hành
         run: |
           PGPASSWORD="$POSTGRES_PASSWORD" createdb \

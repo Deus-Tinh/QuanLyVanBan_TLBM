@@ -8,9 +8,14 @@ nội dung, dữ liệu seed), không so văn bản pg_dump, và bỏ qua các k
 - index *_like (varchar_pattern_ops) Django tự thêm cho cột varchar có index/unique;
 - index thường thừa (Django tự tạo index cho cột FK) không làm sai dữ liệu; index UNIQUE thừa vẫn báo;
 - bảng của framework: django_*, token_blacklist_*;
-- dữ liệu seed: bảng nào có dòng trong DB DDL thì so tập dòng (đa tập, không phụ thuộc thứ tự) trên các cột
-  chung, bỏ cột tự sinh (nextval/identity) và cột có DEFAULT không xác định (now(), CURRENT_TIMESTAMP,
-  gen_random_uuid()); mỗi bảng một dòng lệch tổng hợp số dòng thiếu/thừa.
+- dữ liệu seed: bảng nào có dòng ở ít nhất một DB thì so tập dòng (đa tập, không phụ thuộc thứ tự) trên các
+  cột chung, bỏ cột tự sinh (nextval/identity) và cột có DEFAULT không xác định (now(), CURRENT_TIMESTAMP,
+  gen_random_uuid()); mỗi bảng một dòng lệch ghi số dòng thiếu/thừa kèm dấu vân tay (sha256) nội dung.
+
+Function, trigger và view so nguyên văn đầu ra pg_get_functiondef (chỉ đổi CRLF thành LF), pg_get_triggerdef,
+pg_get_viewdef; trạng thái bật/tắt của trigger (tgenabled) so riêng. Không chuẩn hoá khoảng trắng vì khoảng trắng
+trong literal hoặc thân function có thể đổi kết quả chạy. Hệ quả: migration RunSQL tạo function/trigger/view phải
+chép nguyên văn từ release_DDL.sql.
 
 Các lệch đã biết, đang chờ nhóm phụ trách sửa, ghi trong file baseline (mỗi dòng một lệch,
 dòng bắt đầu bằng # là chú thích). Job fail khi:
@@ -20,6 +25,7 @@ dòng bắt đầu bằng # là chú thích). Job fail khi:
 Dùng: python compare_schema_ddl.py <db_migration> <db_ddl> <baseline_file> [--write-baseline]
 Kết nối lấy từ POSTGRES_HOST/PORT/USER/PASSWORD.
 """
+import hashlib
 import os
 import re
 import sys
@@ -46,10 +52,6 @@ def norm(sql):
         return None
     sql = re.sub(r"::[a-z_ ]+(\[\])?", "", sql)
     return re.sub(r"\s+", " ", sql).strip()
-
-
-def norm_ws(text):
-    return re.sub(r"\s+", " ", text).strip()
 
 
 def norm_check(definition):
@@ -115,19 +117,19 @@ def snapshot(db):
             "FROM pg_views v JOIN pg_class c ON c.relname = v.viewname AND c.relnamespace = 'public'::regnamespace "
             "WHERE v.schemaname = 'public'"
         )
-        views = {name: f"{norm_ws(definition)} options={sorted(options or [])}" for name, definition, options in cur.fetchall()}
+        views = {name: f"{definition} options={sorted(options or [])}" for name, definition, options in cur.fetchall()}
         cur.execute(
             "SELECT p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', pg_get_functiondef(p.oid) "
             "FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prokind IN ('f', 'p') "
             "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')"
         )
-        functions = {name: norm_ws(definition) for name, definition in cur.fetchall()}
+        functions = {name: definition.replace("\r\n", "\n") for name, definition in cur.fetchall()}
         cur.execute(
-            "SELECT c.relname || '.' || t.tgname, pg_get_triggerdef(t.oid) "
+            "SELECT c.relname || '.' || t.tgname, pg_get_triggerdef(t.oid), t.tgenabled "
             "FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid "
             "WHERE c.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal"
         )
-        triggers = {name: norm_ws(definition) for name, definition in cur.fetchall()}
+        triggers = {name: (definition, enabled) for name, definition, enabled in cur.fetchall()}
     return tables, enums, views, functions, triggers
 
 
@@ -143,16 +145,33 @@ def seed_rows(cur, table, columns):
     return Counter(row[0] for row in cur.fetchall())
 
 
+def fingerprint(rows):
+    """Dấu vân tay xác định của đa tập dòng: sha256 của các cặp (dòng, số lần) đã sắp xếp."""
+    if not rows:
+        return "-"
+    digest = hashlib.sha256()
+    for row, count in sorted(rows.items()):
+        digest.update(f"{count}\t{row}\n".encode("utf-8"))
+    return digest.hexdigest()[:16]
+
+
+def row_count(cur, table):
+    cur.execute(sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table)))
+    return cur.fetchone()[0]
+
+
 def seed_drift(migration_db, ddl_db, mig_tables, ddl_tables):
-    """So đa tập dòng của bảng có dữ liệu trong DB DDL, trên cột chung và xác định."""
+    """So đa tập dòng của bảng có dữ liệu ở ít nhất một DB, trên cột chung và xác định.
+
+    Dòng lệch ghi số dòng thiếu/thừa kèm dấu vân tay nội dung, nên đổi giá trị mà giữ số đếm vẫn đổi dòng.
+    """
     found = []
     with connect(migration_db) as mig_conn, connect(ddl_db) as ddl_conn:
         mig_cur, ddl_cur = mig_conn.cursor(), ddl_conn.cursor()
         for table in sorted(set(mig_tables) & set(ddl_tables)):
             if table.startswith(FRAMEWORK_TABLE_PREFIXES):
                 continue
-            ddl_cur.execute(sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table)))
-            if ddl_cur.fetchone()[0] == 0:
+            if row_count(ddl_cur, table) == 0 and row_count(mig_cur, table) == 0:
                 continue
             mig_cols, ddl_cols = mig_tables[table][0], ddl_tables[table][0]
             keep = sorted(
@@ -161,9 +180,13 @@ def seed_drift(migration_db, ddl_db, mig_tables, ddl_tables):
                 and not VOLATILE_DEFAULT.search(mig_cols[c])
             )
             expected, actual = seed_rows(ddl_cur, table, keep), seed_rows(mig_cur, table, keep)
-            missing, extra = sum((expected - actual).values()), sum((actual - expected).values())
+            missing, extra = expected - actual, actual - expected
             if missing or extra:
-                found.append(f"SEED {table}: DDL {sum(expected.values())} dòng, migration thiếu {missing}, thừa {extra}")
+                found.append(
+                    f"SEED {table}: DDL {sum(expected.values())} dòng, "
+                    f"migration thiếu {sum(missing.values())} #{fingerprint(missing)}, "
+                    f"thừa {sum(extra.values())} #{fingerprint(extra)}"
+                )
     return found
 
 
@@ -212,14 +235,24 @@ def drift(migration_db, ddl_db):
             found.append(f"VIEW {view}: không có trong DDL")
         elif mig_views[view] != ddl_views[view]:
             found.append(f"VIEW {view}: khác định nghĩa so với DDL")
-    for label, mig, ddl in (("FUNCTION", mig_funcs, ddl_funcs), ("TRIGGER", mig_trigs, ddl_trigs)):
-        for name in sorted(set(mig) | set(ddl)):
-            if name not in mig:
-                found.append(f"{label} {name}: thiếu")
-            elif name not in ddl:
-                found.append(f"{label} {name}: không có trong DDL")
-            elif mig[name] != ddl[name]:
-                found.append(f"{label} {name}: khác định nghĩa so với DDL")
+    for name in sorted(set(mig_funcs) | set(ddl_funcs)):
+        if name not in mig_funcs:
+            found.append(f"FUNCTION {name}: thiếu")
+        elif name not in ddl_funcs:
+            found.append(f"FUNCTION {name}: không có trong DDL")
+        elif mig_funcs[name] != ddl_funcs[name]:
+            found.append(f"FUNCTION {name}: khác định nghĩa so với DDL")
+    for name in sorted(set(mig_trigs) | set(ddl_trigs)):
+        if name not in mig_trigs:
+            found.append(f"TRIGGER {name}: thiếu")
+        elif name not in ddl_trigs:
+            found.append(f"TRIGGER {name}: không có trong DDL")
+        else:
+            (mig_def, mig_state), (ddl_def, ddl_state) = mig_trigs[name], ddl_trigs[name]
+            if mig_def != ddl_def:
+                found.append(f"TRIGGER {name}: khác định nghĩa so với DDL")
+            if mig_state != ddl_state:
+                found.append(f"TRIGGER {name}: trạng thái migration {mig_state} | DDL {ddl_state}")
     found.extend(seed_drift(migration_db, ddl_db, mig_tables, ddl_tables))
     return found
 
