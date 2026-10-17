@@ -16,7 +16,6 @@ import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
 import SyllabusPreview from '@components/common/SyllabusPreview';
-import RecordsPage from '@pages/records/RecordsPage';
 import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
 import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
@@ -90,7 +89,7 @@ export default function AppRouter({
         <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
 
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
-        <Route path="/records" element={<RecordsPage />} />
+        <Route path="/records" element={<SyllabusPreview activePage="records" />} />
         <Route path="/resources" element={<ResourceManagementPage />} />
 
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { ActivePageId } from '@app-types/navigation';
 import { MAIN_MODULES } from '@lib/constants';
 import { useTranslation } from '@i18n/translate';

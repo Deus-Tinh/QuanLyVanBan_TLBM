@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { ActivePageId } from '@app-types/navigation';
 
 interface FloatingAIBoxProps {
