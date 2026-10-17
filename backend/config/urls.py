@@ -7,7 +7,6 @@ from django.contrib import admin
 from django.urls import include, path
 
 from accounts.views import staffs_view
-
 from api import views as ai_views
 
 urlpatterns = [
@@ -15,10 +14,9 @@ urlpatterns = [
     # Django Admin
     path("admin/", admin.site.urls),
 
+    # ── Module Nhóm 1 — Hiếu ──────────────────────────────────────────────
     # API Cán bộ / Nhân viên (phục vụ liên nhóm)
     path("api/accounts/staffs/", staffs_view, name="accounts_staffs"),
-
-    # ── Module Nhóm 1 — Hiếu ──────────────────────────────────────────────
     # API Xác thực & Tài khoản: POST /api/auth/login/, GET /api/auth/profile/, ...
     path("api/auth/", include("accounts.urls", namespace="accounts")),
 

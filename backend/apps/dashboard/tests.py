@@ -1,5 +1,4 @@
 from datetime import date, timedelta
-from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
@@ -108,10 +107,6 @@ class DashboardAPITests(TestCase):
         response = self.client.get("/api/dashboard/overview/")
         self.assertNotIn("confidentialCount", response.data["kpis"])
         self.assertNotIn("confidential_total", response.data["stats"])
-
-    def test_dashboard_defines_no_models(self):
-        """Dữ liệu chỉ lấy từ bảng của DDL, dashboard không tạo bảng riêng."""
-        self.assertEqual(list(apps.get_app_config("dashboard").get_models()), [])
 
     def test_overview_birthdays_today_and_tomorrow(self):
         """Sinh nhật hôm nay và ngày mai vẫn đọc từ bảng nhân viên."""

@@ -181,6 +181,13 @@ export async function apiClient<T = unknown>(
           });
         });
       }
+    } else {
+      // Không có refresh token -> Dọn sạch session và đăng xuất ngay
+      localStorage.removeItem('tlbm_access_token');
+      localStorage.removeItem('tlbm_token');
+      localStorage.removeItem('tlbm_refresh_token');
+      localStorage.removeItem('tlbm_session');
+      window.dispatchEvent(new Event('tlbm_auth_changed'));
     }
   }
 

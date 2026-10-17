@@ -90,10 +90,10 @@ INSTALLED_APPS = [
     "authorization",
 ]
 
-# Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
+# Custom User Model theo SQL_Fix4 / release_DDL: accounts_employee là bảng người dùng
 AUTH_USER_MODEL = "accounts.Employee"
 
-# RBAC theo SQL_Fix4: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+# RBAC theo release_DDL: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
 AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
@@ -309,3 +309,15 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+# ─────────────────────────────────────────────────
+# Bảo Long Insurance (Alpaca) Authentication Config
+# ─────────────────────────────────────────────────
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "")
+ALPACA_CHECK_AUTH_URL = os.getenv(
+    "ALPACA_CHECK_AUTH_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-auth-user",
+)
+ALPACA_CHECK_USER_URL = os.getenv(
+    "ALPACA_CHECK_USER_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-user-exist",
+)

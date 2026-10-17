@@ -40,6 +40,11 @@ Bản Frontend Baseline là **mốc tham chiếu chuẩn mực** được đưa 
    - Hợp đồng phân quyền (Contract) sẽ do **Nhóm 7 (Quản trị hệ thống)** cung cấp. Các nhóm tích hợp theo đúng contract này.
    - Nguồn kiểm tra quyền chính xác nhất (Source of Truth) luôn nằm ở Backend.
 
+5. **Quy chuẩn Phông chữ & Cấm chữ siêu nhỏ (Typography & Accessibility):**  
+   - Toàn bộ giao diện phần mềm công vụ bắt buộc sử dụng phông chữ rõ ràng, dễ đọc, tối thiểu từ 13px–14px trở lên để bảo vệ mắt người dùng theo chuẩn WCAG.
+   - Hệ thống đã chuẩn hóa cấu hình `tailwind.config.js`: class `text-xs` đã được nâng từ 10.5px lên scale **`13px - 14px` (`0.875rem`)**, loại bỏ hoàn toàn cỡ chữ siêu nhỏ.
+   - Các nhóm khi thiết kế nhãn badge, ngày tháng, nội dung bảng... bắt buộc dùng utility classes (`text-xs`, `text-sm`, `text-base`), **tuyệt đối không hardcode inline style cỡ chữ nhỏ bằng px** (như `style={{ fontSize: '10px' }}`).
+
 ---
 
 ## 🚀 3. Quy trình phát triển tính năng cho nhóm tiếp theo
@@ -81,4 +86,5 @@ graph TD
 - [x] Xác thực thật bằng Django Authentication + SimpleJWT (`authService` & `apiClient`).
 - [x] Xóa 100% dữ liệu giả lập (Zero Mock Data), xử lý Empty State tự nhiên.
 - [x] Hỗ trợ song ngữ Tiếng Việt và Tiếng Anh hoàn chỉnh.
+- [x] Tuân thủ Typography: Loại bỏ hoàn toàn phông chữ siêu nhỏ (<13px), kế thừa đúng thang đo chuẩn trong `tailwind.config.js`.
 - [x] Đạt 100% Quality Gate: Toàn bộ Unit Tests trong test suite phải pass 100% (0 failed), 0 lỗi ESLint, build production thành công.
