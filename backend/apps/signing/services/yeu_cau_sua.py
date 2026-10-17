@@ -13,13 +13,13 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 
-from .. import email as thong_bao
 from .. import enums
 from ..errors import ConflictError, SigningError
 from ..models import (
     SigningAttempt, SigningChangeMessage, SigningChangeThread, SigningRequest, SigningRequestStep,
     SigningRequestStepSigner,
 )
+from . import thong_bao
 from .audit import ghi_nhat_ky
 from .hanh_dong_ky import _dong_cua_toi, _khoa_luot_hien_hanh, _thao_tac_lap
 from .trinh_ky import TRUONG_VI_TRI, doc_tep_pdf, kiem_tra_vi_tri_ky, luot_hien_hanh, luu_du_lieu_pdf, mo_cap
@@ -56,7 +56,7 @@ def yeu_cau_sua(yeu_cau, nguoi, *, tieu_de, ly_do, khoa_chong_trung, dia_chi_ip=
                 luot_trinh=luot, buoc_ky=dong, trang_thai_truoc=enums.TrangThaiLuotTrinh.CHO_KY,
                 trang_thai_sau=luot.trang_thai, chi_tiet=tieu_de, dia_chi_ip=dia_chi_ip,
                 du_lieu_kem_theo={"thread": thread.pk})
-    thong_bao.thong_bao_nguoi_tao(luot.trinh_ky, "YEU_CAU_SUA", luot)
+    thong_bao.su_kien(luot.trinh_ky, luot, "YEU_CAU_SUA", nguoi)
     return SigningRequest.objects.get(pk=yeu_cau.pk)
 
 

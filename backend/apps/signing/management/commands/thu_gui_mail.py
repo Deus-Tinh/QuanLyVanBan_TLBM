@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 
-from signing.email import _gui
+from django.core.mail import send_mail
 
 
 def cau_hinh_mail():
@@ -41,8 +41,13 @@ class Command(BaseCommand):
                 "CẢNH BÁO: thiếu EMAIL_HOST_PASSWORD trong backend/.env. Đang dùng console backend: "
                 "email chỉ in ra màn hình, KHÔNG được gửi thật."))
         try:
-            so_thu = _gui([dia_chi], "Thư kiểm tra cấu hình email",
-                          "Thư này được gửi bằng lệnh thu_gui_mail để kiểm tra cấu hình SMTP của hệ thống QLVB.")
+            so_thu = send_mail(
+                "Thư kiểm tra cấu hình email",
+                "Thư này được gửi bằng lệnh thu_gui_mail để kiểm tra cấu hình SMTP của hệ thống QLVB.",
+                settings.DEFAULT_FROM_EMAIL,
+                [dia_chi],
+                fail_silently=False,
+            )
         except Exception as exc:
             raise CommandError(f"Gửi email thất bại: {type(exc).__name__}: {exc}") from exc
         if not so_thu:

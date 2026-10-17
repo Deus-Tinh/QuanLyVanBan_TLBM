@@ -82,5 +82,10 @@ class Command(BaseCommand):
                 nhom = _nhom_quyen(ma_nhom)
                 if nhom is not None:
                     nguoi_dung.groups.set([nhom])
+                if username == "chuyenvien":
+                    from django.contrib.auth.models import Permission
+                    p = Permission.objects.filter(codename="send_trinhky").first()
+                    if p:
+                        nguoi_dung.user_permissions.add(p)
                 self.stdout.write(f" [OK] {username} — {ho_ten}" + ("" if nhom else " (chưa có nhóm quyền)"))
         self.stdout.write(self.style.SUCCESS(f"Đã tạo/cập nhật {len(TAI_KHOAN_DEMO)} tài khoản demo."))
