@@ -1071,8 +1071,9 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     const text = (overrideText || inputVal).trim();
     if (!text) return;
 
+    const messageTimestamp = Date.now();
     const userMsg: ChatMessage = {
-      id: `user-${activeSessionId}-${Date.now()}`,
+      id: `user-${activeSessionId}-${messageTimestamp}`,
       sender: 'user',
       text,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -1120,7 +1121,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
 
       const aiText = res.answer || res.text || 'Không có phản hồi từ mô hình AI.';
       const aiMsg: ChatMessage = {
-        id: `ai-${activeSessionId}-${Date.now()}`,
+        id: `ai-${activeSessionId}-${messageTimestamp}`,
         sender: 'ai',
         text: aiText,
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -1152,7 +1153,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     } catch (err: unknown) {
       console.warn('Backend call failed:', err);
       const aiMsg: ChatMessage = {
-        id: `ai-${activeSessionId}-${Date.now()}`,
+        id: `ai-${activeSessionId}-${messageTimestamp}`,
         sender: 'ai',
         text: getErrorMessage(err, 'Không thể truy cập AI lúc này. Vui lòng thử lại sau.'),
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -1271,9 +1272,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     const groups: Record<string, RootFolderGroup> = {};
 
     for (const doc of filteredDocs) {
-      let rootName = 'Folder';
-      let subName = 'folder1';
-
+      let rootName: string;
+      let subName: string;
       if (doc.category && (doc.category.includes('/') || doc.category.includes('>'))) {
         const parts = doc.category.split(/[/|>]/).map((s) => s.trim());
         rootName = parts[0] || 'Folder';
