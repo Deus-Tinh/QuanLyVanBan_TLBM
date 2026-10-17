@@ -106,12 +106,17 @@ export default function ResourceManagementPage() {
   const [categories, setCategories] = useState<ResourceCategory[]>([]);
   const [types, setTypes] = useState<ResourceType[]>([]);
 
+  // Cờ đánh dấu đã nạp xong danh mục/loại tài liệu lần đầu từ API để lưu localStorage an toàn
+  const isCategoriesLoadedRef = useRef(false);
+  const isTypesLoadedRef = useRef(false);
+
   // Danh sách ID các danh mục được tick chọn để hiển thị trên thanh chính (Mặc định tick chọn tất cả)
   const [visibleCategoryIds, setVisibleCategoryIds] = useState<number[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
       if (saved !== null) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       /* ignore */
@@ -119,26 +124,42 @@ export default function ResourceManagementPage() {
     return [];
   });
 
-  // Tự động đồng bộ các danh mục hiển thị khi nạp danh mục: mặc định tick full toàn bộ danh mục
+  // Tự động đồng bộ các danh mục hiển thị khi nạp danh mục:
+  // - Nếu chưa từng tùy chỉnh (saved === null): Mặc định hiển thị toàn bộ danh mục
+  // - Nếu đã tùy chỉnh: Giữ nguyên 100% lựa chọn của người dùng, chỉ loại bỏ danh mục đã bị xóa trong CSDL
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (categories.length > 0) {
-      setVisibleCategoryIds((prev) => {
-        const allCatIds = categories.map((c) => c.id);
-        const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
-        if (saved === null) {
-          return allCatIds;
+      const allCatIds = categories.map((c) => c.id);
+      const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
+
+      if (saved === null) {
+        setVisibleCategoryIds(allCatIds);
+        try {
+          localStorage.setItem(STORAGE_VISIBLE_CATS, JSON.stringify(allCatIds));
+        } catch {
+          /* ignore */
         }
-        const existing = prev.filter((id) => allCatIds.includes(id));
-        const newCats = allCatIds.filter((id) => !prev.includes(id));
-        const combined = [...existing, ...newCats];
-        return combined.length > 0 ? combined : allCatIds;
-      });
+      } else {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.filter((id) => allCatIds.includes(id));
+            setVisibleCategoryIds(valid);
+          } else {
+            setVisibleCategoryIds(allCatIds);
+          }
+        } catch {
+          setVisibleCategoryIds(allCatIds);
+        }
+      }
+      isCategoriesLoadedRef.current = true;
     }
   }, [categories]);
 
-  // Lưu cấu hình ghim danh mục vào localStorage
+  // Lưu cấu hình ghim danh mục vào localStorage khi người dùng thay đổi lựa chọn
   useEffect(() => {
+    if (!isCategoriesLoadedRef.current) return;
     try {
       localStorage.setItem(STORAGE_VISIBLE_CATS, JSON.stringify(visibleCategoryIds));
     } catch {
@@ -148,20 +169,24 @@ export default function ResourceManagementPage() {
 
   const toggleCategoryVisibility = (catId: number) => {
     setVisibleCategoryIds((prev) => {
-      if (prev.includes(catId)) {
-        return prev.filter((id) => id !== catId);
-      } else {
-        return [...prev, catId];
+      const updated = prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId];
+      try {
+        localStorage.setItem(STORAGE_VISIBLE_CATS, JSON.stringify(updated));
+      } catch {
+        /* ignore */
       }
+      return updated;
     });
   };
 
   const toggleAllCategoriesVisibility = (selectAll: boolean) => {
-    if (selectAll) {
-      setVisibleCategoryIds(categories.map((c) => c.id));
-    } else {
-      setVisibleCategoryIds([]);
+    const updated = selectAll ? categories.map((c) => c.id) : [];
+    try {
+      localStorage.setItem(STORAGE_VISIBLE_CATS, JSON.stringify(updated));
+    } catch {
+      /* ignore */
     }
+    setVisibleCategoryIds(updated);
   };
 
   // Danh sách ID các loại tài liệu được tick chọn để hiển thị trên thanh sub-chips (Mặc định tick chọn tất cả)
@@ -169,7 +194,8 @@ export default function ResourceManagementPage() {
     try {
       const saved = localStorage.getItem(STORAGE_VISIBLE_TYPES);
       if (saved !== null) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       /* ignore */
@@ -177,26 +203,42 @@ export default function ResourceManagementPage() {
     return [];
   });
 
-  // Tự động đồng bộ các loại tài liệu hiển thị: mặc định tick full toàn bộ loại tài liệu
+  // Tự động đồng bộ các loại tài liệu hiển thị:
+  // - Nếu chưa từng tùy chỉnh (saved === null): Mặc định hiển thị toàn bộ loại tài liệu
+  // - Nếu đã tùy chỉnh: Giữ nguyên 100% lựa chọn của người dùng, chỉ loại bỏ loại đã bị xóa trong CSDL
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (types.length > 0) {
-      setVisibleTypeIds((prev) => {
-        const allTypeIds = types.map((t) => t.id);
-        const saved = localStorage.getItem(STORAGE_VISIBLE_TYPES);
-        if (saved === null) {
-          return allTypeIds;
+      const allTypeIds = types.map((t) => t.id);
+      const saved = localStorage.getItem(STORAGE_VISIBLE_TYPES);
+
+      if (saved === null) {
+        setVisibleTypeIds(allTypeIds);
+        try {
+          localStorage.setItem(STORAGE_VISIBLE_TYPES, JSON.stringify(allTypeIds));
+        } catch {
+          /* ignore */
         }
-        const existing = prev.filter((id) => allTypeIds.includes(id));
-        const newTypes = allTypeIds.filter((id) => !prev.includes(id));
-        const combined = [...existing, ...newTypes];
-        return combined.length > 0 ? combined : allTypeIds;
-      });
+      } else {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.filter((id) => allTypeIds.includes(id));
+            setVisibleTypeIds(valid);
+          } else {
+            setVisibleTypeIds(allTypeIds);
+          }
+        } catch {
+          setVisibleTypeIds(allTypeIds);
+        }
+      }
+      isTypesLoadedRef.current = true;
     }
   }, [types]);
 
-  // Lưu cấu hình ghim loại tài liệu vào localStorage
+  // Lưu cấu hình ghim loại tài liệu vào localStorage khi người dùng thay đổi lựa chọn
   useEffect(() => {
+    if (!isTypesLoadedRef.current) return;
     try {
       localStorage.setItem(STORAGE_VISIBLE_TYPES, JSON.stringify(visibleTypeIds));
     } catch {
@@ -206,11 +248,13 @@ export default function ResourceManagementPage() {
 
   const toggleTypeVisibility = (typeId: number) => {
     setVisibleTypeIds((prev) => {
-      if (prev.includes(typeId)) {
-        return prev.filter((id) => id !== typeId);
-      } else {
-        return [...prev, typeId];
+      const updated = prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId];
+      try {
+        localStorage.setItem(STORAGE_VISIBLE_TYPES, JSON.stringify(updated));
+      } catch {
+        /* ignore */
       }
+      return updated;
     });
   };
 
@@ -279,9 +323,21 @@ export default function ResourceManagementPage() {
     const currentScopeTypeIds = availableTypesForFilter.map((t) => t.id);
     if (selectAll) {
       const newItems = currentScopeTypeIds.filter((id) => !visibleTypeIds.includes(id));
-      setVisibleTypeIds((prev) => [...prev, ...newItems]);
+      const updated = [...visibleTypeIds, ...newItems];
+      try {
+        localStorage.setItem(STORAGE_VISIBLE_TYPES, JSON.stringify(updated));
+      } catch {
+        /* ignore */
+      }
+      setVisibleTypeIds(updated);
     } else {
-      setVisibleTypeIds((prev) => prev.filter((id) => !currentScopeTypeIds.includes(id)));
+      const updated = visibleTypeIds.filter((id) => !currentScopeTypeIds.includes(id));
+      try {
+        localStorage.setItem(STORAGE_VISIBLE_TYPES, JSON.stringify(updated));
+      } catch {
+        /* ignore */
+      }
+      setVisibleTypeIds(updated);
     }
   };
 

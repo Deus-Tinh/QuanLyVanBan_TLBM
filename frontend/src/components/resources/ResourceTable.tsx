@@ -52,7 +52,6 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     const handleClose = () => {
       setActiveMenuId(null);
       setMenuPos(null);
-      setActiveFileMenuId(null);
     };
 
     const handleClickOutside = (e: MouseEvent) => {
