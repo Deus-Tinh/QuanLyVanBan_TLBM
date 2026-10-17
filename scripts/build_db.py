@@ -39,8 +39,8 @@ BACKEND = ROOT / "backend"
 DEFAULT_DDL = ROOT / "docs" / "common" / "database" / "release_DDL.sql"
 MAINTENANCE_DB = "postgres"
 MARK_PREFIX = "build_db:v2"
-# Collation của mọi DB do repo tạo: thứ tự trong seed của release_DDL.sql (ROW_NUMBER() OVER (ORDER BY ...))
-# phụ thuộc collation nên phải cố định.
+# Collation của mọi DB do repo tạo: thứ tự ORDER BY theo chuỗi trong query của app và view (ví dụ
+# string_agg(... ORDER BY dv.ten)) phụ thuộc collation nên phải cố định.
 ICU_LOCALE = "vi-VN"
 LIBC_LOCALE = "C.UTF-8"
 CREATE_DATABASE = (
@@ -139,6 +139,16 @@ def read_mark(conn, dbname):
     return row[0] if row else None
 
 
+def create_database(conn, dbname):
+    """Tạo DB với collation chuẩn; kiểm tra lại, sai thì xóa chính DB vừa tạo rồi báo lỗi."""
+    conn.execute(sql.SQL(CREATE_DATABASE).format(sql.Identifier(dbname)))
+    try:
+        require_collation(conn, dbname)
+    except BaseException:
+        conn.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(sql.Identifier(dbname)))
+        raise
+
+
 def prepare_database(args):
     """Chuẩn bị DB đích. Trả về cách dọn khi lỗi: 'drop', 'reset' hoặc None; None kèm skip=True là bỏ qua."""
     name = sql.Identifier(args.dbname)
@@ -147,13 +157,11 @@ def prepare_database(args):
             "SELECT 1 FROM pg_database WHERE datname = %s", [args.dbname]
         ).fetchone()
         if not exists:
-            conn.execute(sql.SQL(CREATE_DATABASE).format(name))
-            require_collation(conn, args.dbname)
+            create_database(conn, args.dbname)
             return "drop", False
         if args.force:
             conn.execute(sql.SQL("DROP DATABASE {} WITH (FORCE)").format(name))
-            conn.execute(sql.SQL(CREATE_DATABASE).format(name))
-            require_collation(conn, args.dbname)
+            create_database(conn, args.dbname)
             return "drop", False
         require_collation(conn, args.dbname)
         mark = read_mark(conn, args.dbname)

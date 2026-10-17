@@ -12,8 +12,8 @@ nội dung, dữ liệu seed), không so văn bản pg_dump, và bỏ qua các k
   cột chung, bỏ cột tự sinh (nextval/identity) và cột có DEFAULT không xác định (now(), CURRENT_TIMESTAMP,
   gen_random_uuid()); mỗi bảng một dòng lệch ghi số dòng thiếu/thừa kèm dấu vân tay (sha256) nội dung.
 
-Hai DB phải cùng collation (datlocprovider, locale ICU), nếu không script dừng với lỗi: thứ tự trong seed của
-DDL (ROW_NUMBER() OVER (ORDER BY ...)) và so sánh chuỗi phụ thuộc collation.
+Hai DB phải cùng collation (datlocprovider, locale ICU), nếu không script dừng với lỗi: thứ tự ORDER BY theo
+chuỗi trong query của app và view (ví dụ string_agg(... ORDER BY dv.ten)) phụ thuộc collation.
 
 Function, trigger và view so nguyên văn đầu ra pg_get_functiondef (chỉ đổi CRLF thành LF), pg_get_triggerdef,
 pg_get_viewdef; trạng thái bật/tắt của trigger (tgenabled) so riêng. Không chuẩn hoá khoảng trắng vì khoảng trắng
@@ -203,7 +203,7 @@ def collation(db):
 
 
 def require_same_collation(migration_db, ddl_db):
-    """Thứ tự seed (ROW_NUMBER() OVER (ORDER BY ...)) phụ thuộc collation: hai DB khác collation thì không so."""
+    """ORDER BY theo chuỗi (app, view) phụ thuộc collation: hai DB khác collation thì không so."""
     mig, ddl = collation(migration_db), collation(ddl_db)
     if mig != ddl:
         raise SystemExit(

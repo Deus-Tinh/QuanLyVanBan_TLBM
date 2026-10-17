@@ -7,6 +7,7 @@ import os
 import unittest
 import uuid
 from argparse import Namespace
+from unittest import mock
 
 from psycopg import sql
 
@@ -47,6 +48,25 @@ class CollationTest(unittest.TestCase):
         self.args.force = True
         self.assertEqual(build_db.prepare_database(self.args), ("drop", False))
         self.assertEqual(self.collation(), ("i", "vi-VN"))
+
+    def exists(self):
+        with build_db.connect(self.args, "postgres", autocommit=True) as conn:
+            return conn.execute("SELECT 1 FROM pg_database WHERE datname = %s", [self.args.dbname]).fetchone()
+
+    def wrong_collation_create_sql(self):
+        return mock.patch.object(build_db, "CREATE_DATABASE", build_db.CREATE_DATABASE.replace("vi-VN", "en-US"))
+
+    def test_new_database_with_failed_collation_check_is_dropped(self):
+        with self.wrong_collation_create_sql(), self.assertRaises(SystemExit):
+            build_db.prepare_database(self.args)
+        self.assertIsNone(self.exists())
+
+    def test_force_database_with_failed_collation_check_is_dropped(self):
+        self.create_with_icu_locale("vi-VN")
+        self.args.force = True
+        with self.wrong_collation_create_sql(), self.assertRaises(SystemExit):
+            build_db.prepare_database(self.args)
+        self.assertIsNone(self.exists())
 
     def test_existing_database_with_other_collation_is_rejected(self):
         self.create_with_icu_locale("en-US")
