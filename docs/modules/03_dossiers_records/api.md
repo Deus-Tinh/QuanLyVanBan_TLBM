@@ -39,8 +39,8 @@ Xóa API G3 giải quyết đường bypass metadata nêu trong review; không k
 
 ## Chỉ mục và database hiện hữu
 
-Model khai báo hai index `idx_hoso_nguoi_lap`, `idx_loaivanban_hoso`; hai ForeignKey dùng `db_index=False`. Migration mới `0005_canonical_fk_indexes` không sửa migration cũ và không rebuild bảng. PostgreSQL: index Django cũ được đổi tên; index chuẩn DDL có sẵn được giữ; chỉ bản trùng tên Django đã biết mới bị xóa. Index khác hoặc định nghĩa bất thường làm migration dừng để review. Migration này không tự reverse về tên cũ.
+Model khai báo hai index `idx_hoso_nguoi_lap`, `idx_loaivanban_hoso`; hai ForeignKey dùng `db_index=False`. Migration `records` (`0001_initial`, `0002_hoso_guards`) tạo bảng, index, constraint và trigger khớp `release_DDL.sql`; hàm và trigger chép nguyên văn từ DDL, chỉ chạy trên PostgreSQL.
 
-Database release đã bootstrap: chỉ chạy migration records còn thiếu sau khi xem plan và sao lưu. Không nhập lại DDL, không bootstrap lại, không chạy seed RBAC cũ hoặc `--fake` toàn dự án. Hai đường fresh-migration và DDL-adopt cần kiểm chứng catalog PostgreSQL bằng script riêng trước báo cáo hoàn tất DDL-1.
+Database dựng bằng `scripts/build_db.py` đã có sẵn bảng `records_*` từ DDL nên migration `records` được ghi nhận là đã áp dụng (fake). Quy trình dựng và đồng bộ xem `docs/common/database/build_db_runbook.md`. Lệch còn lại giữa migration và DDL nằm trong `docs/common/database/schema_drift_baseline.txt`.
 
 Profile `config.records_release` phục vụ kiểm chứng nhóm 3, không thay cho toàn bộ cấu hình deploy. Quy trình Git: nhánh cá nhân → `3_dossiers_documents` → `staging`; người phụ trách tích hợp quyết định merge staging/deploy.
