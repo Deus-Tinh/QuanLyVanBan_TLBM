@@ -44,7 +44,11 @@ cleanup() {
     fi
     if [ $DB_REBUILT -eq 1 ]; then
       echo "DB da bi xoa va dung lai (DB_MODE=rebuild); quay lai release cu KHONG khoi phuc duoc DB."
-      echo "Service $SERVICE dang DUNG (da stop truoc khi xoa DB) de khong chay tren DB hong."
+      if systemctl is-active --quiet "$SERVICE"; then
+        echo "Service $SERVICE dang CHAY tren $(readlink -f "$BASE/current"), nhung DB da dung lai theo DDL moi."
+      else
+        echo "Service $SERVICE dang DUNG."
+      fi
       echo "Khoi phuc DB tu backup: xem muc 'Khoi phuc tu dump' trong docs/common/database/build_db_runbook.md"
     fi
     echo "Ban dang chay: $(readlink -f "$BASE/current")"
