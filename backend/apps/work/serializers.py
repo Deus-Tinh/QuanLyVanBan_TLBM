@@ -514,7 +514,10 @@ class TaskWriteSerializer(serializers.Serializer):
         rows = [TaskParticipant(task=task, user=attrs["host"], role=ParticipantRole.CHU_TRI)]
         rows += [TaskParticipant(task=task, user=u, role=ParticipantRole.CHI_DAO) for u in attrs["directors"]]
         rows += [TaskParticipant(task=task, user=u, role=ParticipantRole.THAM_GIA) for u in attrs["participants"]]
-        TaskParticipant.objects.bulk_create(rows)
+        # vai_tro là ENUM task_vaitro: bulk_create trên PostgreSQL ép kiểu varchar[] (UNNEST)
+        # nên bị từ chối; tạo từng dòng.
+        for row in rows:
+            row.save()
 
     def _save_files(self, task, files, user):
         for uploaded in files:

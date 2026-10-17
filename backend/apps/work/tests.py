@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
-from organizations.models import DonVi
+from organizations.models import DonVi, KhoiKhuVuc
 from documents.models import PhamVi, VanBanDen, VanBanDi
 
 from work.models import (
@@ -53,6 +53,10 @@ class WorkTestBase(APITestCase):
 
     def setUp(self):
         self.today = timezone.localdate()
+        # Phòng ban mặc định của create_user: tạo với id cố định để không lấy giá trị từ sequence
+        # (sequence không rollback giữa các test, id tự sinh có thể trùng id 3-9 bên dưới).
+        default_region = KhoiKhuVuc.objects.create(ten="Khối kiểm thử mặc định")
+        DonVi.objects.create(id=1, khoi=default_region, stt_uu_tien=1, ten="Phòng ban kiểm thử mặc định")
         self.creator = User.objects.create_user("nguoitao", ho_ten="Trần Phương Duy")
         self.host = User.objects.create_user("chutri", ho_ten="Phan Quốc Dũng")
         self.director = User.objects.create_user("chidao", ho_ten="Nguyễn Thu Hiền")
@@ -64,7 +68,6 @@ class WorkTestBase(APITestCase):
             for codename in ("add_congviec", "view_vanbanden", "view_vanbandi")
         ]
         self.creator.user_permissions.add(*permissions)
-        default_region = self.creator.don_vi.khoi
         self.units = {
             unit_id: DonVi.objects.create(
                 id=unit_id,
@@ -90,11 +93,13 @@ class WorkTestBase(APITestCase):
             is_public=is_public,
             **extra,
         )
-        TaskParticipant.objects.bulk_create([
-            TaskParticipant(task=task, user=self.host, role=ParticipantRole.CHU_TRI),
-            TaskParticipant(task=task, user=self.director, role=ParticipantRole.CHI_DAO),
-            TaskParticipant(task=task, user=self.member, role=ParticipantRole.THAM_GIA),
-        ])
+        # vai_tro là ENUM: không dùng bulk_create (UNNEST ép varchar[]).
+        for user, role in (
+            (self.host, ParticipantRole.CHU_TRI),
+            (self.director, ParticipantRole.CHI_DAO),
+            (self.member, ParticipantRole.THAM_GIA),
+        ):
+            TaskParticipant.objects.create(task=task, user=user, role=role)
         return task
 
     def add_evidence(self, task, user=None, name="bang-chung.pdf"):

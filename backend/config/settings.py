@@ -16,8 +16,6 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
-from corsheaders.defaults import default_headers
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -77,7 +75,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
-    "corsheaders",
     "django_filters",
     # Các app nghiệp vụ
     "accounts",
@@ -101,7 +98,6 @@ AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -111,10 +107,8 @@ MIDDLEWARE = [
 
 try:
     import corsheaders  # noqa: F401
-    if "corsheaders" not in INSTALLED_APPS:
-        INSTALLED_APPS.append("corsheaders")
-    if "corsheaders.middleware.CorsMiddleware" not in MIDDLEWARE:
-        MIDDLEWARE.insert(2, "corsheaders.middleware.CorsMiddleware")
+    INSTALLED_APPS.append("corsheaders")
+    MIDDLEWARE.insert(2, "corsheaders.middleware.CorsMiddleware")
 except ImportError:
     pass
 
@@ -141,11 +135,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-TESTING = "test" in sys.argv
-
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
 
-if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
+if DB_ENGINE in ("postgresql", "postgres"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -163,6 +155,9 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+if "test" in sys.argv and DB_ENGINE not in ("postgresql", "postgres"):
+    raise RuntimeError("Test chạy trên PostgreSQL: đặt DB_ENGINE=postgresql và các biến DB_*.")
 
 
 # Password validation

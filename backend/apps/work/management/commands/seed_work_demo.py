@@ -238,7 +238,9 @@ class Command(BaseCommand):
             for user in participant_users:
                 if user.pk != host.pk:
                     links.append(TaskParticipant(task=task, user=user, role=ParticipantRole.THAM_GIA))
-            TaskParticipant.objects.bulk_create(links)
+            # vai_tro là ENUM: không dùng bulk_create (UNNEST ép varchar[]).
+            for link in links:
+                link.save()
 
             if spec.get("opened"):
                 Task.objects.filter(pk=task.pk).update(

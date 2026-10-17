@@ -142,10 +142,12 @@ def forward_trigger_updated_at(apps, schema_editor):
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
+NEW.updated_at = now();
+RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+
+$$
+LANGUAGE plpgsql;
 """)
     schema_editor.execute(
         "DROP TRIGGER IF EXISTS trg_congviec_updated_at ON task_congviec;"

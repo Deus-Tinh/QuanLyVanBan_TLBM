@@ -1,6 +1,7 @@
 name: DB Integration
 
-# Kiểm tra migration và schema trên PostgreSQL trống.
+# Kiểm tra migration, schema và test trên PostgreSQL.
+# Test chạy trên PostgreSQL; test DB do Django dựng bằng migration. scripts/build_db.py được chạy để kiểm chứng DDL nạp được.
 # - pull-request: chạy trên kết quả merge của PR vào nhánh đích.
 # - all-branches: gộp thử mọi nhánh nhóm (1_* … 8_*) vào staging để phát hiện
 #   xung đột giữa các nhóm (migration, tên bảng, phụ thuộc chéo app).
@@ -26,8 +27,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  DJANGO_SETTINGS_MODULE: config.settings_ci
   DJANGO_SECRET_KEY: "ci-only-not-for-production"
+  DB_ENGINE: postgresql
+  DB_HOST: localhost
+  DB_PORT: '5432'
+  DB_NAME: tlbm_ci
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  # Biến của .github/scripts/compare_schema_ddl.py và psql.
   POSTGRES_HOST: localhost
   POSTGRES_PORT: '5432'
   POSTGRES_DB: tlbm_ci
@@ -47,6 +54,8 @@ jobs:
           POSTGRES_DB: tlbm_ci
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          # Cluster mặc định ICU vi-VN: tlbm_ci, createdb và test DB của Django kế thừa từ template1.
+          POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=vi-VN --locale=C.UTF-8"
         ports:
           - 5432:5432
         options: >-
@@ -81,6 +90,14 @@ jobs:
       - name: Kiểm tra không còn migration chưa áp dụng
         run: python manage.py migrate --noinput --check
 
+      - name: Test bộ so schema (trigger tắt, khoảng trắng trong literal, seed, dữ liệu chỉ ở migration, collation)
+        working-directory: .
+        run: python -m unittest discover -s .github/scripts -p "test_*.py"
+
+      - name: Test collation của scripts/build_db.py
+        working-directory: .
+        run: python -m unittest discover -s scripts -p "test_build_db.py"
+
       - name: So sánh schema từ migration với DDL phát hành
         run: |
           PGPASSWORD="$POSTGRES_PASSWORD" createdb \
@@ -97,6 +114,30 @@ jobs:
           python ../.github/scripts/compare_schema_ddl.py \
             "$POSTGRES_DB" tlbm_ddl_expected ../docs/common/database/schema_drift_baseline.txt
 
+      - name: Dựng DB từ release_DDL.sql (kiểm chứng script)
+        working-directory: .
+        run: python scripts/build_db.py --dbname tlbm_ddl_built --seed
+
+      - name: Smoke ENUM/trigger/function/view của DB dựng bằng script so với DB nạp DDL thô
+        working-directory: .
+        run: |
+          counts() {
+            PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER"               -d "$1" -At -F ' ' -c "
+              SELECT
+                (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+                  WHERE n.nspname = 'public' AND t.typtype = 'e'),
+                (SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal),
+                (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                  WHERE n.nspname = 'public'),
+                (SELECT count(*) FROM pg_views WHERE schemaname = 'public')"
+          }
+          built="$(counts tlbm_ddl_built)"
+          raw="$(counts tlbm_ddl_expected)"
+          echo "enum trigger function view"
+          echo "built: $built"
+          echo "raw:   $raw"
+          test "$built" = "$raw"
+
       - name: Django tests trên PostgreSQL
         run: python manage.py test
 
@@ -112,6 +153,8 @@ jobs:
           POSTGRES_DB: tlbm_ci
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          # Cluster mặc định ICU vi-VN: tlbm_ci, createdb và test DB của Django kế thừa từ template1.
+          POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=vi-VN --locale=C.UTF-8"
         ports:
           - 5432:5432
         options: >-
@@ -162,6 +205,9 @@ jobs:
       - name: Migrate trên PostgreSQL trống
         working-directory: backend
         run: python manage.py migrate --noinput
+
+      - name: Dựng DB từ release_DDL.sql (kiểm chứng script)
+        run: python scripts/build_db.py --dbname tlbm_ddl_built --seed
 
       - name: Django tests trên PostgreSQL
         working-directory: backend
