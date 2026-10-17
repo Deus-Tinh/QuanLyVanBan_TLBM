@@ -11,6 +11,7 @@ Bao gồm:
 """
 
 import io
+import math
 from datetime import datetime
 
 from django.db import models, transaction
@@ -22,10 +23,13 @@ from openpyxl.utils import get_column_letter
 from .models import (
     HieuLuc,
     LoaiVanBan,
+    PhamVi,
     VanBanDen,
     VanBanDenAttachment,
     VanBanDi,
     VanBanDiAttachment,
+    VanBanMat,
+    VanBanMatAttachment,
     DocumentViewLog,
     get_document_model,
 )
@@ -63,7 +67,7 @@ def generate_so_thu_tu(loai: str, nam: int) -> int:
 def check_and_update_expired_documents() -> int:
     """
     Quét và tự động chuyển trạng thái các văn bản đã tới hoặc quá ngày hết hiệu lực
-    sang 'HET_HIEU_LUC' trên cả 2 model: Đến và Đi.
+    sang 'HET_HIEU_LUC' trên cả 3 model: Đến, Đi và Mật.
     Áp dụng cho cả CON_HIEU_LUC và CON_HIEU_LUC_1_PHAN.
     """
     now = timezone.now()
@@ -81,7 +85,13 @@ def check_and_update_expired_documents() -> int:
         ngay_het_hieu_luc__lte=now,
     ).update(hieu_luc=HieuLuc.HET_HIEU_LUC)
 
-    return count_den + count_di
+    count_mat = VanBanMat.objects.filter(
+        hieu_luc__in=active_statuses,
+        ngay_het_hieu_luc__isnull=False,
+        ngay_het_hieu_luc__lte=now,
+    ).update(hieu_luc=HieuLuc.HET_HIEU_LUC)
+
+    return count_den + count_di + count_mat
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -108,7 +118,7 @@ def get_replacement_relations(doc) -> dict:
     if not so_hieu:
         return {"thay_the_cho": [], "bi_thay_boi": []}
 
-    from .models import VanBanDen, VanBanDi, HieuLuc
+    from .models import VanBanDen, VanBanDi, VanBanMat, HieuLuc
     doc_date = (
         getattr(doc_obj, "ngay_van_ban", None)
         or getattr(doc_obj, "ngay_den", None)
@@ -121,7 +131,7 @@ def get_replacement_relations(doc) -> dict:
 
     # Chiều 2: Các văn bản khác có link_thay_the chứa so_hieu của doc
     referencing_docs = []
-    for model in (VanBanDen, VanBanDi):
+    for model in (VanBanDen, VanBanDi, VanBanMat):
         try:
             qs = model.objects.filter(link_thay_the__icontains=so_hieu)
             if doc_obj and getattr(doc_obj, "pk", None):
@@ -133,10 +143,17 @@ def get_replacement_relations(doc) -> dict:
         except Exception:
             pass
 
+    def to_date_norm(d):
+        if not d:
+            return None
+        return d.date() if hasattr(d, "date") and callable(d.date) else d
+
+    norm_doc_date = to_date_norm(doc_date)
+
     # Phân loại theo bản chất quan hệ, thời gian và trạng thái hiệu lực
     for target_so in target_numbers:
         target_obj = None
-        for model in (VanBanDen, VanBanDi):
+        for model in (VanBanDen, VanBanDi, VanBanMat):
             target_obj = model.objects.filter(so_hieu__iexact=target_so).first()
             if target_obj:
                 break
@@ -147,10 +164,11 @@ def get_replacement_relations(doc) -> dict:
                 or getattr(target_obj, "ngay_den", None)
                 or getattr(target_obj, "ngay_ban_hanh", None)
             )
+            norm_target_date = to_date_norm(target_date)
             if getattr(doc_obj, "hieu_luc", "") in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC):
                 if target_obj.so_hieu not in bi_thay_boi:
                     bi_thay_boi.append(target_obj.so_hieu)
-            elif target_obj.hieu_luc == HieuLuc.HET_VA_THAY_THE and (not doc_date or not target_date or target_date <= doc_date):
+            elif target_obj.hieu_luc == HieuLuc.HET_VA_THAY_THE and (not norm_doc_date or not norm_target_date or norm_target_date <= norm_doc_date):
                 if target_obj.so_hieu not in thay_the_cho:
                     thay_the_cho.append(target_obj.so_hieu)
             elif getattr(doc_obj, "hieu_luc", "") in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
@@ -168,10 +186,11 @@ def get_replacement_relations(doc) -> dict:
             or getattr(ref_doc, "ngay_den", None)
             or getattr(ref_doc, "ngay_ban_hanh", None)
         )
-        if ref_doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN) or (doc_date and ref_date and ref_date > doc_date):
+        norm_ref_date = to_date_norm(ref_date)
+        if ref_doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN) or (norm_doc_date and norm_ref_date and norm_ref_date > norm_doc_date):
             if ref_so not in bi_thay_boi and ref_so not in thay_the_cho:
                 bi_thay_boi.append(ref_so)
-        elif ref_doc.hieu_luc == HieuLuc.HET_VA_THAY_THE and (not doc_date or not ref_date or ref_date <= doc_date):
+        elif ref_doc.hieu_luc == HieuLuc.HET_VA_THAY_THE and (not norm_doc_date or not norm_ref_date or norm_ref_date <= norm_doc_date):
             if ref_so not in thay_the_cho and ref_so not in bi_thay_boi:
                 thay_the_cho.append(ref_so)
         elif getattr(doc_obj, "hieu_luc", "") == HieuLuc.HET_VA_THAY_THE:
@@ -215,10 +234,10 @@ def sync_replacement_document(doc):
         or now
     )
 
-    from .models import VanBanDen, VanBanDi, HieuLuc
+    from .models import VanBanDen, VanBanDi, VanBanMat, HieuLuc
     for target in targets:
         other_doc = None
-        for model in (VanBanDen, VanBanDi):
+        for model in (VanBanDen, VanBanDi, VanBanMat):
             qs = model.objects.filter(so_hieu__iexact=target)
             if getattr(doc, "pk", None):
                 qs = qs.exclude(pk=doc.pk)
@@ -251,10 +270,10 @@ def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu):
     if not old_target_so_hieu:
         return
 
-    from .models import VanBanDen, VanBanDi, HieuLuc
+    from .models import VanBanDen, VanBanDi, VanBanMat, HieuLuc
     from django.db.models import Q
     query = Q(so_hieu__iexact=old_target_so_hieu) | Q(link_thay_the__iexact=current_so_hieu)
-    for model in (VanBanDen, VanBanDi):
+    for model in (VanBanDen, VanBanDi, VanBanMat):
         for doc in model.objects.filter(query):
             updated_fields = []
             if current_so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == current_so_hieu.lower():
@@ -278,7 +297,7 @@ def cleanup_replacement_links_on_delete(instance):
     if not so_hieu and not link_target:
         return
 
-    from .models import VanBanDen, VanBanDi, HieuLuc
+    from .models import VanBanDen, VanBanDi, VanBanMat, HieuLuc
     from django.db.models import Q
     query = Q()
     if so_hieu:
@@ -286,7 +305,7 @@ def cleanup_replacement_links_on_delete(instance):
     if link_target:
         query |= Q(so_hieu__iexact=link_target)
 
-    for model in (VanBanDen, VanBanDi):
+    for model in (VanBanDen, VanBanDi, VanBanMat):
         for doc in model.objects.filter(query).exclude(pk=instance.pk):
             updated_fields = []
             if so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == so_hieu.lower():
@@ -326,7 +345,7 @@ def get_accessible_documents(user, doc_type: str = "vanbanden", strict_need_to_k
 # 3. GHI LOG NGƯỜI XEM — Upsert vào documents_view_log
 # ═══════════════════════════════════════════════════════════════════
 
-def log_document_view(document, user):
+def log_document_view(document, user, doc_type=None):
     """
     Ghi nhận người dùng đã xem văn bản.
     Khớp với bảng `documents_view_log` (document_type, document_id, user_id).
@@ -334,10 +353,16 @@ def log_document_view(document, user):
     if not user or not user.is_authenticated:
         return
 
-    doc_type = getattr(document, "document_kind", None)
     if not doc_type:
-        loai = getattr(document, "loai", "DEN")
-        doc_type = "vanbandi" if loai == "DI" else "vanbanden"
+        doc_type = getattr(document, "document_kind", None)
+        if not doc_type:
+            loai = getattr(document, "loai", "DEN")
+            if loai == "MAT":
+                doc_type = "vanbanmat"
+            elif loai == "DI":
+                doc_type = "vanbandi"
+            else:
+                doc_type = "vanbanden"
 
     doc_id = document.pk if hasattr(document, "pk") else document.id
 
@@ -355,23 +380,37 @@ def log_document_view(document, user):
 
 EXCEL_COLUMNS = {
     LoaiVanBan.DEN: [
-        ("so_hieu", "Số, ký hiệu VB", 20),
+        ("so_hieu", "Số, ký hiệu VB", 22),
+        ("pham_vi", "Phạm vi", 14),
         ("ngay_den", "Ngày đến", 18),
         ("ngay_van_ban", "Ngày văn bản", 18),
-        ("trich_yeu", "Trích yếu nội dung", 50),
-        ("noi_ban_hanh", "Nơi ban hành", 30),
-        ("nguoi_ky", "Người ký", 20),
+        ("trich_yeu", "Trích yếu nội dung", 65),
+        ("noi_ban_hanh", "Nơi ban hành", 32),
+        ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
         ("ghi_chu", "Ghi chú", 30),
     ],
     LoaiVanBan.DI: [
-        ("so_hieu", "Số, ký hiệu VB", 20),
+        ("so_hieu", "Số, ký hiệu VB", 22),
+        ("pham_vi", "Phạm vi", 14),
         ("ngay_ban_hanh", "Ngày ban hành", 18),
         ("ngay_van_ban", "Ngày văn bản", 18),
-        ("trich_yeu", "Trích yếu nội dung", 50),
-        ("noi_ban_hanh", "Nơi ban hành", 30),
-        ("nguoi_ky", "Người ký", 20),
+        ("trich_yeu", "Trích yếu nội dung", 65),
+        ("noi_ban_hanh", "Nơi ban hành", 32),
+        ("nguoi_ky", "Người ký", 22),
+        ("chuc_vu", "Chức vụ", 20),
+        ("hieu_luc", "Hiệu lực", 20),
+        ("ghi_chu", "Ghi chú", 30),
+    ],
+    LoaiVanBan.MAT: [
+        ("so_hieu", "Số, ký hiệu VB", 22),
+        ("pham_vi", "Phạm vi", 14),
+        ("ngay_ban_hanh", "Ngày ban hành", 18),
+        ("ngay_van_ban", "Ngày văn bản", 18),
+        ("trich_yeu", "Trích yếu nội dung", 65),
+        ("noi_ban_hanh", "Nơi ban hành", 32),
+        ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
         ("ghi_chu", "Ghi chú", 30),
@@ -381,6 +420,7 @@ EXCEL_COLUMNS = {
 SAMPLE_DATA = {
     LoaiVanBan.DEN: {
         "so_hieu": "15/CV-BGDDT",
+        "pham_vi": "Nội bộ",
         "ngay_den": "15/09/2026 08:30:00",
         "ngay_van_ban": "14/09/2026",
         "trich_yeu": "V/v hướng dẫn tuyển sinh năm học 2026-2027",
@@ -392,6 +432,7 @@ SAMPLE_DATA = {
     },
     LoaiVanBan.DI: {
         "so_hieu": "01/TB-VP",
+        "pham_vi": "Nội bộ",
         "ngay_ban_hanh": "15/09/2026",
         "ngay_van_ban": "15/09/2026",
         "trich_yeu": "Thông báo kế hoạch công tác quý",
@@ -401,14 +442,30 @@ SAMPLE_DATA = {
         "hieu_luc": "CON_HIEU_LUC",
         "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
     },
+    LoaiVanBan.MAT: {
+        "so_hieu": "01/GM-BGH",
+        "pham_vi": "Hạn chế",
+        "ngay_ban_hanh": "15/09/2026",
+        "ngay_van_ban": "15/09/2026",
+        "trich_yeu": "Kế hoạch bảo vệ an ninh và bí mật nội bộ năm 2026",
+        "noi_ban_hanh": "Ban Giám hiệu",
+        "nguoi_ky": "Hiệu trưởng",
+        "chuc_vu": "Hiệu trưởng",
+        "hieu_luc": "CON_HIEU_LUC",
+        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+    },
 }
 
 _header_font = Font(name="Arial", bold=True, size=11, color="FFFFFF")
 _header_fill = PatternFill(start_color="2E86C1", end_color="2E86C1", fill_type="solid")
+_header_fill_mat = PatternFill(start_color="922B21", end_color="922B21", fill_type="solid")
 _header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 _sample_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
 _sample_font = Font(name="Arial", italic=True, size=10, color="888888")
 _cell_font = Font(name="Arial", size=10)
+_cell_font_han_che = Font(name="Arial", size=10, color="922B21")
+_cell_font_han_che_bold = Font(name="Arial", size=10, bold=True, color="C00000")
+_fill_han_che = PatternFill(start_color="FFF1F2", end_color="FFF1F2", fill_type="solid")
 _cell_alignment = Alignment(vertical="center", wrap_text=True)
 _thin_border = Border(
     left=Side(style="thin"),
@@ -421,7 +478,15 @@ _thin_border = Border(
 def generate_excel_template(loai: str) -> io.BytesIO:
     """Sinh file Excel mẫu trực tiếp từ cấu hình DB."""
     loai_str = str(loai).strip().upper()
-    norm_loai = LoaiVanBan.DI if loai_str in ("DI", "VANBANDI") else LoaiVanBan.DEN
+    if loai_str in ("MAT", "VANBANMAT"):
+        norm_loai = LoaiVanBan.MAT
+        active_fill = _header_fill_mat
+    elif loai_str in ("DI", "VANBANDI"):
+        norm_loai = LoaiVanBan.DI
+        active_fill = _header_fill
+    else:
+        norm_loai = LoaiVanBan.DEN
+        active_fill = _header_fill
 
     columns = EXCEL_COLUMNS.get(norm_loai, EXCEL_COLUMNS[LoaiVanBan.DEN])
     sample = SAMPLE_DATA.get(norm_loai, SAMPLE_DATA[LoaiVanBan.DEN])
@@ -434,13 +499,13 @@ def generate_excel_template(loai: str) -> io.BytesIO:
     for col_idx, (field_name, col_title, col_width) in enumerate(columns, start=1):
         cell = ws.cell(row=1, column=col_idx, value=col_title)
         cell.font = _header_font
-        cell.fill = _header_fill
+        cell.fill = active_fill
         cell.alignment = _header_alignment
         cell.border = _thin_border
         col_letter = get_column_letter(col_idx)
         ws.column_dimensions[col_letter].width = col_width
 
-    ws.row_dimensions[2].height = 22
+    ws.row_dimensions[2].height = 28
     for col_idx, (field_name, _, _) in enumerate(columns, start=1):
         val = sample.get(field_name, "")
         cell = ws.cell(row=2, column=col_idx, value=val)
@@ -464,12 +529,20 @@ HEADER_TO_FIELD = {
     "Số, ký hiệu VB": "so_hieu",
     "Số hiệu": "so_hieu",
     "Số ký hiệu": "so_hieu",
+    "Phạm vi": "pham_vi",
+    "Phân loại": "pham_vi",
+    "Số đi": "so_thu_tu",
+    "Số đến": "so_thu_tu",
+    "Số thứ tự": "so_thu_tu",
     "Ngày đến": "ngay_den",
     "Ngày ban hành": "ngay_ban_hanh",
     "Ngày văn bản": "ngay_van_ban",
     "Trích yếu nội dung": "trich_yeu",
     "Trích yếu": "trich_yeu",
     "Nơi ban hành": "noi_ban_hanh",
+    "Phòng ban": "noi_ban_hanh",
+    "Đơn vị ban hành": "noi_ban_hanh",
+    "Đơn vị nhận": "don_vi_nhan",
     "Người ký": "nguoi_ky",
     "Chức vụ": "chuc_vu",
     "Hiệu lực": "hieu_luc",
@@ -510,7 +583,7 @@ def _parse_hieu_luc(value):
     return mapping.get(text, HieuLuc.CON_HIEU_LUC)
 
 
-def import_from_excel(file_obj, loai: str, user) -> dict:
+def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
     """Import dữ liệu văn bản từ file Excel vào đúng model tương ứng."""
     loai_str = str(loai).strip().upper()
     model = get_document_model(loai_str)
@@ -568,17 +641,56 @@ def import_from_excel(file_obj, loai: str, user) -> dict:
         if "nam" not in doc_data:
             doc_data["nam"] = nam
 
-        # Sinh số thứ tự
-        doc_data["so_thu_tu"] = generate_so_thu_tu(loai_str, nam)
+        if loai_str in ("MAT", "VANBANMAT"):
+            doc_data["pham_vi"] = PhamVi.HAN_CHE
+            doc_data["gui_mail_toan_he_thong"] = False
+            doc_data.pop("so_thu_tu", None)
+            if not doc_data.get("ngay_ban_hanh"):
+                doc_data["ngay_ban_hanh"] = timezone.now()
+            if not doc_data.get("ngay_van_ban"):
+                doc_data["ngay_van_ban"] = doc_data["ngay_ban_hanh"]
+        else:
+            # Gán phạm vi văn bản: nếu truyền pham_vi từ request thì ưu tiên áp dụng
+            if pham_vi:
+                norm_pv = PhamVi.HAN_CHE if str(pham_vi).strip().upper() == "HAN_CHE" else PhamVi.NOI_BO
+                doc_data["pham_vi"] = norm_pv
+            elif "pham_vi" in doc_data and doc_data["pham_vi"]:
+                pv_raw = str(doc_data["pham_vi"]).strip().upper()
+                doc_data["pham_vi"] = PhamVi.HAN_CHE if ("HAN_CHE" in pv_raw or "HẠN CHẾ" in pv_raw) else PhamVi.NOI_BO
+            else:
+                doc_data["pham_vi"] = PhamVi.NOI_BO
 
-        # Gán ngày mặc định theo loại nếu thiếu
-        if loai_str in ("DEN", "VANBANDEN") and not doc_data.get("ngay_den"):
-            doc_data["ngay_den"] = timezone.now()
-        elif loai_str in ("DI", "VANBANDI") and not doc_data.get("ngay_ban_hanh"):
-            doc_data["ngay_ban_hanh"] = timezone.now()
+            # Tự cấp số nếu file trống hoặc không hợp lệ (concurrency-safe)
+            current_stt = doc_data.get("so_thu_tu")
+            if not current_stt or not str(current_stt).isdigit() or int(current_stt) <= 0:
+                doc_data["so_thu_tu"] = generate_so_thu_tu(loai_str, nam)
+            else:
+                doc_data["so_thu_tu"] = int(current_stt)
+
+            # Gán ngày mặc định theo loại nếu thiếu và tương thích linh hoạt giữa các cột ngày
+            if loai_str in ("DEN", "VANBANDEN"):
+                if not doc_data.get("ngay_van_ban") and doc_data.get("ngay_ban_hanh"):
+                    doc_data["ngay_van_ban"] = doc_data["ngay_ban_hanh"]
+                if not doc_data.get("ngay_den"):
+                    doc_data["ngay_den"] = timezone.now()
+                if not doc_data.get("ngay_van_ban"):
+                    doc_data["ngay_van_ban"] = doc_data["ngay_den"]
+            elif loai_str in ("DI", "VANBANDI"):
+                if not doc_data.get("ngay_ban_hanh") and doc_data.get("ngay_den"):
+                    doc_data["ngay_ban_hanh"] = doc_data["ngay_den"]
+                if not doc_data.get("ngay_ban_hanh"):
+                    doc_data["ngay_ban_hanh"] = timezone.now()
+                if not doc_data.get("ngay_van_ban"):
+                    doc_data["ngay_van_ban"] = doc_data["ngay_ban_hanh"]
 
         try:
-            model.objects.create(**doc_data)
+            model_fields = {f.name for f in model._meta.get_fields() if hasattr(f, "attname")}
+            payload = {k: v for k, v in doc_data.items() if k in model_fields}
+            if "nguoi_tao" in model_fields and user and user.is_authenticated and "nguoi_tao" not in payload:
+                payload["nguoi_tao"] = user
+            created_doc = model.objects.create(**payload)
+            if loai_str in ("MAT", "VANBANMAT") and user and user.is_authenticated:
+                created_doc.nguoi_nhan.add(user)
             created_count += 1
         except Exception as e:
             errors.append({"row": row_idx, "message": str(e)})
@@ -591,40 +703,59 @@ def import_from_excel(file_obj, loai: str, user) -> dict:
 # 6. EXPORT DANH SÁCH RA EXCEL THEO BỘ LỌC
 # ═══════════════════════════════════════════════════════════════════
 
-def export_to_excel(queryset, loai: str) -> io.BytesIO:
+def export_to_excel(queryset, loai: str, pham_vi: str = None) -> io.BytesIO:
     """Xuất danh sách văn bản ra file Excel theo bộ lọc hiện tại."""
     loai_str = str(loai).strip().upper()
-    norm_loai = LoaiVanBan.DI if loai_str in ("DI", "VANBANDI") else LoaiVanBan.DEN
+    is_han_che_only = (str(pham_vi).strip().upper() == "HAN_CHE" or loai_str in ("MAT", "VANBANMAT"))
+
+    if loai_str in ("MAT", "VANBANMAT"):
+        norm_loai = LoaiVanBan.MAT
+        active_fill = _header_fill_mat
+        has_so_thu_tu = False
+    elif loai_str in ("DI", "VANBANDI"):
+        norm_loai = LoaiVanBan.DI
+        active_fill = _header_fill_mat if is_han_che_only else _header_fill
+        has_so_thu_tu = True
+    else:
+        norm_loai = LoaiVanBan.DEN
+        active_fill = _header_fill_mat if is_han_che_only else _header_fill
+        has_so_thu_tu = True
 
     columns = EXCEL_COLUMNS.get(norm_loai, EXCEL_COLUMNS[LoaiVanBan.DEN])
 
     wb = Workbook()
     ws = wb.active
     loai_display = dict(LoaiVanBan.choices).get(norm_loai, norm_loai)
-    ws.title = f"Danh sách {loai_display}"
+    if is_han_che_only:
+        ws.title = f"VB {loai_display} (Hạn chế)"
+    else:
+        ws.title = f"Danh sách {loai_display}"
 
     # Cột STT
     stt_cell = ws.cell(row=1, column=1, value="STT")
     stt_cell.font = _header_font
-    stt_cell.fill = _header_fill
+    stt_cell.fill = active_fill
     stt_cell.alignment = _header_alignment
     stt_cell.border = _thin_border
     ws.column_dimensions["A"].width = 6
 
-    # Cột Số đến / Số đi
-    so_label = "Số đến" if norm_loai == LoaiVanBan.DEN else "Số đi"
-    so_cell = ws.cell(row=1, column=2, value=so_label)
-    so_cell.font = _header_font
-    so_cell.fill = _header_fill
-    so_cell.alignment = _header_alignment
-    so_cell.border = _thin_border
-    ws.column_dimensions["B"].width = 10
-    col_offset = 3
+    if has_so_thu_tu:
+        # Cột Số đến / Số đi
+        so_label = "Số đến" if norm_loai == LoaiVanBan.DEN else "Số đi"
+        so_cell = ws.cell(row=1, column=2, value=so_label)
+        so_cell.font = _header_font
+        so_cell.fill = active_fill
+        so_cell.alignment = _header_alignment
+        so_cell.border = _thin_border
+        ws.column_dimensions["B"].width = 10
+        col_offset = 3
+    else:
+        col_offset = 2
 
     for col_idx, (_, col_title, col_width) in enumerate(columns, start=col_offset):
         cell = ws.cell(row=1, column=col_idx, value=col_title)
         cell.font = _header_font
-        cell.fill = _header_fill
+        cell.fill = active_fill
         cell.alignment = _header_alignment
         cell.border = _thin_border
         col_letter = get_column_letter(col_idx)
@@ -634,35 +765,155 @@ def export_to_excel(queryset, loai: str) -> io.BytesIO:
 
     hieu_luc_map = dict(HieuLuc.choices)
 
+    align_center = Alignment(horizontal="center", vertical="center", wrap_text=False)
+    align_left_wrap = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    align_left = Alignment(horizontal="left", vertical="center", wrap_text=False)
+
+    center_fields = {"so_hieu", "pham_vi", "ngay_den", "ngay_ban_hanh", "ngay_van_ban", "hieu_luc"}
+    wrap_fields = {"trich_yeu", "noi_ban_hanh", "ghi_chu"}
+
     for row_idx, doc in enumerate(queryset, start=2):
-        ws.row_dimensions[row_idx].height = 22
+        is_doc_han_che = (
+            getattr(doc, "pham_vi", "") == PhamVi.HAN_CHE
+            or getattr(doc, "loai", "") == "MAT"
+            or getattr(doc, "document_kind", "") == "vanbanmat"
+        )
+        row_fill = _fill_han_che if is_doc_han_che else None
+
+        # Tính toán chiều cao dòng linh hoạt (dynamic row height) dựa trên độ dài nội dung để không bị đè/rối chữ
+        trich_yeu_text = str(getattr(doc, "trich_yeu", "") or "").strip()
+        noi_ban_hanh_text = str(getattr(doc, "noi_ban_hanh", "") or "").strip()
+        ghi_chu_text = str(getattr(doc, "ghi_chu", "") or "").strip()
+
+        lines_ty = 1
+        if trich_yeu_text:
+            lines_ty = sum(max(1, math.ceil(len(line.strip()) / 52)) for line in trich_yeu_text.splitlines() if line.strip()) or 1
+        lines_nbh = max(1, math.ceil(len(noi_ban_hanh_text) / 26)) if noi_ban_hanh_text else 1
+        lines_gc = 1
+        if ghi_chu_text:
+            lines_gc = sum(max(1, math.ceil(len(line.strip()) / 25)) for line in ghi_chu_text.splitlines() if line.strip()) or 1
+
+        est_lines = max(lines_ty, lines_nbh, lines_gc)
+        if est_lines <= 1:
+            ws.row_dimensions[row_idx].height = 28
+        else:
+            ws.row_dimensions[row_idx].height = est_lines * 19 + 10
 
         cell_stt = ws.cell(row=row_idx, column=1, value=row_idx - 1)
-        cell_stt.font = _cell_font
-        cell_stt.alignment = Alignment(horizontal="center", vertical="center")
+        cell_stt.font = _cell_font_han_che if is_doc_han_che else _cell_font
+        cell_stt.alignment = align_center
         cell_stt.border = _thin_border
+        if row_fill:
+            cell_stt.fill = row_fill
 
-        cell_so = ws.cell(row=row_idx, column=2, value=getattr(doc, "so_thu_tu", ""))
-        cell_so.font = _cell_font
-        cell_so.alignment = Alignment(horizontal="center", vertical="center")
-        cell_so.border = _thin_border
+        if has_so_thu_tu:
+            cell_so = ws.cell(row=row_idx, column=2, value=getattr(doc, "so_thu_tu", ""))
+            cell_so.font = _cell_font_han_che if is_doc_han_che else _cell_font
+            cell_so.alignment = align_center
+            cell_so.border = _thin_border
+            if row_fill:
+                cell_so.fill = row_fill
 
         for col_idx, (field_name, _, _) in enumerate(columns, start=col_offset):
             val = getattr(doc, field_name, "")
-            if isinstance(val, datetime):
+            if field_name == "pham_vi":
+                val = "Hạn chế" if is_doc_han_che else "Nội bộ"
+            elif isinstance(val, datetime):
                 val = val.strftime("%d/%m/%Y %H:%M" if field_name == "ngay_den" else "%d/%m/%Y")
             elif field_name == "hieu_luc":
                 val = hieu_luc_map.get(val, val)
             elif val is None:
                 val = ""
 
-            cell = ws.cell(row=row_idx, column=col_idx, value=str(val))
-            cell.font = _cell_font
-            cell.alignment = _cell_alignment
+            cell = ws.cell(row=row_idx, column=col_idx, value=str(val).strip())
+            
+            # Font chữ nổi bật cho dòng Hạn chế
+            if field_name == "pham_vi":
+                cell.font = _cell_font_han_che_bold if is_doc_han_che else _cell_font
+            elif field_name == "so_hieu" and is_doc_han_che:
+                cell.font = _cell_font_han_che_bold
+            else:
+                cell.font = _cell_font
+
+            if row_fill:
+                cell.fill = row_fill
+
             cell.border = _thin_border
+
+            if field_name in center_fields:
+                cell.alignment = align_center
+            elif field_name in wrap_fields:
+                cell.alignment = align_left_wrap
+            else:
+                cell.alignment = align_left
 
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
     wb.close()
     return output
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 7. DỊCH VỤ GỬI EMAIL THÔNG BÁO VĂN BẢN
+# ═══════════════════════════════════════════════════════════════════
+
+def send_document_notification_mail(document, recipient_list=None, force_system_wide: bool = False):
+    """
+    Dịch vụ gửi email thông báo văn bản.
+    QUY TẮC BẢO MẬT TUYỆT ĐỐI (Issue #82 & Luật BVBMNN):
+    - KHÓA HOÀN TOÀN chức năng gửi mail toàn hệ thống đối với Văn bản Mật và Văn bản Hạn chế.
+    - Bất kỳ nỗ lực nào gửi mail toàn hệ thống cho VB Mật sẽ bị chặn ngay lập tức (raise ValidationError).
+    - Với VB Mật / Hạn chế: chỉ được gửi email đích danh cho các cán bộ trong danh sách người nhận (nguoi_nhan).
+    """
+    from django.core.exceptions import ValidationError
+
+    doc_kind = getattr(document, "document_kind", "")
+    is_confidential = (
+        getattr(document, "loai", "") == "MAT"
+        or doc_kind == "vanbanmat"
+        or getattr(document, "pham_vi", "") == PhamVi.HAN_CHE
+    )
+
+    if is_confidential:
+        if force_system_wide or getattr(document, "gui_mail_toan_he_thong", False) or recipient_list == "ALL":
+            raise ValidationError(
+                "TUYỆT ĐỐI CẤM GỬI EMAIL TOÀN HỆ THỐNG đối với văn bản mật / văn bản hạn chế theo Luật Bảo vệ BMNN."
+            )
+
+    # Đảm bảo cờ gui_mail_toan_he_thong của VB mật luôn là False
+    if is_confidential and getattr(document, "gui_mail_toan_he_thong", False):
+        document.gui_mail_toan_he_thong = False
+        if hasattr(document, "save"):
+            document.save(update_fields=["gui_mail_toan_he_thong"])
+
+    # Xác định danh sách email người nhận hợp lệ
+    emails = []
+    if is_confidential:
+        if recipient_list and recipient_list != "ALL":
+            for u in recipient_list:
+                email = getattr(u, "email", None) or (u if isinstance(u, str) and "@" in u else None)
+                if email and email not in emails:
+                    emails.append(email)
+        elif hasattr(document, "nguoi_nhan"):
+            for u in document.nguoi_nhan.all():
+                if u.email and u.email not in emails:
+                    emails.append(u.email)
+    else:
+        if getattr(document, "gui_mail_toan_he_thong", False) or force_system_wide or recipient_list == "ALL":
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            emails = list(User.objects.filter(is_active=True).exclude(email="").values_list("email", flat=True))
+        elif recipient_list:
+            for u in recipient_list:
+                email = getattr(u, "email", None) or (u if isinstance(u, str) and "@" in u else None)
+                if email and email not in emails:
+                    emails.append(email)
+
+    return {
+        "success": True,
+        "is_confidential": is_confidential,
+        "recipient_count": len(emails),
+        "recipients": emails,
+    }
+

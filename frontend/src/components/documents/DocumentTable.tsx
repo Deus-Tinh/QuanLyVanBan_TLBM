@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { DocumentItem } from '@app-types/document';
-import { Badge } from '@components/common/Badge';
+import { DocumentItem, DocumentDetail } from '@app-types/document';
 import { Button } from '@components/common/Button';
 import { formatDate } from '@lib/dateUtils';
 import { authService } from '@lib/authService';
-
+import apiClient from '@lib/apiClient';
+import { getAbsoluteFileUrl } from '@lib/fileUtils';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -19,8 +19,161 @@ export interface DocumentTableProps {
   onEdit?: (doc: DocumentItem) => void;
   onDelete?: (id: number, soHieu: string) => void;
   isConfidential?: boolean;
-  loai?: 'DEN' | 'DI';
+  loai?: 'DEN' | 'DI' | 'MAT';
 }
+
+/**
+ * Lấy style cho tag "Thay thế cho" đồng bộ tông màu với cột Hiệu lực bên tay phải:
+ * - Còn hiệu lực / Hết hiệu lực và thay thế: Màu xanh lá (emerald)
+ * - Hiệu lực 1 phần: Màu tím (purple)
+ * - Hết hiệu lực: Màu đỏ (rose/danger)
+ */
+const getReplacementBadgeClass = (hieuLuc?: string) => {
+  switch (hieuLuc) {
+    case 'CON_HIEU_LUC':
+    case 'HET_VA_THAY_THE':
+      return {
+        badge: 'text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/30',
+        icon: 'text-emerald-600 dark:text-emerald-400',
+      };
+    case 'CON_HIEU_LUC_1_PHAN':
+      return {
+        badge: 'text-purple-700 dark:text-purple-400 bg-purple-500/10 dark:bg-purple-500/20 border-purple-500/30',
+        icon: 'text-purple-600 dark:text-purple-400',
+      };
+    case 'HET_HIEU_LUC':
+      return {
+        badge: 'text-rose-700 dark:text-rose-400 bg-rose-500/10 dark:bg-rose-500/20 border-rose-500/30',
+        icon: 'text-rose-600 dark:text-rose-400',
+      };
+    default:
+      return {
+        badge: 'text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-500/20 border-emerald-500/30',
+        icon: 'text-emerald-600 dark:text-emerald-400',
+      };
+  }
+};
+
+/**
+ * Render badge hiển thị văn bản thay thế hoặc bị thay thế.
+ * Rút gọn khi 1 văn bản thay thế nhiều văn bản khác: hiển thị số hiệu đầu + "... (+X)"
+ * Rê chuột vào sẽ xem đầy đủ tooltip toàn bộ danh sách số hiệu tránh vỡ bảng.
+ */
+const renderReplacementBadgeGroup = (
+  items: string[],
+  type: 'thay_the' | 'bi_thay',
+  hieuLuc?: string,
+  isFallback: boolean = false
+) => {
+  if (!items || items.length === 0) return null;
+  const isThayThe = type === 'thay_the';
+  const repStyle = isThayThe ? getReplacementBadgeClass(hieuLuc) : null;
+  const count = items.length;
+
+  if (count === 1) {
+    const targetSoHieu = items[0];
+    const singleTitle = isFallback
+      ? `Thay thế cho văn bản: ${targetSoHieu}`
+      : isThayThe
+      ? `Văn bản này thay thế cho văn bản cũ: ${targetSoHieu}`
+      : `Văn bản này đã bị thay thế bởi: ${targetSoHieu}`;
+
+    return (
+      <div
+        className={
+          isThayThe
+            ? `inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md border ${repStyle?.badge} max-w-full transition-all duration-150 hover:-translate-y-[0.5px] hover:shadow-xs cursor-default`
+            : 'inline-flex items-center gap-1 text-xs font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30 max-w-full transition-all duration-150 hover:-translate-y-[0.5px] hover:shadow-xs cursor-default'
+        }
+        title={singleTitle}
+      >
+        <i
+          className={
+            isThayThe
+              ? `fa-solid fa-repeat text-xs ${repStyle?.icon}`
+              : 'fa-solid fa-triangle-exclamation text-warning text-xs'
+          }
+        />
+        <span className="truncate">
+          {isThayThe ? 'Thay thế cho: ' : 'Bị thay bởi: '}
+          <strong className="font-mono">{targetSoHieu}</strong>
+        </span>
+      </div>
+    );
+  }
+
+  // Khi có nhiều hơn 1 văn bản:
+  // Nếu 2 văn bản đầu ngắn (tổng <= 20 ký tự), hiển thị cả 2; nếu dài thì hiển thị 1
+  const canShowTwo = count >= 2 && items[0].length + items[1].length <= 20;
+  const visibleCount = canShowTwo ? 2 : 1;
+  const displayedItems = items.slice(0, visibleCount);
+  const remainingCount = count - visibleCount;
+  const allListStr = items.join(', ');
+
+  const multiTitle = isThayThe
+    ? `Văn bản này thay thế cho các văn bản: ${allListStr}`
+    : `Văn bản này đã bị thay thế bởi các văn bản: ${allListStr}`;
+
+  return (
+    <div
+      className={
+        isThayThe
+          ? `inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md border ${repStyle?.badge} max-w-full transition-all duration-150 hover:-translate-y-[0.5px] hover:shadow-xs cursor-default`
+          : 'inline-flex items-center gap-1 text-xs font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30 max-w-full transition-all duration-150 hover:-translate-y-[0.5px] hover:shadow-xs cursor-default'
+      }
+      title={multiTitle}
+    >
+      <i
+        className={
+          isThayThe
+            ? `fa-solid fa-repeat text-xs ${repStyle?.icon}`
+            : 'fa-solid fa-triangle-exclamation text-warning text-xs'
+        }
+      />
+      <span className="truncate">
+        {isThayThe ? 'Thay thế cho: ' : 'Bị thay bởi: '}
+        <strong className="font-mono">{displayedItems.join(', ')}</strong>
+      </span>
+      {remainingCount > 0 && (
+        <span
+          className="shrink-0 font-semibold text-[11px] px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 ml-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/20"
+          title={`Còn ${remainingCount} văn bản: ${items.slice(visibleCount).join(', ')}`}
+        >
+          ... (+{remainingCount})
+        </span>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Định dạng mốc thời gian hiển thị (Đi / Đến / Lưu).
+ * Nếu trường ngày có giờ là 00:00:00 (do nhập bằng input date không kèm giờ)
+ * và có fallbackDateStr (created_at), hệ thống sẽ mượn giờ:phút:giây từ created_at
+ * để bảo đảm không hiển thị "00:00:00" cho người dùng.
+ */
+const formatDocumentEventTime = (primaryDateStr?: string | null, fallbackDateStr?: string | null): string => {
+  if (!primaryDateStr && !fallbackDateStr) return '—';
+  const targetStr = primaryDateStr || fallbackDateStr!;
+  const d = new Date(targetStr);
+  if (isNaN(d.getTime())) return '—';
+
+  if (d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0 && fallbackDateStr) {
+    const fallbackD = new Date(fallbackDateStr);
+    if (!isNaN(fallbackD.getTime()) && (fallbackD.getHours() !== 0 || fallbackD.getMinutes() !== 0 || fallbackD.getSeconds() !== 0)) {
+      d.setHours(fallbackD.getHours(), fallbackD.getMinutes(), fallbackD.getSeconds());
+    }
+  }
+
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+
+  return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+};
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
   documents,
@@ -86,18 +239,40 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
     return pages;
   };
 
+  // Mở tệp đính kèm trực tiếp trong tab mới
+  const handleOpenAttachment = async (e: React.MouseEvent, doc: DocumentItem) => {
+    e.stopPropagation();
+    if (doc.first_attachment_url) {
+      const fullUrl = getAbsoluteFileUrl(doc.first_attachment_url);
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    try {
+      const typeParam = (loai || doc.loai) ? `?loai=${loai || doc.loai}` : '';
+      const res = await apiClient.get<DocumentDetail>(`/api/documents/${doc.id}/${typeParam}`);
+      if (res && res.attachments && res.attachments.length > 0 && res.attachments[0].file) {
+        const fullUrl = getAbsoluteFileUrl(res.attachments[0].file);
+        window.open(fullUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        onViewDetail(doc.id);
+      }
+    } catch {
+      onViewDetail(doc.id);
+    }
+  };
+
   return (
     <div className="bg-surface border border-border-subtle rounded-xl shadow-sm overflow-hidden transition-all duration-normal">
       {/* Bảng Dữ Liệu */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse min-w-[950px]">
+      <div className="overflow-x-auto min-h-[380px] pb-24">
+        <table className="w-full text-left text-sm border-separate border-spacing-0 min-w-[950px]">
           <thead>
             <tr className="bg-surface-elevated/70 text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
-              <th className="px-4 py-3 text-center w-16">{loai === 'DI' ? 'Số đi' : 'Số đến'}</th>
+              <th className="px-4 py-3 text-center w-16">{loai === 'MAT' ? 'STT' : loai === 'DI' ? 'Số đi' : 'Số đến'}</th>
               <th className="px-4 py-3 w-40">Số, ký hiệu</th>
-              <th className="px-4 py-3 w-40">Ngày văn bản</th>
+              <th className="px-4 py-3 w-48">Mốc thời gian</th>
               <th className="px-4 py-3 min-w-[280px]">Trích yếu nội dung</th>
-              <th className="px-4 py-3 w-48">Nơi ban hành</th>
+              <th className="px-4 py-3 w-48">{loai === 'DI' || loai === 'MAT' ? 'Người ký' : 'Nơi ban hành'}</th>
               <th className="px-4 py-3 w-40 text-center">Hiệu lực</th>
               <th className="px-4 py-3 w-20 text-center">Tác vụ</th>
             </tr>
@@ -142,7 +317,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       <i className="fa-solid fa-folder-open text-muted" />
                     </div>
                     <span className="text-sm font-semibold text-secondary">
-                      {loai === 'DI' ? 'Không tìm thấy văn bản đi nào' : 'Không tìm thấy văn bản đến nào'}
+                      {loai === 'MAT' ? 'Không tìm thấy văn bản mật nào' : loai === 'DI' ? 'Không tìm thấy văn bản đi nào' : 'Không tìm thấy văn bản đến nào'}
                     </span>
                     <span className="text-xs text-muted max-w-sm">
                       Không có văn bản nào phù hợp với điều kiện tìm kiếm. Hãy thử chọn năm khác hoặc đặt lại bộ lọc.
@@ -154,102 +329,142 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               /* Danh sách văn bản */
               documents.map((doc, index) => {
                 const isExpired = doc.hieu_luc === 'HET_HIEU_LUC';
-                const isReplaced = doc.hieu_luc === 'HET_VA_THAY_THE';
-                const isPartial = doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN';
-                const isActive = doc.hieu_luc === 'CON_HIEU_LUC';
                 const isActiveRow = activeMenuId === doc.id;
-                const isNearBottom = index >= documents.length - 2 && documents.length > 2;
+                const isNearBottom = documents.length >= 5 && index >= documents.length - 2 && index >= 3;
 
                 // Phân quyền sửa & xóa văn bản:
-                // - Văn bản hạn chế (HAN_CHE) hoặc chế độ bảo mật: tuyệt đối không được xóa
-                // - Admin (vai trò admin hoặc tài khoản canbo): toàn quyền sửa / xóa
-                // - Người tạo văn bản: có quyền sửa văn bản của chính mình
-                // - Cán bộ thường không được phân quyền: ẩn hoàn toàn nút Chỉnh sửa và Xóa
-                const isDocConfidential = isConfidential || doc.pham_vi === 'HAN_CHE';
+                // 1. Văn bản Mật (MAT): CHỈ Admin mới có quyền Sửa và Xóa. Mọi cán bộ khác (kể cả người tạo) chỉ có quyền Xem (Read-Only).
+                // 2. Văn bản Đến/Đi hết hiệu lực: CHỈ Admin mới có quyền Sửa và Xóa. Cán bộ chỉ định chỉ có quyền Xem.
+                // 3. Văn bản Đến/Đi còn hiệu lực: Admin và Cán bộ được chỉ định (người tạo) có cả quyền Sửa và Xóa. Cán bộ thường chỉ có quyền Xem.
+                const isDocConfidential = isConfidential || doc.pham_vi === 'HAN_CHE' || doc.loai === 'MAT' || loai === 'MAT';
                 const isAdmin =
                   currentSession?.role === 'admin' ||
-                  currentSession?.username === 'admin' ||
-                  currentSession?.username === 'canbo';
+                  currentSession?.username === 'admin';
                 const isCreator = Boolean(
                   currentSession?.username &&
                   doc.nguoi_tao_username &&
                   currentSession.username === doc.nguoi_tao_username
                 );
 
-                const userCanEdit = doc.can_edit !== undefined ? doc.can_edit : (!currentSession || isAdmin || isCreator);
-                const userCanDelete = doc.can_delete !== undefined ? doc.can_delete : (!isDocConfidential && (!currentSession || isAdmin || isCreator));
+                let defaultCanEdit = false;
+                let defaultCanDelete = false;
 
-                const canEdit = !isDocConfidential && Boolean(onEdit) && userCanEdit;
-                const canDelete = !isDocConfidential && Boolean(onDelete) && userCanDelete;
+                if (!currentSession) {
+                  // Fallback khi không có session đăng nhập (ví dụ môi trường test component độc lập):
+                  // Cho phép tác vụ trên văn bản Đến/Đi còn hiệu lực
+                  if (!isDocConfidential && !isExpired) {
+                    defaultCanEdit = true;
+                    defaultCanDelete = true;
+                  }
+                } else if (isAdmin) {
+                  defaultCanEdit = true;
+                  defaultCanDelete = true;
+                } else if (!isDocConfidential && isCreator && !isExpired) {
+                  // Cán bộ được chỉ định trên văn bản Đến/Đi còn hiệu lực
+                  defaultCanEdit = true;
+                  defaultCanDelete = true;
+                }
 
-                // Tông màu hàng theo trạng thái hiệu lực:
-                // - Văn bản có hiệu lực: tông xanh lá nhẹ + viền trái xanh lá
-                // - Văn bản còn hiệu lực 1 phần: tông tím nhẹ + viền trái tím
-                // - Văn bản đã thay thế: tông cam/hổ phách nhẹ + viền trái cam
-                // - Văn bản hết hiệu lực: tông tối/đỏ nhẹ + viền trái đỏ
+                let userCanEdit = doc.can_edit !== undefined ? doc.can_edit : defaultCanEdit;
+                let userCanDelete = doc.can_delete !== undefined ? doc.can_delete : defaultCanDelete;
+
+                // Văn bản Mật (Bảo mật nghiêm ngặt): Tuyệt đối CHỈ Admin mới có quyền Sửa và Xóa. Cán bộ chỉ có quyền Xem.
+                if (isDocConfidential && !isAdmin) {
+                  userCanEdit = false;
+                  userCanDelete = false;
+                }
+
+                const canEdit = Boolean(onEdit) && userCanEdit;
+                const canDelete = Boolean(onDelete) && userCanDelete;
+
+                // Tông màu hàng theo yêu cầu:
+                // - Toàn bộ hàng trắng đồng nhất, di chuột vào sáng trắng/xám nhẹ
+                // - Trừ văn bản hết hiệu lực để màu xám cho dễ nhận biết
                 const rowHighlightClass = isExpired
-                  ? 'bg-slate-500/10 dark:bg-black/40 border-l-4 border-l-danger hover:bg-slate-500/15'
-                  : isReplaced
-                    ? 'bg-amber-500/5 dark:bg-amber-950/20 border-l-4 border-l-warning hover:bg-amber-500/10'
-                    : isPartial
-                      ? 'bg-purple-500/5 dark:bg-purple-950/20 border-l-4 border-l-purple-500 hover:bg-purple-500/10'
-                      : isActive
-                        ? 'bg-emerald-500/5 dark:bg-emerald-950/20 border-l-4 border-l-emerald-500 hover:bg-emerald-500/10'
-                        : 'hover:bg-surface-hover/80 transition-colors border-l-4 border-l-transparent';
+                  ? 'bg-slate-100/90 dark:bg-slate-800/40 text-muted hover:bg-slate-200/90 hover:shadow-md hover:relative hover:z-20 hover:-translate-y-[1px]'
+                  : 'bg-white dark:bg-surface hover:bg-blue-50/80 dark:hover:bg-slate-800/80 hover:shadow-[0_6px_20px_rgba(37,99,235,0.09)] dark:hover:shadow-[0_6px_20px_rgba(0,0,0,0.5)] hover:-translate-y-[1.5px] hover:relative hover:z-20';
 
                 return (
                   <tr
                     key={doc.id}
-                    className={`${rowHighlightClass} transition-colors group ${isActiveRow ? 'relative z-30' : ''
-                      }`}
+                    onClick={() => onViewDetail(doc.id)}
+                    className={`${rowHighlightClass} cursor-pointer transition-all duration-150 ease-out group ${
+                      isActiveRow ? 'relative z-30 ring-2 ring-primary/40' : ''
+                    }`}
+                    title="Bấm vào hàng để xem chi tiết văn bản"
                   >
-                    {/* 1. Số đến */}
+                    {/* 1. Số đến / STT */}
                     <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap text-sm">
-                      {doc.so_thu_tu ? `#${doc.so_thu_tu}` : '—'}
+                      {loai === 'MAT' ? (
+                        <span className="text-primary font-bold text-sm">#{doc.so_thu_tu ? doc.so_thu_tu : (page - 1) * pageSize + index + 1}</span>
+                      ) : (
+                        doc.so_thu_tu ? `#${doc.so_thu_tu}` : '—'
+                      )}
                     </td>
 
                     {/* 2. Số, ký hiệu */}
                     <td className="px-4 py-3.5 font-semibold text-main whitespace-nowrap text-sm">
-                      <button
-                        type="button"
-                        onClick={() => onViewDetail(doc.id)}
-                        className="text-left font-semibold text-main hover:text-primary hover:underline transition-colors flex items-center gap-1.5"
-                        title="Bấm để xem chi tiết văn bản"
-                      >
-                        <i className="fa-solid fa-file-contract text-primary/70 text-xs shrink-0" />
-                        <span>{doc.so_hieu}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onViewDetail(doc.id)}
+                          className="text-left font-semibold text-main group-hover:text-primary transition-colors flex items-center gap-1.5"
+                          title="Bấm để xem chi tiết văn bản"
+                        >
+                          <i className="fa-solid fa-file-contract text-primary/70 group-hover:text-primary group-hover:scale-110 text-xs shrink-0 transition-transform duration-150" />
+                          <span>{doc.so_hieu}</span>
+                        </button>
+                        {doc.pham_vi === 'HAN_CHE' && (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25 shrink-0 transition-all duration-150 hover:-translate-y-[0.5px] hover:shadow-xs cursor-default"
+                            title="Văn bản hạn chế (Bảo mật)"
+                          >
+                            <i className="fa-solid fa-shield-halved text-[11px] text-rose-600 dark:text-rose-400" />
+                            <span>Hạn chế</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
 
-                    {/* 3. Ngày văn bản (đồng bộ với VB Đi và VB Mật, kèm ngày tiếp nhận đến) */}
+                    {/* 3. Mốc thời gian (Đồng bộ đẹp 14px: Đi/Đến/Lưu & Ký ngày) */}
                     <td className="px-4 py-3.5 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-main flex items-center gap-1.5">
-                        <i className="fa-regular fa-calendar text-primary text-xs" />
-                        <span>{formatDate(doc.ngay_van_ban || doc.ngay_ban_hanh)}</span>
-                      </div>
-                      {doc.ngay_den && (
-                        <div className="text-xs text-muted flex items-center gap-1.5 mt-0.5" title={`Ngày tiếp nhận đến: ${formatDate(doc.ngay_den)}`}>
-                          <i className="fa-regular fa-calendar-check text-muted text-xs" />
-                          <span>Đến: {formatDate(doc.ngay_den)}</span>
+                      {loai === 'DI' ? (
+                        <div className="text-sm font-semibold text-main flex items-center gap-1.5">
+                          <i className="fa-regular fa-clock text-primary text-xs" />
+                          <span>Đi: {formatDocumentEventTime(doc.ngay_ban_hanh, doc.created_at)}</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm font-semibold text-main flex items-center gap-1.5">
+                          <i className="fa-regular fa-clock text-primary text-xs" />
+                          <span>{loai === 'MAT' ? 'Lưu: ' : 'Đến: '}{formatDocumentEventTime(doc.ngay_den || doc.ngay_ban_hanh, doc.created_at)}</span>
                         </div>
                       )}
+                      <div className="text-sm text-muted flex items-center gap-1.5 mt-0.5">
+                        <i className="fa-regular fa-calendar text-muted text-xs" />
+                        <span>Ký ngày: {formatDate(doc.ngay_van_ban)}</span>
+                      </div>
                     </td>
 
                     {/* 4. Trích yếu nội dung */}
                     <td className="px-4 py-3.5">
                       <div
-                        className="line-clamp-2 text-main text-sm leading-relaxed cursor-pointer hover:text-primary transition-colors"
+                        className="line-clamp-2 text-main group-hover:text-primary dark:group-hover:text-blue-300 text-sm leading-relaxed transition-colors"
                         title={doc.trich_yeu}
-                        onClick={() => onViewDetail(doc.id)}
                       >
                         {doc.trich_yeu}
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         {doc.attachment_count > 0 && (
-                          <div className="inline-flex items-center gap-1 text-xs text-secondary bg-surface-elevated px-2 py-0.5 rounded-md border border-border-subtle">
-                            <i className="fa-solid fa-paperclip text-primary text-xs" />
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenAttachment(e, doc)}
+                            className="inline-flex items-center gap-1.5 text-xs text-main dark:text-slate-200 bg-surface-elevated hover:bg-surface-elevated/90 px-2.5 py-0.5 rounded-md border border-border-subtle hover:border-border transition-colors cursor-pointer"
+                            title="Bấm để mở xem tệp đính kèm trong tab mới"
+                          >
+                            <i className="fa-solid fa-paperclip text-xs text-secondary" />
                             <span>{doc.attachment_count} tệp đính kèm</span>
-                          </div>
+                            <i className="fa-solid fa-arrow-up-right-from-square text-[0.65rem] text-secondary" />
+                          </button>
                         )}
                         {(() => {
                           const hasDirectionalData = Boolean(
@@ -261,35 +476,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             return (
                               <>
                                 {/* 1. Các văn bản mà tài liệu này đi thay thế */}
-                                {(doc.thay_the_cho || []).map((targetSoHieu, idx) => {
-                                  const isPartial = doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN';
-                                  return (
-                                    <div
-                                      key={`thay-the-${idx}`}
-                                      className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md border ${
-                                        isPartial
-                                          ? 'text-purple-700 dark:text-purple-400 bg-purple-500/10 border-purple-500/20'
-                                          : 'text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                                      }`}
-                                      title={`Văn bản này thay thế cho văn bản cũ: ${targetSoHieu}`}
-                                    >
-                                      <i className={`fa-solid fa-repeat text-xs ${isPartial ? 'text-purple-600 dark:text-purple-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
-                                      <span>Thay thế cho: <strong className="font-mono">{targetSoHieu}</strong></span>
-                                    </div>
-                                  );
-                                })}
+                                {renderReplacementBadgeGroup(doc.thay_the_cho || [], 'thay_the', doc.hieu_luc)}
 
                                 {/* 2. Các văn bản mới đã đến thay thế tài liệu này */}
-                                {(doc.bi_thay_boi || []).map((targetSoHieu, idx) => (
-                                  <div
-                                    key={`bi-thay-${idx}`}
-                                    className="inline-flex items-center gap-1 text-xs font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
-                                    title={`Văn bản này đã bị thay thế bởi: ${targetSoHieu}`}
-                                  >
-                                    <i className="fa-solid fa-triangle-exclamation text-warning text-xs" />
-                                    <span>Bị thay bởi: <strong className="font-mono">{targetSoHieu}</strong></span>
-                                  </div>
-                                ))}
+                                {renderReplacementBadgeGroup(doc.bi_thay_boi || [], 'bi_thay')}
                               </>
                             );
                           }
@@ -301,75 +491,43 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                           if (repList.length === 0) return null;
 
-                          return repList.map((targetSoHieu, idx) => {
-                            if (doc.hieu_luc === 'CON_HIEU_LUC') {
-                              return (
-                                <div
-                                  key={idx}
-                                  className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
-                                  title={`Thay thế cho văn bản: ${targetSoHieu}`}
-                                >
-                                  <i className="fa-solid fa-repeat text-emerald-600 dark:text-emerald-400 text-xs" />
-                                  <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
-                                </div>
-                              );
-                            }
-                            if (doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN') {
-                              return (
-                                <div
-                                  key={idx}
-                                  className="inline-flex items-center gap-1 text-xs font-medium text-purple-700 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20"
-                                  title={`Thay thế cho văn bản: ${targetSoHieu}`}
-                                >
-                                  <i className="fa-solid fa-repeat text-purple-600 dark:text-purple-400 text-xs" />
-                                  <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
-                                </div>
-                              );
-                            }
-                            if (doc.hieu_luc === 'HET_VA_THAY_THE') {
-                              return (
-                                <div
-                                  key={idx}
-                                  className="inline-flex items-center gap-1 text-xs font-medium text-warning-text bg-warning/10 px-2 py-0.5 rounded-md border border-warning/30"
-                                  title={`Bị thay thế bởi văn bản: ${targetSoHieu}`}
-                                >
-                                  <i className="fa-solid fa-triangle-exclamation text-warning text-xs" />
-                                  <span>Bị thay bởi: <strong className="font-mono">{targetSoHieu}</strong></span>
-                                </div>
-                              );
-                            }
-                            return (
-                              <div
-                                key={idx}
-                                className="inline-flex items-center gap-1 text-xs font-medium text-secondary bg-surface-elevated px-2 py-0.5 rounded-md border border-border-subtle"
-                                title={`Văn bản liên quan: ${targetSoHieu}`}
-                              >
-                                <i className="fa-solid fa-repeat text-muted text-xs" />
-                                <span>Thay thế: <strong className="font-mono">{targetSoHieu}</strong></span>
-                              </div>
-                            );
-                          });
+                          return renderReplacementBadgeGroup(repList, 'thay_the', doc.hieu_luc, true);
                         })()}
                       </div>
                     </td>
 
-                    {/* 5. Nơi ban hành */}
+                    {/* 5. Nơi ban hành / Người ký (Nâng lên 14px) */}
                     <td className="px-4 py-3.5 text-sm text-secondary whitespace-nowrap">
-                      <div className="flex items-center gap-1.5" title={doc.noi_ban_hanh || ''}>
-                        <i className="fa-solid fa-building-columns text-muted text-xs" />
-                        <span className="truncate max-w-[180px]">{doc.noi_ban_hanh || '—'}</span>
-                      </div>
+                      {loai === 'DI' || loai === 'MAT' ? (
+                        <div>
+                          <div className="flex items-center gap-1.5 font-medium text-main text-sm" title={doc.nguoi_ky || ''}>
+                            <i className="fa-solid fa-pen-nib text-primary/70 text-xs" />
+                            <span>{doc.nguoi_ky || '—'}</span>
+                          </div>
+                          {doc.chuc_vu && (
+                            <div className="text-sm text-muted mt-0.5 pl-4 truncate max-w-[180px]" title={doc.chuc_vu}>
+                              {doc.chuc_vu}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-sm" title={doc.noi_ban_hanh || ''}>
+                          <i className="fa-solid fa-building-columns text-muted text-xs" />
+                          <span className="truncate max-w-[180px]">{doc.noi_ban_hanh || '—'}</span>
+                        </div>
+                      )}
                     </td>
 
-                    {/* 6. Trạng thái Hiệu lực (Badge) */}
+                    {/* 6. Trạng thái Hiệu lực (Badge nâng lên 14px) */}
                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                      {doc.hieu_luc === 'CON_HIEU_LUC' && (
+                      {(doc.hieu_luc === 'CON_HIEU_LUC' || doc.hieu_luc === 'HET_VA_THAY_THE') && (
                         <div>
-                          <Badge variant="success" size="sm" withDot>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             Còn hiệu lực
-                          </Badge>
+                          </span>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-xs text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                            <div className="text-sm text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
                               Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
@@ -377,11 +535,12 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       )}
                       {doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
                         <div>
-                          <Badge variant="purple" size="sm" withDot>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-purple-500/10 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                             Hiệu lực 1 phần
-                          </Badge>
+                          </span>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-xs text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                            <div className="text-sm text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
                               Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
@@ -389,25 +548,24 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       )}
                       {doc.hieu_luc === 'HET_HIEU_LUC' && (
                         <div>
-                          <Badge variant="danger" size="sm" withDot>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 shadow-2xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                             Hết hiệu lực
-                          </Badge>
+                          </span>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-xs text-danger/80 font-medium mt-0.5" title={`Đã hết hạn từ: ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                            <div className="text-sm text-danger/80 font-medium mt-0.5" title={`Đã hết hạn từ: ${formatDate(doc.ngay_het_hieu_luc)}`}>
                               Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
                         </div>
                       )}
-                      {doc.hieu_luc === 'HET_VA_THAY_THE' && (
-                        <Badge variant="warning" size="sm" withDot>
-                          Đã thay thế
-                        </Badge>
-                      )}
                     </td>
 
                     {/* 7. Tác vụ: Menu 3 chấm ⋮ */}
-                    <td className={`px-4 py-3.5 text-center relative ${isActiveRow ? 'z-50' : ''}`}>
+                    <td
+                      className={`px-4 py-3.5 text-center relative ${isActiveRow ? 'z-50' : ''}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="inline-block text-left" ref={activeMenuId === doc.id ? menuRef : null}>
                         <button
                           type="button"
