@@ -1443,7 +1443,7 @@ export default function ResourceManagementPage() {
                 <span className="truncate">{t('resourceManagement.fieldType')}:</span>
               </div>
 
-              {/* Trên Mobile: Nút Tất cả loại (50% flex-1) */}
+              {/* Trên Mobile: Nút Loại tài liệu (50% flex-1) */}
               <div className="flex-1 sm:hidden flex items-stretch border-r border-border-subtle rounded-bl-xl">
                 <button
                   type="button"
@@ -1453,9 +1453,10 @@ export default function ResourceManagementPage() {
                       ? 'border-b-2 border-primary text-primary bg-primary/5 font-bold'
                       : 'border-b-2 border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
                   }`}
+                  title="Tất cả loại tài liệu"
                 >
-                  <i className={`fa-solid fa-layer-group text-xs ${selectedType === 'all' ? 'text-primary' : 'text-muted'}`} />
-                  <span>Tất cả</span>
+                  <i className={`fa-solid fa-tags text-xs ${selectedType === 'all' ? 'text-primary' : 'text-muted'}`} />
+                  <span>Loại</span>
                   <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${
                     selectedType === 'all'
                       ? 'bg-primary text-white'

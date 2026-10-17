@@ -390,7 +390,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
               <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 min-w-[140px] sm:min-w-[200px]">{t('resourceManagement.colTitle')}</th>
               <th className="hidden lg:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 w-36 sm:w-44 min-w-[120px]">{t('resourceManagement.colAuthority')}</th>
               <th className="hidden lg:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-28 min-w-[85px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
-              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-28 sm:w-36 min-w-[95px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
+              <th className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-28 sm:w-36 min-w-[95px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
               <th className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-32 min-w-[80px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
               <th className="px-2 sm:px-3 py-3 sm:py-3.5 w-12 sm:w-16 min-w-[44px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
             </tr>
@@ -413,7 +413,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                   <td className="hidden lg:table-cell px-4 py-4 text-center">
                     <div className="h-4 w-16 bg-surface-elevated rounded mx-auto" />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="hidden sm:table-cell px-4 py-4 text-center">
                     <div className="h-5 w-24 bg-surface-elevated rounded-full mx-auto" />
                   </td>
                   <td className="hidden sm:table-cell px-4 py-4 text-center">
@@ -558,8 +558,8 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       {formatDate(item.ngay_dang)}
                     </td>
 
-                    {/* Cột 5: Hiệu lực (Badge giữ độ nét 100%, thẳng hàng giữa) */}
-                    <td className="px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100">
+                    {/* Cột 5: Hiệu lực (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
+                    <td className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100">
                       {renderStatusBadge(item.hieu_luc)}
                     </td>
 
