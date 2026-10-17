@@ -375,4 +375,82 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         att.refresh_from_db()
         self.assertTrue(att.is_deleted)
 
+    def test_create_document_with_multiple_files(self):
+        """Kiểm tra lưu tài liệu đính kèm nhiều file cùng lúc qua form-data"""
+        self.client.force_authenticate(user=self.user)
+        file1 = SimpleUploadedFile("bang_ke_01.xlsx", b"excel content", content_type="application/vnd.ms-excel")
+        file2 = SimpleUploadedFile("huong_dan_01.pdf", b"%PDF-1.4 pdf content", content_type="application/pdf")
+        payload = {
+            'dm_tai_lieu': self.cat1.id,
+            'loai_tai_lieu': [self.type1.id],
+            'ky_hieu': '10/TB-MULTI-2026',
+            'tieu_de': 'Thông báo kèm nhiều biểu mẫu',
+            'ngay_dang': '2026-03-10',
+            'noi_ban_hanh': 'Phòng Tổng Hợp',
+            'hieu_luc': 'CON_HIEU_LUC',
+            'hien_thi': 'TAT_CA',
+            'files': [file1, file2],
+        }
+        res = self.client.post('/api/resources/documents/', payload, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(res.data['attachments']), 2)
+        names = [a['name'] for a in res.data['attachments']]
+        self.assertIn('bang_ke_01.xlsx', names)
+        self.assertIn('huong_dan_01.pdf', names)
+
+    def test_update_document_add_and_delete_attachments(self):
+        """Kiểm tra cập nhật tài liệu: xóa file cũ và tải lên file mới, lọc bỏ soft-deleted"""
+        self.client.force_authenticate(user=self.user)
+        # Tạo trước 2 attachment cho doc1
+        att1 = ChiTietTaiLieuAttachment.objects.create(
+            document=self.doc1,
+            name='file_cu_1.pdf',
+            path='/media/documents/templates/file_cu_1.pdf',
+            file_size=5000,
+            mime_type='application/pdf',
+            nguoi_tao=self.user,
+        )
+        att2 = ChiTietTaiLieuAttachment.objects.create(
+            document=self.doc1,
+            name='file_cu_2.pdf',
+            path='/media/documents/templates/file_cu_2.pdf',
+            file_size=6000,
+            mime_type='application/pdf',
+            nguoi_tao=self.user,
+        )
+
+        new_file = SimpleUploadedFile("file_moi.docx", b"docx content")
+        # Gửi PATCH xóa att1 và thêm new_file
+        payload = {
+            'tieu_de': 'Quy định bảo hiểm xe cơ giới 2026 (Đã cập nhật)',
+            'files': [new_file],
+            'deleted_attachment_ids': [att1.id],
+        }
+        res = self.client.patch(f'/api/resources/documents/{self.doc1.id}/', payload, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # Kiểm tra trong DB: att1 đã bị xóa mềm, att2 còn nguyên
+        att1.refresh_from_db()
+        self.assertTrue(att1.is_deleted)
+        att2.refresh_from_db()
+        self.assertFalse(att2.is_deleted)
+
+        # Danh sách trả về không chứa att1, nhưng có att2 và file_moi.docx
+        active_names = [a['name'] for a in res.data['attachments']]
+        self.assertNotIn('file_cu_1.pdf', active_names)
+        self.assertIn('file_cu_2.pdf', active_names)
+        self.assertIn('file_moi.docx', active_names)
+
+    def test_patch_document_json_dict_does_not_crash(self):
+        """Kiểm tra gọi PATCH với JSON payload (request.data là dict thông thường) không bị AttributeError"""
+        self.client.force_authenticate(user=self.user)
+        res = self.client.patch(
+            f'/api/resources/documents/{self.doc1.id}/',
+            {'tieu_de': 'Tiêu đề cập nhật qua JSON'},
+            format='json'
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['tieu_de'], 'Tiêu đề cập nhật qua JSON')
+
+
 

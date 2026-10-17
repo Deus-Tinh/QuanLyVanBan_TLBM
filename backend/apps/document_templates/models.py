@@ -11,11 +11,11 @@ def validate_document_file(file):
     if hasattr(file, 'size') and file.size > max_size_mb * 1024 * 1024:
         raise ValidationError(f"Dung lượng tệp đính kèm không được vượt quá {max_size_mb}MB.")
 
-    valid_extensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.zip', '.rar']
+    valid_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.jpg', '.jpeg', '.png', '.zip', '.rar']
     ext = os.path.splitext(file.name)[1].lower()
     if ext not in valid_extensions:
         raise ValidationError(
-            f"Định dạng tệp {ext} không được hỗ trợ. Chỉ chấp nhận PDF, DOC, DOCX, JPG, PNG, ZIP, RAR."
+            f"Định dạng tệp {ext} không được hỗ trợ. Chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, CSV, JPG, PNG, ZIP, RAR."
         )
 
 

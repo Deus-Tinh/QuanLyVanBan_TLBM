@@ -141,7 +141,7 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         hieu_luc = attrs.get('hieu_luc') or (self.instance.hieu_luc if self.instance else 'CON_HIEU_LUC')
-        link_thay_the = attrs.get('link_thay_the') or (self.instance.link_thay_the if self.instance else '')
+        link_thay_the = attrs.get('link_thay_the') if 'link_thay_the' in attrs else (self.instance.link_thay_the if self.instance else '')
         if hieu_luc == 'HET_VA_THAY_THE' and not (link_thay_the and link_thay_the.strip()):
             raise serializers.ValidationError({
                 'link_thay_the': 'Vui lòng cung cấp link văn bản thay thế khi chọn trạng thái Hết hiệu lực và thay thế.'
@@ -150,7 +150,10 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        first_att = instance.attachments.filter(is_deleted=False).last()
+        # Chỉ trả về các tệp đính kèm chưa bị xóa mềm (is_deleted=False)
+        active_attachments = [att for att in instance.attachments.all() if not att.is_deleted]
+        data['attachments'] = ChiTietTaiLieuAttachmentSerializer(active_attachments, many=True, context=self.context).data
+        first_att = active_attachments[-1] if active_attachments else None
         data['file_dinh_kem'] = first_att.path if first_att else ''
         return data
 
@@ -160,18 +163,29 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
         instance = TaiLieuChiTiet.objects.create(**validated_data)
         if loai_tai_lieu:
             instance.loai_tai_lieu.set(loai_tai_lieu)
-        if file_dinh_kem:
+
+        # Hỗ trợ đính kèm nhiều tệp từ request.FILES ('files' hoặc 'file_dinh_kem')
+        request = self.context.get('request')
+        uploaded_files = []
+        if request and hasattr(request, 'FILES') and hasattr(request.FILES, 'getlist'):
+            uploaded_files = request.FILES.getlist('files') or request.FILES.getlist('file_dinh_kem')
+        if not uploaded_files and file_dinh_kem:
+            uploaded_files = [file_dinh_kem]
+
+        if uploaded_files:
             from django.core.files.storage import default_storage
-            file_path = default_storage.save(f"documents/templates/{file_dinh_kem.name}", file_dinh_kem)
-            storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
-            ChiTietTaiLieuAttachment.objects.create(
-                document=instance,
-                name=file_dinh_kem.name,
-                path=storage_path,
-                file_size=getattr(file_dinh_kem, 'size', None),
-                mime_type=getattr(file_dinh_kem, 'content_type', None),
-                nguoi_tao=instance.nguoi_tao
-            )
+            for f in uploaded_files:
+                validate_document_file(f)
+                file_path = default_storage.save(f"documents/templates/{f.name}", f)
+                storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
+                ChiTietTaiLieuAttachment.objects.create(
+                    document=instance,
+                    name=f.name,
+                    path=storage_path,
+                    file_size=getattr(f, 'size', None),
+                    mime_type=getattr(f, 'content_type', None),
+                    nguoi_tao=instance.nguoi_tao
+                )
         return instance
 
     def update(self, instance, validated_data):
@@ -183,16 +197,48 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
         instance.save()
         if loai_tai_lieu is not None:
             instance.loai_tai_lieu.set(loai_tai_lieu)
-        if file_dinh_kem:
+
+        request = self.context.get('request')
+        # Hỗ trợ xóa các tệp đính kèm được chọn xóa (an toàn cho cả multipart QueryDict và JSON dict)
+        if request and hasattr(request, 'data'):
+            if hasattr(request.data, 'getlist'):
+                deleted_ids = request.data.getlist('deleted_attachment_ids')
+            else:
+                raw_deleted = request.data.get('deleted_attachment_ids')
+                if isinstance(raw_deleted, (list, tuple)):
+                    deleted_ids = raw_deleted
+                elif raw_deleted:
+                    deleted_ids = [raw_deleted]
+                else:
+                    deleted_ids = []
+
+            if deleted_ids:
+                instance.attachments.filter(id__in=deleted_ids).update(is_deleted=True)
+                if hasattr(instance, '_prefetched_objects_cache') and 'attachments' in instance._prefetched_objects_cache:
+                    del instance._prefetched_objects_cache['attachments']
+
+        # Hỗ trợ thêm nhiều tệp đính kèm khi cập nhật
+        uploaded_files = []
+        if request and hasattr(request, 'FILES') and hasattr(request.FILES, 'getlist'):
+            uploaded_files = request.FILES.getlist('files') or request.FILES.getlist('file_dinh_kem')
+        if not uploaded_files and file_dinh_kem:
+            uploaded_files = [file_dinh_kem]
+
+        if uploaded_files:
             from django.core.files.storage import default_storage
-            file_path = default_storage.save(f"documents/templates/{file_dinh_kem.name}", file_dinh_kem)
-            storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
-            ChiTietTaiLieuAttachment.objects.create(
-                document=instance,
-                name=file_dinh_kem.name,
-                path=storage_path,
-                file_size=getattr(file_dinh_kem, 'size', None),
-                mime_type=getattr(file_dinh_kem, 'content_type', None),
-                nguoi_tao=instance.nguoi_tao
-            )
+            for f in uploaded_files:
+                validate_document_file(f)
+                file_path = default_storage.save(f"documents/templates/{f.name}", f)
+                storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
+                ChiTietTaiLieuAttachment.objects.create(
+                    document=instance,
+                    name=f.name,
+                    path=storage_path,
+                    file_size=getattr(f, 'size', None),
+                    mime_type=getattr(f, 'content_type', None),
+                    nguoi_tao=instance.nguoi_tao
+                )
+            if hasattr(instance, '_prefetched_objects_cache') and 'attachments' in instance._prefetched_objects_cache:
+                del instance._prefetched_objects_cache['attachments']
+
         return instance

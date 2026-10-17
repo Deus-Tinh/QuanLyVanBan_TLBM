@@ -1135,6 +1135,7 @@
     "statusActive": "Còn hiệu lực",
     "statusExpired": "Hết hiệu lực",
     "statusPartial": "Còn hiệu lực 1 phần",
+    "statusReplaced": "Hết hiệu lực và thay thế",
     "internal": "Nội bộ",
     "public": "Công khai",
     "download": "Tải về",
