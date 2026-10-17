@@ -908,17 +908,21 @@ CREATE INDEX idx_vanbandi_attachment_deleted ON documents_vanbandi_attachment (i
 CREATE TABLE documents_folder (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    parent_id BIGINT REFERENCES documents_folder (id) ON DELETE CASCADE,
+    parent_id BIGINT,
     path VARCHAR(1000) NOT NULL,
     depth INTEGER NOT NULL CONSTRAINT documents_folder_depth_check CHECK (depth >= 0),
     "order" INTEGER NOT NULL CONSTRAINT documents_folder_order_check CHECK ("order" >= 0),
     description TEXT NOT NULL,
     is_local BOOLEAN NOT NULL,
     local_path VARCHAR(1000) NOT NULL,
-    created_by_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    created_by_id BIGINT,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
-    CONSTRAINT uq_folder_parent_name UNIQUE (parent_id, name)
+    CONSTRAINT uq_folder_parent_name UNIQUE (parent_id, name),
+    CONSTRAINT fk_documents_folder_parent FOREIGN KEY (parent_id)
+        REFERENCES documents_folder (id),
+    CONSTRAINT fk_documents_folder_created_by FOREIGN KEY (created_by_id)
+        REFERENCES accounts_employee (id)
 );
 
 CREATE INDEX idx_folder_parent ON documents_folder (parent_id);
@@ -934,8 +938,12 @@ CREATE TABLE documents_folder_file (
     description TEXT NOT NULL,
     is_local BOOLEAN NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
-    folder_id BIGINT NOT NULL REFERENCES documents_folder (id) ON DELETE CASCADE,
-    uploaded_by_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
+    folder_id BIGINT NOT NULL,
+    uploaded_by_id BIGINT,
+    CONSTRAINT fk_documents_folder_file_folder FOREIGN KEY (folder_id)
+        REFERENCES documents_folder (id),
+    CONSTRAINT fk_documents_folder_file_uploaded_by FOREIGN KEY (uploaded_by_id)
+        REFERENCES accounts_employee (id)
 );
 
 CREATE INDEX idx_folder_file_folder ON documents_folder_file (folder_id);

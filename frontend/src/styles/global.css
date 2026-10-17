@@ -14,6 +14,8 @@
 
 :root {
   /* Font Families */
+  --font-size-input: 1rem;
+  --color-on-primary: #ffffff;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* Transitions */

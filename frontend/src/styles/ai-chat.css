@@ -117,7 +117,7 @@
 .sidebar-tab-switcher {
   display: flex;
   align-items: center;
-  background: var(--bg-canvas, #f1f4f9);
+  background: var(--bg-canvas);
   padding: 4px;
   margin: 0 14px 12px;
   border-radius: var(--radius-md, 10px);
@@ -181,7 +181,7 @@
 
 .sidebar-tab-pill.active .sidebar-tab-badge {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 .ai-sidebar-search {
@@ -500,7 +500,7 @@
 }
 
 .sidebar-doc-category:hover {
-  border-color: var(--color-primary-border, #bfdbfe);
+  border-color: var(--color-primary-border);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
@@ -662,7 +662,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--bg-surface-elevated, #f8fafc);
+  background: var(--bg-surface-elevated);
 }
 
 .sidebar-subfolder-card {
@@ -751,7 +751,7 @@
 
 .sidebar-clear-all-btn:hover {
   background: var(--color-danger);
-  color: #ffffff;
+  color: var(--color-on-primary);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
   transform: translateY(-1px);
 }
@@ -1400,28 +1400,28 @@
 .sidebar-upload-progress.is-success {
   background: rgba(16, 185, 129, 0.12) !important;
   border-color: rgba(16, 185, 129, 0.35) !important;
-  color: #059669 !important;
+  color: var(--color-success-hover) !important;
 }
 
 .chat-upload-indicator.is-error,
 .sidebar-upload-progress.is-error {
   background: rgba(239, 68, 68, 0.12) !important;
   border-color: rgba(239, 68, 68, 0.35) !important;
-  color: #dc2626 !important;
+  color: var(--color-danger-hover) !important;
 }
 
 [data-theme="dark"] .chat-upload-indicator.is-success,
 [data-theme="dark"] .sidebar-upload-progress.is-success {
   background: rgba(16, 185, 129, 0.18) !important;
   border-color: rgba(16, 185, 129, 0.45) !important;
-  color: #34d399 !important;
+  color: var(--color-success) !important;
 }
 
 [data-theme="dark"] .chat-upload-indicator.is-error,
 [data-theme="dark"] .sidebar-upload-progress.is-error {
   background: rgba(239, 68, 68, 0.18) !important;
   border-color: rgba(239, 68, 68, 0.45) !important;
-  color: #f87171 !important;
+  color: var(--color-danger) !important;
 }
 
 .remove-file-btn {
@@ -1576,7 +1576,7 @@
     height: 100dvh;
     max-height: 100%;
     z-index: 90; /* Nổi lên trên header (10) và khung nhập (10) */
-    background: var(--bg-surface-elevated, #ffffff);
+    background: var(--bg-surface-elevated);
     box-shadow: 8px 0 32px rgba(15, 23, 42, 0.28);
     transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
     transform: translateX(0);
@@ -1828,7 +1828,7 @@
   }
 
   .chat-textarea {
-    font-size: 16px; /* Chống zoom tự động trên iOS Safari / Android Chrome */
+    font-size: var(--font-size-input); /* Chống zoom tự động trên iOS Safari / Android Chrome */
     min-height: 38px;
     padding: 7px 6px;
     line-height: 1.4;
@@ -1949,7 +1949,7 @@
 }
 
 .preview-panel {
-  background: #ffffff;
+  background: var(--bg-surface);
   width: 100%;
   max-width: 960px;
   height: 88vh;
@@ -1982,8 +1982,8 @@
 /* Header */
 .preview-header {
   padding: 16px 24px;
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2010,21 +2010,21 @@
 }
 
 .preview-title-icon.icon-docx {
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #dbeafe;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-hover);
+  border: 1px solid var(--color-primary-border);
 }
 
 .preview-title-icon.icon-pdf {
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fee2e2;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-hover);
+  border: 1px solid var(--color-danger-border);
 }
 
 .preview-title-icon.icon-txt {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
 .preview-title-text-group {
@@ -2037,7 +2037,7 @@
 .preview-breadcrumb {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   display: flex;
@@ -2047,7 +2047,7 @@
 .preview-filename {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2073,21 +2073,21 @@
 }
 
 .preview-badge.badge-type {
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
 }
 
 .preview-badge.badge-pages {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-border);
 }
 
 .preview-badge.badge-size {
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-surface-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border-subtle);
   font-family: ui-monospace, monospace;
   font-size: 0.68rem;
   max-width: 250px;
@@ -2111,9 +2111,9 @@
   padding: 8px 14px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #334155;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -2122,22 +2122,22 @@
 }
 
 .preview-action-btn:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-  color: #0f172a;
+  background: var(--bg-surface-hover);
+  border-color: var(--text-secondary);
+  color: var(--text-main);
   transform: translateY(-1px);
 }
 
 .preview-action-btn.copy-btn:hover {
-  border-color: #3b82f6;
-  color: #2563eb;
-  background: #eff6ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary-hover);
+  background: var(--color-primary-subtle);
 }
 
 .preview-action-btn.download-btn:hover {
-  border-color: #059669;
-  color: #059669;
-  background: #f0fdf4;
+  border-color: var(--color-success-hover);
+  color: var(--color-success-hover);
+  background: var(--color-success-subtle);
 }
 
 .preview-close-btn {
@@ -2145,8 +2145,8 @@
   height: 36px;
   border-radius: 50%;
   border: 1px solid transparent;
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--bg-surface-hover);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2157,9 +2157,9 @@
 }
 
 .preview-close-btn:hover {
-  background: #fee2e2;
-  color: #dc2626;
-  border-color: #fecaca;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-hover);
+  border-color: var(--color-danger-border);
   transform: rotate(90deg);
 }
 
@@ -2168,8 +2168,8 @@
   display: flex;
   gap: 6px;
   padding: 8px 24px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--bg-surface-hover);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -2180,7 +2180,7 @@
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  color: #64748b;
+  color: var(--text-muted);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -2188,14 +2188,14 @@
 }
 
 .preview-tab:hover {
-  color: #1e293b;
-  background: #f1f5f9;
+  color: var(--text-main);
+  background: var(--bg-surface-hover);
 }
 
 .preview-tab.active {
-  background: #ffffff;
-  color: #2563eb;
-  border-color: #cbd5e1;
+  background: var(--bg-surface);
+  color: var(--color-primary-hover);
+  border-color: var(--border-subtle);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -2203,7 +2203,7 @@
 .preview-body {
   flex: 1;
   overflow-y: auto;
-  background: #f1f5f9;
+  background: var(--bg-surface-hover);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -2211,15 +2211,14 @@
 
 /* Paper Container */
 .preview-paper {
-  background: #ffffff;
+  background: var(--bg-surface);
   width: 100%;
   max-width: 820px;
   margin: 0 auto;
   padding: 44px 52px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
     0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
@@ -2227,7 +2226,7 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 0.95rem;
   line-height: 1.85;
-  color: #1e293b;
+  color: var(--text-main);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -2243,20 +2242,20 @@
 }
 
 .preview-page-card {
-  background: #ffffff;
+  background: var(--bg-surface);
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle);
   overflow: hidden;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
 }
 
 .preview-page-header {
   padding: 10px 20px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--bg-surface-hover);
+  border-bottom: 1px solid var(--border-subtle);
   font-size: 0.78rem;
   font-weight: 700;
-  color: #475569;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -2273,7 +2272,7 @@
   min-height: 550px;
   border-radius: 8px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--bg-surface);
 }
 
 .preview-pdf-iframe {
@@ -2411,7 +2410,7 @@
 
 .target-doc-remove-btn:hover {
   background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
+  color: var(--color-danger-hover);
 }
 
 /* Tag tài liệu bên trong tin nhắn người dùng */
@@ -2437,17 +2436,17 @@
 .is-user .message-target-doc-tag {
   background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.35);
-  color: #ffffff;
+  color: var(--color-on-primary);
 }
 
 [data-theme="dark"] .target-doc-pinned-badge {
   background: rgba(37, 99, 235, 0.2);
   border-color: rgba(37, 99, 235, 0.4);
-  color: #60a5fa;
+  color: var(--color-primary-hover);
 }
 
 [data-theme="dark"] .target-doc-tag {
   background: rgba(37, 99, 235, 0.3);
-  color: #93c5fd;
+  color: var(--color-primary-hover);
 }
 
