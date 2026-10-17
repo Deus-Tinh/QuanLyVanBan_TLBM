@@ -12,6 +12,7 @@ Dev mặc định là console backend nên không gửi ra ngoài; test dùng lo
 
 import datetime
 import logging
+import ssl
 
 import django
 from django.conf import settings
@@ -35,9 +36,22 @@ OVERDUE_STATUSES = [TaskStatus.QUA_HAN, TaskStatus.CHUA_HOAN_THANH]
 DEFAULT_DUE_SOON_DAYS = 3
 
 
+def _legacy_tls_context():
+    """SSL context cho mail server cũ yêu cầu TLS 1.0 + SECLEVEL=0."""
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    ctx.set_ciphers("DEFAULT:@SECLEVEL=0")
+    ctx.minimum_version = ssl.TLSVersion.TLSv1
+    ctx.options &= ~ssl.OP_NO_TLSv1
+    ctx.options &= ~ssl.OP_NO_TLSv1_1
+    return ctx
+
+
 def work_mail_connection():
     """
-    Kết nối gửi mail theo cấu hình MAILERS["default"] trong settings.py.
+    Kết nối gửi mail theo cấu hình MAILERS["default"] trong settings.py,
+    với custom SSL context hỗ trợ mail server cũ (TLS 1.0 / SECLEVEL=0).
 
     - Django >= 6.1 tự đọc MAILERS, và get_connection(backend=...) đã bị bỏ (báo RuntimeError),
       nên trả None để dùng kết nối mặc định.
@@ -51,7 +65,7 @@ def work_mail_connection():
     backend = None
     if isinstance(mailers, dict):
         backend = mailers.get("default", {}).get("BACKEND")
-    return get_connection(backend=backend)
+    return get_connection(backend=backend, ssl_context=_legacy_tls_context())
 
 
 def send_new_task_mail(task_id):
