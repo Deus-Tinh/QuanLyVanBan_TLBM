@@ -167,9 +167,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f" [OK] Seeded {len(pos_map)} Chuc vu."))
 
         # 4. Tài khoản demo theo quy định (admin, vanthu, chuyenvien, truongphong, giamdoc).
-        mat_khau_demo = os.getenv("DEMO_PASSWORD") or os.getenv("SIGNING_DEMO_PASSWORD") or "Admin@123"
-        from unittest import mock
-        with mock.patch.dict(os.environ, {"DEMO_PASSWORD": mat_khau_demo}):
-            call_command("tao_tai_khoan_demo", stdout=self.stdout, stderr=self.stderr)
+        mat_khau_demo = os.getenv("DEMO_PASSWORD") or os.getenv("SIGNING_DEMO_PASSWORD")
+        if mat_khau_demo:
+            from unittest import mock
+            with mock.patch.dict(os.environ, {"DEMO_PASSWORD": mat_khau_demo}):
+                call_command("tao_tai_khoan_demo", stdout=self.stdout, stderr=self.stderr)
+        else:
+            self.stdout.write(self.style.WARNING(
+                " [SKIP] Chưa đặt DEMO_PASSWORD hoặc SIGNING_DEMO_PASSWORD: bỏ qua tạo tài khoản demo."))
 
         self.stdout.write(self.style.SUCCESS("==> Database seeding completed successfully 100%!"))
