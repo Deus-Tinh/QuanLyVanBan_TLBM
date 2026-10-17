@@ -383,16 +383,16 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     >
       {/* Khung Bảng dữ liệu chính */}
       <div className="w-full overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse min-w-[850px]">
+        <table className="w-full text-left text-sm border-collapse min-w-[720px] lg:min-w-[850px]">
           <thead className="bg-surface-elevated text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle select-none">
             <tr>
-              <th className="px-4 py-3.5 w-36 min-w-[130px] whitespace-nowrap">{t('resourceManagement.colCode')}</th>
-              <th className="px-4 py-3.5 min-w-[260px]">{t('resourceManagement.colTitle')}</th>
-              <th className="px-4 py-3.5 w-48 min-w-[170px]">{t('resourceManagement.colAuthority')}</th>
-              <th className="px-3.5 py-3.5 w-32 min-w-[110px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
-              <th className="px-4 py-3.5 w-44 min-w-[150px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
-              <th className="px-3.5 py-3.5 w-40 min-w-[140px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
-              <th className="px-3.5 py-3.5 w-20 min-w-[80px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
+              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 w-28 sm:w-32 min-w-[90px] whitespace-nowrap">{t('resourceManagement.colCode')}</th>
+              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 min-w-[190px] sm:min-w-[240px]">{t('resourceManagement.colTitle')}</th>
+              <th className="px-2.5 sm:px-4 py-3 sm:py-3.5 w-36 sm:w-44 min-w-[120px]">{t('resourceManagement.colAuthority')}</th>
+              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-24 sm:w-28 min-w-[85px] text-center whitespace-nowrap">{t('resourceManagement.colDate')}</th>
+              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-32 sm:w-40 min-w-[110px] text-center whitespace-nowrap">{t('resourceManagement.colStatus')}</th>
+              <th className="px-2 sm:px-3.5 py-3 sm:py-3.5 w-28 sm:w-36 min-w-[90px] text-center whitespace-nowrap">{t('resourceManagement.colFile')}</th>
+              <th className="px-2 sm:px-3 py-3 sm:py-3.5 w-14 sm:w-16 min-w-[50px] text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -502,14 +502,14 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     title="Bấm để xem chi tiết tài liệu"
                   >
                     {/* Cột 1: Ký hiệu (thống nhất font sans chuẩn hệ thống, ngay hàng thẳng lối) */}
-                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                    <td className="px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
                       <span className="text-xs font-semibold text-main tracking-tight">
                         {item.ky_hieu || '-'}
                       </span>
                     </td>
 
                     {/* Cột 2: Tiêu đề + Loại tài liệu + Link thay thế (Cùng hàng cân đối tuyệt đối) */}
-                    <td className="px-4 py-3.5 align-middle">
+                    <td className="px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-main hover:text-primary transition-colors leading-snug">
                           {item.tieu_de}
@@ -549,23 +549,23 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     </td>
 
                     {/* Cột 3: Nơi ban hành */}
-                    <td className="px-4 py-3.5 align-middle text-xs text-secondary leading-snug">
+                    <td className="px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle text-xs text-secondary leading-snug">
                       {item.noi_ban_hanh || '-'}
                     </td>
 
                     {/* Cột 4: Ngày đăng (dd/mm/yyyy thường, thẳng hàng giữa) */}
-                    <td className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary leading-snug">
+                    <td className="px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap text-xs text-secondary leading-snug">
                       {formatDate(item.ngay_dang)}
                     </td>
 
                     {/* Cột 5: Hiệu lực (Badge giữ độ nét 100%, thẳng hàng giữa) */}
-                    <td className="px-4 py-3.5 text-center align-middle whitespace-nowrap opacity-100">
+                    <td className="px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100">
                       {renderStatusBadge(item.hieu_luc)}
                     </td>
 
                     {/* Cột 6: Tệp đính kèm (Badge dạng tệp theo màu sắc, không có nút tải về) */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      className="px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100"
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewDetail?.(item);
@@ -576,7 +576,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
                     {/* Cột 7: Thao tác — Menu "⋯": Xem chi tiết, Chỉnh sửa, Xóa */}
                     <td
-                      className="px-3.5 py-3.5 text-center align-middle whitespace-nowrap opacity-100"
+                      className="px-2 sm:px-3 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100"
                       onClick={(e) => e.stopPropagation()}
                       data-dropdown-root
                     >
@@ -699,10 +699,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
       {/* Chân bảng: Chọn số dòng hiển thị + Thanh phân trang thông minh */}
       <div
         ref={paginationRef}
-        className="flex flex-col xl:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border-subtle text-xs text-secondary bg-surface pr-4 sm:pr-28 lg:pr-32"
+        className="flex flex-col md:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-border-subtle text-xs text-secondary bg-surface"
       >
         {/* Bên trái chân bảng: Dropdown chọn số dòng & Thông tin tổng số */}
-        <div className="flex items-center gap-2.5 shrink-0 select-none">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 select-none">
           <span className="font-medium">Hiển thị</span>
           <select
             value={pageSize}
@@ -721,17 +721,17 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         {/* Cụm điều hướng phân trang hoàn chỉnh */}
         {totalPages > 1 && (
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center select-none">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1">
               {/* Nút về trang đầu */}
               <button
                 type="button"
                 disabled={currentPage <= 1 || isLoading}
                 onClick={() => handlePageChange(1)}
-                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title="Về trang đầu (Trang 1)"
                 aria-label="Về trang đầu"
               >
-                <i className="fa-solid fa-angles-left text-[11px]" />
+                <i className="fa-solid fa-angles-left text-[10px] sm:text-[11px]" />
               </button>
 
               {/* Nút lùi 1 trang */}
@@ -739,11 +739,11 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 type="button"
                 disabled={currentPage <= 1 || isLoading}
                 onClick={() => handlePageChange(currentPage - 1)}
-                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title="Trang trước"
                 aria-label="Trang trước"
               >
-                <i className="fa-solid fa-chevron-left text-[11px]" />
+                <i className="fa-solid fa-chevron-left text-[10px] sm:text-[11px]" />
               </button>
 
               {/* Danh sách các nút số trang + Nút ... rút gọn thông minh */}
@@ -755,7 +755,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       type="button"
                       disabled={isLoading}
                       onClick={() => handlePageChange(item.targetPage)}
-                      className="group min-w-[32px] h-8 px-1 text-xs font-medium rounded-lg border border-transparent hover:border-border-subtle hover:bg-surface-elevated text-muted hover:text-primary transition-all cursor-pointer flex items-center justify-center"
+                      className="group min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1 text-xs font-medium rounded-lg border border-transparent hover:border-border-subtle hover:bg-surface-elevated text-muted hover:text-primary transition-all cursor-pointer flex items-center justify-center"
                       title={
                         item.direction === 'prev'
                           ? `Lùi 2 trang (Về trang ${item.targetPage})`
@@ -763,9 +763,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       }
                       aria-label={item.direction === 'prev' ? 'Lùi 2 trang' : 'Tiến 2 trang'}
                     >
-                      <span className="group-hover:hidden tracking-widest text-[11px] font-bold">•••</span>
+                      <span className="group-hover:hidden tracking-widest text-[10px] sm:text-[11px] font-bold">•••</span>
                       <i
-                        className={`hidden group-hover:inline fa-solid text-[10px] ${
+                        className={`hidden group-hover:inline fa-solid text-[9px] sm:text-[10px] ${
                           item.direction === 'prev' ? 'fa-angles-left' : 'fa-angles-right'
                         }`}
                       />
@@ -780,7 +780,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     type="button"
                     disabled={isLoading}
                     onClick={() => handlePageChange(item.num)}
-                    className={`min-w-[32px] h-8 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center ${
+                    className={`min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center ${
                       isActive
                         ? 'bg-primary text-white shadow-xs font-bold border border-primary'
                         : 'border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main'
@@ -798,11 +798,11 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 type="button"
                 disabled={currentPage >= totalPages || isLoading}
                 onClick={() => handlePageChange(currentPage + 1)}
-                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title="Trang sau"
                 aria-label="Trang sau"
               >
-                <i className="fa-solid fa-chevron-right text-[11px]" />
+                <i className="fa-solid fa-chevron-right text-[10px] sm:text-[11px]" />
               </button>
 
               {/* Nút đến trang cuối */}
@@ -810,11 +810,11 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 type="button"
                 disabled={currentPage >= totalPages || isLoading}
                 onClick={() => handlePageChange(totalPages)}
-                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                className="min-w-[28px] sm:min-w-[32px] h-7 sm:h-8 px-1.5 sm:px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
                 title={`Đến trang cuối (Trang ${totalPages})`}
                 aria-label="Đến trang cuối"
               >
-                <i className="fa-solid fa-angles-right text-[11px]" />
+                <i className="fa-solid fa-angles-right text-[10px] sm:text-[11px]" />
               </button>
             </div>
 
@@ -822,9 +822,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
             {totalPages > 4 && (
               <form
                 onSubmit={handleJumpPage}
-                className="flex items-center gap-1.5 pl-2 sm:border-l sm:border-border-subtle text-secondary"
+                className="flex items-center gap-1 sm:gap-1.5 pl-1.5 sm:pl-2 border-l border-border-subtle text-secondary"
               >
-                <span className="text-[11px] whitespace-nowrap">Đến trang</span>
+                <span className="text-[10px] sm:text-[11px] whitespace-nowrap">Đến trang</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -840,7 +840,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                   }}
                   placeholder={String(currentPage)}
                   title="Nhập số trang và nhấn Enter"
-                  className="w-12 h-8 px-1.5 text-center bg-surface-elevated border border-border-subtle rounded-lg text-main text-xs focus:outline-hidden focus:border-primary font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-10 sm:w-12 h-7 sm:h-8 px-1 text-center bg-surface-elevated border border-border-subtle rounded-lg text-main text-xs focus:outline-hidden focus:border-primary font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   aria-label="Nhập số trang muốn chuyển tới"
                 />
               </form>
