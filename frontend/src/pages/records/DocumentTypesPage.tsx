@@ -16,11 +16,25 @@ import {
 } from '@components/common';
 import Pagination from '@components/records/Pagination';
 import DocumentDestinationDialog from '@components/records/DocumentDestinationDialog';
-import type { Dossier, DocumentType } from '@app-types/records';
+import ConfirmDialog from '@components/records/ConfirmDialog';
+import RecordModal from '@components/records/RecordModal';
+import type { Dossier, DocumentType, DocumentTypePayload } from '@app-types/records';
 
 const PAGE_SIZE = 10;
 const controlClass =
   'rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-main outline-none transition focus:border-primary focus:ring-2 focus:ring-primary-subtle';
+
+function errorMessage(error: unknown, fallback: string, forbidden: string): string {
+  if (!(error instanceof ApiError)) return fallback;
+  if (error.status === 403) return forbidden;
+  const direct = error.data?.detail || error.data?.message || error.data?.error;
+  if (typeof direct === 'string') return direct;
+  for (const value of Object.values(error.data ?? {})) {
+    if (typeof value === 'string' && value.trim()) return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  }
+  return fallback;
+}
 
 export default function DocumentTypesPage() {
   const { dossierId = '' } = useParams();
@@ -38,6 +52,17 @@ export default function DocumentTypesPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [reloadKey, setReloadKey] = React.useState(0);
+  const [editing, setEditing] = React.useState<DocumentType | null | undefined>(undefined);
+  const [deleting, setDeleting] = React.useState<DocumentType | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const [dossierOptions, setDossierOptions] = React.useState<Dossier[]>([]);
+  const [createDossierId, setCreateDossierId] = React.useState(dossierId);
+  const [isLoadingDossiers, setIsLoadingDossiers] = React.useState(false);
+  const mutationPending = React.useRef(false);
+  const createRequest = React.useRef(0);
 
   const [selectedCategory, setSelectedCategory] = React.useState<DocumentType | null>(null);
   const closeDestination = React.useCallback(() => setSelectedCategory(null), []);
@@ -51,14 +76,17 @@ export default function DocumentTypesPage() {
 
   React.useEffect(() => {
     let active = true;
-    setIsLoading(true);
-    setError(null);
-    const request = dossierId
-      ? recordsService.listDocumentTypes(dossierId, { search, year, page, pageSize: PAGE_SIZE })
-      : recordsService.listDocumentTypeCatalog({ search, year, page, pageSize: PAGE_SIZE });
-    request
+    Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setIsLoading(true);
+        setError(null);
+        return dossierId
+          ? recordsService.listDocumentTypes(dossierId, { search, year, page, pageSize: PAGE_SIZE })
+          : recordsService.listDocumentTypeCatalog({ search, year, page, pageSize: PAGE_SIZE });
+      })
       .then((result) => {
-        if (!active) return;
+        if (!active || !result) return;
         setItems(result.items);
         setCount(result.count);
       })
@@ -99,6 +127,80 @@ export default function DocumentTypesPage() {
     }
   };
 
+  const closeEditor = () => {
+    if (mutationPending.current) return;
+    createRequest.current += 1;
+    setIsLoadingDossiers(false);
+    setEditing(undefined);
+  };
+
+  const openCreate = async () => {
+    const requestId = ++createRequest.current;
+    setSaveError(null);
+    setCreateDossierId(dossierId);
+    setDossierOptions([]);
+    setEditing(null);
+    setIsLoadingDossiers(!dossierId);
+    if (dossierId) return;
+    try {
+      const parents: Dossier[] = [];
+      let nextPage = 1;
+      let result;
+      do {
+        result = await recordsService.listDossiers({ page: nextPage++, pageSize: 100 });
+        parents.push(...result.items);
+      } while (result.next);
+      if (requestId === createRequest.current) setDossierOptions(parents);
+    } catch (requestError) {
+      if (requestId === createRequest.current) setSaveError(errorMessage(requestError, t('records.errors.loadDossiers'), t('records.errors.forbidden')));
+    } finally {
+      if (requestId === createRequest.current) setIsLoadingDossiers(false);
+    }
+  };
+
+  const handleSave = async (payload: DocumentTypePayload) => {
+    if (mutationPending.current) return;
+    const parentId = dossierId || createDossierId;
+    if (!editing && !parentId) {
+      setSaveError(t('records.modal.validation.dossierRequired'));
+      return;
+    }
+    mutationPending.current = true;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      if (editing) await recordsService.updateDocumentType(editing.id, payload);
+      else await recordsService.createDocumentType(parentId, payload);
+      setNotice(t(editing ? 'records.documentTypes.notices.updated' : 'records.documentTypes.notices.created'));
+      setEditing(undefined);
+      setReloadKey((value) => value + 1);
+    } catch (requestError) {
+      setSaveError(errorMessage(requestError, t('records.errors.saveDocumentType'), t('records.errors.forbidden')));
+    } finally {
+      mutationPending.current = false;
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleting || mutationPending.current) return;
+    mutationPending.current = true;
+    setIsSaving(true);
+    setDeleteError(null);
+    try {
+      await recordsService.deleteDocumentType(deleting.id);
+      setDeleting(null);
+      setNotice(t('records.documentTypes.notices.deleted'));
+      if (items.length === 1 && page > 1) setPage((value) => value - 1);
+      else setReloadKey((value) => value + 1);
+    } catch (requestError) {
+      setDeleteError(errorMessage(requestError, t('records.errors.deleteDocumentType'), t('records.errors.forbidden')));
+    } finally {
+      mutationPending.current = false;
+      setIsSaving(false);
+    }
+  };
+
   const years = React.useMemo(() => {
     const current = new Date().getFullYear();
     return Array.from({ length: 12 }, (_, index) => current - index);
@@ -132,11 +234,16 @@ export default function DocumentTypesPage() {
             {dossier?.so_ky_hieu && <Badge variant="secondary" className="ml-2">{dossier.so_ky_hieu}</Badge>}
           </p>}
           <p className="m-0 mt-2 text-xs text-muted">
-            {t('records.documentTypes.readOnlyNote')}
+            {t('records.documentTypes.description')}
           </p>
         </div>
-
+        <Button type="button" icon="fa-plus" onClick={() => void openCreate()}>{t('records.documentTypes.add')}</Button>
       </div>
+
+      {notice && <div className="flex items-center justify-between rounded-lg border border-success-border bg-success-subtle px-4 py-3 text-sm text-success" role="status">
+        <span>{notice}</span>
+        <button type="button" onClick={() => setNotice(null)} aria-label={t('records.documentTypes.closeNotice')}><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
+      </div>}
 
       <Card>
         <form
@@ -280,6 +387,7 @@ export default function DocumentTypesPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
                         <Button
                           type="button"
                           size="sm"
@@ -292,6 +400,17 @@ export default function DocumentTypesPage() {
                         >
                           {t('records.actions.viewDocuments')}
                         </Button>
+                        <Button type="button" size="sm" variant="ghost" icon="fa-pen"
+                          aria-label={t('records.documentTypes.editLabel', { name: item.ten_loai })}
+                          onClick={(event) => { event.stopPropagation(); setSaveError(null); setEditing(item); }}>
+                          {t('records.actions.edit')}
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" icon="fa-trash"
+                          aria-label={t('records.documentTypes.deleteLabel', { name: item.ten_loai })}
+                          onClick={(event) => { event.stopPropagation(); setDeleteError(null); setDeleting(item); }}>
+                          {t('records.actions.delete')}
+                        </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -307,6 +426,14 @@ export default function DocumentTypesPage() {
           </>
         )}
       </Card>
+      {editing !== undefined && <RecordModal open mode="documentType" value={editing} isLoading={isSaving}
+        error={saveError} onClose={closeEditor} onSubmit={(payload) => void handleSave(payload)}
+        dossierOptions={!editing && !dossierId ? dossierOptions : undefined}
+        dossierId={createDossierId} isLoadingDossiers={isLoadingDossiers} onDossierChange={setCreateDossierId} />}
+      <ConfirmDialog open={Boolean(deleting)} title={t('records.documentTypes.confirmDeleteTitle')}
+        message={t('records.documentTypes.confirmDeleteMessage', { name: deleting?.ten_loai ?? '' })}
+        isLoading={isSaving} error={deleteError} onCancel={() => { if (!mutationPending.current) setDeleting(null); }}
+        onConfirm={() => void handleDelete()} />
       {selectedCategory && <DocumentDestinationDialog key={String(selectedCategory.id)} category={selectedCategory}
         onClose={closeDestination} onNavigate={(destination) => navigate(destination)} />}
     </section>

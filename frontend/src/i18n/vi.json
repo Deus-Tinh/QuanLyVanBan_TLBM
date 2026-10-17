@@ -1266,7 +1266,8 @@
       "delete": "Xóa",
       "close": "Đóng",
       "saveChanges": "Lưu thay đổi",
-      "addNew": "Thêm mới"
+      "addNew": "Thêm mới",
+      "edit": "Sửa"
     },
     "filters": {
       "year": "Lọc theo năm",
@@ -1330,7 +1331,8 @@
         "dossierNameRequired": "Vui lòng nhập tên hồ sơ.",
         "documentTypeNameRequired": "Vui lòng nhập tên loại văn bản.",
         "referenceRequired": "Vui lòng nhập số/ký hiệu hồ sơ.",
-        "priorityPositive": "Số thứ tự ưu tiên phải là số nguyên dương."
+        "priorityPositive": "Số thứ tự ưu tiên phải là số nguyên dương.",
+        "dossierRequired": "Vui lòng chọn hồ sơ chứa loại văn bản."
       }
     },
     "documentTypes": {
@@ -1343,7 +1345,22 @@
       "loading": "Đang tải loại văn bản",
       "emptyTitle": "Không tìm thấy loại văn bản phù hợp",
       "emptyDescription": "Thử thay đổi bộ lọc tìm kiếm.",
-      "name": "Tên loại văn bản"
+      "name": "Tên loại văn bản",
+      "description": "Thêm, sửa và xóa loại văn bản thuộc từng hồ sơ.",
+      "add": "Thêm loại văn bản",
+      "closeNotice": "Đóng thông báo",
+      "chooseDossier": "Chọn hồ sơ",
+      "loadingDossiers": "Đang tải hồ sơ...",
+      "noDossiers": "Chưa có hồ sơ. Hãy tạo hồ sơ trước khi thêm loại văn bản.",
+      "editLabel": "Sửa {name}",
+      "deleteLabel": "Xóa {name}",
+      "confirmDeleteTitle": "Xóa loại văn bản?",
+      "confirmDeleteMessage": "Bạn muốn xóa loại văn bản “{name}”? Thao tác sẽ bị từ chối nếu còn văn bản tham chiếu.",
+      "notices": {
+        "created": "Đã thêm loại văn bản thành công.",
+        "updated": "Đã cập nhật loại văn bản thành công.",
+        "deleted": "Đã xóa loại văn bản thành công."
+      }
     },
     "documents": {
       "back": "Quay lại văn bản cấp 2",
@@ -1368,7 +1385,9 @@
       "missingDossier": "Không xác định được hồ sơ cần xem.",
       "loadDocumentTypes": "Không thể tải danh sách văn bản cấp 2.",
       "loadDocuments": "Không thể tải danh sách văn bản của hồ sơ.",
-      "sharedSchemaUnavailable": "Các bảng văn bản dùng chung của Nhóm 2 chưa sẵn sàng theo DDL đã chốt. Hãy đồng bộ schema trước khi kiểm thử luồng này."
+      "sharedSchemaUnavailable": "Các bảng văn bản dùng chung của Nhóm 2 chưa sẵn sàng theo DDL đã chốt. Hãy đồng bộ schema trước khi kiểm thử luồng này.",
+      "saveDocumentType": "Không thể lưu loại văn bản. Vui lòng kiểm tra lại dữ liệu.",
+      "deleteDocumentType": "Không thể xóa loại văn bản. Vui lòng thử lại."
     },
     "pagination": {
       "summary": "Hiển thị {first}–{last} trong tổng số {count}",

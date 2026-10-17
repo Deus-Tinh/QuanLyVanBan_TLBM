@@ -67,12 +67,15 @@ export default function DossiersPage() {
 
   React.useEffect(() => {
     let active = true;
-    setIsLoading(true);
-    setError(null);
-    recordsService
-      .listDossiers({ search, year, page, pageSize: PAGE_SIZE })
+    Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setIsLoading(true);
+        setError(null);
+        return recordsService.listDossiers({ search, year, page, pageSize: PAGE_SIZE });
+      })
       .then((result) => {
-        if (!active) return;
+        if (!active || !result) return;
         setItems(sortedDossiers(result.items));
         setCount(result.count);
       })
