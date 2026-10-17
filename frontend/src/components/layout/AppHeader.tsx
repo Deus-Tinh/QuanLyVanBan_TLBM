@@ -24,7 +24,6 @@ export default function AppHeader({
   currentTheme,
   onSelectTheme,
   onToggleTheme,
-  onToggleSidebar,
   isSidebarOpen,
   onNavigate,
   preferredLightTheme,

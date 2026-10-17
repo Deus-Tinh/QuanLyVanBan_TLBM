@@ -10,7 +10,6 @@ import {
   getDocumentFile,
   deleteDocuments,
   deleteDocument,
-  reclassifyDocument,
   previewDocument,
   getAISettings,
 } from '../../api';
@@ -85,6 +84,10 @@ export interface RootFolderGroup {
 }
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
+
+function createMessageTimestamp(): number {
+  return Date.now();
+}
 
 interface AIConfig {
   provider?: string;
@@ -759,16 +762,8 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
   const [sidebarTab, setSidebarTab] = useState<'sessions' | 'docs'>('sessions');
   const [sessionSearch, setSessionSearch] = useState('');
   const [docSearch, setDocSearch] = useState('');
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const [collapsedRoots, setCollapsedRoots] = useState<Record<string, boolean>>({});
   const [collapsedSubs, setCollapsedSubs] = useState<Record<string, boolean>>({});
-
-  const toggleCategory = (cat: string) => {
-    setCollapsedCategories((prev) => ({
-      ...prev,
-      [cat]: !prev[cat],
-    }));
-  };
 
   const toggleRoot = (rootName: string) => {
     setCollapsedRoots((prev) => ({
@@ -1046,15 +1041,6 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     }
   };
 
-  const handleReclassifyDoc = async (filename: string) => {
-    try {
-      await reclassifyDocument(filename);
-      await refreshDocuments();
-    } catch (err: unknown) {
-      alert(getErrorMessage(err, currentLang === 'en' ? 'Failed to reclassify document.' : 'Lỗi phân loại tài liệu.'));
-    }
-  };
-
   const handleClearAllDocs = async () => {
     if (confirm(t('aiAssistant.clearAllDocsConfirm'))) {
       try {
@@ -1071,7 +1057,7 @@ export default function AiAssistantPage({ onNavigate }: AiAssistantPageProps) {
     const text = (overrideText || inputVal).trim();
     if (!text) return;
 
-    const messageTimestamp = Date.now();
+    const messageTimestamp = createMessageTimestamp();
     const userMsg: ChatMessage = {
       id: `user-${activeSessionId}-${messageTimestamp}`,
       sender: 'user',

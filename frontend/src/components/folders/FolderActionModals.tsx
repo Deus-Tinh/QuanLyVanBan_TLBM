@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FolderItem } from '@app-types/resource';
 import { Button } from '@components/common/Button';
@@ -21,26 +21,13 @@ export const CreateOrEditFolderModal: React.FC<CreateOrEditFolderModalProps> = (
   initialData,
   parentFolder,
 }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [order, setOrder] = useState<number>(0);
+  const [name, setName] = useState(() => initialData?.name || '');
+  const [description, setDescription] = useState(() => initialData?.description || '');
+  const [order, setOrder] = useState<number>(() => initialData?.order || 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEdit = Boolean(initialData);
-
-  useEffect(() => {
-    if (initialData) {
-      setName(initialData.name || '');
-      setDescription(initialData.description || '');
-      setOrder(initialData.order || 0);
-    } else {
-      setName('');
-      setDescription('');
-      setOrder(0);
-    }
-    setError(null);
-  }, [initialData, isOpen]);
 
   if (!isOpen) return null;
 
@@ -178,16 +165,11 @@ export const MoveFolderModal: React.FC<MoveFolderModalProps> = ({
   allFolders,
   onConfirmMove,
 }) => {
-  const [selectedParentId, setSelectedParentId] = useState<string>('root');
+  const [selectedParentId, setSelectedParentId] = useState<string>(() =>
+    folder?.parent_id ? String(folder.parent_id) : 'root'
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (folder) {
-      setSelectedParentId(folder.parent_id ? String(folder.parent_id) : 'root');
-      setError(null);
-    }
-  }, [folder, isOpen]);
 
   if (!isOpen || !folder) return null;
 

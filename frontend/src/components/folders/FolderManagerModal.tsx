@@ -11,6 +11,17 @@ import {
   DeleteFolderModal,
 } from './FolderActionModals';
 
+function findNodeInTree(nodes: FolderItem[], id: number): FolderItem | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNodeInTree(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 interface FolderManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,7 +37,6 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
   const [selectedFolder, setSelectedFolder] = useState<FolderItem | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbType[]>([]);
   const [files, setFiles] = useState<FolderFileItem[]>([]);
-  const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // Modals state
@@ -73,8 +83,8 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
         setScanResult(null);
         setScanFolderPath('');
       }, 1500);
-    } catch (err: any) {
-      alert(err.message || 'Không thể đồng bộ thư mục local');
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Local folder scan failed.');
     } finally {
       setIsScanningLocal(false);
     }
@@ -83,7 +93,6 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
   // Tải lại toàn bộ cây thư mục
   const loadTree = useCallback(async () => {
     try {
-      setIsLoadingTree(true);
       const data = await folderService.getTree();
       setTree(data);
       // Nếu folder đang chọn còn tồn tại, cập nhật lại dữ liệu của nó
@@ -93,23 +102,10 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
       }
     } catch (e) {
       console.error('Lỗi khi tải cây thư mục:', e);
-    } finally {
-      setIsLoadingTree(false);
     }
   }, [selectedFolder]);
 
   // Tìm node trong tree
-  const findNodeInTree = (nodes: FolderItem[], id: number): FolderItem | null => {
-    for (const node of nodes) {
-      if (node.id === id) return node;
-      if (node.children) {
-        const res = findNodeInTree(node.children, id);
-        if (res) return res;
-      }
-    }
-    return null;
-  };
-
   // Thu gom danh sách phẳng tất cả thư mục
   const flatFolders = useMemo(() => {
     const list: FolderItem[] = [];
@@ -598,6 +594,7 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
 
       {/* Modal tạo / sửa thư mục */}
       <CreateOrEditFolderModal
+        key={`${isCreateModalOpen || isEditModalOpen}-${editingFolder?.id ?? 'new'}-${createModalParent?.id ?? 'root'}`}
         isOpen={isCreateModalOpen || isEditModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
@@ -612,6 +609,7 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
 
       {/* Modal di chuyển thư mục */}
       <MoveFolderModal
+        key={`${isMoveModalOpen}-${movingFolder?.id ?? 'none'}`}
         isOpen={isMoveModalOpen}
         onClose={() => {
           setIsMoveModalOpen(false);

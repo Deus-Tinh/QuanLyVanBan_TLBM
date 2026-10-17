@@ -904,6 +904,42 @@ CREATE INDEX idx_vanbandi_attachment_deleted ON documents_vanbandi_attachment (i
 -- INSERT ... ON CONFLICT (document_type, document_id, user_id)
 -- DO UPDATE SET viewed_at = EXCLUDED.viewed_at).
 -- =====================================================================
+-- Hierarchical document folders (Django documents migrations 0006 and 0007).
+CREATE TABLE documents_folder (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    parent_id BIGINT REFERENCES documents_folder (id) ON DELETE CASCADE,
+    path VARCHAR(1000) NOT NULL,
+    depth INTEGER NOT NULL CONSTRAINT documents_folder_depth_check CHECK (depth >= 0),
+    "order" INTEGER NOT NULL CONSTRAINT documents_folder_order_check CHECK ("order" >= 0),
+    description TEXT NOT NULL,
+    is_local BOOLEAN NOT NULL,
+    local_path VARCHAR(1000) NOT NULL,
+    created_by_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uq_folder_parent_name UNIQUE (parent_id, name)
+);
+
+CREATE INDEX idx_folder_parent ON documents_folder (parent_id);
+CREATE INDEX idx_folder_path ON documents_folder (path);
+CREATE INDEX idx_folder_depth ON documents_folder (depth);
+
+CREATE TABLE documents_folder_file (
+    id BIGSERIAL PRIMARY KEY,
+    file_name VARCHAR(500) NOT NULL,
+    file_path VARCHAR(1000) NOT NULL,
+    file_size BIGINT NOT NULL CONSTRAINT documents_folder_file_file_size_check CHECK (file_size >= 0),
+    file_type VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL,
+    is_local BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    folder_id BIGINT NOT NULL REFERENCES documents_folder (id) ON DELETE CASCADE,
+    uploaded_by_id BIGINT REFERENCES accounts_employee (id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_folder_file_folder ON documents_folder_file (folder_id);
+
 CREATE TABLE documents_view_log (
     id BIGSERIAL PRIMARY KEY,
     document_type document_kind NOT NULL,
