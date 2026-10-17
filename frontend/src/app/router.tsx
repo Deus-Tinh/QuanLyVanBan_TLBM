@@ -18,7 +18,6 @@ import MeetingsPage from '@pages/meetings/MeetingsPage';
 import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
-import SyllabusPreview from '@components/common/SyllabusPreview';
 import TasksPage from '../modules/work/pages/TasksPage';
 import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
 import BirthdayPage from '@pages/birthdays/BirthdayPage';
