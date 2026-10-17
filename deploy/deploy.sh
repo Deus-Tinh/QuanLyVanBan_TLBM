@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Deploy backend QLVB:  /srv/qlvb/tools/deploy.sh <ten-release>
+# Deploy backend QLVB:  deploy.sh <ten-release>  (nguon duy nhat: deploy/deploy.sh trong repo, moi lan deploy duoc day len ~/deploy/ cung tarball)
 # Can co ~/deploy/qlvb-<ten-release>.tar.gz (thu muc goc chua backend/, scripts/, docs/common/database/). Tao tren may dev:
 #   git -c core.autocrlf=false archive --format=tar.gz -o qlvb-<sha>.tar.gz <sha> backend scripts docs/common/database
 #   scp -P 2150 qlvb-<sha>.tar.gz <user>@<host>:deploy/
 # Thu tu: giai nen -> venv -> check -> backup -> DB (theo DB_MODE) -> doi symlink -> restart -> kiem tra
 #         -> (that bai thi tu quay lai ban cu).
 # DB_MODE (bien moi truong, mac dinh sync):
-#   sync     thu `build_db.py --sync` tren ban khoi phuc cua backup, dat thi chay that. Dung cho DB co du lieu that.
+#   sync     dau hoan tat DB phai khop hash release_DDL.sql (lech thi dung); neu co migration cho thi thu
+#            `build_db.py --sync` tren ban khoi phuc cua backup, dat thi chay that. Dung cho DB co du lieu that.
 #   rebuild  xoa va dung lai DB tu release_DDL.sql (`build_db.py --seed`). Chi dung cho staging (du lieu thu nghiem).
 # Bien tuy chon cho test: QLVB_BASE, QLVB_ENVF.
 set -euo pipefail
@@ -116,11 +117,8 @@ if [ "$DB_MODE" = rebuild ]; then
   [[ $MARK == "build_db:v2 ddl_sha256=$HASH seed=1 "* ]] || { echo "Dau hoan tat khong khop DDL: $MARK"; exit 1; }
   $PY manage.py migrate --check
   echo "DB dung lai xong: collation=$COLL, dau hoan tat khop DDL, khong con migration cho."
-elif $PY manage.py migrate --check >/dev/null 2>&1; then
-  echo "Khong co migration moi."
 else
-  echo "Co migration moi:"
-  $PY manage.py migrate --plan
+  # sync: DB phai dung bang dung release_DDL.sql cua release nay, kiem truoc ca khi co hay khong migration moi.
   HASH=$(sha256sum "$DDL" | cut -d' ' -f1)
   MARK=$(pgapp -d postgres -c "SELECT coalesce(shobj_description(oid,'pg_database'),'') FROM pg_database WHERE datname='$DB_NAME'")
   if [[ $MARK != "build_db:v2 ddl_sha256=$HASH "* ]]; then
@@ -129,20 +127,26 @@ else
     echo "Staging: dung DB_MODE=rebuild. Production: can quy trinh nang cap rieng."
     exit 1
   fi
-  TMPDB="qlvb_migtest_$$"
-  ME=$(id -un)
-  echo "Thu tren ban khoi phuc cua backup (DB tam $TMPDB)..."
-  sudo -n -u postgres /usr/bin/createdb -O "$ME" "${ICU_CREATE[@]}" "$TMPDB"
-  pg_restore --no-owner --no-privileges -d "$TMPDB" "$DUMP"
-  # pg_dump -Fc khong mang COMMENT ON DATABASE; build_db.py --sync can dau hoan tat.
-  psql -X -q -v ON_ERROR_STOP=1 -v m="$MARK" -d postgres <<<"COMMENT ON DATABASE \"$TMPDB\" IS :'m';"
-  TESTENV=(DB_NAME="$TMPDB" DB_USER="$ME" DB_PASSWORD= DB_HOST=/var/run/postgresql DB_PORT=5432)
-  env "${TESTENV[@]}" "$PY" "$BUILD_DB" --sync
-  env "${TESTENV[@]}" "$PY" manage.py migrate --check
-  sudo -n -u postgres /usr/bin/dropdb "$TMPDB"; TMPDB=""
-  echo "Thu migration: DAT. Chay that tren DB $DB_NAME..."
-  $PY "$BUILD_DB" --sync
-  $PY manage.py migrate --check
+  if $PY manage.py migrate --check >/dev/null 2>&1; then
+    echo "Khong co migration moi."
+  else
+    echo "Co migration moi:"
+    $PY manage.py migrate --plan
+    TMPDB="qlvb_migtest_$$"
+    ME=$(id -un)
+    echo "Thu tren ban khoi phuc cua backup (DB tam $TMPDB)..."
+    sudo -n -u postgres /usr/bin/createdb -O "$ME" "${ICU_CREATE[@]}" "$TMPDB"
+    pg_restore --no-owner --no-privileges -d "$TMPDB" "$DUMP"
+    # pg_dump -Fc khong mang COMMENT ON DATABASE; build_db.py --sync can dau hoan tat.
+    psql -X -q -v ON_ERROR_STOP=1 -v m="$MARK" -d postgres <<<"COMMENT ON DATABASE \"$TMPDB\" IS :'m';"
+    TESTENV=(DB_NAME="$TMPDB" DB_USER="$ME" DB_PASSWORD= DB_HOST=/var/run/postgresql DB_PORT=5432)
+    env "${TESTENV[@]}" "$PY" "$BUILD_DB" --sync
+    env "${TESTENV[@]}" "$PY" manage.py migrate --check
+    sudo -n -u postgres /usr/bin/dropdb "$TMPDB"; TMPDB=""
+    echo "Thu migration: DAT. Chay that tren DB $DB_NAME..."
+    $PY "$BUILD_DB" --sync
+    $PY manage.py migrate --check
+  fi
 fi
 
 step "6/8 Chuyen release va restart"

@@ -85,7 +85,7 @@ Deploy backend sau bước này không chạy `migrate` lên DB đã dựng bằ
 
 ## Deploy backend
 
-`deploy/deploy.sh <tên release>` là quy trình deploy backend; trên host chạy bản sao ở `/srv/qlvb/tools/deploy.sh`. Job CI `Deploy backend to Ubuntu` (`.github/workflows/ci.yml`) chạy script khi push vào `staging`, sau khi job `backend` đạt, với `DB_MODE=rebuild`. Đầu vào là `~/deploy/qlvb-<tên release>.tar.gz` chứa `backend/`, `scripts/`, `docs/common/database/`.
+`deploy/deploy.sh <tên release>` trong repo là nguồn duy nhất của quy trình deploy backend; mỗi lần deploy script được đẩy lên `~/deploy/` cùng tarball và chạy từ đó. `/srv/qlvb/tools/deploy.sh` cũ không còn dùng (có thể xóa sau lần deploy đầu thành công); `/srv/qlvb/tools/backup.sh` vẫn ở đó và được script gọi theo đường dẫn này. Job CI `Deploy backend to Ubuntu` (`.github/workflows/ci.yml`) chạy script khi push vào `staging`, sau khi job `backend` đạt, với `DB_MODE=rebuild`. Đầu vào là `~/deploy/qlvb-<tên release>.tar.gz` chứa `backend/`, `scripts/`, `docs/common/database/`.
 
 Các bước (log `/srv/qlvb/deploy.log`, khóa `flock` ở `/srv/qlvb/.deploy.lock`):
 
@@ -105,8 +105,8 @@ Lỗi trước bước 6: release dở bị xóa, symlink `current` không đổ
 | | `sync` (mặc định) | `rebuild` (chỉ staging) |
 |---|---|---|
 | Dùng cho | DB có dữ liệu thật (production sau này) | DB staging, dữ liệu thử nghiệm |
-| Bước 5 | Nếu `migrate --check` sạch: bỏ qua. Nếu có migration chờ: kiểm dấu hoàn tất của DB khớp hash `release_DDL.sql` của release; restore dump vào DB tạm ICU `vi-VN`, chép dấu hoàn tất sang DB tạm, chạy `build_db.py --sync` trên DB tạm; đạt thì chạy `--sync` trên DB thật | Dừng service (nếu có quyền), `dropdb --if-exists --force`, `createdb` ICU `vi-VN` owner là role ứng dụng, `build_db.py --seed`; kiểm collation `i\|vi-VN`, dấu hoàn tất khớp hash DDL kèm `seed=1`, không còn migration chờ |
-| Dấu không khớp hash DDL | Dừng, không đổi DB, không switch; staging dùng `rebuild`, production cần quy trình nâng cấp riêng | Không áp dụng |
+| Bước 5 | Kiểm dấu hoàn tất của DB khớp hash `release_DDL.sql` của release trước tiên (lệch thì dừng). Sau đó: nếu `migrate --check` sạch thì bỏ qua; nếu có migration chờ: restore dump vào DB tạm ICU `vi-VN`, chép dấu hoàn tất sang DB tạm, chạy `build_db.py --sync` trên DB tạm; đạt thì chạy `--sync` trên DB thật | Dừng service (nếu có quyền), `dropdb --if-exists --force`, `createdb` ICU `vi-VN` owner là role ứng dụng, `build_db.py --seed`; kiểm collation `i\|vi-VN`, dấu hoàn tất khớp hash DDL kèm `seed=1`, không còn migration chờ |
+| Dấu không khớp hash DDL (kể cả khi không có migration mới) | Dừng, không đổi DB, không switch; staging dùng `rebuild`, production cần quy trình nâng cấp riêng | Không áp dụng |
 | Lỗi | Release dở bị xóa, DB thật chưa đổi | Release dở bị xóa; DB đã bị dựng lại nên chuyển symlink về release cũ không khôi phục được DB; service giữ trạng thái dừng nếu `stop` chạy được |
 
 `sync` giữ nguyên bước thử trên bản khôi phục của quy trình cũ. `pg_dump -Fc` không mang `COMMENT ON DATABASE` nên script đọc dấu hoàn tất từ DB thật và đặt lại cho DB tạm (`--sync` yêu cầu dấu khớp).
