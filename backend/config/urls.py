@@ -11,6 +11,7 @@ from accounts.views import staffs_view
 from api import views as ai_views
 
 urlpatterns = [
+    path("api/records/", include("records.urls", namespace="records")),
     # Django Admin
     path("admin/", admin.site.urls),
 

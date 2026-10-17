@@ -54,7 +54,12 @@ async function handleResponse<T>(res: Response): Promise<T> {
   if (isJson && typeof res.json === 'function') {
     data = await res.json().catch(() => ({}));
   } else if (typeof res.text === 'function') {
-    data = await res.text();
+    const text = await res.text();
+    const isHtml =
+      Boolean(contentType?.includes('text/html')) || /^\s*<!doctype\s+html|^\s*<html\b/i.test(text);
+    data = !res.ok && isHtml
+      ? { error: t('common.apiError', { status: String(res.status) }) }
+      : text;
   } else {
     data = {};
   }

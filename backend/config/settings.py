@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "django_filters",
     # Các app nghiệp vụ
     "accounts",
+    "records",
     "dashboard",
     "birthdays",
     "documents",

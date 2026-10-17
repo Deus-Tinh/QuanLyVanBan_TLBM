@@ -141,11 +141,16 @@ records_chitiettailieu_attachment: constraint không có trong DDL FOREIGN KEY (
 records_chitiettailieu_attachment: constraint không có trong DDL FOREIGN KEY (nguoi_tao_id) REFERENCES accounts_employee(id)
 records_chitiettailieu_loaitailieu: thiếu constraint FOREIGN KEY (chitiettailieu_id) REFERENCES records_chitiettailieu(id) ON DELETE CASCADE
 records_chitiettailieu_loaitailieu: constraint không có trong DDL FOREIGN KEY (chitiettailieu_id) REFERENCES records_chitiettailieu(id)
-records_hoso: thiếu bảng
+# records_*: CHECK btrim(col) <> '' tương đương NOT (TRIM(BOTH FROM col) = '') Django sinh từ ~Exact(Trim(...)); khác dạng viết, cùng ngữ nghĩa.
+records_hoso: thiếu constraint CHECK ((btrim((so_ky_hieu)) <> ''))
+records_hoso: thiếu constraint CHECK ((btrim((ten_ho_so)) <> ''))
+records_hoso: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM so_ky_hieu) = '')))
+records_hoso: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM ten_ho_so) = '')))
 records_loaitailieu.created_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
 records_loaitailieu.is_public: migration bool() null=NO default=None | DDL bool() null=NO default=true
 records_loaitailieu.updated_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
-records_loaivanban: thiếu bảng
+records_loaivanban: thiếu constraint CHECK ((btrim((ten_loai)) <> ''))
+records_loaivanban: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM ten_loai) = '')))
 records_tailieu.created_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
 records_tailieu.nguoi_lap_id: migration int8() null=YES default=None | DDL int8() null=NO default=None
 records_tailieu.updated_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
@@ -264,21 +269,17 @@ VIEW ai_vanbandi: thiếu
 VIEW ai_vanbandi_donvinhan: thiếu
 VIEW ai_vanbandi_nguoinhan: thiếu
 VIEW ai_vanbandi_noibanhanh: thiếu
-FUNCTION auto_stt_uu_tien_hoso(): thiếu
 FUNCTION check_vanbanden_cross_reference(): thiếu
 FUNCTION check_vanbanden_hoso_delete_cross_ref(): thiếu
 FUNCTION check_vanbandi_cross_reference(): thiếu
 FUNCTION check_vanbandi_hoso_delete_cross_ref(): thiếu
 FUNCTION prevent_change_pham_vi(): thiếu
-FUNCTION prevent_delete_he_thong_hoso(): thiếu
 FUNCTION prevent_delete_or_tamper_signing_signature(): thiếu
 FUNCTION prevent_delete_signing_attempt(): thiếu
 FUNCTION prevent_delete_van_ban_han_che(): thiếu
 FUNCTION prevent_modify_documents_access_log(): thiếu
 FUNCTION prevent_modify_signing_audit_log(): thiếu
-FUNCTION prevent_update_he_thong_hoso(): thiếu
 FUNCTION protect_final_manifest(): thiếu
-FUNCTION set_updated_at(): thiếu
 FUNCTION trg_cleanup_viewlog_on_doc_delete(): thiếu
 TRIGGER accounts_employee.trg_employee_updated_at: thiếu
 TRIGGER birthdays_birthdayemaillog.trg_emaillog_updated_at: thiếu
@@ -298,12 +299,7 @@ TRIGGER documents_vanbandi_danhmuc.trg_vanbandi_danhmuc_cross_ref: thiếu
 TRIGGER documents_vanbandi_hoso.trg_vanbandi_hoso_del_cross_ref: thiếu
 TRIGGER meetings_meetingroom.trg_meetingroom_updated_at: thiếu
 TRIGGER records_chitiettailieu.trg_chitiettailieu_updated_at: thiếu
-TRIGGER records_hoso.trg_hoso_auto_stt: thiếu
-TRIGGER records_hoso.trg_hoso_prevent_delete: thiếu
-TRIGGER records_hoso.trg_hoso_prevent_update_he_thong: thiếu
-TRIGGER records_hoso.trg_hoso_updated_at: thiếu
 TRIGGER records_loaitailieu.trg_loaitailieu_updated_at: thiếu
-TRIGGER records_loaivanban.trg_loaivanban_updated_at: thiếu
 TRIGGER records_tailieu.trg_tailieu_updated_at: thiếu
 TRIGGER signing_attempt.trg_signing_attempt_prevent_delete: thiếu
 TRIGGER signing_audit_log.trg_signing_audit_log_immutable: thiếu
@@ -317,3 +313,5 @@ SEED auth_group_permissions: DDL 197 dòng, migration thiếu 4 #80ee33b886eb0c5
 SEED auth_permission: DDL 77 dòng, migration thiếu 4 #594bf51e4bb803ea, thừa 4 #4aee8e0a23a87f99
 SEED organizations_donvi: DDL 82 dòng, migration thiếu 82 #2e32fbd42f7e55c9, thừa 0 #-
 SEED organizations_khoi: DDL 16 dòng, migration thiếu 16 #678201cff1a19076, thừa 0 #-
+# SEED records_hoso: Hồ sơ chung phụ thuộc tài khoản admin (cũng lệch ở SEED accounts_employee); đường migration tạo bằng `manage.py ensure_common_hoso`.
+SEED records_hoso: DDL 1 dòng, migration thiếu 1 #95c6e4eafc8e62a6, thừa 0 #-
