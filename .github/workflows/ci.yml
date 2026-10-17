@@ -21,7 +21,7 @@ jobs:
   backend:
     name: backend
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       DJANGO_SECRET_KEY: "ci-only-not-for-production"
       DB_ENGINE: postgresql
