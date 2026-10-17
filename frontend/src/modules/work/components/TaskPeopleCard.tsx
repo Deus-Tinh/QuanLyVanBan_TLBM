@@ -1,6 +1,7 @@
 import React from 'react';
 import { Employee } from '../types/employee';
 import { TaskDetail } from '../types/task';
+import { employeeMeta } from './EmployeeSelect';
 
 /**
  * Khối "Luồng xử lý" theo ảnh mẫu của thầy: cây người liên quan, thứ tự cố định từ trên xuống.
@@ -95,7 +96,9 @@ export default function TaskPeopleCard({ task, currentUserId }: TaskPeopleCardPr
                   {step.people.map((person) => (
                     <li key={`${step.label}-${person.id}`} style={{ fontSize: '0.86rem', color: 'var(--text-main)' }}>
                       <span style={{ fontWeight: 600 }}>{person.fullName}</span>
-                      <span style={{ color: 'var(--text-secondary)' }}> ({person.position})</span>
+                      {employeeMeta(person) && (
+                        <span style={{ color: 'var(--text-secondary)' }}> ({employeeMeta(person)})</span>
+                      )}
                       {person.id === currentUserId && (
                         <span
                           style={{

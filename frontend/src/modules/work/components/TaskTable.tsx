@@ -1,6 +1,7 @@
 import React from 'react';
 import { TaskListItem } from '../types/task';
 import { isoToDisplay } from './DateInput';
+import { employeeMeta } from './EmployeeSelect';
 import TaskActionCell from './TaskActionCell';
 import TaskAssigneeCell from './TaskAssigneeCell';
 import TaskStatusBadge from './TaskStatusBadge';
@@ -143,7 +144,11 @@ export default function TaskTable({
 
                 <td style={cellStyle}>
                   <div style={{ fontWeight: 600 }}>{task.creator.fullName}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>({task.creator.position})</div>
+                  {employeeMeta(task.creator) && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      {employeeMeta(task.creator)}
+                    </div>
+                  )}
                 </td>
 
                 <td style={cellStyle}>

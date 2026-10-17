@@ -1,5 +1,6 @@
 import React from 'react';
 import { TASK_STATUS_LABELS, TaskStatus } from '../types/task';
+import './TaskStatusBadge.css';
 
 interface StatusStyle {
   icon: string;
@@ -8,13 +9,16 @@ interface StatusStyle {
 }
 
 const STATUS_STYLES: Record<TaskStatus, StatusStyle> = {
+  // "Chờ xử lý" dùng màu vàng amber (theo yêu cầu GVHD). Không có token badge vàng dùng chung
+  // nên đặt hex trực tiếp tại đây, không đụng global.css. Nền vàng nhạt amber-100 + chữ nâu đậm
+  // amber-900 cho tương phản ~8:1 (đạt WCAG AAA) để chữ không bị chìm trên nền vàng. Giữ icon đồng hồ cát.
   CHO_XU_LY: {
     icon: 'fa-regular fa-hourglass-half',
-    color: 'var(--color-task-badge-gray-text)',
-    background: 'var(--color-task-badge-gray-bg)',
+    color: '#78350F',
+    background: '#FEF3C7',
   },
-  // Theo yêu cầu GVHD: chỉ còn 3 màu — xanh lá (hoàn thành), đỏ (quá hạn),
-  // còn lại dùng y hệt bộ trắng xám của "Chờ xử lý". Giữ nguyên icon.
+  // Các trạng thái còn lại giữ nguyên: Đang xử lý / Chờ duyệt / Chưa hoàn thành = xám,
+  // Hoàn thành = xanh, Quá hạn = đỏ. Giữ nguyên icon từng trạng thái.
   DANG_XU_LY: {
     icon: 'fa-solid fa-pen-ruler',
     color: 'var(--color-task-badge-gray-text)',
@@ -55,6 +59,8 @@ export default function TaskStatusBadge({ status, label, size = 'md' }: TaskStat
 
   return (
     <span
+      // class để TaskStatusBadge.css đảo tông amber ở dark mode (chỉ áp cho CHO_XU_LY).
+      className={`work-task-badge work-task-badge--${status}`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

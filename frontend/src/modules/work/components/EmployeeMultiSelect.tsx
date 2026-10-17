@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { employeeLabel, useEmployeeSearch } from './EmployeeSelect';
+import { employeeLabel, employeeMeta, useEmployeeSearch } from './EmployeeSelect';
 
 /** Ô chọn nhiều cán bộ, hiển thị dạng thẻ. Dùng cho Chỉ đạo - Theo dõi và Cán bộ tham gia. */
 
@@ -81,6 +81,7 @@ export default function EmployeeMultiSelect({
           return (
             <span
               key={employeeId}
+              title={employee ? employeeLabel(employee) : undefined}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -193,7 +194,14 @@ export default function EmployeeMultiSelect({
                       className={checked ? 'fa-solid fa-square-check' : 'fa-regular fa-square'}
                       style={{ color: checked ? 'var(--color-primary)' : 'var(--text-muted)' }}
                     />
-                    <span>{employeeLabel(employee)}</span>
+                    <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '1px' }}>
+                      <span style={{ fontWeight: 600 }}>{employee.fullName}</span>
+                      {employeeMeta(employee) && (
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          {employeeMeta(employee)}
+                        </span>
+                      )}
+                    </span>
                   </button>
                 );
               })}

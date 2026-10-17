@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -22,14 +23,33 @@ from work.models import (
 
 User = get_user_model()
 
-# Chức vụ tạm thời — auth.User chưa có chức vụ. Thay khi nhóm 7 có model CBNV.
-POSITION_PLACEHOLDER = "Nhân viên"
-
 
 def employee_full_name(user):
     """Tên hiển thị: họ và tên (ho_ten) của Employee; chưa khai báo thì dùng username."""
     full_name = (user.get_full_name() or "").strip()
     return full_name or user.username
+
+
+def employee_position(user):
+    """
+    Tên chức vụ đọc từ accounts.Position.name qua FK chuc_vu (model nhóm 7, chỉ đọc).
+    An toàn null: model khai NOT NULL nhưng seed cũ có thể thiếu FK — thiếu thì trả "" chứ
+    không raise, để một record lỗi không làm vỡ cả API danh sách.
+    """
+    try:
+        position = user.chuc_vu
+    except ObjectDoesNotExist:
+        return ""
+    return (getattr(position, "name", "") or "").strip()
+
+
+def employee_department(user):
+    """Tên phòng ban đọc từ organizations.DonVi.ten qua FK don_vi (model nhóm tổ chức, chỉ đọc). An toàn null như trên."""
+    try:
+        don_vi = user.don_vi
+    except ObjectDoesNotExist:
+        return ""
+    return (getattr(don_vi, "ten", "") or "").strip()
 
 
 def work_file_field():
@@ -52,12 +72,16 @@ class EmployeeBriefSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     fullName = serializers.SerializerMethodField()
     position = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
 
     def get_fullName(self, user):
         return employee_full_name(user)
 
     def get_position(self, user):
-        return POSITION_PLACEHOLDER
+        return employee_position(user)
+
+    def get_department(self, user):
+        return employee_department(user)
 
 
 class AttachmentSerializer(serializers.ModelSerializer):

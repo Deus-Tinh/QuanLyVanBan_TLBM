@@ -1,6 +1,8 @@
 import React from 'react';
+import { Employee } from '../types/employee';
 import { TaskDetail } from '../types/task';
 import { daysUntil, isoToDisplay } from './DateInput';
+import { employeeMeta } from './EmployeeSelect';
 import TaskAttachmentList from './TaskAttachmentList';
 
 /**
@@ -25,6 +27,13 @@ function Item({ label, children }: { label: string; children: React.ReactNode })
       </div>
     </div>
   );
+}
+
+/** "(Chức vụ - Phòng ban)" sau tên; bỏ qua khi thiếu dữ liệu để không hiện ngoặc rỗng. */
+function PersonMeta({ person }: { person: Employee }) {
+  const meta = employeeMeta(person);
+  if (!meta) return null;
+  return <span style={{ color: 'var(--text-secondary)' }}> ({meta})</span>;
 }
 
 function DeadlineHint({ task }: { task: TaskDetail }) {
@@ -65,7 +74,7 @@ export default function TaskInfoCard({ task, onError }: TaskInfoCardProps) {
           <Item label="Ngày tạo công việc">{isoToDisplay(task.createdDate)}</Item>
           <Item label="Người tạo và giao công việc">
             {task.creator.fullName}
-            <span style={{ color: 'var(--text-secondary)' }}> ({task.creator.position})</span>
+            <PersonMeta person={task.creator} />
           </Item>
           <Item label="Tệp tin đính kèm">
             <TaskAttachmentList files={task.attachments} onError={onError} compact />
@@ -77,7 +86,7 @@ export default function TaskInfoCard({ task, onError }: TaskInfoCardProps) {
             {task.host ? (
               <>
                 {task.host.fullName}
-                <span style={{ color: 'var(--text-secondary)' }}> ({task.host.position})</span>
+                <PersonMeta person={task.host} />
               </>
             ) : (
               '—'

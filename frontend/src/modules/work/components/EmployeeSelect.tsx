@@ -4,10 +4,21 @@ import { listEmployees } from '../api/employees';
 import { toMessage } from '../api/client';
 import { Employee } from '../types/employee';
 
-/** Ô chọn một cán bộ, có tìm kiếm theo tên. Hiển thị dạng "Họ Tên - Chức vụ". */
+/** Ô chọn một cán bộ, có tìm kiếm theo tên. Hiển thị dạng "Họ Tên (Chức vụ - Phòng ban)". */
 
+/**
+ * Phần "Chức vụ - Phòng ban". Ghép có điều kiện để không bị cụt đuôi khi thiếu dữ liệu:
+ * đủ cả hai → "Chức vụ - Phòng ban"; thiếu phòng ban → "Chức vụ"; thiếu chức vụ → "Phòng ban";
+ * thiếu cả hai → "".
+ */
+export function employeeMeta(employee: Employee): string {
+  return [employee.position, employee.department].filter(Boolean).join(' - ');
+}
+
+/** Nhãn đầy đủ: "Họ Tên (Chức vụ - Phòng ban)", gọn lại khi thiếu chức vụ/phòng ban. */
 export function employeeLabel(employee: Employee): string {
-  return employee.position ? `${employee.fullName} - ${employee.position}` : employee.fullName;
+  const meta = employeeMeta(employee);
+  return meta ? `${employee.fullName} (${meta})` : employee.fullName;
 }
 
 /**
@@ -213,7 +224,14 @@ export default function EmployeeSelect({
                       cursor: 'pointer',
                     }}
                   >
-                    <span>{employeeLabel(employee)}</span>
+                    <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '1px' }}>
+                      <span style={{ fontWeight: 600 }}>{employee.fullName}</span>
+                      {employeeMeta(employee) && (
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                          {employeeMeta(employee)}
+                        </span>
+                      )}
+                    </span>
                     {isSelected && <i className="fa-solid fa-check" style={{ color: 'var(--color-primary)' }} />}
                   </button>
                 );

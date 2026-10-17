@@ -1,10 +1,12 @@
-// Cán bộ nhân viên — tạm lấy từ auth.User của backend.
-// Khi nhóm 7 có model CBNV thật thì bổ sung đơn vị, phòng ban tại đây.
+// Cán bộ nhân viên lấy từ Custom User Model accounts.Employee.
+// position = tên chức vụ (accounts_position.name); department = tên phòng ban (organizations.DonVi.ten).
+// Cả hai có thể rỗng nếu record seed cũ thiếu FK → chỗ hiển thị phải xử lý chuỗi rỗng.
 
 export interface Employee {
   id: number;
   fullName: string;
   position: string;
+  department: string;
   username?: string;
 }
 

@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TASK_STATUS_LABELS, TaskFilters, TaskStatus } from '../types/task';
 import DateInput, { isoToDisplay } from './DateInput';
 
 /**
- * Thanh lọc phía trên bảng. Người dùng chỉnh xong rồi bấm "Tìm kiếm" (hoặc Enter ở ô tìm)
- * thì mới áp dụng, để không gọi API sau mỗi thao tác nhỏ.
+ * Thanh lọc phía trên bảng. Ô tìm kiếm tự áp dụng sau khi ngừng gõ (debounce), kể cả khi
+ * xóa trắng (danh sách trở lại đầy đủ). Trạng thái và khoảng ngày vẫn áp dụng khi bấm
+ * "Tìm kiếm" hoặc Enter, để thao tác chọn ngày/trạng thái giữa chừng không bị gọi API.
  */
+
+const SEARCH_DEBOUNCE_MS = 350;
 
 export type FilterDraft = Required<Pick<TaskFilters, 'search' | 'status' | 'createdFrom' | 'createdTo'>>;
 
@@ -54,6 +57,20 @@ export default function TaskFilterBar({ value, busy = false, onSearch, onCreate 
     setError('');
     onSearch({ ...draft, search: draft.search.trim() });
   };
+
+  // Ô tìm kiếm tự áp dụng sau khi ngừng gõ. Chỉ theo dõi riêng từ khóa — chọn ngày/trạng thái
+  // giữa chừng sẽ không bị auto-fire. Lần render đầu bỏ qua để không gọi API thừa khi mở trang.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return undefined;
+    }
+    const timer = window.setTimeout(submit, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+    // submit đóng gói draft hiện tại; effect chạy lại mỗi khi từ khóa đổi nên không bị cũ.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.search]);
 
   const reset = () => {
     const empty: FilterDraft = { search: '', status: '', createdFrom: '', createdTo: '' };

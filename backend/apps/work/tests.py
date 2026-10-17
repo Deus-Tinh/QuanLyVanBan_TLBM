@@ -5,11 +5,12 @@ import tempfile
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core import mail
+from django.core.management import call_command
 from django.core.signals import request_finished
 from django.db import close_old_connections
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import override_settings
+from django.test import override_settings, TestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -494,7 +495,12 @@ class TaskListApiTests(WorkTestBase):
         self.login(self.host)
         item = self.client.get("/api/work/tasks/").data["results"][0]
 
-        self.assertEqual(item["creator"], {"id": self.creator.pk, "fullName": "Trần Phương Duy", "position": "Nhân viên"})
+        self.assertEqual(item["creator"], {
+            "id": self.creator.pk,
+            "fullName": "Trần Phương Duy",
+            "position": self.creator.chuc_vu.name,
+            "department": self.creator.don_vi.ten,
+        })
         self.assertEqual(item["host"]["fullName"], "Phan Quốc Dũng")
         self.assertEqual([p["id"] for p in item["directors"]], [self.director.pk])
         self.assertEqual([p["id"] for p in item["participants"]], [self.member.pk])
@@ -514,6 +520,97 @@ class TaskListApiTests(WorkTestBase):
             "createdTo": self.days(-1).isoformat(),
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TaskDefaultOrderingTests(WorkTestBase):
+    """VIỆC 3: thứ tự mặc định 3 tầng, tie-break -id, và ưu tiên ordering theo request."""
+
+    def ids(self, response):
+        return [item["id"] for item in response.data["results"]]
+
+    def test_thu_tu_mac_dinh_ba_tang(self):
+        # Nhóm "Chờ xử lý" (mới tạo, chưa mở, còn hạn) — dựng lệch hạn để kiểm tầng 2.
+        cho_xa = self.make_task(due_offset=10, title="Chờ xử lý - hạn xa")
+        cho_gan = self.make_task(due_offset=2, title="Chờ xử lý - hạn gần")
+        cho_giua = self.make_task(due_offset=5, title="Chờ xử lý - hạn giữa")
+        # Nhóm trạng thái khác: đã mở + còn hạn → Đang xử lý.
+        dang_xa = self.make_task(due_offset=3, title="Đang xử lý - hạn xa", first_opened_at=timezone.now())
+        dang_gan = self.make_task(due_offset=1, title="Đang xử lý - hạn gần", first_opened_at=timezone.now())
+
+        # Xác nhận trạng thái đúng như dàn dựng trước khi kiểm thứ tự.
+        self.assertEqual(self.status_of(cho_gan), TaskStatus.CHO_XU_LY)
+        self.assertEqual(self.status_of(dang_gan), TaskStatus.DANG_XU_LY)
+
+        self.login(self.member)
+        response = self.client.get("/api/work/tasks/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Tầng 1: cả 3 "Chờ xử lý" đứng trước 2 việc còn lại.
+        # Tầng 2: trong mỗi nhóm, hạn gần đứng trước hạn xa.
+        self.assertEqual(
+            self.ids(response),
+            [cho_gan.pk, cho_giua.pk, cho_xa.pk, dang_gan.pk, dang_xa.pk],
+        )
+
+    def test_cung_trang_thai_cung_han_sap_theo_id_giam_dan(self):
+        first = self.make_task(due_offset=4, title="Cùng hạn - tạo trước")
+        second = self.make_task(due_offset=4, title="Cùng hạn - tạo sau")
+
+        self.login(self.member)
+        response = self.client.get("/api/work/tasks/")
+        # Cùng "Chờ xử lý" + cùng due_date → tie-break cuối cùng -id: id lớn (mới) lên trước.
+        self.assertEqual(self.ids(response), [second.pk, first.pk])
+
+    def test_request_ordering_thang_mac_dinh(self):
+        cho_xa = self.make_task(due_offset=10)
+        cho_gan = self.make_task(due_offset=2)
+        cho_giua = self.make_task(due_offset=5)
+        dang_xa = self.make_task(due_offset=3, first_opened_at=timezone.now())
+        dang_gan = self.make_task(due_offset=1, first_opened_at=timezone.now())
+
+        self.login(self.member)
+        # ?ordering=due_date → sắp thuần theo hạn tăng dần, BỎ QUA nhóm "Chờ xử lý".
+        response = self.client.get("/api/work/tasks/", {"ordering": "due_date"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self.ids(response),
+            [dang_gan.pk, cho_gan.pk, dang_xa.pk, cho_giua.pk, cho_xa.pk],
+        )
+
+
+class EmployeeInfoSerializerTests(WorkTestBase):
+    """VIỆC 4: CBNV trả về Họ tên — Chức vụ — Phòng ban thật, an toàn khi thiếu FK."""
+
+    def test_api_employees_tra_chuc_vu_va_phong_ban_that(self):
+        self.login(self.creator)
+        response = self.client.get("/api/work/employees/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        me = next(item for item in response.data if item["id"] == self.creator.pk)
+        self.assertEqual(me["fullName"], "Trần Phương Duy")
+        self.assertEqual(me["position"], self.creator.chuc_vu.name)
+        self.assertEqual(me["department"], self.creator.don_vi.ten)
+        # Không còn placeholder cứng "Nhân viên".
+        self.assertNotEqual(me["position"], "")
+
+    def test_chi_tiet_cong_viec_co_chuc_vu_phong_ban(self):
+        task = self.make_task()
+        self.login(self.host)
+        data = self.client.get(self.task_url(task)).data
+        self.assertEqual(data["creator"]["position"], self.creator.chuc_vu.name)
+        self.assertEqual(data["creator"]["department"], self.creator.don_vi.ten)
+        self.assertEqual(data["host"]["department"], self.host.don_vi.ten)
+
+    def test_thieu_fk_tra_chuoi_rong_khong_raise(self):
+        from work.serializers import EmployeeBriefSerializer
+
+        # Model khai NOT NULL nhưng record seed cũ có thể thiếu FK: serializer phải trả ""
+        # chứ không ném lỗi làm vỡ cả danh sách.
+        user = self.outsider
+        user.chuc_vu = None
+        user.don_vi = None
+        data = EmployeeBriefSerializer(user).data
+        self.assertEqual(data["position"], "")
+        self.assertEqual(data["department"], "")
 
 
 class TaskCreateApiTests(WorkTestBase):
@@ -688,6 +785,21 @@ class NewTaskMailTests(WorkTestBase):
         with override_settings(MAILERS={"default": {"BACKEND": "work.tests.BrokenEmailBackend"}}):
             response = self.create()
         self.assertTrue(Task.objects.filter(pk=response.data["id"]).exists())
+
+    def test_gui_dung_dia_chi_leader_email_that_khong_gui_nguoi_tao(self):
+        """VIỆC 5/6: thư tới ĐÚNG địa chỉ người được giao (email thật của leader), không gửi nhầm người tạo."""
+        self.host.email = "phantahuuduc@gmail.com"
+        self.host.save(update_fields=["email"])
+        self.create()
+
+        # Có đúng 1 thư gửi tới địa chỉ thật của leader.
+        leader_mails = [m for m in mail.outbox if m.to == ["phantahuuduc@gmail.com"]]
+        self.assertEqual(len(leader_mails), 1)
+        # Người tạo KHÔNG nằm trong danh sách nhận.
+        all_recipients = [address for m in mail.outbox for address in m.to]
+        self.assertNotIn(self.creator.email, all_recipients)
+        # Mỗi thư gửi đích danh đúng một người (to có đúng 1 địa chỉ).
+        self.assertTrue(all(len(m.to) == 1 for m in mail.outbox))
 
 
 class BrokenEmailBackend:
@@ -1183,7 +1295,10 @@ class EmployeeApiTests(WorkTestBase):
             {item["fullName"] for item in response.data},
             {"Nguyễn Thu Hiền", "Nguyễn Bình Minh"},
         )
-        self.assertEqual(response.data[0]["position"], "Nhân viên")
+        # Sắp theo ho_ten: "Nguyễn Bình Minh" (member) đứng trước. Trả chức vụ + phòng ban thật.
+        first = response.data[0]
+        self.assertEqual(first["position"], self.member.chuc_vu.name)
+        self.assertEqual(first["department"], self.member.don_vi.ten)
 
     def test_can_bo_chua_khai_ten_thi_dung_username(self):
         self.login(self.creator)
@@ -1256,6 +1371,135 @@ class AnonymousAccessTests(WorkTestBase):
         self.login(self.creator)
         response = self.client.post("/api/work/tasks/", self.payload(), format="multipart")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
+
+class SeedWorkDemoCommandTests(TestCase):
+    """VIỆC 5: management command seed dữ liệu demo — guard dry-run, idempotent, dọn dẹp."""
+
+    def run_seed(self, *args):
+        from io import StringIO
+
+        out = StringIO()
+        call_command("seed_work_demo", *args, stdout=out, stderr=out)
+        return out.getvalue()
+
+    def test_dry_run_mac_dinh_khong_ghi_gi(self):
+        out = self.run_seed()  # không có cờ --yes-i-know
+        self.assertIn("DRY-RUN", out)
+        self.assertEqual(User.objects.filter(username__startswith="test_").count(), 0)
+        self.assertEqual(Task.objects.filter(title__startswith="[TEST]").count(), 0)
+
+    def test_thuc_thi_va_chay_lai_khong_nhan_ban(self):
+        from accounts.models import Position
+
+        self.run_seed("--yes-i-know")
+        emp_count = User.objects.filter(username__startswith="test_").count()
+        task_count = Task.objects.filter(title__startswith="[TEST]").count()
+        self.assertEqual(emp_count, 5)
+        self.assertEqual(task_count, 7)
+
+        # Leader gắn email thật; nhân viên thường dùng miền @test.local an toàn.
+        leader = User.objects.get(username="test_truongnhom6")
+        self.assertEqual(leader.email, "phantahuuduc@gmail.com")
+        self.assertTrue(
+            User.objects.filter(username="test_cbnv_1", email__endswith="@test.local").exists()
+        )
+        # Bảng trống nên command tạo chức vụ/phòng ban [TEST] để gán đa dạng.
+        self.assertTrue(Position.objects.filter(name__startswith="[TEST]").exists())
+        self.assertTrue(DonVi.objects.filter(ten__startswith="[TEST]").exists())
+        # Mỗi CBNV đều có chức vụ + phòng ban (không thiếu FK).
+        self.assertTrue(all(e.chuc_vu_id and e.don_vi_id for e in User.objects.filter(username__startswith="test_")))
+
+        # Chạy lại: idempotent, không nhân bản.
+        self.run_seed("--yes-i-know")
+        self.assertEqual(User.objects.filter(username__startswith="test_").count(), emp_count)
+        self.assertEqual(Task.objects.filter(title__startswith="[TEST]").count(), task_count)
+
+    def test_clear_xoa_dung_du_lieu_demo(self):
+        from io import StringIO
+
+        self.run_seed("--yes-i-know")
+        out = StringIO()
+        call_command("clear_work_demo", "--yes-i-know", stdout=out, stderr=out)
+        self.assertEqual(User.objects.filter(username__startswith="test_").count(), 0)
+        self.assertEqual(Task.objects.filter(title__startswith="[TEST]").count(), 0)
+
+
+class TaskReminderMailTests(WorkTestBase):
+    """VIỆC 6: nhắc việc sắp đến hạn / quá hạn — gửi đích danh host + tham gia, không gửi người tạo/chỉ đạo."""
+
+    def setUp(self):
+        super().setUp()
+        for user in (self.creator, self.host, self.director, self.member):
+            user.email = f"{user.username}@test.local"
+            user.save(update_fields=["email"])
+
+    def recipients(self):
+        return sorted(address for message in mail.outbox for address in message.to)
+
+    def test_nhac_sap_den_han_gui_host_va_tham_gia(self):
+        from work.services.email import send_due_soon_reminders
+
+        self.make_task(due_offset=2)  # CHO_XU_LY, còn hạn 2 ngày → nằm trong cửa sổ 3 ngày
+        sent = send_due_soon_reminders(today=self.today)
+
+        self.assertEqual(sent, 2)
+        self.assertEqual(self.recipients(), sorted([self.host.email, self.member.email]))
+        self.assertNotIn(self.creator.email, self.recipients())  # không gửi người tạo
+        self.assertNotIn(self.director.email, self.recipients())  # không gửi chỉ đạo
+        self.assertTrue(all(len(m.to) == 1 for m in mail.outbox))  # đích danh từng người
+        self.assertTrue(all("Sắp đến hạn" in m.subject for m in mail.outbox))
+
+    def test_nhac_qua_han_gui_host_va_tham_gia(self):
+        from work.services.email import send_overdue_reminders
+
+        self.make_task(created_offset=-10, due_offset=-5)  # chưa mở + quá hạn → QUA_HAN
+        sent = send_overdue_reminders(today=self.today)
+
+        self.assertEqual(sent, 2)
+        self.assertEqual(self.recipients(), sorted([self.host.email, self.member.email]))
+        self.assertNotIn(self.creator.email, self.recipients())
+        self.assertNotIn(self.director.email, self.recipients())
+        self.assertTrue(all("QUÁ HẠN" in m.subject for m in mail.outbox))
+
+    def test_khong_nhac_viec_da_nop_bang_chung(self):
+        from work.services.email import send_due_soon_reminders
+
+        # Còn hạn 2 ngày nhưng đã nộp bằng chứng → CHO_DUYET, không còn phải xử lý → không nhắc.
+        task = self.make_task(due_offset=2, first_opened_at=timezone.now())
+        self.add_evidence(task)
+        sent = send_due_soon_reminders(today=self.today)
+
+        self.assertEqual(sent, 0)
+        self.assertEqual(mail.outbox, [])
+
+    def test_bo_qua_nguoi_khong_co_email(self):
+        from work.services.email import send_due_soon_reminders
+
+        self.member.email = ""
+        self.member.save(update_fields=["email"])
+        self.make_task(due_offset=1)
+        send_due_soon_reminders(today=self.today)
+        # Chỉ còn host nhận (member thiếu email bị bỏ qua).
+        self.assertEqual(self.recipients(), [self.host.email])
+
+    def test_command_dry_run_khong_gui_gi(self):
+        from io import StringIO
+
+        self.make_task(due_offset=2)
+        out = StringIO()
+        call_command("send_task_reminders", "--dry-run", stdout=out, stderr=out)
+        self.assertIn("DRY-RUN", out.getvalue())
+        self.assertEqual(mail.outbox, [])  # dry-run dùng dummy backend, không vào outbox
+
+    def test_command_gui_that_qua_backend_an_toan(self):
+        from io import StringIO
+
+        self.make_task(due_offset=2)  # 1 việc sắp đến hạn
+        out = StringIO()
+        # Backend trong test là locmem (không phải SMTP thật) → gửi luôn, không cần --yes-send-real.
+        call_command("send_task_reminders", stdout=out, stderr=out)
+        self.assertEqual(len(mail.outbox), 2)  # host + tham gia
 
 
 class JwtAuthenticationTests(WorkTestBase):

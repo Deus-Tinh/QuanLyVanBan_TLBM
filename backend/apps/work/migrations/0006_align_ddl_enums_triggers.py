@@ -1,0 +1,160 @@
+"""
+Đồng bộ schema migration với release_DDL.sql (phần app work, nhóm 6).
+
+Chỉ chạy trên PostgreSQL — SQLite (test mặc định) tự bỏ qua.
+
+Thay đổi:
+1. Tạo ENUM task_vaitro, đổi task_participant.vai_tro từ varchar → ENUM.
+2. Tạo ENUM task_attachment_loai, đổi task_attachment.loai từ varchar → ENUM.
+3. Thêm CHECK constraint chk_task_participant_role.
+4. Thêm CHECK constraint chk_task_attachment_evidence.
+5. Tạo trigger trg_congviec_updated_at (dùng function chung set_updated_at).
+"""
+
+from django.db import migrations
+
+
+def is_postgres(schema_editor):
+    return schema_editor.connection.vendor == "postgresql"
+
+
+def noop(apps, schema_editor):
+    pass
+
+
+# --- Forward helpers ---
+
+def forward_enum_vaitro(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+DO $$ BEGIN
+    CREATE TYPE task_vaitro AS ENUM ('CHU_TRI', 'CHI_DAO', 'THAM_GIA');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+""")
+    schema_editor.execute("""\
+ALTER TABLE task_participant
+    ALTER COLUMN vai_tro TYPE task_vaitro USING vai_tro::task_vaitro;
+""")
+
+
+def reverse_enum_vaitro(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+ALTER TABLE task_participant
+    ALTER COLUMN vai_tro TYPE varchar(10) USING vai_tro::text;
+""")
+    schema_editor.execute("DROP TYPE IF EXISTS task_vaitro;")
+
+
+def forward_enum_attachment_loai(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+DO $$ BEGIN
+    CREATE TYPE task_attachment_loai AS ENUM ('GIAO_VIEC', 'BANG_CHUNG');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+""")
+    schema_editor.execute("""\
+ALTER TABLE task_attachment
+    ALTER COLUMN loai TYPE task_attachment_loai USING loai::task_attachment_loai;
+""")
+
+
+def reverse_enum_attachment_loai(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+ALTER TABLE task_attachment
+    ALTER COLUMN loai TYPE varchar(10) USING loai::text;
+""")
+    schema_editor.execute("DROP TYPE IF EXISTS task_attachment_loai;")
+
+
+def forward_chk_participant_role(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+ALTER TABLE task_participant
+    ADD CONSTRAINT chk_task_participant_role CHECK (
+        vai_tro IN ('CHU_TRI', 'CHI_DAO', 'THAM_GIA')
+    );
+""")
+
+
+def reverse_chk_participant_role(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+ALTER TABLE task_participant
+    DROP CONSTRAINT IF EXISTS chk_task_participant_role;
+""")
+
+
+def forward_chk_attachment_evidence(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+ALTER TABLE task_attachment
+    ADD CONSTRAINT chk_task_attachment_evidence CHECK (
+        (loai = 'GIAO_VIEC' AND y_kien_id IS NULL)
+        OR (loai = 'BANG_CHUNG' AND y_kien_id IS NOT NULL)
+    );
+""")
+
+
+def reverse_chk_attachment_evidence(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+ALTER TABLE task_attachment
+    DROP CONSTRAINT IF EXISTS chk_task_attachment_evidence;
+""")
+
+
+def forward_trigger_updated_at(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute("""\
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+""")
+    schema_editor.execute(
+        "DROP TRIGGER IF EXISTS trg_congviec_updated_at ON task_congviec;"
+    )
+    schema_editor.execute("""\
+CREATE TRIGGER trg_congviec_updated_at
+    BEFORE UPDATE ON task_congviec
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+""")
+
+
+def reverse_trigger_updated_at(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute(
+        "DROP TRIGGER IF EXISTS trg_congviec_updated_at ON task_congviec;"
+    )
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ("work", "0005_taskdonvi_don_vi_fk"),
+    ]
+
+    operations = [
+        migrations.RunPython(forward_enum_vaitro, reverse_enum_vaitro),
+        migrations.RunPython(forward_enum_attachment_loai, reverse_enum_attachment_loai),
+        migrations.RunPython(forward_chk_participant_role, reverse_chk_participant_role),
+        migrations.RunPython(forward_chk_attachment_evidence, reverse_chk_attachment_evidence),
+        migrations.RunPython(forward_trigger_updated_at, reverse_trigger_updated_at),
+    ]
