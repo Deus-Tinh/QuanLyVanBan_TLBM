@@ -465,16 +465,16 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-4xl max-h-[90vh] bg-surface rounded-2xl border border-border-subtle shadow-2xl flex flex-col overflow-hidden animate-slide-in-bottom"
+        className="w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-surface rounded-2xl border border-border-subtle shadow-2xl flex flex-col overflow-hidden animate-slide-in-bottom"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-elevated shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border-subtle bg-surface-elevated shrink-0">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-main flex items-center gap-2">
               <i className="fa-solid fa-folder-tree text-primary text-base" />
@@ -496,7 +496,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
 
         {/* Tab Switcher (Thư mục | Loại tài liệu) */}
-        <div className="flex border-b border-border-subtle px-6 bg-surface shrink-0">
+        <div className="flex border-b border-border-subtle px-3 sm:px-6 bg-surface shrink-0">
           <button
             type="button"
             onClick={() => {
@@ -504,7 +504,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
               setCatDeleteBlockedMsg(null);
               closeAllMenus();
             }}
-            className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
+            className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'category'
                 ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-secondary hover:text-main'
@@ -530,7 +530,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
               setCatDeleteBlockedMsg(null);
               closeAllMenus();
             }}
-            className={`py-3 px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
+            className={`py-3 px-3 sm:px-4 text-xs sm:text-sm font-semibold border-b-2 flex items-center gap-2 transition-colors cursor-pointer ${
               activeTab === 'type'
                 ? 'border-primary text-primary font-bold'
                 : 'border-transparent text-secondary hover:text-main'
@@ -551,7 +551,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
 
         {/* Body Modal */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4 min-h-0">
           {/* Cảnh báo chế độ chỉ xem nếu không phải Admin */}
           {!isAdmin && (
             <div className="p-3 rounded-xl bg-amber-500/10 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-xs flex items-center gap-2.5 animate-fade-in">
@@ -580,10 +580,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
           {/* TAB 1: THƯ MỤC */}
           {activeTab === 'category' && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Thanh công cụ Tab Thư mục */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-md">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div className="relative flex-1 w-full sm:max-w-md">
                   <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
                   <input
                     type="text"
@@ -613,7 +613,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                     if (!isAdmin) return;
                     handleOpenUnifiedCreate('category');
                   }}
-                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto justify-center"
                   title={isAdmin ? t('resourceManagement.addNew') : 'Chỉ Quản trị hệ thống (Admin) mới có quyền tạo Thư mục'}
                 >
                   {t('resourceManagement.addNew')}
@@ -622,15 +622,15 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
               {/* Bảng danh sách Thư mục */}
               <div className="w-full overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-2xs">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs border-collapse min-w-full">
                   <thead className="bg-surface-elevated font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
                     <tr>
-                      <th className="px-3 py-3 w-16 text-center">{t('resourceManagement.colOrder')}</th>
-                      <th className="px-3 py-3 w-28">{t('resourceManagement.colCatCode')}</th>
-                      <th className="px-4 py-3 min-w-[200px]">{t('resourceManagement.colCatName')}</th>
-                      <th className="px-3 py-3 w-32">{t('resourceManagement.colCatDate')}</th>
-                      <th className="px-3 py-3 w-28 text-center">{t('resourceManagement.colCatSubtypes')}</th>
-                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
+                      <th className="px-2 sm:px-3 py-3 w-10 sm:w-16 text-center">{t('resourceManagement.colOrder')}</th>
+                      <th className="hidden sm:table-cell px-3 py-3 w-24 sm:w-28">{t('resourceManagement.colCatCode')}</th>
+                      <th className="px-3 sm:px-4 py-3 min-w-[140px] sm:min-w-[200px]">{t('resourceManagement.colCatName')}</th>
+                      <th className="hidden md:table-cell px-3 py-3 w-28 sm:w-32">{t('resourceManagement.colCatDate')}</th>
+                      <th className="hidden sm:table-cell px-3 py-3 w-24 sm:w-28 text-center">{t('resourceManagement.colCatSubtypes')}</th>
+                      <th className="px-2 sm:px-3 py-3 w-12 sm:w-20 text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -648,28 +648,38 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         const childCount = types.filter((t) => t.dm_tai_lieu === cat.id).length;
                         return (
                           <tr key={cat.id} className="hover:bg-surface-elevated/70 transition-colors">
-                            <td className="px-3 py-3 text-center font-bold text-primary font-mono">
+                            <td className="px-2 sm:px-3 py-3 text-center font-bold text-primary font-mono text-xs">
                               {cat.stt_uu_tien}
                             </td>
-                            <td className="px-3 py-3 font-mono font-medium text-secondary">
+                            <td className="hidden sm:table-cell px-3 py-3 font-mono font-medium text-secondary">
                               {cat.ky_hieu || '-'}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 sm:px-4 py-3">
                               <span className="font-semibold text-main block">{cat.ten_tai_lieu}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap sm:hidden mt-1">
+                                {cat.ky_hieu && (
+                                  <span className="font-mono text-[10px] text-muted">
+                                    [{cat.ky_hieu}]
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-surface-elevated text-secondary border border-border-subtle">
+                                  {childCount} loại
+                                </span>
+                              </div>
                               {cat.ghi_chu && (
                                 <span className="text-[11px] text-muted truncate block max-w-sm mt-0.5">
                                   {cat.ghi_chu}
                                 </span>
                               )}
                             </td>
-                            <td className="px-3 py-3 text-secondary">{cat.ngay_lap || '-'}</td>
-                            <td className="px-3 py-3 text-center">
+                            <td className="hidden md:table-cell px-3 py-3 text-secondary">{cat.ngay_lap || '-'}</td>
+                            <td className="hidden sm:table-cell px-3 py-3 text-center">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-surface-elevated text-secondary border border-border-subtle">
                                 {childCount} loại
                               </span>
                             </td>
                             <td
-                              className="px-3 py-3 text-center whitespace-nowrap"
+                              className="px-2 sm:px-3 py-3 text-center whitespace-nowrap"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
@@ -699,15 +709,15 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
           {/* TAB 2: LOẠI TÀI LIỆU */}
           {activeTab === 'type' && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Thanh công cụ Tab Loại tài liệu */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2 flex-1">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 w-full">
                   {/* Dropdown lọc Thư mục cha */}
                   <select
                     value={filterParentCat}
                     onChange={(e) => setFilterParentCat(e.target.value)}
-                    className="h-9 px-3 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary cursor-pointer shrink-0 shadow-2xs font-medium"
+                    className="w-full sm:w-auto h-9 px-3 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary cursor-pointer shrink-0 shadow-2xs font-medium"
                     aria-label="Lọc theo thư mục cha"
                   >
                     <option value="all">Tất cả thư mục</option>
@@ -719,7 +729,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   </select>
 
                   {/* Ô tìm nhanh theo tên loại */}
-                  <div className="relative flex-1 max-w-xs">
+                  <div className="relative w-full sm:flex-1 sm:max-w-xs">
                     <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
                     <input
                       type="text"
@@ -750,7 +760,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                     if (!isAdmin) return;
                     handleOpenUnifiedCreate('type');
                   }}
-                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 shadow-sm hover:shadow-glow disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto justify-center"
                   title={isAdmin ? 'Thêm mới Loại tài liệu' : 'Chỉ Quản trị hệ thống (Admin) mới có quyền tạo Loại tài liệu'}
                 >
                   Thêm mới
@@ -759,14 +769,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
 
               {/* Bảng danh sách Loại tài liệu */}
               <div className="w-full overflow-x-auto rounded-xl border border-border-subtle bg-surface shadow-2xs">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left text-xs border-collapse min-w-full">
                   <thead className="bg-surface-elevated font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
                     <tr>
-                      <th className="px-4 py-3 min-w-[200px]">{t('resourceManagement.colTypeName')}</th>
-                      <th className="px-3 py-3 w-48">{t('resourceManagement.colParentCat')}</th>
-                      <th className="px-3 py-3 w-28 text-center">{t('resourceManagement.colScope')}</th>
-                      <th className="px-3 py-3 min-w-[160px]">{t('resourceManagement.colNotes')}</th>
-                      <th className="px-3 py-3 w-24 text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
+                      <th className="px-3 sm:px-4 py-3 min-w-[140px] sm:min-w-[200px]">{t('resourceManagement.colTypeName')}</th>
+                      <th className="hidden sm:table-cell px-3 py-3 w-36 sm:w-48">{t('resourceManagement.colParentCat')}</th>
+                      <th className="hidden sm:table-cell px-3 py-3 w-24 sm:w-28 text-center">{t('resourceManagement.colScope')}</th>
+                      <th className="hidden md:table-cell px-3 py-3 min-w-[160px]">{t('resourceManagement.colNotes')}</th>
+                      <th className="px-2 sm:px-3 py-3 w-12 sm:w-20 text-center whitespace-nowrap">{t('resourceManagement.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -787,20 +797,35 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             key={t.id}
                             className="hover:bg-surface-elevated/70 transition-colors"
                           >
-                            <td className="px-4 py-3 font-semibold text-main">
-                              <span className="flex items-center gap-2">
+                            <td className="px-3 sm:px-4 py-3 font-semibold text-main">
+                              <span className="flex items-center gap-1.5 flex-wrap">
                                 <i
                                   className={`fa-solid ${
                                     t.is_public ? 'fa-tag text-primary/70' : 'fa-lock text-amber-500'
-                                  } text-[11px]`}
+                                  } text-[11px] shrink-0`}
                                 />
                                 <span>{t.ten_loai}</span>
+                                <span className="sm:hidden">
+                                  {t.is_public ? (
+                                    <Badge variant="success" size="sm">
+                                      Công khai
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="warning" size="sm">
+                                      Nội bộ
+                                    </Badge>
+                                  )}
+                                </span>
                               </span>
+                              <div className="sm:hidden text-[11px] text-muted flex items-center gap-1 mt-1 truncate">
+                                <i className="fa-solid fa-folder text-[10px] text-primary/70 shrink-0" />
+                                <span className="truncate">{parentCat?.ten_tai_lieu || `Thư mục #${t.dm_tai_lieu}`}</span>
+                              </div>
                             </td>
-                            <td className="px-3 py-3 text-secondary font-medium">
+                            <td className="hidden sm:table-cell px-3 py-3 text-secondary font-medium">
                               {parentCat?.ten_tai_lieu || `Thư mục #${t.dm_tai_lieu}`}
                             </td>
-                            <td className="px-3 py-3 text-center">
+                            <td className="hidden sm:table-cell px-3 py-3 text-center">
                               {t.is_public ? (
                                 <Badge variant="success" size="sm">
                                   Công khai
@@ -811,9 +836,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                 </Badge>
                               )}
                             </td>
-                            <td className="px-3 py-3 text-muted">{t.ghi_chu || '-'}</td>
+                            <td className="hidden md:table-cell px-3 py-3 text-muted">{t.ghi_chu || '-'}</td>
                             <td
-                              className="px-3 py-3 text-center whitespace-nowrap"
+                              className="px-2 sm:px-3 py-3 text-center whitespace-nowrap"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
@@ -843,7 +868,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         </div>
 
         {/* Footer Modal */}
-        <div className="px-6 py-3.5 border-t border-border-subtle bg-surface-elevated flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-border-subtle bg-surface-elevated flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           <span className="text-xs text-muted">
             {t('resourceManagement.totalSummary', { catCount: String(categories.length), typeCount: String(types.length) })}
           </span>
@@ -1168,7 +1193,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       </div>
 
                       {/* Phạm vi: Công khai checkbox */}
-                      <div className="sm:col-span-4 flex items-center pt-5">
+                      <div className="sm:col-span-4 flex items-center pt-1 sm:pt-5">
                         <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-main select-none">
                           <input
                             type="checkbox"
