@@ -8,8 +8,9 @@ Thay đổi:
 2. Tạo ENUM task_attachment_loai, đổi task_attachment.loai từ varchar → ENUM.
 3. Tạo trigger trg_congviec_updated_at (dùng function chung set_updated_at).
 
-CHECK constraints chk_task_participant_role và chk_task_attachment_evidence
-đã được tạo bởi migration 0004 (Django CheckConstraint) — không cần tạo lại.
+4. Thêm CHECK constraint chk_task_participant_role (DDL có, Django không tạo).
+5. Drop+recreate chk_task_attachment_evidence với ENUM-native syntax
+   (migration 0004 tạo bằng text cast, cần thay bằng ENUM comparison).
 """
 
 from django.db import migrations
@@ -87,6 +88,53 @@ ALTER TABLE task_attachment
     schema_editor.execute("DROP TYPE IF EXISTS task_attachment_loai;")
 
 
+def forward_constraints(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    # chk_task_participant_role: DDL has it, Django never created it.
+    schema_editor.execute("""\
+ALTER TABLE task_participant
+    ADD CONSTRAINT chk_task_participant_role CHECK (
+        vai_tro = ANY (ARRAY[
+            'CHU_TRI'::task_vaitro,
+            'CHI_DAO'::task_vaitro,
+            'THAM_GIA'::task_vaitro
+        ])
+    );
+""")
+    # chk_task_attachment_evidence: migration 0004 created it with text-cast
+    # syntax; replace with ENUM-native version to match DDL.
+    schema_editor.execute(
+        "ALTER TABLE task_attachment DROP CONSTRAINT IF EXISTS chk_task_attachment_evidence;"
+    )
+    schema_editor.execute("""\
+ALTER TABLE task_attachment
+    ADD CONSTRAINT chk_task_attachment_evidence CHECK (
+        (loai = 'GIAO_VIEC'::task_attachment_loai AND y_kien_id IS NULL)
+        OR (loai = 'BANG_CHUNG'::task_attachment_loai AND y_kien_id IS NOT NULL)
+    );
+""")
+
+
+def reverse_constraints(apps, schema_editor):
+    if not is_postgres(schema_editor):
+        return
+    schema_editor.execute(
+        "ALTER TABLE task_participant DROP CONSTRAINT IF EXISTS chk_task_participant_role;"
+    )
+    # Restore Django's text-cast version of the constraint.
+    schema_editor.execute(
+        "ALTER TABLE task_attachment DROP CONSTRAINT IF EXISTS chk_task_attachment_evidence;"
+    )
+    schema_editor.execute("""\
+ALTER TABLE task_attachment
+    ADD CONSTRAINT chk_task_attachment_evidence CHECK (
+        (y_kien_id IS NULL AND loai::text = 'GIAO_VIEC')
+        OR (y_kien_id IS NOT NULL AND loai::text = 'BANG_CHUNG')
+    );
+""")
+
+
 def forward_trigger_updated_at(apps, schema_editor):
     if not is_postgres(schema_editor):
         return
@@ -126,5 +174,6 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(forward_enum_vaitro, reverse_enum_vaitro),
         migrations.RunPython(forward_enum_attachment_loai, reverse_enum_attachment_loai),
+        migrations.RunPython(forward_constraints, reverse_constraints),
         migrations.RunPython(forward_trigger_updated_at, reverse_trigger_updated_at),
     ]
