@@ -146,3 +146,42 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           rsync -az -e 'ssh -i ~/.ssh/id_ed25519 -p 2150' dist/ "$DEPLOY_USER@$DEPLOY_HOST:/var/www/qlvb/"
+
+  deploy-backend:
+    name: Deploy backend to Ubuntu
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    needs: [backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package release
+        run: |
+          set -euo pipefail
+          SHA7="$(git rev-parse --short=7 HEAD)"
+          echo "SHA7=$SHA7" >> "$GITHUB_ENV"
+          git archive --format=tar.gz -o "qlvb-$SHA7.tar.gz" HEAD backend scripts docs/common/database
+
+      - name: Deploy backend over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          test -n "$DEPLOY_SSH_PRIVATE_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          SSH='ssh -i ~/.ssh/id_ed25519 -p 2150'
+          REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
+          $SSH "$REMOTE" 'mkdir -p ~/deploy'
+          rsync -az -e "$SSH" "qlvb-$SHA7.tar.gz" deploy/staging/deploy.sh "$REMOTE:deploy/"
+          $SSH "$REMOTE" "bash ~/deploy/deploy.sh $SHA7"

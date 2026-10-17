@@ -70,7 +70,7 @@ Kiểm tra dump (`test -s`, `pg_restore -l`, số entry > 0) chỉ xác nhận a
 
   # 3. Kiểm tra collation (kỳ vọng: i|vi-VN), migration, rồi khởi động lại backend
   COLLATION="$(PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -At \
-    -c "SELECT datlocprovider || '|' || coalesce(to_jsonb(d)->>'datlocale', to_jsonb(d)->>'daticulocale') FROM pg_database d WHERE datname = 'qlvb'")"
+    -c "SELECT datlocprovider::text || '|' || coalesce(to_jsonb(d)->>'datlocale', to_jsonb(d)->>'daticulocale') FROM pg_database d WHERE datname = 'qlvb'")"
   test "$COLLATION" = 'i|vi-VN'
   MIGRATIONS="$(cd backend && DB_ENGINE=postgresql DB_NAME=qlvb python manage.py showmigrations)"
   test -n "$MIGRATIONS"
@@ -82,6 +82,62 @@ Kiểm tra dump (`test -s`, `pg_restore -l`, số entry > 0) chỉ xác nhận a
 Cluster staging cần hỗ trợ ICU và locale hệ điều hành `C.UTF-8` (PostgreSQL 16 build với ICU). Nếu bước 2 báo lỗi khi `CREATE DATABASE` (không có ICU hoặc `C.UTF-8`) thì dừng và báo người phụ trách, không đổi locale để vượt qua. Nếu bước 2 hoặc 3 lỗi sau khi backend đã dừng, backend giữ nguyên trạng thái dừng; xử lý lỗi rồi khởi động lại thủ công. Script tự dọn DB dựng dở (xem phần Script). DB gốc chỉ khôi phục được từ file dump ở bước 1.
 
 Deploy backend sau bước này không chạy `migrate` lên DB đã dựng bằng DDL; mỗi lần cần schema mới, cập nhật `release_DDL.sql` và dựng lại bằng script.
+
+## Deploy backend staging
+
+Quy trình nằm ở `deploy/staging/deploy.sh`; job CI `Deploy backend to Ubuntu` (`.github/workflows/ci.yml`) chạy script này khi push vào `staging`, sau khi job `backend` đạt. Script không chạy `migrate` lên DB: DB được dựng lại từ `release_DDL.sql` bằng `scripts/build_db.py --seed`.
+
+Các bước (log ở `/srv/qlvb/deploy.log`, khóa `flock` ở `/srv/qlvb/.deploy.lock`):
+
+1. Kiểm đầu vào: sha, file nguồn, biến trong `/etc/qlvb/backend.env`.
+2. Giải nén vào `/srv/qlvb/releases/<sha7>`, tạo venv, cài `backend/requirements.txt`.
+3. `manage.py check` và `collectstatic`.
+4. Sao lưu DB hiện tại ra `/srv/qlvb/backups/qlvb_<UTC>.dump`; kiểm `test -s` và `pg_restore -l` (số entry > 0). Lỗi thì dừng, DB và service không bị đổi.
+5. Dừng service, `DROP DATABASE ... WITH (FORCE)` và `CREATE DATABASE ... OWNER <role ứng dụng>` (ICU `vi-VN`) bằng `sudo -u postgres psql`, rồi `build_db.py --seed` bằng role ứng dụng. Kiểm collation `i|vi-VN`, dấu hoàn tất khớp hash DDL kèm `seed=1`, `showmigrations` không còn `[ ]`.
+6. Chuyển symlink `/srv/qlvb/current`, khởi động service.
+7. Kiểm tra: API trả 401 JSON (`QLVB_HEALTH_URL`, mặc định `http://127.0.0.1:8001/api/organizations/units/`) và service active.
+8. Dọn release cũ, giữ 5 bản mới nhất.
+
+Lỗi từ bước 5 trở đi: script dừng service, giữ nguyên trạng thái dừng, không tự khôi phục; log nêu bước lỗi và đường dẫn dump của bước 4. Lỗi ở bước 1-4: service vẫn chạy bản cũ. Script chỉ tạo release mới trong `releases/` khi lỗi ở bước 2-4; symlink `current` chỉ đổi ở bước 6.
+
+### Điều kiện tiên quyết trên host
+
+- User deploy (secret `DEPLOY_USER`) có quyền ghi `/srv/qlvb` và `~/deploy`; có `python3` (3.12) kèm `venv`, `curl`, `flock`, client PostgreSQL 16 (`psql`, `pg_dump`, `pg_restore`).
+- Rule sudoers cho user deploy (đặt trong `/etc/sudoers.d/`, kiểm bằng `visudo -c`):
+
+```
+<user deploy> ALL=(root) NOPASSWD: /usr/bin/systemctl stop qlvb-backend, /usr/bin/systemctl start qlvb-backend, /usr/bin/systemctl restart qlvb-backend, /usr/bin/systemctl is-active --quiet qlvb-backend, /usr/bin/cat /etc/qlvb/backend.env
+<user deploy> ALL=(postgres) NOPASSWD: /usr/bin/psql
+```
+
+  Rule `cat` có thể thay bằng quyền đọc cho group của user deploy trên `/etc/qlvb/backend.env`; script đọc trực tiếp khi file đọc được. Rule `(postgres) psql` cho phép chạy SQL tùy ý với quyền superuser, tương đương quyền root trên DB; chấp nhận với staging, không dùng nguyên cho production.
+- Role ứng dụng (`DB_USER`) là owner DB, không cần `CREATEDB` hay superuser. Cluster hỗ trợ ICU và locale `C.UTF-8`.
+- `/etc/qlvb/backend.env` có `DB_ENGINE=postgresql`, `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT`, `DB_PASSWORD`, `DJANGO_SECRET_KEY` (`DB_NAME`, `DB_USER` chỉ gồm `[a-z0-9_]`). Mỗi dòng dạng `KEY=VALUE`, giá trị có thể bọc trong dấu nháy; script không `source` file.
+
+### Chạy tay lần đầu (không qua CI)
+
+Từ máy có SSH tới host, tại thư mục gốc repo đã checkout đúng commit cần deploy (thay `<host>`, `<user deploy>`):
+
+```bash
+SHA7=$(git rev-parse --short=7 HEAD) && git archive --format=tar.gz -o "/tmp/qlvb-$SHA7.tar.gz" HEAD backend scripts docs/common/database && ssh -p 2150 <user deploy>@<host> 'mkdir -p ~/deploy' && scp -P 2150 "/tmp/qlvb-$SHA7.tar.gz" deploy/staging/deploy.sh <user deploy>@<host>:deploy/ && ssh -p 2150 <user deploy>@<host> "bash ~/deploy/deploy.sh $SHA7"
+```
+
+### Khôi phục từ dump
+
+Dùng khi bước 5 trở đi lỗi và cần đưa DB về trạng thái trước deploy. `<dump>` là đường dẫn in trong log bước 4; `<release cũ>` là release đang chạy trước deploy (`ls -t /srv/qlvb/releases`). Dump lưu dữ liệu và schema, không lưu collation của DB nên DB đích tạo lại với ICU `vi-VN`.
+
+```bash
+(
+  set -euo pipefail
+  sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres -c "DROP DATABASE IF EXISTS qlvb WITH (FORCE)"
+  sudo -u postgres psql -v ON_ERROR_STOP=1 -d postgres -c "CREATE DATABASE qlvb OWNER <role ứng dụng> TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE 'vi-VN' LOCALE 'C.UTF-8'"
+  PGPASSWORD=<mật khẩu> pg_restore -h 127.0.0.1 -U <role ứng dụng> -d qlvb --no-owner --exit-on-error <dump>
+  ln -sfn /srv/qlvb/releases/<release cũ> /srv/qlvb/current
+  sudo systemctl start qlvb-backend
+)
+```
+
+Chưa kiểm trên host thật: restore từ dump của DB libc vào DB ICU (kiểm tra tên bảng/dữ liệu sau restore trước khi khởi động).
 
 ## Dọn instance PostgreSQL thừa trên host staging
 
