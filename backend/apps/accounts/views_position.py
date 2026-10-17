@@ -23,6 +23,10 @@ from .serializers import PositionSerializer
 DENIED = "positions.messages.permissionDenied"
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
+# Quyền theo method, kiểm bằng helper chung trước khi view chạy (người thiếu quyền nhận 403 kể cả với id không tồn tại).
+LIST_PERMS = {"GET": "view_chucvu", "POST": "add_chucvu"}
+DETAIL_PERMS = {"GET": "view_chucvu", "PUT": "change_chucvu", "PATCH": "change_chucvu", "DELETE": "delete_chucvu"}
+
 
 class StandardPositionPagination(PageNumberPagination):
     page_size = 10
@@ -41,21 +45,14 @@ def _visible_positions(user):
     return queryset
 
 
-def _denied():
-    return Response({"detail": DENIED}, status=status.HTTP_403_FORBIDDEN)
-
-
 def _stt_conflict():
-    return Response({"stt_uu_tien": ["positions.messages.sttExists"]}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({"display_order": ["positions.messages.sttExists"]}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, require_permission(LIST_PERMS, DENIED)])
 def position_list_create_view(request):
     if request.method == "GET":
-        if not request.user.has_perm("view_chucvu"):
-            return _denied()
-
         queryset = _visible_positions(request.user)
         search = request.query_params.get("search", "").strip()
         if search:
@@ -68,8 +65,6 @@ def position_list_create_view(request):
         page = paginator.paginate_queryset(queryset, request)
         return paginator.get_paginated_response(PositionSerializer(page, many=True).data)
 
-    if not request.user.has_perm("add_chucvu"):
-        return _denied()
     serializer = PositionSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -81,17 +76,8 @@ def position_list_create_view(request):
 
 
 @api_view(["GET", "PUT", "PATCH", "DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, require_permission(DETAIL_PERMS, DENIED)])
 def position_detail_view(request, pk):
-    required = {
-        "GET": "view_chucvu",
-        "PUT": "change_chucvu",
-        "PATCH": "change_chucvu",
-        "DELETE": "delete_chucvu",
-    }[request.method]
-    if not request.user.has_perm(required):
-        return _denied()
-
     position = _visible_positions(request.user).filter(pk=pk).first()
     if position is None:
         return Response({"detail": "positions.messages.notFound"}, status=status.HTTP_404_NOT_FOUND)

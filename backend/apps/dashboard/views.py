@@ -1,12 +1,12 @@
 from datetime import timedelta
 from django.db import connection
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from django.contrib.auth import get_user_model
 from .models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
@@ -398,16 +398,15 @@ def overview_view(request):
     ]
 
     # ── 5. Sinh nhật hôm nay (T) và ngày mai (T+1) ─────────────────────────
-    User = get_user_model()
-    today_users = User.objects.filter(
+    employees = get_user_model().objects.filter(is_active=True).select_related("don_vi", "chuc_vu")
+    today_users = employees.filter(
         ngay_sinh__month=today.month,
         ngay_sinh__day=today.day,
-    ).select_related("chuc_vu", "don_vi")
-
-    tomorrow_users = User.objects.filter(
+    )
+    tomorrow_users = employees.filter(
         ngay_sinh__month=tomorrow.month,
         ngay_sinh__day=tomorrow.day,
-    ).select_related("chuc_vu", "don_vi")
+    )
 
     # Mảng phẳng birthdays chuẩn BirthdayEmployee của React
     birthdays_list = []

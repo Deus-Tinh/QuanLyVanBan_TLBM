@@ -77,7 +77,6 @@ def login_view(request):
             user = UserModel.objects.filter(username=username).first()
             if not user:
                 # Tự động tạo hồ sơ cán bộ khi xác thực qua API Bảo Long thành công
-                # (Bao gồm tài khoản mẫu: phanquocdung / Alpaca#2025 cung cấp trong tài liệu 9_TinNhan)
                 user = UserModel.objects.create_user(
                     username=username,
                     password=password,
@@ -90,9 +89,6 @@ def login_view(request):
                 user.save()
             auth_provider = "alpaca_api"
         else:
-            # Xử lý các mã trạng thái trả về theo bảng mã lỗi trong tài liệu 9_TinNhan của Thầy:
-            # status = 0: DISABLE (Tài khoản đã bị vô hiệu hóa)
-            # status = 3: BLOCK (Tài khoản đang bị khóa trong hệ thống Bảo Long)
             if alpaca_res.get("status") in (0, 3):
                 msg = alpaca_res.get("message") or "Tài khoản đã bị vô hiệu hóa hoặc khóa."
                 return Response(

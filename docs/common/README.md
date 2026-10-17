@@ -21,6 +21,10 @@ Thư mục này lưu trữ các quy chuẩn kiến trúc, tài liệu tích hợ
    - Quy tắc Font Family (`Inter`, `FontAwesome 6`, `Monospace`), cấm tuyệt đối phông chữ siêu nhỏ (< 11px).
    - Thang đo Type Scale, Font Weight và hệ thống Semantic Text Tokens đa chế độ giao diện (Light, Dark, Claymorphism).
 
+4. **[Quy Ước Quản Lý Dự Án (`guidelines/quy-uoc-quan-ly-du-an.md`)](./guidelines/quy-uoc-quan-ly-du-an.md)**:
+   - Người merge `staging`/`ddl_base_v0`, quy trình sửa CSDL (DDL trước, migration sau), gắn issue + label nhóm + milestone cho mọi PR.
+   - Label `nhom-1`…`nhom-8`, `P0`, `P1`, `blocked`, `ddl`; milestone `Base staging`, `MVP`; bảng GitHub Project.
+
 ## 📂 Cấu Trúc Tài Liệu Theo Phân Hệ
 - `docs/modules/01_layout_dashboard/`: Bàn giao App Shell, Header, Sidebar, Footer, Router URL, Theme Nhóm 1.
 - `docs/modules/02_documents/`: Tài liệu Phân hệ Văn bản đến / đi / mật.
