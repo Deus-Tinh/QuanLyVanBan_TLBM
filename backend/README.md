@@ -8,7 +8,7 @@
 
 - **Framework**: Django 6.1.x (Python Web Framework)
 - **Python**: Bắt buộc Python 3.12 trở lên (Django 6.1 không hỗ trợ Python thấp hơn)
-- **Database**: PostgreSQL 16 trong Docker cho môi trường local; SQLite vẫn là cấu hình dự phòng của Django
+- **Database**: PostgreSQL 16 (Docker Compose cho local, schema từ `docs/common/database/release_DDL.sql`)
 - **API Architecture**: RESTful API, JSON responses
 
 ---
@@ -27,7 +27,6 @@ backend/
 │   ├── birthdays/              # Module dữ liệu sinh nhật CBNV (Nhóm 7 / Dashboard Nhóm 1)
 │   └── ...                     # Các module khác đang tích hợp (documents, records,...)
 │
-├── db.sqlite3                  # Cơ sở dữ liệu SQLite cục bộ
 └── manage.py                   # Script quản trị lệnh Django CLI
 ```
 
@@ -35,26 +34,17 @@ backend/
 
 ## 🚀 3. Hướng dẫn chạy local
 
-Chạy mọi lệnh từ thư mục gốc của dự án, không cần chuyển vào `backend` và không cần tự bật môi trường ảo:
-
-1. Lần đầu dựng DB local mới: mở Docker Desktop, rồi chạy `pnpm db:setup` tại thư mục gốc. Chỉ cần làm một lần; dữ liệu DB được giữ trong Docker volume.
-2. Những lần chạy dự án sau: mở Docker Desktop và chờ Docker Engine sẵn sàng. Nếu DB đang chạy, không cần chạy lại lệnh dựng DB. Nếu đã dừng DB bằng `pnpm db:stop`, chạy `pnpm db:start` tại thư mục gốc.
-3. Mở Terminal backend tại thư mục gốc và chạy `pnpm runserver`. Lệnh kiểm tra Docker và DB trước, rồi mới tự chuẩn bị môi trường Python và chạy Django. Nếu Docker hoặc DB chưa sẵn sàng, lệnh báo lỗi kèm hướng xử lý.
-4. Mở Terminal frontend khác tại thư mục gốc và chạy `pnpm dev`.
-
-Khi có migration Django mới, chạy `pnpm db:migrate` tại thư mục gốc trước hoặc sau khi khởi động backend. `pnpm db:status`, `pnpm db:migrations`, `pnpm db:reset` và `pnpm db:stop` lần lượt xem container, xem trạng thái migration, tạo lại DB local có xác nhận, và dừng dịch vụ mà vẫn giữ dữ liệu.
+Quy trình setup, chạy hằng ngày, test và lệnh DB nằm ở mục "Cài đặt và chạy local" trong `README.md` gốc. Chạy mọi lệnh `pnpm` từ thư mục gốc; backend không chạy trực tiếp bằng `python manage.py` vì kết nối DB do `scripts/project.mjs` đặt (dùng `pnpm manage <lệnh>`).
 
 - API Backend: `http://127.0.0.1:8000/`
 - Django Admin: `http://127.0.0.1:8000/admin/`
-- pgAdmin local: `http://127.0.0.1:5050/` (đăng nhập bằng `admin@qlvb.local` / `qlvb_pgadmin_local_only`)
-- Cổng PostgreSQL từ máy Windows: `127.0.0.1:55432`, database `qlvb_dev`
 
 ---
 
 ## 🔗 4. Kết nối với Frontend React
 
 - Frontend gọi đến Backend qua base URL: `http://127.0.0.1:8000/`
-- Cấu hình CORS đã được thiết lập sẵn trong `config/settings.py` cho phép nguồn `http://localhost:5173` và `http://localhost:5174`.
+- Cấu hình CORS đã được thiết lập sẵn trong `config/settings.py` cho phép nguồn `http://localhost:<cổng>` và `http://127.0.0.1:<cổng>`.
 
 ---
 
@@ -248,15 +238,15 @@ class DashboardAPITests(TestCase):
 ### 5.3. Hướng dẫn thực thi kiểm thử cục bộ
 Khi các nhóm Backend tiếp tục phát triển:
 1. Tạo hoặc sao chép các hàm test vào `backend/apps/<tên_app>/tests.py`.
-2. Chạy lệnh:
+2. Chạy lệnh tại thư mục gốc:
    ```bash
-   python manage.py test accounts
-   python manage.py test dashboard
+   pnpm test:backend accounts
+   pnpm test:backend dashboard
    ```
 
 ### 5.4. Email chúc mừng sinh nhật
 
-Ứng dụng dùng backend email console nếu chưa cấu hình SMTP. Để gửi email thật, đặt các biến sau trong `.env` ở thư mục gốc dự án hoặc trong `backend/.env`:
+Ứng dụng dùng backend email console nếu chưa cấu hình SMTP. Để gửi email thật, đặt các biến sau trong `.env` ở thư mục gốc dự án:
 
 ```dotenv
 EMAIL_HOST=smtp.example.com
@@ -269,11 +259,11 @@ DEFAULT_FROM_EMAIL=account@example.com
 
 Không commit `.env` hoặc mật khẩu SMTP. `BRAND_NAME` và `ORGANIZATION_NAME` có thể đặt để đổi thương hiệu trong tiêu đề và nội dung thư; mặc định là `Bảo Long Insurance`.
 
-Chạy thủ công từ thư mục `backend`:
+Chạy thủ công tại thư mục gốc:
 
 ```bash
-python manage.py send_birthday_emails
-python manage.py send_birthday_emails --date=YYYY-MM-DD
+pnpm manage send_birthday_emails
+pnpm manage send_birthday_emails --date=YYYY-MM-DD
 ```
 
 `--allow-locmem` chỉ dành cho kiểm thử. Kết quả gửi được ghi trong `birthdays_birthdayemaillog`; hiện API nhật ký chỉ cho superuser xem cho đến khi DDL bổ sung quyền riêng.

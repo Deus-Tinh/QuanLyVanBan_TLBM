@@ -134,29 +134,21 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
+# PostgreSQL là engine duy nhất (local, CI, staging). DB_ENGINE chỉ còn để tương thích env cũ.
+DB_ENGINE = os.getenv("DB_ENGINE", "postgresql").lower()
+if DB_ENGINE not in ("postgresql", "postgres"):
+    raise RuntimeError("Dự án chỉ hỗ trợ PostgreSQL: bỏ DB_ENGINE hoặc đặt DB_ENGINE=postgresql.")
 
-if DB_ENGINE in ("postgresql", "postgres"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", "qlvb_db"),
-            "USER": os.getenv("DB_USER", "postgres"),
-            "PASSWORD": os.getenv("DB_PASSWORD", ""),
-            "HOST": os.getenv("DB_HOST", "localhost"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "qlvb_db"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-
-if "test" in sys.argv and DB_ENGINE not in ("postgresql", "postgres"):
-    raise RuntimeError("Test chạy trên PostgreSQL: đặt DB_ENGINE=postgresql và các biến DB_*.")
+}
 
 
 # Password validation

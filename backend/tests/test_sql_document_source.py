@@ -145,5 +145,5 @@ class SqlDocumentSourceTests(TestCase):
         self.assertNotIn("file_dinh_kem", view_cursor.executed[0][0])
 
     @patch("backend.services.sql_document_source.is_postgres_source", return_value=False)
-    def test_schema_verification_is_skipped_for_sqlite_development(self, _is_postgres):
+    def test_schema_verification_is_skipped_for_non_postgres_connection(self, _is_postgres):
         self.assertEqual(verify_sql_schema()["status"], "skipped")
