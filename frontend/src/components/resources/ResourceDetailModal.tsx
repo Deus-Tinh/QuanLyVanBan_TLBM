@@ -174,7 +174,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           <div className="min-w-0 space-y-1.5 flex-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               {item.ky_hieu && (
-                <span className="font-mono text-xs font-semibold text-secondary">
+                <span className="text-xs font-semibold text-secondary">
                   {item.ky_hieu}
                 </span>
               )}
@@ -277,14 +277,14 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
               {/* Ngày đăng */}
               <div>
                 <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldPostedDate')}</span>
-                <span className="font-mono text-main">{formatDate(item.ngay_dang)}</span>
+                <span className="text-main font-medium">{formatDate(item.ngay_dang)}</span>
               </div>
 
               {/* Ngày hết hiệu lực (nếu có) */}
               {item.ngay_het_hieu_luc && (
                 <div>
                   <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldExpirationDate')}</span>
-                  <span className="font-mono text-danger font-medium">
+                  <span className="text-danger font-medium">
                     {formatDate(item.ngay_het_hieu_luc)}
                   </span>
                 </div>
@@ -326,7 +326,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-1.5 flex items-center justify-between">
               <span>Tệp đính kèm</span>
-              <span className="text-[11px] text-secondary font-medium font-mono">
+              <span className="text-[11px] text-secondary font-medium">
                 {filesList.length} tệp
               </span>
             </h3>
@@ -356,7 +356,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                           <p className="font-semibold text-main truncate group-hover:text-primary transition-colors" title={file.name}>
                             {file.name}
                           </p>
-                          <p className="text-[11px] text-muted font-mono">
+                          <p className="text-[11px] text-muted">
                             {ext}
                             {file.file_size ? ` · ${formatFileSize(file.file_size)}` : ''}
                           </p>

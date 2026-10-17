@@ -648,10 +648,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         const childCount = types.filter((t) => t.dm_tai_lieu === cat.id).length;
                         return (
                           <tr key={cat.id} className="hover:bg-surface-elevated/70 transition-colors">
-                            <td className="hidden sm:table-cell px-2 sm:px-3 py-3 text-center font-bold text-primary font-mono text-xs">
+                            <td className="hidden sm:table-cell px-2 sm:px-3 py-3 text-center font-bold text-primary text-xs">
                               {cat.stt_uu_tien}
                             </td>
-                            <td className="hidden sm:table-cell px-3 py-3 font-mono font-medium text-secondary">
+                            <td className="hidden sm:table-cell px-3 py-3 font-medium text-secondary">
                               {cat.ky_hieu || '-'}
                             </td>
                             <td className="px-3 sm:px-4 py-2.5 sm:py-3">
@@ -665,7 +665,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                   </span>
                                   <div className="flex items-center gap-1.5 flex-wrap sm:hidden mt-1 text-[11px]">
                                     {cat.ky_hieu && (
-                                      <span className="font-mono text-[10px] text-muted bg-surface-elevated px-1.5 py-0.5 rounded border border-border-subtle shrink-0">
+                                      <span className="text-[10px] font-medium text-muted bg-surface-elevated px-1.5 py-0.5 rounded border border-border-subtle shrink-0">
                                         {cat.ky_hieu}
                                       </span>
                                     )}
@@ -1012,7 +1012,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             setIsUnifiedDirty(true);
                           }}
                           placeholder="VD: 1, 2, 3..."
-                          className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs font-mono font-bold text-main focus:outline-hidden focus:border-primary shadow-2xs"
+                          className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs font-bold text-main focus:outline-hidden focus:border-primary shadow-2xs"
                           required
                         />
                         {catError && catError.includes('STT') && (
@@ -1033,7 +1033,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             setCatForm({ ...catForm, ky_hieu: e.target.value });
                             setIsUnifiedDirty(true);
                           }}
-                          className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs font-mono text-main focus:outline-hidden focus:border-primary shadow-2xs"
+                          className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary shadow-2xs"
                         />
                       </div>
 

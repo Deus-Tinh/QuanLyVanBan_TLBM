@@ -1132,7 +1132,7 @@ export default function ResourceManagementPage() {
       {/* Header trang & Nút hành động */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-surface p-4 sm:p-6 rounded-2xl border border-border-subtle shadow-xs">
         <div>
-          <h1 className="text-lg sm:text-2xl font-black text-main tracking-tight">
+          <h1 className="text-lg sm:text-2xl font-bold text-main tracking-tight">
             {t('resourceManagement.pageTitle')}
           </h1>
           <p className="text-xs text-secondary mt-0.5 sm:mt-1">
@@ -1372,7 +1372,7 @@ export default function ResourceManagementPage() {
                                 className="w-4 h-4 rounded border-border-subtle text-primary focus:ring-primary/20 cursor-pointer accent-primary"
                               />
                               {isVisibleOnBar && (
-                                <span className="text-[10px] font-extrabold text-primary bg-primary/10 border border-primary/20 px-1 py-0.2 rounded leading-none">
+                                <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-1 py-0.2 rounded leading-none">
                                   #{tickIndex + 1}
                                 </span>
                               )}
@@ -1652,7 +1652,7 @@ export default function ResourceManagementPage() {
                                 className="w-4 h-4 rounded border-border-subtle text-primary focus:ring-primary/20 cursor-pointer accent-primary"
                               />
                               {isVisibleOnBar && (
-                                <span className="text-[10px] font-extrabold text-primary bg-primary/10 border border-primary/20 px-1 py-0.2 rounded leading-none">
+                                <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-1 py-0.2 rounded leading-none">
                                   #{tickIndex + 1}
                                 </span>
                               )}
@@ -2168,7 +2168,7 @@ export default function ResourceManagementPage() {
                 {deleteItem.tieu_de}
               </div>
               {deleteItem.ky_hieu && (
-                <div className="font-mono text-muted">
+                <div className="text-muted">
                   {t('resourceManagement.colCode')}: <span className="text-main font-semibold">{deleteItem.ky_hieu}</span>
                 </div>
               )}
