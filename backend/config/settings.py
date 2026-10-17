@@ -134,11 +134,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-TESTING = "test" in sys.argv
-
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
 
-if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
+if DB_ENGINE in ("postgresql", "postgres"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -156,6 +154,9 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+if "test" in sys.argv and DB_ENGINE not in ("postgresql", "postgres"):
+    raise RuntimeError("Test chạy trên PostgreSQL: đặt DB_ENGINE=postgresql và các biến DB_*.")
 
 
 # Password validation
