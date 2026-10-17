@@ -150,6 +150,22 @@ DATABASES = {
     }
 }
 
+# Kết nối chỉ đọc cho AI SQL (backend/docs/sql_document_source.md): role riêng, session read-only,
+# không bao giờ dùng user của "default". Thiếu DB_READONLY_USER thì không khai báo alias; đường AI SQL
+# từ chối truy vấn (SqlDocumentAccessError) còn app và các route khác chạy bình thường.
+if os.getenv("DB_READONLY_USER"):
+    DATABASES["readonly"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_READONLY_NAME") or DATABASES["default"]["NAME"],
+        "USER": os.environ["DB_READONLY_USER"],
+        "PASSWORD": os.getenv("DB_READONLY_PASSWORD", ""),
+        "HOST": os.getenv("DB_READONLY_HOST") or DATABASES["default"]["HOST"],
+        "PORT": os.getenv("DB_READONLY_PORT") or DATABASES["default"]["PORT"],
+        "OPTIONS": {"options": "-c default_transaction_read_only=on"},
+        # Test dùng chung kết nối test của "default" (role chỉ đọc không có quyền tạo DB).
+        "TEST": {"MIRROR": "default"},
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
