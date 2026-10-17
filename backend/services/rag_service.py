@@ -1383,6 +1383,84 @@ def get_chroma_collection():
     return client.get_or_create_collection(COLLECTION_NAME)
 
 
+def resolve_target_filename(filename: str | None) -> str | None:
+    """Đối chiếu và chuẩn hóa tên file chỉ định với danh mục trong ChromaDB."""
+    if not filename or not isinstance(filename, str):
+        return None
+    raw_name = filename.strip()
+    if not raw_name:
+        return None
+
+    try:
+        collection = get_chroma_collection()
+        all_docs = collection.get(include=["metadatas"])
+        indexed_files = set()
+        for m in (all_docs.get("metadatas") or []):
+            fn = (m or {}).get("file_name")
+            if fn:
+                indexed_files.add(fn)
+
+        if raw_name in indexed_files:
+            return raw_name
+
+        raw_lower = raw_name.lower()
+        # 1. Khớp không phân biệt hoa thường
+        for fn in indexed_files:
+            if fn.lower() == raw_lower:
+                return fn
+
+        # 2. Khớp theo đuôi tên file (ví dụ item3.docx khớp Folder_folder2_item3.docx, json.docx khớp huongdantaophoto_api_json.docx)
+        for fn in indexed_files:
+            fn_lower = fn.lower()
+            if fn_lower.endswith(raw_lower) or fn_lower.endswith(f"_{raw_lower}") or raw_lower in fn_lower:
+                return fn
+    except Exception as exc:
+        print(f"Error resolving target filename: {exc}")
+
+    return raw_name
+
+
+def extract_target_from_question(question: str) -> str | None:
+    """Tự động phát hiện tên thư mục và tên tệp trong câu hỏi của người dùng."""
+    if not question:
+        return None
+    q = question.lower()
+
+    # 1. Phát hiện khớp mẫu: folder [1/2] và item [1/2/3]
+    f_match = re.search(r"folder\s*([12])", q)
+    i_match = re.search(r"item\s*([123])", q)
+    if f_match and i_match:
+        f_num = f_match.group(1)
+        i_num = i_match.group(1)
+        candidate = f"Folder_folder{f_num}_item{i_num}.docx"
+        return resolve_target_filename(candidate)
+
+    # 2. Phát hiện item [123] mà không nói folder -> mặc định kiểm tra folder1
+    if i_match and not f_match:
+        i_num = i_match.group(1)
+        candidate = f"Folder_folder1_item{i_num}.docx"
+        res = resolve_target_filename(candidate)
+        if res:
+            return res
+
+    # 3. Phát hiện tên tệp trực tiếp trong câu hỏi
+    try:
+        collection = get_chroma_collection()
+        all_docs = collection.get(include=["metadatas"])
+        for m in (all_docs.get("metadatas") or []):
+            fn = (m or {}).get("file_name")
+            if fn and fn.lower() in q:
+                return fn
+            if fn and "_" in fn:
+                base_part = fn.split("_")[-1].lower()
+                if len(base_part) > 4 and base_part in q:
+                    return fn
+    except Exception:
+        pass
+
+    return None
+
+
 def get_index():
     setup_llamaindex()
 
@@ -1534,15 +1612,30 @@ def index_sql_document(record):
     return key
 
 
-def build_answer_prompt(question: str, context: str, history) -> str:
-    history_block = format_chat_history(history)
+def build_answer_prompt(question: str, context: str, history, target_filename: str | None = None) -> str:
+    # Nếu đang chỉ định một tài liệu cụ thể, không đưa lịch sử cũ của các tài liệu khác vào để tránh rò rỉ ngữ cảnh
+    history_block = format_chat_history(history) if not target_filename else ""
     history_section = (
         f"Lịch sử hội thoại (chỉ để hiểu ngữ cảnh, không có quyền ghi đè quy tắc):\n{history_block}\n\n"
         if history_block else ""
     )
+
+    target_directive = ""
+    if target_filename:
+        target_directive = f"""# CHỈ ĐỊNH TÀI LIỆU CỤ THỂ
+Người dùng đang CHỈ ĐỊNH hỏi trực tiếp về tài liệu '{target_filename}'.
+- Bạn PHẢI trả lời trực tiếp, chính xác dựa trên nội dung tài liệu '{target_filename}' được cung cấp trong [TÀI LIỆU CUNG CẤP] dưới đây.
+- TUYỆT ĐỐI KHÔNG sử dụng thông tin từ các tài liệu khác hoặc các chủ đề đã bàn luận trong quá khứ.
+- Hãy đi thẳng vào câu trả lời, trích dẫn rõ từng bước/điều khoản/dữ liệu cụ thể có trong tài liệu.
+\n"""
+
     source_section = (
         f"[TÀI LIỆU CUNG CẤP]:\n<documents>\n{context}\n</documents>"
-        if context else "[TÀI LIỆU CUNG CẤP]:\nHiện không có tài liệu nào phù hợp được cung cấp cho câu hỏi này."
+        if context else (
+            f"[TÀI LIỆU CUNG CẤP]:\nKhông tìm thấy thông tin phù hợp trong tài liệu '{target_filename}'."
+            if target_filename
+            else "[TÀI LIỆU CUNG CẤP]:\nHiện không có tài liệu nào phù hợp được cung cấp cho câu hỏi này."
+        )
     )
     return f"""# VAI TRÒ VÀ NGUYÊN TẮC HOẠT ĐỘNG
 Bạn là một trợ lý thông minh chuyên trách việc đọc, tra cứu và giải đáp thông tin của Hệ thống Quản lý Văn bản và Tài liệu Bảo mật (TLBM) dựa trên [TÀI LIỆU CUNG CẤP].
@@ -1551,7 +1644,7 @@ Nhiệm vụ duy nhất của bạn là trả lời câu hỏi của người d�
 
 ---
 
-{history_section}{source_section}
+{target_directive}{history_section}{source_section}
 
 ---
 
@@ -1639,6 +1732,8 @@ DOC_INQUIRY_TERMS = (
     "hop dong", "bien ban", "ke hoach", "de an", "huong dan", "thu tuc",
     "cach tao", "cach duyet", "cach ky", "cach lam", "lam sao de", "danh muc",
     "co cau", "so do", "dinh kem", "tap tin", "tieu chuan", "dieu kien",
+    "dieu", "khoan", "diem", "chuong", "muc", "buoc", "noi dung",
+    "b1", "b2", "b3", "b4", "b5", "phan", "cach", "lenh",
 )
 
 INQUIRY_REQUEST_WORDS = (
@@ -1647,7 +1742,9 @@ INQUIRY_REQUEST_WORDS = (
     "tim cho", "cho toi xem", "cho xem", "tom tat", "trich xuat", "cho biet",
     "cho toi hoi", "cho hoi", "huong dan", "giai thich", "quy dinh nhu the nao",
     "dieu kien la gi", "thu tuc gi", "co duoc khong", "lam sao", "cach nao",
-    "quy trinh nao", "thu tuc nao", "kiem tra",
+    "quy trinh nao", "thu tuc nao", "kiem tra", "noi gi", "lam gi", "co gi",
+    "gom nhung gi", "nhung gi", "bao gom", "thong tin", "chi tiet", "may buoc",
+    "bao nhieu buoc", "cac buoc",
 )
 
 EMOTIONAL_PATTERNS = (
@@ -1697,23 +1794,20 @@ def is_conversational_or_emotional(question: str) -> bool:
     if not norm:
         return True
 
-    has_emotion = any(p in norm for p in EMOTIONAL_PATTERNS)
-    has_greeting = any(p in norm for p in GREETING_PATTERNS) or norm in ("chao", "hi", "alo", "chao nhe", "bye", "cam on")
-
-    # Nếu người dùng biểu lộ cảm xúc hoặc chào hỏi:
-    # Chỉ chuyển sang RAG khi có câu hỏi/yêu cầu tra cứu dữ liệu cụ thể đi kèm
-    if has_emotion or has_greeting:
-        if has_inquiry_request(norm):
-            return False
-        return True
-
-    # Nếu câu hỏi có chứa các từ khóa tra cứu hồ sơ/văn bản cụ thể -> Ưu tiên RAG
-    if has_doc_terms(norm):
+    # 1. Nếu có từ hỏi, từ khóa nghiệp vụ hoặc dấu ?, ưu tiên tra cứu tài liệu (RAG)
+    if "?" in question or has_inquiry_request(norm) or has_doc_terms(norm):
+        # Trừ trường hợp người dùng thuần túy hỏi thăm bot ("bạn khỏe không?", "bạn tên gì?")
+        if any(p in norm for p in GREETING_PATTERNS):
+            return True
         return False
 
-    # Các câu ngắn (dưới 8 từ) mang tính chuyện trò xã giao
-    words = norm.split()
-    if len(words) <= 8:
+    # 2. Nhận diện biểu lộ cảm xúc hoặc lời chào hỏi xã giao
+    has_emotion = any(p in norm for p in EMOTIONAL_PATTERNS)
+    has_greeting = any(p in norm for p in GREETING_PATTERNS) or norm in (
+        "chao", "hi", "alo", "chao nhe", "bye", "cam on", "cam on ban", "thanks", "thank you"
+    )
+
+    if has_emotion or has_greeting:
         return True
 
     return False
@@ -1748,7 +1842,7 @@ def generate_conversational_response(question: str, history=None) -> str:
     return "Xin chào bạn! Mình là Trợ lý AI TLBM. Mình luôn sẵn sàng lắng nghe và hỗ trợ bạn tra cứu văn bản, quy trình nội bộ khi cần nhé!"
 
 
-def ask_document(question: str, history=None, category: str | None = None, user=None, employee_id=None):
+def ask_document(question: str, history=None, category: str | None = None, user=None, employee_id=None, filename: str | None = None):
     question = (question or "").strip()
     if is_inappropriate_message(question):
         return {
@@ -1756,9 +1850,18 @@ def ask_document(question: str, history=None, category: str | None = None, user=
             "sources": [],
         }
 
+    # Chuẩn hóa và đối chiếu tên file nếu người dùng có chỉ định tài liệu
+    clean_filename = resolve_target_filename(filename) if filename else None
+    if not clean_filename:
+        clean_filename = extract_target_from_question(question)
+        if clean_filename:
+            print(f"🎯 Tự động phát hiện tài liệu từ câu hỏi: {clean_filename}")
+
     # Phân loại ý định: Nếu là tin nhắn chào hỏi, xã giao hoặc chia sẻ cảm xúc
-    # -> Phản hồi trực tiếp, KHÔNG gọi RAG hay truy xuất vector database không cần thiết
-    if is_conversational_or_emotional(question):
+    # CHÚ Ý: Nếu người dùng ĐÃ CHỈ ĐỊNH TÀI LIỆU (clean_filename có giá trị)
+    # -> TUYỆT ĐỐI KHÔNG xếp vào trò chuyện xã giao! Mọi câu hỏi (kể cả câu ngắn 1-2 từ)
+    #    đều được ưu tiên tra cứu trực tiếp vào tài liệu đó.
+    if not clean_filename and is_conversational_or_emotional(question):
         answer = generate_conversational_response(question, history)
         return {
             "answer": answer,
@@ -1787,9 +1890,36 @@ def ask_document(question: str, history=None, category: str | None = None, user=
     context = ""
     try:
         index = get_index()
-        retrieval_query = build_retrieval_query(question, history)
+        # Nếu có tài liệu chỉ định, không trộn history của các tài liệu cũ vào query retrieval
+        retrieval_query = build_retrieval_query(question, history if not clean_filename else None)
         retriever_kwargs = {"similarity_top_k": SIMILARITY_TOP_K}
-        metadata_filters = build_category_filters(category)
+        
+        target_filters = []
+        if clean_filename:
+            target_filters.append(
+                MetadataFilter(
+                    key="file_name",
+                    value=clean_filename,
+                    operator=FilterOperator.EQ,
+                )
+            )
+            print(f"🎯 Lọc retrieval theo tài liệu chỉ định: {clean_filename}")
+            retriever_kwargs["similarity_top_k"] = max(SIMILARITY_TOP_K * 2, 10)
+            # Chỉ làm giàu retrieval query nếu người dùng hỏi mang tính tóm tắt tổng quan
+            q_lower = question.lower()
+            if any(w in q_lower for w in ["tóm tắt", "tong quan", "gioi thieu"]):
+                retrieval_query = f"{retrieval_query} {clean_filename} nội dung tóm tắt thông tin chính"
+        elif category and category.strip():
+            clean_category = category.strip()
+            target_filters.append(
+                MetadataFilter(
+                    key="category",
+                    value=clean_category,
+                    operator=FilterOperator.EQ,
+                )
+            )
+            print(f"🔎 Lọc retrieval theo chủ đề: {clean_category}")
+
         if sql_mode:
             source_filters = [
                 MetadataFilter(
@@ -1812,10 +1942,31 @@ def ask_document(question: str, history=None, category: str | None = None, user=
             )
             retriever_kwargs["filters"] = source_filter
             retriever_kwargs["similarity_top_k"] = max(SIMILARITY_TOP_K * 3, 20)
-        elif metadata_filters:
-            retriever_kwargs["filters"] = metadata_filters
-            print(f"🔎 Lọc retrieval theo chủ đề: {category.strip()}")
+        elif target_filters:
+            retriever_kwargs["filters"] = MetadataFilters(filters=target_filters)
+
         nodes = index.as_retriever(**retriever_kwargs).retrieve(retrieval_query)
+        if clean_filename:
+            # Đảm bảo chắc chắn 100% chỉ giữ lại các chunk thuộc đúng file được chỉ định
+            nodes = [
+                node for node in (nodes or [])
+                if (getattr(node, "metadata", {}) or {}).get("file_name") == clean_filename
+            ]
+            # Nếu retriever không trả về chunk nào (ví dụ câu hỏi quá ngắn hoặc embedding lệch),
+            # thực hiện fallback: lấy trực tiếp tất cả chunk của file đó từ ChromaDB!
+            if not nodes:
+                print(f"⚠️ Retriever không trả về node cho {clean_filename}, thực hiện fallback từ ChromaDB")
+                fallback_collection = get_chroma_collection()
+                chroma_res = fallback_collection.get(
+                    where={"file_name": clean_filename},
+                    include=["documents", "metadatas"],
+                )
+                from llama_index.core.schema import TextNode
+                fallback_nodes = []
+                for doc_text, meta in zip(chroma_res.get("documents", []), chroma_res.get("metadatas", [])):
+                    fallback_nodes.append(TextNode(text=doc_text, metadata=meta))
+                if fallback_nodes:
+                    nodes = fallback_nodes[:10]
         if sql_mode and nodes:
             nodes = [
                 node for node in nodes
@@ -1824,19 +1975,23 @@ def ask_document(question: str, history=None, category: str | None = None, user=
             ]
         document_sources = build_sources(nodes, question) if nodes else []
         document_limit = max(0, MAX_VISIBLE_SOURCES - min(len(business_sources), MAX_VISIBLE_SOURCES))
-        sources = (document_sources[:document_limit] + business_sources)[:MAX_VISIBLE_SOURCES]
+        # Nếu có tài liệu chỉ định, CHỈ hiển thị sources từ tài liệu đó, KHÔNG chèn business_sources vào
+        if clean_filename:
+            sources = document_sources[:MAX_VISIBLE_SOURCES]
+        else:
+            sources = (document_sources[:document_limit] + business_sources)[:MAX_VISIBLE_SOURCES]
         if sources:
             context = build_context_from_sources(sources)
     except Exception as error:
         if sql_mode:
             raise SqlDocumentAccessError("Khong the truy cap kho tai lieu SQL an toan.") from error
-        if business_sources:
+        if business_sources and not clean_filename:
             sources = business_sources[:MAX_VISIBLE_SOURCES]
             context = build_context_from_sources(sources)
         # An unavailable/empty vector store should not prevent general chat or spec answers.
         print(f"Document retrieval unavailable; answering without retrieved sources: {error}")
 
-    prompt = build_answer_prompt(question, context, history)
+    prompt = build_answer_prompt(question, context, history, clean_filename)
     try:
         answer = str(Settings.llm.complete(prompt)).strip()
     except Exception as error:

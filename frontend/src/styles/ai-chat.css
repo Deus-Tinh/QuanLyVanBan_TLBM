@@ -1379,11 +1379,12 @@
   z-index: 10;
 }
 
-.attached-file-preview {
+.attached-file-preview,
+.chat-upload-indicator {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px;
+  padding: 6px 14px;
   border-radius: var(--radius-sm);
   background: var(--color-primary-subtle);
   border: 1px solid var(--color-primary-border);
@@ -1391,6 +1392,36 @@
   font-size: 0.8rem;
   font-weight: 600;
   width: fit-content;
+  animation: previewFadeIn 0.22s ease-out;
+  transition: all 0.25s ease;
+}
+
+.chat-upload-indicator.is-success,
+.sidebar-upload-progress.is-success {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #059669 !important;
+}
+
+.chat-upload-indicator.is-error,
+.sidebar-upload-progress.is-error {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  color: #dc2626 !important;
+}
+
+[data-theme="dark"] .chat-upload-indicator.is-success,
+[data-theme="dark"] .sidebar-upload-progress.is-success {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  color: #34d399 !important;
+}
+
+[data-theme="dark"] .chat-upload-indicator.is-error,
+[data-theme="dark"] .sidebar-upload-progress.is-error {
+  background: rgba(239, 68, 68, 0.18) !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  color: #f87171 !important;
 }
 
 .remove-file-btn {
@@ -1414,6 +1445,8 @@
   background: var(--bg-surface-elevated);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: text;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .input-box-container:focus-within {
@@ -1433,6 +1466,15 @@
   padding: 6px 4px;
   max-height: 120px;
   font-family: inherit;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox: Ẩn thanh cuộn */
+  -ms-overflow-style: none; /* IE 10+ / Edge: Ẩn thanh cuộn */
+}
+
+.chat-textarea::-webkit-scrollbar {
+  display: none !important; /* Chrome / Safari / Edge: Ẩn thanh cuộn hoàn toàn */
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .chat-textarea::placeholder {
@@ -1496,34 +1538,384 @@
 }
 
 /* ==========================================================================
-   RESPONSIVE CHO THIẾT BỊ DI ĐỘNG & TABLET
+   RESPONSIVE CHO THIẾT BỊ DI ĐỘNG & TABLET (MOBILE-FIRST POLISH)
    ========================================================================== */
 
+.ai-sidebar-mobile-backdrop {
+  display: none;
+}
+
 @media (max-width: 860px) {
+  .ai-sidebar-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 85;
+    opacity: 1;
+    cursor: pointer;
+    animation: previewFadeIn 0.22s ease-out;
+  }
+
+  .ai-chat-page-root {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Sidebar chuyển thành Drawer trượt từ cạnh trái */
   .ai-chat-sidebar {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 10;
-    box-shadow: var(--shadow-lg);
+    width: min(340px, 86vw);
+    height: 100dvh;
+    max-height: 100%;
+    z-index: 90; /* Nổi lên trên header (10) và khung nhập (10) */
+    background: var(--bg-surface-elevated, #ffffff);
+    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.28);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
+    transform: translateX(0);
+    visibility: visible;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-subtle);
   }
 
   .ai-chat-sidebar.is-collapsed {
     transform: translateX(-100%);
-    width: 280px;
+    visibility: hidden;
+    pointer-events: none;
+    width: min(340px, 86vw);
+    box-shadow: none;
   }
 
-  .ai-chat-viewport {
-    padding: 16px 14px;
+  .ai-sidebar-top {
+    padding: 14px 14px 12px;
+    gap: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
   }
 
-  .message-content-wrapper {
-    max-width: 90%;
+  .sidebar-toggle-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--bg-surface-elevated);
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .new-chat-btn {
+    height: 40px;
+    font-size: 0.88rem;
+  }
+
+  .sidebar-tab-switcher {
+    margin: 12px 14px 10px;
+  }
+
+  .ai-sidebar-search {
+    padding: 0 14px 10px;
+  }
+
+  .ai-sidebar-sessions-list {
+    padding: 0 10px 14px;
+  }
+
+  /* Khung trò chuyện chính mở rộng 100% bề ngang */
+  .ai-chat-main-stage {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 1;
+    height: 100%;
+    position: relative;
+  }
+
+  /* Header đỉnh trang AI */
+  .ai-chat-top-header {
+    padding: 8px 12px;
+    gap: 8px;
+    min-height: 52px;
+    z-index: 20;
+  }
+
+  .top-header-left {
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .open-sidebar-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ai-brand-badge {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .ai-brand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .ai-brand-title {
+    font-size: 0.88rem;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .team-badge {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+  }
+
+  /* Ẩn dòng mô tả phụ trên di động để giữ header thoáng đãng */
+  .ai-brand-sub {
+    display: none;
+  }
+
+  .top-header-actions {
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .chat-action-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .model-selector-wrapper {
     display: none;
+  }
+
+  /* Viewport hội thoại */
+  .ai-chat-viewport {
+    padding: 12px 10px 14px;
+    gap: 12px;
+  }
+
+  .ai-chat-message-row {
+    gap: 8px;
+    margin-bottom: 12px;
+    max-width: 100%;
+  }
+
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .message-content-wrapper {
+    max-width: calc(100% - 40px);
+    min-width: 0;
+  }
+
+  .ai-chat-message-row.is-user .message-content-wrapper {
+    max-width: 88%;
+  }
+
+  .message-bubble {
+    padding: 10px 13px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    border-radius: 14px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Nguồn trích dẫn (Citations) trên di động */
+  .ai-citations-box {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .citations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .citation-pill {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    font-size: 0.76rem;
+    gap: 6px;
+  }
+
+  .citation-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Gợi ý câu hỏi tiếp theo (Follow-up Prompts) cuộn ngang mượt mà */
+  .ai-followup-prompts {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+
+  .ai-followup-prompts::-webkit-scrollbar {
+    display: none;
+  }
+
+  .followup-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.76rem;
+    padding: 6px 10px;
+    border-radius: 16px;
+  }
+
+  /* Thanh nhập liệu đáy màn hình */
+  .ai-chat-bottom-input {
+    padding: 8px 10px 8px;
+    gap: 6px;
+    background: var(--bg-surface);
+    z-index: 15;
+  }
+
+  .input-box-container {
+    padding: 6px 8px;
+    gap: 6px;
+    border-radius: 18px;
+    cursor: text;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chat-textarea {
+    font-size: 16px; /* Chống zoom tự động trên iOS Safari / Android Chrome */
+    min-height: 38px;
+    padding: 7px 6px;
+    line-height: 1.4;
+    overflow-y: auto;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    touch-action: manipulation;
+  }
+
+  .chat-textarea::placeholder {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+  }
+
+  .chat-textarea::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .input-tool-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 0.9rem;
+  }
+
+  .send-message-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  .chat-disclaimer {
+    font-size: 0.66rem;
+    line-height: 1.3;
+    padding: 0 4px;
+  }
+
+  /* Modal xem trước tài liệu trên Mobile */
+  .preview-backdrop {
+    padding: 8px;
+  }
+
+  .preview-panel {
+    max-height: 96vh;
+    height: 96vh;
+    border-radius: 12px;
+  }
+
+  .preview-header {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .preview-title-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+  }
+
+  .preview-filename {
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .team-badge {
+    display: none;
+  }
+
+  .ai-brand-title span:first-child {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ai-chat-top-header {
+    padding: 6px 8px;
+  }
+
+  .ai-chat-bottom-input {
+    padding: 6px 8px 6px;
   }
 }
 
@@ -1889,5 +2281,173 @@
   height: 100%;
   min-height: 600px;
   border: none;
+}
+
+/* ==========================================================================
+   TARGET DOCUMENT DRAG & DROP AND PINNED BADGE
+   ========================================================================== */
+
+/* Con trỏ cho dòng tài liệu ở Sidebar khi kéo thả */
+.sidebar-doc-row {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
+  transition: all 0.15s ease;
+}
+
+.sidebar-doc-row:active {
+  cursor: grabbing;
+}
+
+.sidebar-doc-row.is-targeted {
+  background: var(--color-primary-subtle);
+  border-left: 3px solid var(--color-primary);
+  border-radius: 4px;
+}
+
+.sidebar-doc-btn.pin-btn {
+  color: var(--text-muted);
+}
+
+.sidebar-doc-btn.pin-btn:hover {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+.sidebar-doc-btn.pin-btn.is-active {
+  color: var(--color-primary);
+  background: var(--color-primary-subtle);
+}
+
+/* Hiệu ứng khi kéo tệp qua vùng chat */
+.ai-chat-bottom-input.is-chat-dragover {
+  border-top-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  transition: all 0.2s ease;
+}
+
+.ai-chat-viewport.is-chat-dragover-viewport {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: -8px;
+  background: var(--color-primary-subtle);
+  transition: all 0.2s ease;
+}
+
+.chat-drag-cue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--color-primary);
+  background: var(--bg-surface-elevated);
+  color: var(--color-primary);
+  font-size: 0.84rem;
+  font-weight: 600;
+  animation: previewFadeIn 0.2s ease-out;
+}
+
+/* Huy hiệu tài liệu được chỉ định (Target Document Pill) */
+.target-doc-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary-border);
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  width: fit-content;
+  max-width: 100%;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  animation: previewFadeIn 0.22s ease-out;
+}
+
+.target-doc-badge-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.target-doc-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.target-doc-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.target-doc-remove-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.target-doc-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+/* Tag tài liệu bên trong tin nhắn người dùng */
+.message-target-doc-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.is-user .message-target-doc-tag {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+[data-theme="dark"] .target-doc-pinned-badge {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .target-doc-tag {
+  background: rgba(37, 99, 235, 0.3);
+  color: #93c5fd;
 }
 

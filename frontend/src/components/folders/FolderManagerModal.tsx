@@ -47,6 +47,39 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
   const [newFileDescription, setNewFileDescription] = useState('');
   const [isAddingFile, setIsAddingFile] = useState(false);
 
+  // Scan Local State
+  const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const [scanFolderPath, setScanFolderPath] = useState('');
+  const [scanUnderCurrentFolder, setScanUnderCurrentFolder] = useState(false);
+  const [isScanningLocal, setIsScanningLocal] = useState(false);
+  const [scanResult, setScanResult] = useState<string | null>(null);
+
+  const handleScanLocal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsScanningLocal(true);
+      setScanResult(null);
+      const res = await folderService.scanLocal({
+        folder_path: scanFolderPath.trim() || undefined,
+        parent_id: scanUnderCurrentFolder && selectedFolder ? selectedFolder.id : null,
+      });
+      setScanResult(res.message);
+      await loadTree();
+      if (res.root_folder_id) {
+        await loadFolderDetails(res.root_folder_id);
+      }
+      setTimeout(() => {
+        setIsScanModalOpen(false);
+        setScanResult(null);
+        setScanFolderPath('');
+      }, 1500);
+    } catch (err: any) {
+      alert(err.message || 'Không thể đồng bộ thư mục local');
+    } finally {
+      setIsScanningLocal(false);
+    }
+  };
+
   // Tải lại toàn bộ cây thư mục
   const loadTree = useCallback(async () => {
     try {
@@ -234,6 +267,18 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
 
           <div className="flex items-center gap-2">
             <Button
+              variant="secondary"
+              size="sm"
+              icon="fa-laptop"
+              onClick={() => {
+                setScanUnderCurrentFolder(Boolean(selectedFolder));
+                setIsScanModalOpen(true);
+              }}
+              title="Quét và đồng bộ trực tiếp từ thư mục trên máy tính (Local) không cần upload"
+            >
+              Đồng bộ Local
+            </Button>
+            <Button
               variant="primary"
               size="sm"
               icon="fa-folder-plus"
@@ -307,9 +352,20 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
                       <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
                         Độ sâu: Cấp {selectedFolder.depth || 0}
                       </span>
+                      {selectedFolder.is_local && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 font-bold border border-sky-500/20 flex items-center gap-1">
+                          <i className="fa-solid fa-laptop text-[10px]" />
+                          Thư mục Local
+                        </span>
+                      )}
                     </div>
                     {selectedFolder.description && (
                       <p className="text-xs text-secondary pl-10">{selectedFolder.description}</p>
+                    )}
+                    {selectedFolder.local_path && (
+                      <p className="text-[11px] text-sky-600 pl-10 font-mono truncate" title={selectedFolder.local_path}>
+                        📁 Ổ đĩa: {selectedFolder.local_path}
+                      </p>
                     )}
                     <p className="text-[11px] text-muted pl-10 font-mono">
                       Đường dẫn ID: {selectedFolder.path}
@@ -330,15 +386,25 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
                     >
                       Thêm thư mục con
                     </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      icon="fa-file-circle-plus"
-                      onClick={() => setIsAddFileModalOpen(true)}
-                      title="Thêm file vào thư mục này"
-                    >
-                      Thêm tệp
-                    </Button>
+                    {!selectedFolder.is_local ? (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon="fa-file-circle-plus"
+                        onClick={() => setIsAddFileModalOpen(true)}
+                        title="Thêm file vào thư mục này"
+                      >
+                        Thêm tệp
+                      </Button>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 text-xs font-semibold select-none border border-sky-200 dark:border-sky-800/50"
+                        title="Thư mục Local chỉ để xem và tải về (không upload file lên server)"
+                      >
+                        <i className="fa-solid fa-eye text-[11px]" />
+                        <span>Chỉ xem & tải (Local)</span>
+                      </span>
+                    )}
                     {onSelectFolderForResource && (
                       <Button
                         variant="secondary"
@@ -391,14 +457,16 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
                         Danh sách tệp trong thư mục ({files.length})
                       </h4>
                     </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      icon="fa-plus"
-                      onClick={() => setIsAddFileModalOpen(true)}
-                    >
-                      Thêm tệp
-                    </Button>
+                    {!selectedFolder.is_local && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="fa-plus"
+                        onClick={() => setIsAddFileModalOpen(true)}
+                      >
+                        Thêm tệp
+                      </Button>
+                    )}
                   </div>
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -406,14 +474,16 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
                       <div className="py-12 text-center text-xs text-muted space-y-2">
                         <i className="fa-solid fa-file-circle-question text-3xl text-muted/40 block" />
                         <p>Thư mục này hiện chưa có tệp nào.</p>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          icon="fa-upload"
-                          onClick={() => setIsAddFileModalOpen(true)}
-                        >
-                          Thêm tệp đầu tiên
-                        </Button>
+                        {!selectedFolder.is_local && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon="fa-upload"
+                            onClick={() => setIsAddFileModalOpen(true)}
+                          >
+                            Thêm tệp đầu tiên
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       <table className="w-full text-left text-xs border-collapse">
@@ -440,7 +510,16 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
                                         : 'fa-file text-secondary'
                                     } text-sm`}
                                   />
-                                  <span>{file.file_name}</span>
+                                  <span className="truncate">{file.file_name}</span>
+                                  {file.is_local && (
+                                    <span
+                                      className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-600 font-semibold border border-sky-500/20 shrink-0 flex items-center gap-0.5"
+                                      title={file.file_path || 'File cục bộ'}
+                                    >
+                                      <i className="fa-solid fa-laptop text-[8px]" />
+                                      Local
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td className="py-2.5 px-3 text-secondary uppercase font-mono text-[11px]">
@@ -449,18 +528,37 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
                               <td className="py-2.5 px-3 text-secondary">
                                 {formatSize(file.file_size)}
                               </td>
-                              <td className="py-2.5 px-3 text-muted max-w-[200px] truncate">
-                                {file.description || '—'}
+                              <td className="py-2.5 px-3 text-muted max-w-[200px] truncate" title={file.description || file.file_path}>
+                                {file.description || file.file_path || '—'}
                               </td>
                               <td className="py-2.5 px-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteFile(file.id)}
-                                  className="w-7 h-7 rounded-lg hover:bg-danger/10 text-danger inline-flex items-center justify-center transition-colors"
-                                  title="Xóa tệp"
-                                >
-                                  <i className="fa-solid fa-trash text-xs" />
-                                </button>
+                                <div className="flex items-center justify-end gap-1">
+                                  <a
+                                    href={folderService.getDownloadUrl(file.id, true)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-7 h-7 rounded-lg hover:bg-primary/10 text-primary inline-flex items-center justify-center transition-colors"
+                                    title="Xem tệp (Mở tab mới)"
+                                  >
+                                    <i className="fa-solid fa-eye text-xs" />
+                                  </a>
+                                  <a
+                                    href={folderService.getDownloadUrl(file.id, false)}
+                                    download={file.file_name}
+                                    className="w-7 h-7 rounded-lg hover:bg-sky-500/10 text-sky-600 inline-flex items-center justify-center transition-colors"
+                                    title="Tải tệp về máy"
+                                  >
+                                    <i className="fa-solid fa-download text-xs" />
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteFile(file.id)}
+                                    className="w-7 h-7 rounded-lg hover:bg-danger/10 text-danger inline-flex items-center justify-center transition-colors"
+                                    title="Xóa tệp"
+                                  >
+                                    <i className="fa-solid fa-trash text-xs" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -618,6 +716,96 @@ export const FolderManagerModal: React.FC<FolderManagerModalProps> = ({
                 </Button>
                 <Button variant="primary" size="sm" type="submit" disabled={isAddingFile}>
                   {isAddingFile ? 'Đang thêm...' : 'Lưu tệp'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Đồng bộ thư mục máy tính (Local Directory Sync) */}
+      {isScanModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-surface rounded-2xl border border-border-subtle shadow-xl w-full max-w-lg p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border-subtle">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 flex items-center justify-center">
+                  <i className="fa-solid fa-laptop text-sm" />
+                </span>
+                <div>
+                  <h3 className="text-sm font-bold text-main">Đồng bộ Thư mục Local (Máy tính)</h3>
+                  <p className="text-[11px] text-secondary">
+                    Quét và lập chỉ mục cây thư mục & tệp trực tiếp từ ổ cứng, không cần upload qua mạng.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsScanModalOpen(false)}
+                className="text-secondary hover:text-main"
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            </div>
+
+            <form onSubmit={handleScanLocal} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-main mb-1">
+                  Đường dẫn thư mục trên máy tính (Local Path)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Để trống để quét thư mục 'Folder' mặc định của dự án"
+                  value={scanFolderPath}
+                  onChange={(e) => setScanFolderPath(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-border-subtle bg-surface focus:outline-none focus:border-primary text-main font-mono"
+                  autoFocus
+                />
+                <p className="text-[11px] text-muted mt-1">
+                  Mặc định sẽ quét thư mục <span className="font-mono text-primary">./Folder</span> chứa các tài liệu local sẵn có.
+                </p>
+              </div>
+
+              {selectedFolder && (
+                <div className="p-3 rounded-xl bg-surface-elevated/40 border border-border-subtle flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="scanUnderCurrent"
+                    checked={scanUnderCurrentFolder}
+                    onChange={(e) => setScanUnderCurrentFolder(e.target.checked)}
+                    className="rounded border-border-subtle text-primary focus:ring-0"
+                  />
+                  <label htmlFor="scanUnderCurrent" className="text-xs text-secondary cursor-pointer">
+                    Đồng bộ vào bên trong thư mục đang chọn: <strong className="text-main">{selectedFolder.name}</strong>
+                  </label>
+                </div>
+              )}
+
+              {scanResult && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-xs flex items-center gap-2">
+                  <i className="fa-solid fa-circle-check text-sm" />
+                  <span>{scanResult}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => setIsScanModalOpen(false)}
+                  disabled={isScanningLocal}
+                >
+                  Đóng
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  icon={isScanningLocal ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'}
+                  disabled={isScanningLocal}
+                >
+                  {isScanningLocal ? 'Đang quét...' : 'Bắt đầu đồng bộ'}
                 </Button>
               </div>
             </form>

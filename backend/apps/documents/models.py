@@ -101,6 +101,18 @@ class Folder(models.Model):
         blank=True,
         default="",
     )
+    is_local = models.BooleanField(
+        "Thư mục cục bộ (Local)",
+        default=False,
+        help_text="Thư mục được đồng bộ trực tiếp từ ổ đĩa máy tính.",
+    )
+    local_path = models.CharField(
+        "Đường dẫn Local",
+        max_length=1000,
+        blank=True,
+        default="",
+        help_text="Đường dẫn thư mục thực tế trên ổ đĩa máy tính.",
+    )
 
     # ── Audit ──────────────────────────────────────────────────────
     created_by = models.ForeignKey(
@@ -310,6 +322,11 @@ class FolderFile(models.Model):
         "Mô tả",
         blank=True,
         default="",
+    )
+    is_local = models.BooleanField(
+        "File cục bộ (Local)",
+        default=False,
+        help_text="File nằm trên ổ đĩa máy tính, không lưu trong media server.",
     )
 
     # ── Audit ──────────────────────────────────────────────────────
