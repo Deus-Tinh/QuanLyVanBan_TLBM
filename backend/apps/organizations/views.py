@@ -15,6 +15,16 @@ from .models import KhoiKhuVuc, DonVi
 from .serializers import KhoiKhuVucSerializer, DonViSerializer
 
 
+def _invalid_region_filter(region_id):
+    """?region_id= phải là số nguyên dương trong khoảng BIGINT; sai thì trả 400 thay vì lỗi 500."""
+    if region_id and (not region_id.isdigit() or int(region_id) > 9223372036854775807):
+        return Response(
+            {"detail": "organizations.messages.regionNotFound", "key": "organizations.messages.regionNotFound"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
+
+
 class StandardPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
@@ -137,6 +147,9 @@ def unit_list_create_view(request):
         queryset = DonVi.objects.select_related("khoi").all().order_by("stt_uu_tien", "ten")
 
         region_id = request.query_params.get("region_id")
+        invalid = _invalid_region_filter(region_id)
+        if invalid:
+            return invalid
         if region_id:
             queryset = queryset.filter(khoi_id=region_id)
 
@@ -215,6 +228,9 @@ def unit_export_excel_view(request):
     queryset = DonVi.objects.select_related("khoi").all().order_by("stt_uu_tien", "ten")
 
     region_id = request.query_params.get("region_id")
+    invalid = _invalid_region_filter(region_id)
+    if invalid:
+        return invalid
     if region_id:
         queryset = queryset.filter(khoi_id=region_id)
 

@@ -33,12 +33,33 @@ if str(BASE_DIR.parent) not in sys.path:
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-gi-kkzr*^tx3ut+arcxs2i8=!3%es0clr2punmi*hg)nbg0)mr"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    raise RuntimeError("DJANGO_SECRET_KEY is required")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+]
+
+# Chạy sau reverse proxy HTTPS (Nginx). Local để trống các biến này.
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if os.getenv("DJANGO_SECURE_PROXY_SSL_HEADER", "False").lower() == "true":
+    # Chỉ bật khi proxy luôn ghi đè X-Forwarded-Proto, nếu không client có thể giả scheme.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() == "true"
+SESSION_COOKIE_SECURE = os.getenv("DJANGO_SECURE_COOKIES", str(not DEBUG)).lower() == "true"
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+# Chỉ đặt > 0 khi HTTPS đã chạy ổn định; trình duyệt nhớ HSTS theo số giây này.
+SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "0"))
 
 
 # Application definition
@@ -63,6 +84,7 @@ INSTALLED_APPS = [
     "signing",
     "document_templates",
     "organizations",
+    "meetings",
     "authorization",
 ]
 
@@ -112,11 +134,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-TESTING = "test" in sys.argv
-
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
 
-if not TESTING and DB_ENGINE in ("postgresql", "postgres"):
+if DB_ENGINE in ("postgresql", "postgres"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -134,6 +154,9 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+if "test" in sys.argv and DB_ENGINE not in ("postgresql", "postgres"):
+    raise RuntimeError("Test chạy trên PostgreSQL: đặt DB_ENGINE=postgresql và các biến DB_*.")
 
 
 # Password validation
@@ -170,25 +193,51 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Media files (File uploads)
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR.parent / "media"
+# Server đặt DJANGO_MEDIA_ROOT ra thư mục dùng chung để file không nằm trong thư mục release.
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT") or BASE_DIR.parent / "media")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# Email (Django 6.1 MAILERS)
+# Keep console delivery until an SMTP host is explicitly configured.
+email_host = os.getenv("EMAIL_HOST", "").strip()
+email_port = int(os.getenv("EMAIL_PORT") or "587")
+email_use_tls = os.getenv("EMAIL_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "on"}
+email_host_user = os.getenv("EMAIL_HOST_USER", "").strip()
+email_host_password = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip()
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
-}
+BRAND_NAME = os.getenv("BRAND_NAME", "Bảo Long Insurance").strip()
+ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME", BRAND_NAME).strip()
+
+if email_host:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "OPTIONS": {
+                "host": email_host,
+                "port": email_port,
+                "use_tls": email_use_tls,
+                "username": email_host_user,
+                "password": email_host_password,
+                "timeout": 10,
+            },
+        },
+    }
+else:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        },
+    }
 
 # CORS Configuration (Cho phép Frontend kết nối API)
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:\d+$",
