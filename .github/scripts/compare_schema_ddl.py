@@ -1,13 +1,16 @@
 """So schema PostgreSQL tạo bằng Django migration với schema dựng từ release_DDL.sql.
 
-So theo catalog (bảng, cột, kiểu, NULL, DEFAULT, constraint, index, ENUM, VIEW), không so văn bản
-pg_dump, và bỏ qua các khác biệt do Django luôn sinh ra mà không phải lệch nghiệp vụ:
+So theo catalog (bảng, cột, kiểu, NULL, DEFAULT, constraint, index, ENUM, function, trigger, VIEW gồm
+nội dung, dữ liệu seed), không so văn bản pg_dump, và bỏ qua các khác biệt do Django luôn sinh ra mà không phải lệch nghiệp vụ:
 - tên constraint/index do Django tự đặt (so theo nội dung, không so theo tên);
 - FK của Django luôn DEFERRABLE INITIALLY DEFERRED; ON DELETE RESTRICT/NO ACTION được Django
   xử lý ở tầng ứng dụng (on_delete=PROTECT/RESTRICT);
 - index *_like (varchar_pattern_ops) Django tự thêm cho cột varchar có index/unique;
 - index thường thừa (Django tự tạo index cho cột FK) không làm sai dữ liệu; index UNIQUE thừa vẫn báo;
-- bảng của framework: django_*, token_blacklist_*.
+- bảng của framework: django_*, token_blacklist_*;
+- dữ liệu seed: bảng nào có dòng trong DB DDL thì so tập dòng (đa tập, không phụ thuộc thứ tự) trên các cột
+  chung, bỏ cột tự sinh (nextval/identity) và cột có DEFAULT không xác định (now(), CURRENT_TIMESTAMP,
+  gen_random_uuid()); mỗi bảng một dòng lệch tổng hợp số dòng thiếu/thừa.
 
 Các lệch đã biết, đang chờ nhóm phụ trách sửa, ghi trong file baseline (mỗi dòng một lệch,
 dòng bắt đầu bằng # là chú thích). Job fail khi:
@@ -20,8 +23,10 @@ Kết nối lấy từ POSTGRES_HOST/PORT/USER/PASSWORD.
 import os
 import re
 import sys
+from collections import Counter
 
 import psycopg
+from psycopg import sql
 
 FRAMEWORK_TABLE_PREFIXES = ("django_", "token_blacklist_")
 
@@ -41,6 +46,10 @@ def norm(sql):
         return None
     sql = re.sub(r"::[a-z_ ]+(\[\])?", "", sql)
     return re.sub(r"\s+", " ", sql).strip()
+
+
+def norm_ws(text):
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def norm_check(definition):
@@ -101,14 +110,66 @@ def snapshot(db):
             "FROM pg_type t JOIN pg_enum e ON e.enumtypid = t.oid GROUP BY t.typname"
         )
         enums = dict(cur.fetchall())
-        cur.execute("SELECT table_name FROM information_schema.views WHERE table_schema = 'public'")
-        views = {row[0] for row in cur.fetchall()}
-    return tables, enums, views
+        cur.execute(
+            "SELECT v.viewname, pg_get_viewdef(c.oid, true), c.reloptions "
+            "FROM pg_views v JOIN pg_class c ON c.relname = v.viewname AND c.relnamespace = 'public'::regnamespace "
+            "WHERE v.schemaname = 'public'"
+        )
+        views = {name: f"{norm_ws(definition)} options={sorted(options or [])}" for name, definition, options in cur.fetchall()}
+        cur.execute(
+            "SELECT p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', pg_get_functiondef(p.oid) "
+            "FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.prokind IN ('f', 'p') "
+            "AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')"
+        )
+        functions = {name: norm_ws(definition) for name, definition in cur.fetchall()}
+        cur.execute(
+            "SELECT c.relname || '.' || t.tgname, pg_get_triggerdef(t.oid) "
+            "FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid "
+            "WHERE c.relnamespace = 'public'::regnamespace AND NOT t.tgisinternal"
+        )
+        triggers = {name: norm_ws(definition) for name, definition in cur.fetchall()}
+    return tables, enums, views, functions, triggers
+
+
+VOLATILE_DEFAULT = re.compile(r"nextval\(|now\(\)|current_timestamp|current_date|gen_random_uuid|uuid_generate", re.I)
+
+
+def seed_rows(cur, table, columns):
+    cur.execute(
+        sql.SQL("SELECT ROW({})::text FROM {}").format(
+            sql.SQL(", ").join(sql.Identifier(c) for c in columns), sql.Identifier(table)
+        )
+    )
+    return Counter(row[0] for row in cur.fetchall())
+
+
+def seed_drift(migration_db, ddl_db, mig_tables, ddl_tables):
+    """So đa tập dòng của bảng có dữ liệu trong DB DDL, trên cột chung và xác định."""
+    found = []
+    with connect(migration_db) as mig_conn, connect(ddl_db) as ddl_conn:
+        mig_cur, ddl_cur = mig_conn.cursor(), ddl_conn.cursor()
+        for table in sorted(set(mig_tables) & set(ddl_tables)):
+            if table.startswith(FRAMEWORK_TABLE_PREFIXES):
+                continue
+            ddl_cur.execute(sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table)))
+            if ddl_cur.fetchone()[0] == 0:
+                continue
+            mig_cols, ddl_cols = mig_tables[table][0], ddl_tables[table][0]
+            keep = sorted(
+                c for c in set(mig_cols) & set(ddl_cols)
+                if "<tự tăng>" not in ddl_cols[c] and not VOLATILE_DEFAULT.search(ddl_cols[c])
+                and not VOLATILE_DEFAULT.search(mig_cols[c])
+            )
+            expected, actual = seed_rows(ddl_cur, table, keep), seed_rows(mig_cur, table, keep)
+            missing, extra = sum((expected - actual).values()), sum((actual - expected).values())
+            if missing or extra:
+                found.append(f"SEED {table}: DDL {sum(expected.values())} dòng, migration thiếu {missing}, thừa {extra}")
+    return found
 
 
 def drift(migration_db, ddl_db):
-    mig_tables, mig_enums, mig_views = snapshot(migration_db)
-    ddl_tables, ddl_enums, ddl_views = snapshot(ddl_db)
+    mig_tables, mig_enums, mig_views, mig_funcs, mig_trigs = snapshot(migration_db)
+    ddl_tables, ddl_enums, ddl_views, ddl_funcs, ddl_trigs = snapshot(ddl_db)
     found = []
     for table in sorted(set(mig_tables) | set(ddl_tables)):
         if table not in mig_tables:
@@ -144,8 +205,22 @@ def drift(migration_db, ddl_db):
             found.append(f"ENUM {enum}: không có trong DDL")
         elif mig_enums[enum] != ddl_enums[enum]:
             found.append(f"ENUM {enum}: migration ({mig_enums[enum]}) | DDL ({ddl_enums[enum]})")
-    for view in sorted(ddl_views - mig_views):
-        found.append(f"VIEW {view}: thiếu")
+    for view in sorted(set(mig_views) | set(ddl_views)):
+        if view not in mig_views:
+            found.append(f"VIEW {view}: thiếu")
+        elif view not in ddl_views:
+            found.append(f"VIEW {view}: không có trong DDL")
+        elif mig_views[view] != ddl_views[view]:
+            found.append(f"VIEW {view}: khác định nghĩa so với DDL")
+    for label, mig, ddl in (("FUNCTION", mig_funcs, ddl_funcs), ("TRIGGER", mig_trigs, ddl_trigs)):
+        for name in sorted(set(mig) | set(ddl)):
+            if name not in mig:
+                found.append(f"{label} {name}: thiếu")
+            elif name not in ddl:
+                found.append(f"{label} {name}: không có trong DDL")
+            elif mig[name] != ddl[name]:
+                found.append(f"{label} {name}: khác định nghĩa so với DDL")
+    found.extend(seed_drift(migration_db, ddl_db, mig_tables, ddl_tables))
     return found
 
 
