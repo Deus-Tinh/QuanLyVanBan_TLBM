@@ -94,20 +94,22 @@ Các bước (log `/srv/qlvb/deploy.log`, khóa `flock` ở `/srv/qlvb/.deploy.l
 3. Nạp `/etc/qlvb/backend.env`, `manage.py check`, `collectstatic`.
 4. `/srv/qlvb/tools/backup.sh`; đọc dòng cuối `backups/backup.log` (chứa ` OK `, trường thứ 3 là tên file dump).
 5. Cơ sở dữ liệu theo `DB_MODE` (xem dưới).
-6. Chuyển symlink `current`, `systemctl restart qlvb-backend`.
-7. Kiểm tra `http://127.0.0.1:8001/api/auth/profile/` trả 401 và service active (15 lần × 2 giây). Thất bại thì chuyển symlink về release cũ và restart.
+6. Chuyển symlink `current`, `systemctl restart qlvb-backend`. Restart lỗi thì rollback (xem dưới).
+7. Kiểm tra `http://127.0.0.1:8001/api/auth/profile/` trả 401 và service active (15 lần × 2 giây). Thất bại thì rollback.
 8. Giữ 5 release mới nhất, không xóa release đang chạy và release trước đó.
 
 Lỗi trước bước 6: release dở bị xóa, symlink `current` không đổi. Log in bản đang chạy và đường dẫn dump.
+
+Rollback (hàm dùng chung cho restart lỗi ở bước 6 và kiểm tra thất bại ở bước 7): chuyển `current` về release trước, `systemctl restart qlvb-backend`, in cảnh báo về DB (`rebuild`: DB đã dựng lại nên không khôi phục được bằng rollback, xem "Khôi phục từ dump"; `sync`: DB có thể mới hơn code cũ) và đường dẫn dump. Release mới được giữ lại để điều tra. Nếu restart trong rollback cũng lỗi, script in "service đang dừng / không chạy, xử lý thủ công" và thoát mã khác 0.
 
 ### `DB_MODE`
 
 | | `sync` (mặc định) | `rebuild` (chỉ staging) |
 |---|---|---|
 | Dùng cho | DB có dữ liệu thật (production sau này) | DB staging, dữ liệu thử nghiệm |
-| Bước 5 | Kiểm dấu hoàn tất của DB khớp hash `release_DDL.sql` của release trước tiên (lệch thì dừng). Sau đó: nếu `migrate --check` sạch thì bỏ qua; nếu có migration chờ: restore dump vào DB tạm ICU `vi-VN`, chép dấu hoàn tất sang DB tạm, chạy `build_db.py --sync` trên DB tạm; đạt thì chạy `--sync` trên DB thật | Dừng service (nếu có quyền), `dropdb --if-exists --force`, `createdb` ICU `vi-VN` owner là role ứng dụng, `build_db.py --seed`; kiểm collation `i\|vi-VN`, dấu hoàn tất khớp hash DDL kèm `seed=1`, không còn migration chờ |
+| Bước 5 | Kiểm dấu hoàn tất của DB khớp hash `release_DDL.sql` của release trước tiên (lệch thì dừng). Sau đó: nếu `migrate --check` sạch thì bỏ qua; nếu có migration chờ: restore dump vào DB tạm ICU `vi-VN`, chép dấu hoàn tất sang DB tạm, chạy `build_db.py --sync` trên DB tạm; đạt thì chạy `--sync` trên DB thật | Dừng service (bắt buộc; `stop` lỗi thì dừng deploy trước khi xóa DB), `dropdb --if-exists --force`, `createdb` ICU `vi-VN` owner là role ứng dụng, `build_db.py --seed`; kiểm collation `i\|vi-VN`, dấu hoàn tất khớp hash DDL kèm `seed=1`, không còn migration chờ |
 | Dấu không khớp hash DDL (kể cả khi không có migration mới) | Dừng, không đổi DB, không switch; staging dùng `rebuild`, production cần quy trình nâng cấp riêng | Không áp dụng |
-| Lỗi | Release dở bị xóa, DB thật chưa đổi | Release dở bị xóa; DB đã bị dựng lại nên chuyển symlink về release cũ không khôi phục được DB; service giữ trạng thái dừng nếu `stop` chạy được |
+| Lỗi | Release dở bị xóa, DB thật chưa đổi | Release dở bị xóa; DB đã bị dựng lại nên chuyển symlink về release cũ không khôi phục được DB; service giữ trạng thái dừng; `stop` lỗi thì DB và service giữ nguyên |
 
 `sync` giữ nguyên bước thử trên bản khôi phục của quy trình cũ. `pg_dump -Fc` không mang `COMMENT ON DATABASE` nên script đọc dấu hoàn tất từ DB thật và đặt lại cho DB tạm (`--sync` yêu cầu dấu khớp).
 
@@ -117,13 +119,13 @@ Lỗi trước bước 6: release dở bị xóa, symlink `current` không đổ
 
 - User deploy là user chạy script, có quyền ghi `/srv/qlvb` và `~/deploy`, có role PostgreSQL cùng tên (kết nối qua socket `/var/run/postgresql`, peer) để restore vào DB tạm, và `python3` (3.12) kèm `venv`.
 - Quyền `sudo` không mật khẩu đã dùng: `sudo -n -u postgres /usr/bin/createdb`, `sudo -n -u postgres /usr/bin/dropdb`, `sudo -n /usr/bin/systemctl restart qlvb-backend`.
-- Thêm cho `DB_MODE=rebuild` để dừng service trước khi xóa DB (nên có):
+- Bắt buộc cho `DB_MODE=rebuild` (dừng service trước khi xóa DB):
 
 ```
 <user deploy> ALL=(root) NOPASSWD: /usr/bin/systemctl stop qlvb-backend
 ```
 
-  Thiếu quyền này, script in cảnh báo và vẫn chạy: service tiếp tục chạy trong lúc `dropdb --force` cắt kết nối và DB được dựng lại, request trong khoảng đó có thể lỗi. Nếu deploy lỗi, service vẫn chạy trên DB có thể hỏng và cần dừng thủ công.
+  Thiếu rule này, `rebuild` dừng ở bước 5 trước `dropdb`: DB và service giữ nguyên, release mới bị dọn. Lần deploy đầu bằng CI sẽ dừng ở đây nếu chưa thêm rule.
 - Role ứng dụng (`DB_USER`) là owner DB, không cần `CREATEDB` hay superuser. Cluster hỗ trợ ICU và locale `C.UTF-8`.
 - `/etc/qlvb/backend.env` đọc được bởi user deploy (script `source` file này), có `DB_ENGINE=postgresql`, `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT`, `DB_PASSWORD`, `DJANGO_SECRET_KEY`.
 - `/srv/qlvb/tools/backup.sh` ghi dòng kết quả vào `/srv/qlvb/backups/backup.log` theo hợp đồng ở bước 4.

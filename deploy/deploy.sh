@@ -33,7 +33,7 @@ step() { echo; echo "[$(date -u +%H:%M:%S)] $*"; }
 exec 9>"$BASE/.deploy.lock"
 flock -n 9 || { echo "Dang co deploy khac chay."; exit 1; }
 
-CREATED=0; SWITCHED=0; TMPDB=""; PREV=""; DUMP=""; DB_REBUILT=0; STOPPED=0
+CREATED=0; SWITCHED=0; TMPDB=""; PREV=""; DUMP=""; DB_REBUILT=0
 cleanup() {
   rc=$?
   if [ -n "$TMPDB" ]; then sudo -n -u postgres /usr/bin/dropdb --if-exists "$TMPDB" >/dev/null 2>&1 || true; fi
@@ -44,11 +44,7 @@ cleanup() {
     fi
     if [ $DB_REBUILT -eq 1 ]; then
       echo "DB da bi xoa va dung lai (DB_MODE=rebuild); quay lai release cu KHONG khoi phuc duoc DB."
-      if [ $STOPPED -eq 1 ]; then
-        echo "Service $SERVICE dang DUNG de khong chay tren DB hong."
-      else
-        echo "CANH BAO: khong dung duoc $SERVICE (thieu quyen sudo), service van chay tren DB co the hong. Dung thu cong."
-      fi
+      echo "Service $SERVICE dang DUNG (da stop truoc khi xoa DB) de khong chay tren DB hong."
       echo "Khoi phuc DB tu backup: xem muc 'Khoi phuc tu dump' trong docs/common/database/build_db_runbook.md"
     fi
     echo "Ban dang chay: $(readlink -f "$BASE/current")"
@@ -56,6 +52,27 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+# Tra symlink ve ban cu va restart; dung chung cho restart loi (bat buoc 6) va healthcheck that bai (buoc 7).
+rollback() {
+  echo "Quay lai $PREV"
+  if [ ! -d "$PREV" ]; then
+    echo "Khong co release truoc de quay lai; khong doi symlink. Xu ly thu cong."
+    return 0
+  fi
+  ln -sfn "$PREV" "$BASE/current"
+  if sudo -n /usr/bin/systemctl restart "$SERVICE"; then
+    echo "Da quay lai $PREV va restart $SERVICE."
+  else
+    echo "CANH BAO: restart $SERVICE tren ban cu cung LOI: service dang dung / khong chay, xu ly thu cong."
+  fi
+  if [ $DB_REBUILT -eq 1 ]; then
+    echo "DB da duoc dung lai theo DDL moi nen code cu co the khong chay duoc tren DB nay; quay lai khong khoi phuc DB."
+  else
+    echo "Neu migration da chay thi DB co the moi hon code cu."
+  fi
+  echo "Backup truoc deploy: $DUMP"
+}
 
 step "1/8 Kiem tra dau vao ($NAME, DB_MODE=$DB_MODE)"
 [ -f "$TAR" ] || { echo "Thieu file $TAR"; exit 1; }
@@ -101,11 +118,8 @@ if [ "$DB_MODE" = rebuild ]; then
     || { echo "DB_NAME/DB_USER trong $ENVF khong hop le"; exit 1; }
   test -s "$DUMP" && [ "$(pg_restore -l "$DUMP" | grep -vc '^;')" -gt 0 ] \
     || { echo "Dump khong doc duoc danh muc: $DUMP"; exit 1; }
-  if sudo -n /usr/bin/systemctl stop "$SERVICE"; then
-    STOPPED=1
-  else
-    echo "CANH BAO: khong co quyen sudo systemctl stop; $SERVICE van chay, dropdb --force se cat ket noi."
-  fi
+  # Bat buoc dung service truoc khi xoa DB; loi thi dung deploy, DB va service giu nguyen.
+  sudo -n /usr/bin/systemctl stop "$SERVICE"     || { echo "Khong dung duoc $SERVICE (thieu quyen sudo systemctl stop?). Chua xoa DB; DB va service giu nguyen."; exit 1; }
   DB_REBUILT=1
   sudo -n -u postgres /usr/bin/dropdb --if-exists --force "$DB_NAME"
   sudo -n -u postgres /usr/bin/createdb -O "$DB_USER" "${ICU_CREATE[@]}" "$DB_NAME"
@@ -151,7 +165,11 @@ fi
 
 step "6/8 Chuyen release va restart"
 ln -sfn "$REL" "$BASE/current"; SWITCHED=1
-sudo -n /usr/bin/systemctl restart "$SERVICE"
+if ! sudo -n /usr/bin/systemctl restart "$SERVICE"; then
+  echo "Restart $SERVICE THAT BAI sau khi chuyen release."
+  rollback
+  exit 1
+fi
 
 step "7/8 Kiem tra sau deploy"
 ok=0; code=000
@@ -161,15 +179,8 @@ for _ in $(seq 1 15); do
   if [ "$code" = 401 ] && systemctl is-active --quiet "$SERVICE"; then ok=1; break; fi
 done
 if [ $ok -ne 1 ]; then
-  echo "Kiem tra THAT BAI (http=$code). Quay lai $PREV"
-  ln -sfn "$PREV" "$BASE/current"
-  sudo -n /usr/bin/systemctl restart "$SERVICE"
-  if [ $DB_REBUILT -eq 1 ]; then
-    echo "DB da duoc dung lai theo DDL moi nen code cu co the khong chay duoc tren DB nay; quay lai khong khoi phuc DB."
-  else
-    echo "Neu migration da chay thi DB co the moi hon code cu."
-  fi
-  echo "Backup truoc deploy: $DUMP"
+  echo "Kiem tra THAT BAI (http=$code)."
+  rollback
   exit 1
 fi
 echo "API tra 401 JSON dung ky vong, service active."
