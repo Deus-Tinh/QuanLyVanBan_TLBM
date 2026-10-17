@@ -625,7 +625,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                 <table className="w-full text-left text-xs border-collapse min-w-full">
                   <thead className="bg-surface-elevated font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
                     <tr>
-                      <th className="px-2 sm:px-3 py-3 w-10 sm:w-16 text-center">{t('resourceManagement.colOrder')}</th>
+                      <th className="hidden sm:table-cell px-2 sm:px-3 py-3 w-16 text-center">{t('resourceManagement.colOrder')}</th>
                       <th className="hidden sm:table-cell px-3 py-3 w-24 sm:w-28">{t('resourceManagement.colCatCode')}</th>
                       <th className="px-3 sm:px-4 py-3 min-w-[140px] sm:min-w-[200px]">{t('resourceManagement.colCatName')}</th>
                       <th className="hidden md:table-cell px-3 py-3 w-28 sm:w-32">{t('resourceManagement.colCatDate')}</th>
@@ -648,29 +648,38 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         const childCount = types.filter((t) => t.dm_tai_lieu === cat.id).length;
                         return (
                           <tr key={cat.id} className="hover:bg-surface-elevated/70 transition-colors">
-                            <td className="px-2 sm:px-3 py-3 text-center font-bold text-primary font-mono text-xs">
+                            <td className="hidden sm:table-cell px-2 sm:px-3 py-3 text-center font-bold text-primary font-mono text-xs">
                               {cat.stt_uu_tien}
                             </td>
                             <td className="hidden sm:table-cell px-3 py-3 font-mono font-medium text-secondary">
                               {cat.ky_hieu || '-'}
                             </td>
-                            <td className="px-3 sm:px-4 py-3">
-                              <span className="font-semibold text-main block">{cat.ten_tai_lieu}</span>
-                              <div className="flex items-center gap-1.5 flex-wrap sm:hidden mt-1">
-                                {cat.ky_hieu && (
-                                  <span className="font-mono text-[10px] text-muted">
-                                    [{cat.ky_hieu}]
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3">
+                              <div className="flex items-start gap-2">
+                                <div className="mt-0.5 shrink-0 text-primary/75">
+                                  <i className="fa-solid fa-folder text-sm" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-semibold text-main text-xs sm:text-sm block leading-snug">
+                                    {cat.ten_tai_lieu}
                                   </span>
-                                )}
-                                <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-surface-elevated text-secondary border border-border-subtle">
-                                  {childCount} loại
-                                </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap sm:hidden mt-1 text-[11px]">
+                                    {cat.ky_hieu && (
+                                      <span className="font-mono text-[10px] text-muted bg-surface-elevated px-1.5 py-0.5 rounded border border-border-subtle shrink-0">
+                                        {cat.ky_hieu}
+                                      </span>
+                                    )}
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20 shrink-0">
+                                      {childCount} loại
+                                    </span>
+                                  </div>
+                                  {cat.ghi_chu && (
+                                    <p className="text-[11px] text-muted line-clamp-1 mt-0.5 leading-tight font-normal">
+                                      {cat.ghi_chu}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                              {cat.ghi_chu && (
-                                <span className="text-[11px] text-muted truncate block max-w-sm mt-0.5">
-                                  {cat.ghi_chu}
-                                </span>
-                              )}
                             </td>
                             <td className="hidden md:table-cell px-3 py-3 text-secondary">{cat.ngay_lap || '-'}</td>
                             <td className="hidden sm:table-cell px-3 py-3 text-center">
@@ -679,7 +688,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                               </span>
                             </td>
                             <td
-                              className="px-2 sm:px-3 py-3 text-center whitespace-nowrap"
+                              className="px-2 sm:px-3 py-2.5 sm:py-3 text-center whitespace-nowrap align-middle"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
@@ -797,29 +806,46 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             key={t.id}
                             className="hover:bg-surface-elevated/70 transition-colors"
                           >
-                            <td className="px-3 sm:px-4 py-3 font-semibold text-main">
-                              <span className="flex items-center gap-1.5 flex-wrap">
-                                <i
-                                  className={`fa-solid ${
-                                    t.is_public ? 'fa-tag text-primary/70' : 'fa-lock text-amber-500'
-                                  } text-[11px] shrink-0`}
-                                />
-                                <span>{t.ten_loai}</span>
-                                <span className="sm:hidden">
-                                  {t.is_public ? (
-                                    <Badge variant="success" size="sm">
-                                      Công khai
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="warning" size="sm">
-                                      Nội bộ
-                                    </Badge>
+                            <td className="px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-main">
+                              <div className="flex items-start gap-2">
+                                <div className="mt-0.5 shrink-0">
+                                  <i
+                                    className={`fa-solid ${
+                                      t.is_public ? 'fa-tag text-primary/75' : 'fa-lock text-amber-500'
+                                    } text-xs`}
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs sm:text-sm font-semibold text-main block leading-snug">
+                                    {t.ten_loai}
+                                  </span>
+
+                                  {/* Sub-line tinh gọn trên Mobile: Thư mục cha + Badge phạm vi */}
+                                  <div className="flex items-center gap-2 mt-1 sm:hidden flex-wrap text-[11px]">
+                                    <span className="text-secondary inline-flex items-center gap-1 truncate max-w-[170px]">
+                                      <i className="fa-solid fa-folder text-[10px] text-primary/60 shrink-0" />
+                                      <span className="truncate">{parentCat?.ten_tai_lieu || `Thư mục #${t.dm_tai_lieu}`}</span>
+                                    </span>
+                                    {t.is_public ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-full border border-emerald-500/20 shrink-0">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                        Công khai
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded-full border border-amber-500/20 shrink-0">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                        Nội bộ
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Ghi chú trên mobile nếu có */}
+                                  {t.ghi_chu && (
+                                    <p className="sm:hidden text-[11px] text-muted line-clamp-1 mt-0.5 leading-tight font-normal">
+                                      {t.ghi_chu}
+                                    </p>
                                   )}
-                                </span>
-                              </span>
-                              <div className="sm:hidden text-[11px] text-muted flex items-center gap-1 mt-1 truncate">
-                                <i className="fa-solid fa-folder text-[10px] text-primary/70 shrink-0" />
-                                <span className="truncate">{parentCat?.ten_tai_lieu || `Thư mục #${t.dm_tai_lieu}`}</span>
+                                </div>
                               </div>
                             </td>
                             <td className="hidden sm:table-cell px-3 py-3 text-secondary font-medium">
@@ -838,7 +864,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             </td>
                             <td className="hidden md:table-cell px-3 py-3 text-muted">{t.ghi_chu || '-'}</td>
                             <td
-                              className="px-2 sm:px-3 py-3 text-center whitespace-nowrap"
+                              className="px-2 sm:px-3 py-2.5 sm:py-3 text-center whitespace-nowrap align-middle"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <button
