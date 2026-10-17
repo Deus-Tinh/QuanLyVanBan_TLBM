@@ -240,7 +240,6 @@ class Employee(AbstractBaseUser, PermissionsMixin):
         import os
         if self.username in {"admin", "vanthu", "chuyenvien", "truongphong", "giamdoc"}:
             demo_passwords = {
-                self.username,
                 os.getenv("DEMO_PASSWORD", ""),
                 os.getenv("SIGNING_DEMO_PASSWORD", ""),
             }
