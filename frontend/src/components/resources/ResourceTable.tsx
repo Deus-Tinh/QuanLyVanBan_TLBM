@@ -313,9 +313,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     | { type: 'page'; num: number }
     | { type: 'ellipsis'; direction: 'prev' | 'next'; targetPage: number };
 
-  // Danh sách phần tử phân trang thông minh: rút gọn chỉ hiện 3 số (ví dụ 1 2 3 ... 9 hoặc 1 ... 7 8 9)
+  // Danh sách phần tử phân trang: rút gọn chỉ hiện 2 số ở đầu/cuối (ví dụ: 1 2 ... 6 hoặc 1 ... 5 6)
   const getPageElements = (): PageItem[] => {
-    if (totalPages <= 5) {
+    if (totalPages <= 4) {
       return Array.from({ length: totalPages }, (_, i) => ({
         type: 'page',
         num: i + 1,
@@ -325,51 +325,49 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     const items: PageItem[] = [];
 
     if (currentPage <= 2) {
-      // Đang ở gần đầu: chỉ hiện 3 số đầu 1, 2, 3 ... totalPages
-      for (let i = 1; i <= 3; i++) {
-        items.push({ type: 'page', num: i });
-      }
+      // Đang ở gần đầu: 1 2 ... totalPages (Ví dụ: 1 2 ... 6)
+      items.push({ type: 'page', num: 1 });
+      items.push({ type: 'page', num: 2 });
       items.push({
         type: 'ellipsis',
         direction: 'next',
-        targetPage: Math.min(totalPages, currentPage + 3),
+        targetPage: Math.min(totalPages, currentPage + 2),
       });
       items.push({ type: 'page', num: totalPages });
     } else if (currentPage >= totalPages - 1) {
-      // Đang ở gần cuối: 1 ... (totalPages-2) (totalPages-1) totalPages
+      // Đang ở gần cuối: 1 ... (totalPages-1) totalPages (Ví dụ: 1 ... 5 6)
       items.push({ type: 'page', num: 1 });
       items.push({
         type: 'ellipsis',
         direction: 'prev',
-        targetPage: Math.max(1, currentPage - 3),
+        targetPage: Math.max(1, currentPage - 2),
       });
-      for (let i = totalPages - 2; i <= totalPages; i++) {
-        items.push({ type: 'page', num: i });
-      }
+      items.push({ type: 'page', num: totalPages - 1 });
+      items.push({ type: 'page', num: totalPages });
     } else {
-      // Đang ở giữa: 1 ... (currentPage-1) (currentPage) (currentPage+1) ... totalPages
+      // Đang ở giữa: 1 ... currentPage ... totalPages
       items.push({ type: 'page', num: 1 });
 
       if (currentPage - 1 > 2) {
         items.push({
           type: 'ellipsis',
           direction: 'prev',
-          targetPage: Math.max(1, currentPage - 3),
+          targetPage: Math.max(1, currentPage - 2),
         });
+      } else {
+        items.push({ type: 'page', num: 2 });
       }
 
-      // Nếu currentPage === 3 thì currentPage - 1 là 2 (liền kề 1, không cần ellipsis)
-      items.push({ type: 'page', num: currentPage - 1 });
       items.push({ type: 'page', num: currentPage });
-      items.push({ type: 'page', num: currentPage + 1 });
 
-      // Nếu currentPage === totalPages - 2 thì currentPage + 1 là totalPages - 1 (liền kề totalPages, không cần ellipsis)
       if (currentPage + 1 < totalPages - 1) {
         items.push({
           type: 'ellipsis',
           direction: 'next',
-          targetPage: Math.min(totalPages, currentPage + 3),
+          targetPage: Math.min(totalPages, currentPage + 2),
         });
+      } else {
+        items.push({ type: 'page', num: totalPages - 1 });
       }
 
       items.push({ type: 'page', num: totalPages });
@@ -724,19 +722,17 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         {totalPages > 1 && (
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center select-none">
             <div className="flex items-center gap-1">
-              {/* Nút về trang đầu (hiện khi có từ 6 trang trở lên) */}
-              {totalPages > 5 && (
-                <button
-                  type="button"
-                  disabled={currentPage <= 1 || isLoading}
-                  onClick={() => handlePageChange(1)}
-                  className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-                  title="Về trang đầu (Trang 1)"
-                  aria-label="Về trang đầu"
-                >
-                  <i className="fa-solid fa-angles-left text-[11px]" />
-                </button>
-              )}
+              {/* Nút về trang đầu */}
+              <button
+                type="button"
+                disabled={currentPage <= 1 || isLoading}
+                onClick={() => handlePageChange(1)}
+                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                title="Về trang đầu (Trang 1)"
+                aria-label="Về trang đầu"
+              >
+                <i className="fa-solid fa-angles-left text-[11px]" />
+              </button>
 
               {/* Nút lùi 1 trang */}
               <button
@@ -762,10 +758,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       className="group min-w-[32px] h-8 px-1 text-xs font-medium rounded-lg border border-transparent hover:border-border-subtle hover:bg-surface-elevated text-muted hover:text-primary transition-all cursor-pointer flex items-center justify-center"
                       title={
                         item.direction === 'prev'
-                          ? `Lùi 3 trang (Về trang ${item.targetPage})`
-                          : `Tiến 3 trang (Đến trang ${item.targetPage})`
+                          ? `Lùi 2 trang (Về trang ${item.targetPage})`
+                          : `Tiến 2 trang (Đến trang ${item.targetPage})`
                       }
-                      aria-label={item.direction === 'prev' ? 'Lùi 3 trang' : 'Tiến 3 trang'}
+                      aria-label={item.direction === 'prev' ? 'Lùi 2 trang' : 'Tiến 2 trang'}
                     >
                       <span className="group-hover:hidden tracking-widest text-[11px] font-bold">•••</span>
                       <i
@@ -809,45 +805,44 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                 <i className="fa-solid fa-chevron-right text-[11px]" />
               </button>
 
-              {/* Nút đến trang cuối (hiện khi có từ 6 trang trở lên) */}
-              {totalPages > 5 && (
-                <button
-                  type="button"
-                  disabled={currentPage >= totalPages || isLoading}
-                  onClick={() => handlePageChange(totalPages)}
-                  className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-                  title={`Đến trang cuối (Trang ${totalPages})`}
-                  aria-label="Đến trang cuối"
-                >
-                  <i className="fa-solid fa-angles-right text-[11px]" />
-                </button>
-              )}
+              {/* Nút đến trang cuối */}
+              <button
+                type="button"
+                disabled={currentPage >= totalPages || isLoading}
+                onClick={() => handlePageChange(totalPages)}
+                className="min-w-[32px] h-8 px-2 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+                title={`Đến trang cuối (Trang ${totalPages})`}
+                aria-label="Đến trang cuối"
+              >
+                <i className="fa-solid fa-angles-right text-[11px]" />
+              </button>
             </div>
 
-            {/* Ô nhảy nhanh đến trang (Hiện khi có nhiều trang: > 5 trang) */}
-            {totalPages > 5 && (
+            {/* Ô nhảy nhanh đến trang (Hiện khi có từ 5 trang trở lên) */}
+            {totalPages > 4 && (
               <form
                 onSubmit={handleJumpPage}
                 className="flex items-center gap-1.5 pl-2 sm:border-l sm:border-border-subtle text-secondary"
               >
-                <span className="text-[11px]">Đến trang</span>
+                <span className="text-[11px] whitespace-nowrap">Đến trang</span>
                 <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={jumpPageInput}
-                  onChange={(e) => setJumpPageInput(e.target.value)}
+                  onChange={(e) => setJumpPageInput(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleJumpPage();
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
                   placeholder={String(currentPage)}
-                  className="w-12 h-8 px-1.5 text-center bg-surface-elevated border border-border-subtle rounded-lg text-main text-xs focus:outline-hidden focus:border-primary font-medium"
+                  title="Nhập số trang và nhấn Enter"
+                  className="w-12 h-8 px-1.5 text-center bg-surface-elevated border border-border-subtle rounded-lg text-main text-xs focus:outline-hidden focus:border-primary font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   aria-label="Nhập số trang muốn chuyển tới"
                 />
-                <button
-                  type="submit"
-                  className="h-8 px-2.5 rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-xs font-semibold text-primary cursor-pointer hover:border-primary/40 transition-colors"
-                  title="Chuyển đến trang đã nhập"
-                >
-                  Đi
-                </button>
               </form>
             )}
           </div>
