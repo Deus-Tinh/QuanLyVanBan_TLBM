@@ -183,5 +183,5 @@ jobs:
           SSH='ssh -i ~/.ssh/id_ed25519 -p 2150'
           REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
           $SSH "$REMOTE" 'mkdir -p ~/deploy'
-          rsync -az -e "$SSH" "qlvb-$SHA7.tar.gz" deploy/staging/deploy.sh "$REMOTE:deploy/"
-          $SSH "$REMOTE" "bash ~/deploy/deploy.sh $SHA7"
+          rsync -az -e "$SSH" "qlvb-$SHA7.tar.gz" deploy/deploy.sh "$REMOTE:deploy/"
+          $SSH "$REMOTE" "DB_MODE=rebuild bash ~/deploy/deploy.sh $SHA7"
