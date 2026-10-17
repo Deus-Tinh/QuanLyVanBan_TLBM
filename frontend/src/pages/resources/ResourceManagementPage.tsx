@@ -10,6 +10,7 @@ import { ResourceTable } from '@components/resources/ResourceTable';
 import { ResourceDetailModal } from '@components/resources/ResourceDetailModal';
 import { ResourceFormModal, ResourceFormData } from '@components/resources/ResourceFormModal';
 import { CategoryManagementModal } from '@components/resources/CategoryManagementModal';
+import { FolderManagerModal } from '@components/folders/FolderManagerModal';
 import { Button } from '@components/common/Button';
 import { Toast, ToastNotification } from '@components/resources/Toast';
 import { useTranslation } from '@i18n/translate';
@@ -436,6 +437,7 @@ export default function ResourceManagementPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isFolderManagerOpen, setIsFolderManagerOpen] = useState(false);
 
   // Modal Xóa Tài liệu
   const [deleteItem, setDeleteItem] = useState<ResourceItem | null>(null);
@@ -1141,6 +1143,18 @@ export default function ResourceManagementPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+          {/* Nút Cây thư mục nhiều cấp (Hierarchical Folders) */}
+          <Button
+            variant="secondary"
+            size="md"
+            icon="fa-sitemap"
+            onClick={() => setIsFolderManagerOpen(true)}
+            className="h-10 px-4 rounded-xl text-xs sm:text-sm font-bold border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 shadow-2xs hover:border-primary transition-all"
+            title={t('folders.entry.openHint')}
+          >
+            {t('folders.entry.open')}
+          </Button>
+
           {/* Nút Quản lý Danh mục (Thao tác cấu hình phụ) */}
           <Button
             variant="secondary"
@@ -2129,6 +2143,12 @@ export default function ResourceManagementPage() {
         onDeleteCategory={handleDeleteCategory}
         onSaveType={handleSaveType}
         onDeleteType={handleDeleteType}
+      />
+
+      {/* MODAL QUẢN LÝ MÔ HÌNH THƯ MỤC NHIỀU CẤP (NESTED / HIERARCHICAL FOLDERS) */}
+      <FolderManagerModal
+        isOpen={isFolderManagerOpen}
+        onClose={() => setIsFolderManagerOpen(false)}
       />
 
       {/* MODAL XÁC NHẬN XÓA TÀI LIỆU (MỤC 5) */}

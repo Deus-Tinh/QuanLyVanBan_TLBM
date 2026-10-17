@@ -59,19 +59,21 @@ urlpatterns = [
     path("api/birthdays/", include("birthdays.urls", namespace="birthdays")),
 
     # ── Module Nhóm 8 — Trợ lý AI (Chatbox, RAG) ───────────────────────────
+    # Prefix /api/ai/ tách khỏi router của app documents (/api/documents/...).
     # Mọi endpoint yêu cầu đăng nhập; chat cần use_aiassistant, quản trị kho/cài đặt chỉ superuser.
     path("health/ai", ai_views.ai_health),
-    path("api/chat", ai_views.chat),
-    path("api/upload", ai_views.upload_sync),
-    path("api/upload/async", ai_views.upload_async),
-    path("api/upload/progress/<str:job_id>", ai_views.upload_progress),
-    path("api/documents", ai_views.documents),
-    path("api/documents/<path:filename>/preview", ai_views.preview_document),
-    path("api/documents/<path:filename>/file", ai_views.document_file),
-    path("api/documents/<path:filename>", ai_views.document_detail),
-    path("api/categories", ai_views.categories),
-    path("api/reclassify/<path:filename>", ai_views.reclassify),
-    path("api/settings/ai", ai_views.ai_settings),
+    path("api/ai/chat", ai_views.chat),
+    path("api/ai/upload", ai_views.upload_sync),
+    path("api/ai/upload/async", ai_views.upload_async),
+    path("api/ai/upload/progress/<str:job_id>", ai_views.upload_progress),
+    path("api/ai/documents", ai_views.documents),
+    path("api/ai/documents/<path:filename>/preview", ai_views.preview_document),
+    path("api/ai/documents/<path:filename>/file", ai_views.document_file),
+    path("api/ai/documents/<path:filename>/", ai_views.document_detail),
+    path("api/ai/documents/<path:filename>", ai_views.document_detail),
+    path("api/ai/categories", ai_views.categories),
+    path("api/ai/reclassify/<path:filename>", ai_views.reclassify),
+    path("api/ai/settings", ai_views.ai_settings),
 ]
 
 if settings.DEBUG:

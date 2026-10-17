@@ -12,6 +12,12 @@ Hỗ trợ 2 tầng ViewSets:
 from django.db import models
 from django.db.models import Max, Q
 from django.http import HttpResponse
+import os
+import mimetypes
+from urllib.parse import quote
+from django.conf import settings
+from django.db.models import Q
+from django.http import HttpResponse, FileResponse
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
@@ -42,9 +48,12 @@ from .models import (
     VanBanMatAttachment,
     DocumentViewLog,
     DocumentAccessLog,
+    Folder,
+    FolderFile,
     get_document_model,
     get_attachment_model,
 )
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .selectors import (
     van_ban_xem_duoc,
     la_nguoi_xem_duoc,
@@ -58,6 +67,11 @@ from .serializers import (
     VanBanDenSerializer,
     VanBanDiSerializer,
     VanBanMatSerializer,
+    FolderSerializer,
+    FolderTreeSerializer,
+    FolderBreadcrumbSerializer,
+    FolderMoveSerializer,
+    FolderFileSerializer,
 )
 from .services import (
     check_and_update_expired_documents,
@@ -237,6 +251,7 @@ class DocumentViewSet(viewsets.ViewSet):
     Đảm bảo 100% tương thích ngược với React frontend và các unit tests.
     """
 
+    lookup_value_regex = r"\d+"
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = DocumentPagination
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -652,6 +667,7 @@ class DocumentViewSet(viewsets.ViewSet):
 
 class VanBanDenViewSet(viewsets.ModelViewSet):
     """API ViewSet riêng biệt cho Văn bản Đến."""
+    lookup_value_regex = r"\d+"
     queryset = VanBanDen.objects.select_related("nguoi_tao").prefetch_related("attachments", "nguoi_nhan")
     serializer_class = VanBanDenSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -706,6 +722,7 @@ class VanBanDenViewSet(viewsets.ModelViewSet):
 
 class VanBanDiViewSet(viewsets.ModelViewSet):
     """API ViewSet riêng biệt cho Văn bản Đi."""
+    lookup_value_regex = r"\d+"
     serializer_class = VanBanDiSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = DocumentPagination
@@ -955,3 +972,336 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED if result["created"] > 0 else status.HTTP_400_BAD_REQUEST,
         )
+
+# ═══════════════════════════════════════════════════════════════════
+# Folder & FolderFile ViewSets — Thư mục nhiều cấp
+# ═══════════════════════════════════════════════════════════════════
+
+class FolderViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet quản lý Thư mục nhiều cấp (Nested / Hierarchical Folders).
+    
+    Hỗ trợ các endpoints:
+    - GET    /api/folders/                : Lấy danh sách (hỗ trợ lọc ?parent=root hoặc ?parent=<id>)
+    - POST   /api/folders/                : Tạo thư mục mới (chỉ định parent_id nếu là thư mục con)
+    - GET    /api/folders/<id>/           : Chi tiết thư mục
+    - PUT    /api/folders/<id>/           : Cập nhật thư mục
+    - PATCH  /api/folders/<id>/           : Cập nhật từng phần
+    - DELETE /api/folders/<id>/           : Xóa thư mục (cascade xóa thư mục con và file)
+    - GET    /api/folders/tree/           : Cây thư mục hoàn chỉnh (đệ quy các cấp)
+    - GET    /api/folders/<id>/breadcrumb/: Breadcrumb từ gốc đến thư mục này
+    - GET    /api/folders/<id>/children/  : Danh sách thư mục con trực tiếp
+    - POST   /api/folders/<id>/children/  : Tạo thư mục con bên trong thư mục này
+    - PATCH  /api/folders/<id>/move/      : Di chuyển thư mục (kiểm tra vòng lặp & độ sâu)
+    - GET    /api/folders/<id>/files/     : Danh sách files bên trong thư mục
+    - POST   /api/folders/<id>/files/     : Upload file vào thư mục
+    """
+    queryset = Folder.objects.all().select_related("parent", "created_by").prefetch_related("children", "files")
+    serializer_class = FolderSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        parent_param = self.request.query_params.get("parent")
+        if parent_param is not None:
+            if parent_param.lower() in ("null", "root", "none", "0"):
+                qs = qs.filter(parent__isnull=True)
+            elif parent_param.isdigit():
+                qs = qs.filter(parent_id=int(parent_param))
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user and self.request.user.is_authenticated else None
+        serializer.save(created_by=user)
+
+    @action(detail=False, methods=["get"], url_path="tree")
+    def tree(self, request):
+        """Trả về toàn bộ cây thư mục phân cấp nhiều cấp."""
+        root_id = request.query_params.get("root_id")
+        if root_id and root_id.isdigit():
+            roots = Folder.objects.filter(pk=int(root_id))
+        else:
+            roots = Folder.objects.filter(parent__isnull=True).order_by("order", "name")
+        serializer = FolderTreeSerializer(roots, many=True, context={"request": request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="breadcrumb")
+    def breadcrumb(self, request, pk=None):
+        """Lấy danh sách breadcrumb từ gốc đến thư mục hiện tại."""
+        folder = self.get_object()
+        trail = folder.get_breadcrumb()
+        serializer = FolderBreadcrumbSerializer(trail, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get", "post"], url_path="children")
+    def children(self, request, pk=None):
+        """Lấy danh sách hoặc tạo thư mục con trực tiếp."""
+        folder = self.get_object()
+        if request.method == "POST":
+            data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+            data["parent_id"] = folder.id
+            serializer = FolderSerializer(data=data, context={"request": request})
+            serializer.is_valid(raise_exception=True)
+            user = request.user if request.user and request.user.is_authenticated else None
+            child = serializer.save(created_by=user)
+            return Response(FolderSerializer(child).data, status=status.HTTP_201_CREATED)
+
+        children = folder.children.all().order_by("order", "name")
+        serializer = FolderSerializer(children, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["patch", "post"], url_path="move")
+    def move(self, request, pk=None):
+        """Di chuyển thư mục đến vị trí cha mới với kiểm tra vòng lặp."""
+        folder = self.get_object()
+        serializer = FolderMoveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        target_parent_id = serializer.validated_data.get("target_parent_id")
+        target_parent = None
+        if target_parent_id is not None:
+            try:
+                target_parent = Folder.objects.get(pk=target_parent_id)
+            except Folder.DoesNotExist:
+                return Response(
+                    {"detail": f"Thư mục đích với ID {target_parent_id} không tồn tại."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        try:
+            folder.move_to(target_parent)
+        except DjangoValidationError as exc:
+            messages = exc.messages if hasattr(exc, "messages") else [str(exc)]
+            return Response({"detail": messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(FolderSerializer(folder).data)
+
+    @action(detail=True, methods=["get", "post"], url_path="files")
+    def files(self, request, pk=None):
+        """Lấy hoặc thêm files trong thư mục."""
+        folder = self.get_object()
+        if request.method == "POST":
+            uploaded_file = request.FILES.get("file")
+            file_name = request.data.get("file_name")
+            if uploaded_file and not file_name:
+                file_name = uploaded_file.name
+            if not file_name:
+                return Response(
+                    {"detail": "Tên file (file_name) không được để trống."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            file_size = uploaded_file.size if uploaded_file else int(request.data.get("file_size", 0))
+            file_path = request.data.get("file_path", "")
+            if uploaded_file and not file_path:
+                file_path = f"media/folder_files/{folder.id}/{uploaded_file.name}"
+
+            ext = ""
+            if "." in file_name:
+                ext = file_name.rsplit(".", 1)[-1].lower()
+
+            user = request.user if request.user and request.user.is_authenticated else None
+            item = FolderFile.objects.create(
+                folder=folder,
+                file_name=file_name,
+                file_path=file_path,
+                file_size=file_size,
+                file_type=request.data.get("file_type") or ext,
+                description=request.data.get("description", ""),
+                uploaded_by=user,
+            )
+            return Response(FolderFileSerializer(item).data, status=status.HTTP_201_CREATED)
+
+        files = folder.files.all().order_by("file_name")
+        serializer = FolderFileSerializer(files, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], url_path="scan-local")
+    def scan_local(self, request):
+        """
+        Quét thư mục máy tính (Local Directory) và đồng bộ cấu trúc Folder & FolderFile vào hệ thống
+        mà không cần người dùng upload file lên server.
+        """
+        req_path = request.data.get("folder_path", "").strip()
+        parent_id = request.data.get("parent_id")
+
+        target_parent = None
+        if parent_id:
+            try:
+                target_parent = Folder.objects.get(pk=parent_id)
+            except Folder.DoesNotExist:
+                return Response(
+                    {"detail": f"Thư mục cha với ID {parent_id} không tồn tại."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # Mặc định quét thư mục 'Folder' ở root project nếu không truyền đường dẫn
+        if not req_path:
+            candidate_parent = os.path.join(os.path.dirname(str(settings.BASE_DIR)), "Folder")
+            candidate_base = os.path.join(str(settings.BASE_DIR), "Folder")
+            if os.path.exists(candidate_parent):
+                base_folder = os.path.abspath(candidate_parent)
+            elif os.path.exists(candidate_base):
+                base_folder = os.path.abspath(candidate_base)
+            else:
+                base_folder = os.path.abspath(candidate_parent)
+        else:
+            if not os.path.isabs(req_path):
+                c_parent = os.path.join(os.path.dirname(str(settings.BASE_DIR)), req_path)
+                c_base = os.path.join(str(settings.BASE_DIR), req_path)
+                if os.path.exists(c_parent):
+                    base_folder = os.path.abspath(c_parent)
+                elif os.path.exists(c_base):
+                    base_folder = os.path.abspath(c_base)
+                else:
+                    base_folder = os.path.abspath(req_path)
+            else:
+                base_folder = os.path.abspath(req_path)
+
+        if not os.path.exists(base_folder) or not os.path.isdir(base_folder):
+            return Response(
+                {"detail": f"Đường dẫn thư mục '{base_folder}' không tồn tại hoặc không phải là thư mục."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user if request.user and request.user.is_authenticated else None
+
+        folder_count = 0
+        file_count = 0
+        dir_to_folder = {}
+
+        # Tạo hoặc lấy thư mục gốc cho lần đồng bộ này
+        root_name = os.path.basename(os.path.normpath(base_folder)) or "Folder"
+        root_folder, created = Folder.objects.get_or_create(
+            name=root_name,
+            parent=target_parent,
+            defaults={
+                "is_local": True,
+                "local_path": base_folder,
+                "description": f"Thư mục đồng bộ từ local: {base_folder}",
+                "created_by": user,
+            },
+        )
+        if not created and not root_folder.is_local:
+            root_folder.is_local = True
+            root_folder.local_path = base_folder
+            root_folder.save(update_fields=["is_local", "local_path"])
+
+        dir_to_folder[os.path.normpath(base_folder)] = root_folder
+        folder_count += 1
+
+        for current_root, dir_names, filenames in os.walk(base_folder):
+            curr_norm = os.path.normpath(current_root)
+            parent_folder = dir_to_folder.get(curr_norm, root_folder)
+
+            # Tạo các thư mục con
+            for dir_name in dir_names:
+                sub_path = os.path.normpath(os.path.join(current_root, dir_name))
+                sub_folder, s_created = Folder.objects.get_or_create(
+                    name=dir_name,
+                    parent=parent_folder,
+                    defaults={
+                        "is_local": True,
+                        "local_path": sub_path,
+                        "description": f"Thư mục con local: {dir_name}",
+                        "created_by": user,
+                    },
+                )
+                if not s_created and not sub_folder.is_local:
+                    sub_folder.is_local = True
+                    sub_folder.local_path = sub_path
+                    sub_folder.save(update_fields=["is_local", "local_path"])
+
+                dir_to_folder[sub_path] = sub_folder
+                folder_count += 1
+
+            # Lập chỉ mục các file trong current_root
+            for filename in filenames:
+                file_full_path = os.path.join(current_root, filename)
+                try:
+                    file_size = os.path.getsize(file_full_path)
+                except OSError:
+                    file_size = 0
+
+                ext = ""
+                if "." in filename:
+                    ext = filename.rsplit(".", 1)[-1].lower()
+
+                FolderFile.objects.update_or_create(
+                    folder=parent_folder,
+                    file_name=filename,
+                    defaults={
+                        "file_path": file_full_path,
+                        "file_size": file_size,
+                        "file_type": ext,
+                        "is_local": True,
+                        "description": f"File cục bộ từ: {file_full_path}",
+                        "uploaded_by": user,
+                    },
+                )
+                file_count += 1
+
+        return Response({
+            "status": "success",
+            "message": f"Đồng bộ thành công từ '{base_folder}'! Đã lập chỉ mục {folder_count} thư mục và {file_count} tệp.",
+            "base_folder": base_folder,
+            "root_folder_id": root_folder.id,
+            "folder_count": folder_count,
+            "file_count": file_count,
+        })
+
+
+class FolderFileViewSet(viewsets.ModelViewSet):
+    """ViewSet quản lý file trong thư mục."""
+    queryset = FolderFile.objects.all().select_related("folder", "uploaded_by")
+    serializer_class = FolderFileSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        folder_id = self.request.query_params.get("folder")
+        if folder_id and folder_id.isdigit():
+            qs = qs.filter(folder_id=int(folder_id))
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user and self.request.user.is_authenticated else None
+        serializer.save(uploaded_by=user)
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, pk=None):
+        """Tải hoặc xem nội dung file (hỗ trợ cả file local và file media server)."""
+        file_obj = self.get_object()
+        path = file_obj.file_path
+
+        file_disk_path = None
+        if os.path.isabs(path) and os.path.exists(path):
+            file_disk_path = path
+        else:
+            candidates = [
+                os.path.join(str(settings.BASE_DIR), path),
+                os.path.join(os.path.dirname(str(settings.BASE_DIR)), path),
+                os.path.join(getattr(settings, "MEDIA_ROOT", ""), path),
+            ]
+            for cand in candidates:
+                if cand and os.path.exists(cand):
+                    file_disk_path = cand
+                    break
+
+        if not file_disk_path or not os.path.exists(file_disk_path):
+            return Response(
+                {"detail": f"Không tìm thấy file vật lý trên ổ đĩa ({path})."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        content_type, _ = mimetypes.guess_type(file_disk_path)
+        if not content_type:
+            content_type = "application/octet-stream"
+
+        response = FileResponse(open(file_disk_path, "rb"), content_type=content_type)
+        is_inline = request.query_params.get("inline", "false").lower() in ("true", "1")
+        disposition = "inline" if is_inline else "attachment"
+        encoded_name = quote(file_obj.file_name)
+        response["Content-Disposition"] = f"{disposition}; filename*=UTF-8''{encoded_name}"
+        return response
+

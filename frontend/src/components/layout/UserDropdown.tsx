@@ -76,8 +76,8 @@ export default function UserDropdown({ onNavigate }: UserDropdownProps) {
         type="button"
         className="flex items-center gap-2 p-1 sm:pr-2.5 rounded-full hover:bg-surface-hover border border-transparent hover:border-subtle transition-all duration-fast"
         onClick={() => setIsOpen(!isOpen)}
-        title={session ? 'Hồ sơ người dùng' : 'Tài khoản khách (Chưa đăng nhập)'}
-        aria-label={session ? 'Hồ sơ người dùng' : 'Tài khoản khách'}
+        title={session ? (t('userMenu.inline.userProfile')) : (t('userMenu.inline.guestAccountNotLoggedIn'))}
+        aria-label={session ? (t('userMenu.inline.userProfile')) : (t('userMenu.inline.guestAccount'))}
       >
         {session ? (
           <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-semibold flex items-center justify-center text-xs">
