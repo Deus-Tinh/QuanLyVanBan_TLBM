@@ -136,6 +136,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+# Làm rỗng dữ liệu nền do migration tạo trong DB test (xem config/test_runner.py).
+TEST_RUNNER = "config.test_runner.SeedFreeDiscoverRunner"
+
 # PostgreSQL là engine duy nhất (local, CI, staging). DB_ENGINE chỉ còn để tương thích env cũ.
 DB_ENGINE = os.getenv("DB_ENGINE", "postgresql").lower()
 if DB_ENGINE not in ("postgresql", "postgres"):
