@@ -141,16 +141,9 @@ records_chitiettailieu_attachment: constraint không có trong DDL FOREIGN KEY (
 records_chitiettailieu_attachment: constraint không có trong DDL FOREIGN KEY (nguoi_tao_id) REFERENCES accounts_employee(id)
 records_chitiettailieu_loaitailieu: thiếu constraint FOREIGN KEY (chitiettailieu_id) REFERENCES records_chitiettailieu(id) ON DELETE CASCADE
 records_chitiettailieu_loaitailieu: constraint không có trong DDL FOREIGN KEY (chitiettailieu_id) REFERENCES records_chitiettailieu(id)
-# records_*: CHECK btrim(col) <> '' tương đương NOT (TRIM(BOTH FROM col) = '') Django sinh từ ~Exact(Trim(...)); khác dạng viết, cùng ngữ nghĩa.
-records_hoso: thiếu constraint CHECK ((btrim((so_ky_hieu)) <> ''))
-records_hoso: thiếu constraint CHECK ((btrim((ten_ho_so)) <> ''))
-records_hoso: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM so_ky_hieu) = '')))
-records_hoso: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM ten_ho_so) = '')))
 records_loaitailieu.created_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
 records_loaitailieu.is_public: migration bool() null=NO default=None | DDL bool() null=NO default=true
 records_loaitailieu.updated_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
-records_loaivanban: thiếu constraint CHECK ((btrim((ten_loai)) <> ''))
-records_loaivanban: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM ten_loai) = '')))
 records_tailieu.created_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
 records_tailieu.nguoi_lap_id: migration int8() null=YES default=None | DDL int8() null=NO default=None
 records_tailieu.updated_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
