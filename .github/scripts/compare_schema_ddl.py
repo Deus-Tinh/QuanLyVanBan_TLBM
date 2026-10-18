@@ -59,6 +59,10 @@ def norm(sql):
 
 def norm_check(definition):
     """Đưa các dạng viết tương đương mà Django sinh cho Q(~...) về dạng DDL hay dùng."""
+    # NOT (TRIM(BOTH FROM col) = '')  ->  (btrim((col)) <> '')   (dạng Django sinh so với btrim(col) <> '' của DDL)
+    definition = re.sub(r"\(NOT \(TRIM\(BOTH FROM \(?(\w+)\)?\) = ''\)\)", r"(btrim((\1)) <> '')", definition)
+    # btrim(col) <> ''  ->  btrim((col)) <> ''   (cột varchar có thêm lớp ngoặc do ép kiểu đã bị norm() bỏ)
+    definition = re.sub(r"btrim\(\(?(\w+)\)?\) <> ''", r"btrim((\1)) <> ''", definition)
     # NOT ((col)= ANY ((ARRAY[...])))  ->  ((col)<> ALL ((ARRAY[...])))
     definition = re.sub(r"\(NOT \(\((\w+)\)= ANY \(\((ARRAY\[[^\]]*\])\)\)\)\)", r"((\1)<> ALL ((\2)))", definition)
     # NOT ((col)= 'x')  ->  ((col)<> 'x')
