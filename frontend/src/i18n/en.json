@@ -160,7 +160,19 @@
     "filterProcessing": "In Progress",
     "filterCompleted": "Completed",
     "filterOverdue": "Overdue",
-    "filterPending": "Pending Approval"
+    "filterPending": "Pending Approval",
+    "taskStatuses": {
+      "CHO_XU_LY": "Awaiting processing",
+      "DANG_XU_LY": "In progress",
+      "CHO_DUYET": "Pending approval",
+      "HOAN_THANH": "Completed",
+      "CHUA_HOAN_THANH": "Incomplete",
+      "QUA_HAN": "Overdue",
+      "processing": "In progress",
+      "completed": "Completed",
+      "overdue": "Overdue",
+      "pending": "Pending approval"
+    }
   },
   "profile": {
     "title": "Staff & Officer Profile",

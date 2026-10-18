@@ -13,6 +13,7 @@ export interface TaskItem {
   due: string;
   status: 'processing' | 'completed' | 'overdue' | 'pending';
   statusLabel: string;
+  workStatus?: string;
   variant: 'success' | 'warning' | 'info' | 'danger';
   assignee?: string;
   creator?: string;
@@ -521,22 +522,22 @@ export default function ModernDashboardView({
               </div>
             ) : (
               <div className="divide-y divide-border-subtle">
-                {filteredTasks.slice(0, 5).map((t) => (
+                {filteredTasks.slice(0, 5).map((task) => (
                   <div
-                    key={t.id}
-                    onClick={() => setSelectedTask(t)}
+                    key={task.id}
+                    onClick={() => setSelectedTask(task)}
                     className="py-3 flex items-center justify-between gap-3 hover:bg-surface-hover transition-colors cursor-pointer text-sm group"
                     title="Bấm để xem chi tiết nhiệm vụ"
                   >
                     <div className="flex-1 min-w-0 pr-2">
                       <span className="font-semibold text-main group-hover:text-primary transition-colors truncate block">
-                        {t.title}
+                        {task.title}
                       </span>
                     </div>
-                    <span className="text-muted text-xs shrink-0 whitespace-nowrap">{t.due}</span>
+                    <span className="text-muted text-xs shrink-0 whitespace-nowrap">{task.due}</span>
                     <div className="shrink-0 text-right">
-                      <Badge variant={t.variant} size="sm">
-                        {t.statusLabel}
+                      <Badge variant={task.variant} size="sm">
+                        {t(`dashboardDetails.taskStatuses.${task.workStatus ?? task.status}`)}
                       </Badge>
                     </div>
                   </div>

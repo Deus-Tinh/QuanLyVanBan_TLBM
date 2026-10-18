@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from '@i18n/translate';
 import { Badge } from '@components/common';
 import { TaskItem } from './ModernDashboardView';
 
@@ -15,6 +16,7 @@ export default function TaskDetailModal({
   task,
   onNavigateTasks,
 }: TaskDetailModalProps) {
+  const { t } = useTranslation();
 
   // Đóng bằng phím Escape
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function TaskDetailModal({
                   Chi Tiết Nhiệm Vụ Được Giao
                 </h2>
                 <Badge variant={task.variant} size="sm">
-                  {task.statusLabel}
+                  {t(`dashboardDetails.taskStatuses.${task.workStatus ?? task.status}`)}
                 </Badge>
               </div>
               <p className="text-xs text-secondary mt-0.5 truncate">
@@ -107,7 +109,7 @@ export default function TaskDetailModal({
                 <div className="flex justify-between items-center text-secondary">
                   <span>Trạng thái:</span>
                   <Badge variant={task.variant} size="sm">
-                    {task.statusLabel}
+                    {t(`dashboardDetails.taskStatuses.${task.workStatus ?? task.status}`)}
                   </Badge>
                 </div>
               </div>

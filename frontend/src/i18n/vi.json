@@ -160,7 +160,19 @@
     "filterProcessing": "Đang xử lý",
     "filterCompleted": "Hoàn thành",
     "filterOverdue": "Quá hạn",
-    "filterPending": "Chờ duyệt"
+    "filterPending": "Chờ duyệt",
+    "taskStatuses": {
+      "CHO_XU_LY": "Chờ xử lý",
+      "DANG_XU_LY": "Đang xử lý",
+      "CHO_DUYET": "Chờ duyệt",
+      "HOAN_THANH": "Hoàn thành",
+      "CHUA_HOAN_THANH": "Chưa hoàn thành",
+      "QUA_HAN": "Quá hạn",
+      "processing": "Đang xử lý",
+      "completed": "Hoàn thành",
+      "overdue": "Quá hạn",
+      "pending": "Chờ duyệt"
+    }
   },
   "profile": {
     "title": "Hồ Sơ Cán Bộ Nhân Viên",
