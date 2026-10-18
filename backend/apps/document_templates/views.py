@@ -5,13 +5,13 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from .selectors import visible_resources
 from .filters import TaiLieuChiTietFilter
 from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment
 from .serializers import (
@@ -154,28 +154,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
             'dm_tai_lieu', 'nguoi_tao'
         ).prefetch_related('loai_tai_lieu', 'attachments').all()
 
-        user = self.request.user
-        # Người dùng chưa đăng nhập: chỉ thấy tài liệu công khai (TAT_CA)
-        if not user or not user.is_authenticated:
-            return qs.filter(hien_thi='TAT_CA')
-
-        # Quản trị viên và Staff: thấy toàn bộ
-        if user.is_superuser or user.is_staff:
-            return qs
-
-        # Người dùng đăng nhập: thấy tài liệu TAT_CA, hoặc do chính mình tạo, hoặc cùng đơn vị/phòng ban
-        user_dept = ""
-        if hasattr(user, "profile"):
-            user_dept = getattr(user.profile, "department", "")
-        user_don_vi_id = getattr(user, "don_vi_id", None)
-
-        q_filter = Q(hien_thi='TAT_CA') | Q(nguoi_tao=user)
-        if user_don_vi_id:
-            q_filter |= Q(hien_thi='NOI_BO_PHONG_BAN', don_vi_id=user_don_vi_id)
-        if user_dept:
-            q_filter |= Q(hien_thi='NOI_BO_PHONG_BAN', nguoi_tao__profile__department=user_dept)
-
-        return qs.filter(q_filter).distinct()
+        return visible_resources(qs, self.request.user)
 
     def perform_create(self, serializer):
         kwargs = {}
