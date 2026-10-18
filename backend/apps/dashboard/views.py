@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.db import connection
+from django.db.models import Prefetch
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -10,6 +10,10 @@ from rest_framework.response import Response
 
 from documents.models import VanBanDenAttachment, VanBanDiAttachment
 from documents.selectors import van_ban_xem_duoc
+
+from work.models import Task, TaskStatus
+from document_templates.models import TaiLieuChiTiet, ChiTietTaiLieuAttachment
+from document_templates.selectors import visible_resources
 
 RECENT_LIMIT = 5
 ATTACHMENT_TYPES = {
@@ -62,70 +66,48 @@ def _recent_documents(user, loai, date_field, attachment_model, extra_field, ext
     return year_total, items
 
 
-def _tasks(today):
-    """Nhiệm vụ từ task_congviec (Nhóm 6 chưa có model trong staging); bảng chưa có thì trả rỗng."""
-    if "task_congviec" not in connection.introspection.table_names():
-        return []
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT id, noi_dung, ngay_xu_ly, opened_at, approved_at
-            FROM task_congviec
-            WHERE hien_thi = TRUE
-            ORDER BY id DESC
-            LIMIT 20
-            """
-        )
-        rows = cursor.fetchall()
-
+def _tasks(user, today):
+    statuses = {
+        TaskStatus.CHO_XU_LY: ("processing", "Chờ xử lý", "info"),
+        TaskStatus.DANG_XU_LY: ("processing", "Đang xử lý", "info"),
+        TaskStatus.CHO_DUYET: ("pending", "Chờ duyệt", "warning"),
+        TaskStatus.HOAN_THANH: ("completed", "Hoàn thành", "success"),
+        TaskStatus.CHUA_HOAN_THANH: ("overdue", "Chưa hoàn thành", "danger"),
+        TaskStatus.QUA_HAN: ("overdue", "Quá hạn", "danger"),
+    }
+    rows = Task.objects.visible_to(user).with_status(today).order_by("-pk")[:20]
     tasks = []
-    for task_id, title, due, opened_at, approved_at in rows:
-        if approved_at is not None:
-            task_status, label, variant = "completed", "Đã hoàn thành", "success"
-        elif due < today:
-            task_status, label, variant = "overdue", "Quá hạn xử lý", "danger"
-        elif opened_at is None:
-            task_status, label, variant = "pending", "Đang chờ duyệt", "warning"
-        else:
-            task_status, label, variant = "processing", "Đang xử lý", "info"
-        tasks.append(
-            {
-                "id": str(task_id),
-                "title": title,
-                "due": due.strftime("%d/%m/%Y"),
-                "status": task_status,
-                "statusLabel": label,
-                "variant": variant,
-            }
-        )
+    for task in rows:
+        task_status, label, variant = statuses[task.status]
+        tasks.append({
+            "id": str(task.pk),
+            "title": task.title,
+            "due": task.due_date.strftime("%d/%m/%Y"),
+            "status": task_status,
+            "statusLabel": label,
+            "workStatus": task.status,
+            "variant": variant,
+        })
     return tasks
 
 
-def _resources():
-    """Biểu mẫu còn hiệu lực từ records_chitiettailieu (Nhóm 4 chưa có model trong staging)."""
-    tables = connection.introspection.table_names()
-    if "records_chitiettailieu" not in tables or "records_chitiettailieu_attachment" not in tables:
-        return []
-    with connection.cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT c.id, c.ky_hieu, c.tieu_de,
-                   (SELECT a.name FROM records_chitiettailieu_attachment a
-                     WHERE a.document_id = c.id AND a.is_deleted = FALSE
-                     ORDER BY a.id LIMIT 1)
-            FROM records_chitiettailieu c
-            WHERE c.hieu_luc = 'CON_HIEU_LUC'
-            ORDER BY c.id
-            LIMIT %s
-            """,
-            [RECENT_LIMIT],
-        )
-        rows = cursor.fetchall()
-
+def _resources(user):
+    rows = visible_resources(TaiLieuChiTiet.objects.all(), user).filter(
+        hieu_luc="CON_HIEU_LUC"
+    ).order_by("pk").prefetch_related(Prefetch(
+        "attachments",
+        queryset=ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).order_by("pk"),
+        to_attr="active_attachments",
+    ))[:RECENT_LIMIT]
     resources = []
-    for res_id, code, title, att_name in rows:
-        ext = att_name.rsplit(".", 1)[-1].upper() if att_name and "." in att_name else "DOCX"
-        resources.append({"code": code or f"BM-{res_id:02d}", "title": title, "format": ext})
+    for resource in rows:
+        name = resource.active_attachments[0].name if resource.active_attachments else ""
+        ext = name.rsplit(".", 1)[-1].upper() if "." in name else "DOCX"
+        resources.append({
+            "code": resource.ky_hieu or f"BM-{resource.pk:02d}",
+            "title": resource.tieu_de,
+            "format": ext,
+        })
     return resources
 
 
@@ -169,8 +151,8 @@ def overview_view(request):
     outgoing_total, recent_outgoing = _recent_documents(
         request.user, "DI", "ngay_ban_hanh", VanBanDiAttachment, "nguoi_ky", "recipient", "Nơi nhận"
     )
-    tasks = _tasks(today)
-    resources = _resources()
+    tasks = _tasks(request.user, today)
+    resources = _resources(request.user)
     tasks_pending = len([t for t in tasks if t["status"] in ("processing", "pending", "overdue")])
     # Lịch họp lấy từ module Nhóm 7 sau khi được tích hợp vào staging.
     today_meetings = []

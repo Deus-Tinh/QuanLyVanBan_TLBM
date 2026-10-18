@@ -115,3 +115,56 @@ class DashboardAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         labels = {b["label"] for b in response.data["birthdays"]}
         self.assertEqual(labels, {"Hôm nay", "Ngày mai"})
+
+    def test_tasks_match_work_visibility_and_status(self):
+        from work.models import Task, TaskAttachment, TaskComment, TaskStatus
+        from dashboard.views import _tasks
+
+        own = Task.objects.create(title="Visible task", created_by=self.staff_user,
+                                  due_date=self.today, requirement="Review")
+        Task.objects.create(title="Other task", created_by=self.admin_user,
+                            due_date=self.today, requirement="Review")
+        # Hidden tasks remain visible to their creator, as in the work API.
+        hidden = Task.objects.create(title="Creator hidden task", created_by=self.staff_user,
+                                     due_date=self.today, requirement="Review", is_public=False)
+        result = _tasks(self.staff_user, self.today)
+        self.assertEqual({row["id"] for row in result}, {str(own.pk), str(hidden.pk)})
+        self.assertTrue(all(row["workStatus"] == TaskStatus.CHO_XU_LY for row in result))
+        # Evidence takes precedence over the deadline in the domain status selector.
+        comment = TaskComment.objects.create(task=own, author=self.staff_user, content="Evidence")
+        TaskAttachment.objects.create(task=own, comment=comment, kind="BANG_CHUNG",
+                                      file="proof.pdf", uploaded_by=self.staff_user)
+        own.due_date = self.today - timedelta(days=1)
+        own.created_date = own.due_date
+        own.save(update_fields=["due_date", "created_date"])
+        result = {row["id"]: row for row in _tasks(self.staff_user, self.today)}
+        self.assertEqual(result[str(own.pk)]["workStatus"], TaskStatus.CHO_DUYET)
+        self.assertEqual(result[str(own.pk)]["status"], "pending")
+        self.assertEqual(len(_tasks(self.admin_user, self.today)), 3)
+
+    def test_resources_match_template_visibility_before_limit(self):
+        from document_templates.models import DanhMucTaiLieu, TaiLieuChiTiet
+        from document_templates.selectors import visible_resources
+        from dashboard.views import _resources
+
+        category = DanhMucTaiLieu.objects.create(ten_tai_lieu="Templates")
+        for i in range(6):
+            TaiLieuChiTiet.objects.create(dm_tai_lieu=category, ky_hieu=f"PRIVATE-{i}",
+                tieu_de="Private", ngay_dang=self.today, hien_thi="NOI_BO_PHONG_BAN",
+                nguoi_tao=self.admin_user, don_vi_id=None)
+        for code, creator, unit, visibility, validity in (
+            ("PUBLIC", self.admin_user, None, "TAT_CA", "CON_HIEU_LUC"),
+            ("OWN", self.staff_user, None, "NOI_BO_PHONG_BAN", "CON_HIEU_LUC"),
+            ("DEPT", self.admin_user, self.staff_user.don_vi_id, "NOI_BO_PHONG_BAN", "CON_HIEU_LUC"),
+            ("EXPIRED", self.staff_user, None, "TAT_CA", "HET_HIEU_LUC"),
+        ):
+            TaiLieuChiTiet.objects.create(dm_tai_lieu=category, ky_hieu=code,
+                tieu_de=code, ngay_dang=self.today, hien_thi=visibility,
+                nguoi_tao=creator, don_vi_id=unit, hieu_luc=validity)
+        expected = set(visible_resources(TaiLieuChiTiet.objects.all(), self.staff_user)
+                       .filter(hieu_luc="CON_HIEU_LUC").values_list("ky_hieu", flat=True))
+        self.assertEqual(expected, {"PUBLIC", "OWN", "DEPT"})
+        self.assertEqual({row["code"] for row in _resources(self.staff_user)}, expected)
+        self.client.force_authenticate(user=self.staff_user)
+        response = self.client.get("/api/dashboard/overview/")
+        self.assertEqual({row["code"] for row in response.data["resources"]}, expected)
