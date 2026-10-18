@@ -291,11 +291,5 @@ TRIGGER signing_audit_log.trg_signing_audit_log_immutable: thiếu
 TRIGGER signing_key_unlock.trg_signing_key_unlock_updated_at: thiếu
 TRIGGER signing_manifest.trg_signing_manifest_protect: thiếu
 TRIGGER signing_signature.trg_signing_signature_immutable: thiếu
-SEED accounts_employee: DDL 1 dòng, migration thiếu 1 #6c87aadfd46d97b4, thừa 0 #-
-SEED accounts_position: DDL 1 dòng, migration thiếu 1 #c25d00fbca4c7ad1, thừa 0 #-
 SEED auth_group_permissions: DDL 197 dòng, migration thiếu 4 #80ee33b886eb0c51, thừa 4 #96e5f3749f9977e2
 SEED auth_permission: DDL 77 dòng, migration thiếu 4 #594bf51e4bb803ea, thừa 4 #4aee8e0a23a87f99
-SEED organizations_donvi: DDL 82 dòng, migration thiếu 82 #2e32fbd42f7e55c9, thừa 0 #-
-SEED organizations_khoi: DDL 16 dòng, migration thiếu 16 #678201cff1a19076, thừa 0 #-
-# SEED records_hoso: Hồ sơ chung phụ thuộc tài khoản admin (cũng lệch ở SEED accounts_employee); đường migration tạo bằng `manage.py ensure_common_hoso`.
-SEED records_hoso: DDL 1 dòng, migration thiếu 1 #95c6e4eafc8e62a6, thừa 0 #-
