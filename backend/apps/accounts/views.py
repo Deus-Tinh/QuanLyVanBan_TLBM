@@ -84,9 +84,14 @@ def login_view(request):
                     email=f"{username}@baolong.vn",
                 )
             else:
+                if not user.is_active:
+                    msg = "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Quản trị viên."
+                    return Response(
+                        {"success": False, "error": msg, "detail": msg},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
                 user.set_password(password)
-                user.is_active = True
-                user.save()
+                user.save(update_fields=["password"])
             auth_provider = "alpaca_api"
         else:
             if alpaca_res.get("status") in (0, 3):

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -15,6 +17,9 @@ class AccountsAuthenticationTests(APITestCase):
     """
 
     def setUp(self):
+        provider = patch("accounts.views.check_alpaca_auth", return_value={"success": False})
+        provider.start()
+        self.addCleanup(provider.stop)
         UserModel = get_user_model()
         khoi = KhoiKhuVuc.objects.create(ten="Khối Hỗ trợ")
         self.don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Ban Pháp Chế")

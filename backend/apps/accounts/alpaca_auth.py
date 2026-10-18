@@ -169,18 +169,6 @@ def check_alpaca_auth(username: str, password: str) -> dict:
     except Exception as exc:
         logger.warning("Không thể kết nối đến API Bảo Long (%s): %s", url, exc)
 
-        # Chế độ dự phòng linh hoạt (Demo / Offline / Mạng nội bộ ngắt kết nối):
-        # Kiểm tra tài khoản kiểm thử chính thức được cung cấp trong tài liệu của Thầy:
-        # User: phanquocdung / Password: Alpaca#2025
-        if username == "phanquocdung" and password == "Alpaca#2025":
-            return {
-                "success": True,
-                "status": 7,
-                "status_name": "PASSWORD_CORRECT",
-                "message": "Xác thực thành công qua API Bảo Long (Chế độ tích hợp tài khoản mẫu).",
-                "is_fallback": True,
-            }
-
         return {
             "success": False,
             "status": None,

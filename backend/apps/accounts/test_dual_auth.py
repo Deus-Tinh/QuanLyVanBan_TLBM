@@ -3,12 +3,16 @@ Unit tests cho cơ chế xác thực kép:
 1. Admin set pass (Xác thực cục bộ & Quản trị viên đổi mật khẩu)
 2. API check pass (Xác thực qua API Ngân hàng Bảo Long / Alpaca theo tài liệu GVHD)
 """
+import json
+import urllib.error
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from apps.accounts.alpaca_auth import (
+from accounts.alpaca_auth import (
     generate_alpaca_auth_mac,
     generate_alpaca_user_exist_mac,
     check_alpaca_auth,
@@ -19,6 +23,9 @@ User = get_user_model()
 
 class DualAuthenticationTests(TestCase):
     def setUp(self):
+        provider = patch("accounts.alpaca_auth.urllib.request.urlopen", side_effect=urllib.error.URLError("offline test"))
+        self.provider = provider.start()
+        self.addCleanup(provider.stop)
         self.client = APIClient()
         self.secret_key = "9089e45b638cee8f83ab423d2cb498b5"
 
@@ -64,7 +71,8 @@ class DualAuthenticationTests(TestCase):
 
     def test_api_check_pass_login(self):
         """Xác thực thành công với tài khoản Ngân hàng Bảo Long qua API check pass."""
-        # Tài khoản mẫu trong tài liệu của GVHD: phanquocdung / Alpaca#2025
+        self.provider.side_effect = None
+        self.provider.return_value.__enter__.return_value.read.return_value = json.dumps({"Success": True, "Data": 7}).encode()
         response = self.client.post(
             "/api/auth/login/",
             {"username": "phanquocdung", "password": "Alpaca#2025"},
@@ -122,3 +130,40 @@ class DualAuthenticationTests(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertFalse(response.data["success"])
+
+    def test_provider_errors_never_accept_sample_credentials(self):
+        for error in (urllib.error.URLError("offline"), TimeoutError(), ValueError("invalid JSON")):
+            with self.subTest(error=type(error).__name__):
+                self.provider.side_effect = error
+                result = check_alpaca_auth("phanquocdung", "Alpaca#2025")
+                self.assertFalse(result["success"])
+                self.assertFalse(result["is_fallback"])
+                response = self.client.post("/api/auth/login/", {
+                    "username": "phanquocdung", "password": "Alpaca#2025",
+                })
+                self.assertEqual(response.status_code, 401)
+                self.assertNotIn("access", response.data)
+                self.assertFalse(User.objects.filter(username="phanquocdung").exists())
+
+    def test_external_success_preserves_local_disabled_account(self):
+        self.staff.is_active = False
+        self.staff.save(update_fields=["is_active"])
+        old_hash = self.staff.password
+        with patch("accounts.views.check_alpaca_auth", return_value={"success": True}):
+            response = self.client.post("/api/auth/login/", {
+                "username": self.staff.username, "password": "ExternalPassword123",
+            })
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn("access", response.data)
+        self.staff.refresh_from_db()
+        self.assertFalse(self.staff.is_active)
+        self.assertEqual(self.staff.password, old_hash)
+
+    def test_external_success_updates_active_account_password(self):
+        with patch("accounts.views.check_alpaca_auth", return_value={"success": True}):
+            response = self.client.post("/api/auth/login/", {
+                "username": self.staff.username, "password": "ExternalPassword123",
+            })
+        self.assertEqual(response.status_code, 200)
+        self.staff.refresh_from_db()
+        self.assertTrue(self.staff.check_password("ExternalPassword123"))
