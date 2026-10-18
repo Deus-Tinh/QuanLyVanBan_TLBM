@@ -83,6 +83,19 @@ class DriftTest(unittest.TestCase):
         self.assertIn(", thừa 1 #", changed_b[0])
         self.assertNotEqual(changed_b[0], changed_d[0])
 
+    def test_trim_check_equivalent_to_btrim_is_not_reported(self):
+        ddl = BASE + "ALTER TABLE trig_t ADD CONSTRAINT c CHECK (name IS NULL OR btrim(name) <> '');"
+        migration = BASE + "ALTER TABLE trig_t ADD CONSTRAINT c CHECK (name IS NULL OR NOT (TRIM(BOTH FROM name) = ''));"
+        self.assertEqual(self.drift(migration, ddl), [])
+
+    def test_trim_check_with_different_logic_is_still_reported(self):
+        ddl = BASE + "ALTER TABLE trig_t ADD CONSTRAINT c CHECK (name IS NULL OR btrim(name) <> '');"
+        migration = BASE + "ALTER TABLE trig_t ADD CONSTRAINT c CHECK (name IS NULL OR NOT (TRIM(BOTH FROM name) = 'x'));"
+        found = self.drift(migration, ddl)
+        self.assertEqual(len(found), 2)
+        self.assertTrue(found[0].startswith("trig_t: thiếu constraint CHECK"))
+        self.assertTrue(found[1].startswith("trig_t: constraint không có trong DDL CHECK"))
+
     def test_table_with_data_only_in_migration_db(self):
         found = self.drift(BASE + "INSERT INTO trig_t (name) VALUES ('x');")
         self.assertEqual(len(found), 1)

@@ -75,6 +75,20 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
+      - name: Quy ước schema (changelog DDL, baseline chỉ giảm) so với nhánh đích
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          python .github/scripts/check_schema_conventions.py changelog "origin/$BASE_REF"
+          python .github/scripts/check_schema_conventions.py baseline "origin/$BASE_REF"
+
+      - name: Quy ước schema (bỏ qua khi không có nhánh đích)
+        if: github.event_name != 'pull_request'
+        run: echo "Không phải pull_request, không có nhánh đích để so changelog DDL và baseline."
+
       - name: Install dependencies
         run: pip install -r requirements.txt "psycopg[binary]>=3.2,<4"
 
