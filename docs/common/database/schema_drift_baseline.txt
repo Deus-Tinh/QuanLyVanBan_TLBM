@@ -144,16 +144,9 @@ records_chitiettailieu_attachment: constraint không có trong DDL FOREIGN KEY (
 records_chitiettailieu_attachment: constraint không có trong DDL FOREIGN KEY (nguoi_tao_id) REFERENCES accounts_employee(id)
 records_chitiettailieu_loaitailieu: thiếu constraint FOREIGN KEY (chitiettailieu_id) REFERENCES records_chitiettailieu(id) ON DELETE CASCADE
 records_chitiettailieu_loaitailieu: constraint không có trong DDL FOREIGN KEY (chitiettailieu_id) REFERENCES records_chitiettailieu(id)
-# records_*: CHECK btrim(col) <> '' tương đương NOT (TRIM(BOTH FROM col) = '') Django sinh từ ~Exact(Trim(...)); khác dạng viết, cùng ngữ nghĩa.
-records_hoso: thiếu constraint CHECK ((btrim((so_ky_hieu)) <> ''))
-records_hoso: thiếu constraint CHECK ((btrim((ten_ho_so)) <> ''))
-records_hoso: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM so_ky_hieu) = '')))
-records_hoso: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM ten_ho_so) = '')))
 records_loaitailieu.created_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
 records_loaitailieu.is_public: migration bool() null=NO default=None | DDL bool() null=NO default=true
 records_loaitailieu.updated_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
-records_loaivanban: thiếu constraint CHECK ((btrim((ten_loai)) <> ''))
-records_loaivanban: constraint không có trong DDL CHECK ((NOT (TRIM(BOTH FROM ten_loai) = '')))
 records_tailieu.created_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
 records_tailieu.nguoi_lap_id: migration int8() null=YES default=None | DDL int8() null=NO default=None
 records_tailieu.updated_at: migration timestamptz() null=NO default=None | DDL timestamptz() null=NO default=now()
@@ -310,11 +303,5 @@ TRIGGER signing_key_unlock.trg_signing_key_unlock_updated_at: thiếu
 TRIGGER signing_manifest.trg_signing_manifest_protect: thiếu
 TRIGGER signing_signature.trg_signing_signature_immutable: thiếu
 TRIGGER task_congviec.trg_congviec_updated_at: thiếu
-SEED accounts_employee: DDL 1 dòng, migration thiếu 1 #6c87aadfd46d97b4, thừa 0 #-
-SEED accounts_position: DDL 1 dòng, migration thiếu 1 #c25d00fbca4c7ad1, thừa 0 #-
 SEED auth_group_permissions: DDL 197 dòng, migration thiếu 4 #80ee33b886eb0c51, thừa 4 #96e5f3749f9977e2
 SEED auth_permission: DDL 77 dòng, migration thiếu 4 #594bf51e4bb803ea, thừa 4 #4aee8e0a23a87f99
-SEED organizations_donvi: DDL 82 dòng, migration thiếu 82 #2e32fbd42f7e55c9, thừa 0 #-
-SEED organizations_khoi: DDL 16 dòng, migration thiếu 16 #678201cff1a19076, thừa 0 #-
-# SEED records_hoso: Hồ sơ chung phụ thuộc tài khoản admin (cũng lệch ở SEED accounts_employee); đường migration tạo bằng `manage.py ensure_common_hoso`.
-SEED records_hoso: DDL 1 dòng, migration thiếu 1 #95c6e4eafc8e62a6, thừa 0 #-
