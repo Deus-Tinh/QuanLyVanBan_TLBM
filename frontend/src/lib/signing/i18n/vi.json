@@ -1,7 +1,7 @@
 {
   "nhanPhanHe": "Ký số & Phê duyệt điện tử",
   "tieuDe": "Trình ký duyệt nội bộ",
-  "moTa": "Trình và ký duyệt văn bản đi theo quy trình nhiều cấp; kết quả là bản duyệt nội bộ, chưa phát hành.",
+  "moTa": "Trình và ký duyệt văn bản theo quy trình nhiều cấp; kết quả là bản duyệt nội bộ, chưa phát hành.",
   "nav": {
     "canToiKy": "Cần tôi ký duyệt",
     "toiGui": "Tôi đã gửi trình",
@@ -105,9 +105,9 @@
   "tao": {
     "buoc1": "Thông tin hồ sơ",
     "buoc2": "Xem trước và đặt vị trí ký",
-    "vanBanDi": "Văn bản đi",
+    "vanBanDi": "Văn bản",
     "timVanBan": "Tìm theo số hiệu hoặc trích yếu…",
-    "khongCoVanBan": "Không tìm thấy văn bản đi bạn được xem (văn bản hạn chế không đi qua trình ký).",
+    "khongCoVanBan": "Không tìm thấy văn bản bạn được xem (văn bản hạn chế không đi qua trình ký).",
     "quyTrinh": "Quy trình ký",
     "chonQuyTrinh": "— Chọn quy trình đang hoạt động —",
     "khongCoQuyTrinh": "Chưa có quy trình nào đang hoạt động mà bạn được dùng.",
@@ -298,6 +298,12 @@
       "TU_CHOI": "Không đồng ý ban hành",
       "YEU_CAU_SUA": "Trả lại để sửa",
       "HUY": "Hồ sơ đã hủy"
+    },
+    "kenh": {
+      "inApp": "Ứng dụng",
+      "emailDaGui": "Email: Đã gửi",
+      "emailChoGui": "Email: Đang gửi",
+      "emailNguoiNhan": "Người nhận"
     }
   },
   "taiLieu": {

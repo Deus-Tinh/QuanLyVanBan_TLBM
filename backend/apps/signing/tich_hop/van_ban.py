@@ -39,11 +39,11 @@ def _xem_duoc(nguoi_dung, van_ban):
 
 def kiem_tra_van_ban_trinh_ky(nguoi_dung, document_type, van_ban_id):
     if document_type != enums.LoaiVanBan.VAN_BAN_DI:
-        raise SigningError(code="chi_trinh_ky_van_ban_di", detail="Trình ký chỉ nhận văn bản đi.",
+        raise SigningError(code="chi_trinh_ky_van_ban_di", detail="Trình ký chỉ nhận văn bản.",
                            fields={"document_type": ["Chỉ nhận 'vanbandi'."]})
     van_ban = _doc_van_ban_di(van_ban_id)
     if van_ban is None:
-        raise SigningError(code="khong_tim_thay_van_ban", detail="Không tìm thấy văn bản đi.",
+        raise SigningError(code="khong_tim_thay_van_ban", detail="Không tìm thấy văn bản.",
                            status_code=status.HTTP_404_NOT_FOUND, fields={"van_ban_id": ["Không tồn tại."]})
     if van_ban.pham_vi == PhamVi.HAN_CHE:
         raise SigningError(code="van_ban_han_che_khong_trinh_ky",
@@ -51,7 +51,7 @@ def kiem_tra_van_ban_trinh_ky(nguoi_dung, document_type, van_ban_id):
                            fields={"van_ban_id": ["Văn bản có phạm vi HAN_CHE."]})
     if not _xem_duoc(nguoi_dung, van_ban):
         # Không tiết lộ sự tồn tại của văn bản người dùng không được xem
-        raise SigningError(code="khong_tim_thay_van_ban", detail="Không tìm thấy văn bản đi.",
+        raise SigningError(code="khong_tim_thay_van_ban", detail="Không tìm thấy văn bản.",
                            status_code=status.HTTP_404_NOT_FOUND, fields={"van_ban_id": ["Không tồn tại."]})
     return van_ban
 

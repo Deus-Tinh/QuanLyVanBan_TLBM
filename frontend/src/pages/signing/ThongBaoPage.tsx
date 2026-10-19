@@ -33,6 +33,23 @@ export default function ThongBaoPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-main">{t(`thongBao.loai.${tb.loai_thong_bao}`)}</span>
                   <TrangThaiBadge trangThai={tb.trang_thai_ho_so} />
+                  <span
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-secondary bg-surface-subtle border border-border-subtle"
+                  >
+                    <i className="fa-solid fa-bell" aria-hidden="true" />
+                    {t('thongBao.kenh.inApp')}
+                  </span>
+                  {tb.email_trang_thai && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium border border-border-subtle ${
+                        tb.email_da_gui ? 'text-success bg-surface-subtle' : 'text-warning bg-surface-subtle'
+                      }`}
+                      title={tb.email_nguoi_nhan ? `${t('thongBao.kenh.emailNguoiNhan')}: ${tb.email_nguoi_nhan}` : undefined}
+                    >
+                      <i className="fa-solid fa-envelope" aria-hidden="true" />
+                      {tb.email_da_gui ? t('thongBao.kenh.emailDaGui') : t('thongBao.kenh.emailChoGui')}
+                    </span>
+                  )}
                 </div>
                 <div className="truncate text-sm text-main" title={tb.van_ban}>#{tb.trinh_ky} · {tb.van_ban}</div>
                 <div className="text-xs text-secondary">{tb.ten_quy_trinh} · {dinhDangNgay(tb.created_at, lang)}</div>

@@ -135,49 +135,49 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
         {!ds.dangTai && !ds.loi && ds.duLieu?.length === 0 && <Rong>{t(coLoc ? 'danhSach.khongKhopLoc' : rong)}</Rong>}
         {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left table-fixed">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-4 py-3 text-center w-20">{t('danhSach.maHoSo')}</th>
-                  <th className="px-4 py-3 min-w-[260px]">{t('danhSach.vanBan')}</th>
-                  <th className="px-4 py-3 w-44">{t('danhSach.quyTrinh')}</th>
-                  <th className="px-4 py-3 text-center w-32">{t('danhSach.mucDo')}</th>
-                  <th className="px-4 py-3 text-center w-36">{t('danhSach.trangThai')}</th>
-                  <th className="px-4 py-3 w-40">{t('danhSach.dangCho')}</th>
-                  <th className="px-4 py-3 w-36">{t('danhSach.nguoiTao')}</th>
-                  <th className="px-4 py-3 w-36">{t('danhSach.hanChot')}</th>
-                  <th className="px-4 py-3 text-center w-20">{t('danhSach.thaoTac')}</th>
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-[4.5%]">{t('danhSach.maHoSo')}</th>
+                  <th className="px-3.5 py-2 text-left w-[47%]">{t('danhSach.vanBan')}</th>
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-[8.5%]">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-[6.5%]">{t('danhSach.mucDo')}</th>
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-[9.5%]">{t('danhSach.trangThai')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[8.5%]">{t('danhSach.dangCho')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[7.5%]">{t('danhSach.nguoiTao')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[8%]">{t('danhSach.hanChot')}</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap w-[3.5%]">{t('danhSach.thaoTac')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {ds.duLieu.map((h) => (
                   <tr key={h.id} className="hover:bg-surface-hover transition-colors">
-                    <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap">
+                    <td className="px-2 py-2 text-center font-bold text-primary whitespace-nowrap">
                       <Link to={`/approvals/${h.id}`} className="hover:underline">#{h.id}</Link>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 text-base" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
+                    <td className="px-3.5 py-2 truncate">
+                      <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 text-base truncate" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
                         <i className="fa-solid fa-file-contract text-primary/70 text-sm shrink-0" aria-hidden="true" />
-                        <span className="truncate max-w-xs xl:max-w-md">{moTaVanBan(h.van_ban, h.van_ban_id)}</span>
+                        <span className="truncate">{moTaVanBan(h.van_ban, h.van_ban_id)}</span>
                       </Link>
                     </td>
-                    <td className="px-4 py-3.5 text-secondary">{h.ten_quy_trinh}</td>
-                    <td className="px-4 py-3.5 text-center whitespace-nowrap"><MucDoBadge mucDo={h.muc_do} /></td>
-                    <td className="px-4 py-3.5 text-center whitespace-nowrap"><TrangThaiBadge trangThai={h.trang_thai} /></td>
-                    <td className="px-4 py-3.5 text-secondary">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
-                    <td className="px-4 py-3.5 text-secondary whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <i className="fa-regular fa-user text-muted text-xs" aria-hidden="true" />
-                        <span>{h.ten_nguoi_tao}</span>
+                    <td className="px-2 py-2 text-center text-secondary whitespace-nowrap truncate" title={h.ten_quy_trinh}>{h.ten_quy_trinh}</td>
+                    <td className="px-2 py-2 text-center whitespace-nowrap"><MucDoBadge mucDo={h.muc_do} /></td>
+                    <td className="px-2 py-2 text-center whitespace-nowrap"><TrangThaiBadge trangThai={h.trang_thai} /></td>
+                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
+                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <i className="fa-regular fa-user text-muted text-xs shrink-0" aria-hidden="true" />
+                        <span className="truncate">{h.ten_nguoi_tao}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-secondary whitespace-nowrap">
+                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <i className="fa-regular fa-calendar text-muted text-xs" aria-hidden="true" />
+                        <i className="fa-regular fa-calendar text-muted text-xs shrink-0" aria-hidden="true" />
                         <span>{dinhDangNgay(h.han_chot, lang)}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                    <td className="px-1.5 py-2 text-center whitespace-nowrap">
                       <Link to={`/approvals/${h.id}`} className="inline-flex items-center justify-center p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-primary-subtle transition-colors" title={t('chiTiet.xemChiTiet')}>
                         <i className="fa-solid fa-eye text-sm" aria-hidden="true" />
                       </Link>

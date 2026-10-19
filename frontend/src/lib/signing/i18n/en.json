@@ -1,7 +1,7 @@
 {
   "nhanPhanHe": "Digital Signing & Approval",
   "tieuDe": "Internal approval signing",
-  "moTa": "Submit and sign outgoing documents through multi-level workflows; the result is an internal approval copy, not yet issued.",
+  "moTa": "Submit and sign documents through multi-level workflows; the result is an internal approval copy, not yet issued.",
   "nav": {
     "canToiKy": "Awaiting my signature",
     "toiGui": "Submitted by me",
@@ -105,9 +105,9 @@
   "tao": {
     "buoc1": "Request details",
     "buoc2": "Preview and place signatures",
-    "vanBanDi": "Outgoing document",
+    "vanBanDi": "Document",
     "timVanBan": "Search by number or summary…",
-    "khongCoVanBan": "No outgoing document you can view was found (restricted documents do not go through signing).",
+    "khongCoVanBan": "No document you can view was found (restricted documents do not go through signing).",
     "quyTrinh": "Signing workflow",
     "chonQuyTrinh": "— Select an active workflow —",
     "khongCoQuyTrinh": "There is no active workflow available to you.",
@@ -298,6 +298,12 @@
       "TU_CHOI": "Rejected for issuance",
       "YEU_CAU_SUA": "Returned for revision",
       "HUY": "Request cancelled"
+    },
+    "kenh": {
+      "inApp": "In-app",
+      "emailDaGui": "Email: Sent",
+      "emailChoGui": "Email: Sending",
+      "emailNguoiNhan": "Recipient"
     }
   },
   "taiLieu": {

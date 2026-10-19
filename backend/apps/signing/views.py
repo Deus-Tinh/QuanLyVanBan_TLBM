@@ -14,7 +14,9 @@ from rest_framework.response import Response
 
 from . import crypto, enums
 from .errors import ConflictError, SigningAPIView, SigningError
-from .models import SigningAttempt, SigningKey, SigningRequest, SigningRequestStep, SigningSignature
+from .models import (
+    SigningAttempt, SigningKey, SigningNotification, SigningRequest, SigningRequestStep, SigningSignature,
+)
 from .permissions import (
     GUI_TRINH_KY, HUY_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
     yeu_cau_quyen,
@@ -643,12 +645,39 @@ class ThongBaoView(SigningAPIView):
 
     def get(self, request):
         ket_qua = []
-        for tb in thong_bao_service.cua_toi(request.user):
+        danh_sach = list(thong_bao_service.cua_toi(request.user))
+        email_keys = [
+            tb.khoa_chong_gui_trung[:-7] + ":EMAIL"
+            for tb in danh_sach
+            if tb.khoa_chong_gui_trung.endswith(":IN_APP")
+        ]
+        email_map = {
+            nb.khoa_chong_gui_trung: nb
+            for nb in SigningNotification.objects.filter(
+                khoa_chong_gui_trung__in=email_keys,
+                kenh=enums.KenhThongBao.EMAIL,
+            )
+        }
+        for tb in danh_sach:
             _, _, ten_van_ban = thong_bao_service.noi_dung(tb)
+            email_key = (
+                tb.khoa_chong_gui_trung[:-7] + ":EMAIL"
+                if tb.khoa_chong_gui_trung.endswith(":IN_APP")
+                else None
+            )
+            email_nb = email_map.get(email_key) if email_key else None
             ket_qua.append({
-                "id": tb.pk, "loai_thong_bao": tb.loai_thong_bao, "trinh_ky": tb.trinh_ky_id,
-                "van_ban": ten_van_ban, "trang_thai_ho_so": tb.trinh_ky.trang_thai,
-                "ten_quy_trinh": tb.trinh_ky.quy_trinh.ten_quy_trinh, "created_at": tb.created_at,
+                "id": tb.pk,
+                "loai_thong_bao": tb.loai_thong_bao,
+                "trinh_ky": tb.trinh_ky_id,
+                "van_ban": ten_van_ban,
+                "trang_thai_ho_so": tb.trinh_ky.trang_thai,
+                "ten_quy_trinh": tb.trinh_ky.quy_trinh.ten_quy_trinh,
+                "created_at": tb.created_at,
+                "kenh_in_app": True,
+                "email_da_gui": email_nb.trang_thai == enums.TrangThaiThongBao.DA_GUI if email_nb else False,
+                "email_trang_thai": email_nb.trang_thai if email_nb else None,
+                "email_nguoi_nhan": tb.nguoi_nhan.email or None,
             })
         return Response(ket_qua)
 

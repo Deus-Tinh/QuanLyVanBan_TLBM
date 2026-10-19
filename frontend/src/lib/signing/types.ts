@@ -279,7 +279,7 @@ export interface BoLocTaiLieu {
 
 export type LoaiThongBao = 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY';
 
-/** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP). */
+/** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP và trạng thái EMAIL). */
 export interface ThongBaoTrinhKy {
   id: number;
   loai_thong_bao: LoaiThongBao;
@@ -288,6 +288,10 @@ export interface ThongBaoTrinhKy {
   trang_thai_ho_so: TrangThaiHoSo;
   ten_quy_trinh: string;
   created_at: string;
+  kenh_in_app?: boolean;
+  email_da_gui?: boolean;
+  email_trang_thai?: string | null;
+  email_nguoi_nhan?: string | null;
 }
 
 /** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */

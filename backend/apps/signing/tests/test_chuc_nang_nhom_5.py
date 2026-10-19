@@ -112,6 +112,9 @@ class ThongBaoTests(KyBase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual((r.data[0]["loai_thong_bao"], r.data[0]["trinh_ky"]), ("CAN_KY", pk))
         self.assertEqual(r.data[0]["van_ban"], "10/QD — Mua sắm")
+        self.assertTrue(r.data[0]["kenh_in_app"])
+        self.assertFalse(r.data[0]["email_da_gui"])
+        self.assertIsNone(r.data[0]["email_trang_thai"])
         self.assertEqual(self.client_cua(User.objects.get(pk=self.ky3.pk)).get("/api/v1/signing/thong-bao/").data, [])
 
 
