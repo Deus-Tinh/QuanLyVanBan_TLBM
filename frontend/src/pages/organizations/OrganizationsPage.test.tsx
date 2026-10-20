@@ -161,12 +161,12 @@ describe('OrganizationsPage Component (Issue #19)', () => {
       );
     }
 
-    it('người chỉ có quyền xem không thấy nút Xuất Excel, Thêm, Sửa, Xóa', async () => {
+    it('người chỉ có quyền xem không thấy nút Xuất danh bạ, Thêm, Sửa, Xóa', async () => {
       mockApi(['view_donvi']);
       renderPage();
       await waitFor(() => expect(screen.getByText('Phòng Kế hoạch')).toBeInTheDocument());
 
-      expect(screen.queryByRole('button', { name: /Xuất Excel/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Xuất danh bạ/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Thêm đơn vị/i })).not.toBeInTheDocument();
       expect(screen.queryByTitle('Chỉnh sửa')).not.toBeInTheDocument();
       expect(screen.queryByTitle('Xóa')).not.toBeInTheDocument();
@@ -181,10 +181,32 @@ describe('OrganizationsPage Component (Issue #19)', () => {
     it('người đủ quyền thấy đầy đủ thao tác', async () => {
       mockApi(['view_donvi', 'add_donvi', 'change_donvi', 'delete_donvi', 'export_donvi']);
       renderPage();
-      await waitFor(() => expect(screen.getByRole('button', { name: /Xuất Excel/i })).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole('button', { name: /Xuất danh bạ/i })).toBeInTheDocument());
       expect(screen.getByRole('button', { name: /Thêm đơn vị/i })).toBeInTheDocument();
       expect(screen.getByTitle('Chỉnh sửa')).toBeInTheDocument();
       expect(screen.getByTitle('Xóa')).toBeInTheDocument();
+    });
+
+    it('nút Xuất danh bạ tải file danh bạ theo bộ lọc đang chọn', async () => {
+      mockApi(['view_donvi', 'export_donvi']);
+      renderPage();
+      const button = await screen.findByRole('button', { name: /Xuất danh bạ/i });
+      fireEvent.click(button);
+      await waitFor(() => expect(apiClientModule.downloadBlob).toHaveBeenCalledTimes(1));
+      const [endpoint, filename] = vi.mocked(apiClientModule.downloadBlob).mock.calls[0];
+      expect(endpoint).toMatch(/^\/api\/organizations\/units\/export\/\?/);
+      expect(endpoint).toContain('lang=vi');
+      expect(filename).toBe('DanhBa_BAOLONG.xlsx');
+      expect(await screen.findByText('Đã xuất danh bạ đơn vị, phòng ban.')).toBeInTheDocument();
+    });
+
+    it('ô tìm khối dùng câu tìm kiếm, không dùng câu gợi ý của ô nhập tên', async () => {
+      mockApi(['view_donvi']);
+      renderPage();
+      await waitFor(() => expect(screen.getByText('Phòng Kế hoạch')).toBeInTheDocument());
+      fireEvent.click(screen.getByRole('button', { name: /Khối \/ Khu vực/i }));
+      expect(await screen.findByPlaceholderText('Tìm khối hoặc khu vực theo tên...')).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/ví dụ: Khối Cơ quan/i)).not.toBeInTheDocument();
     });
 
     it('xóa đơn vị bị server từ chối: giữ hộp thoại và nêu đúng lý do, không báo lỗi kết nối mạng', async () => {
