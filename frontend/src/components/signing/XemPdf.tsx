@@ -43,7 +43,7 @@ function KhungKy({ k, onKeo }: { k: KhungHienThi; onKeo?: Props['onKeo'] }) {
   }[k.kieu];
   return (
     <div
-      className={`absolute flex flex-col items-center justify-center overflow-hidden rounded-xs border-2 px-1 text-center text-[0.65rem] leading-tight select-none ${mau}`}
+      className={`absolute flex flex-col items-center justify-center overflow-hidden rounded-xs border-2 px-1 text-center text-xs font-semibold leading-tight select-none ${mau}`}
       style={{ left: `${k.x}%`, top: `${k.y}%`, width: `${k.w}%`, height: `${k.h}%` }}
       onPointerDown={(e) => {
         if (!coTheKeo) return;
