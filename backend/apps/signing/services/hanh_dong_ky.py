@@ -25,7 +25,7 @@ from ..models import (
 )
 from ..storage import StorageError, get_storage
 from ..tich_hop import to_chuc
-from . import tep_hoan_tat
+from . import tep_hoan_tat, thong_bao
 from .audit import ghi_nhat_ky
 from .bang_chung import chot_bang_chung
 from .trinh_ky import luot_hien_hanh, mo_cap, mo_nguoi_ky_trong_cap
@@ -97,6 +97,7 @@ def _hoan_tat_neu_du(luot, cap, nguoi, thoi_diem):
     # Phase 10 lõi: chốt bằng chứng cùng transaction; tệp PDF hoàn tất sinh sau commit, lỗi thì thử lại được
     chot_bang_chung(luot, nguoi, thoi_diem)
     tep_hoan_tat.bat_dau_sau_commit(luot, nguoi)
+    thong_bao.su_kien(yeu_cau, luot, "HOAN_THANH", nguoi)
 
 
 def _chup_anh_chu_ky(nguoi):
@@ -195,6 +196,7 @@ def tu_choi(yeu_cau, nguoi, *, ly_do_tu_choi, khoa_chong_trung, dia_chi_ip=None)
     ghi_nhat_ky(nguoi, LOAI, dong.pk, "TU_CHOI", trinh_ky=yeu_cau, luot_trinh=luot, buoc_ky=dong,
                 trang_thai_truoc=enums.TrangThaiYeuCau.CHO_KY, trang_thai_sau=yeu_cau.trang_thai,
                 chi_tiet=ly_do_tu_choi, dia_chi_ip=dia_chi_ip)
+    thong_bao.su_kien(yeu_cau, luot, "TU_CHOI", nguoi)
     return yeu_cau
 
 

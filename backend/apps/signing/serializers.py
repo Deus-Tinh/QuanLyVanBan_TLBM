@@ -72,12 +72,13 @@ class CapKyQuyTrinhSerializer(serializers.ModelSerializer):
 
 class QuyTrinhSerializer(serializers.ModelSerializer):
     cap_ky = CapKyQuyTrinhSerializer(source="cap_ky_set", many=True, read_only=True)
+    ten_don_vi_ap_dung = serializers.CharField(source="don_vi_ap_dung.ten", read_only=True, default=None)
 
     class Meta:
         model = SigningProcess
         fields = ["id", "ma_quy_trinh", "ten_quy_trinh", "mo_ta", "phien_ban", "trang_thai", "pham_vi",
-                  "don_vi_ap_dung_id", "cau_hinh_nhac_han", "create_by", "created_at", "update_by",
-                  "update_at", "cap_ky"]
+                  "don_vi_ap_dung_id", "ten_don_vi_ap_dung", "cau_hinh_nhac_han", "create_by", "created_at",
+                  "update_by", "update_at", "cap_ky"]
 
 
 # ── Khóa ký ──────────────────────────────────────────────────────────────────

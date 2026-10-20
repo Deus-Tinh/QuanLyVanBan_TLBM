@@ -312,6 +312,11 @@ SIGNING_PIN_SECRET = os.environ.get("SIGNING_PIN_SECRET", "")
 SIGNING_PDF_FONT = os.environ.get("SIGNING_PDF_FONT", "")
 SIGNING_PDF_FONT_BOLD = os.environ.get("SIGNING_PDF_FONT_BOLD", "")
 
+# Trình ký — email thông báo người trong luồng. Để trống thì dùng cấu hình email chung của dự án; dev có thể đặt
+# `django.core.mail.backends.console.EmailBackend`. Địa chỉ giao diện dùng cho liên kết trong email.
+SIGNING_EMAIL_BACKEND = os.environ.get("SIGNING_EMAIL_BACKEND", "")
+SIGNING_FRONTEND_URL = os.environ.get("SIGNING_FRONTEND_URL", "http://localhost:5173")
+
 # ─────────────────────────────────────────────────
 # SimpleJWT — Cấu hình token
 # ─────────────────────────────────────────────────

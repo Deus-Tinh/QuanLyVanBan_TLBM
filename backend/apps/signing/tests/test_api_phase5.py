@@ -12,7 +12,7 @@ from signing import enums
 from signing.models import SigningAuditLog, SigningKey, SigningProcess
 from signing.permissions import co_quyen
 
-from .helpers import cap_quyen, them_vao_nhom_quan_tri
+from .helpers import cap_quyen, tao_chuc_vu, them_vao_nhom_quan_tri
 
 User = get_user_model()
 
@@ -38,6 +38,7 @@ class ApiBase(TestCase):
         self.c1, self.c2, self.anon = APIClient(), APIClient(), APIClient()
         self.c1.force_authenticate(self.u1)
         self.c2.force_authenticate(self.u2)
+        self.chuc_vu = tao_chuc_vu()
 
 
 class ProcessApiTests(ApiBase):
@@ -70,7 +71,8 @@ class ProcessApiTests(ApiBase):
         self.assertEqual(body["create_by"], self.u1.pk)
         self.assertEqual(set(body), {  # Phase 6c: không còn trường cách thức ký
             "id", "ma_quy_trinh", "ten_quy_trinh", "mo_ta", "phien_ban", "trang_thai", "pham_vi",
-            "don_vi_ap_dung_id", "cau_hinh_nhac_han", "create_by", "created_at", "update_by", "update_at", "cap_ky",
+            "don_vi_ap_dung_id", "ten_don_vi_ap_dung", "cau_hinh_nhac_han", "create_by", "created_at", "update_by",
+            "update_at", "cap_ky",
         })
         self.assertEqual([c["thu_tu"] for c in body["cap_ky"]], [1, 2])
         self.assertEqual(body["cap_ky"][1]["nguoi_ky"][0]["vai_tro_ky"], "KY_NHAY")
