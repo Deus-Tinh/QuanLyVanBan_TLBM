@@ -8,12 +8,10 @@
 
 - Người merge: thành viên nhóm sở hữu module của PR (thường là trưởng nhóm). Không cần chờ người phụ trách DevOps.
 - Điều kiện merge:
-  - CI xanh trên commit cuối;
-  - có ít nhất 1 approve của người ngoài tác giả;
+  - toàn bộ CI xanh trên commit cuối;
   - không còn xung đột với `staging`;
   - PR gắn issue (mục 1.3).
-- Merge bằng nút Merge trên PR, không push thẳng vào `staging`. Mỗi thay đổi trên `staging` truy được về PR, issue, người duyệt và người merge.
-- PR sửa tooling vận hành (`.github/`, `deploy/`, `scripts/build_db.py`) hoặc cấu hình và dependency chung cần người phụ trách DevOps approve. PR đổi schema theo mục 1.2 thì nhóm tự merge khi qua bước so schema của CI.
+- Merge bằng nút Merge trên PR, không push thẳng vào `staging`. Mỗi thay đổi trên `staging` truy được về PR, issue và người merge.
 - Merge kích hoạt deploy staging tự động; người merge theo dõi job deploy và báo lỗi qua issue nếu job thất bại.
 
 ### 1.2. Sửa CSDL: DDL, migration và changelog trong cùng một PR
@@ -61,7 +59,7 @@ Một bảng Project chung cho tổ chức, gom issue và PR của repo:
 
 Repo đang ở chế độ public nên dùng được bảo vệ nhánh trên gói GitHub Free. Áp dụng cho `staging` và `main`:
 
-- bắt buộc merge qua PR, tối thiểu 1 approve;
+- bắt buộc merge qua PR;
 - bắt buộc CI xanh;
 - chặn force-push và xóa nhánh.
 

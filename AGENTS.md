@@ -117,7 +117,7 @@ Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
   - Backend: `manage.py check`, `makemigrations --check --dry-run`, `migrate`, `migrate --check`, so schema với DDL (`.github/scripts/compare_schema_ddl.py` + baseline), `scripts/build_db.py --seed` + smoke ENUM/trigger/function/view, `manage.py test` trên PostgreSQL.
   - Frontend: `pnpm install --frozen-lockfile`, `lint`, `check:i18n`, `check:tokens`, `test`, `build`.
   - Không tắt rule lint, không bỏ qua hay loại trừ test để qua gate.
-- **Merge**: PR vào `staging` qua được gate, có ít nhất 1 approve của người ngoài tác giả và gắn issue thì nhóm sở hữu module tự merge bằng nút Merge trên PR và chịu trách nhiệm về thay đổi. PR sửa cấu hình, dependency hoặc tooling CI/deploy dùng chung (mục 6) cần người phụ trách DevOps approve. Người merge theo dõi job deploy staging sau merge.
+- **Merge**: PR vào `staging` gắn issue và qua toàn bộ CI thì nhóm sở hữu module tự merge bằng nút Merge trên PR và chịu trách nhiệm về thay đổi. Người merge theo dõi job deploy staging sau merge.
 - **Môi trường local**: dùng các lệnh `pnpm` trong `package.json` (`db:setup`, `db:start`, `db:migrate`, `db:reset`, `runserver`, `dev`); hướng dẫn đầy đủ trong `README.md`. PostgreSQL local chạy bằng `compose.yaml` (collation ICU `vi-VN`).
 - **Staging**: merge vào `staging` thì CI tự deploy bằng `deploy/deploy.sh` ở chế độ giữ dữ liệu (`DB_MODE=sync`): sao lưu, chạy thử migration trên bản sao, rồi nâng cấp DB bằng migration. Dựng lại DB (`rebuild`) chỉ khi chọn có chủ đích. Không deploy, không sửa DB hay cấu hình server staging bằng tay; thay đổi cấu hình server đi qua PR vào `deploy/`.
 
@@ -136,7 +136,7 @@ Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
   - Không tiếp tục commit lên nhánh đã merge. Sửa tiếp hoặc lỗi phát sinh sau merge: issue mới, nhánh mới từ `staging`.
   - Không dùng nhánh nhóm dài hạn làm nhánh trung gian; PR đi thẳng vào `staging`.
 - **Giữ nhánh ngắn để tránh conflict.**
-  - Trong lúc làm, merge `staging` vào nhánh ít nhất mỗi ngày làm việc và trước khi xin review.
+  - Trong lúc làm, merge `staging` vào nhánh ít nhất mỗi ngày làm việc và trước khi merge.
   - Mở draft PR sớm để nhóm khác thấy file đang bị sửa.
   - Hai issue cùng sửa một file dùng chung thì làm tuần tự, issue sau chờ PR trước merge.
 - **PR không còn phù hợp** (đã có thay đổi khác thay thế, nhánh nguồn mất) thì đóng kèm lý do và số PR/commit thay thế; phần còn thiếu mở issue mới.
