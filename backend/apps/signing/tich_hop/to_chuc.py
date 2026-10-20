@@ -7,16 +7,16 @@ Hợp đồng:
   đang hoạt động giữ chức vụ trong phạm vi (plan mục 3.2). Một ứng viên thì tự gán; nhiều ứng viên thì người tạo
   chọn; không có ai thì chặn gửi.
 
-Cài đặt tạm: model người dùng có `ho_ten`, `chuc_vu`, `don_vi` (Employee của Nhóm 7) thì dùng; nếu chưa có
-(`auth.User`) thì dùng họ tên/tên đăng nhập, không có chức vụ, và người ký theo chức vụ không tìm được ứng viên
-(chặn gửi với mã lỗi rõ). Khi Employee/Đơn vị/Chức vụ lên staging, cài đặt tự dùng dữ liệu thật; đổi các cột
-`chuc_vu_id`, `don_vi_id` số nguyên sang FK theo DDL ở bước đó.
+Dữ liệu thật của Nhóm 7 trên staging: Employee (`ho_ten`, `chuc_vu`, `don_vi`), `accounts.Position`,
+`organizations.DonVi`. Các cột `chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id` của Trình ký là FK theo DDL
+(migration 0010). Model người dùng thiếu `chuc_vu`/`don_vi` thì người ký theo chức vụ không có ứng viên.
 """
 
 import logging
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
+from organizations.models import DonVi
 
 from .. import enums
 from ..permissions import QUAN_LY_QUY_TRINH, co_quyen
@@ -31,6 +31,11 @@ def ten_hien_thi(nguoi_dung):
 def ten_chuc_vu(nguoi_dung):
     chuc_vu = getattr(nguoi_dung, "chuc_vu", None)
     return (getattr(chuc_vu, "name", "") or getattr(chuc_vu, "ten", "") or "") if chuc_vu else ""
+
+
+def ten_don_vi(nguoi_dung):
+    don_vi = getattr(nguoi_dung, "don_vi", None)
+    return getattr(don_vi, "ten", "") or "" if don_vi else ""
 
 
 def _co_du_lieu_to_chuc():
@@ -114,6 +119,17 @@ def la_quan_tri(nguoi_dung):
         return False
     ma_nhom = ma_nhom_cua(nguoi_dung)
     return ma_nhom is None or MA_NHOM_QUAN_TRI in ma_nhom
+
+
+def don_vi_quan_ly_duoc(nguoi_dung):
+    """Đơn vị người dùng được chọn làm đơn vị áp dụng quy trình PHONG_BAN: quản trị mọi đơn vị, lãnh đạo đơn vị
+    chỉ đơn vị mình."""
+    if la_quan_tri(nguoi_dung):
+        return DonVi.objects.order_by("stt_uu_tien", "pk")
+    don_vi_id = don_vi_cua(nguoi_dung)
+    if la_lanh_dao_don_vi(nguoi_dung, don_vi_id):
+        return DonVi.objects.filter(pk=don_vi_id)
+    return DonVi.objects.none()
 
 
 def la_lanh_dao_don_vi(nguoi_dung, don_vi_id):
