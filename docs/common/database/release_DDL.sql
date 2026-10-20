@@ -1845,21 +1845,52 @@ WHERE
     )
 ORDER BY x.vi_tri;
 
--- 3) Seed Chức vụ và Tài khoản quản trị hệ thống mẫu (Idempotent, không hard-code ID)
+-- 3) Seed 25 Chức vụ chuẩn (STT 1 = cao nhất: 22 chức vụ của đặc tả, giữ "Quản trị viên",
+--    "Lãnh đạo cơ quan", "Văn thư" chèn theo cấp bậc) và Tài khoản quản trị hệ thống mẫu
+--    (Idempotent, không hard-code ID)
 INSERT INTO
     accounts_position (
         display_order,
         name,
         is_public
     )
-SELECT 1, 'Quản trị viên', TRUE
+SELECT x.stt, x.ten, TRUE
+FROM (
+        VALUES
+        (1, 'Quản trị viên'),
+        (2, 'Chủ tịch HĐQT'),
+        (3, 'Phó Chủ tịch HĐQT'),
+        (4, 'Thành viên HĐQT'),
+        (5, 'Tổng Giám đốc'),
+        (6, 'Lãnh đạo cơ quan'),
+        (7, 'Phó Tổng Giám đốc điều hành'),
+        (8, 'Phó Tổng Giám đốc kinh doanh'),
+        (9, 'Giám đốc Khối'),
+        (10, 'Phó Giám đốc Khối'),
+        (11, 'Giám đốc Vùng'),
+        (12, 'Trợ lý TGĐ'),
+        (13, 'Giám đốc'),
+        (14, 'Phó Giám đốc'),
+        (15, 'Trưởng Ban'),
+        (16, 'Phó Ban'),
+        (17, 'Trưởng Bộ phận'),
+        (18, 'Trưởng nhóm'),
+        (19, 'Trưởng phòng'),
+        (20, 'Phó phòng'),
+        (21, 'Chuyên viên'),
+        (22, 'Văn thư'),
+        (23, 'Kiểm toán viên'),
+        (24, 'Nhân viên'),
+        (25, 'Thành viên')
+    ) AS x (stt, ten)
 WHERE
     NOT EXISTS (
         SELECT 1
-        FROM accounts_position
+        FROM accounts_position p
         WHERE
-            name = 'Quản trị viên'
-    );
+            p.name = x.ten
+    )
+ORDER BY x.stt;
 
 -- Đảm bảo có tài khoản quản trị hệ thống mẫu làm nguoi_lap_id nếu chưa có (truy vấn động ID)
 INSERT INTO
