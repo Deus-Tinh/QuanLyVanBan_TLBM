@@ -15,6 +15,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from accounts.models import Position
 from signing import enums
 from signing.models import SigningAttempt, SigningAuditLog, SigningRequest
 from signing.services import process as process_service
@@ -78,6 +79,9 @@ class TrinhKyBase(TestCase):
         self.ky2 = User.objects.create_user("phap_che")
         self.ky3 = User.objects.create_user("giam_doc")
         self.la = User.objects.create_user("nguoi_ngoai")
+        self.position = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Trưởng phòng"
+        )
         cap_quyen(self.tao, "add_trinhky", "send_trinhky", "view_vanbandi")
         self.process = self.tao_quy_trinh()
         self.c = self.client_cua(self.tao)
@@ -239,7 +243,7 @@ class GuiTests(TrinhKyBase):
 
     def test_signer_by_position_zero_one_or_many_candidates(self):
         self.process = self.tao_quy_trinh("QTCV", [{"cap_ky": 1, "ten_cap_ky": "Trưởng phòng", "thu_tu": 1,
-                                                   "nguoi_ky": [{"chuc_vu_id": 7, "thu_tu": 1}]}])
+                                                   "nguoi_ky": [{"chuc_vu_id": self.position.pk, "thu_tu": 1}]}])
         tim = "signing.tich_hop.to_chuc.tim_ung_vien_theo_chuc_vu"
         pk = self.tao_nhap().data["id"]
         with mock.patch(tim, return_value=[]):
@@ -259,7 +263,7 @@ class GuiTests(TrinhKyBase):
 
     def test_same_person_twice_in_level_rejected(self):
         self.process = self.tao_quy_trinh("QTT", [{"cap_ky": 1, "ten_cap_ky": "C", "thu_tu": 1, "nguoi_ky": [
-            {"nguoi_ky": self.ky1, "thu_tu": 1}, {"chuc_vu_id": 3, "thu_tu": 2}]}])
+            {"nguoi_ky": self.ky1, "thu_tu": 1}, {"chuc_vu_id": self.position.pk, "thu_tu": 2}]}])
         pk = self.tao_nhap().data["id"]
         with mock.patch("signing.tich_hop.to_chuc.tim_ung_vien_theo_chuc_vu", return_value=[self.ky1]):
             r = self.gui(pk)

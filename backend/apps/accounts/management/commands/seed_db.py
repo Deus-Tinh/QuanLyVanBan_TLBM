@@ -1,8 +1,8 @@
 import datetime
 import os
-from django.core.management.base import BaseCommand, CommandError
-from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from organizations.models import KhoiKhuVuc, DonVi
 from accounts.models import Employee, Position
@@ -122,7 +122,7 @@ POSITION_DATA = [
 ]
 
 
-SYSTEM_PASSWORD_PLACEHOLDER = "pbkdf2_sha256$system_seed_placeholder"
+SYSTEM_PASSWORD_PLACEHOLDER = "!system_seed_placeholder"
 
 
 class Command(BaseCommand):
@@ -148,7 +148,6 @@ class Command(BaseCommand):
             raise CommandError("DEMO_PASSWORD is required when --demo-data is selected.")
 
         self.stdout.write(self.style.NOTICE("==> Seeding reference data..."))
-
         with transaction.atomic():
             khoi_map = {}
             for ten, thu_tu in KHOI_DATA:
@@ -187,8 +186,6 @@ class Command(BaseCommand):
                 "chuc_vu": admin_chucvu,
                 "don_vi": admin_donvi,
                 "sdt": "0901234567",
-                "trang_thai": Employee.Status.LAM_VIEC,
-                "is_public": True,
                 "is_staff": True,
                 "is_superuser": True,
                 "is_active": True,
@@ -196,6 +193,8 @@ class Command(BaseCommand):
             admin, created = UserModel.objects.get_or_create(username="admin", defaults=admin_defaults)
             initialized = False
             if not created and admin.password == SYSTEM_PASSWORD_PLACEHOLDER:
+                # This exact unusable sentinel is not a user credential. Initialize it once;
+                # subsequent seed runs preserve every existing account field.
                 admin.set_password(admin_password)
                 admin.save(update_fields=["password"])
                 initialized = True

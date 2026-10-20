@@ -55,7 +55,6 @@ class DriftObjectTest(unittest.TestCase):
     def test_every_line_of_current_baseline_has_a_known_format(self):
         text = (REPO_ROOT / chk.BASELINE_PATH).read_text(encoding="utf-8")
         lines = chk.baseline_lines(text)
-        self.assertTrue(lines)
         for line in lines:
             chk.drift_object(line)
 
@@ -78,6 +77,11 @@ class BaselineLogicTest(unittest.TestCase):
     def test_changed_detail_of_existing_object_passes(self):
         head = BASELINE_BASE.replace("#aaaa", "#bbbb").replace("migration text()", "migration varchar(5)")
         self.assertEqual(chk.new_drift_objects(BASELINE_BASE, head), [])
+
+    def test_empty_or_comment_only_baseline_passes_against_existing_base(self):
+        for head in ("", "# không còn sai lệch\n\n"):
+            with self.subTest(head=head):
+                self.assertEqual(chk.new_drift_objects(BASELINE_BASE, head), [])
 
 
 class ChangelogLogicTest(unittest.TestCase):
@@ -160,6 +164,13 @@ class GitCheckTest(unittest.TestCase):
         self.write(chk.BASELINE_PATH, BASELINE_BASE.replace("#aaaa", "#bbbb"))
         self.commit("pr")
         self.assertEqual(chk.check_baseline("main"), 0)
+
+    def test_baseline_empty_or_comment_only_passes(self):
+        for baseline in ("", "# không còn sai lệch\n\n"):
+            with self.subTest(baseline=baseline):
+                self.write(chk.BASELINE_PATH, baseline)
+                self.commit("pr")
+                self.assertEqual(chk.check_baseline("main"), 0)
 
     def test_no_base_ref_is_skipped(self):
         self.assertEqual(chk.main(["x", "changelog", ""]), 0)

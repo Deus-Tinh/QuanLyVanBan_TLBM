@@ -7,7 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote
 
+from django.conf import settings
+from django.db import DatabaseError, connection
 from django.http import FileResponse, JsonResponse
+from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
@@ -74,6 +77,17 @@ def root(request):
     return JsonResponse({"message": "Quản lý Văn bản TLBM API đang hoạt động", "stack": ["Django", "React", "LlamaIndex", "ChromaDB"]})
 
 
+@require_GET
+def readiness(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except DatabaseError:
+        return JsonResponse({"status": "not_ready"}, status=503)
+    return JsonResponse({"status": "ready", "release": settings.RELEASE_ID})
+
+
 def ai_health(request):
     has_key = bool(config.GEMINI_API_KEY) if config.MODEL_PROVIDER == "gemini" else bool(os.getenv("OPENAI_API_KEY"))
     return JsonResponse({"status": "ok", "provider": config.MODEL_PROVIDER, "llm_model": config.LLM_MODEL, "llm_available": has_key, "embed_model": config.EMBED_MODEL, "embed_available": has_key, "available_models": [config.LLM_MODEL, config.EMBED_MODEL]})
@@ -90,6 +104,11 @@ def chat(request):
     question = payload.get("question")
     history = payload.get("history", [])
     category = payload.get("category")
+    filename = payload.get("filename")
+    if filename and not isinstance(filename, str):
+        filename = None
+    elif filename:
+        filename = filename.strip()
     if not isinstance(question, str) or not question.strip():
         return _error("Câu hỏi không được để trống.")
     if len(question) > 4000:
@@ -110,8 +129,9 @@ def chat(request):
             category=category if isinstance(category, str) else None,
             user=request.user,
             employee_id=employee_id,
+            filename=filename,
         )
-        return JsonResponse({"question": question.strip(), "category": category or None, **result})
+        return JsonResponse({"question": question.strip(), "category": category or None, "filename": filename or None, **result})
     except SqlDocumentAccessError as exc:
         status = 401 if "danh tính" in str(exc).lower() or "đăng nhập" in str(exc).lower() else 403
         return _error(str(exc), status)
@@ -186,11 +206,14 @@ def upload_sync(request):
 @api_view(["GET", "DELETE"])
 @permission_classes([IsAuthenticated])
 def documents(request, filename=None):
+    if request.method == "GET":
+        denied = _require_ai_access(request)
+        if denied:
+            return denied
+        return JsonResponse({"documents": list_documents()})
     denied = _require_ai_admin(request)
     if denied:
         return denied
-    if request.method == "GET":
-        return JsonResponse({"documents": list_documents()})
     if request.method == "DELETE":
         from backend.services.rag_service import clear_vector_database
 
@@ -234,7 +257,7 @@ def document_detail(request, filename):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def document_file(request, filename):
-    denied = _require_ai_admin(request)
+    denied = _require_ai_access(request)
     if denied:
         return denied
     safe_name = Path(unquote(filename)).name
@@ -252,7 +275,7 @@ def document_file(request, filename):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def preview_document(request, filename):
-    denied = _require_ai_admin(request)
+    denied = _require_ai_access(request)
     if denied:
         return denied
     safe_name = Path(unquote(filename)).name
@@ -315,13 +338,19 @@ def reclassify(request, filename):
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def ai_settings(request):
+    if request.method == "GET":
+        denied = _require_ai_access(request)
+        if denied:
+            return denied
+        info = {"status": "ok", "provider": config.MODEL_PROVIDER, "llm_model": config.LLM_MODEL, "embed_model": config.EMBED_MODEL, "vision_model": config.VISION_MODEL}
+        if not is_ai_admin(request.user):
+            return JsonResponse(info)
+        key = config.GEMINI_API_KEY if config.MODEL_PROVIDER == "gemini" else os.getenv("OPENAI_API_KEY", "")
+        masked = f"{key[:6]}...{key[-4:]}" if len(key) > 10 else ("********" if key else "")
+        return JsonResponse({**info, "has_api_key": bool(key), "api_key_masked": masked})
     denied = _require_ai_admin(request)
     if denied:
         return denied
-    if request.method == "GET":
-        key = config.GEMINI_API_KEY if config.MODEL_PROVIDER == "gemini" else os.getenv("OPENAI_API_KEY", "")
-        masked = f"{key[:6]}...{key[-4:]}" if len(key) > 10 else ("********" if key else "")
-        return JsonResponse({"status": "ok", "provider": config.MODEL_PROVIDER, "has_api_key": bool(key), "api_key_masked": masked, "llm_model": config.LLM_MODEL, "embed_model": config.EMBED_MODEL, "vision_model": config.VISION_MODEL})
     if request.method != "POST":
         return _error("Phương thức không được hỗ trợ.", 405)
     payload = _json_body(request)

@@ -73,11 +73,15 @@ def update_category_in_registry(filename: str, category: str):
     save_registry(entries)
 
 
-def remove_from_registry(filename: str):
+def remove_from_registry(filename: str) -> bool:
     """Xóa 1 entry theo filename."""
     entries = load_registry()
+    initial_len = len(entries)
     entries = [e for e in entries if e.get("filename") != filename]
-    save_registry(entries)
+    if len(entries) < initial_len:
+        save_registry(entries)
+        return True
+    return False
 
 
 def clear_registry():
@@ -145,11 +149,11 @@ def delete_document_file(filename: str) -> bool:
 
     safe_name = Path(filename).name
     file_path = DOCS_DIR / safe_name
-    existed = file_path.exists() and file_path.is_file()
+    file_existed = file_path.exists() and file_path.is_file()
 
-    if existed and safe_name != ".gitkeep":
+    if file_existed and safe_name != ".gitkeep":
         file_path.unlink()
 
-    remove_from_registry(safe_name)
+    reg_existed = remove_from_registry(safe_name)
 
-    return existed
+    return file_existed or reg_existed

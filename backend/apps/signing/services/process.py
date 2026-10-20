@@ -2,6 +2,9 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
 from rest_framework import status
 
+from accounts.models import Position
+from organizations.models import DonVi
+
 from .. import enums
 from ..errors import ConflictError, SigningError
 from ..models import SigningProcess, SigningProcessStep, SigningProcessStepSigner
@@ -11,6 +14,21 @@ from .audit import ghi_nhat_ky
 
 LOAI = "signing_process"
 CAU_HINH_NHAC_HAN_MAC_DINH = {"truoc_han_gio": [24], "dung_han": True}
+
+
+def _kiem_tra_tham_chieu(model, identifier, *, field, code, ten):
+    if identifier is None:
+        return
+    try:
+        model.objects.select_for_update().only("pk").get(pk=identifier)
+    except model.DoesNotExist as exc:
+        message = f"{ten} không tồn tại."
+        raise SigningError(code=code, detail=message, fields={field: [message]}) from exc
+
+
+def _la_unique_constraint(exc, constraint_name):
+    diagnostic = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", None)
+    return diagnostic == constraint_name
 
 
 def _khoa(process_id):
@@ -90,6 +108,9 @@ def tao_quy_trinh(nguoi_tao, *, ma_quy_trinh, ten_quy_trinh, pham_vi, don_vi_ap_
     nguoi_ky: [{nguoi_ky?, chuc_vu_id?, vai_tro_ky?, chan_ky_chinh?, thu_tu}]}.
     """
     kiem_tra_pham_vi(pham_vi, don_vi_ap_dung_id)
+    _kiem_tra_tham_chieu(
+        DonVi, don_vi_ap_dung_id, field="don_vi_ap_dung_id", code="don_vi_khong_ton_tai", ten="Đơn vị"
+    )
     try:
         with transaction.atomic():
             process = SigningProcess.objects.create(
@@ -98,8 +119,13 @@ def tao_quy_trinh(nguoi_tao, *, ma_quy_trinh, ten_quy_trinh, pham_vi, don_vi_ap_
                 cau_hinh_nhac_han=cau_hinh_nhac_han or CAU_HINH_NHAC_HAN_MAC_DINH,
                 phien_ban=1, create_by=nguoi_tao,
             )
-    except IntegrityError:
-        raise ConflictError(code="quy_trinh_trung_ma", detail="Mã quy trình đã tồn tại.")
+    except IntegrityError as exc:
+        if _la_unique_constraint(
+            exc,
+            "uq_signing_process_ma_phien_ban",
+        ):
+            raise ConflictError(code="quy_trinh_trung_ma", detail="Mã quy trình đã tồn tại.") from exc
+        raise
     for cap in cap_ky:
         them_cap_ky(process, nguoi_tao, **cap, _ghi_nhat_ky=False)
     ghi_nhat_ky(nguoi_tao, LOAI, process.pk, "TAO_QUY_TRINH", trang_thai_sau=process.trang_thai)
@@ -111,14 +137,20 @@ def them_cap_ky(process, nguoi_thuc_hien, *, cap_ky, ten_cap_ky, thu_tu, nguoi_k
                 don_vi_id=None, so_gio_xu_ly=None, ghi_chu="", _ghi_nhat_ky=True):
     process = _khoa(process.pk)
     _yeu_cau_ban_nhap(process)
+    _kiem_tra_tham_chieu(DonVi, don_vi_id, field="don_vi_id", code="don_vi_khong_ton_tai", ten="Đơn vị")
     try:
         with transaction.atomic():
             step = SigningProcessStep.objects.create(
                 quy_trinh=process, cap_ky=cap_ky, ten_cap_ky=ten_cap_ky, thu_tu=thu_tu,
                 don_vi_id=don_vi_id, so_gio_xu_ly=so_gio_xu_ly, ghi_chu=ghi_chu,
             )
-    except IntegrityError:
-        raise ConflictError(code="cap_ky_trung_thu_tu", detail="Thứ tự cấp ký đã tồn tại trong quy trình.")
+    except IntegrityError as exc:
+        if _la_unique_constraint(
+            exc,
+            "uq_signing_process_step_thu_tu",
+        ):
+            raise ConflictError(code="cap_ky_trung_thu_tu", detail="Thứ tự cấp ký đã tồn tại trong quy trình.") from exc
+        raise
     for nk in nguoi_ky:
         them_nguoi_ky(step, nguoi_thuc_hien, **nk)
     if _ghi_nhat_ky:
@@ -147,6 +179,9 @@ def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=No
             raise SigningError(code="cap_ky_thieu_don_vi",
                                detail="Phạm vi 'đơn vị cố định' cần cấp ký có đơn vị.",
                                fields={"pham_vi_chuc_vu": ["Cấp ký chưa có don_vi_id."]})
+    _kiem_tra_tham_chieu(
+        Position, chuc_vu_id, field="chuc_vu_id", code="chuc_vu_khong_ton_tai", ten="Chức vụ"
+    )
     return SigningProcessStepSigner.objects.create(
         buoc_quy_trinh=step, nguoi_ky=nguoi_ky, chuc_vu_id=chuc_vu_id, pham_vi_chuc_vu=pham_vi_chuc_vu,
         vai_tro_ky=vai_tro_ky, chan_ky_chinh=chan_ky_chinh, thu_tu=thu_tu,

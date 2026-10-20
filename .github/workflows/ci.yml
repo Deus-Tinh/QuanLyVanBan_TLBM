@@ -28,7 +28,7 @@ jobs:
   backend:
     name: backend
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     env:
       DJANGO_SECRET_KEY: "ci-only-not-for-production"
       DB_ENGINE: postgresql
@@ -37,11 +37,14 @@ jobs:
       DB_NAME: tlbm_ci
       DB_USER: postgres
       DB_PASSWORD: postgres
+      DB_READONLY_USER: qlvb_readonly
+      DB_READONLY_PASSWORD: ci-readonly-only
       ADMIN_PASSWORD: "ci-only-not-for-production"
     services:
       postgres:
         image: postgres:16
         env:
+          POSTGRES_DB: tlbm_ci
           POSTGRES_PASSWORD: postgres
           POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=vi-VN --locale=C.UTF-8"
         ports:
@@ -57,27 +60,146 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Schema conventions vs PR base
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+          python .github/scripts/check_schema_conventions.py changelog "origin/$BASE_REF"
+          python .github/scripts/check_schema_conventions.py baseline "origin/$BASE_REF"
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/requirements-linux-py312.lock
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-linux-py312.lock
+
+      - name: Provision restricted role in disposable PostgreSQL service
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -p 5432 -U postgres -d tlbm_ci -v ON_ERROR_STOP=1 -c "CREATE ROLE qlvb_readonly LOGIN PASSWORD 'ci-readonly-only' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT"
 
       - name: Django system check
         run: python manage.py check
 
+      - name: Readiness endpoint regressions
+        run: python manage.py test api.test_readiness
+
+      - name: Deployment recovery regressions
+        working-directory: .
+        run: |
+          bash -n deploy/deploy.sh scripts/test_deploy.sh
+          bash scripts/test_deploy.sh
+
       - name: Missing migrations check
         run: python manage.py makemigrations --check --dry-run
+
+      - name: Schema comparator and DDL policy regression tests
+        working-directory: .
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: '5432'
+          POSTGRES_DB: tlbm_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        run: python -m unittest discover -s .github/scripts -p "test_*.py"
+
+      - name: Signing schema CHECK normalization regressions
+        working-directory: .
+        run: |
+          python - <<'PY'
+          import unittest
+
+          suite = unittest.defaultTestLoader.discover("scripts", pattern="test_compare_schema_ddl.py")
+          if suite.countTestCases() == 0:
+              raise SystemExit("signing schema CHECK regression tests were not discovered")
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.skipped:
+              raise SystemExit(f"signing schema CHECK regression tests skipped {len(result.skipped)} cases")
+          raise SystemExit(0 if result.wasSuccessful() else 1)
+          PY
+
+      - name: Database lifecycle and upgrade regressions
+        working-directory: .
+        run: python -m unittest discover -s scripts -p "test_build_db.py"
+
+      - name: Install PostgreSQL 16 client tools for backup drill
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-16
+          CLIENT_BIN=/usr/lib/postgresql/16/bin
+          for tool in psql pg_dump pg_restore; do
+            test -x "$CLIENT_BIN/$tool"
+            version=$("$CLIENT_BIN/$tool" --version)
+            printf '%s\n' "$version"
+            case "$version" in
+              *"(PostgreSQL) 16."*) ;;
+              *) echo "$tool must be PostgreSQL 16, got: $version" >&2; exit 1 ;;
+            esac
+          done
+          echo "$CLIENT_BIN" >> "$GITHUB_PATH"
+
+      - name: PostgreSQL 16 backup/restore drill (no skips)
+        working-directory: .
+        env:
+          QLVB_BACKUP_TEST_ENABLED: '1'
+        run: |
+          python - <<'PY'
+          import unittest
+
+          suite = unittest.defaultTestLoader.discover("scripts", pattern="test_backup_restore.py")
+          if suite.countTestCases() == 0:
+              raise SystemExit("backup/restore drill discovered no tests")
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if result.skipped:
+              raise SystemExit(f"backup/restore drill skipped {len(result.skipped)} tests")
+          raise SystemExit(0 if result.wasSuccessful() else 1)
+          PY
 
       - name: Dựng DB từ release_DDL.sql (kiểm chứng script)
         working-directory: .
         run: python scripts/build_db.py --dbname tlbm_ddl_built --seed
 
+      - name: Verify migration upgrade path against release DDL and baseline
+        working-directory: backend
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: '5432'
+          POSTGRES_DB: tlbm_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        run: |
+          python manage.py migrate --noinput
+          PGPASSWORD="$POSTGRES_PASSWORD" createdb -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" tlbm_ddl_expected
+          PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d tlbm_ddl_expected -v ON_ERROR_STOP=1 -q -f ../docs/common/database/release_DDL.sql
+          python ../.github/scripts/compare_schema_ddl.py "$POSTGRES_DB" tlbm_ddl_expected ../docs/common/database/schema_drift_baseline.txt
+
       - name: Django tests
-        run: python manage.py test
+        run: |
+          python - <<'PY'
+          import os
+          import django
+          from django.conf import settings
+          from django.test.utils import get_runner
+
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+          django.setup()
+
+          class RequiredTestRunner(get_runner(settings)):
+              def suite_result(self, suite, result, **kwargs):
+                  if not result.testsRun or result.skipped:
+                      raise SystemExit("Django test gate requires discovered tests with zero skips")
+                  return super().suite_result(suite, result, **kwargs)
+
+          raise SystemExit(bool(RequiredTestRunner(interactive=False).run_tests([])))
+          PY
 
   frontend:
     name: frontend
@@ -127,7 +249,7 @@ jobs:
   deploy-frontend:
     name: Deploy frontend to Ubuntu
     if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
-    needs: [frontend]
+    needs: [backend, frontend]
     runs-on: ubuntu-latest
     steps:
       - name: Download frontend artifact
@@ -157,8 +279,8 @@ jobs:
 
   deploy-backend:
     name: Deploy backend to Ubuntu
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/staging'
-    needs: [backend]
+    if: github.ref == 'refs/heads/staging' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [backend, frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -169,7 +291,24 @@ jobs:
           set -euo pipefail
           SHA7="$(git rev-parse --short=7 HEAD)"
           echo "SHA7=$SHA7" >> "$GITHUB_ENV"
-          git archive --format=tar.gz -o "qlvb-$SHA7.tar.gz" HEAD backend scripts docs/common/database
+          git archive --format=tar.gz -o "qlvb-$SHA7.tar.gz" HEAD backend scripts docs/common/database .github/scripts/compare_schema_ddl.py
+
+      - name: Verify deployed script bytes and Bash syntax
+        run: |
+          git check-attr eol -- deploy/deploy.sh | grep -Fx 'deploy/deploy.sh: eol: lf'
+          git check-attr eol -- scripts/test_deploy.sh | grep -Fx 'scripts/test_deploy.sh: eol: lf'
+          python3 - <<'PY'
+          from pathlib import Path
+          for name in ("deploy/deploy.sh", "scripts/test_deploy.sh"):
+              if b"\r" in Path(name).read_bytes():
+                  raise SystemExit(f"{name} must use LF line endings")
+          PY
+          bash -n deploy/deploy.sh scripts/test_deploy.sh
+
+      - name: Verify backend archive contains runtime schema comparator
+        run: |
+          tar -tzf "qlvb-$SHA7.tar.gz" | grep -Fx ".github/scripts/compare_schema_ddl.py"
+          tar -tzf "qlvb-$SHA7.tar.gz" | grep -Fx "backend/requirements-linux-py312.lock"
 
       - name: Deploy backend over SSH
         env:

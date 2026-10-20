@@ -78,6 +78,8 @@ class SeedDbCommandTests(TestCase):
 
     def test_seed_without_admin_and_missing_admin_password_rolls_back(self):
         """Edge case 3: Không có admin, thiếu ADMIN_PASSWORD -> CommandError, rollback transaction."""
+        # Keep the migration-seeded account and its references; exercise the missing-admin case.
+        UserModel.objects.filter(username="admin").update(username="seed_reference_admin")
         self.assertFalse(UserModel.objects.filter(username="admin").exists())
         initial_counts = (
             KhoiKhuVuc.objects.count(),
@@ -103,6 +105,8 @@ class SeedDbCommandTests(TestCase):
 
     def test_seed_admin_password_whitespace_only_is_treated_as_missing(self):
         """Edge case 4: ADMIN_PASSWORD chỉ có khoảng trắng được coi là thiếu."""
+        # Keep the migration-seeded account and its references; exercise the missing-admin case.
+        UserModel.objects.filter(username="admin").update(username="seed_reference_admin")
         self.assertFalse(UserModel.objects.filter(username="admin").exists())
         with mock.patch.dict(os.environ, {"ADMIN_PASSWORD": "   \t  "}, clear=False):
             with self.assertRaises(CommandError) as ctx:

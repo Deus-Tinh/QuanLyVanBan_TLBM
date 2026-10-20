@@ -31,28 +31,30 @@ class EmployeeBaseTestCase(APITestCase):
     def setUp(self):
         # 1. Tạo Khối & Đơn vị
         self.khoi = KhoiKhuVuc.objects.create(ten="Khối Cơ quan Điều hành")
+        latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
         self.don_vi_1 = DonVi.objects.create(
             ten="Văn phòng Viện",
             khoi=self.khoi,
-            stt_uu_tien=1,
+            stt_uu_tien=latest_stt + 1,
             is_public=True,
         )
         self.don_vi_2 = DonVi.objects.create(
             ten="Phòng Kế toán - Tài chính",
             khoi=self.khoi,
-            stt_uu_tien=2,
+            stt_uu_tien=latest_stt + 2,
             is_public=True,
         )
 
         # 2. Tạo Chức vụ
+        first_display_order = Position.get_next_display_order()
         self.cv_truong_phong = Position.objects.create(
             name="Trưởng phòng",
-            display_order=1,
+            display_order=first_display_order,
             is_public=True,
         )
         self.cv_chuyen_vien = Position.objects.create(
             name="Chuyên viên",
-            display_order=2,
+            display_order=first_display_order + 1,
             is_public=True,
         )
 
@@ -787,6 +789,8 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.assertEqual(res_deact_su.data["detail"], "employees.messages.cannotDeactivateSuperuser")
 
         # 5. Superuser thứ 2 thôi việc superuser đầu tiên, nhưng không thể thôi việc superuser cuối cùng
+        # Loại superuser nền của migration khỏi ca kiểm thử để điều kiện "cuối cùng" độc lập với DB seed.
+        User.objects.filter(is_superuser=True, is_active=True).exclude(pk=self.admin_user.pk).update(is_active=False)
         second_admin = User.objects.create_superuser(
             username="admin_2",
             email="admin2@donvi.gov.vn",
@@ -1085,20 +1089,66 @@ class ReviewRound4FixesTests(EmployeeBaseTestCase):
 
 
 class SeedDbCommandTests(APITestCase):
-    """Lệnh seed_db: đủ 82 đơn vị (tên không duy nhất: "Lãnh đạo khối" có ở 2 khối) và chạy lặp không tạo trùng."""
+    """Seed dữ liệu tham chiếu theo kiểu create-only và giữ nguyên account có sẵn."""
 
     def test_seed_db_is_complete_and_idempotent(self):
-        import os
-        from unittest import mock
         from django.core.management import call_command
 
-        with mock.patch.dict(os.environ, {"ADMIN_PASSWORD": "test-admin-password"}, clear=False):
-            call_command("seed_db", verbosity=0)
-            self.assertEqual(KhoiKhuVuc.objects.count(), 16)
-            self.assertEqual(DonVi.objects.count(), 82)
-            self.assertEqual(DonVi.objects.filter(ten="Lãnh đạo khối").count(), 2)
-            self.assertTrue(User.objects.filter(username="admin", is_superuser=True).exists())
+        existing_demo = User.objects.create_user(
+            username="truongphong_cntt",
+            password="existing-demo-password",
+            email="existing-demo@example.com",
+            ho_ten="Tài khoản hiện có",
+            don_vi=DonVi.objects.first(),
+            chuc_vu=Position.objects.first(),
+            is_active=False,
+            is_staff=True,
+            is_superuser=False,
+        )
+        existing_demo_hash = existing_demo.password
 
+        with patch.dict("os.environ", {"ADMIN_PASSWORD": "seed-test-admin-password"}):
             call_command("seed_db", verbosity=0)
-            self.assertEqual(DonVi.objects.count(), 82)
-            self.assertEqual(Position.objects.count(), 7)
+        self.assertEqual(KhoiKhuVuc.objects.count(), 16)
+        self.assertEqual(DonVi.objects.count(), 82)
+        self.assertEqual(DonVi.objects.filter(ten="Lãnh đạo khối").count(), 2)
+        admin = User.objects.get(username="admin")
+        self.assertTrue(admin.is_superuser)
+        first_password_hash = admin.password
+        self.assertFalse(User.objects.filter(username="chuyenvien_cntt").exists())
+
+        with patch.dict("os.environ", {
+            "ADMIN_PASSWORD": "different-seed-password",
+            "DEMO_PASSWORD": "seed-test-demo-password",
+        }):
+            call_command("seed_db", demo_data=True, verbosity=0)
+        self.assertEqual(DonVi.objects.count(), 82)
+        self.assertEqual(Position.objects.count(), 7)
+        self.assertEqual(User.objects.get(username="admin").password, first_password_hash)
+        preserved_demo = User.objects.get(username="truongphong_cntt")
+        self.assertEqual(preserved_demo.password, existing_demo_hash)
+        self.assertFalse(preserved_demo.is_active)
+        self.assertTrue(preserved_demo.is_staff)
+        created_demo = User.objects.get(username="chuyenvien_cntt")
+        self.assertTrue(created_demo.check_password("seed-test-demo-password"))
+
+        with patch.dict("os.environ", {
+            "ADMIN_PASSWORD": "later-admin-password",
+            "DEMO_PASSWORD": "later-demo-password",
+        }):
+            call_command("seed_db", demo_data=True, verbosity=0)
+        self.assertEqual(User.objects.get(username="admin").password, first_password_hash)
+        self.assertEqual(User.objects.get(username="truongphong_cntt").password, existing_demo_hash)
+        self.assertTrue(User.objects.get(username="chuyenvien_cntt").check_password("seed-test-demo-password"))
+
+    def test_missing_seed_secrets_fail_before_reference_data_changes(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        before = (KhoiKhuVuc.objects.count(), DonVi.objects.count(), Position.objects.count())
+        with patch.dict("os.environ", {}, clear=True), self.assertRaises(CommandError):
+            call_command("seed_db", verbosity=0)
+        with patch.dict("os.environ", {"ADMIN_PASSWORD": "seed-test-admin-password"}, clear=True):
+            with self.assertRaises(CommandError):
+                call_command("seed_db", demo_data=True, verbosity=0)
+        self.assertEqual((KhoiKhuVuc.objects.count(), DonVi.objects.count(), Position.objects.count()), before)

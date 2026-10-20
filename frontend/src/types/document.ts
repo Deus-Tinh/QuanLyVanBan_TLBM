@@ -48,6 +48,9 @@ export interface DocumentItem {
   trich_yeu: string;
   noi_ban_hanh?: string;
   nguoi_ky?: string;
+  chuc_vu?: string;
+  danh_muc_ho_so?: string;
+  ten_loai_van_ban?: string;
   hieu_luc: DocumentStatus;
   hieu_luc_display: string;
   ngay_het_hieu_luc?: string | null;
@@ -63,6 +66,7 @@ export interface DocumentItem {
   can_edit?: boolean;
   can_delete?: boolean;
   attachment_count: number;
+  first_attachment_url?: string | null;
   created_at: string;
 }
 
@@ -77,7 +81,9 @@ export interface DocumentDetail extends DocumentItem {
   ghi_chu?: string;
   gui_mail_toan_he_thong: boolean;
   attachments: DocumentAttachment[];
+  don_vi_nhan?: string | null;
   nguoi_nhan_list?: DocumentRecipient[];
+  nguoi_nhan?: (number | string | { id: number | string } | DocumentRecipient)[];
   updated_at: string;
 }
 
@@ -109,6 +115,8 @@ export interface DocumentFilterParams {
   page_size?: number;
   loai?: DocumentType;
   loai_van_ban?: string | number;
+  ho_so?: string;
+  pham_vi?: 'NOI_BO' | 'HAN_CHE' | string;
 }
 
 /**

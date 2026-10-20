@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import viJson from './vi.json';
 import enJson from './en.json';
 
@@ -58,6 +58,8 @@ export function setLanguage(lang: SupportedLanguage): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY, lang);
     document.documentElement.setAttribute('lang', lang);
+    window.dispatchEvent(new CustomEvent('tlbm_lang_changed', { detail: lang }));
+    window.dispatchEvent(new Event('storage'));
   }
   // Kích hoạt re-render cho tất cả subscribers
   listeners.forEach((listener) => listener());
@@ -109,11 +111,15 @@ function getServerSnapshot(): SupportedLanguage {
 export function useTranslation() {
   const lang: SupportedLanguage = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const translations = DICTIONARIES[lang];
+  const translate = useCallback(
+    (key: string, replacements?: Record<string, string | number>) => t(key, replacements, lang),
+    [lang]
+  );
 
   return {
     currentLang: lang,
     setLanguage,
-    t: (key: string, replacements?: Record<string, string | number>) => t(key, replacements, lang),
+    t: translate,
     translations,
   };
 }

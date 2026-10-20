@@ -30,8 +30,9 @@ class BirthdaySystemTests(TestCase):
         self.client = APIClient()
 
         khoi = KhoiKhuVuc.objects.create(ten="Khối Đào tạo")
-        self.don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Khoa CNTT")
-        self.chuc_vu = Position.objects.create(display_order=1, name="Giảng viên")
+        latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+        self.don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=latest_stt + 1, ten="Khoa CNTT")
+        self.chuc_vu = Position.objects.create(display_order=Position.get_next_display_order(), name="Giảng viên")
 
         # 1. Nhân viên thường (có quyền view_sinhnhat, send_wish_sinhnhat)
         self.emp_staff = Employee.objects.create_user(
@@ -257,11 +258,9 @@ class BirthdaySystemTests(TestCase):
             subject="Chúc mừng sinh nhật",
             trang_thai=BirthdayEmailStatus.SENDING,
         )
-        BirthdayEmailLog.objects.filter(pk=stale_log.pk).update(
-            updated_at=timezone.now() - timedelta(minutes=31),
-        )
-
-        results = send_automated_birthday_emails(target_date=target_date, allow_test_email_backend=True)
+        future_now = stale_log.updated_at + timedelta(minutes=31)
+        with patch("birthdays.services.timezone.now", return_value=future_now):
+            results = send_automated_birthday_emails(target_date=target_date, allow_test_email_backend=True)
 
         stale_log.refresh_from_db()
         self.assertEqual(results["stale_failed_count"], 1)
@@ -352,12 +351,13 @@ class BirthdaySystemTests(TestCase):
 class BirthdayEmailConcurrencyTests(TransactionTestCase):
     """The delivery claim must remain single-writer on databases with row locks."""
 
-    reset_sequences = True
-
     def setUp(self):
         khoi = KhoiKhuVuc.objects.create(ten="Khối kiểm thử")
-        don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Đơn vị kiểm thử")
-        chuc_vu = Position.objects.create(display_order=1, name="Chức vụ kiểm thử")
+        latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+        don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=latest_stt + 1, ten="Đơn vị kiểm thử")
+        chuc_vu = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Chức vụ kiểm thử"
+        )
         self.employee = Employee.objects.create_user(
             username="concurrent-birthday",
             password="password123",

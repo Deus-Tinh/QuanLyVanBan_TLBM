@@ -4,6 +4,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
+from accounts.models import Position
 from signing import enums
 from signing.errors import ImmutableEvidenceError
 from signing.models import (
@@ -61,13 +62,16 @@ class Base(TestCase):
 
 class ProcessStepSignerTests(Base):
     def test_exactly_one_of_person_or_position(self):
+        position = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Chức vụ kiểm tra"
+        )
         SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, thu_tu=1)
-        SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, chuc_vu_id=5, thu_tu=2)
+        SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, chuc_vu=position, thu_tu=2)
         with self.assertRaises(IntegrityError), transaction.atomic():
             SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, thu_tu=3)
         with self.assertRaises(IntegrityError), transaction.atomic():
             SigningProcessStepSigner.objects.create(
-                buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, chuc_vu_id=5, thu_tu=4
+                buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, chuc_vu=position, thu_tu=4
             )
 
 
@@ -77,7 +81,7 @@ class RequestAttemptTests(Base):
         # So đúng danh sách cột để phát hiện cả cột thừa lẫn cột thiếu so với DDL.
         self.assertEqual(enums.LoaiVanBan.values, ["vanbandi"])
         self.assertEqual(sorted(f.name for f in SigningProcess._meta.concrete_fields), [
-            "cau_hinh_nhac_han", "create_by", "created_at", "don_vi_ap_dung_id", "id", "ma_quy_trinh", "mo_ta",
+            "cau_hinh_nhac_han", "create_by", "created_at", "don_vi_ap_dung", "id", "ma_quy_trinh", "mo_ta",
             "pham_vi", "phien_ban", "ten_quy_trinh", "trang_thai", "update_at", "update_by",
         ])
         self.assertEqual(sorted(f.name for f in SigningRequest._meta.concrete_fields), [

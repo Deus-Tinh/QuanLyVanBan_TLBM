@@ -251,5 +251,57 @@ describe('DocumentFormModal', () => {
       expect(screen.getByTitle('Hủy liên kết')).toBeInTheDocument();
     });
   });
+
+  it('khóa chọn cán bộ nhận khi chưa chọn đơn vị và chỉ mở khi đã chọn đơn vị nhận', async () => {
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url.includes('/api/organizations/units/')) {
+        return ['Phòng Hành chính - Tổng hợp', 'Ban công nghệ thông tin'];
+      }
+      if (url.includes('/api/accounts/staffs/') && url.includes('department=')) {
+        return [
+          { id: 2, username: 'canbo', ho_ten: 'Trần Cán Bộ', don_vi_ten: 'Phòng Hành chính - Tổng hợp' },
+        ];
+      }
+      return [];
+    });
+
+    render(<DocumentFormModal open={true} onClose={vi.fn()} />);
+
+    // Ban đầu chưa chọn đơn vị: hiển thị khóa và hướng dẫn
+    expect(screen.getByText(/Vui lòng chọn đơn vị nhận trước/i)).toBeInTheDocument();
+    expect(screen.getByText(/\(Chưa chọn đơn vị\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Trần Cán Bộ/i)).not.toBeInTheDocument();
+
+    // Mở dropdown chọn đơn vị nhận
+    const unitButton = screen.getByText('-- Chọn đơn vị nhận --');
+    fireEvent.click(unitButton);
+
+    // Chọn đơn vị "Phòng Hành chính - Tổng hợp"
+    const targetUnitOption = await screen.findByRole('button', { name: /Phòng Hành chính - Tổng hợp/i });
+    fireEvent.click(targetUnitOption);
+
+    // Sau khi chọn đơn vị: nạp và hiển thị cán bộ thuộc đơn vị đó
+    await waitFor(() => {
+      expect(screen.getByText(/Trần Cán Bộ/i)).toBeInTheDocument();
+      expect(screen.getByText(/@canbo/i)).toBeInTheDocument();
+    });
+
+    // Checkbox cán bộ có thể click
+    const staffCheckbox = screen.getByRole('checkbox', { name: /Trần Cán Bộ/i });
+    expect(staffCheckbox).not.toBeChecked();
+    fireEvent.click(staffCheckbox);
+    expect(staffCheckbox).toBeChecked();
+
+    // Khi bấm bỏ chọn đơn vị
+    const clearUnitBtn = screen.getByTitle('Bỏ chọn đơn vị');
+    fireEvent.click(clearUnitBtn);
+
+    // Quay lại trạng thái khóa và danh sách cán bộ bị ẩn
+    await waitFor(() => {
+      expect(screen.getByText(/Vui lòng chọn đơn vị nhận trước/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Trần Cán Bộ/i)).not.toBeInTheDocument();
+    });
+  });
 });
+
 

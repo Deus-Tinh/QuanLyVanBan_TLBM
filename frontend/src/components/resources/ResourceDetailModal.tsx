@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
+import { ResourceItem, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
@@ -62,27 +62,14 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   };
 
   // Trích xuất đuôi tệp
-  const getFileExt = (urlOrName?: string, attachments?: ResourceAttachment[]) => {
-    if (attachments && attachments.length > 0) {
-      const first = attachments[0];
-      if (first.name) {
-        const cleanName = first.name.split('?')[0].split('#')[0];
-        const nameParts = cleanName.split('.');
-        if (nameParts.length > 1) {
-          const ext = nameParts.pop()?.toUpperCase() || '';
-          if (/^[A-Z0-9]{1,6}$/.test(ext)) {
-            return ext;
-          }
-        }
-      }
-      if (first.mime_type) {
-        if (first.mime_type.includes('pdf')) return 'PDF';
-        if (first.mime_type.includes('word') || first.mime_type.includes('officedocument.wordprocessingml')) return 'DOCX';
-        if (first.mime_type.includes('sheet') || first.mime_type.includes('excel')) return 'XLSX';
-        if (first.mime_type.includes('presentation') || first.mime_type.includes('powerpoint')) return 'PPTX';
-        if (first.mime_type.includes('image')) return 'IMG';
-        if (first.mime_type.includes('zip') || first.mime_type.includes('compressed')) return 'ZIP';
-      }
+  const getFileExt = (urlOrName?: string, mimeType?: string) => {
+    if (mimeType) {
+      if (mimeType.includes('pdf')) return 'PDF';
+      if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) return 'DOCX';
+      if (mimeType.includes('sheet') || mimeType.includes('excel') || mimeType.includes('csv')) return 'XLSX';
+      if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'PPTX';
+      if (mimeType.includes('image')) return 'IMG';
+      if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'ZIP';
     }
 
     if (!urlOrName) return 'FILE';
@@ -100,7 +87,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         return ext;
       }
     }
-    return 'PDF';
+    return 'FILE';
   };
 
   // Icon theo loại tệp
@@ -113,7 +100,8 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         return 'fa-file-word text-blue-500';
       case 'XLS':
       case 'XLSX':
-        return 'fa-file-excel text-emerald-500';
+      case 'CSV':
+        return 'fa-file-excel text-[#107C41] dark:text-emerald-400';
       case 'ZIP':
       case 'RAR':
       case '7Z':
@@ -160,8 +148,9 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   };
 
   // Danh sách tệp cần hiển thị (ưu tiên attachments mảng, nếu không fallback về file_dinh_kem)
-  const filesList = item.attachments && item.attachments.length > 0
-    ? item.attachments
+  const activeAttachments = (item.attachments || []).filter((att) => !att.is_deleted);
+  const filesList = activeAttachments.length > 0
+    ? activeAttachments
     : item.file_dinh_kem
       ? [{
           name: (item.file_dinh_kem.startsWith('blob:')
@@ -186,7 +175,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           <div className="min-w-0 space-y-1.5 flex-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               {item.ky_hieu && (
-                <span className="font-mono text-xs font-semibold text-secondary">
+                <span className="text-xs font-semibold text-secondary">
                   {item.ky_hieu}
                 </span>
               )}
@@ -289,14 +278,14 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
               {/* Ngày đăng */}
               <div>
                 <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldPostedDate')}</span>
-                <span className="font-mono text-main">{formatDate(item.ngay_dang)}</span>
+                <span className="text-main font-medium">{formatDate(item.ngay_dang)}</span>
               </div>
 
               {/* Ngày hết hiệu lực (nếu có) */}
               {item.ngay_het_hieu_luc && (
                 <div>
                   <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldExpirationDate')}</span>
-                  <span className="font-mono text-danger font-medium">
+                  <span className="text-danger font-medium">
                     {formatDate(item.ngay_het_hieu_luc)}
                   </span>
                 </div>
@@ -338,7 +327,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-1.5 flex items-center justify-between">
               <span>Tệp đính kèm</span>
-              <span className="text-[11px] text-secondary font-medium font-mono">
+              <span className="text-[11px] text-secondary font-medium">
                 {filesList.length} tệp
               </span>
             </h3>
@@ -346,19 +335,29 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             {filesList.length > 0 ? (
               <div className="space-y-2">
                 {filesList.map((file, idx) => {
-                  const ext = getFileExt(file.name || file.path, item.attachments);
+                  const ext = getFileExt(file.name || file.path, file.mime_type);
+                  const targetUrl = file.id
+                    ? `/api/resources/attachments/${file.id}/view/`
+                    : (file.path || item.file_dinh_kem);
+
                   return (
                     <div
                       key={idx}
-                      className="p-3 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3 text-xs sm:text-sm hover:border-primary/40 transition-colors"
+                      onClick={() => {
+                        if (targetUrl) {
+                          window.open(targetUrl, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                      className="p-3 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3 text-xs sm:text-sm hover:border-primary/50 hover:bg-primary-subtle/10 transition-all cursor-pointer group"
+                      title="Bấm để mở xem nội dung tệp trong tab mới"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <i className={`fa-solid ${getFileIcon(ext)} text-lg shrink-0`} />
+                        <i className={`fa-solid ${getFileIcon(ext)} text-lg shrink-0 group-hover:scale-110 transition-transform`} />
                         <div className="min-w-0">
-                          <p className="font-semibold text-main truncate" title={file.name}>
+                          <p className="font-semibold text-main truncate group-hover:text-primary transition-colors" title={file.name}>
                             {file.name}
                           </p>
-                          <p className="text-[11px] text-muted font-mono">
+                          <p className="text-[11px] text-muted">
                             {ext}
                             {file.file_size ? ` · ${formatFileSize(file.file_size)}` : ''}
                           </p>
@@ -367,8 +366,11 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => onDownloadFile?.(item, file.name, file.path)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-subtle text-primary hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDownloadFile?.(item, file.name, file.path);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-primary hover:border-primary/40 hover:bg-surface-elevated transition-colors cursor-pointer shrink-0"
                         title="Tải tệp này về máy"
                         aria-label={`Tải về ${file.name}`}
                       >

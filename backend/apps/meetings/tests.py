@@ -400,6 +400,17 @@ class MeetingBookingAPITestCase(APITestCase):
             trang_thai=MeetingBooking.Status.CONFIRMED,
         )
 
+    def test_booking_fixture_uses_a_coherent_future_date(self):
+        """Booking date anchors align and its aware start remains in the future."""
+        self.assertGreater(self.booking_date, timezone.localdate())
+        self.assertEqual(self.base_time.date(), self.booking_date)
+        self.assertEqual(self.booking1.date, self.booking_date)
+        booking_start = timezone.make_aware(
+            datetime.combine(self.booking1.date, self.booking1.start_time),
+            timezone.get_current_timezone(),
+        )
+        self.assertGreater(booking_start, timezone.now())
+
     def test_list_bookings_authenticated(self):
         """User đã xác thực có thể xem danh sách lịch đặt."""
         self.client.force_authenticate(user=self.user2)
