@@ -23,7 +23,7 @@ from signing.services import trinh_ky as trinh_ky_service
 from signing.storage import get_storage
 from signing.tich_hop.van_ban import VanBanDi
 
-from .helpers import cap_quyen
+from .helpers import cap_quyen, tao_chuc_vu
 
 User = get_user_model()
 BASE = "/api/v1/signing/trinh-ky"
@@ -49,6 +49,7 @@ PDF = pdf_mau()
 VAN_BAN = {
     10: VanBanDi(id=10, pham_vi="NOI_BO", nguoi_tao_id=None, so_hieu="10/QD", trich_yeu="Mua sắm"),
     11: VanBanDi(id=11, pham_vi="HAN_CHE", nguoi_tao_id=None, so_hieu="11/QD", trich_yeu="Hạn chế"),
+    12: VanBanDi(id=12, pham_vi="NOI_BO", hien_thi=False, nguoi_tao_id=None, so_hieu="12/QD", trich_yeu="Không công khai"),
 }
 
 
@@ -161,9 +162,9 @@ class TaoNhapTests(TrinhKyBase):
     def test_requires_add_permission_and_document_visibility(self):
         r = self.tao_nhap(client=self.client_cua(self.la))
         self.assertEqual((r.status_code, r.data["code"]), (403, "khong_co_quyen"))
-        cap_quyen(self.la, "add_trinhky")  # có quyền tạo nhưng không xem được văn bản
+        cap_quyen(self.la, "add_trinhky")  # có quyền tạo nhưng không xem được văn bản (nội bộ, không công khai)
         la = User.objects.get(pk=self.la.pk)
-        r = self.tao_nhap(client=self.client_cua(la))
+        r = self.tao_nhap(client=self.client_cua(la), van_ban_id=12)
         self.assertEqual((r.status_code, r.data["code"]), (404, "khong_tim_thay_van_ban"))
 
     def test_edit_draft_replaces_file_and_bumps_version(self):

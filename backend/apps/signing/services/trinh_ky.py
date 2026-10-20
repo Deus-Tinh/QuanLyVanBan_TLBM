@@ -24,6 +24,7 @@ from ..storage import StorageError, get_storage
 from ..tich_hop import to_chuc
 from ..tich_hop.van_ban import kiem_tra_van_ban_trinh_ky
 from . import process as process_service
+from . import thong_bao
 from .audit import ghi_nhat_ky
 
 LOAI = "signing_request"
@@ -283,6 +284,7 @@ def mo_nguoi_ky_trong_cap(cap, thoi_diem):
         n.thoi_diem_mo = thoi_diem
         n.save(update_fields=["thoi_diem_mo"])
         vua_mo.append(n)
+        thong_bao.can_ky(n)
     return vua_mo
 
 
@@ -428,6 +430,7 @@ def huy(yeu_cau, nguoi, *, khoa_chong_trung, ly_do="", dia_chi_ip=None):
     ghi_nhat_ky(nguoi, LOAI, yeu_cau.pk, "HUY_TRINH_KY", trinh_ky=yeu_cau, luot_trinh=luot,
                 trang_thai_truoc=truoc, trang_thai_sau=yeu_cau.trang_thai, chi_tiet=ly_do, dia_chi_ip=dia_chi_ip,
                 du_lieu_kem_theo={"khoa_chong_trung": khoa_chong_trung, "huy_thay": not la_nguoi_tao})
+    thong_bao.su_kien(yeu_cau, luot, "HUY", nguoi)
     return yeu_cau
 
 
