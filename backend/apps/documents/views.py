@@ -543,12 +543,15 @@ class DocumentViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"], url_path="template")
     def template(self, request):
-        """GET /api/documents/template/?loai=DEN"""
+        """GET /api/documents/template/?loai=DEN&pham_vi=NOI_BO"""
         raw_loai = request.query_params.get("loai") or request.query_params.get("type", "DEN")
+        raw_pham_vi = request.query_params.get("pham_vi", "NOI_BO")
         loai = str(raw_loai).strip().upper()
+        pham_vi = str(raw_pham_vi).strip().upper()
 
-        excel_file = generate_excel_template(loai)
-        filename = f"Mau_VanBan_{loai}_{timezone.now().strftime('%Y%m%d')}.xlsx"
+        excel_file = generate_excel_template(loai, pham_vi=pham_vi)
+        scope_suffix = "HanChe" if pham_vi in ("HAN_CHE", "HẠN CHẾ") else "NoiBo"
+        filename = f"Mau_VanBan_{loai}_{scope_suffix}_{timezone.now().strftime('%Y%m%d')}.xlsx"
 
         response = HttpResponse(
             excel_file.read(),
@@ -780,8 +783,11 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="template")
     def template(self, request):
-        excel_file = generate_excel_template("DI")
-        filename = f"Mau_VanBan_DI_{timezone.now().strftime('%Y%m%d')}.xlsx"
+        raw_pham_vi = request.query_params.get("pham_vi", "NOI_BO")
+        pham_vi = str(raw_pham_vi).strip().upper()
+        excel_file = generate_excel_template("DI", pham_vi=pham_vi)
+        scope_suffix = "HanChe" if pham_vi in ("HAN_CHE", "HẠN CHẾ") else "NoiBo"
+        filename = f"Mau_VanBan_DI_{scope_suffix}_{timezone.now().strftime('%Y%m%d')}.xlsx"
         response = HttpResponse(
             excel_file.read(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -805,11 +811,12 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], url_path="import", parser_classes=[MultiPartParser])
     def import_excel(self, request):
         file_obj = request.FILES.get("file")
+        raw_pham_vi = request.data.get("pham_vi") or request.query_params.get("pham_vi")
         if not file_obj:
             return Response({"error": "Vui lòng chọn file Excel."}, status=status.HTTP_400_BAD_REQUEST)
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
-        result = import_from_excel(file_obj, "DI", request.user)
+        result = import_from_excel(file_obj, "DI", request.user, pham_vi=raw_pham_vi)
         return Response(
             {
                 "message": f"Import thành công {result['created']} văn bản.",

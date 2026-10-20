@@ -235,16 +235,23 @@ def sync_replacement_document(doc):
     )
 
     from .models import VanBanDen, VanBanDi, VanBanMat, HieuLuc
+    doc_model = doc.__class__
     for target in targets:
         other_doc = None
-        for model in (VanBanDen, VanBanDi, VanBanMat):
-            qs = model.objects.filter(so_hieu__iexact=target)
+        # Ưu tiên tìm trong đúng model và cùng pham_vi của văn bản
+        qs = doc_model.objects.filter(so_hieu__iexact=target)
+        if getattr(doc, "pham_vi", None):
+            qs = qs.filter(pham_vi=doc.pham_vi)
+        if getattr(doc, "pk", None):
+            qs = qs.exclude(pk=doc.pk)
+        other_doc = qs.first()
+
+        # Fallback tìm trong doc_model nếu văn bản mục tiêu chưa set pham_vi
+        if not other_doc:
+            fallback_qs = doc_model.objects.filter(so_hieu__iexact=target)
             if getattr(doc, "pk", None):
-                qs = qs.exclude(pk=doc.pk)
-            found = qs.first()
-            if found:
-                other_doc = found
-                break
+                fallback_qs = fallback_qs.exclude(pk=doc.pk)
+            other_doc = fallback_qs.first()
 
         if not other_doc:
             continue
@@ -379,9 +386,9 @@ def log_document_view(document, user, doc_type=None):
 # ═══════════════════════════════════════════════════════════════════
 
 EXCEL_COLUMNS = {
-    LoaiVanBan.DEN: [
-        ("so_hieu", "Số, ký hiệu VB", 22),
-        ("pham_vi", "Phạm vi", 14),
+    (LoaiVanBan.DEN, PhamVi.NOI_BO): [
+        ("so_hieu", "Số, ký hiệu VB", 24),
+        ("pham_vi", "Phạm vi", 16),
         ("ngay_den", "Ngày đến", 18),
         ("ngay_van_ban", "Ngày văn bản", 18),
         ("trich_yeu", "Trích yếu nội dung", 65),
@@ -391,25 +398,56 @@ EXCEL_COLUMNS = {
         ("hieu_luc", "Hiệu lực", 20),
         ("ghi_chu", "Ghi chú", 30),
     ],
-    LoaiVanBan.DI: [
-        ("so_hieu", "Số, ký hiệu VB", 22),
-        ("pham_vi", "Phạm vi", 14),
+    (LoaiVanBan.DEN, PhamVi.HAN_CHE): [
+        ("so_hieu", "Số, ký hiệu VB", 24),
+        ("pham_vi", "Phạm vi", 16),
+        ("ngay_den", "Ngày đến", 18),
+        ("ngay_van_ban", "Ngày văn bản", 18),
+        ("trich_yeu", "Trích yếu nội dung", 65),
+        ("noi_ban_hanh", "Nơi ban hành", 32),
+        ("nguoi_nhan", "Cán bộ nhận (Username)", 30),
+        ("don_vi_nhan", "Đơn vị nhận", 28),
+        ("nguoi_ky", "Người ký", 22),
+        ("chuc_vu", "Chức vụ", 20),
+        ("hieu_luc", "Hiệu lực", 20),
+        ("ghi_chu", "Ghi chú", 30),
+    ],
+    (LoaiVanBan.DI, PhamVi.NOI_BO): [
+        ("so_hieu", "Số, ký hiệu VB", 24),
+        ("pham_vi", "Phạm vi", 16),
         ("ngay_ban_hanh", "Ngày ban hành", 18),
         ("ngay_van_ban", "Ngày văn bản", 18),
         ("trich_yeu", "Trích yếu nội dung", 65),
         ("noi_ban_hanh", "Nơi ban hành", 32),
+        ("don_vi_nhan", "Nơi nhận / Đơn vị nhận", 30),
+        ("nguoi_ky", "Người ký", 22),
+        ("chuc_vu", "Chức vụ", 20),
+        ("hieu_luc", "Hiệu lực", 20),
+        ("ghi_chu", "Ghi chú", 30),
+    ],
+    (LoaiVanBan.DI, PhamVi.HAN_CHE): [
+        ("so_hieu", "Số, ký hiệu VB", 24),
+        ("pham_vi", "Phạm vi", 16),
+        ("ngay_ban_hanh", "Ngày ban hành", 18),
+        ("ngay_van_ban", "Ngày văn bản", 18),
+        ("trich_yeu", "Trích yếu nội dung", 65),
+        ("noi_ban_hanh", "Nơi ban hành", 32),
+        ("nguoi_nhan", "Cán bộ nhận (Username)", 30),
+        ("don_vi_nhan", "Nơi nhận / Đơn vị nhận", 30),
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
         ("ghi_chu", "Ghi chú", 30),
     ],
     LoaiVanBan.MAT: [
-        ("so_hieu", "Số, ký hiệu VB", 22),
-        ("pham_vi", "Phạm vi", 14),
+        ("so_hieu", "Số, ký hiệu VB", 24),
+        ("pham_vi", "Phạm vi", 16),
         ("ngay_ban_hanh", "Ngày ban hành", 18),
         ("ngay_van_ban", "Ngày văn bản", 18),
         ("trich_yeu", "Trích yếu nội dung", 65),
         ("noi_ban_hanh", "Nơi ban hành", 32),
+        ("nguoi_nhan", "Cán bộ nhận (Username)", 30),
+        ("don_vi_nhan", "Đơn vị nhận", 28),
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
@@ -417,28 +455,61 @@ EXCEL_COLUMNS = {
     ],
 }
 
+# Tương thích ngược với các hàm gọi cũ truyền trực tiếp LoaiVanBan
+EXCEL_COLUMNS[LoaiVanBan.DEN] = EXCEL_COLUMNS[(LoaiVanBan.DEN, PhamVi.NOI_BO)]
+EXCEL_COLUMNS[LoaiVanBan.DI] = EXCEL_COLUMNS[(LoaiVanBan.DI, PhamVi.NOI_BO)]
+
 SAMPLE_DATA = {
-    LoaiVanBan.DEN: {
+    (LoaiVanBan.DEN, PhamVi.NOI_BO): {
         "so_hieu": "15/CV-BGDDT",
         "pham_vi": "Nội bộ",
         "ngay_den": "15/09/2026 08:30:00",
         "ngay_van_ban": "14/09/2026",
-        "trich_yeu": "V/v hướng dẫn tuyển sinh năm học 2026-2027",
+        "trich_yeu": "V/v hướng dẫn công tác tuyển sinh và đào tạo năm học 2026-2027",
         "noi_ban_hanh": "Bộ Giáo dục và Đào tạo",
         "nguoi_ky": "Nguyễn Văn A",
         "chuc_vu": "Thứ trưởng",
         "hieu_luc": "CON_HIEU_LUC",
         "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
     },
-    LoaiVanBan.DI: {
-        "so_hieu": "01/TB-VP",
+    (LoaiVanBan.DEN, PhamVi.HAN_CHE): {
+        "so_hieu": "04/TB-SGDDT",
+        "pham_vi": "Hạn chế",
+        "ngay_den": "18/09/2026 09:15:00",
+        "ngay_van_ban": "17/09/2026",
+        "trich_yeu": "Thông báo danh sách điều động thanh tra công tác tài chính nội bộ (Hạn chế)",
+        "noi_ban_hanh": "Sở Giáo dục và Đào tạo",
+        "nguoi_nhan": "admin, kietlt",
+        "don_vi_nhan": "Ban Giám hiệu",
+        "nguoi_ky": "Trần Thị C",
+        "chuc_vu": "Phó Giám đốc Sở",
+        "hieu_luc": "CON_HIEU_LUC",
+        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+    },
+    (LoaiVanBan.DI, PhamVi.NOI_BO): {
+        "so_hieu": "88/QD-SNN",
         "pham_vi": "Nội bộ",
-        "ngay_ban_hanh": "15/09/2026",
-        "ngay_van_ban": "15/09/2026",
-        "trich_yeu": "Thông báo kế hoạch công tác quý",
-        "noi_ban_hanh": "",
-        "nguoi_ky": "Trần Văn B",
-        "chuc_vu": "Trưởng phòng",
+        "ngay_ban_hanh": "20/09/2026",
+        "ngay_van_ban": "20/09/2026",
+        "trich_yeu": "Quyết định về việc ban hành quy chế chi tiêu nội bộ năm học 2026",
+        "noi_ban_hanh": "Phòng Hành chính - Tổng hợp",
+        "don_vi_nhan": "Toàn thể các đơn vị",
+        "nguoi_ky": "Lê Văn D",
+        "chuc_vu": "Hiệu trưởng",
+        "hieu_luc": "CON_HIEU_LUC",
+        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+    },
+    (LoaiVanBan.DI, PhamVi.HAN_CHE): {
+        "so_hieu": "12/BC-SNN-HC",
+        "pham_vi": "Hạn chế",
+        "ngay_ban_hanh": "22/09/2026",
+        "ngay_van_ban": "22/09/2026",
+        "trich_yeu": "Báo cáo rà soát đánh giá quy hoạch cán bộ chủ chốt giai đoạn 2026-2030 (Hạn chế)",
+        "noi_ban_hanh": "Ban Giám hiệu",
+        "nguoi_nhan": "admin, kietlt",
+        "don_vi_nhan": "Hội đồng trường",
+        "nguoi_ky": "Lê Văn D",
+        "chuc_vu": "Hiệu trưởng",
         "hieu_luc": "CON_HIEU_LUC",
         "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
     },
@@ -449,6 +520,8 @@ SAMPLE_DATA = {
         "ngay_van_ban": "15/09/2026",
         "trich_yeu": "Kế hoạch bảo vệ an ninh và bí mật nội bộ năm 2026",
         "noi_ban_hanh": "Ban Giám hiệu",
+        "nguoi_nhan": "admin",
+        "don_vi_nhan": "Ban Giám hiệu",
         "nguoi_ky": "Hiệu trưởng",
         "chuc_vu": "Hiệu trưởng",
         "hieu_luc": "CON_HIEU_LUC",
@@ -456,9 +529,16 @@ SAMPLE_DATA = {
     },
 }
 
+SAMPLE_DATA[LoaiVanBan.DEN] = SAMPLE_DATA[(LoaiVanBan.DEN, PhamVi.NOI_BO)]
+SAMPLE_DATA[LoaiVanBan.DI] = SAMPLE_DATA[(LoaiVanBan.DI, PhamVi.NOI_BO)]
+
 _header_font = Font(name="Arial", bold=True, size=11, color="FFFFFF")
-_header_fill = PatternFill(start_color="2E86C1", end_color="2E86C1", fill_type="solid")
-_header_fill_mat = PatternFill(start_color="922B21", end_color="922B21", fill_type="solid")
+_header_fill = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")
+_header_fill_den_noibo = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")    # Xanh dương đậm
+_header_fill_den_hanche = PatternFill(start_color="991B1B", end_color="991B1B", fill_type="solid")   # Đỏ đậm hạn chế
+_header_fill_di_noibo = PatternFill(start_color="047857", end_color="047857", fill_type="solid")     # Xanh lục bảo
+_header_fill_di_hanche = PatternFill(start_color="C2410C", end_color="C2410C", fill_type="solid")    # Cam đất / Nâu hổ phách
+_header_fill_mat = PatternFill(start_color="922B21", end_color="922B21", fill_type="solid")          # Đỏ đô bảo mật
 _header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 _sample_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
 _sample_font = Font(name="Arial", italic=True, size=10, color="888888")
@@ -475,25 +555,32 @@ _thin_border = Border(
 )
 
 
-def generate_excel_template(loai: str) -> io.BytesIO:
-    """Sinh file Excel mẫu trực tiếp từ cấu hình DB."""
+def generate_excel_template(loai: str, pham_vi: str = "NOI_BO") -> io.BytesIO:
+    """Sinh file Excel mẫu trực tiếp từ cấu hình DB, phân biệt rõ theo hệ và phạm vi."""
     loai_str = str(loai).strip().upper()
+    pv_str = str(pham_vi).strip().upper() if pham_vi else "NOI_BO"
+    is_han_che = (pv_str in ("HAN_CHE", "HẠN CHẾ", "HANCHE") or loai_str in ("MAT", "VANBANMAT"))
+    norm_pv = PhamVi.HAN_CHE if is_han_che else PhamVi.NOI_BO
+
     if loai_str in ("MAT", "VANBANMAT"):
         norm_loai = LoaiVanBan.MAT
         active_fill = _header_fill_mat
+        sheet_title = "Mẫu Văn bản Mật"
     elif loai_str in ("DI", "VANBANDI"):
         norm_loai = LoaiVanBan.DI
-        active_fill = _header_fill
+        active_fill = _header_fill_di_hanche if is_han_che else _header_fill_di_noibo
+        sheet_title = "Mẫu VB Đi - Hạn chế" if is_han_che else "Mẫu VB Đi - Nội bộ"
     else:
         norm_loai = LoaiVanBan.DEN
-        active_fill = _header_fill
+        active_fill = _header_fill_den_hanche if is_han_che else _header_fill_den_noibo
+        sheet_title = "Mẫu VB Đến - Hạn chế" if is_han_che else "Mẫu VB Đến - Nội bộ"
 
-    columns = EXCEL_COLUMNS.get(norm_loai, EXCEL_COLUMNS[LoaiVanBan.DEN])
-    sample = SAMPLE_DATA.get(norm_loai, SAMPLE_DATA[LoaiVanBan.DEN])
+    columns = EXCEL_COLUMNS.get((norm_loai, norm_pv)) or EXCEL_COLUMNS.get(norm_loai, EXCEL_COLUMNS[LoaiVanBan.DEN])
+    sample = SAMPLE_DATA.get((norm_loai, norm_pv)) or SAMPLE_DATA.get(norm_loai, SAMPLE_DATA[LoaiVanBan.DEN])
 
     wb = Workbook()
     ws = wb.active
-    ws.title = f"Mẫu {dict(LoaiVanBan.choices).get(norm_loai, norm_loai)}"
+    ws.title = sheet_title
 
     ws.row_dimensions[1].height = 28
     for col_idx, (field_name, col_title, col_width) in enumerate(columns, start=1):
@@ -543,6 +630,13 @@ HEADER_TO_FIELD = {
     "Phòng ban": "noi_ban_hanh",
     "Đơn vị ban hành": "noi_ban_hanh",
     "Đơn vị nhận": "don_vi_nhan",
+    "Nơi nhận / Đơn vị nhận": "don_vi_nhan",
+    "Nơi nhận": "don_vi_nhan",
+    "Cán bộ nhận (Username)": "nguoi_nhan",
+    "Cán bộ nhận": "nguoi_nhan",
+    "Cán bộ nhận / xử lý": "nguoi_nhan",
+    "Cán bộ nhận / xử lý (Username)": "nguoi_nhan",
+    "Người nhận": "nguoi_nhan",
     "Người ký": "nguoi_ky",
     "Chức vụ": "chuc_vu",
     "Hiệu lực": "hieu_luc",
@@ -689,8 +783,71 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
             if "nguoi_tao" in model_fields and user and user.is_authenticated and "nguoi_tao" not in payload:
                 payload["nguoi_tao"] = user
             created_doc = model.objects.create(**payload)
-            if loai_str in ("MAT", "VANBANMAT") and user and user.is_authenticated:
+
+            # 1. Liên kết cán bộ nhận (nguoi_nhan) từ username trong file Excel
+            raw_nguoi_nhan = doc_data.get("nguoi_nhan")
+            if raw_nguoi_nhan and hasattr(created_doc, "nguoi_nhan"):
+                raw_str = str(raw_nguoi_nhan).replace(";", ",").replace("\n", ",")
+                usernames = [u.strip() for u in raw_str.split(",") if u.strip()]
+                if usernames:
+                    from django.contrib.auth import get_user_model
+                    User = get_user_model()
+                    matched_users = list(User.objects.filter(username__in=usernames))
+                    if matched_users:
+                        created_doc.nguoi_nhan.add(*matched_users)
+
+            # 2. Với văn bản Hạn chế hoặc Văn bản Mật: luôn đảm bảo người tạo/import được thêm vào nguoi_nhan
+            is_restricted = (
+                getattr(created_doc, "pham_vi", None) == PhamVi.HAN_CHE
+                or loai_str in ("MAT", "VANBANMAT")
+            )
+            if is_restricted and user and user.is_authenticated and hasattr(created_doc, "nguoi_nhan"):
                 created_doc.nguoi_nhan.add(user)
+
+            # 3. Liên kết Đơn vị nhận (don_vi_nhan) nếu có
+            raw_don_vi = doc_data.get("don_vi_nhan")
+            if raw_don_vi:
+                try:
+                    try:
+                        from apps.organizations.models import DonVi
+                    except ImportError:
+                        from organizations.models import DonVi
+                    from .models import VanBanDenDonViNhan, VanBanDiDonViNhan
+
+                    dv_val = str(raw_don_vi).strip()
+                    dv = None
+                    if dv_val.isdigit():
+                        dv = DonVi.objects.filter(pk=int(dv_val)).first()
+                    if not dv:
+                        dv = DonVi.objects.filter(ten__iexact=dv_val).first()
+                    if dv:
+                        if loai_str in ("DEN", "VANBANDEN", "MAT", "VANBANMAT"):
+                            VanBanDenDonViNhan.objects.get_or_create(vanbanden=created_doc, donvi_id=dv.id)
+                        elif loai_str in ("DI", "VANBANDI"):
+                            VanBanDiDonViNhan.objects.get_or_create(vanbandi=created_doc, donvi_id=dv.id)
+                except Exception:
+                    pass
+
+            # 4. Nếu là Văn bản Đi và có nơi ban hành là tên phòng ban nội bộ, liên kết VanBanDiNoiBanHanh
+            if loai_str in ("DI", "VANBANDI") and doc_data.get("noi_ban_hanh"):
+                try:
+                    try:
+                        from apps.organizations.models import DonVi
+                    except ImportError:
+                        from organizations.models import DonVi
+                    from .models import VanBanDiNoiBanHanh
+
+                    nbh_val = str(doc_data["noi_ban_hanh"]).strip()
+                    dv_nbh = None
+                    if nbh_val.isdigit():
+                        dv_nbh = DonVi.objects.filter(pk=int(nbh_val)).first()
+                    if not dv_nbh:
+                        dv_nbh = DonVi.objects.filter(ten__iexact=nbh_val).first()
+                    if dv_nbh:
+                        VanBanDiNoiBanHanh.objects.get_or_create(vanbandi=created_doc, donvi_id=dv_nbh.id)
+                except Exception:
+                    pass
+
             created_count += 1
         except Exception as e:
             errors.append({"row": row_idx, "message": str(e)})

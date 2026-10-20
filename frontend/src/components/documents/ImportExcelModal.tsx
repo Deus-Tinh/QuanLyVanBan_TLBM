@@ -131,17 +131,23 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
                     ? 'Nhập Văn Bản Đến Hạn Chế Từ File Excel'
                     : 'Nhập Văn Bản Đến Từ File Excel'}
                 </span>
-                {phamVi === 'HAN_CHE' && (
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-surface-elevated text-secondary border border-border-subtle inline-flex items-center gap-1">
-                    <i className="fa-solid fa-shield-halved text-[10px]" /> Hạn chế
-                  </span>
+                {loai !== 'MAT' && (
+                  phamVi === 'HAN_CHE' ? (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 inline-flex items-center gap-1">
+                      <i className="fa-solid fa-shield-halved text-[10px]" /> Hạn chế
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30 inline-flex items-center gap-1">
+                      <i className="fa-solid fa-users text-[10px]" /> Nội bộ
+                    </span>
+                  )
                 )}
               </h3>
               <p className="text-xs text-muted m-0">
                 {loai === 'MAT'
                   ? 'Nạp hàng loạt văn bản mật vào cơ sở dữ liệu bảo mật'
                   : phamVi === 'HAN_CHE'
-                  ? 'Nạp danh sách văn bản hạn chế vào hệ thống'
+                  ? 'Nạp danh sách văn bản hạn chế kèm phân quyền cán bộ nhận'
                   : loai === 'DI'
                   ? 'Nạp hàng loạt công văn, văn bản đi vào cơ sở dữ liệu'
                   : 'Nạp hàng loạt công văn, văn bản đến vào cơ sở dữ liệu'}
@@ -159,11 +165,17 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
         </div>
 
         {/* Step 1: Banner tải file mẫu */}
-        <div className="bg-primary-subtle border border-primary/20 rounded-xl p-3 mb-4 flex items-center justify-between gap-3">
+        <div className={`border rounded-xl p-3 mb-4 flex items-center justify-between gap-3 ${
+          phamVi === 'HAN_CHE'
+            ? 'bg-amber-500/10 border-amber-500/20'
+            : 'bg-primary-subtle border-primary/20'
+        }`}>
           <div className="flex items-center gap-2.5">
-            <i className="fa-solid fa-circle-info text-primary text-sm shrink-0" />
+            <i className={`fa-solid ${phamVi === 'HAN_CHE' ? 'fa-shield-halved text-amber-600' : 'fa-circle-info text-primary'} text-sm shrink-0`} />
             <span className="text-xs text-main">
-              Chưa có file mẫu? Tải file mẫu chuẩn để nhập dữ liệu đúng định dạng.
+              {phamVi === 'HAN_CHE'
+                ? 'Tải biểu mẫu Excel hạn chế (có cột gán quyền xem cho CBNV nhận).'
+                : 'Chưa có file mẫu? Tải file mẫu chuẩn để nhập dữ liệu đúng định dạng.'}
             </span>
           </div>
           <Button

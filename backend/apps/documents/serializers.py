@@ -449,6 +449,10 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         raw_link_str = str(raw_link or "").strip()
         if raw_link_str:
             targets = [t.strip() for t in raw_link_str.split(",") if t.strip()]
+            target_model = VanBanDi if str(loai).upper() in ("DI", "VANBANDI") else (VanBanMat if str(loai).upper() in ("MAT", "VANBANMAT") else VanBanDen)
+            current_pham_vi = attrs.get("pham_vi") or (getattr(self.instance, "pham_vi", PhamVi.NOI_BO) if self.instance else PhamVi.NOI_BO)
+            loai_label = "Văn bản Đi" if str(loai).upper() in ("DI", "VANBANDI") else ("Văn bản Mật" if str(loai).upper() in ("MAT", "VANBANMAT") else "Văn bản Đến")
+
             for target in targets:
                 # 1. Chặn tự thay thế chính mình
                 if so_hieu and target.lower() == so_hieu.lower():
@@ -456,25 +460,39 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                         {"link_thay_the": "Văn bản không thể tự thiết lập thay thế chính nó."}
                     )
 
-                # 2. Khóa nghiệp vụ: Bắt buộc văn bản mục tiêu phải tồn tại trong hệ thống
-                target_found = False
-                for M in (VanBanDen, VanBanDi, VanBanMat):
-                    other_docs = M.objects.filter(so_hieu__iexact=target)
-                    if self.instance and getattr(self.instance, "pk", None):
-                        other_docs = other_docs.exclude(pk=self.instance.pk)
-                    if other_docs.exists():
-                        target_found = True
-                    for other in other_docs:
-                        other_links = [s.strip().lower() for s in (other.link_thay_the or "").split(",") if s.strip()]
-                        # 3. Chỉ chặn khi other là văn bản đang còn hiệu lực và đã thiết lập thay thế văn bản hiện tại
-                        if so_hieu and so_hieu.lower() in other_links and other.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
+                # 2. Khóa nghiệp vụ: Bắt buộc văn bản mục tiêu phải cùng phân hệ (loai)
+                for other_model, other_label in ((VanBanDen, "Văn bản Đến"), (VanBanDi, "Văn bản Đi"), (VanBanMat, "Văn bản Mật")):
+                    if other_model != target_model:
+                        other_match = other_model.objects.filter(so_hieu__iexact=target).first()
+                        if other_match:
                             raise serializers.ValidationError(
-                                {"link_thay_the": f"Xung đột nghiệp vụ: Văn bản '{other.so_hieu}' đang còn hiệu lực và đã được thiết lập thay thế cho văn bản này. Không thể tạo vòng lặp thay thế hai chiều!"}
+                                {"link_thay_the": f"Văn bản mục tiêu '{target}' là {other_label}. {loai_label} chỉ được phép thay thế cho văn bản cùng phân hệ ({loai_label})."}
                             )
 
-                if not target_found:
+                # Tìm trong đúng model mục tiêu
+                matching_qs = target_model.objects.filter(so_hieu__iexact=target)
+                if self.instance and getattr(self.instance, "pk", None):
+                    matching_qs = matching_qs.exclude(pk=self.instance.pk)
+
+                target_doc = matching_qs.first()
+                if not target_doc:
                     raise serializers.ValidationError(
-                        {"link_thay_the": f"Văn bản mục tiêu '{target}' không tồn tại trong hệ thống. Vui lòng chọn văn bản hợp lệ từ danh sách gợi ý."}
+                        {"link_thay_the": f"Văn bản mục tiêu '{target}' không tồn tại trong hệ thống {loai_label}. Vui lòng chọn văn bản hợp lệ từ danh sách gợi ý."}
+                    )
+
+                # 3. Khóa nghiệp vụ: Bắt buộc cùng phạm vi (Nội bộ chỉ thay thế Nội bộ, Hạn chế chỉ thay thế Hạn chế)
+                if getattr(target_doc, "pham_vi", PhamVi.NOI_BO) != current_pham_vi:
+                    scope_curr_label = "Văn bản nội bộ" if current_pham_vi == PhamVi.NOI_BO else "Văn bản hạn chế"
+                    scope_target_label = "nội bộ" if target_doc.pham_vi == PhamVi.NOI_BO else "hạn chế"
+                    raise serializers.ValidationError(
+                        {"link_thay_the": f"Văn bản mục tiêu '{target}' là văn bản {scope_target_label}. {scope_curr_label} chỉ được phép thay thế cho văn bản cùng phạm vi."}
+                    )
+
+                # 4. Chặn vòng lặp thay thế hai chiều
+                other_links = [s.strip().lower() for s in (target_doc.link_thay_the or "").split(",") if s.strip()]
+                if so_hieu and so_hieu.lower() in other_links and target_doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
+                    raise serializers.ValidationError(
+                        {"link_thay_the": f"Xung đột nghiệp vụ: Văn bản '{target_doc.so_hieu}' đang còn hiệu lực và đã được thiết lập thay thế cho văn bản này. Không thể tạo vòng lặp thay thế hai chiều!"}
                     )
 
         # Issue #82 & Quyền thay đổi phạm vi lưu hành:

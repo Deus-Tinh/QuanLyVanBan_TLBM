@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DocumentItem, DocumentFilterParams, PaginatedResponse } from '@app-types/document';
 import FilterBar from '@components/documents/FilterBar';
@@ -152,6 +152,7 @@ export const OutboundDocumentPage: React.FC = () => {
   const [alertMsg, setAlertMsg] = useState<string>('');
   const [isAlertOpen, setIsAlertOpen] = useState<boolean>(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [allStatsItems, setAllStatsItems] = useState<DocumentItem[]>([]);
   const [stats, setStats] = useState<{
     total: number;
     active: number;
@@ -179,9 +180,10 @@ export const OutboundDocumentPage: React.FC = () => {
   // Lấy thống kê số lượng văn bản đi theo trạng thái
   const fetchStats = useCallback(async () => {
     try {
-      const extraQuery = `${filters.loai_van_ban ? `&loai_van_ban=${encodeURIComponent(String(filters.loai_van_ban))}` : ''}${filters.pham_vi ? `&pham_vi=${encodeURIComponent(String(filters.pham_vi))}` : ''}`;
+      const extraQuery = filters.loai_van_ban ? `&loai_van_ban=${encodeURIComponent(String(filters.loai_van_ban))}` : '';
       const res = await apiClient.get<PaginatedResponse<DocumentItem>>(`/api/documents/?loai=DI&page_size=1000${extraQuery}`);
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
+      setAllStatsItems(items);
       const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
       const partial = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
       const replaced = items.filter((d) => d.hieu_luc === 'HET_VA_THAY_THE').length;
@@ -194,7 +196,7 @@ export const OutboundDocumentPage: React.FC = () => {
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
     }
-  }, [filters.loai_van_ban, filters.pham_vi]);
+  }, [filters.loai_van_ban]);
 
   useEffect(() => {
     let ignore = false;
@@ -452,10 +454,19 @@ export const OutboundDocumentPage: React.FC = () => {
     }
   };
 
-  // Thống kê số lượng: Tổng văn bản đi còn hiệu lực (gộp cả Còn hiệu lực và Còn hiệu lực 1 phần)
-  const countActive = stats.total > 0
-    ? (stats.active + stats.partial)
-    : documents.filter((d) => d.hieu_luc === 'CON_HIEU_LUC' || d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
+  const currentPhamVi = filters.pham_vi || 'NOI_BO';
+
+  // Thống kê số lượng: Tổng văn bản đi còn hiệu lực (gộp cả Còn hiệu lực và Còn hiệu lực 1 phần theo đúng phạm vi)
+  const countActive = useMemo(() => {
+    const sourceList = allStatsItems.length > 0 ? allStatsItems : documents;
+    return sourceList.filter((d) => {
+      const isActive = d.hieu_luc === 'CON_HIEU_LUC' || d.hieu_luc === 'CON_HIEU_LUC_1_PHAN';
+      if (!isActive) return false;
+      if (currentPhamVi === 'ALL') return true;
+      const docPhamVi = d.pham_vi || 'NOI_BO';
+      return docPhamVi === currentPhamVi;
+    }).length;
+  }, [allStatsItems, documents, currentPhamVi]);
 
   return (
     <div className="w-full p-2 sm:p-4 md:p-6 animate-in fade-in duration-150">
@@ -628,7 +639,12 @@ export const OutboundDocumentPage: React.FC = () => {
               <i className="fa-solid fa-file-circle-check" />
             </div>
             <div>
-              <span className="text-sm text-muted block mb-0.5 font-medium">Tổng số văn bản đi</span>
+              <span className="text-sm text-muted block mb-0.5 font-medium">
+                <span>Tổng số văn bản đi</span>
+                {currentPhamVi === 'HAN_CHE' && <span className="ml-1 text-rose-500 font-semibold">(Hạn chế)</span>}
+                {currentPhamVi === 'ALL' && <span className="ml-1 text-primary font-semibold">(Tất cả)</span>}
+                {currentPhamVi === 'NOI_BO' && <span className="ml-1 text-secondary font-medium">(Nội bộ)</span>}
+              </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-bold text-main">{countActive}</span>
                 <span className="text-sm text-muted font-medium">văn bản còn hiệu lực</span>
