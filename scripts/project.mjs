@@ -141,8 +141,13 @@ function printLocalUrls() {
 }
 
 async function buildDatabase(...args) {
-  const seed = args.includes("--sync") ? [] : ["--seed"];
-  await runChecked(python, [path.join(projectRoot, "scripts", "build_db.py"), ...seed, ...args], {
+  if (args.includes("--seed") && !process.env.ADMIN_PASSWORD?.trim()) {
+    throw new Error("Thiếu ADMIN_PASSWORD; database chưa bị thay đổi.");
+  }
+  if (args.includes("--demo-data") && !process.env.DEMO_PASSWORD?.trim()) {
+    throw new Error("Thiếu DEMO_PASSWORD cho --demo-data; database chưa bị thay đổi.");
+  }
+  await runChecked(python, [path.join(projectRoot, "scripts", "build_db.py"), ...args], {
     env: djangoEnvironment(),
   });
 }
@@ -151,7 +156,7 @@ async function setupDatabase() {
   requireDockerEngine();
   await dockerCompose(["up", "--detach", "--wait", "db", "pgadmin"]);
   await ensurePythonEnvironment();
-  await buildDatabase("--if-empty");
+  await buildDatabase("--if-empty", "--seed");
   printLocalUrls();
 }
 
@@ -171,11 +176,11 @@ async function resetDatabase() {
 
   await requireLocalDatabase();
   await ensurePythonEnvironment();
-  await buildDatabase("--force");
+  await buildDatabase("--force", "--seed");
   console.log("Đã dựng lại DB local từ release_DDL.sql và đồng bộ migration Django.");
 }
 
-const deployPaths = ["backend", "scripts", "docs/common/database"];
+const deployPaths = ["backend", "scripts", "docs/common/database", ".github/scripts/compare_schema_ddl.py"];
 
 function requireCommand(command, args, hint) {
   const result = spawnSync(command, args, { stdio: "ignore", shell: false });
@@ -197,14 +202,22 @@ ${result.stderr.toString().trim()}` : "";
 async function deployStaging(...args) {
   if (args.includes("--help")) {
     console.log([
-      "Dùng: pnpm deploy:staging [--yes]",
-      "Deploy origin/staging lên host staging (DB_MODE=rebuild) bằng deploy/deploy.sh.",
+      "Dùng: pnpm deploy:staging [--yes] [--reset-db]",
+      "Deploy origin/staging lên host staging (DB_MODE=sync mặc định) bằng deploy/deploy.sh.",
+      "--reset-db chọn DB_MODE=rebuild và luôn yêu cầu gõ RESET; --yes không bỏ xác nhận này.",
       "Biến môi trường: QLVB_DEPLOY_HOST (bắt buộc; alias trong ~/.ssh/config hoặc user@host),",
       "QLVB_DEPLOY_PORT (tùy chọn; đặt thì truyền -p/-P, không đặt thì dùng cấu hình ssh).",
-      "--yes bỏ bước gõ DEPLOY xác nhận.",
+      "--yes chỉ bỏ bước gõ DEPLOY xác nhận.",
     ].join(os.EOL));
     return;
   }
+
+  const allowedArgs = new Set(["--yes", "--reset-db"]);
+  const unknownArgs = args.filter((arg) => !allowedArgs.has(arg));
+  if (unknownArgs.length) {
+    throw new Error(`Tham số deploy không hợp lệ: ${unknownArgs.join(", ")}.`);
+  }
+  const resetDatabase = args.includes("--reset-db");
 
   const target = process.env.QLVB_DEPLOY_HOST?.trim();
   if (!target) {
@@ -238,8 +251,23 @@ async function deployStaging(...args) {
     console.log("");
     console.log(`Commit:  ${sha7} ${subject}`);
     console.log(`Host:    ${target}${port ? `:${port}` : ""}`);
-    console.log("DB_MODE: rebuild");
-    console.log("Cảnh báo: DB staging sẽ bị xóa và dựng lại từ release_DDL.sql.");
+    const dbMode = resetDatabase ? "rebuild" : "sync";
+    console.log(`DB_MODE: ${dbMode}`);
+    if (resetDatabase) {
+      console.log("Cảnh báo: DB staging sẽ bị xóa và dựng lại từ release_DDL.sql.");
+      const terminal = createInterface({ input: process.stdin, output: process.stdout });
+      let answer;
+      try {
+        answer = await terminal.question("Gõ RESET để xác nhận xóa dữ liệu staging: ");
+      } finally {
+        terminal.close();
+      }
+      if (answer !== "RESET") {
+        console.log("Đã hủy; không có gì được tải lên host.");
+        process.exitCode = 1;
+        return;
+      }
+    }
 
     if (!args.includes("--yes")) {
       const terminal = createInterface({ input: process.stdin, output: process.stdout });
@@ -262,7 +290,7 @@ async function deployStaging(...args) {
 
     await runChecked("ssh", [...sshOptions, target, 'mkdir -p "$HOME/deploy"'], options);
     await runChecked("scp", [...scpOptions, tarball, "deploy.sh", `${target}:deploy/`], options);
-    const code = await run("ssh", [...sshOptions, target, `DB_MODE=rebuild bash deploy/deploy.sh ${sha7}`], options);
+    const code = await run("ssh", [...sshOptions, target, `DB_MODE=${dbMode} bash deploy/deploy.sh ${sha7}`], options);
     if (code !== 0) {
       process.exitCode = code;
       console.error("");
@@ -291,6 +319,16 @@ const actions = {
     await ensurePythonEnvironment();
     await requireLocalDatabase();
     await buildDatabase("--sync");
+  },
+  "db-adopt": async () => {
+    if (process.argv.slice(3).some((argument) => argument === "--help" || argument === "-h")) {
+      console.log("Usage: pnpm db:adopt");
+      console.log("Verifies the supported build_db:v2 schema and migration history before upgrading its marker.");
+      return;
+    }
+    await ensurePythonEnvironment();
+    await requireLocalDatabase();
+    await buildDatabase("--adopt");
   },
   "db-migrations": async () => {
     await ensurePythonEnvironment();

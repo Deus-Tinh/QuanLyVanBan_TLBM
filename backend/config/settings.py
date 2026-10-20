@@ -18,6 +18,13 @@ from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Captured from the resolved release source at process startup. Do not resolve the
+# current symlink per request: an old process must keep identifying its own code.
+def release_id_from_source(source_file):
+    return Path(source_file).resolve().parents[2].name
+
+
+RELEASE_ID = release_id_from_source(__file__)
 
 # Tải biến môi trường từ .env
 load_dotenv(BASE_DIR / ".env")
@@ -135,9 +142,6 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-
-# Làm rỗng dữ liệu nền do migration tạo trong DB test (xem config/test_runner.py).
-TEST_RUNNER = "config.test_runner.SeedFreeDiscoverRunner"
 
 # PostgreSQL là engine duy nhất (local, CI, staging). DB_ENGINE chỉ còn để tương thích env cũ.
 DB_ENGINE = os.getenv("DB_ENGINE", "postgresql").lower()

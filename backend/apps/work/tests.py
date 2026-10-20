@@ -53,30 +53,33 @@ class WorkTestBase(APITestCase):
 
     def setUp(self):
         self.today = timezone.localdate()
-        # Phòng ban mặc định của create_user: tạo với id cố định để không lấy giá trị từ sequence
-        # (sequence không rollback giữa các test, id tự sinh có thể trùng id 3-9 bên dưới).
+        # Dùng ID và STT sau dữ liệu nền do migration tạo, không giả định bảng đơn vị rỗng.
         default_region = KhoiKhuVuc.objects.create(ten="Khối kiểm thử mặc định")
-        DonVi.objects.create(id=1, khoi=default_region, stt_uu_tien=1, ten="Phòng ban kiểm thử mặc định")
-        self.creator = User.objects.create_user("nguoitao", ho_ten="Trần Phương Duy")
-        self.host = User.objects.create_user("chutri", ho_ten="Phan Quốc Dũng")
-        self.director = User.objects.create_user("chidao", ho_ten="Nguyễn Thu Hiền")
-        self.member = User.objects.create_user("thamgia", ho_ten="Nguyễn Bình Minh")
-        self.outsider = User.objects.create_user("nguoingoai")
-        self.admin = User.objects.create_superuser("quantri", "Admin@123", email="quantri@example.com")
+        latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+        self.default_unit = DonVi.objects.create(
+            khoi=default_region, stt_uu_tien=latest_stt + 1, ten="Phòng ban kiểm thử mặc định"
+        )
+        self.creator = User.objects.create_user("nguoitao", ho_ten="Trần Phương Duy", don_vi=self.default_unit)
+        self.host = User.objects.create_user("chutri", ho_ten="Phan Quốc Dũng", don_vi=self.default_unit)
+        self.director = User.objects.create_user("chidao", ho_ten="Nguyễn Thu Hiền", don_vi=self.default_unit)
+        self.member = User.objects.create_user("thamgia", ho_ten="Nguyễn Bình Minh", don_vi=self.default_unit)
+        self.outsider = User.objects.create_user("nguoingoai", don_vi=self.default_unit)
+        self.admin = User.objects.create_superuser(
+            "quantri", "Admin@123", email="quantri@example.com", don_vi=self.default_unit
+        )
         permissions = [
             Permission.objects.get(codename=codename)
             for codename in ("add_congviec", "view_vanbanden", "view_vanbandi")
         ]
         self.creator.user_permissions.add(*permissions)
-        self.units = {
-            unit_id: DonVi.objects.create(
-                id=unit_id,
+        self.units = {}
+        for unit_id in (3, 5, 7, 8, 9):
+            latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+            self.units[unit_id] = DonVi.objects.create(
                 khoi=default_region,
-                stt_uu_tien=unit_id + 10,
+                stt_uu_tien=latest_stt + 1,
                 ten=f"Phòng ban kiểm thử {unit_id}",
             )
-            for unit_id in (3, 5, 7, 8, 9)
-        }
 
     # ----- tiện ích -----
 
@@ -217,7 +220,7 @@ class TaskDepartmentVisibilityTests(WorkTestBase):
     def setUp(self):
         super().setUp()
         self.task = self.make_task()
-        TaskDonVi.objects.create(task=self.task, don_vi_id=7)
+        TaskDonVi.objects.create(task=self.task, don_vi=self.units[7])
 
     def grant(self, user, *codenames):
         # Nhóm 7 seed sẵn 7 quyền *_congviec theo SQL_Fix4 (codename trần, content_type_id=NULL),
@@ -241,26 +244,26 @@ class TaskDepartmentVisibilityTests(WorkTestBase):
 
     def test_quyen_xem_theo_phong_ban_chi_thay_viec_cua_don_vi_minh(self):
         khac = self.make_task(title="Việc phòng khác")
-        TaskDonVi.objects.create(task=khac, don_vi_id=9)
+        TaskDonVi.objects.create(task=khac, don_vi=self.units[9])
         user = self.grant(self.outsider, "view_dept_congviec")
-        user.don_vi_id = 7  # TODO: bo dong nay khi AUTH_USER_MODEL la accounts.Employee
+        user.don_vi = self.units[7]
         self.assertEqual(self.visible_ids(user), {self.task.pk})
 
     def test_co_don_vi_nhung_khong_co_quyen_thi_khong_thay(self):
         user = self.grant(self.outsider, "view_congviec")
-        user.don_vi_id = 7
+        user.don_vi = self.units[7]
         self.assertNotIn(self.task.pk, self.visible_ids(user))
 
     def test_quyen_phong_ban_khong_thay_cong_viec_dang_an(self):
         hidden = self.make_task(is_public=False, title="Việc ẩn của phòng")
-        TaskDonVi.objects.create(task=hidden, don_vi_id=7)
+        TaskDonVi.objects.create(task=hidden, don_vi=self.units[7])
         user = self.grant(self.outsider, "view_dept_congviec")
-        user.don_vi_id = 7
+        user.don_vi = self.units[7]
         self.assertEqual(self.visible_ids(user), {self.task.pk})
 
     def test_api_danh_sach_dung_quyen_phong_ban(self):
         user = self.grant(self.outsider, "view_dept_congviec")
-        user.don_vi_id = 7
+        user.don_vi = self.units[7]
         self.login(user)
         response = self.client.get("/api/work/tasks/")
         self.assertEqual([item["id"] for item in response.data["results"]], [self.task.pk])
@@ -304,18 +307,20 @@ class TaskDepartmentAndDocumentApiTests(WorkTestBase):
 
     def test_tao_cong_viec_gan_nhieu_phong_ban(self):
         self.login(self.creator)
-        response = self.client.post("/api/work/tasks/", self.payload(donViIds=[3, 5]), format="multipart")
+        unit_ids = [self.units[3].pk, self.units[5].pk]
+        response = self.client.post("/api/work/tasks/", self.payload(donViIds=unit_ids), format="multipart")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
-        self.assertEqual(response.data["donViIds"], [3, 5])
+        self.assertEqual(response.data["donViIds"], unit_ids)
         self.assertEqual(TaskDonVi.objects.filter(task_id=response.data["id"]).count(), 2)
 
     def test_sua_danh_sach_phong_ban(self):
         task = self.make_task()
-        TaskDonVi.objects.create(task=task, don_vi_id=3)
+        TaskDonVi.objects.create(task=task, don_vi=self.units[3])
         self.login(self.creator)
-        response = self.client.patch(self.task_url(task), {"donViIds": [5, 8]}, format="multipart")
+        unit_ids = [self.units[5].pk, self.units[8].pk]
+        response = self.client.patch(self.task_url(task), {"donViIds": unit_ids}, format="multipart")
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
-        self.assertEqual(response.data["donViIds"], [5, 8])
+        self.assertEqual(response.data["donViIds"], unit_ids)
 
     def test_gan_cong_viec_voi_van_ban(self):
         self.login(self.creator)
@@ -1397,6 +1402,8 @@ class SeedWorkDemoCommandTests(TestCase):
     def test_thuc_thi_va_chay_lai_khong_nhan_ban(self):
         from accounts.models import Position
 
+        position_ids_before = set(Position.objects.values_list("pk", flat=True))
+        unit_ids_before = set(DonVi.objects.values_list("pk", flat=True))
         self.run_seed("--yes-i-know")
         emp_count = User.objects.filter(username__startswith="test_").count()
         task_count = Task.objects.filter(title__startswith="[TEST]").count()
@@ -1409,9 +1416,18 @@ class SeedWorkDemoCommandTests(TestCase):
         self.assertTrue(
             User.objects.filter(username="test_cbnv_1", email__endswith="@test.local").exists()
         )
-        # Bảng trống nên command tạo chức vụ/phòng ban [TEST] để gán đa dạng.
-        self.assertTrue(Position.objects.filter(name__startswith="[TEST]").exists())
-        self.assertTrue(DonVi.objects.filter(ten__startswith="[TEST]").exists())
+        # Có danh mục nền thì command tái sử dụng; DB trống mới tạo danh mục [TEST].
+        demo_employees = User.objects.filter(username__startswith="test_")
+        used_position_ids = set(demo_employees.values_list("chuc_vu_id", flat=True))
+        used_unit_ids = set(demo_employees.values_list("don_vi_id", flat=True))
+        if position_ids_before:
+            self.assertTrue(used_position_ids.issubset(position_ids_before))
+        else:
+            self.assertTrue(Position.objects.filter(name__startswith="[TEST]").exists())
+        if unit_ids_before:
+            self.assertTrue(used_unit_ids.issubset(unit_ids_before))
+        else:
+            self.assertTrue(DonVi.objects.filter(ten__startswith="[TEST]").exists())
         # Mỗi CBNV đều có chức vụ + phòng ban (không thiếu FK).
         self.assertTrue(all(e.chuc_vu_id and e.don_vi_id for e in User.objects.filter(username__startswith="test_")))
 

@@ -18,8 +18,11 @@ class DashboardAPITests(TestCase):
         self.tomorrow = self.today + timedelta(days=1)
 
         khoi = KhoiKhuVuc.objects.create(ten="Khối Hỗ trợ")
-        don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Phòng Hành chính")
-        chuc_vu = Position.objects.create(display_order=1, name="Chuyên viên văn thư")
+        latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+        don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=latest_stt + 1, ten="Phòng Hành chính")
+        chuc_vu = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Chuyên viên văn thư"
+        )
         UserModel = get_user_model()
 
         self.staff_user = UserModel.objects.create_user(
@@ -147,7 +150,9 @@ class DashboardAPITests(TestCase):
         from document_templates.selectors import visible_resources
         from dashboard.views import _resources
 
-        category = DanhMucTaiLieu.objects.create(ten_tai_lieu="Templates")
+        category = DanhMucTaiLieu.objects.create(
+            ten_tai_lieu="Templates", nguoi_lap=self.admin_user
+        )
         for i in range(6):
             TaiLieuChiTiet.objects.create(dm_tai_lieu=category, ky_hieu=f"PRIVATE-{i}",
                 tieu_de="Private", ngay_dang=self.today, hien_thi="NOI_BO_PHONG_BAN",

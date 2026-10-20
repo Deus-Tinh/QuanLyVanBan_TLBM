@@ -868,6 +868,8 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
             raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
         if not can_delete_document(request.user, obj):
             raise PermissionDenied("Bạn không có quyền xóa văn bản mật này. Quyền xóa chỉ dành cho Quản trị viên (Admin).")
+        if obj.pham_vi == PhamVi.HAN_CHE:
+            raise PermissionDenied("Văn bản hạn chế không được phép xóa.")
         cleanup_replacement_links_on_delete(obj)
         super(BaseVanBan, obj).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -7,7 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote
 
+from django.conf import settings
+from django.db import DatabaseError, connection
 from django.http import FileResponse, JsonResponse
+from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
@@ -72,6 +75,17 @@ def _run_index_job(job_id, saved_path, filename):
 
 def root(request):
     return JsonResponse({"message": "Quản lý Văn bản TLBM API đang hoạt động", "stack": ["Django", "React", "LlamaIndex", "ChromaDB"]})
+
+
+@require_GET
+def readiness(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except DatabaseError:
+        return JsonResponse({"status": "not_ready"}, status=503)
+    return JsonResponse({"status": "ready", "release": settings.RELEASE_ID})
 
 
 def ai_health(request):

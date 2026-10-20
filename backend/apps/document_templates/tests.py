@@ -7,6 +7,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
+from organizations.models import DonVi
 
 User = get_user_model()
 
@@ -71,7 +72,7 @@ class DocumentTemplatesModelAndAPITests(TestCase):
             **extra_user
         )
         self.admin = User.objects.create_superuser(
-            username='admin',
+            username='templates_admin_test',
             email='admin@example.com',
             password='adminpassword'
         )
@@ -327,24 +328,25 @@ class DocumentTemplatesModelAndAPITests(TestCase):
     def test_don_vi_id_and_con_hieu_luc_1_phan(self):
         """Kiểm tra trường don_vi_id và giá trị hiệu lực CON_HIEU_LUC_1_PHAN chuẩn DDL Base v1"""
         self.client.force_authenticate(user=self.user)
+        don_vi_id = DonVi.objects.order_by("id").values_list("id", flat=True).first()
         doc = TaiLieuChiTiet.objects.create(
             dm_tai_lieu=self.cat1,
             ky_hieu='05/HD-2026',
             tieu_de='Hướng dẫn nghiệp vụ một phần',
             ngay_dang=date(2026, 3, 1),
             hieu_luc='CON_HIEU_LUC_1_PHAN',
-            don_vi_id=10,
+            don_vi_id=don_vi_id,
             hien_thi='NOI_BO_PHONG_BAN',
             nguoi_tao=self.user,
         )
         self.assertEqual(doc.hieu_luc, 'CON_HIEU_LUC_1_PHAN')
-        self.assertEqual(doc.don_vi_id, 10)
+        self.assertEqual(doc.don_vi_id, don_vi_id)
 
         # Kiểm tra qua API detail
         res = self.client.get(f'/api/resources/documents/{doc.id}/')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['hieu_luc'], 'CON_HIEU_LUC_1_PHAN')
-        self.assertEqual(res.data['don_vi_id'], 10)
+        self.assertEqual(res.data['don_vi_id'], don_vi_id)
 
     def test_attachment_model_and_api(self):
         """Kiểm tra bảng records_chitiettailieu_attachment và API quản lý tệp đính kèm chuẩn DDL Base v1"""

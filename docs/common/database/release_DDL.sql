@@ -1875,7 +1875,7 @@ INSERT INTO
         is_superuser,
         is_active
     )
-SELECT 'admin', 'admin@baolong.vn', 'pbkdf2_sha256$system_seed_placeholder', 'Quản trị hệ thống', '1990-01-01', (
+SELECT 'admin', 'admin@baolong.vn', '!system_seed_placeholder', 'Quản trị hệ thống', '1990-01-01', (
         SELECT id
         FROM accounts_position
         WHERE

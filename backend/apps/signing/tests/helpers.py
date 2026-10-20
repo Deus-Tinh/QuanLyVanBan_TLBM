@@ -2,6 +2,7 @@ from django.apps import apps
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 
+from authorization.models import PermissionInfo
 from signing.models import SigningProcess
 from signing.permissions import QUAN_LY_QUY_TRINH
 
@@ -14,10 +15,12 @@ def cap_quyen(user, *codenames):
     for codename in codenames:
         permission = Permission.objects.filter(codename=codename).order_by().first()
         if permission is None:
-            permission = Permission.objects.create(
+            permission_info = PermissionInfo.objects.create(
                 codename=codename, name=codename,
-                content_type=ContentType.objects.get_for_model(SigningProcess),
+                module_ten="Trình ký",
+                content_type_id=ContentType.objects.get_for_model(SigningProcess).pk,
             )
+            permission = Permission.objects.get(pk=permission_info.pk)
         user.user_permissions.add(permission)
         if codename == QUAN_LY_QUY_TRINH:
             them_vao_nhom_quan_tri(user)

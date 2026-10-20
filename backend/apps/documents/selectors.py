@@ -12,7 +12,17 @@ Cung cấp cho các phân hệ khác (Dashboard Nhóm 1, Hồ sơ Nhóm 3, Công
 """
 
 from django.db.models import Q
-from .models import LoaiVanBan, PhamVi, HieuLuc, VanBanDen, VanBanDi, VanBanMat, get_document_model, DocumentAccessLog
+from .models import (
+    LoaiVanBan,
+    PhamVi,
+    HieuLuc,
+    VanBanDen,
+    VanBanDi,
+    VanBanMat,
+    get_document_model,
+    DocumentAccessLog,
+    canonical_document_kind,
+)
 
 
 def van_ban_xem_duoc(user, loai="DEN"):
@@ -134,7 +144,7 @@ def log_access(document_type, document_id, user, hanh_dong, doi_tuong_user=None,
     if not user or not user.is_authenticated:
         return None
     return DocumentAccessLog.objects.create(
-        document_type=str(document_type).lower(),
+        document_type=canonical_document_kind(document_type),
         document_id=document_id,
         user=user,
         hanh_dong=hanh_dong,

@@ -15,6 +15,7 @@
     "db:start": "node scripts/project.mjs db-start",
     "db:status": "node scripts/project.mjs db-status",
     "db:migrate": "node scripts/project.mjs db-migrate",
+    "db:adopt": "node scripts/project.mjs db-adopt",
     "db:migrations": "node scripts/project.mjs db-migrations",
     "db:reset": "node scripts/project.mjs db-reset",
     "db:stop": "node scripts/project.mjs db-stop",

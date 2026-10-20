@@ -1,0 +1,2 @@
+/deploy/deploy.sh text eol=lf
+/scripts/test_deploy.sh text eol=lf

@@ -60,6 +60,7 @@ urlpatterns = [
     # Prefix /api/ai/ tách khỏi router của app documents (/api/documents/...).
     # Mọi endpoint yêu cầu đăng nhập; chat cần use_aiassistant, quản trị kho/cài đặt chỉ superuser.
     path("health/ai", ai_views.ai_health),
+    path("api/health/ready/", ai_views.readiness),
     path("api/ai/chat", ai_views.chat),
     path("api/ai/upload", ai_views.upload_sync),
     path("api/ai/upload/async", ai_views.upload_async),

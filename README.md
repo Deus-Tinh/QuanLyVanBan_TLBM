@@ -82,9 +82,11 @@ pnpm dev          # Terminal 2: frontend http://127.0.0.1:5173 (proxy /api sang 
 
 ### Sau khi pull
 
-- Có migration mới: `pnpm db:migrate`.
-- `release_DDL.sql` đổi: `pnpm db:reset` (xóa DB local, dựng lại; gõ `RESET` để xác nhận). `pnpm db:migrate` dừng và yêu cầu `db:reset` khi dấu hoàn tất không khớp DDL.
+- Có migration mới: `pnpm db:migrate`. Với DB cũ mang dấu `build_db:v2`, chạy `pnpm db:adopt` để xác minh schema và lịch sử migration rồi mới chạy `pnpm db:migrate`.
+- `release_DDL.sql` đổi không tự xóa DB. `pnpm db:migrate` yêu cầu migration chờ nếu hash DDL thay đổi; chỉ dùng `pnpm db:reset` khi chủ ý xóa dữ liệu local và gõ `RESET`.
 - Thư viện frontend đổi: `pnpm setup:frontend`.
+
+Trước `pnpm db:setup` hoặc `pnpm db:reset`, đặt `ADMIN_PASSWORD` trong môi trường shell. Demo data không được tạo mặc định; khi cần, chạy `pnpm manage seed_db --demo-data` với `DEMO_PASSWORD` đã đặt.
 
 ### Test và lệnh Django
 
@@ -103,11 +105,12 @@ Test dùng DB tạm `test_qlvb_dev` do Django dựng bằng migration; DB `qlvb_
 | `pnpm db:setup` | Khởi động DB/pgAdmin, tạo `backend/.venv`, dựng DB nếu chưa có (`scripts/build_db.py --if-empty --seed`) |
 | `pnpm db:start` / `pnpm db:stop` | Bật / tắt DB và pgAdmin, giữ nguyên dữ liệu (Docker volume) |
 | `pnpm db:status` | Trạng thái container và địa chỉ truy cập |
-| `pnpm db:migrate` | Áp dụng migration Django mới (`build_db.py --sync`); không nạp lại DDL, không xóa dữ liệu |
+| `pnpm db:adopt` | Xác minh schema và migration history của DB v2 được hỗ trợ, rồi nâng marker lên v3 |
+| `pnpm db:migrate` | Chạy thật migration Django chờ và cập nhật marker; không nạp lại DDL hoặc reset DB |
 | `pnpm db:migrations` | Danh sách migration đã/chưa áp dụng |
-| `pnpm db:reset` | Xóa và dựng lại DB local từ `release_DDL.sql` (có xác nhận `RESET`) |
+| `pnpm db:reset` | Xóa và dựng lại DB local từ `release_DDL.sql` (cần `ADMIN_PASSWORD` và xác nhận `RESET`) |
 
-Collation: DB do repo tạo dùng ICU `vi-VN`. DB `qlvb_dev` tạo từ volume cũ có collation khác sẽ bị `db:setup`/`db:migrate` từ chối; chạy `pnpm db:reset` để dựng lại.
+Collation: DB do repo tạo dùng ICU `vi-VN`. DB `qlvb_dev` tạo từ volume cũ có collation khác sẽ bị `db:setup`/`db:migrate` từ chối. DDL hash đổi không tự kích hoạt reset; drift hoặc thiếu đường migration được báo để xử lý riêng.
 
 ### Kết nối DB local
 
@@ -120,7 +123,7 @@ Các cổng chỉ bind vào `127.0.0.1`. Cổng bị trùng thì đặt biến m
 
 ### Deploy staging
 
-`pnpm deploy:staging`: deploy `origin/staging` lên host staging (xóa và dựng lại DB staging). Cần `QLVB_DEPLOY_HOST`; chi tiết ở `docs/common/database/build_db_runbook.md`.
+`pnpm deploy:staging`: deploy `origin/staging` lên host staging và giữ dữ liệu bằng chế độ `sync`. Chỉ thêm `--reset-db` khi chủ ý xóa DB staging; thao tác này luôn yêu cầu gõ `RESET`, kể cả khi dùng `--yes`. Cần `QLVB_DEPLOY_HOST`; chi tiết ở `docs/common/database/build_db_runbook.md`.
 
 ---
 

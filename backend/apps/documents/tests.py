@@ -9,6 +9,8 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
+from organizations.models import DonVi
+from records.models import HoSo, LoaiVanBan as RecordLoaiVanBan
 
 from documents.filters import DocumentFilter, ViewerFilter
 from documents.models import (
@@ -142,7 +144,7 @@ class DocumentModelTests(TestCase):
     """Test trực tiếp các models: VanBanDen, VanBanDi."""
 
     def setUp(self):
-        self.user = User.objects.create_user(username="admin", password="test123")
+        self.user = User.objects.create_user(username="documents_admin_test", password="test123")
 
     def test_create_van_ban_den(self):
         """Tạo VB Đến thành công."""
@@ -477,10 +479,12 @@ class JunctionAndThroughModelTests(TestCase):
 
     def test_junction_danhmuc_filter(self):
         """Bảng documents_vanbanden_danhmuc và documents_vanbandi_danhmuc kết nối thành công với filter loai_van_ban."""
-        VanBanDenDanhmuc.objects.create(vanbanden=self.doc_den, loaivanban_id=99)
-        VanBanDiDanhmuc.objects.create(vanbandi=self.doc_di, loaivanban_id=99)
+        hoso = HoSo.objects.get(is_he_thong=True)
+        category = RecordLoaiVanBan.objects.create(ho_so=hoso, ten_loai="Loại văn bản junction")
+        VanBanDenDanhmuc.objects.create(vanbanden=self.doc_den, loaivanban_id=category.pk)
+        VanBanDiDanhmuc.objects.create(vanbandi=self.doc_di, loaivanban_id=category.pk)
 
-        f_den = DocumentFilter({"loai_van_ban": "99"}, queryset=VanBanDen.objects.all())
+        f_den = DocumentFilter({"loai_van_ban": str(category.pk)}, queryset=VanBanDen.objects.all())
         self.assertIn(self.doc_den, f_den.qs)
 
         f_den_miss = DocumentFilter({"loai_van_ban": "888"}, queryset=VanBanDen.objects.all())
@@ -488,14 +492,16 @@ class JunctionAndThroughModelTests(TestCase):
 
     def test_junction_hoso_and_donvinhan(self):
         """Bảng hoso, donvinhan, noibanhanh lưu trữ và truy vấn chính xác."""
-        hs = VanBanDenHoSo.objects.create(vanbanden=self.doc_den, hoso_id=12)
-        dvn = VanBanDenDonViNhan.objects.create(vanbanden=self.doc_den, donvi_id=34)
+        hoso_id = HoSo.objects.get(is_he_thong=True).pk
+        donvi_id = DonVi.objects.order_by("id").first().pk
+        hs = VanBanDenHoSo.objects.create(vanbanden=self.doc_den, hoso_id=hoso_id)
+        dvn = VanBanDenDonViNhan.objects.create(vanbanden=self.doc_den, donvi_id=donvi_id)
         self.assertEqual(self.doc_den.hoso.first(), hs)
         self.assertEqual(self.doc_den.donvinhan.first(), dvn)
 
-        hs_di = VanBanDiHoSo.objects.create(vanbandi=self.doc_di, hoso_id=56)
-        dvn_di = VanBanDiDonViNhan.objects.create(vanbandi=self.doc_di, donvi_id=78)
-        nbh_di = VanBanDiNoiBanHanh.objects.create(vanbandi=self.doc_di, donvi_id=90)
+        hs_di = VanBanDiHoSo.objects.create(vanbandi=self.doc_di, hoso_id=hoso_id)
+        dvn_di = VanBanDiDonViNhan.objects.create(vanbandi=self.doc_di, donvi_id=donvi_id)
+        nbh_di = VanBanDiNoiBanHanh.objects.create(vanbandi=self.doc_di, donvi_id=donvi_id)
         self.assertEqual(self.doc_di.hoso.first(), hs_di)
         self.assertEqual(self.doc_di.donvinhan.first(), dvn_di)
         self.assertEqual(self.doc_di.noibanhanh_links.first(), nbh_di)
@@ -503,8 +509,9 @@ class JunctionAndThroughModelTests(TestCase):
     def test_restricted_document_visible_to_recipient_department(self):
         """Văn bản hạn chế xem được bởi CBNV thuộc đơn vị nhận (donvinhan)."""
         from documents.selectors import van_ban_xem_duoc
+        department, other_department = list(DonVi.objects.order_by("id")[:2])
         user_dept = User.objects.create_user(username="dept_user", password="pwd")
-        user_dept.don_vi_id = 999  # Giả lập employee thuộc đơn vị 999
+        user_dept.don_vi_id = department.pk
 
         doc_restricted = VanBanDen.objects.create(
             nam=2026,
@@ -514,7 +521,7 @@ class JunctionAndThroughModelTests(TestCase):
             pham_vi=PhamVi.HAN_CHE,
             nguoi_tao=self.user,
         )
-        VanBanDenDonViNhan.objects.create(vanbanden=doc_restricted, donvi_id=999)
+        VanBanDenDonViNhan.objects.create(vanbanden=doc_restricted, donvi_id=department.pk)
 
         # CBNV thuộc đơn vị nhận xem được
         qs = van_ban_xem_duoc(user_dept, "DEN")
@@ -522,7 +529,7 @@ class JunctionAndThroughModelTests(TestCase):
 
         # Người lạ không thuộc đơn vị nhận không xem được
         stranger = User.objects.create_user(username="dept_stranger", password="pwd")
-        stranger.don_vi_id = 111
+        stranger.don_vi_id = other_department.pk
         qs_stranger = van_ban_xem_duoc(stranger, "DEN")
         self.assertNotIn(doc_restricted, qs_stranger)
 
@@ -1080,14 +1087,17 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
         self.assertFalse(self.doc_han_che.nguoi_nhan.filter(pk=self.recipient2.pk).exists())
 
         # 2. Tạo bản ghi trực tiếp trên các bảng junction
-        hoso = VanBanDenHoSo.objects.create(vanbanden=self.doc_han_che, hoso_id=99)
-        self.assertEqual(hoso.hoso_id, 99)
+        hoso_id = HoSo.objects.get(is_he_thong=True).pk
+        category = RecordLoaiVanBan.objects.create(ho_so_id=hoso_id, ten_loai="Loại văn bản bảo mật")
+        donvi_id = DonVi.objects.order_by("id").first().pk
+        hoso = VanBanDenHoSo.objects.create(vanbanden=self.doc_han_che, hoso_id=hoso_id)
+        self.assertEqual(hoso.hoso_id, hoso_id)
 
-        dm = VanBanDenDanhmuc.objects.create(vanbanden=self.doc_han_che, loaivanban_id=12)
-        self.assertEqual(dm.loaivanban_id, 12)
+        dm = VanBanDenDanhmuc.objects.create(vanbanden=self.doc_han_che, loaivanban_id=category.pk)
+        self.assertEqual(dm.loaivanban_id, category.pk)
 
-        dv = VanBanDenDonViNhan.objects.create(vanbanden=self.doc_han_che, donvi_id=5)
-        self.assertEqual(dv.donvi_id, 5)
+        dv = VanBanDenDonViNhan.objects.create(vanbanden=self.doc_han_che, donvi_id=donvi_id)
+        self.assertEqual(dv.donvi_id, donvi_id)
 
         # Query all không bị lỗi column id does not exist
         all_hoso = list(VanBanDenHoSo.objects.filter(vanbanden=self.doc_han_che))
@@ -1166,13 +1176,13 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
         doc = VanBanDen.objects.create(
             nam=2026, so_hieu="112/TB-SGDĐT", so_thu_tu=210,
             trich_yeu="Văn bản thông báo", noi_ban_hanh="SGDĐT",
-            hieu_luc=HieuLuc.HET_VA_THAY_THE,
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
             link_thay_the="",
         )
         # Thử gán link_thay_the là số '12' (không tồn tại trong CSDL)
         ser = DocumentCreateUpdateSerializer(
             instance=doc,
-            data={"link_thay_the": "12"},
+            data={"hieu_luc": HieuLuc.HET_VA_THAY_THE, "link_thay_the": "12"},
             partial=True,
         )
         self.assertFalse(ser.is_valid())
@@ -1344,13 +1354,13 @@ class VanBanMatTests(TestCase):
         self.assertIn(self.doc_mat.loai, ("DEN", "MAT"))
         self.assertIn(self.doc_mat.document_kind, ("vanbanden", "vanbanmat"))
 
-    def test_admin_can_delete_confidential_document(self):
-        """Quản trị viên (Superuser/Admin) có toàn quyền xóa văn bản mật của công ty."""
+    def test_admin_cannot_delete_restricted_compatibility_document(self):
+        """Alias Văn bản Mật vẫn tuân thủ hợp đồng không xóa văn bản HAN_CHE."""
         client = APIClient()
         client.force_authenticate(user=self.superuser)
         res = client.delete(f"/api/documents/mat/{self.doc_mat.id}/")
-        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(VanBanMat.objects.filter(id=self.doc_mat.id).exists())
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(VanBanMat.objects.filter(id=self.doc_mat.id).exists())
 
     def test_attachment_creation_and_path(self):
         """Tệp đính kèm văn bản mật lưu theo đường dẫn chuẩn 02_documents/..."""
@@ -1362,9 +1372,12 @@ class VanBanMatTests(TestCase):
 
     def test_junction_relations(self):
         """Liên kết Hồ sơ, Danh mục, Đơn vị nhận, Nơi ban hành hoạt động trơn tru."""
-        VanBanMatHoSo.objects.create(vanbanden=self.doc_mat, hoso_id=12)
-        VanBanMatDanhmuc.objects.create(vanbanden=self.doc_mat, loaivanban_id=34)
-        VanBanMatDonViNhan.objects.create(vanbanden=self.doc_mat, donvi_id=56)
+        hoso_id = HoSo.objects.get(is_he_thong=True).pk
+        category = RecordLoaiVanBan.objects.create(ho_so_id=hoso_id, ten_loai="Loại văn bản hạn chế")
+        donvi_id = DonVi.objects.order_by("id").first().pk
+        VanBanMatHoSo.objects.create(vanbanden=self.doc_mat, hoso_id=hoso_id)
+        VanBanMatDanhmuc.objects.create(vanbanden=self.doc_mat, loaivanban_id=category.pk)
+        VanBanMatDonViNhan.objects.create(vanbanden=self.doc_mat, donvi_id=donvi_id)
 
         self.assertEqual(self.doc_mat.hoso.count(), 1)
         self.assertEqual(self.doc_mat.danhmuc.count(), 1)
@@ -1562,8 +1575,9 @@ class VanBanDiServiceTests(TestCase):
             ngay_ban_hanh=now - timezone.timedelta(days=2),
         )
 
-        VanBanDiNoiBanHanh.objects.create(vanbandi=doc1, donvi_id=101)
-        VanBanDiDonViNhan.objects.create(vanbandi=doc2, donvi_id=202)
+        donvi_ids = list(DonVi.objects.order_by("id").values_list("id", flat=True)[:2])
+        VanBanDiNoiBanHanh.objects.create(vanbandi=doc1, donvi_id=donvi_ids[0])
+        VanBanDiDonViNhan.objects.create(vanbandi=doc2, donvi_id=donvi_ids[1])
 
         qs = VanBanDi.objects.all()
 
@@ -1600,12 +1614,12 @@ class VanBanDiServiceTests(TestCase):
         self.assertEqual(f_signer.qs.first().id, doc1.id)
 
         # Lọc theo nơi ban hành liên kết
-        f_nbh = VanBanDiFilter({"noi_ban_hanh": "101"}, queryset=qs)
+        f_nbh = VanBanDiFilter({"noi_ban_hanh": str(donvi_ids[0])}, queryset=qs)
         self.assertEqual(f_nbh.qs.count(), 1)
         self.assertEqual(f_nbh.qs.first().id, doc1.id)
 
         # Lọc theo đơn vị nhận
-        f_dvn = VanBanDiFilter({"don_vi_nhan": "202"}, queryset=qs)
+        f_dvn = VanBanDiFilter({"don_vi_nhan": str(donvi_ids[1])}, queryset=qs)
         self.assertEqual(f_dvn.qs.count(), 1)
         self.assertEqual(f_dvn.qs.first().id, doc2.id)
 
@@ -1830,8 +1844,8 @@ class VanBanMatServiceTests(TestCase):
         # Xác nhận hàng header không có cột Số đi
         self.assertNotIn("Số đi", rows_recipient[0])
 
-    def test_mat_viewlog_exact_timestamp(self):
-        """Cập nhật logic DocumentViewLog cho document_type='vanbanmat' lưu chính xác ngày giờ phút giây."""
+    def test_mat_viewlog_uses_backing_kind_and_preserves_timestamp(self):
+        """Alias Văn bản Mật ghi view-log dưới loại văn bản của bảng dùng chung."""
         doc = VanBanMat.objects.create(
             nam=2026,
             so_hieu="88/MẬT-VP",
@@ -1847,7 +1861,7 @@ class VanBanMatServiceTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
         view_log = DocumentViewLog.objects.filter(
-            document_type="vanbanmat",
+            document_type="vanbanden",
             document_id=doc.id,
             user=self.recipient,
         ).first()
@@ -1856,6 +1870,24 @@ class VanBanMatServiceTests(TestCase):
 
         res_viewers = client_rec.get(f"/api/documents/mat/{doc.id}/viewers/")
         self.assertEqual(res_viewers.status_code, status.HTTP_200_OK)
+
+    def test_mat_access_log_uses_backing_kind(self):
+        from documents.selectors import log_access
+
+        doc = VanBanMat.objects.create(
+            nam=2026,
+            so_hieu="89/MAT-SERVICE",
+            trich_yeu="Văn bản mật kiểm tra access log",
+            nguoi_tao=self.creator,
+            pham_vi=PhamVi.HAN_CHE,
+        )
+        log = log_access(
+            "vanbanmat",
+            doc.pk,
+            self.creator,
+            DocumentAccessLog.HanhDong.XEM,
+        )
+        self.assertEqual(log.document_type, "vanbanden")
 
     def test_mat_email_lockdown_at_service_layer(self):
         """Khóa hoàn toàn chức năng gửi email toàn hệ thống ở cấp backend service đối với văn bản mật."""
