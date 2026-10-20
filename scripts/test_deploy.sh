@@ -79,10 +79,16 @@ if [[ "${1##*/}" == "backup_restore.py" ]]; then
     [[ "$(cat "$SERVICE_STATE")" == "inactive" ]] || exit 60
     [[ "${MOCK_BACKUP_FAIL:-0}" == "0" ]] || exit 61
     release_id=""
+    storage_dir=""
     while (($#)); do
-      if [[ "$1" == "--release-id" ]]; then release_id=$2; shift 2; else shift; fi
+      case "$1" in
+        --release-id) release_id=$2; shift 2 ;;
+        --storage-dir) storage_dir=$2; shift 2 ;;
+        *) shift ;;
+      esac
     done
     [[ -n "$release_id" ]] || exit 65
+    [[ -n "$storage_dir" && "$storage_dir" == "$CASE_ROOT/shared/storage" ]] || exit 66
     printf '%s\n' "$release_id" > "$CASE_ROOT/backup-release-id"
     backup_dir="$QLVB_BASE/backups/full"
     mkdir -p "$backup_dir"
@@ -286,7 +292,7 @@ make_case() {
   RELEASE_DIR="$QLVB_BASE/releases/$NAME"
   QLVB_ENVF="$CASE_ROOT/backend.env"
   mkdir -p "$QLVB_BASE/releases/previous" "$QLVB_BASE/backups" "$QLVB_BASE/tools" "$HOME/deploy"
-  mkdir -p "$CASE_ROOT/shared/media" "$CASE_ROOT/shared/signing" "$CASE_ROOT/shared/ai"
+  mkdir -p "$CASE_ROOT/shared/media" "$CASE_ROOT/shared/signing" "$CASE_ROOT/shared/ai" "$CASE_ROOT/shared/storage"
   : > "$HOME/deploy/qlvb-$NAME.tar.gz"
   echo "$QLVB_BASE/releases/previous" > "$CURRENT_FILE"
   echo "$state" > "$SERVICE_STATE"
@@ -300,6 +306,7 @@ SIGNING_PIN_SECRET=synthetic-test-only
 DJANGO_MEDIA_ROOT=$CASE_ROOT/shared/media
 SIGNING_DOCUMENT_ROOT=$CASE_ROOT/shared/signing
 AI_DATA_DIR=$CASE_ROOT/shared/ai
+DOCUMENT_STORAGE_ROOT=$CASE_ROOT/shared/storage
 ADMIN_PASSWORD=test-only
 ENV
   export CASE_ROOT NAME HOME EVENTS SERVICE_STATE CURRENT_FILE RELEASE_DIR QLVB_BASE QLVB_ENVF
@@ -402,6 +409,30 @@ expect_state "$QLVB_BASE/releases/previous" active
 assert_event_absent stop
 assert_event_absent backup
 pass "release-local data root fails before service stop"
+
+make_case missing-storage-root
+sed -i '/^DOCUMENT_STORAGE_ROOT=/d' "$QLVB_ENVF"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_event_absent stop
+assert_event_absent backup
+pass "missing document storage root fails before service stop"
+
+make_case relative-storage-root
+sed -i 's#^DOCUMENT_STORAGE_ROOT=.*#DOCUMENT_STORAGE_ROOT=relative/storage#' "$QLVB_ENVF"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_event_absent stop
+assert_event_absent backup
+pass "relative document storage root fails before service stop"
+
+make_case release-local-storage-root
+sed -i "s#^DOCUMENT_STORAGE_ROOT=.*#DOCUMENT_STORAGE_ROOT=$QLVB_BASE/releases/previous#" "$QLVB_ENVF"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_event_absent stop
+assert_event_absent backup
+pass "release-local document storage root fails before service stop"
 
 make_case backup-failure
 export MOCK_BACKUP_FAIL=1

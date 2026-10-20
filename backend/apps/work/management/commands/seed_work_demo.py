@@ -252,7 +252,7 @@ class Command(BaseCommand):
                     task=task,
                     comment=comment,
                     kind=AttachmentKind.BANG_CHUNG,
-                    file="06_tasks/demo/bang_chung_demo.pdf",
+                    file="cong-viec/demo/bang_chung_demo.pdf",
                     original_name="bang_chung_demo.pdf",
                     uploaded_by=host,
                 )

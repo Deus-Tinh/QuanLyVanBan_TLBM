@@ -1,11 +1,16 @@
 import os
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.core.exceptions import SuspiciousFileOperation, ValidationError
 from django.core.validators import MinValueValidator
 from django.conf import settings
 from django.db.models import Max
 
+from document_storage import build_dated_path, get_document_storage
+
 DB_NOW = models.Func(function="now", output_field=models.DateTimeField())
+
+
+VALID_EXTENSIONS = frozenset({'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.jpg', '.jpeg', '.png', '.zip', '.rar'})
 
 
 # Hàm kiểm tra định dạng và dung lượng file đính kèm (< 20MB)
@@ -14,12 +19,29 @@ def validate_document_file(file):
     if hasattr(file, 'size') and file.size > max_size_mb * 1024 * 1024:
         raise ValidationError(f"Dung lượng tệp đính kèm không được vượt quá {max_size_mb}MB.")
 
-    valid_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.jpg', '.jpeg', '.png', '.zip', '.rar']
     ext = os.path.splitext(file.name)[1].lower()
-    if ext not in valid_extensions:
+    if ext not in VALID_EXTENSIONS:
         raise ValidationError(
             f"Định dạng tệp {ext} không được hỗ trợ. Chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, CSV, JPG, PNG, ZIP, RAR."
         )
+
+
+def store_template_file(file):
+    """Lưu tệp biểu mẫu vào kho dùng chung, trả về giá trị cột `path` (URL theo MEDIA_URL)."""
+    storage = get_document_storage()
+    name = storage.save(build_dated_path('mau-van-ban', file.name, allowed=VALID_EXTENSIONS), file)
+    return storage.url(name)
+
+
+def template_disk_path(path):
+    """Đường dẫn trên đĩa của giá trị cột `path`; None nếu ngoài kho lưu trữ."""
+    storage = get_document_storage()
+    prefix = storage.base_url
+    name = path[len(prefix):] if path.startswith(prefix) else path
+    try:
+        return storage.path(name)
+    except SuspiciousFileOperation:
+        return None
 
 
 class DanhMucTaiLieu(models.Model):
@@ -185,14 +207,11 @@ class TaiLieuChiTiet(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if hasattr(self, '_temp_file_dinh_kem') and self._temp_file_dinh_kem:
-            from django.core.files.storage import default_storage
             file = self._temp_file_dinh_kem
-            file_path = default_storage.save(f"documents/templates/{file.name}", file)
-            storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
             ChiTietTaiLieuAttachment.objects.create(
                 document=self,
                 name=file.name,
-                path=storage_path,
+                path=store_template_file(file),
                 file_size=getattr(file, 'size', None),
                 mime_type=getattr(file, 'content_type', None),
                 nguoi_tao=self.nguoi_tao
