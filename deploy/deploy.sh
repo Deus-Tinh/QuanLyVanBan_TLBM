@@ -8,7 +8,7 @@
 # DB_MODE (bien moi truong, mac dinh sync):
 #   sync     dau hoan tat DB phai khop hash release_DDL.sql (lech thi dung); neu co migration cho thi thu
 #            `build_db.py --sync` tren ban khoi phuc cua backup, dat thi chay that. Dung cho DB co du lieu that.
-#   rebuild  xoa va dung lai DB tu release_DDL.sql (`build_db.py --seed`). Chi dung cho staging (du lieu thu nghiem).
+#   rebuild  xoa va dung lai DB tu release_DDL.sql (`build_db.py --seed`). Chi dung khi co chu dich xoa du lieu (thao tac reset ro rang).
 # Bien tuy chon cho test: QLVB_BASE, QLVB_ENVF.
 set -euo pipefail
 umask 022
@@ -101,6 +101,10 @@ DDL="$REL/docs/common/database/release_DDL.sql"
 
 step "3/8 Nap cau hinh, check, collectstatic"
 set -a; . "$ENVF"; set +a
+if [ "$DB_MODE" = rebuild ] && [ -z "${ADMIN_PASSWORD//[[:space:]]/}" ]; then
+  echo "Thieu ADMIN_PASSWORD trong $ENVF; tu choi rebuild truoc khi dung service hoac xoa DB."
+  exit 1
+fi
 cd "$REL/backend"
 $PY manage.py check
 $PY manage.py collectstatic --noinput | tail -1

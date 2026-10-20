@@ -58,13 +58,16 @@ def parse_args():
     parser.add_argument("--dbname", default=env.get("DB_NAME"), required="DB_NAME" not in env)
     parser.add_argument("--ddl", type=Path, default=DEFAULT_DDL)
     parser.add_argument("--seed", action="store_true", help="chạy seed_db sau khi dựng")
+    parser.add_argument("--demo-data", action="store_true", help="chạy seed_db với cờ --demo-data")
     existing = parser.add_mutually_exclusive_group()
     existing.add_argument("--force", action="store_true", help="xóa và dựng lại DB đã tồn tại")
     existing.add_argument("--if-empty", action="store_true", help="bỏ qua (exit 0) nếu DB đã có bảng")
     parser.add_argument("--sync", action="store_true", help="chỉ áp dụng migration chưa áp dụng lên DB hiện có")
     args = parser.parse_args()
-    if args.sync and (args.force or args.if_empty or args.seed):
-        parser.error("--sync không dùng chung với --force, --if-empty, --seed")
+    if args.demo_data and not args.seed:
+        parser.error("--demo-data cần đi cùng --seed")
+    if args.sync and (args.force or args.if_empty or args.seed or args.demo_data):
+        parser.error("--sync không dùng chung với --force, --if-empty, --seed, --demo-data")
     return args
 
 
@@ -359,9 +362,16 @@ def build(args):
     if args.seed:
         from django.core.management import call_command
 
-        call_command("seed_db")
+        call_command("seed_db", demo_data=args.demo_data)
     write_mark(args)
     print(f"Đã dựng DB {args.dbname}.")
+
+
+def require_seed_secrets(args):
+    if args.seed and not os.environ.get("ADMIN_PASSWORD", "").strip():
+        raise SystemExit("Thiếu ADMIN_PASSWORD; chưa thay đổi database.")
+    if args.demo_data and not os.environ.get("DEMO_PASSWORD", "").strip():
+        raise SystemExit("Thiếu DEMO_PASSWORD cho --demo-data; chưa thay đổi database.")
 
 
 def main():
@@ -375,6 +385,7 @@ def main():
         return
     if not args.ddl.is_file():
         raise SystemExit(f"Không thấy file DDL: {args.ddl}")
+    require_seed_secrets(args)
     mode, skip = prepare_database(args)
     if skip:
         return
