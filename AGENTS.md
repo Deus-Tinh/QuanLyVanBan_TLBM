@@ -70,7 +70,7 @@ Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
 ---
 
 ## 4. Các Invariant Kỹ thuật Bắt buộc
-- **i18n (Trụ cột 1)**: 100% text trên giao diện React phải dùng `t('namespace.key')`. Mọi key mới phải có đầy đủ cả 2 nhánh trong `frontend/src/i18n/vi.json` và `frontend/src/i18n/en.json` (kiểm bằng `pnpm --dir frontend check:i18n`). Không dùng dạng `lang === 'en' ? ... : ...` trong component.
+- **i18n (Trụ cột 1)**: 100% text trên giao diện React phải dùng `t('namespace.key')`. Mỗi module giữ từ điển riêng tại `frontend/src/i18n/<module>/vi.json` và `en.json`; mọi key mới phải có đầy đủ cả 2 nhánh trong file của module mình, không khai báo key đã có ở module khác (kiểm bằng `pnpm --dir frontend check:i18n`). Không dùng dạng `lang === 'en' ? ... : ...` trong component.
 - **Design Tokens (Trụ cột 3)**: Không dùng mã màu Hex (`#...`) hay font-size pixel trong CSS. Bắt buộc dùng `var(--color-...)` và `var(--font-...)` từ `src/styles/global.css` (kiểm bằng `pnpm --dir frontend check:tokens`).
 - **Git Flow**: Không commit/push trực tiếp vào `main`. Kiểm tra `git status` trước khi commit, không dùng `git add .` bừa bãi.
 

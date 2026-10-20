@@ -196,7 +196,7 @@ qlvbtl/
 │       ├── lib/                            # Hằng số (constants.ts) & Routes (routes.ts)
 │       ├── hooks/                          # Custom React Hooks
 │       ├── styles/                         # CSS Design Tokens, Theme & Animations
-│       ├── i18n/                           # Đa ngôn ngữ (translate.ts, vi.json, en.json)
+│       ├── i18n/                           # Đa ngôn ngữ (translate.ts, <module>/vi.json, <module>/en.json)
 │       └── types/                          # Kiểu dữ liệu TypeScript (navigation, auth...)
 │
 ├── media/                                  # Thư mục lưu trữ tệp tin tải lên (MEDIA_ROOT)
