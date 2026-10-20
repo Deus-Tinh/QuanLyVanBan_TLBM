@@ -9,6 +9,13 @@ on:
   push:
     branches:
       - staging
+  workflow_dispatch:
+    inputs:
+      reset_database:
+        description: Delete and rebuild the staging database
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -30,6 +37,7 @@ jobs:
       DB_NAME: tlbm_ci
       DB_USER: postgres
       DB_PASSWORD: postgres
+      ADMIN_PASSWORD: "ci-only-not-for-production"
     services:
       postgres:
         image: postgres:16
@@ -149,7 +157,7 @@ jobs:
 
   deploy-backend:
     name: Deploy backend to Ubuntu
-    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/staging'
     needs: [backend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -169,6 +177,7 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          RESET_DATABASE: ${{ inputs.reset_database }}
         run: |
           set -euo pipefail
           test -n "$DEPLOY_HOST"
@@ -184,4 +193,8 @@ jobs:
           REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
           $SSH "$REMOTE" 'mkdir -p ~/deploy'
           rsync -az -e "$SSH" "qlvb-$SHA7.tar.gz" deploy/deploy.sh "$REMOTE:deploy/"
-          $SSH "$REMOTE" "DB_MODE=rebuild bash ~/deploy/deploy.sh $SHA7"
+          DB_MODE=sync
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$RESET_DATABASE" == "true" ]]; then
+            DB_MODE=rebuild
+          fi
+          $SSH "$REMOTE" "DB_MODE=$DB_MODE bash ~/deploy/deploy.sh $SHA7"

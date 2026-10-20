@@ -85,13 +85,13 @@ Deploy backend sau bước này không chạy `migrate` lên DB đã dựng bằ
 
 ## Deploy backend
 
-`deploy/deploy.sh <tên release>` trong repo là nguồn duy nhất của quy trình deploy backend; mỗi lần deploy script được đẩy lên `~/deploy/` cùng tarball và chạy từ đó. `/srv/qlvb/tools/deploy.sh` cũ không còn dùng (có thể xóa sau lần deploy đầu thành công); `/srv/qlvb/tools/backup.sh` vẫn ở đó và được script gọi theo đường dẫn này. Job CI `Deploy backend to Ubuntu` (`.github/workflows/ci.yml`) chạy script khi push vào `staging`, sau khi job `backend` đạt, với `DB_MODE=rebuild`. Đầu vào là `~/deploy/qlvb-<tên release>.tar.gz` chứa `backend/`, `scripts/`, `docs/common/database/`.
+`deploy/deploy.sh <tên release>` trong repo là nguồn duy nhất của quy trình deploy backend; mỗi lần deploy script được đẩy lên `~/deploy/` cùng tarball và chạy từ đó. `/srv/qlvb/tools/deploy.sh` cũ không còn dùng (có thể xóa sau lần deploy đầu thành công); `/srv/qlvb/tools/backup.sh` vẫn ở đó và được script gọi theo đường dẫn này. Job CI `Deploy backend to Ubuntu` (`.github/workflows/ci.yml`) chạy script khi push vào `staging` hoặc trigger `workflow_dispatch`, sau khi job `backend` đạt, mặc định với `DB_MODE=sync` (giữ dữ liệu). Chỉ rebuild khi trigger `workflow_dispatch` với input `reset_database=true`. Đầu vào là `~/deploy/qlvb-<tên release>.tar.gz` chứa `backend/`, `scripts/`, `docs/common/database/`.
 
 Các bước (log `/srv/qlvb/deploy.log`, khóa `flock` ở `/srv/qlvb/.deploy.lock`):
 
 1. Kiểm đầu vào (tên release, tarball, release chưa tồn tại).
 2. Giải nén vào `/srv/qlvb/releases/<tên>`, tạo venv, cài `backend/requirements.txt`.
-3. Nạp `/etc/qlvb/backend.env`, `manage.py check`, `collectstatic`.
+3. Nạp `/etc/qlvb/backend.env`. Với `rebuild`, kiểm tra `ADMIN_PASSWORD` không rỗng trước khi dừng service hoặc xóa DB. Sau đó chạy `manage.py check`, `collectstatic`.
 4. `/srv/qlvb/tools/backup.sh`; đọc dòng cuối `backups/backup.log` (chứa ` OK `, trường thứ 3 là tên file dump).
 5. Cơ sở dữ liệu theo `DB_MODE` (xem dưới).
 6. Chuyển symlink `current`, `systemctl restart qlvb-backend`. Restart lỗi thì rollback (xem dưới).
@@ -127,7 +127,7 @@ Rollback (hàm dùng chung cho restart lỗi ở bước 6 và kiểm tra thất
 
   Thiếu rule này, `rebuild` dừng ở bước 5 trước `dropdb`: DB và service giữ nguyên, release mới bị dọn. Lần deploy đầu bằng CI sẽ dừng ở đây nếu chưa thêm rule.
 - Role ứng dụng (`DB_USER`) là owner DB, không cần `CREATEDB` hay superuser. Cluster hỗ trợ ICU và locale `C.UTF-8`.
-- `/etc/qlvb/backend.env` đọc được bởi user deploy (script `source` file này), có `DB_ENGINE=postgresql`, `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT`, `DB_PASSWORD`, `DJANGO_SECRET_KEY`.
+- `/etc/qlvb/backend.env` đọc được bởi user deploy (script `source` file này), có `DB_ENGINE=postgresql`, `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT`, `DB_PASSWORD`, `DJANGO_SECRET_KEY`, và `ADMIN_PASSWORD` (bắt buộc khi chọn `DB_MODE=rebuild`).
 - `/srv/qlvb/tools/backup.sh` ghi dòng kết quả vào `/srv/qlvb/backups/backup.log` theo hợp đồng ở bước 4.
 
 ### Chạy tay (không qua CI)
@@ -136,9 +136,10 @@ Từ máy dev (Windows 10/11, Linux, macOS) có `git`, `node`, OpenSSH client (`
 
 ```bash
 pnpm deploy:staging
+pnpm deploy:staging --reset-db
 ```
 
-Lệnh `git fetch origin staging` rồi deploy đúng commit `origin/staging`; không pull, không checkout, working tree và nhánh hiện tại không bị đổi. Lệnh in commit, host, `DB_MODE=rebuild` và yêu cầu gõ `DEPLOY` trước khi gửi gì lên host (`pnpm deploy:staging --yes` bỏ bước xác nhận). Tarball (`backend`, `scripts`, `docs/common/database`) và `deploy/deploy.sh` của commit đó được `scp` vào `~/deploy/`, sau đó chạy `DB_MODE=rebuild bash deploy/deploy.sh <sha7>`. Log stream ra terminal; mã thoát của lệnh là mã thoát của `deploy.sh`. File tạm được xóa sau khi chạy.
+Lệnh `git fetch origin staging` rồi deploy đúng commit `origin/staging`; không pull, không checkout, working tree và nhánh hiện tại không bị đổi. Mặc định in `DB_MODE=sync` (giữ dữ liệu) và yêu cầu gõ `DEPLOY` trước khi gửi lên host. Chỉ khi thêm `--reset-db`, lệnh chọn `rebuild` và bắt buộc gõ `RESET`; `--yes` chỉ bỏ bước xác nhận `DEPLOY`, không bỏ xác nhận `RESET`. Tarball (`backend`, `scripts`, `docs/common/database`) và `deploy/deploy.sh` của commit đó được `scp` vào `~/deploy/`, sau đó chạy với `DB_MODE` đã chọn (`DB_MODE=<sync|rebuild> bash deploy/deploy.sh <sha7>`). Log stream ra terminal; mã thoát của lệnh là mã thoát của `deploy.sh`. File tạm được xóa sau khi chạy.
 
 Cấu hình host (không ghi IP, tên tài khoản hay mật khẩu vào repo):
 
