@@ -13,6 +13,8 @@ from signing.models import (
     SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
 
+from .helpers import tao_chuc_vu
+
 User = get_user_model()
 
 H1, H2 = "a" * 64, "b" * 64

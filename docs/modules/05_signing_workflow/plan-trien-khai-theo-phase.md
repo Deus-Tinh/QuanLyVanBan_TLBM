@@ -23,7 +23,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 | 6a | Bảo vệ khóa ký bằng PIN (Argon2id + `k_srv`): model, service, API, nhật ký | Phase 5 | Hoàn thành (`f866df7`) |
 | 6b | Kiểm quyền API quy trình và khóa ký theo codename DDL (issue #64); quản trị mở lại PIN bị khóa cứng | RBAC Nhóm 7 (`require_permission`) | Hoàn thành phần kiểm quyền API (`4690de7`); mở lại PIN khóa cứng chưa làm |
 | 6c | Điều chỉnh theo đánh giá nghiệp vụ: bỏ `kieu_ky*`, xoay vòng `k_srv` khi đổi PIN, đồng bộ DDL | Duyệt `danh-gia-nghiep-vu-va-de-xuat.md`; PR DDL #91 merge trước | Đang review (#79): PR DDL #91, sau đó PR backend |
-| 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; vị trí ký; `trinh-lai` | Văn bản đi (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) qua lớp tích hợp `signing/tich_hop/` | Xong trên máy (#80); đổi cột số nguyên tạm sang FK khi Nhóm 7 lên staging |
+| 7 | Yêu cầu trình ký, lượt trình, snapshot người ký; chức vụ tương đối và chọn người ký; quyền quy trình theo đơn vị; vị trí ký; `trinh-lai` | Văn bản đi (Nhóm 2), `Chức vụ`, `Đơn vị` (Nhóm 7) qua lớp tích hợp `signing/tich_hop/` | Xong (#80); FK Đơn vị/Chức vụ và hàm xem văn bản của Nhóm 2 đã nối (migration `0010`) |
 | 8 | Hành động ký, từ chối (kết thúc), thu hồi khi cấp còn mở; manifest; khóa dòng và chống trùng | Phase 7; PostgreSQL cho test đồng thời | Ký/từ chối/thu hồi xong trên máy (#80); manifest ở Phase 10 |
 | 9 | Yêu cầu chỉnh sửa; ủy quyền theo thời gian và khẩn cấp, `hinh_thuc_ky`; nhắc, leo thang, báo cáo trễ hạn; thông báo | Phase 8; danh sách người nhận ủy quyền hợp lệ, cấp trên trực tiếp (Nhóm 7) | Lõi trả lại để sửa xong trên máy (#80); ủy quyền, nhắc, leo thang ngoài MVP (#80 mục 8) |
 | 10 | Bằng chứng tổng hợp, tệp PDF hoàn tất (bản duyệt nội bộ, chưa phát hành); snapshot ảnh và khối chữ ký theo tọa độ; frontend | Phase 8; ảnh chữ ký cá nhân (Nhóm 7) | Xong trên máy (#80), gồm UI `/approvals`; ảnh chữ ký thật khi Nhóm 7 có field `anh_chu_ky`; CA/phát hành gỡ khỏi MVP (#80 mục 8) |
@@ -37,7 +37,7 @@ Tài liệu này là lộ trình triển khai backend, sắp xếp từ phần �
 ### Phase 2 — Model phụ thuộc người dùng
 - `SigningKey`: partial unique một khóa `HOAT_DONG` mỗi người; CHECK `HOAT_DONG` phải có `thoi_diem_xac_minh_so_huu`; không có trường khóa bí mật.
 - `SigningProcess`: unique `(ma_quy_trinh, phien_ban)`.
-- `SigningProcessStep`: unique `(quy_trinh, thu_tu)`; `don_vi` tạm là số nguyên cho phép rỗng, đổi sang FK khi Nhóm 7 hoàn tất.
+- `SigningProcessStep`: unique `(quy_trinh, thu_tu)`; `don_vi` là FK `organizations_donvi` cho phép rỗng (migration `0010`).
 - Test: từng ràng buộc bằng `IntegrityError`.
 
 ### Phase 3 — Các model còn lại
@@ -98,12 +98,13 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - `services/trinh_ky.py`: tạo/sửa nháp, gửi (snapshot người ký, mở cấp đầu, tính `han_xu_ly`), hủy, trình lại; phạm vi xem và hộp "cần tôi ký". API ở `signing-backend-plan.md` mục 7.2.
 - Tệp: hồ sơ trình ký tự giữ PDF dự thảo (upload, server tự băm, lưu qua `storage.py`; dev mặc định `backend/media/signing`, production bắt buộc `SIGNING_DOCUMENT_ROOT`, check `signing.E003`).
 - Lớp tích hợp (quyết định 07/10/2026: làm trước, khớp lại khi nhóm khác xong):
-  - `tich_hop/van_ban.py` (Nhóm 2): chỉ `vanbandi`, văn bản tồn tại, từ chối `pham_vi = 'HAN_CHE'`, người trình xem được. Cài đặt tạm đọc bảng DDL `documents_vanbandi` (`id`, `pham_vi`, `nguoi_tao`, `so_hieu`, `trich_yeu`), quyền xem = người tạo văn bản hoặc `view_vanbandi`. Thay bằng hàm "văn bản xem được" của Nhóm 2 (#68 C5).
-  - `tich_hop/to_chuc.py` (Nhóm 7): tên hiển thị, chức vụ cho snapshot; ứng viên theo chức vụ trong phạm vi `pham_vi_chuc_vu`. Chưa có `Employee` thì không có ứng viên (chặn gửi, lỗi rõ). Đổi `chuc_vu_id`, `don_vi_id` sang FK khi Nhóm 7 lên staging.
+  - `tich_hop/van_ban.py` (Nhóm 2): chỉ `vanbandi`, văn bản tồn tại, từ chối `pham_vi = 'HAN_CHE'`, người trình xem được. Dùng model `documents.VanBanDi` và hàm dùng chung của Nhóm 2 (#68 C5): `la_nguoi_xem_duoc` (quyền xem một văn bản), `van_ban_xem_duoc` (danh sách chọn văn bản).
+  - `tich_hop/to_chuc.py` (Nhóm 7): tên hiển thị, chức vụ cho snapshot; ứng viên theo chức vụ trong phạm vi `pham_vi_chuc_vu`. `chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id` là FK tới `accounts_position`, `organizations_donvi` (migration `0010`); mã không tồn tại trả 400 `chuc_vu_khong_ton_tai`/`don_vi_khong_ton_tai`. API `don-vi/` cho giao diện chọn đơn vị áp dụng.
+- Chức năng theo bảng phân công Nhóm 5: bộ lọc danh sách (`q` số hiệu/trích yếu/mã hồ sơ/quy trình, `trang_thai`, `muc_do`, `quy_trinh`, `tu_ngay`/`den_ngay`); xem chi tiết quy trình; sửa (`PUT`) và xóa (`DELETE`) quy trình nháp chưa có hồ sơ dùng; sửa hồ sơ nháp trên giao diện; hủy hồ sơ (không xóa cứng hồ sơ đã gửi, giữ lịch sử); thông báo + email người trong luồng; danh sách tệp mọi lượt của hồ sơ (`tep/?luot=`), tệp lưu `trinh_ky/<năm>/<tháng>/`. Test: `tests/test_chuc_nang_nhom_5.py`.
 - Quy trình theo đơn vị (#80 mục A): `signing_process.don_vi_ap_dung_id` + CHECK (migration `0008`, dữ liệu `PHONG_BAN` cũ chưa có đơn vị chuyển `CONG_TY`); `CONG_TY` do quản trị, `PHONG_BAN` do lãnh đạo đơn vị (nhóm `TP` + `manage_signing_process`) hoặc quản trị; người tạo chỉ chọn quy trình công ty hoặc phòng ban của đơn vị mình. DDL `[P7]` cấp thêm `manage_signing_process` cho nhóm TP (plan mục 8).
 - Vị trí ký: tỷ lệ % theo trang, gốc trên-trái; đặt khi gửi, kiểm số trang, chụp vào lượt trình.
-- Chưa làm (chờ Nhóm 7 lên staging): đổi `chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id` sang FK.
-- Test: `tests/test_trinh_ky_phase7.py` (văn bản giả lập qua `_doc_van_ban_di`); kiểm thử tích hợp trên PostgreSQL dựng từ DDL với bảng `documents_vanbandi` thật.
+- Đã nối dữ liệu thật của Nhóm 7 (FK, migration `0010`; DB dựng từ DDL chạy `migrate signing 0010 --fake`) và hàm xem văn bản của Nhóm 2.
+- Test: `tests/test_trinh_ky_phase7.py` (văn bản giả lập qua `_doc_van_ban_di`), `tests/test_tich_hop_nhom_2_7.py` (văn bản đi, đơn vị, chức vụ thật); kiểm thử tích hợp trên PostgreSQL dựng từ DDL với bảng `documents_vanbandi` thật.
 
 ### Phase 8 — Hành động người ký (xong trên máy, #80)
 - `services/hanh_dong_ky.py`: `ky`, `tu_choi`, `thu_hoi`; API ở `signing-backend-plan.md` mục 7.3.
@@ -137,7 +138,7 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
 - Văn bản mật đã bỏ (GVHD chốt, DDL #81); trình ký chỉ nhận `vanbandi` thường. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) là văn bản gửi đi chọn người xem và lưu log xem (Nhóm 2), không ký, không đi qua trình ký: Phase 7 từ chối ở API tạo hồ sơ khi #82 có `pham_vi`. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
-- Phase 7: đổi các trường số nguyên tạm (`chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id`) sang FK khi Nhóm 7 lên staging; thay lớp tích hợp văn bản bằng hàm "văn bản xem được" của Nhóm 2.
+- Phase 7: đã đổi `chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id` sang FK (Nhóm 7) và dùng hàm "văn bản xem được" của Nhóm 2 (migration `0010`).
 - Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL. Thu hồi chữ ký theo điều kiện "cấp còn mở". Mọi thao tác khóa hồ sơ trước lượt trình để tránh deadlock.
 - Phase 9 (ngoài MVP #80):
   - Bảng `signing_delegation`, cột `hinh_thuc_ky`, `uy_quyen_theo`; áp ủy quyền khi mở cấp; ủy quyền khẩn cấp chỉ cấp trên trực tiếp/quản trị, người nhận thuộc danh sách hợp lệ.
@@ -168,7 +169,7 @@ Các điểm lệch còn lại cần xác nhận:
 - `signing_key_unlock`: DDL dùng `updated_at` (trigger `set_updated_at`); model đã đổi theo (#67 mục 6).
 - Cột người dùng là `integer` khi chạy trên `auth.User`, `bigint` trong DDL: hết lệch khi `AUTH_USER_MODEL = "accounts.Employee"` (#68 C1).
 - `signing_request.document_type` là ENUM `document_kind` trong DDL, `varchar(20)` trong model: ORM ghi và lọc chuỗi được trên cột ENUM; không chặn `--fake`.
-- `chuc_vu_id`, `don_vi_id` là FK trong DDL, số nguyên trong model: đổi sang FK ở Phase 7.
+- `chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id`: FK cả trong DDL và model (migration `0010`), cùng bảng đích.
 - `ON DELETE`: Django luôn tạo FK `NO ACTION` và xử lý xóa ở ứng dụng; DDL dùng `RESTRICT`/`CASCADE`/`SET NULL`. Riêng `signing_key_unlock.khoa_id` là `CASCADE` trong DDL, `PROTECT` trong model: khóa ký không bị xóa (chỉ thu hồi) nên không ảnh hưởng nghiệp vụ.
 - Quy trình migrate trên DB dựng từ DDL (#68 mục 2): `migrate signing --fake`.
 - Phase 6c: đối chiếu lại với DDL đã bỏ `kieu_ky*`: không còn cột lệch; chỉ còn `integer`/`bigint` ở cột người dùng như trên.

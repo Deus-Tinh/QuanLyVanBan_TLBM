@@ -3,28 +3,34 @@
  * Tab chỉ là bộ lọc hiển thị; quyền đọc/ghi do server kiểm ở từng API.
  */
 import { lazy, Suspense, useMemo } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { Button } from '@components/common';
 import { DangTai, LoiTai } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { coQuyen, SigningContext, useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
+import './signing.css';
 
 const DanhSachPage = lazy(() => import('./DanhSachPage'));
 const TaoHoSoPage = lazy(() => import('./TaoHoSoPage'));
 const ChiTietPage = lazy(() => import('./ChiTietPage'));
 const QuyTrinhPage = lazy(() => import('./QuyTrinhPage'));
 const KhoaPage = lazy(() => import('./KhoaPage'));
+const ThongBaoPage = lazy(() => import('./ThongBaoPage'));
+const TaiLieuPage = lazy(() => import('./TaiLieuPage'));
 
 export default function SigningModule() {
   const { t, loi } = useSigningT();
   const toi = useTai(() => signingApi.toi());
+  const dieuHuong = useNavigate();
   const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai }), [toi.duLieu, toi.tai]);
 
   const tab = [
     { den: '/approvals', nhan: t('nav.canToiKy'), icon: 'fa-pen-nib', end: true },
     { den: '/approvals/toi-gui', nhan: t('nav.toiGui'), icon: 'fa-paper-plane' },
     { den: '/approvals/tat-ca', nhan: t('nav.tatCa'), icon: 'fa-folder-open' },
-    ...(coQuyen(toi.duLieu, 'add_trinhky') ? [{ den: '/approvals/tao-moi', nhan: t('nav.taoMoi'), icon: 'fa-plus' }] : []),
+    { den: '/approvals/tai-lieu', nhan: t('nav.taiLieu'), icon: 'fa-folder-tree' },
+    { den: '/approvals/thong-bao', nhan: t('nav.thongBao'), icon: 'fa-bell' },
     ...(coQuyen(toi.duLieu, 'manage_signing_process') || coQuyen(toi.duLieu, 'view_trinhky')
       ? [{ den: '/approvals/quy-trinh', nhan: t('nav.quyTrinh'), icon: 'fa-diagram-project' }] : []),
     ...(coQuyen(toi.duLieu, 'sign_trinhky') ? [{ den: '/approvals/khoa', nhan: t('nav.khoaCuaToi'), icon: 'fa-key' }] : []),
@@ -32,19 +38,27 @@ export default function SigningModule() {
 
   return (
     <SigningContext.Provider value={ngu_canh}>
-      <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
-        <header className="space-y-1">
-          <h1 className="text-xl font-bold text-main">
-            <i className="fa-solid fa-file-signature mr-2 text-primary" aria-hidden="true" />{t('tieuDe')}
-          </h1>
-          <p className="text-sm text-secondary">{t('moTa')}</p>
+      <div className="signing-scope space-y-5 animate-in fade-in duration-150">
+        <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+              <i className="fa-solid fa-file-signature" aria-hidden="true" />
+              <span>{t('nhanPhanHe')}</span>
+            </div>
+            <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
+            <p className="m-0 mt-1 text-sm text-secondary">{t('moTa')}</p>
+          </div>
+          {coQuyen(toi.duLieu, 'add_trinhky') && (
+            <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
+          )}
         </header>
         <nav className="flex flex-wrap gap-1 border-b border-border-subtle" aria-label={t('tieuDe')}>
           {tab.map((m) => (
             <NavLink key={m.den} to={m.den} end={m.end}
-              className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold transition-colors duration-fast ${
-                isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main'}`}>
-              <i className={`fa-solid ${m.icon}`} aria-hidden="true" />{m.nhan}
+              className={({ isActive }) => `-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors duration-fast ${
+                isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
+              <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
+              <span>{m.nhan}</span>
             </NavLink>
           ))}
         </nav>
@@ -53,12 +67,14 @@ export default function SigningModule() {
         {toi.duLieu && (
           <Suspense fallback={<DangTai />}>
             <Routes>
-              <Route index element={<DanhSachPage hop="can_toi_ky" />} />
-              <Route path="toi-gui" element={<DanhSachPage hop="toi_gui" />} />
-              <Route path="tat-ca" element={<DanhSachPage hop="tat_ca" />} />
+              <Route index element={<DanhSachPage key="can_toi_ky" hop="can_toi_ky" />} />
+              <Route path="toi-gui" element={<DanhSachPage key="toi_gui" hop="toi_gui" />} />
+              <Route path="tat-ca" element={<DanhSachPage key="tat_ca" hop="tat_ca" />} />
               <Route path="tao-moi" element={<TaoHoSoPage />} />
               <Route path="quy-trinh" element={<QuyTrinhPage />} />
               <Route path="khoa" element={<KhoaPage />} />
+              <Route path="thong-bao" element={<ThongBaoPage />} />
+              <Route path="tai-lieu" element={<TaiLieuPage />} />
               <Route path=":id" element={<ChiTietPage />} />
             </Routes>
           </Suspense>
