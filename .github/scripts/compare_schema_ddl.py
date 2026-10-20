@@ -57,6 +57,14 @@ def norm(sql):
     return re.sub(r"\s+", " ", sql).strip()
 
 
+CHECK_ARRAY = r"ARRAY\[(?:[^\]']|'(?:[^']|'')*')*\]"
+
+
+def norm_check_arrays(definition):
+    definition = re.sub(r"(?:(?<=\[)|(?<=, ))\('((?:[^']|'')*)'\)", r"'\1'", definition)
+    return re.sub(rf"\b(ANY|ALL) \(\(({CHECK_ARRAY})\)\)", r"\1 (\2)", definition)
+
+
 def norm_check(definition):
     """Đưa các dạng viết tương đương mà Django sinh cho Q(~...) về dạng DDL hay dùng."""
     signer_one_of_two_ddl = (
@@ -73,8 +81,10 @@ def norm_check(definition):
     definition = re.sub(r"\(NOT \(TRIM\(BOTH FROM \(?(\w+)\)?\) = ''\)\)", r"(btrim((\1)) <> '')", definition)
     # btrim(col) <> ''  ->  btrim((col)) <> ''   (cột varchar có thêm lớp ngoặc do ép kiểu đã bị norm() bỏ)
     definition = re.sub(r"btrim\(\(?(\w+)\)?\) <> ''", r"btrim((\1)) <> ''", definition)
-    # NOT ((col)= ANY ((ARRAY[...])))  ->  ((col)<> ALL ((ARRAY[...])))
-    definition = re.sub(r"\(NOT \(\((\w+)\)= ANY \(\((ARRAY\[[^\]]*\])\)\)\)\)", r"((\1)<> ALL ((\2)))", definition)
+    # ARRAY sau pg_restore: ANY (ARRAY[('a'), ('b')])  ->  ANY (ARRAY['a', 'b']);  ANY ((ARRAY[...]))  ->  ANY (ARRAY[...])
+    definition = norm_check_arrays(definition)
+    # NOT ((col)= ANY (ARRAY[...]))  ->  ((col)<> ALL (ARRAY[...]))
+    definition = re.sub(rf"\(NOT \(\((\w+)\)= ANY \(({CHECK_ARRAY})\)\)\)", r"((\1)<> ALL (\2))", definition)
     # NOT ((col)= 'x')  ->  ((col)<> 'x')
     definition = re.sub(r"\(NOT \(\((\w+)\)= ('[^']*')\)\)", r"((\1)<> \2)", definition)
     # (NOT col)  ->  (col = false)

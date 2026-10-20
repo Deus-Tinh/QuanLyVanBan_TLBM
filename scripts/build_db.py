@@ -32,7 +32,7 @@ LEGACY_MARK_PREFIX = "build_db:v2"
 # release's builder), and complete historical migration set are pinned; the marker
 # by itself is never treated as proof that a database is safe to upgrade.
 LEGACY_V2_DDL_SHA256 = "419d9dcf65ff3b79cdc1b6c44967421b3ba04009b62cf6a1c6071b60d70d6a6a"
-LEGACY_V2_SCHEMA_SHA256 = "bac97c79fb5f75794505f7c42fdc11b9ac2661450ccd32416b04dbf48420b9a6"
+LEGACY_V2_SCHEMA_SHA256 = "d13c158260c4a330b63552f17a1d44deb9055f8a0ca4934ea9bd799e3c468f49"
 LEGACY_V2_MIGRATIONS = frozenset({
     ("accounts", "0001_initial"),
     ("accounts", "0002_position_import_permission"),
@@ -279,10 +279,20 @@ def _norm_schema_sql(value):
     return re.sub(r"\s+", " ", value).strip()
 
 
+_CHECK_ARRAY = r"ARRAY\[(?:[^\]']|'(?:[^']|'')*')*\]"
+
+
+def _norm_check_arrays(definition):
+    """Đưa ARRAY trong CHECK sau pg_restore (phần tử bọc ngoặc, một lớp ngoặc) về dạng của DB nạp DDL trực tiếp."""
+    definition = re.sub(r"(?:(?<=\[)|(?<=, ))\('((?:[^']|'')*)'\)", r"'\1'", definition)
+    return re.sub(rf"\b(ANY|ALL) \(\(({_CHECK_ARRAY})\)\)", r"\1 (\2)", definition)
+
+
 def _norm_schema_check(definition):
     definition = re.sub(r"\(NOT \(TRIM\(BOTH FROM \(?([\w]+)\)?\) = ''\)\)", r"(btrim((\1)) <> '')", definition)
     definition = re.sub(r"btrim\(\(?([\w]+)\)?\) <> ''", r"btrim((\1)) <> ''", definition)
-    definition = re.sub(r"\(NOT \(\(([\w]+)\)= ANY \(\((ARRAY\[[^\]]*\])\)\)\)\)", r"((\1)<> ALL ((\2)))", definition)
+    definition = _norm_check_arrays(definition)
+    definition = re.sub(rf"\(NOT \(\((\w+)\)= ANY \(({_CHECK_ARRAY})\)\)\)", r"((\1)<> ALL (\2))", definition)
     definition = re.sub(r"\(NOT \(\(([\w]+)\)= ('[^']*')\)\)", r"((\1)<> \2)", definition)
     return re.sub(r"\(NOT ([\w]+)\)", r"(\1 = false)", definition)
 

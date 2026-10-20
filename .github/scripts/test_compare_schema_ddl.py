@@ -49,6 +49,24 @@ def maintenance():
     return cmp.connect("postgres")
 
 
+class RestoredCheckFormTest(unittest.TestCase):
+    def norm(self, definition):
+        return cmp.norm_check(cmp.norm(definition))
+
+    def test_pg_restore_array_forms_equal_direct_forms(self):
+        direct = "CHECK (((pham_vi)::text = ANY ((ARRAY['A'::character varying, 'B'::character varying])::text[])))"
+        restored = "CHECK (((pham_vi)::text = ANY (ARRAY[('A'::character varying)::text, ('B'::character varying)::text])))"
+        self.assertEqual(self.norm(direct), self.norm(restored))
+        direct_not = "CHECK ((((x)::text <> ALL ((ARRAY['A'::character varying])::text[])) OR (u IS NOT NULL)))"
+        restored_not = "CHECK (((NOT ((x)::text = ANY (ARRAY[('A'::character varying)::text]))) OR (u IS NOT NULL)))"
+        self.assertEqual(self.norm(direct_not), self.norm(restored_not))
+
+    def test_different_values_or_operators_stay_different(self):
+        restored = "CHECK (((pham_vi)::text = ANY (ARRAY[('A'::character varying)::text, ('B'::character varying)::text])))"
+        self.assertNotEqual(self.norm(restored), self.norm(restored.replace("'B'", "'C'")))
+        self.assertNotEqual(self.norm(restored), self.norm(restored.replace("= ANY", "<> ALL")))
+
+
 class DriftTest(unittest.TestCase):
     def setUp(self):
         self.dbs = []

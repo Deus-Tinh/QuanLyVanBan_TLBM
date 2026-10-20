@@ -8,6 +8,7 @@ import hashlib
 import os
 import subprocess
 import sys
+import shutil
 import tempfile
 import unittest
 import uuid
@@ -88,6 +89,42 @@ class CollationTest(unittest.TestCase):
         self.assertIn("collation", str(raised.exception))
 
 
+class CheckNormalizationTest(unittest.TestCase):
+    DIRECT_IN = (
+        "CHECK (((pham_vi)::text = ANY ((ARRAY['NOI_BO'::character varying, 'HAN_CHE'::character varying])::text[])))"
+    )
+    RESTORED_IN = (
+        "CHECK (((pham_vi)::text = ANY (ARRAY[('NOI_BO'::character varying)::text, "
+        "('HAN_CHE'::character varying)::text])))"
+    )
+    DIRECT_NOT_IN = (
+        "CHECK ((((hanh_dong)::text <> ALL ((ARRAY['A'::character varying, 'B'::character varying])::text[])) "
+        "OR (u IS NOT NULL)))"
+    )
+    RESTORED_NOT_IN = (
+        "CHECK (((NOT ((hanh_dong)::text = ANY (ARRAY[('A'::character varying)::text, "
+        "('B'::character varying)::text]))) OR (u IS NOT NULL)))"
+    )
+
+    def norm(self, definition):
+        return build_db._norm_schema_check(build_db._norm_schema_sql(definition))
+
+    def test_restored_and_direct_forms_are_equal(self):
+        self.assertEqual(self.norm(self.DIRECT_IN), self.norm(self.RESTORED_IN))
+        self.assertEqual(self.norm(self.DIRECT_NOT_IN), self.norm(self.RESTORED_NOT_IN))
+
+    def test_different_values_or_operators_stay_different(self):
+        self.assertNotEqual(self.norm(self.RESTORED_IN), self.norm(self.RESTORED_IN.replace("HAN_CHE", "KHAC")))
+        self.assertNotEqual(self.norm(self.RESTORED_IN), self.norm(self.RESTORED_IN.replace("NOI_BO", "")))
+        self.assertNotEqual(self.norm(self.DIRECT_IN), self.norm(self.RESTORED_IN.replace("HAN_CHE", "KHAC")))
+        self.assertNotEqual(self.norm(self.DIRECT_NOT_IN), self.norm(self.RESTORED_NOT_IN.replace("'B'", "'C'")))
+        # = ANY và <> ALL cùng danh sách là hai điều kiện khác nhau.
+        self.assertNotEqual(self.norm(self.DIRECT_IN), self.norm(self.DIRECT_IN.replace("= ANY", "<> ALL")))
+        self.assertNotEqual(self.norm(self.DIRECT_NOT_IN), self.norm(self.DIRECT_NOT_IN.replace("<> ALL", "= ANY")))
+        # NOT (x = ANY ...) khác x = ANY ...
+        self.assertNotEqual(self.norm(self.RESTORED_NOT_IN), self.norm(self.RESTORED_NOT_IN.replace("NOT ", "")))
+
+
 class DatabaseLifecycleTest(unittest.TestCase):
     def setUp(self):
         self.args = Namespace(
@@ -110,7 +147,8 @@ class DatabaseLifecycleTest(unittest.TestCase):
 
     def tearDown(self):
         with build_db.connect(self.args, "postgres", autocommit=True) as conn:
-            conn.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(self.args.dbname)))
+            for dbname in [self.args.dbname, *getattr(self, "extra_dbs", [])]:
+                conn.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(dbname)))
 
     def run_builder(self, *args, env=None, expect_success=True):
         run_env = self.base_env.copy()
@@ -520,6 +558,89 @@ class DatabaseLifecycleTest(unittest.TestCase):
         self.assertIsNone(pending_migration)
         self.assertEqual(pending_dependents, [])
         self.assertIsNotNone(failure_trigger)
+
+
+    def dump_restore(self, source, prefix):
+        """pg_dump -Fc rồi pg_restore --no-owner --no-privileges vào DB scratch mới, như deploy.sh. Thiếu công cụ thì fail."""
+        for tool in ("pg_dump", "pg_restore"):
+            self.assertIsNotNone(shutil.which(tool), f"thiếu {tool} trong PATH")
+        target = prefix + uuid.uuid4().hex[:10]
+        self.extra_dbs = getattr(self, "extra_dbs", []) + [target]
+        env = {**os.environ, "PGPASSWORD": self.base_env.get("DB_PASSWORD", "")}
+        conn_args = ["-h", self.args.host, "-p", str(self.args.port), "-U", self.args.user]
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = str(Path(tmp) / "db.dump")
+            subprocess.run(["pg_dump", *conn_args, "-Fc", "-f", dump, source], check=True, env=env)
+            self.create_scratch(target)
+            subprocess.run(
+                ["pg_restore", *conn_args, "--no-owner", "--no-privileges", "-d", target, dump],
+                check=True, env=env,
+            )
+        return target
+
+    def create_scratch(self, dbname):
+        self.extra_dbs = getattr(self, "extra_dbs", [])
+        if dbname not in self.extra_dbs:
+            self.extra_dbs.append(dbname)
+        with build_db.connect(self.args, "postgres", autocommit=True) as conn:
+            conn.execute(
+                sql.SQL(
+                    "CREATE DATABASE {} TEMPLATE template0 ENCODING 'UTF8' "
+                    "LOCALE_PROVIDER icu ICU_LOCALE 'vi-VN' LOCALE 'C.UTF-8'"
+                ).format(sql.Identifier(dbname))
+            )
+
+    def fingerprint(self, dbname):
+        with build_db.connect(self.args, dbname) as conn:
+            return build_db.schema_fingerprint(conn)
+
+    def build_ddl_expected(self):
+        expected = "qlvb_ddlexpect_" + uuid.uuid4().hex[:10]
+        self.create_scratch(expected)
+        with build_db.connect(self.args, expected) as conn:
+            conn.execute(Path(build_db.DEFAULT_DDL).read_text(encoding="utf-8"), prepare=False)
+        return expected
+
+    def test_dump_restore_keeps_fingerprint_and_ddl_comparison_for_v2_and_head(self):
+        self.create_supported_v2_fixture()
+        v2_restored = self.dump_restore(self.args.dbname, "qlvb_migtest_")
+        self.assertEqual(self.fingerprint(self.args.dbname), build_db.LEGACY_V2_SCHEMA_SHA256)
+        self.assertEqual(self.fingerprint(v2_restored), build_db.LEGACY_V2_SCHEMA_SHA256)
+        with build_db.connect(self.args, "postgres", autocommit=True) as conn:
+            marker = build_db.read_mark(conn, self.args.dbname)
+            conn.execute(
+                sql.SQL("COMMENT ON DATABASE {} IS {}").format(sql.Identifier(v2_restored), sql.Literal(marker))
+            )
+
+        # Chuỗi như bước 5 của deploy.sh trên bản khôi phục.
+        expected = self.build_ddl_expected()
+        self.args.dbname, original = v2_restored, self.args.dbname
+        try:
+            self.run_builder("--adopt")
+            self.run_builder("--sync", "--preflight-copy")
+            self.run_manage("migrate", "--check")
+            self.run_builder("--compare-schema-database", expected)
+            head_fingerprint = self.fingerprint(v2_restored)
+        finally:
+            self.args.dbname = original
+
+        # DB đã sync lên head: dump/restore giữ nguyên fingerprint và vẫn khớp DDL, kể cả marker v3 ở bản khôi phục.
+        head_restored = self.dump_restore(v2_restored, "qlvb_migtest_")
+        self.assertEqual(self.fingerprint(head_restored), head_fingerprint)
+        self.run_builder_on(head_restored, "--compare-schema-database", expected)
+
+    def run_builder_on(self, dbname, *args):
+        original, self.args.dbname = self.args.dbname, dbname
+        try:
+            return self.run_builder(*args)
+        finally:
+            self.args.dbname = original
+
+    def test_fresh_build_survives_dump_restore(self):
+        self.run_builder("--seed")
+        restored = self.dump_restore(self.args.dbname, "qlvb_migtest_")
+        self.assertEqual(self.fingerprint(restored), self.fingerprint(self.args.dbname))
+        self.run_builder_on(restored, "--compare-schema-database", self.build_ddl_expected())
 
 
 if __name__ == "__main__":
