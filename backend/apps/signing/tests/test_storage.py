@@ -36,7 +36,24 @@ class FilesystemStorageTests(SimpleTestCase):
         with self.assertRaises(StorageError):
             self.adapter.read_bytes("2026")
 
-    @override_settings(SIGNING_DOCUMENT_ROOT="")
+    @override_settings(SIGNING_DOCUMENT_ROOT="", DEBUG=False)
     def test_requires_root_configuration(self):
         with self.assertRaises(StorageError):
             FilesystemStorageAdapter()
+
+    @override_settings(SIGNING_DOCUMENT_ROOT="", DEBUG=True)
+    def test_dev_falls_back_to_media_signing(self):
+        self.assertEqual(FilesystemStorageAdapter().root.parts[-2:], ("media", "signing"))
+
+    def test_save_bytes_creates_new_relative_file_and_never_overwrites(self):
+        meta1 = self.adapter.save_bytes(b"%PDF-1", "trinh_ky", "pdf")
+        meta2 = self.adapter.save_bytes(b"%PDF-2", "trinh_ky", "pdf")
+        self.assertNotEqual(meta1.vi_tri_luu_tep, meta2.vi_tri_luu_tep)
+        self.assertTrue(meta1.vi_tri_luu_tep.startswith("trinh_ky/") and meta1.vi_tri_luu_tep.endswith(".pdf"))
+        self.assertEqual((self.adapter.read_bytes(meta1.vi_tri_luu_tep), meta1.kich_thuoc), (b"%PDF-1", 6))
+        self.assertEqual(self.adapter.read_bytes(meta2.vi_tri_luu_tep), b"%PDF-2")
+        self.assertEqual(list(self.root.rglob("*.tmp")), [])
+
+    def test_save_bytes_rejects_escape(self):
+        with self.assertRaises(StorageError):
+            self.adapter.save_bytes(b"x", "../ngoai", "pdf")

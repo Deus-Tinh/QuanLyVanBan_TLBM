@@ -8,8 +8,11 @@ import threading
 import unittest
 from datetime import timedelta
 
-from cryptography.hazmat.primitives import serialization
+from cryptography.exceptions import InvalidTag
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test import TestCase, TransactionTestCase, override_settings
@@ -27,7 +30,15 @@ from .helpers import cap_quyen
 User = get_user_model()
 
 BASE = "/api/v1/signing"
-KDF = {"thuat_toan": "argon2id", "m": 65536, "t": 3, "p": 1, "phien_ban": 1}
+# manage.py test luôn đặt DEBUG = False nên phải có bí mật PIN riêng (#79)
+BI_MAT_KIEM_THU = override_settings(SIGNING_PIN_SECRET="bi-mat-pin-kiem-thu")
+KDF = {"thuat_toan": "argon2id", "m": 65536, "t": 3, "p": 1, "phien_ban": 1,
+       "salt": base64.b64encode(b"s" * 16).decode()}
+
+
+def kdf_moi(**kw):
+    """Tham số KDF kèm salt mới, như client sinh mỗi lần đặt/đổi PIN (contract salt #79)."""
+    return {**KDF, "salt": base64.b64encode(os.urandom(16)).decode(), **kw}
 
 
 def xac_minh():
@@ -53,6 +64,7 @@ def hanh_dong(key):
                 .order_by("id").values_list("hanh_dong", flat=True))
 
 
+@BI_MAT_KIEM_THU
 class PinBase(TestCase):
     def setUp(self):
         self.u1 = User.objects.create_user("u1")
@@ -96,7 +108,11 @@ class DatPinTests(PinBase):
                         ({**KDF, "t": 1}, "tham_so_kdf_duoi_muc_san"),
                         ({**KDF, "thuat_toan": "pbkdf2"}, "tham_so_kdf_khong_hop_le"),
                         ({**KDF, "muoi": "x"}, "tham_so_kdf_khong_hop_le"),
-                        ({**KDF, "m": "65536"}, "tham_so_kdf_khong_hop_le")):
+                        ({**KDF, "m": "65536"}, "tham_so_kdf_khong_hop_le"),
+                        ({k: v for k, v in KDF.items() if k != "salt"}, "tham_so_kdf_khong_hop_le"),
+                        ({**KDF, "salt": base64.b64encode(b"s" * 8).decode()}, "tham_so_kdf_khong_hop_le"),
+                        ({**KDF, "salt": "khong-phai-base64!"}, "tham_so_kdf_khong_hop_le"),
+                        ({**KDF, "salt": 12345}, "tham_so_kdf_khong_hop_le")):
             with self.assertRaises(SigningError) as ctx:
                 pin_service.dat_pin(key2, self.u2, xac_minh(), kdf)
             self.assertEqual(ctx.exception.get_codes(), ma)
@@ -188,18 +204,53 @@ class MoKhoaKyTests(PinBase):
         self.assertEqual(ctx.exception.get_codes(), "pin_khong_dung")
 
 
+def bo_khoa_boc(master_pin, k_srv):
+    """Mô phỏng khóa bọc phía trình duyệt: HKDF(master_pin, k_srv, "wrap") (plan mục 3.4)."""
+    return HKDF(algorithm=hashes.SHA256(), length=32, salt=k_srv, info=b"wrap").derive(master_pin)
+
+
 class DoiPinTests(PinBase):
-    def test_change_pin_keeps_server_share(self):
+    def test_change_pin_rotates_server_share(self):
         moi = xac_minh()
-        _, manh = pin_service.doi_pin(self.key, self.u1, self.pin, moi, {**KDF, "phien_ban": 2})
-        self.assertEqual(manh, self.k_srv)
+        _, manh_cu, manh_moi = pin_service.doi_pin(self.key, self.u1, self.pin, moi, kdf_moi(phien_ban=2))
+        self.assertEqual(manh_cu, self.k_srv)
+        self.assertEqual(len(manh_moi), 32)
+        self.assertNotEqual(manh_moi, self.k_srv)
         self.unlock.refresh_from_db()
         self.assertEqual(self.unlock.tham_so_kdf["phien_ban"], 2)
         with self.assertRaises(SigningError):
             pin_service.mo_khoa_ky(self.key, self.u1, self.pin)  # PIN cũ hết hiệu lực
         _, manh = pin_service.mo_khoa_ky(self.key, self.u1, moi)
+        self.assertEqual(manh, manh_moi)  # server không còn trả k_srv cũ
+        log = SigningAuditLog.objects.filter(ma_doi_tuong=self.key.pk, hanh_dong="DOI_PIN").get()
+        self.assertTrue(log.du_lieu_kem_theo["xoay_vong_manh_bi_mat"])
+        self.assertNotIn(base64.b64encode(manh_moi).decode(), str(log.du_lieu_kem_theo))
+
+    def test_old_server_share_cannot_open_new_wrap(self):
+        master_pin_moi = os.urandom(32)
+        _, manh_cu, manh_moi = pin_service.doi_pin(self.key, self.u1, self.pin, xac_minh(), kdf_moi())
+        nonce, private_key = os.urandom(12), os.urandom(32)
+        ban_boc = AESGCM(bo_khoa_boc(master_pin_moi, manh_moi)).encrypt(nonce, private_key, None)
+        self.assertEqual(AESGCM(bo_khoa_boc(master_pin_moi, manh_moi)).decrypt(nonce, ban_boc, None), private_key)
+        with self.assertRaises(InvalidTag):
+            AESGCM(bo_khoa_boc(master_pin_moi, manh_cu)).decrypt(nonce, ban_boc, None)
+
+    def test_change_pin_requires_new_salt(self):
+        # KDF dùng salt của lần đặt PIN trong setUp: đổi PIN với salt cũ bị từ chối, không đổi gì
+        with self.assertRaises(SigningError) as ctx:
+            pin_service.doi_pin(self.key, self.u1, self.pin, xac_minh(), KDF)
+        self.assertEqual(ctx.exception.get_codes(), "salt_trung_salt_cu")
+        self.unlock.refresh_from_db()
+        self.assertEqual(self.unlock.tham_so_kdf, KDF)
+        _, manh = pin_service.mo_khoa_ky(self.key, self.u1, self.pin)  # PIN cũ vẫn dùng được
         self.assertEqual(manh, self.k_srv)
-        self.assertIn("DOI_PIN", hanh_dong(self.key))
+        self.assertNotIn("DOI_PIN", hanh_dong(self.key))
+
+    def test_failed_change_keeps_server_share(self):
+        with self.assertRaises(SigningError):
+            pin_service.doi_pin(self.key, self.u1, xac_minh(), xac_minh(), KDF)
+        _, manh = pin_service.mo_khoa_ky(self.key, self.u1, self.pin)
+        self.assertEqual(manh, self.k_srv)
 
     def test_wrong_old_pin_counts_and_same_pin_rejected(self):
         with self.assertRaises(SigningError) as ctx:
@@ -250,9 +301,28 @@ class PinApiTests(PinBase):
         pin2 = xac_minh()
         r = self.c2.post(f"{BASE}/khoa/{key2.pk}/dat-pin/", {"xac_minh_pin": pin2, "tham_so_kdf": KDF}, format="json")
         self.assertEqual(r.status_code, 201, r.content)
+        k_srv_dau = base64.b64decode(r.data["manh_bi_mat"])
+        pin_moi = xac_minh()
         r = self.c2.post(f"{BASE}/khoa/{key2.pk}/doi-pin/",
-                         {"xac_minh_pin_cu": pin2, "xac_minh_pin_moi": xac_minh(), "tham_so_kdf": KDF}, format="json")
+                         {"xac_minh_pin_cu": pin2, "xac_minh_pin_moi": pin_moi, "tham_so_kdf": kdf_moi()},
+                         format="json")
         self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r["Cache-Control"], "no-store")
+        self.assertEqual(set(r.data), {"khoa", "manh_bi_mat_cu", "manh_bi_mat", "tham_so_kdf"})
+        self.assertNotEqual(r.data["tham_so_kdf"]["salt"], KDF["salt"])
+        self.assertEqual(base64.b64decode(r.data["manh_bi_mat_cu"]), k_srv_dau)
+        k_srv_moi = base64.b64decode(r.data["manh_bi_mat"])
+        self.assertNotEqual(k_srv_moi, k_srv_dau)
+        r = self.c2.post(f"{BASE}/khoa/{key2.pk}/mo-khoa-ky/", {"xac_minh_pin": pin_moi}, format="json")
+        self.assertEqual(base64.b64decode(r.data["manh_bi_mat"]), k_srv_moi)
+
+    @override_settings(DEBUG=False, SIGNING_PIN_SECRET="")
+    def test_production_without_pin_secret_returns_503(self):
+        with self.assertLogs("signing.services.pin", level="ERROR"):
+            r = self.c1.post(f"{BASE}/khoa/{self.key.pk}/mo-khoa-ky/", {"xac_minh_pin": self.pin}, format="json")
+        self.assertEqual((r.status_code, r.data["code"]), (503, "chua_cau_hinh_bi_mat_pin"))
+        self.unlock.refresh_from_db()
+        self.assertEqual(self.unlock.so_lan_sai, 0)  # lỗi cấu hình không tính vào số lần sai
 
     def test_other_users_key_not_found(self):
         r = self.c2.post(f"{BASE}/khoa/{self.key.pk}/mo-khoa-ky/", {"xac_minh_pin": self.pin}, format="json")
@@ -261,6 +331,7 @@ class PinApiTests(PinBase):
 
 
 @unittest.skipUnless(connection.vendor == "postgresql", "Cần PostgreSQL để kiểm tra khóa dòng đồng thời")
+@BI_MAT_KIEM_THU
 class PinConcurrencyTests(TransactionTestCase):
     def test_concurrent_wrong_attempts_counted_exactly(self):
         user = User.objects.create_user("u1")

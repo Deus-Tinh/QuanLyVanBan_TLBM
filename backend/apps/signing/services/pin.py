@@ -6,12 +6,14 @@ Luồng:
   để client bọc private key bằng HKDF(master_pin, k_srv, "wrap").
 - mo_khoa_ky: so verifier; đúng thì trả k_srv, sai thì đếm. Sai 5 lần khóa 15 phút,
   sai 10 lần khóa cứng (quản trị mở lại sau khi xác minh danh tính).
-- doi_pin: cần verifier cũ (tính vào bộ đếm); giữ nguyên k_srv để client bọc lại private key.
+- doi_pin: cần verifier cũ (tính vào bộ đếm); xoay vòng k_srv (Phase 6c): trả k_srv cũ để client mở
+  bản bọc hiện có và k_srv mới để bọc lại; k_srv cũ không còn lấy được từ server sau đó.
 
 Bộ đếm được cập nhật dưới select_for_update và commit TRƯỚC khi trả lỗi, để lỗi
 không làm rollback số lần sai. Không nhận PIN, không log verifier hay k_srv.
 """
 
+import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -25,6 +27,8 @@ from ..models import SigningKey, SigningKeyUnlock
 from .audit import ghi_nhat_ky
 from .keys import _chu_so_huu
 
+logger = logging.getLogger(__name__)
+
 LOAI = "signing_key"
 NGUONG_KHOA_TAM = 5
 THOI_GIAN_KHOA_TAM = timedelta(minutes=15)
@@ -33,7 +37,10 @@ NGUONG_KHOA_CUNG = 10
 # Mức sàn Argon2id theo plan: m = 64 MiB (tính bằng KiB), t = 3, p = 1
 KDF_THUAT_TOAN = "argon2id"
 KDF_SAN = {"m": 64 * 1024, "t": 3, "p": 1}
-KDF_KHOA_HOP_LE = {"thuat_toan", "m", "t", "p", "phien_ban"}
+KDF_KHOA_HOP_LE = {"thuat_toan", "m", "t", "p", "phien_ban", "salt"}
+# Salt Argon2id riêng cho từng khóa ký, client sinh ngẫu nhiên 16 byte (RFC 9106) mỗi lần đặt/đổi PIN.
+# Nhờ salt riêng, hai tài khoản trùng PIN vẫn có verifier và ma_bam_xac_minh_pin khác nhau (#79).
+KDF_SALT_BYTES = 16
 
 TRANG_THAI_DAT_PIN = (enums.TrangThaiKhoa.CHO_KICH_HOAT, enums.TrangThaiKhoa.HOAT_DONG)
 
@@ -42,7 +49,22 @@ TRANG_THAI_DAT_PIN = (enums.TrangThaiKhoa.CHO_KICH_HOAT, enums.TrangThaiKhoa.HOA
 
 
 def _bi_mat_may_chu():
-    return (getattr(settings, "SIGNING_PIN_SECRET", "") or settings.SECRET_KEY).encode()
+    """
+    Production (DEBUG = False) bắt buộc SIGNING_PIN_SECRET riêng (#79); dev được dùng SECRET_KEY.
+    Thiếu biến ở production thì từ chối mọi thao tác PIN (503, ghi log lỗi) thay vì âm thầm dùng
+    SECRET_KEY; `manage.py check --deploy` báo cùng lỗi trước khi triển khai (checks.py).
+    """
+    bi_mat = getattr(settings, "SIGNING_PIN_SECRET", "")
+    if not bi_mat:
+        if not settings.DEBUG:
+            logger.error("Thiếu SIGNING_PIN_SECRET khi DEBUG = False: từ chối thao tác PIN (signing.E001).")
+            raise SigningError(
+                code="chua_cau_hinh_bi_mat_pin",
+                detail="Chức năng PIN chưa được cấu hình trên máy chủ. Liên hệ quản trị hệ thống.",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        bi_mat = settings.SECRET_KEY
+    return bi_mat.encode()
 
 
 def _khoa_mac():
@@ -76,7 +98,7 @@ def kiem_tra_tham_so_kdf(tham_so):
     if not isinstance(tham_so, dict) or set(tham_so) != KDF_KHOA_HOP_LE:
         raise SigningError(
             code="tham_so_kdf_khong_hop_le",
-            detail="Tham số KDF phải có đúng các khóa: thuat_toan, m, t, p, phien_ban.",
+            detail="Tham số KDF phải có đúng các khóa: thuat_toan, m, t, p, phien_ban, salt.",
             fields={"tham_so_kdf": ["Sai cấu trúc."]},
         )
     if str(tham_so["thuat_toan"]).lower() != KDF_THUAT_TOAN:
@@ -89,6 +111,12 @@ def kiem_tra_tham_so_kdf(tham_so):
             raise SigningError(code="tham_so_kdf_khong_hop_le", detail=f"'{khoa}' phải là số nguyên dương.",
                                fields={"tham_so_kdf": [f"Sai giá trị '{khoa}'."]})
         ket_qua[khoa] = gia_tri
+    salt = tham_so["salt"]
+    if not isinstance(salt, str) or crypto.decode_b64_exact(salt, KDF_SALT_BYTES) is None:
+        raise SigningError(code="tham_so_kdf_khong_hop_le",
+                           detail=f"'salt' phải là Base64 của đúng {KDF_SALT_BYTES} byte ngẫu nhiên.",
+                           fields={"tham_so_kdf": ["Sai giá trị 'salt'."]})
+    ket_qua["salt"] = salt
     for khoa, san in KDF_SAN.items():
         if ket_qua[khoa] < san:
             raise SigningError(
@@ -227,7 +255,11 @@ def mo_khoa_ky(key, nguoi_thuc_hien, xac_minh_pin, dia_chi_ip=None):
 
 
 def doi_pin(key, nguoi_thuc_hien, xac_minh_pin_cu, xac_minh_pin_moi, tham_so_kdf, dia_chi_ip=None):
-    """Đổi PIN (cần PIN cũ). Giữ nguyên k_srv và trả lại để client bọc lại private key."""
+    """
+    Đổi PIN (cần PIN cũ) và xoay vòng k_srv. Trả (unlock, k_srv_cu, k_srv_moi): client dùng k_srv cũ
+    mở bản bọc hiện có, bọc lại private key bằng HKDF(master_pin_moi, k_srv_moi, "wrap").
+    Lý do xoay vòng: k_srv được trả ở mọi lần mở khóa; đổi PIN khi nghi lộ phải vô hiệu hóa k_srv cũ.
+    """
     raw_moi = _giai_ma_xac_minh(xac_minh_pin_moi, "xac_minh_pin_moi")
     tham_so = kiem_tra_tham_so_kdf(tham_so_kdf)
 
@@ -236,13 +268,20 @@ def doi_pin(key, nguoi_thuc_hien, xac_minh_pin_cu, xac_minh_pin_moi, tham_so_kdf
         if crypto.verify_pin_verifier(raw_moi, _khoa_mac(), unlock.ma_bam_xac_minh_pin):
             raise SigningError(code="pin_moi_trung_pin_cu", detail="PIN mới phải khác PIN hiện tại.",
                                fields={"xac_minh_pin_moi": ["Trùng PIN hiện tại."]})
-        manh_bi_mat = _giai_ma_manh_bi_mat(key, unlock)
+        if tham_so["salt"] == (unlock.tham_so_kdf or {}).get("salt"):
+            # Contract salt (#79): mỗi lần đặt/đổi PIN dùng salt mới do client sinh
+            raise SigningError(code="salt_trung_salt_cu", detail="Đổi PIN phải dùng salt mới.",
+                               fields={"tham_so_kdf": ["'salt' trùng salt hiện tại."]})
+        manh_bi_mat_cu = _giai_ma_manh_bi_mat(key, unlock)
+        manh_bi_mat_moi = crypto.new_server_share()
         unlock.ma_bam_xac_minh_pin = ma_bam_moi
+        unlock.manh_bi_mat_ma_hoa = crypto.encrypt_server_share(manh_bi_mat_moi, _khoa_ma_hoa(), _aad(key))
         unlock.tham_so_kdf = tham_so
-        unlock.save(update_fields=["ma_bam_xac_minh_pin", "tham_so_kdf", "updated_at"])
-        ghi_nhat_ky(nguoi_thuc_hien, LOAI, key.pk, "DOI_PIN", du_lieu_kem_theo={"tham_so_kdf": tham_so},
+        unlock.save(update_fields=["ma_bam_xac_minh_pin", "manh_bi_mat_ma_hoa", "tham_so_kdf", "updated_at"])
+        ghi_nhat_ky(nguoi_thuc_hien, LOAI, key.pk, "DOI_PIN",
+                    du_lieu_kem_theo={"tham_so_kdf": tham_so, "xoay_vong_manh_bi_mat": True},
                     dia_chi_ip=dia_chi_ip)
-        return unlock, manh_bi_mat
+        return unlock, manh_bi_mat_cu, manh_bi_mat_moi
 
     return _xac_minh(key, nguoi_thuc_hien, xac_minh_pin_cu, "xac_minh_pin_cu", TRANG_THAI_DAT_PIN,
                      khi_dung, dia_chi_ip)

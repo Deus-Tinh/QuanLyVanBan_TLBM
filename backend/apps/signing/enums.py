@@ -12,9 +12,20 @@ class PhamViQuyTrinh(models.TextChoices):
     CONG_TY = "CONG_TY", "Công ty"
 
 
-class KieuKy(models.TextChoices):
-    TUAN_TU = "TUAN_TU", "Tuần tự"
-    SONG_SONG = "SONG_SONG", "Song song"
+class PhamViChucVu(models.TextChoices):
+    """Chức vụ của người ký cấu hình được hiểu tương đối (plan mục 3.2, #80 Phase 7)."""
+
+    DON_VI_NGUOI_TAO = "DON_VI_NGUOI_TAO", "Trong đơn vị người tạo"
+    DON_VI_CO_DINH = "DON_VI_CO_DINH", "Trong đơn vị cố định của cấp"
+    TOAN_CO_QUAN = "TOAN_CO_QUAN", "Toàn cơ quan"
+
+
+class MucDoTrinhKy(models.TextChoices):
+    """Mức độ ưu tiên xử lý hồ sơ (spec bộ lọc "mức độ"); tạm dùng đến khi có danh mục mức độ chung."""
+
+    THUONG = "THUONG", "Thường"
+    KHAN = "KHAN", "Khẩn"
+    HOA_TOC = "HOA_TOC", "Hỏa tốc"
 
 
 class VaiTroKy(models.TextChoices):
@@ -23,8 +34,9 @@ class VaiTroKy(models.TextChoices):
 
 
 class LoaiVanBan(models.TextChoices):
-    VAN_BAN_DEN = "vanbanden", "Văn bản đến"
-    VAN_BAN_DI = "vanbandi", "Văn bản đi"
+    # Trình ký chỉ nhận dự thảo văn bản đi (Phase 6c). Văn bản đến thuộc luồng chỉ đạo của Nhóm 2;
+    # văn bản mật đã bỏ khỏi hệ thống. Cột document_type giữ để mở rộng sau.
+    VAN_BAN_DI = "vanbandi", "Văn bản"
 
 
 class TrangThaiYeuCau(models.TextChoices):
@@ -75,6 +87,14 @@ class TrangThaiXacMinh(models.TextChoices):
 class TrangThaiManifest(models.TextChoices):
     NHAP = "NHAP", "Nháp"
     DA_CHOT = "DA_CHOT", "Đã chốt"
+
+
+class TrangThaiTepHoanTat(models.TextChoices):
+    """Trạng thái sinh tệp PDF hoàn tất của lượt trình (Phase 10 lõi, #80); NULL khi lượt chưa hoàn thành."""
+
+    DANG_XU_LY = "DANG_XU_LY", "Đang xử lý"
+    LOI = "LOI", "Lỗi"
+    THANH_CONG = "THANH_CONG", "Thành công"
 
 
 class TrangThaiThread(models.TextChoices):

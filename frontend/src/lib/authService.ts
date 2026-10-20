@@ -35,6 +35,13 @@ export const authService = {
       password: credentials.password,
     };
 
+    // Xóa token cũ trước khi login — tránh apiClient tự động gửi token hết hạn
+    // khiến SimpleJWT ném "Given token not valid for any token type" dù endpoint là AllowAny
+    localStorage.removeItem('tlbm_access_token');
+    localStorage.removeItem('tlbm_token');
+    localStorage.removeItem('tlbm_refresh_token');
+    localStorage.removeItem('tlbm_session');
+
     const data = await apiClient.post<LoginResponse>('/api/auth/login/', payload);
 
     if (!data || (!data.access && !data.token)) {
