@@ -16,10 +16,10 @@
 Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân chuyển theo quy trình nhiều cấp (các cấp tuần tự, người trong cùng cấp ký song song); hiển thị tiến trình trực quan (stepper/timeline); ký duyệt bằng chữ ký điện tử nội bộ Ed25519 kèm kiểm tra toàn vẹn (SHA-256 raw digest); xử lý phản hồi hai nhánh; xử lý quá hạn không chặn luồng. Điểm kết thúc của MVP (#80) là **hoàn tất duyệt nội bộ, chưa phát hành**: sinh PDF kết quả kèm bằng chứng tổng hợp. Ủy quyền, nhắc/leo thang và phát hành pháp lý nằm trong backlog sau MVP (#80 mục 8).
 
 ### 1.2. Phạm vi chức năng
-1. **Ảnh chữ ký cá nhân (phụ thuộc Nhóm 7):**
+1. **Ảnh chữ ký cá nhân (phụ thuộc Nhóm 7, để sau MVP theo #67 mục 2):**
    - Người dùng tải lên ảnh chữ ký PNG nền trong suốt, tối đa 2MB, trong hồ sơ cá nhân (field `anh_chu_ky`, sheet CBNV).
    - Phân hệ Trình ký chỉ đọc ảnh qua contract do Nhóm 7 cung cấp.
-   - Lúc ký, phân hệ chụp snapshot ảnh vào bản ghi chữ ký; tệp hoàn tất dán ảnh vào khung ký, chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT" (đã triển khai, #80; chờ Nhóm 7 có field `anh_chu_ky`).
+   - Lúc ký, phân hệ chụp snapshot ảnh vào bản ghi chữ ký; tệp hoàn tất dán ảnh vào khung ký, chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT" kèm họ tên, chức vụ, thời điểm ký (đã triển khai, #80). MVP dùng khối chữ: Nhóm 7 chốt cột `anh_chu_ky` để sau MVP (#67 mục 2); khi có cột, chỉ cần nối nguồn ảnh ở `tich_hop/to_chuc.anh_chu_ky`.
 2. **Mẫu quy trình trình ký:**
    - Quy trình nhiều cấp, trạng thái `NHAP -> HOAT_DONG -> NGUNG`, phạm vi `PHONG_BAN` (gắn đơn vị áp dụng) hoặc `CONG_TY`.
    - Quy trình `CONG_TY` do quản trị cấu hình; quy trình `PHONG_BAN` do lãnh đạo đơn vị đó hoặc quản trị cấu hình.

@@ -93,7 +93,7 @@ export default function KhoaPage() {
         )}
         {sanSang && (
           <div className="space-y-3 border-t border-border-subtle pt-3">
-            <h3 className="text-sm font-bold text-main">{t('khoa.doiPin')}</h3>
+            <h3 className="text-xl font-bold text-main">{t('khoa.doiPin')}</h3>
             <OPin nhan={t('khoa.pinCu')} gia_tri={pinCu} onDoi={setPinCu} />
             <OPin nhan={t('khoa.pin')} gia_tri={pin} onDoi={setPin} />
             <OPin nhan={t('khoa.pinNhapLai')} gia_tri={pin2} onDoi={setPin2} />
@@ -108,7 +108,7 @@ export default function KhoaPage() {
         {(ds.duLieu || []).map((k) => (
           <div key={k.id} className="space-y-1 rounded-lg border border-border-subtle p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-bold text-main">{k.ma_khoa}</span>
+              <span className="text-lg font-bold text-main">{k.ma_khoa}</span>
               <TrangThaiBadge trangThai={k.trang_thai} />
             </div>
             <div className="text-xs text-secondary break-all">{t('khoa.dauVanTay')}: <code>{k.dau_van_tay}</code></div>

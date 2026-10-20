@@ -1,13 +1,16 @@
 {
+  "nhanPhanHe": "Digital Signing & Approval",
   "tieuDe": "Internal approval signing",
-  "moTa": "Submit and sign outgoing documents through multi-level workflows; the result is an internal approval copy, not yet issued.",
+  "moTa": "Submit and sign documents through multi-level workflows; the result is an internal approval copy, not yet issued.",
   "nav": {
     "canToiKy": "Awaiting my signature",
     "toiGui": "Submitted by me",
     "tatCa": "Requests I can view",
     "taoMoi": "New signing request",
     "quyTrinh": "Workflows",
-    "khoaCuaToi": "Signing key & PIN"
+    "khoaCuaToi": "Signing key & PIN",
+    "thongBao": "Notifications",
+    "taiLieu": "Documents"
   },
   "chung": {
     "dangTai": "Loading…",
@@ -76,15 +79,35 @@
     "nguoiTao": "Submitted by",
     "ngayGui": "Submitted",
     "hanChot": "Deadline",
-    "locTrangThai": "Filter by status",
-    "tatCaTrangThai": "All statuses"
+    "thaoTac": "Actions",
+    "tatCaTrangThai": "All statuses",
+    "timKiem": "Search",
+    "goiYTim": "Number, summary, request ID, process…",
+    "tatCa": "All",
+    "tuNgay": "From",
+    "denNgay": "To",
+    "loc": "Filter",
+    "xoaLoc": "Clear filters",
+    "khongKhopLoc": "No requests match the filters.",
+    "locNhanh": "Quick filters",
+    "xoaTuKhoa": "Clear keyword",
+    "nhanh": {
+      "tat_ca": "All",
+      "cho_ky": "Awaiting signature",
+      "tra_lai": "Returned for revision",
+      "qua_han": "Overdue",
+      "nhap": "Draft",
+      "hoan_thanh": "Completed",
+      "tu_choi": "Rejected",
+      "huy": "Cancelled"
+    }
   },
   "tao": {
     "buoc1": "Request details",
     "buoc2": "Preview and place signatures",
-    "vanBanDi": "Outgoing document",
+    "vanBanDi": "Document",
     "timVanBan": "Search by number or summary…",
-    "khongCoVanBan": "No outgoing document you can view was found (restricted documents do not go through signing).",
+    "khongCoVanBan": "No document you can view was found (restricted documents do not go through signing).",
     "quyTrinh": "Signing workflow",
     "chonQuyTrinh": "— Select an active workflow —",
     "khongCoQuyTrinh": "There is no active workflow available to you.",
@@ -127,7 +150,17 @@
     "khongAiCho": "No signer is waiting.",
     "lyDoTuChoi": "Reason for not approving",
     "lyDoHuy": "Cancellation reason",
-    "hoSoGoc": "Resubmitted from request #{so}"
+    "hoSoGoc": "Resubmitted from request #{so}",
+    "suaHoSo": "Edit request",
+    "ghiChu": "Notes",
+    "thayTep": "Replace PDF (optional)",
+    "goiYThayTep": "Leave empty to keep the current file; replacing increases the document version.",
+    "danhSachTep": "Files",
+    "banDuThao": "Draft (version {so})",
+    "banLuot": "Round {so} · version {ban}",
+    "maBam": "Hash",
+    "bangChungJson": "Download evidence (JSON)",
+    "xemChiTiet": "View details"
   },
   "hanhDong": {
     "kyDuyet": "Sign and approve",
@@ -164,19 +197,33 @@
     "ma": "Workflow code",
     "ten": "Workflow name",
     "phamVi": "Scope",
-    "donVi": "Department ID",
+    "donVi": "Department",
+    "chonDonVi": "Select a department",
     "phienBan": "Version {so}",
     "capKy": "Levels",
     "themCap": "Add level",
     "themNguoiKy": "Add signer",
-    "timNguoiDung": "Search accounts…",
+    "timNguoiDung": "Search by name, username, position, department…",
     "soGio": "Hours to process (optional)",
     "chanKyChinh": "Initials must complete before the main signature",
     "kichHoat": "Activate",
     "ngung": "Stop",
     "nhanBan": "New version",
     "chiQuanLy": "Only administrators (company workflows) and department leaders (department workflows) can configure workflows.",
-    "boNguoiKy": "Remove signer"
+    "boNguoiKy": "Remove signer",
+    "sua": "Edit process",
+    "xoa": "Delete process",
+    "xemChiTiet": "View details",
+    "chiTiet": "Process details",
+    "phienBanNhan": "Version",
+    "moTa": "Description",
+    "nguoiKy": "Signers",
+    "soGioNhan": "Processing hours",
+    "xacNhanXoa": "Delete draft process “{ten}”? This cannot be undone.",
+    "khongThayNguoiDung": "No matching accounts.",
+    "chuaCoChucVu": "No position",
+    "goiYTim": "Code, process name, department…",
+    "khongKhopLoc": "No processes match the filters."
   },
   "khoa": {
     "gioiThieu": "Your signing key is created and kept in this browser, protected by an 8-digit PIN. The server never receives your PIN or private key.",
@@ -242,5 +289,36 @@
     "TAO_TEP_HOAN_TAT": "Final file generated",
     "LOI_TAO_TEP_HOAN_TAT": "Final file generation failed",
     "TAO_LAI_TEP_HOAN_TAT": "Final file regenerated"
+  },
+  "thongBao": {
+    "rong": "No notifications yet.",
+    "loai": {
+      "CAN_KY": "Awaiting your approval",
+      "HOAN_THANH": "Internal approval completed",
+      "TU_CHOI": "Rejected for issuance",
+      "YEU_CAU_SUA": "Returned for revision",
+      "HUY": "Request cancelled"
+    },
+    "kenh": {
+      "inApp": "In-app",
+      "emailDaGui": "Email: Sent",
+      "emailChoGui": "Email: Sending",
+      "emailNguoiNhan": "Recipient"
+    }
+  },
+  "taiLieu": {
+    "goiYTim": "Number, summary, request ID, process…",
+    "loaiTep": "File type",
+    "tep": "File",
+    "phienBan": "Round / version",
+    "ngay": "Date",
+    "luotBan": "Round {so} · v{ban}",
+    "rong": "No files yet.",
+    "khongKhopLoc": "No files match the filters.",
+    "loai": {
+      "DU_THAO": "Draft",
+      "LUOT": "Submitted file",
+      "HOAN_TAT": "Completed file"
+    }
   }
 }
