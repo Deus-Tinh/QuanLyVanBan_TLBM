@@ -1,8 +1,11 @@
 import os
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.conf import settings
 from django.db.models import Max
+
+DB_NOW = models.Func(function="now", output_field=models.DateTimeField())
 
 
 # Hàm kiểm tra định dạng và dung lượng file đính kèm (< 20MB)
@@ -11,11 +14,11 @@ def validate_document_file(file):
     if hasattr(file, 'size') and file.size > max_size_mb * 1024 * 1024:
         raise ValidationError(f"Dung lượng tệp đính kèm không được vượt quá {max_size_mb}MB.")
 
-    valid_extensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.zip', '.rar']
+    valid_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.jpg', '.jpeg', '.png', '.zip', '.rar']
     ext = os.path.splitext(file.name)[1].lower()
     if ext not in valid_extensions:
         raise ValidationError(
-            f"Định dạng tệp {ext} không được hỗ trợ. Chỉ chấp nhận PDF, DOC, DOCX, JPG, PNG, ZIP, RAR."
+            f"Định dạng tệp {ext} không được hỗ trợ. Chỉ chấp nhận PDF, DOC, DOCX, XLS, XLSX, CSV, JPG, PNG, ZIP, RAR."
         )
 
 
@@ -29,15 +32,13 @@ class DanhMucTaiLieu(models.Model):
     nguoi_lap = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.RESTRICT,
-        null=True,
-        blank=True,
         db_column="nguoi_lap_id",
         verbose_name="Người lập"
     )
     ngay_lap = models.DateField(null=True, blank=True, verbose_name="Ngày lập")
     ghi_chu = models.TextField(blank=True, null=True, verbose_name="Ghi chú")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_default=DB_NOW)
+    updated_at = models.DateTimeField(auto_now=True, db_default=DB_NOW)
 
     class Meta:
         db_table = "records_tailieu"
@@ -69,11 +70,11 @@ class LoaiTaiLieu(models.Model):
         verbose_name="Thuộc danh mục cấp 1"
     )
     ten_loai = models.CharField(max_length=255, verbose_name="Tên loại tài liệu")
-    is_public = models.BooleanField(default=True, verbose_name="Công khai")
+    is_public = models.BooleanField(default=True, db_default=True, verbose_name="Công khai")
     ngay_lap = models.DateTimeField(null=True, blank=True, verbose_name="Ngày lập")
     ghi_chu = models.TextField(blank=True, null=True, verbose_name="Ghi chú")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_default=DB_NOW)
+    updated_at = models.DateTimeField(auto_now=True, db_default=DB_NOW)
 
     class Meta:
         db_table = "records_loaitailieu"
@@ -149,8 +150,8 @@ class TaiLieuChiTiet(models.Model):
         db_column="nguoi_tao_id",
         verbose_name="Người tạo"
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_default=DB_NOW)
+    updated_at = models.DateTimeField(auto_now=True, db_default=DB_NOW)
 
     class Meta:
         db_table = "records_chitiettailieu"
@@ -239,10 +240,17 @@ class ChiTietTaiLieuAttachment(models.Model):
     )
     name = models.CharField(max_length=255, verbose_name="Tên gốc file")
     path = models.CharField(max_length=500, verbose_name="Đường dẫn lưu file")
-    file_size = models.BigIntegerField(null=True, blank=True, verbose_name="Dung lượng (byte)")
+    file_size = models.BigIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0)],
+        verbose_name="Dung lượng (byte)",
+    )
     mime_type = models.CharField(max_length=255, null=True, blank=True, verbose_name="Kiểu MIME")
-    is_deleted = models.BooleanField(default=False, verbose_name="Xóa mềm")
-    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at', verbose_name="Thời điểm tải lên")
+    is_deleted = models.BooleanField(default=False, db_default=False, verbose_name="Xóa mềm")
+    created_at = models.DateTimeField(
+        auto_now_add=True, db_default=DB_NOW, db_column='created_at', verbose_name="Thời điểm tải lên"
+    )
     nguoi_tao = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -268,6 +276,12 @@ class ChiTietTaiLieuAttachment(models.Model):
         indexes = [
             models.Index(fields=['document'], name='idx_chitiettailieu_att_doc'),
             models.Index(fields=['is_deleted'], name='idx_chitiettailieu_att_del'),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(file_size__gte=0),
+                name="records_chitiettailieu_attachment_file_size_check",
+            ),
         ]
 
     def __str__(self):

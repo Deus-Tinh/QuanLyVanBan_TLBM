@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import apiClient from '@lib/apiClient';
+import apiClient, { ApiError } from '@lib/apiClient';
+import { authService } from '@lib/authService';
 import { DocumentDetail, DocumentItem, DocumentStatus, PaginatedResponse } from '@app-types/document';
 import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
@@ -43,7 +44,7 @@ interface SuggestedDoc {
 }
 
 interface FormState {
-  loai: 'DEN' | 'DI';
+  loai: 'DEN' | 'DI' | 'MAT';
   nam: number;
   so_hieu: string;
   so_thu_tu?: number | null;
@@ -95,7 +96,7 @@ interface Props {
   onClose: () => void;
   initial?: InitialDocType | DocumentFormInput | null;
   onSaved?: (doc: Record<string, unknown> | DocumentFormInput) => void;
-  defaultLoai?: 'DEN' | 'DI';
+  defaultLoai?: 'DEN' | 'DI' | 'MAT';
 }
 
 const DEFAULT_UNITS = [
@@ -109,7 +110,38 @@ const DEFAULT_UNITS = [
   'Khoa Kinh tế',
 ];
 
+const DEFAULT_DOC_TYPES = [
+  'Công văn',
+  'Quyết định',
+  'Thông báo',
+  'Kế hoạch',
+  'Hướng dẫn',
+  'Báo cáo',
+  'Tờ trình',
+  'Chỉ thị',
+  'Nghị quyết',
+];
+
+const DEFAULT_INTERNAL_FOLDERS: Record<string, string[]> = {
+  'Hồ sơ Hành chính - Quản trị': ['Công văn', 'Thông báo', 'Tờ trình', 'Kế hoạch', 'Báo cáo'],
+  'Hồ sơ Tổ chức - Cán bộ': ['Quyết định', 'Thông báo', 'Hướng dẫn', 'Tờ trình'],
+  'Hồ sơ Kế hoạch - Tài chính': ['Kế hoạch', 'Quyết định', 'Báo cáo', 'Tờ trình'],
+  'Hồ sơ Chuyên môn - Nghiệp vụ': ['Hướng dẫn', 'Công văn', 'Kế hoạch', 'Quyết định'],
+  'Hồ sơ Thanh tra - Pháp chế': ['Quyết định', 'Chỉ thị', 'Nghị quyết', 'Báo cáo'],
+  'Hồ sơ Kế hoạch - Dự án': ['Kế hoạch', 'Báo cáo', 'Quyết định', 'Tờ trình'],
+  'Hồ sơ Lưu trữ cơ quan': ['Công văn', 'Quyết định', 'Thông báo', 'Báo cáo'],
+};
+
 const MOCK_STAFF_BY_UNIT: Record<string, UserOption[]> = {
+  'Ban công nghệ thông tin': [
+    { id: 1, ho_ten: 'Quản trị hệ thống', username: 'admin', don_vi_ten: 'Ban công nghệ thông tin' },
+    { id: 2, ho_ten: 'Trưởng Phòng CNTT', username: 'truongphong_cntt', don_vi_ten: 'Ban công nghệ thông tin' },
+    { id: 3, ho_ten: 'Chuyên Viên CNTT', username: 'chuyenvien_cntt', don_vi_ten: 'Ban công nghệ thông tin' },
+    { id: 4, ho_ten: 'Văn Thư Lưu Trữ', username: 'vanthu_cntt', don_vi_ten: 'Ban công nghệ thông tin' },
+  ],
+  'Hội đồng quản trị': [
+    { id: 5, ho_ten: 'Cán bộ Văn thư', username: 'canbo', don_vi_ten: 'Hội đồng quản trị' },
+  ],
   'Ban Giám hiệu': [
     { id: 1, ho_ten: 'Quản trị viên (Admin)', username: 'admin', don_vi_ten: 'Ban Giám hiệu' },
   ],
@@ -131,6 +163,27 @@ function toLocalDateString(dateInput?: string | Date | null): string {
   return `${year}-${month}-${day}`;
 }
 
+function formatDateTimePayload(dateStr: string, originalDateStr?: string | null): string {
+  if (!dateStr) return '';
+  if (dateStr.includes('T') || (dateStr.includes(':') && dateStr.length > 10)) return dateStr;
+
+  if (originalDateStr) {
+    const orig = new Date(originalDateStr);
+    if (!isNaN(orig.getTime()) && (orig.getHours() !== 0 || orig.getMinutes() !== 0 || orig.getSeconds() !== 0)) {
+      const h = String(orig.getHours()).padStart(2, '0');
+      const m = String(orig.getMinutes()).padStart(2, '0');
+      const s = String(orig.getSeconds()).padStart(2, '0');
+      return `${dateStr}T${h}:${m}:${s}`;
+    }
+  }
+
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  return `${dateStr}T${hours}:${minutes}:${seconds}`;
+}
+
 function formatFileSize(bytes?: number): string {
   if (!bytes) return '0 B';
   if (bytes < 1024) return bytes + ' B';
@@ -145,10 +198,12 @@ function getFileIcon(fileName: string) {
   return 'fa-solid fa-file text-slate-400';
 }
 
-function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | null, defaultLoai: 'DEN' | 'DI' = 'DEN'): FormState {
+function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | null, defaultLoai: 'DEN' | 'DI' | 'MAT' = 'DEN'): FormState {
   const now = new Date();
   const defaultDate = toLocalDateString(now);
   const initDoc = initDocInput as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
+  const targetLoai = ((initDoc?.loai as 'DEN' | 'DI' | 'MAT') || defaultLoai);
+  const isMat = targetLoai === 'MAT';
 
   if (!initDoc) {
     return {
@@ -161,14 +216,14 @@ function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | nu
       noi_ban_hanh: '',
       trich_yeu: '',
       danh_muc_ho_so: '',
-      ten_loai_van_ban: 'Công văn',
+      ten_loai_van_ban: '',
       nguoi_ky: '',
       chuc_vu: '',
       hieu_luc: 'CON_HIEU_LUC',
       ngay_het_hieu_luc: '',
       link_thay_the: '',
       ghi_chu: '',
-      pham_vi: 'NOI_BO',
+      pham_vi: isMat ? 'HAN_CHE' : 'NOI_BO',
       hien_thi: true,
       gui_mail_toan_he_thong: false,
       nguoi_nhan: [],
@@ -183,10 +238,10 @@ function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | nu
   }
 
   return {
-    loai: ((initDoc.loai as 'DEN' | 'DI') || defaultLoai),
+    loai: targetLoai,
     nam: (initDoc.nam as number) ?? now.getFullYear(),
     so_hieu: (initDoc.so_hieu as string) ?? (initDoc.soHieu as string) ?? '',
-    so_thu_tu: (initDoc.so_thu_tu as number) ?? (initDoc.soDen as number) ?? undefined,
+    so_thu_tu: isMat ? undefined : ((initDoc.so_thu_tu as number) ?? (initDoc.soDen as number) ?? undefined),
     ngay_den: toLocalDateString((initDoc.ngay_den || initDoc.ngayDen || initDoc.ngay_ban_hanh || initDoc.ngayBanHanh) as string) || defaultDate,
     ngay_van_ban: toLocalDateString((initDoc.ngay_van_ban || initDoc.ngayVanBan || initDoc.ngay_thang_van_ban) as string) || defaultDate,
     noi_ban_hanh: (initDoc.noi_ban_hanh || initDoc.coQuanBanHanh || initDoc.co_quan_ban_hanh || '') as string,
@@ -199,23 +254,27 @@ function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | nu
     ngay_het_hieu_luc: toLocalDateString((initDoc.ngay_het_hieu_luc || initDoc.ngayHetHieuLuc) as string),
     link_thay_the: (initDoc.link_thay_the || initDoc.linkThayThe || '') as string,
     ghi_chu: (initDoc.ghi_chu || initDoc.ghiChu || '') as string,
-    pham_vi: (initDoc.pham_vi === 'HAN_CHE' ? 'HAN_CHE' : 'NOI_BO'),
+    pham_vi: isMat ? 'HAN_CHE' : (initDoc.pham_vi === 'HAN_CHE' ? 'HAN_CHE' : 'NOI_BO'),
     hien_thi: initDoc.hien_thi !== undefined ? Boolean(initDoc.hien_thi) : true,
-    gui_mail_toan_he_thong: Boolean(initDoc.gui_mail_toan_he_thong ?? initDoc.guiMailToanHeThong),
+    gui_mail_toan_he_thong: isMat ? false : Boolean(initDoc.gui_mail_toan_he_thong ?? initDoc.guiMailToanHeThong),
     nguoi_nhan: recipients,
   };
 }
 
 export default function DocumentFormModal({ open, onClose, initial, onSaved, defaultLoai = 'DEN' }: Props) {
+  const currentSession = useMemo(() => authService.getSession(), []);
+  const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
   const initDoc = initial as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormState>(() => buildInitialForm(initial, defaultLoai));
   const [units, setUnits] = useState<string[]>(DEFAULT_UNITS);
   const [staff, setStaff] = useState<UserOption[]>([]);
+  const [isStaffLoading, setIsStaffLoading] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<string>(() => (initDoc?.don_vi_nhan as string) || '');
   const [existingAttachments, setExistingAttachments] = useState<ExistingAttachment[]>(() =>
     initDoc?.attachments && Array.isArray(initDoc.attachments) ? (initDoc.attachments as ExistingAttachment[]) : []
   );
+  const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<number[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -236,6 +295,17 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   const replacementDropdownRef = useRef<HTMLDivElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Tìm kiếm và lọc nhanh phòng ban ban hành theo thời gian thực
+  const [unitSearch, setUnitSearch] = useState('');
+  const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+  const unitDropdownRef = useRef<HTMLDivElement | null>(null);
+  const unitSearchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Tìm kiếm và chọn đơn vị nhận / chủ trì xử lý (Dropdown Custom chống lỗi văng tọa độ)
+  const [recipientUnitSearch, setRecipientUnitSearch] = useState('');
+  const [isRecipientUnitDropdownOpen, setIsRecipientUnitDropdownOpen] = useState(false);
+  const recipientUnitDropdownRef = useRef<HTMLDivElement | null>(null);
+
   const filePattern = /\.(pdf|docx?|png|jpe?g)$/i;
   const maxFiles = 10;
 
@@ -245,6 +315,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     if (open) {
       setForm(buildInitialForm(initial, defaultLoai));
       setFiles([]);
+      setDeletedAttachmentIds([]);
       setIsDragging(false);
       setReplacementSuggestions([]);
       setShowReplacementDropdown(false);
@@ -259,11 +330,31 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       }
       setSelectedUnit((initDoc?.don_vi_nhan as string) || '');
       setStaff([]);
+      setUnitSearch('');
+      setIsUnitDropdownOpen(false);
+      setRecipientUnitSearch('');
+      setIsRecipientUnitDropdownOpen(false);
     }
   }
 
   async function fetchUnits() {
     try {
+      // 1. Ưu tiên nạp trực tiếp từ danh mục phòng ban CSDL (organizations_donvi)
+      const res = await apiClient.get<PaginatedResponse<{ id: number; ten: string }> | { id: number; ten: string }[]>(
+        '/api/organizations/units/?page_size=100'
+      );
+      const items = Array.isArray(res) ? res : res?.results || [];
+      const depts = items.map(d => d.ten?.trim()).filter(Boolean) as string[];
+      if (depts.length > 0) {
+        setUnits(Array.from(new Set(depts)));
+        return;
+      }
+    } catch {
+      // Fallback nếu endpoint organizations chưa sẵn sàng
+    }
+
+    try {
+      // 2. Fallback từ staffs
       const data = await apiClient.get<UserOption[] | PaginatedResponse<UserOption>>('/api/accounts/staffs/');
       const items = Array.isArray(data) ? data : data?.results || [];
       const depts = Array.from(new Set(items.map((u) => u.don_vi_ten || u.department).filter(Boolean))) as string[];
@@ -281,8 +372,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   async function fetchStaffByUnit(unit: string) {
     if (!unit) {
       setStaff([]);
+      setIsStaffLoading(false);
       return;
     }
+    setIsStaffLoading(true);
     try {
       const data = await apiClient.get<UserOption[] | PaginatedResponse<UserOption>>(
         `/api/accounts/staffs/?department=${encodeURIComponent(unit)}`
@@ -294,6 +387,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       }
     } catch {
       // Use fallback
+    } finally {
+      setIsStaffLoading(false);
     }
     setStaff(MOCK_STAFF_BY_UNIT[unit] || []);
   }
@@ -317,24 +412,143 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       Promise.resolve().then(() => {
         if (cancelled) return;
         void fetchUnits();
-        if (initialUnit) void fetchStaffByUnit(initialUnit);
+        if (initialUnit) {
+          void fetchStaffByUnit(initialUnit);
+        } else {
+          // Bắt buộc chọn đơn vị trước, không nạp trước tất cả cán bộ khi chưa chọn đơn vị
+          setStaff([]);
+        }
       });
+
+      // Tự động nạp chi tiết đầy đủ khi đang ở chế độ Chỉnh sửa văn bản (Edit mode)
+      if (initial && initial.id) {
+        const targetLoai = form.loai || defaultLoai || (initial as { loai?: string })?.loai || 'DEN';
+        const req = apiClient.get<DocumentDetail>(`/api/documents/${initial.id}/?loai=${encodeURIComponent(targetLoai)}`);
+        if (req && typeof req.then === 'function') {
+          req.then((detail) => {
+            if (cancelled || !detail) return;
+            // 1. Cập nhật danh sách tệp đính kèm hiện có
+            if (detail.attachments && Array.isArray(detail.attachments)) {
+              setExistingAttachments(
+                detail.attachments.map((a: unknown) => {
+                  const item = a as Record<string, unknown>;
+                  return {
+                    id: Number(item.id),
+                    file: String(item.file || item.path || ''),
+                    file_name: String(item.name || item.file_name || 'Tệp đính kèm'),
+                    file_size: item.file_size ? Number(item.file_size) : undefined,
+                  };
+                })
+              );
+            }
+            // 2. Tự động xác định đơn vị nhận và nạp/tích chọn đúng cán bộ nhận đã phân công
+            let resolvedUnit = (detail.don_vi_nhan as string) || '';
+            const recipientList = (detail.nguoi_nhan_list || []) as Array<{
+              id: number;
+              username?: string;
+              full_name?: string;
+              ho_ten?: string;
+              department?: string;
+              don_vi_ten?: string;
+            }>;
+            if (!resolvedUnit && recipientList.length > 0) {
+              resolvedUnit = recipientList[0].don_vi_ten || recipientList[0].department || '';
+            }
+
+            if (resolvedUnit) {
+              setSelectedUnit(resolvedUnit);
+              void fetchStaffByUnit(resolvedUnit);
+            }
+
+            if (recipientList.length > 0) {
+              const userIds = recipientList.map(u => u.id);
+              setForm(prev => ({ ...prev, nguoi_nhan: userIds }));
+            } else if (Array.isArray(detail.nguoi_nhan) && detail.nguoi_nhan.length > 0) {
+              const userIds = detail.nguoi_nhan.map((u: unknown) =>
+                typeof u === 'object' && u !== null && 'id' in u ? (u as { id: number }).id : Number(u)
+              );
+              setForm(prev => ({ ...prev, nguoi_nhan: userIds }));
+            }
+            // 3. Tự động điền nơi ban hành
+            if (detail.noi_ban_hanh) {
+              setForm(prev => ({ ...prev, noi_ban_hanh: detail.noi_ban_hanh || prev.noi_ban_hanh }));
+            }
+            // 4. Tự động điền người ký
+            if (detail.nguoi_ky) {
+              setForm(prev => ({ ...prev, nguoi_ky: detail.nguoi_ky || prev.nguoi_ky }));
+            }
+            // 5. Tự động điền chức vụ
+            if (detail.chuc_vu) {
+              setForm(prev => ({ ...prev, chuc_vu: detail.chuc_vu || prev.chuc_vu }));
+            }
+          })
+          .catch(() => undefined);
+        }
+      }
     }
     return () => {
       cancelled = true;
     };
-  }, [open, initDoc?.don_vi_nhan, initDoc?.linkThayThe, initDoc?.link_thay_the]);
+  }, [open, initDoc?.don_vi_nhan, initDoc?.linkThayThe, initDoc?.link_thay_the, initial?.id]);
 
   function handleUnitChange(unit: string) {
     setSelectedUnit(unit);
-    fetchStaffByUnit(unit);
+    if (!unit) {
+      setStaff([]);
+      // Xóa cán bộ đã chọn khi hủy chọn đơn vị
+      setForm(prev => ({ ...prev, nguoi_nhan: [] }));
+    } else {
+      // Khi đổi sang đơn vị khác, làm mới lại danh sách cán bộ nhận đã chọn
+      if (unit !== selectedUnit) {
+        setForm(prev => ({ ...prev, nguoi_nhan: [] }));
+      }
+      void fetchStaffByUnit(unit);
+    }
   }
+
+  // Quản lý ManyToMany đơn vị phòng ban nội bộ (chỉ chọn từ CSDL, không tự tạo)
+  const selectedUnitsList = form.noi_ban_hanh
+    ? form.noi_ban_hanh.split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  function handleAddUnit(unitName: string) {
+    if (!unitName) return;
+    if (!selectedUnitsList.includes(unitName)) {
+      const nextList = [...selectedUnitsList, unitName];
+      setForm(prev => ({ ...prev, noi_ban_hanh: nextList.join(', ') }));
+    }
+  }
+
+  function handleRemoveUnit(unitName: string) {
+    const nextList = selectedUnitsList.filter(u => u !== unitName);
+    setForm(prev => ({ ...prev, noi_ban_hanh: nextList.join(', ') }));
+  }
+
+  function handleClearAllUnits() {
+    setForm(prev => ({ ...prev, noi_ban_hanh: '' }));
+  }
+
+  // Danh sách phòng ban được lọc theo từ khóa tìm kiếm (lọc ngay khi gõ từng ký tự)
+  const filteredUnits = units.filter(u =>
+    u.toLowerCase().includes(unitSearch.trim().toLowerCase())
+  );
+
+  // Danh sách đơn vị nhận được lọc theo từ khóa tìm kiếm
+  const filteredRecipientUnits = units.filter(u =>
+    u.toLowerCase().includes(recipientUnitSearch.trim().toLowerCase())
+  );
 
   // Đóng dropdown gợi ý khi click ra ngoài
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (replacementDropdownRef.current && !replacementDropdownRef.current.contains(e.target as Node)) {
         setShowReplacementDropdown(false);
+      }
+      if (unitDropdownRef.current && !unitDropdownRef.current.contains(e.target as Node)) {
+        setIsUnitDropdownOpen(false);
+      }
+      if (recipientUnitDropdownRef.current && !recipientUnitDropdownRef.current.contains(e.target as Node)) {
+        setIsRecipientUnitDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -343,6 +557,30 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, []);
+
+  // Tự động cấp và hiển thị sẵn số thứ tự tiếp theo (Số đến / Số đi) khi tạo mới
+  useEffect(() => {
+    let cancelled = false;
+    if (open && !initial?.id && form.loai !== 'MAT') {
+      try {
+        const req = apiClient.get<{ next_so: number }>(`/api/documents/next-so/?loai=${form.loai || 'DEN'}&nam=${form.nam || new Date().getFullYear()}`);
+        if (req && typeof req.then === 'function') {
+          req
+            .then((res) => {
+              if (!cancelled && res && res.next_so) {
+                setForm((prev) => ({ ...prev, so_thu_tu: res.next_so }));
+              }
+            })
+            .catch(() => undefined);
+        }
+      } catch {
+        // Safe fallback
+      }
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [open, initial?.id, form.loai, form.nam]);
 
   const searchReplacementDocs = (query: string) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -435,6 +673,11 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     setFiles(prev => prev.filter((_, i) => i !== index));
   }
 
+  function handleRemoveExistingAttachment(id: number) {
+    setExistingAttachments(prev => prev.filter(att => att.id !== id));
+    setDeletedAttachmentIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+  }
+
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -444,10 +687,37 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       setAlertOpen(true);
       return;
     }
-    if (!form.noi_ban_hanh?.trim()) {
-      setAlertMsg('Vui lòng nhập Cơ quan / Đơn vị ban hành văn bản (*)');
+    if (!form.danh_muc_ho_so?.trim()) {
+      setAlertMsg('Vui lòng nhập Danh mục hồ sơ (*)');
       setAlertOpen(true);
       return;
+    }
+    if (!form.ten_loai_van_ban?.trim()) {
+      setAlertMsg('Vui lòng nhập Loại văn bản (*)');
+      setAlertOpen(true);
+      return;
+    }
+    if (form.loai === 'DEN') {
+      if (!form.noi_ban_hanh?.trim()) {
+        setAlertMsg('Vui lòng nhập Cơ quan / Đơn vị ban hành văn bản (*)');
+        setAlertOpen(true);
+        return;
+      }
+    } else {
+      const selectedList = form.noi_ban_hanh
+        ? form.noi_ban_hanh.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+      if (selectedList.length === 0) {
+        setAlertMsg('Vui lòng chọn ít nhất một Đơn vị / Phòng ban ban hành từ danh mục hệ thống (*)');
+        setAlertOpen(true);
+        return;
+      }
+      const invalidUnits = selectedList.filter(u => !units.includes(u));
+      if (invalidUnits.length > 0 && units.length > 0) {
+        setAlertMsg(`Đơn vị "${invalidUnits.join(', ')}" không tồn tại trong danh mục hệ thống. Vui lòng chỉ chọn các phòng ban có sẵn (*).`);
+        setAlertOpen(true);
+        return;
+      }
     }
     if (!form.trich_yeu?.trim()) {
       setAlertMsg('Vui lòng nhập Trích yếu nội dung văn bản (*)');
@@ -491,8 +761,20 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
         }
       }
     }
-    if (form.pham_vi === 'HAN_CHE' && (!form.nguoi_nhan || form.nguoi_nhan.length === 0)) {
-      setAlertMsg('Văn bản hạn chế bắt buộc phải chọn ít nhất một cán bộ nhận / xử lý (*)');
+    if (form.pham_vi === 'HAN_CHE') {
+      if (!selectedUnit) {
+        setAlertMsg('Văn bản hạn chế bắt buộc phải chọn Đơn vị nhận trước (*)');
+        setAlertOpen(true);
+        return;
+      }
+      if (!form.nguoi_nhan || form.nguoi_nhan.length === 0) {
+        setAlertMsg('Văn bản hạn chế bắt buộc phải chọn ít nhất một cán bộ nhận / xử lý (*)');
+        setAlertOpen(true);
+        return;
+      }
+    }
+    if (form.nguoi_nhan && form.nguoi_nhan.length > 0 && !selectedUnit) {
+      setAlertMsg('Vui lòng chọn đơn vị nhận trước khi chọn cán bộ (*)');
       setAlertOpen(true);
       return;
     }
@@ -506,21 +788,28 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       payload.append('noi_ban_hanh', form.noi_ban_hanh.trim());
       payload.append('trich_yeu', form.trich_yeu.trim());
       payload.append('hieu_luc', form.hieu_luc);
-      payload.append('pham_vi', form.pham_vi || 'NOI_BO');
+      payload.append('pham_vi', form.loai === 'MAT' ? 'HAN_CHE' : (form.pham_vi || 'NOI_BO'));
       payload.append('hien_thi', form.hien_thi ? 'true' : 'false');
-      payload.append('gui_mail_toan_he_thong', form.pham_vi === 'HAN_CHE' ? 'false' : (form.gui_mail_toan_he_thong ? 'true' : 'false'));
+      payload.append('gui_mail_toan_he_thong', (form.loai === 'MAT' || form.pham_vi === 'HAN_CHE') ? 'false' : (form.gui_mail_toan_he_thong ? 'true' : 'false'));
 
+      const origDate = initial ? ((initial as Partial<DocumentDetail>).ngay_den || (initial as Partial<DocumentDetail>).ngay_ban_hanh) : null;
       if (form.loai === 'DI') {
         if (form.ngay_den) {
-          payload.append('ngay_ban_hanh', form.ngay_den);
+          payload.append('ngay_ban_hanh', formatDateTimePayload(form.ngay_den, origDate));
         }
       } else {
         if (form.ngay_den) {
-          payload.append('ngay_den', form.ngay_den);
+          payload.append('ngay_den', formatDateTimePayload(form.ngay_den, origDate));
         }
       }
       if (form.ngay_van_ban) {
         payload.append('ngay_van_ban', form.ngay_van_ban);
+      }
+      if (form.danh_muc_ho_so?.trim()) {
+        payload.append('danh_muc_ho_so', form.danh_muc_ho_so.trim());
+      }
+      if (form.ten_loai_van_ban?.trim()) {
+        payload.append('ten_loai_van_ban', form.ten_loai_van_ban.trim());
       }
       if (form.nguoi_ky?.trim()) {
         payload.append('nguoi_ky', form.nguoi_ky.trim());
@@ -547,6 +836,16 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
         });
       }
 
+      if (selectedUnit) {
+        payload.append('don_vi_nhan', selectedUnit);
+      }
+
+      if (deletedAttachmentIds.length > 0) {
+        deletedAttachmentIds.forEach(id => {
+          payload.append('delete_attachment_ids', String(id));
+        });
+      }
+
       files.forEach(f => payload.append('files', f));
 
       const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
@@ -568,39 +867,33 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
         return;
       }
 
-      let res: Response;
-      if (initial && initial.id) {
-        res = await fetch(`/api/documents/${initial.id}/`, {
-          method: 'PUT',
-          body: payload,
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-      } else {
-        res = await fetch('/api/documents/', {
-          method: 'POST',
-          body: payload,
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-      }
+      const targetLoai = form.loai || defaultLoai || (initial as { loai?: string })?.loai || 'DEN';
+      const endpoint = initial && initial.id
+        ? `/api/documents/${initial.id}/?loai=${encodeURIComponent(targetLoai)}`
+        : `/api/documents/?loai=${encodeURIComponent(targetLoai)}`;
+      const method = initial && initial.id ? 'PUT' : 'POST';
 
-      if (res.ok) {
-        const data = await res.json() as Record<string, unknown>;
-        onSaved?.(data);
-        onClose();
-      } else {
-        const err = await res.json().catch(() => ({ error: 'Không thể xử lý yêu cầu' }));
-        let msg = err.error || err.detail;
-        if (!msg) {
-          const fieldErrors = Object.entries(err)
+      const data = await apiClient<Record<string, unknown>>(endpoint, {
+        method,
+        body: payload,
+      });
+
+      onSaved?.(data);
+      onClose();
+    } catch (err: unknown) {
+      let msg = 'Không thể kết nối đến máy chủ';
+      if (err instanceof ApiError) {
+        msg = err.data?.error || err.data?.detail || err.message;
+        if (typeof err.data === 'object' && err.data !== null && !err.data.error && !err.data.detail) {
+          const fieldErrors = Object.entries(err.data)
             .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(', ') : errs}`)
             .join('; ');
-          msg = fieldErrors || JSON.stringify(err);
+          if (fieldErrors) msg = fieldErrors;
         }
-        setAlertMsg('Lỗi từ máy chủ: ' + msg);
-        setAlertOpen(true);
+      } else if (err instanceof Error) {
+        msg = err.message;
       }
-    } catch (err: unknown) {
-      setAlertMsg('Lỗi kết nối máy chủ: ' + (err instanceof Error ? err.message : String(err)));
+      setAlertMsg('Lỗi: ' + msg);
       setAlertOpen(true);
     } finally {
       setLoading(false);
@@ -616,7 +909,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
 
       {/* Modal Dialog Card */}
       <form
-        className="bg-surface border border-border-subtle rounded-2xl shadow-2xl z-10 w-[940px] max-w-full flex flex-col max-h-[88vh] my-auto animate-in fade-in zoom-in-95 duration-150"
+        className="bg-surface border border-border-subtle rounded-2xl shadow-2xl z-10 w-[940px] max-w-full flex flex-col max-h-[88vh] my-auto animate-in fade-in duration-150"
         onSubmit={handleSubmit}
       >
         {/* Sticky Header */}
@@ -628,13 +921,13 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
             <div>
               <h3 className="text-base font-bold text-main m-0">
                 {initial?.id
-                  ? (form.loai === 'DI' ? 'Cập Nhật Văn Bản Đi' : 'Cập Nhật Văn Bản Đến')
-                  : (form.loai === 'DI' ? 'Thêm Mới Văn Bản Đi' : 'Thêm Mới Văn Bản Đến')}
+                  ? (form.loai === 'MAT' ? 'Cập Nhật Văn Bản Mật' : form.loai === 'DI' ? 'Cập Nhật Văn Bản Đi' : 'Cập Nhật Văn Bản Đến')
+                  : (form.loai === 'MAT' ? 'Thêm Mới Văn Bản Mật' : form.loai === 'DI' ? 'Thêm Mới Văn Bản Đi' : 'Thêm Mới Văn Bản Đến')}
               </h3>
               <p className="text-xs text-muted m-0">
                 {initial?.id
                   ? `Chỉnh sửa thông tin hồ sơ văn bản ${form.so_hieu || ''}`
-                  : (form.loai === 'DI' ? 'Vào sổ công văn đi và quản lý phát hành nội bộ' : 'Tiếp nhận, vào sổ công văn đến và phân phối xử lý nội bộ')}
+                  : (form.loai === 'MAT' ? 'Lưu trữ và phân quyền văn bản mật theo quy định bảo mật' : form.loai === 'DI' ? 'Vào sổ công văn đi và quản lý phát hành nội bộ' : 'Tiếp nhận, vào sổ công văn đến và phân phối xử lý nội bộ')}
               </p>
             </div>
           </div>
@@ -651,22 +944,22 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
           {/* PHẦN 1: TIẾP NHẬN & VÀO SỔ */}
-          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-3.5">
-            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-bold">
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60 gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">
                   <i className="fa-solid fa-inbox" />
                 </span>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0 truncate">
                   1. Tiếp nhận & Vào sổ công văn
                 </h4>
               </div>
-              <span className="text-xs text-muted">Thông tin định danh văn bản</span>
+              <span className="text-xs text-muted shrink-0 text-right">Thông tin định danh văn bản</span>
             </div>
 
             <div className="grid grid-cols-12 gap-3.5">
               {/* Năm */}
-              <div className="col-span-12 sm:col-span-2">
+              <div className={`col-span-12 ${form.loai === 'MAT' ? 'sm:col-span-3' : 'sm:col-span-2'}`}>
                 <label className="block text-xs font-semibold text-secondary mb-1.5">Năm</label>
                 <input
                   type="number"
@@ -676,23 +969,25 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                 />
               </div>
 
-              {/* Số đến / Số đi */}
-              <div className="col-span-12 sm:col-span-3">
-                <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  {form.loai === 'DI' ? 'Số đi' : 'Số đến'} <span className="text-muted font-normal text-xs">(Tự động)</span>
-                </label>
-                <input
-                  readOnly
-                  value={form.so_thu_tu ? `#${form.so_thu_tu}` : 'Tự động cấp tăng dần'}
-                  className="w-full text-sm bg-hover/70 border border-border-subtle rounded-xl px-3 py-2 text-muted font-medium cursor-not-allowed select-none"
-                  title="Số thứ tự được hệ thống tự động sinh tăng dần theo năm"
-                />
-              </div>
+              {/* Số đến / Số đi (Ẩn khi là Văn bản Mật) */}
+              {form.loai !== 'MAT' && (
+                <div className="col-span-12 sm:col-span-3">
+                  <label className="block text-xs font-semibold text-secondary mb-1.5">
+                    {form.loai === 'DI' ? 'Số đi' : 'Số đến'} <span className="text-muted font-normal text-xs">(Tự động)</span>
+                  </label>
+                  <input
+                    readOnly
+                    value={form.so_thu_tu ? `#${form.so_thu_tu}` : 'Đang lấy số...'}
+                    className="w-full text-sm bg-hover/70 border border-border-subtle rounded-xl px-3 py-2 text-main font-semibold cursor-not-allowed select-none"
+                    title="Số thứ tự được hệ thống tự động sinh tăng dần theo năm (chỉ xem, không thể sửa)"
+                  />
+                </div>
+              )}
 
               {/* Ngày đến / Ngày ban hành */}
-              <div className="col-span-12 sm:col-span-4">
+              <div className={`col-span-12 ${form.loai === 'MAT' ? 'sm:col-span-4' : 'sm:col-span-4'}`}>
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  {form.loai === 'DI' ? 'Ngày ban hành' : 'Ngày đến'} <span className="text-danger">*</span>
+                  {form.loai === 'MAT' ? 'Ngày lưu văn bản mật' : form.loai === 'DI' ? 'Ngày ban hành' : 'Ngày đến'} <span className="text-danger">*</span>
                 </label>
                 <input
                   type="date"
@@ -704,14 +999,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
               </div>
 
               {/* Số, ký hiệu */}
-              <div className="col-span-12 sm:col-span-3">
+              <div className={`col-span-12 ${form.loai === 'MAT' ? 'sm:col-span-5' : 'sm:col-span-3'}`}>
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Số, ký hiệu <span className="text-danger">*</span>
+                  {form.loai === 'MAT' ? 'Số, ký hiệu VB mật' : 'Số, ký hiệu'} <span className="text-danger">*</span>
                 </label>
                 <input
                   value={form.so_hieu}
                   onChange={e => setForm({ ...form, so_hieu: e.target.value })}
-                  placeholder="VD: 125/BGDDT-VP"
+                  placeholder={form.loai === 'MAT' ? 'VD: 01/BC-MẬT' : 'VD: 125/BGDDT-VP'}
                   className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main font-medium placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
                   required
                 />
@@ -730,106 +1025,334 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                 />
               </div>
 
-              {/* Danh mục hồ sơ (chia danh mục trước rồi mới chia theo loại văn bản) */}
+              {/* Danh mục hồ sơ */}
               <div className="col-span-12 sm:col-span-4">
-                <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Danh mục hồ sơ
+                <label className="block text-xs font-semibold text-secondary mb-1.5 flex items-center justify-between">
+                  <span>Danh mục hồ sơ <span className="text-rose-500 font-bold">*</span></span>
+                  {form.loai !== 'DEN' && (
+                    <span className="text-[10px] text-primary font-medium">Nội bộ</span>
+                  )}
                 </label>
-                <input
-                  list="folder-types-list"
-                  value={form.danh_muc_ho_so}
-                  onChange={e => setForm({ ...form, danh_muc_ho_so: e.target.value })}
-                  placeholder="VD: Hồ sơ công văn đến..."
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                />
-                <datalist id="folder-types-list">
-                  <option value="Hồ sơ công văn đến năm 2026" />
-                  <option value="Hồ sơ chỉ đạo điều hành năm 2026" />
-                  <option value="Hồ sơ nhân sự & tổ chức" />
-                  <option value="Hồ sơ tài chính & dự án" />
-                </datalist>
+                {form.loai === 'DEN' ? (
+                  <input
+                    type="text"
+                    value={form.danh_muc_ho_so}
+                    onChange={e => {
+                      const newFolder = e.target.value;
+                      setForm({
+                        ...form,
+                        danh_muc_ho_so: newFolder,
+                        ten_loai_van_ban: newFolder.trim() ? form.ten_loai_van_ban : '',
+                      });
+                    }}
+                    placeholder="Nhập danh mục hồ sơ (VD: Hồ sơ công văn đến)..."
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                    required
+                  />
+                ) : (
+                  <select
+                    value={form.danh_muc_ho_so}
+                    onChange={e => {
+                      const newFolder = e.target.value;
+                      setForm({
+                        ...form,
+                        danh_muc_ho_so: newFolder,
+                        ten_loai_van_ban: '', // Khóa nghiệp vụ: Reset loại văn bản để bắt buộc chọn lại theo hồ sơ mới
+                      });
+                    }}
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                    required
+                  >
+                    <option value="">-- Chọn danh mục hồ sơ nội bộ --</option>
+                    {Object.keys(DEFAULT_INTERNAL_FOLDERS).map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                    {form.danh_muc_ho_so && !DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] && (
+                      <option value={form.danh_muc_ho_so}>{form.danh_muc_ho_so}</option>
+                    )}
+                  </select>
+                )}
               </div>
 
               {/* Loại văn bản */}
               <div className="col-span-12 sm:col-span-4">
-                <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Loại văn bản
+                <label className="block text-xs font-semibold text-secondary mb-1.5 flex items-center justify-between">
+                  <span>Loại văn bản <span className="text-rose-500 font-bold">*</span></span>
+                  {!form.danh_muc_ho_so?.trim() ? (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium italic flex items-center gap-1">
+                      <i className="fa-solid fa-lock text-[9px]" /> Cần nhập hồ sơ trước
+                    </span>
+                  ) : (
+                    form.loai !== 'DEN' ? (
+                      <span className="text-[10px] text-primary font-medium">Theo hồ sơ đã chọn</span>
+                    ) : null
+                  )}
                 </label>
-                <input
-                  list="doc-types-list"
-                  value={form.ten_loai_van_ban}
-                  onChange={e => setForm({ ...form, ten_loai_van_ban: e.target.value })}
-                  placeholder="VD: Công văn, Quyết định..."
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                />
-                <datalist id="doc-types-list">
-                  <option value="Công văn" />
-                  <option value="Quyết định" />
-                  <option value="Thông báo" />
-                  <option value="Tờ trình" />
-                  <option value="Kế hoạch" />
-                  <option value="Chỉ thị" />
-                  <option value="Nghị quyết" />
-                  <option value="Báo cáo" />
-                  <option value="Hướng dẫn" />
-                </datalist>
+                {form.loai === 'DEN' ? (
+                  <input
+                    type="text"
+                    disabled={!form.danh_muc_ho_so?.trim()}
+                    value={form.ten_loai_van_ban}
+                    onChange={e => setForm({ ...form, ten_loai_van_ban: e.target.value })}
+                    placeholder={!form.danh_muc_ho_so?.trim() ? "— Vui lòng nhập Danh mục hồ sơ trước —" : "Nhập loại văn bản (VD: Công văn, Quyết định...)"}
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-hover/60"
+                    required
+                  />
+                ) : (
+                  <select
+                    disabled={!form.danh_muc_ho_so?.trim()}
+                    value={form.ten_loai_van_ban}
+                    onChange={e => setForm({ ...form, ten_loai_van_ban: e.target.value })}
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-hover/60"
+                    required
+                  >
+                    <option value="">
+                      {!form.danh_muc_ho_so?.trim()
+                        ? '— Vui lòng chọn danh mục hồ sơ trước —'
+                        : '-- Chọn loại văn bản --'}
+                    </option>
+                    {form.danh_muc_ho_so?.trim() &&
+                      (DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] || DEFAULT_DOC_TYPES).map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    {form.ten_loai_van_ban &&
+                      form.danh_muc_ho_so?.trim() &&
+                      !(DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] || DEFAULT_DOC_TYPES).includes(form.ten_loai_van_ban) && (
+                        <option value={form.ten_loai_van_ban}>{form.ten_loai_van_ban}</option>
+                      )}
+                  </select>
+                )}
               </div>
 
               {/* Phạm vi lưu hành (Issue #82) */}
               <div className="col-span-12 sm:col-span-4">
                 <label className="block text-xs font-semibold text-secondary mb-1.5 flex items-center justify-between">
                   <span>Phạm vi lưu hành</span>
-                  {form.pham_vi === 'HAN_CHE' && (
+                  {(form.pham_vi === 'HAN_CHE' || form.loai === 'MAT') && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 font-bold uppercase">
                       Hạn chế
                     </span>
                   )}
                 </label>
-                <select
-                  value={form.pham_vi}
-                  disabled={Boolean(initial?.id)}
-                  onChange={e => setForm({
-                    ...form,
-                    pham_vi: e.target.value as 'NOI_BO' | 'HAN_CHE',
-                    gui_mail_toan_he_thong: e.target.value === 'HAN_CHE' ? false : form.gui_mail_toan_he_thong,
-                  })}
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <option value="NOI_BO">Nội bộ (Toàn cơ quan)</option>
-                  <option value="HAN_CHE">Hạn chế (Chỉ người nhận xem)</option>
-                </select>
+                {form.loai === 'MAT' ? (
+                  <select
+                    value="HAN_CHE"
+                    disabled
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none transition-fast opacity-80 cursor-not-allowed"
+                    title="Văn bản mật bắt buộc lưu hành ở phạm vi hạn chế"
+                  >
+                    <option value="HAN_CHE">Hạn chế (Chỉ người nhận xem)</option>
+                  </select>
+                ) : (
+                  <select
+                    value={form.pham_vi}
+                    disabled={Boolean(initial?.id) && !isAdmin}
+                    onChange={e => setForm({
+                      ...form,
+                      pham_vi: e.target.value as 'NOI_BO' | 'HAN_CHE',
+                      gui_mail_toan_he_thong: e.target.value === 'HAN_CHE' ? false : form.gui_mail_toan_he_thong,
+                    })}
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-60 disabled:cursor-not-allowed"
+                    title={
+                      Boolean(initial?.id) && !isAdmin
+                        ? 'Chỉ Quản trị viên (Admin) mới có quyền thay đổi phạm vi lưu hành của văn bản sau khi thêm.'
+                        : 'Chọn phạm vi lưu hành'
+                    }
+                  >
+                    <option value="NOI_BO">Nội bộ (Toàn cơ quan)</option>
+                    <option value="HAN_CHE">Hạn chế (Chỉ người nhận xem)</option>
+                  </select>
+                )}
               </div>
             </div>
           </div>
 
           {/* PHẦN 2: NGUỒN BAN HÀNH & NỘI DUNG VĂN BẢN */}
-          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-3.5">
-            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xs font-bold">
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60 gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-6 h-6 rounded-md bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">
                   <i className="fa-solid fa-building-columns" />
                 </span>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0 truncate">
                   2. Nguồn ban hành & Nội dung văn bản
                 </h4>
               </div>
-              <span className="text-xs text-muted">Cơ quan gửi & Trích yếu</span>
+              <span className="text-xs text-muted shrink-0 text-right">Cơ quan gửi & Trích yếu</span>
             </div>
 
             <div className="space-y-3.5">
-              {/* Cơ quan ban hành */}
-              <div>
-                <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Cơ quan / Đơn vị ban hành <span className="text-danger">*</span>
-                </label>
-                <input
-                  value={form.noi_ban_hanh}
-                  onChange={e => setForm({ ...form, noi_ban_hanh: e.target.value })}
-                  placeholder="Ví dụ: Bộ Giáo dục và Đào tạo, UBND Thành phố Hồ Chí Minh, ..."
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                  required
-                />
-              </div>
+              {/* Cơ quan ban hành (Phân định rõ Văn bản Đến vs Văn bản Đi & Mật theo CSDL) */}
+              {form.loai === 'DEN' ? (
+                <div>
+                  <label className="block text-xs font-semibold text-secondary mb-1.5">
+                    Cơ quan / Đơn vị ban hành <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    value={form.noi_ban_hanh}
+                    onChange={e => setForm({ ...form, noi_ban_hanh: e.target.value })}
+                    placeholder="Ví dụ: Bộ Giáo dục và Đào tạo, UBND Thành phố Hồ Chí Minh, ..."
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="block text-xs font-semibold text-secondary m-0">
+                      Đơn vị ban hành (Phòng / Ban nội bộ) <span className="text-danger">*</span>
+                    </label>
+                    <span className="text-[10px] text-muted hidden sm:inline">
+                      (Có thể chọn nhiều đơn vị)
+                    </span>
+                  </div>
+
+                  {/* Thanh tìm kiếm chứa trực tiếp các thẻ phòng ban đã chọn */}
+                  <div className="relative" ref={unitDropdownRef}>
+                    <div
+                      className="w-full min-h-[42px] bg-surface border border-border-subtle rounded-xl p-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-fast cursor-text"
+                      onClick={() => {
+                        unitSearchInputRef.current?.focus();
+                        setIsUnitDropdownOpen(true);
+                      }}
+                    >
+                      <div className="pl-1.5 text-muted text-xs pointer-events-none">
+                        <i className="fa-solid fa-building-columns text-primary/70" />
+                      </div>
+
+                      {/* Các phòng ban đã chọn hiện NGAY TRÊN THANH TÌM KIẾM */}
+                      {selectedUnitsList.map(unitName => (
+                        <span
+                          key={unitName}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-medium animate-fadeIn shrink-0"
+                        >
+                          <span>{unitName}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveUnit(unitName);
+                            }}
+                            className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-rose-500/20 hover:text-rose-600 transition-fast text-[11px] ml-0.5 cursor-pointer"
+                            title={`Bỏ chọn ${unitName}`}
+                          >
+                            <i className="fa-solid fa-xmark text-[10px]" />
+                          </button>
+                        </span>
+                      ))}
+
+                      {/* Ô gõ tìm kiếm co dãn tự nhiên ngay sau các thẻ */}
+                      <input
+                        ref={unitSearchInputRef}
+                        type="text"
+                        value={unitSearch}
+                        onChange={e => {
+                          setUnitSearch(e.target.value);
+                          setIsUnitDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsUnitDropdownOpen(true)}
+                        placeholder={selectedUnitsList.length === 0 ? "Tìm kiếm và chọn phòng / ban..." : "Gõ để tìm thêm..."}
+                        className="flex-1 min-w-[130px] bg-transparent text-sm text-main placeholder:text-muted focus:outline-none px-2 py-0.5"
+                      />
+
+                      {/* Nút xóa nhanh / toggle danh sách */}
+                      <div className="ml-auto flex items-center gap-1 pr-1">
+                        {unitSearch ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setUnitSearch('');
+                              setIsUnitDropdownOpen(true);
+                            }}
+                            className="text-muted hover:text-main text-xs p-1 cursor-pointer"
+                            title="Xóa chữ tìm kiếm"
+                          >
+                            <i className="fa-solid fa-xmark text-xs" />
+                          </button>
+                        ) : selectedUnitsList.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClearAllUnits();
+                            }}
+                            className="text-[11px] text-muted hover:text-rose-500 transition-fast px-1 cursor-pointer"
+                            title="Bỏ chọn tất cả"
+                          >
+                            <i className="fa-solid fa-xmark text-xs" />
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsUnitDropdownOpen(prev => !prev);
+                          }}
+                          className="text-muted hover:text-main text-xs p-1 cursor-pointer"
+                          title="Đóng / mở danh sách"
+                        >
+                          <i className={`fa-solid fa-chevron-down text-[11px] transition-transform ${isUnitDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Popover danh sách phòng ban: Sạch sẽ, không chữ rườm rà */}
+                    {isUnitDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-surface border border-border-subtle rounded-xl shadow-xl z-30 max-h-56 overflow-y-auto p-1.5 animate-fadeIn">
+                        <div className="px-2.5 py-1 text-[11px] text-muted border-b border-border-subtle/50 mb-1">
+                          {unitSearch.trim() ? (
+                            <>Kết quả: <strong className="text-primary">{filteredUnits.length}</strong> phòng/ban</>
+                          ) : (
+                            <>Danh sách phòng/ban ({units.length}):</>
+                          )}
+                        </div>
+
+                        {filteredUnits.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {filteredUnits.map(u => {
+                              const isChosen = selectedUnitsList.includes(u);
+                              return (
+                                <button
+                                  key={u}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isChosen) {
+                                      handleRemoveUnit(u);
+                                    } else {
+                                      handleAddUnit(u);
+                                      setUnitSearch('');
+                                    }
+                                    unitSearchInputRef.current?.focus();
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-fast cursor-pointer ${
+                                    isChosen
+                                      ? 'bg-primary/10 text-primary font-semibold'
+                                      : 'hover:bg-hover text-secondary hover:text-main'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                                    <i className={`fa-solid fa-building-columns text-[10px] ${isChosen ? 'text-primary' : 'text-muted'}`} />
+                                    <span className="truncate">{u}</span>
+                                  </div>
+                                  {isChosen && (
+                                    <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-3 text-center text-xs text-muted">
+                            <i className="fa-solid fa-magnifying-glass text-muted/60 text-base mb-1 block" />
+                            Không tìm thấy phòng/ban nào khớp với "<strong>{unitSearch}</strong>"
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Trích yếu nội dung */}
               <div>
@@ -849,17 +1372,17 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
           </div>
 
           {/* PHẦN 3: KÝ DUYỆT & HIỆU LỰC VĂN BẢN */}
-          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-3.5">
-            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold">
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60 gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold shrink-0">
                   <i className="fa-solid fa-stamp" />
                 </span>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0 truncate">
                   3. Ký duyệt & Hiệu lực văn bản
                 </h4>
               </div>
-              <span className="text-xs text-muted">Thông tin người ký & Trạng thái pháp lý</span>
+              <span className="text-xs text-muted shrink-0 text-right">Thông tin người ký & Trạng thái pháp lý</span>
             </div>
 
             <div className="grid grid-cols-12 gap-3.5">
@@ -1193,17 +1716,17 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
           </div>
 
           {/* PHẦN 4: PHÂN PHỐI XỬ LÝ & TỆP ĐÍNH KÈM */}
-          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4.5 space-y-4">
-            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 rounded-md bg-amber-500/10 text-amber-600 flex items-center justify-center text-xs font-bold">
+          <div className="bg-canvas/40 border border-border-subtle rounded-xl p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border-subtle/60 gap-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-6 h-6 rounded-md bg-amber-500/10 text-amber-600 flex items-center justify-center text-xs font-bold shrink-0">
                   <i className="fa-solid fa-share-nodes" />
                 </span>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-main m-0 truncate">
                   4. Phân phối xử lý & Tệp đính kèm
                 </h4>
               </div>
-              <span className="text-xs text-muted">Điều phối đơn vị & Tải lên tệp</span>
+              <span className="text-xs text-muted shrink-0 text-right">Điều phối đơn vị & Tải lên tệp</span>
             </div>
 
             {form.pham_vi === 'HAN_CHE' && (
@@ -1221,34 +1744,166 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                 <label className="block text-xs font-semibold text-secondary mb-1.5">
                   Đơn vị nhận / chủ trì xử lý
                 </label>
-                <select
-                  value={selectedUnit}
-                  onChange={e => handleUnitChange(e.target.value)}
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                >
-                  <option value="">-- Chọn đơn vị nhận --</option>
-                  {units.map(u => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
+                <div className="relative" ref={recipientUnitDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsRecipientUnitDropdownOpen(prev => !prev)}
+                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main flex items-center justify-between text-left focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast cursor-pointer"
+                  >
+                    <span className={`truncate ${selectedUnit ? 'font-medium text-main' : 'text-muted'}`}>
+                      {selectedUnit || '-- Chọn đơn vị nhận --'}
+                    </span>
+                    <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                      {selectedUnit && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnitChange('');
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.stopPropagation();
+                              handleUnitChange('');
+                            }
+                          }}
+                          className="w-4 h-4 rounded-full flex items-center justify-center hover:bg-rose-500/20 text-muted hover:text-rose-500 transition-fast text-[11px] cursor-pointer"
+                          title="Bỏ chọn đơn vị"
+                        >
+                          <i className="fa-solid fa-xmark text-[10px]" />
+                        </span>
+                      )}
+                      <i className={`fa-solid fa-chevron-down text-muted text-xs transition-transform duration-200 ${isRecipientUnitDropdownOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                  </button>
+
+                  {isRecipientUnitDropdownOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-border-subtle rounded-xl shadow-2xl z-30 overflow-hidden animate-fadeIn">
+                      <div className="p-2 border-b border-border-subtle/70 bg-canvas/40">
+                        <div className="relative">
+                          <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
+                          <input
+                            type="text"
+                            value={recipientUnitSearch}
+                            onChange={e => setRecipientUnitSearch(e.target.value)}
+                            placeholder="Gõ để tìm nhanh đơn vị..."
+                            autoFocus
+                            className="w-full text-xs bg-surface border border-border-subtle rounded-lg pl-7 pr-7 py-1.5 text-main placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                          />
+                          {recipientUnitSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setRecipientUnitSearch('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs"
+                            >
+                              <i className="fa-solid fa-xmark text-[10px]" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="max-h-52 overflow-y-auto p-1 space-y-0.5 custom-scrollbar">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleUnitChange('');
+                            setIsRecipientUnitDropdownOpen(false);
+                            setRecipientUnitSearch('');
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-fast cursor-pointer ${
+                            !selectedUnit ? 'bg-primary/10 text-primary font-semibold' : 'text-muted hover:bg-hover hover:text-main'
+                          }`}
+                        >
+                          <span>-- Chọn đơn vị nhận --</span>
+                          {!selectedUnit && <i className="fa-solid fa-check text-xs text-primary" />}
+                        </button>
+
+                        {filteredRecipientUnits.map(u => {
+                          const isSelected = selectedUnit === u;
+                          return (
+                            <button
+                              key={u}
+                              type="button"
+                              onClick={() => {
+                                handleUnitChange(u);
+                                setIsRecipientUnitDropdownOpen(false);
+                                setRecipientUnitSearch('');
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-fast cursor-pointer ${
+                                isSelected ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-hover text-secondary hover:text-main'
+                              }`}
+                            >
+                              <span className="truncate pr-2">{u}</span>
+                              {isSelected && <i className="fa-solid fa-check text-xs text-primary shrink-0" />}
+                            </button>
+                          );
+                        })}
+
+                        {filteredRecipientUnits.length === 0 && (
+                          <div className="px-3 py-4 text-center text-xs text-muted">
+                            <i className="fa-solid fa-folder-open text-base mb-1 block opacity-50" />
+                            Không tìm thấy đơn vị nào khớp với "{recipientUnitSearch}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="col-span-12 sm:col-span-6">
-                <label className="block text-xs font-semibold text-secondary mb-1.5">
-                  Cán bộ nhận / xử lý
-                </label>
-                {staff.length === 0 ? (
-                  <div className="w-full text-xs text-muted border border-border-subtle rounded-xl p-2.5 bg-surface text-center">
-                    {selectedUnit ? 'Không có cán bộ trong danh sách' : 'Vui lòng chọn đơn vị để hiển thị cán bộ'}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-secondary flex items-center gap-1">
+                    <span>Cán bộ nhận / xử lý</span>
+                    {!selectedUnit ? (
+                      <span className="text-[11px] text-muted font-normal">(Chưa chọn đơn vị)</span>
+                    ) : (
+                      <span className="text-[11px] text-primary font-medium">
+                        ({form.nguoi_nhan.length > 0 ? `Đã chọn ${form.nguoi_nhan.length}/${staff.length}` : `${staff.length} cán bộ`})
+                      </span>
+                    )}
+                  </label>
+                  {selectedUnit && staff.length > 0 && form.nguoi_nhan.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, nguoi_nhan: [] }))}
+                      className="text-[11px] text-muted hover:text-rose-500 transition-colors cursor-pointer"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  )}
+                </div>
+
+                {!selectedUnit ? (
+                  <div className="h-[116px] w-full border border-dashed border-border-subtle/80 rounded-xl bg-canvas/30 p-3 flex flex-col items-center justify-center text-center transition-all select-none">
+                    <div className="w-8 h-8 rounded-full bg-surface border border-border-subtle/60 flex items-center justify-center mb-1.5 shadow-xs text-muted">
+                      <i className="fa-solid fa-lock text-xs" />
+                    </div>
+                    <p className="text-xs font-semibold text-secondary m-0">Vui lòng chọn đơn vị nhận trước</p>
+                    <p className="text-[11px] text-muted m-0 mt-0.5">Danh sách cán bộ sẽ hiển thị theo đơn vị đã chọn</p>
+                  </div>
+                ) : isStaffLoading ? (
+                  <div className="h-[116px] w-full border border-border-subtle rounded-xl bg-surface p-3 flex items-center justify-center text-center gap-2 text-muted">
+                    <i className="fa-solid fa-circle-notch fa-spin text-primary text-sm" />
+                    <span className="text-xs">Đang tải danh sách cán bộ...</span>
+                  </div>
+                ) : staff.length === 0 ? (
+                  <div className="h-[116px] w-full border border-border-subtle rounded-xl bg-surface p-3 flex flex-col items-center justify-center text-center text-muted select-none">
+                    <i className="fa-solid fa-user-slash text-base mb-1 text-muted/60" />
+                    <p className="text-xs font-medium text-secondary m-0">Đơn vị này hiện chưa có cán bộ nào</p>
+                    <p className="text-[11px] text-muted m-0 mt-0.5">Vui lòng chọn đơn vị khác hoặc liên hệ Quản trị viên</p>
                   </div>
                 ) : (
-                  <div className="max-h-28 overflow-y-auto border border-border-subtle rounded-xl p-2 bg-surface space-y-1">
+                  <div className="h-[116px] overflow-y-auto border border-border-subtle rounded-xl p-2 bg-surface space-y-1 custom-scrollbar">
                     {staff.map(s => {
                       const isSelected = form.nguoi_nhan.includes(s.id);
                       return (
                         <label
                           key={s.id}
-                          className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-hover cursor-pointer text-xs text-main"
+                          className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer text-xs transition-colors ${
+                            isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-hover text-main'
+                          }`}
                         >
                           <input
                             type="checkbox"
@@ -1262,10 +1917,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                                   : prev.nguoi_nhan.filter(id => id !== s.id),
                               }));
                             }}
-                            className="rounded border-border-subtle text-primary focus:ring-primary"
+                            className="rounded border-border-subtle text-primary focus:ring-primary cursor-pointer"
                           />
-                          <span className="font-medium">{s.ho_ten || s.full_name || s.username}</span>
-                          <span className="text-xs text-muted">(@{s.username})</span>
+                          <span className="truncate">{s.ho_ten || s.full_name || s.username}</span>
+                          <span className="text-xs text-muted shrink-0">(@{s.username})</span>
                         </label>
                       );
                     })}
@@ -1297,15 +1952,25 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                           </span>
                         )}
                       </div>
-                      <a
-                        href={att.file}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline text-xs shrink-0 ml-2"
-                        title="Xem / Tải về"
-                      >
-                        <i className="fa-solid fa-download" />
-                      </a>
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <a
+                          href={att.file}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-7 h-7 rounded-lg hover:bg-surface-elevated text-primary flex items-center justify-center transition-fast"
+                          title="Xem / Tải về"
+                        >
+                          <i className="fa-solid fa-download text-xs" />
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingAttachment(att.id)}
+                          className="w-7 h-7 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500 hover:text-rose-600 flex items-center justify-center transition-fast cursor-pointer"
+                          title="Xóa tệp đính kèm này"
+                        >
+                          <i className="fa-solid fa-trash-can text-xs" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

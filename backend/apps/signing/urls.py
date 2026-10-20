@@ -30,6 +30,7 @@ urlpatterns = [
 
     # Hồ sơ trình ký (Phase 7, #80)
     path("trinh-ky/", views.TrinhKyListCreateView.as_view(), name="trinh-ky-list"),
+    path("trinh-ky/thong-ke/", views.ThongKeHoSoView.as_view(), name="trinh-ky-thong-ke"),
     path("trinh-ky/<int:pk>/", views.TrinhKyDetailView.as_view(), name="trinh-ky-detail"),
     path("trinh-ky/<int:pk>/tep/", views.TrinhKyTepView.as_view(), name="trinh-ky-tep"),
     path("trinh-ky/<int:pk>/gui/", views.TrinhKyActionView.as_view(action="gui"), name="trinh-ky-gui"),
@@ -56,6 +57,9 @@ urlpatterns = [
 
     # Tìm tài khoản để cấu hình người ký (người quản lý quy trình)
     path("nguoi-dung/", views.NguoiDungView.as_view(), name="nguoi-dung"),
+    path("don-vi/", views.DonViView.as_view(), name="don-vi"),
+    path("thong-bao/", views.ThongBaoView.as_view(), name="thong-bao"),
+    path("tai-lieu/", views.TaiLieuView.as_view(), name="tai-lieu"),
     # Hỗ trợ giao diện: người dùng hiện tại, chọn văn bản đi
     path("toi/", views.ToiView.as_view(), name="toi"),
     path("van-ban-di/", views.VanBanDiView.as_view(), name="van-ban-di"),

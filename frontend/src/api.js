@@ -1,6 +1,6 @@
 import apiClient, { apiClientBlob } from "./lib/apiClient";
 
-const apiPath = (path) => `/api${path}`;
+const apiPath = (path) => `/api/ai${path}`;
 
 export async function uploadDocument(file) {
   const formData = new FormData();
@@ -18,9 +18,10 @@ export async function getUploadProgress(jobId) {
   return apiClient(apiPath(`/upload/progress/${encodeURIComponent(jobId)}`));
 }
 
-export async function askQuestion(question, history = [], category = null) {
+export async function askQuestion(question, history = [], category = null, filename = null) {
   const payload = { question, history };
   if (category) payload.category = category;
+  if (filename) payload.filename = filename;
   return apiClient.post(apiPath("/chat"), payload);
 }
 
@@ -53,9 +54,9 @@ export async function getDocumentFile(filename) {
 }
 
 export async function getAISettings() {
-  return apiClient(apiPath("/settings/ai"));
+  return apiClient(apiPath("/settings"));
 }
 
 export async function updateAISettings(settings) {
-  return apiClient.post(apiPath("/settings/ai"), settings);
+  return apiClient.post(apiPath("/settings"), settings);
 }

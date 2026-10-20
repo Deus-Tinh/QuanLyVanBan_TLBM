@@ -1,15 +1,16 @@
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import connections, models, router, transaction
-from django.db.models import Max, Q, Value
+from django.db.models import F, Func, Max, Q, Value
 from django.db.models.functions import Lower, Trim
 from django.db.models.lookups import Exact
 
+# DDL dùng DEFAULT now() (thời điểm bắt đầu giao dịch), khác STATEMENT_TIMESTAMP() của Now().
+DB_NOW = Func(function="now", output_field=models.DateTimeField())
+
 
 class HoSo(models.Model):
-    stt_uu_tien = models.PositiveIntegerField(
-        unique=True, validators=[MinValueValidator(1)]
-    )
+    stt_uu_tien = models.IntegerField(unique=True, validators=[MinValueValidator(1)])
     so_ky_hieu = models.CharField(max_length=255, unique=True)
     ten_ho_so = models.CharField(max_length=255)
     nguoi_lap = models.ForeignKey(
@@ -20,9 +21,9 @@ class HoSo(models.Model):
     )
     ngay_lap = models.DateTimeField(null=True, blank=True)
     ghi_chu = models.TextField(null=True, blank=True)
-    is_he_thong = models.BooleanField(default=False, editable=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    is_he_thong = models.BooleanField(default=False, db_default=False, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_default=DB_NOW)
+    updated_at = models.DateTimeField(auto_now=True, db_default=DB_NOW)
 
     class Meta:
         db_table = "records_hoso"
@@ -41,7 +42,7 @@ class HoSo(models.Model):
             ),
             models.UniqueConstraint(
                 fields=["is_he_thong"],
-                condition=Q(is_he_thong=True),
+                condition=Q(Exact(F("is_he_thong"), Value(True))),
                 name="uq_records_hoso_he_thong",
             ),
         ]
@@ -101,8 +102,8 @@ class LoaiVanBan(models.Model):
     ten_loai = models.CharField(max_length=255)
     ngay_lap = models.DateTimeField(null=True, blank=True)
     ghi_chu = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_default=DB_NOW)
+    updated_at = models.DateTimeField(auto_now=True, db_default=DB_NOW)
 
     class Meta:
         db_table = "records_loaivanban"

@@ -1,4 +1,4 @@
-﻿import { ActivePageId } from '@app-types/navigation';
+import { ActivePageId } from '@app-types/navigation';
 
 export const pageIdToPath = (pageId: ActivePageId): string => {
   switch (pageId) {
