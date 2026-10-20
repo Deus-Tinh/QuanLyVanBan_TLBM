@@ -4,6 +4,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
+from accounts.models import Position
 from signing import enums
 from signing.errors import ImmutableEvidenceError
 from signing.models import (
@@ -63,14 +64,16 @@ class Base(TestCase):
 
 class ProcessStepSignerTests(Base):
     def test_exactly_one_of_person_or_position(self):
+        position = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Chức vụ kiểm tra"
+        )
         SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, thu_tu=1)
-        chuc_vu = tao_chuc_vu()
-        SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, chuc_vu=chuc_vu, thu_tu=2)
+        SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, chuc_vu=position, thu_tu=2)
         with self.assertRaises(IntegrityError), transaction.atomic():
             SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, thu_tu=3)
         with self.assertRaises(IntegrityError), transaction.atomic():
             SigningProcessStepSigner.objects.create(
-                buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, chuc_vu=chuc_vu, thu_tu=4
+                buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, chuc_vu=position, thu_tu=4
             )
 
 

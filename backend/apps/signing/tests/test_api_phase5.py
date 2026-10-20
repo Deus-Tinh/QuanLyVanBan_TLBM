@@ -7,6 +7,7 @@ from django.contrib.auth.models import Group, Permission
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from accounts.models import Position
 from signing import enums
 from signing.models import SigningAuditLog, SigningKey, SigningProcess
 from signing.permissions import co_quyen
@@ -28,6 +29,9 @@ class ApiBase(TestCase):
     def setUp(self):
         self.u1 = User.objects.create_user("u1")
         self.u2 = User.objects.create_user("u2")
+        self.position = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Trưởng phòng"
+        )
         # u1: quản lý quy trình và ký; u2: chỉ xem và ký
         cap_quyen(self.u1, "view_trinhky", "manage_signing_process", "sign_trinhky")
         cap_quyen(self.u2, "view_trinhky", "sign_trinhky")
@@ -45,7 +49,7 @@ class ProcessApiTests(ApiBase):
                 {"cap_ky": 1, "ten_cap_ky": "Trưởng phòng", "thu_tu": 1,
                  "nguoi_ky": [{"nguoi_ky": self.u2.pk, "thu_tu": 1}]},
                 {"cap_ky": 2, "ten_cap_ky": "Giám đốc", "thu_tu": 2,
-                 "nguoi_ky": [{"chuc_vu_id": self.chuc_vu.pk, "thu_tu": 1, "vai_tro_ky": "KY_NHAY", "chan_ky_chinh": False}]},
+                 "nguoi_ky": [{"chuc_vu_id": self.position.pk, "thu_tu": 1, "vai_tro_ky": "KY_NHAY", "chan_ky_chinh": False}]},
             ],
         }
         data.update(kw)
@@ -82,7 +86,7 @@ class ProcessApiTests(ApiBase):
 
     def test_signer_person_and_position_together_rejected(self):
         data = self.payload("QT9")
-        data["cap_ky"][0]["nguoi_ky"][0]["chuc_vu_id"] = self.chuc_vu.pk
+        data["cap_ky"][0]["nguoi_ky"][0]["chuc_vu_id"] = self.position.pk
         response = self.c1.post(f"{BASE}/quy-trinh/", data, format="json")
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["code"], "nguoi_ky_hoac_chuc_vu")
@@ -93,6 +97,44 @@ class ProcessApiTests(ApiBase):
         response = self.c1.post(f"{BASE}/quy-trinh/", self.payload(), format="json")
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.data["code"], "quy_trinh_trung_ma")
+
+    def test_missing_reference_ids_return_400_without_writes_or_audit(self):
+        admin = User.objects.create_superuser("signing_reference_admin")
+        client = APIClient()
+        client.force_authenticate(admin)
+
+        missing_position = self.payload("QT_MISSING_POSITION")
+        missing_position["cap_ky"][1]["nguoi_ky"][0]["chuc_vu_id"] = 987654321
+        missing_step_unit = self.payload("QT_MISSING_STEP_UNIT")
+        missing_step_unit["cap_ky"][0]["don_vi_id"] = 987654321
+        missing_process_unit = self.payload("QT_MISSING_PROCESS_UNIT", pham_vi="PHONG_BAN")
+        missing_process_unit["don_vi_ap_dung_id"] = 987654321
+        cases = (
+            (
+                "QT_MISSING_POSITION",
+                missing_position,
+                "chuc_vu_id",
+                "chuc_vu_khong_ton_tai",
+                "Chức vụ không tồn tại.",
+            ),
+            ("QT_MISSING_STEP_UNIT", missing_step_unit, "don_vi_id", "don_vi_khong_ton_tai", "Đơn vị không tồn tại."),
+            (
+                "QT_MISSING_PROCESS_UNIT",
+                missing_process_unit,
+                "don_vi_ap_dung_id",
+                "don_vi_khong_ton_tai",
+                "Đơn vị không tồn tại.",
+            ),
+        )
+
+        for ma, payload, field, expected_code, message in cases:
+            with self.subTest(field=field):
+                response = client.post(f"{BASE}/quy-trinh/", payload, format="json")
+                self.assertEqual(response.status_code, 400, response.data)
+                self.assertEqual(response.data["code"], expected_code)
+                self.assertEqual(response.data["fields"], {field: [message]})
+                self.assertFalse(SigningProcess.objects.filter(ma_quy_trinh=ma).exists())
+                self.assertFalse(SigningAuditLog.objects.filter(loai_doi_tuong="signing_process").exists())
 
     def test_non_manager_sees_only_active_processes(self):
         body = self.create()
@@ -257,7 +299,7 @@ class PermissionApiTests(ApiBase):
         self.assertEqual(r.status_code, 201, r.data)
 
     def test_superuser_allowed_without_explicit_permission(self):
-        admin = User.objects.create_superuser("admin")
+        admin = User.objects.create_superuser("signing_superuser_test")
         client = APIClient()
         client.force_authenticate(admin)
         self.assertEqual(client.post(f"{BASE}/quy-trinh/{self.process['id']}/kich-hoat/").status_code, 200)

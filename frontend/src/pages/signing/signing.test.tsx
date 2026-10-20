@@ -24,6 +24,8 @@ vi.mock('@lib/signing/api', async () => {
     xoaQuyTrinh: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
   } };
 });
+// pdfjs-dist cần DOMMatrix/canvas của trình duyệt; jsdom không có, nên chỉ thay lớp vẽ PDF.
+vi.mock('@lib/signing/pdf', () => ({ moPdf: vi.fn(), veTrang: vi.fn() }));
 const api = vi.mocked(signingApi);
 
 const TOI: NguoiDungHienTai = {

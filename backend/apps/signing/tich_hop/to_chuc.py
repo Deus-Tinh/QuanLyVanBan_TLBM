@@ -7,9 +7,6 @@ Hợp đồng:
   đang hoạt động giữ chức vụ trong phạm vi (plan mục 3.2). Một ứng viên thì tự gán; nhiều ứng viên thì người tạo
   chọn; không có ai thì chặn gửi.
 
-- `kiem_tra_don_vi(don_vi_id, truong)`, `kiem_tra_chuc_vu(chuc_vu_id, truong)`: mã đơn vị/chức vụ phải có trong
-  `organizations_donvi` / `accounts_position`, không có thì lỗi 400 (thay cho lỗi khóa ngoại của CSDL).
-
 Dữ liệu thật của Nhóm 7 trên staging: Employee (`ho_ten`, `chuc_vu`, `don_vi`), `accounts.Position`,
 `organizations.DonVi`. Các cột `chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id` của Trình ký là FK theo DDL
 (migration 0010). Model người dùng thiếu `chuc_vu`/`don_vi` thì người ký theo chức vụ không có ứng viên.
@@ -17,13 +14,11 @@ Dữ liệu thật của Nhóm 7 trên staging: Employee (`ho_ten`, `chuc_vu`, `
 
 import logging
 
-from accounts.models import Position
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from organizations.models import DonVi
 
 from .. import enums
-from ..errors import SigningError
 from ..permissions import QUAN_LY_QUY_TRINH, co_quyen
 
 logger = logging.getLogger(__name__)
@@ -36,18 +31,6 @@ def ten_hien_thi(nguoi_dung):
 def ten_chuc_vu(nguoi_dung):
     chuc_vu = getattr(nguoi_dung, "chuc_vu", None)
     return (getattr(chuc_vu, "name", "") or getattr(chuc_vu, "ten", "") or "") if chuc_vu else ""
-
-
-def kiem_tra_don_vi(don_vi_id, truong):
-    if don_vi_id is not None and not DonVi.objects.filter(pk=don_vi_id).exists():
-        raise SigningError(code="don_vi_khong_ton_tai", detail="Đơn vị không tồn tại.",
-                           fields={truong: ["Không tồn tại."]})
-
-
-def kiem_tra_chuc_vu(chuc_vu_id, truong):
-    if chuc_vu_id is not None and not Position.objects.filter(pk=chuc_vu_id).exists():
-        raise SigningError(code="chuc_vu_khong_ton_tai", detail="Chức vụ không tồn tại.",
-                           fields={truong: ["Không tồn tại."]})
 
 
 def ten_don_vi(nguoi_dung):

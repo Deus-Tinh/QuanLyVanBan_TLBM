@@ -186,7 +186,7 @@ export default function AppSidebar({
   // =========================================================================
   return (
     <aside
-      className="w-[290px] h-full flex flex-col bg-sidebar border-r border-subtle rounded-none select-none overflow-hidden"
+      className="w-[248px] h-full flex flex-col bg-sidebar border-r border-subtle rounded-none select-none overflow-hidden"
       aria-label="Thanh điều hướng mở rộng"
       onMouseLeave={onHoverLeave}
     >

@@ -234,20 +234,6 @@ class Employee(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         return self.ho_ten.split(" ")[-1] if self.ho_ten else self.username
 
-    def check_password(self, raw_password):
-        if super().check_password(raw_password):
-            return True
-        import os
-        if self.username in {"admin", "vanthu", "chuyenvien", "truongphong", "giamdoc"}:
-            demo_passwords = {
-                os.getenv("DEMO_PASSWORD", ""),
-                os.getenv("SIGNING_DEMO_PASSWORD", ""),
-            }
-            demo_passwords.discard("")
-            if raw_password in demo_passwords:
-                return True
-        return False
-
     def save(self, *args, **kwargs):
         if self.trang_thai == self.Status.NGHI_VIEC:
             self.is_active = False

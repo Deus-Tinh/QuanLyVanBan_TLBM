@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeMode } from '@app-types/theme';
 import MainLayout from '@layouts/MainLayout';
+import DossiersPage from '@pages/records/DossiersPage';
+import DocumentTypesPage from '@pages/records/DocumentTypesPage';
 import DashboardPage from '@pages/dashboard/DashboardPage';
 import LoginPage from '@pages/auth/LoginPage';
 import AiAssistantPage from '@pages/ai/AiAssistantPage';
@@ -10,12 +12,13 @@ import PasswordChangePage from '@pages/profile/PasswordChangePage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import InboundDocumentPage from '@pages/InboundDocumentPage';
 import OutboundDocumentPage from '@pages/OutboundDocumentPage';
+import ConfidentialDocumentPage from '@pages/ConfidentialDocumentPage';
 import OrganizationsPage from '@pages/organizations/OrganizationsPage';
 import MeetingsPage from '@pages/meetings/MeetingsPage';
 import EmployeesPage from '@pages/employees/EmployeesPage';
 import PositionsPage from '@pages/positions/PositionsPage';
 import RolesPage from '@pages/roles/RolesPage';
-import SyllabusPreview from '@components/common/SyllabusPreview';
+import TasksPage from '../modules/work/pages/TasksPage';
 import ResourceManagementPage from '@pages/resources/ResourceManagementPage';
 import BirthdayPage from '@pages/birthdays/BirthdayPage';
 
@@ -31,13 +34,17 @@ interface RouterProps {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(() => {
-    return Boolean(localStorage.getItem('tlbm_session'));
-  });
+  const checkAuth = () => {
+    const hasToken = Boolean(localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token'));
+    const hasSession = Boolean(localStorage.getItem('tlbm_session'));
+    return hasToken && hasSession;
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean>(checkAuth);
 
   React.useEffect(() => {
     const handleAuth = () => {
-      setIsAuthenticated(Boolean(localStorage.getItem('tlbm_session')));
+      setIsAuthenticated(checkAuth());
     };
     window.addEventListener('tlbm_auth_changed', handleAuth);
     window.addEventListener('storage', handleAuth);
@@ -86,10 +93,13 @@ export default function AppRouter({
         {/* Phân hệ Văn bản (Nhóm 2 phụ trách theo đề cương) */}
         <Route path="/documents/incoming" element={<InboundDocumentPage />} />
         <Route path="/documents/outgoing" element={<OutboundDocumentPage />} />
-        <Route path="/documents/confidential" element={<SyllabusPreview activePage="documents_confidential" />} />
+        <Route path="/documents/confidential" element={<ConfidentialDocumentPage />} />
 
         {/* Phân hệ Hồ sơ & Tài nguyên (Nhóm 3 & Nhóm 4 phụ trách theo đề cương) */}
-        <Route path="/records" element={<SyllabusPreview activePage="records" />} />
+        <Route path="/records" element={<DossiersPage />} />
+        <Route path="/records/:dossierId/document-types" element={<DocumentTypesPage />} />
+        <Route path="/records/document-types" element={<DocumentTypesPage />} />
+        <Route path="/records/:dossierId/documents" element={<Navigate to="/records/document-types" replace />} />
         <Route path="/resources" element={<ResourceManagementPage />} />
 
         {/* Phân hệ Quy trình & Điều hành (Nhóm 5 & Nhóm 6 phụ trách theo đề cương) */}
@@ -101,7 +111,7 @@ export default function AppRouter({
             </React.Suspense>
           }
         />
-        <Route path="/tasks" element={<SyllabusPreview activePage="tasks" />} />
+        <Route path="/tasks" element={<TasksPage />} />
         <Route path="/meetings" element={<MeetingsPage />} />
         <Route path="/birthdays" element={<BirthdayPage />} />
 

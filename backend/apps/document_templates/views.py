@@ -1,17 +1,17 @@
 import io
-from datetime import datetime
+from datetime import datetime, date
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from .selectors import visible_resources
 from .filters import TaiLieuChiTietFilter
 from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment
 from .serializers import (
@@ -33,6 +33,7 @@ class DanhMucTaiLieuViewSet(viewsets.ModelViewSet):
     queryset = DanhMucTaiLieu.objects.select_related('nguoi_lap').all()
     serializer_class = DanhMucTaiLieuSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['ten_tai_lieu', 'ky_hieu', 'ghi_chu']
     ordering_fields = ['stt_uu_tien', 'id', 'created_at', 'ten_tai_lieu']
@@ -121,6 +122,7 @@ class LoaiTaiLieuViewSet(viewsets.ModelViewSet):
     queryset = LoaiTaiLieu.objects.select_related('dm_tai_lieu').all()
     serializer_class = LoaiTaiLieuSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['dm_tai_lieu', 'is_public']
     search_fields = ['ten_loai', 'ghi_chu']
@@ -140,6 +142,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
     """
     serializer_class = TaiLieuChiTietSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TaiLieuChiTietFilter
     search_fields = ['tieu_de', 'ky_hieu', 'noi_ban_hanh', 'ghi_chu']
@@ -151,28 +154,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
             'dm_tai_lieu', 'nguoi_tao'
         ).prefetch_related('loai_tai_lieu', 'attachments').all()
 
-        user = self.request.user
-        # Người dùng chưa đăng nhập: chỉ thấy tài liệu công khai (TAT_CA)
-        if not user or not user.is_authenticated:
-            return qs.filter(hien_thi='TAT_CA')
-
-        # Quản trị viên và Staff: thấy toàn bộ
-        if user.is_superuser or user.is_staff:
-            return qs
-
-        # Người dùng đăng nhập: thấy tài liệu TAT_CA, hoặc do chính mình tạo, hoặc cùng đơn vị/phòng ban
-        user_dept = ""
-        if hasattr(user, "profile"):
-            user_dept = getattr(user.profile, "department", "")
-        user_don_vi_id = getattr(user, "don_vi_id", None)
-
-        q_filter = Q(hien_thi='TAT_CA') | Q(nguoi_tao=user)
-        if user_don_vi_id:
-            q_filter |= Q(hien_thi='NOI_BO_PHONG_BAN', don_vi_id=user_don_vi_id)
-        if user_dept:
-            q_filter |= Q(hien_thi='NOI_BO_PHONG_BAN', nguoi_tao__profile__department=user_dept)
-
-        return qs.filter(q_filter).distinct()
+        return visible_resources(qs, self.request.user)
 
     def perform_create(self, serializer):
         kwargs = {}
@@ -371,9 +353,11 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
     queryset = ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).select_related('document', 'nguoi_tao')
     serializer_class = ChiTietTaiLieuAttachmentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['document']
     search_fields = ['name']
+    ordering_fields = ['id', 'created_at', 'name', 'file_size']
+    ordering = ['id']
 
     def perform_create(self, serializer):
         kwargs = {}
@@ -384,5 +368,115 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.is_deleted = True
         instance.save()
+
+    @action(detail=True, methods=['get'], url_path='view')
+    def view_file(self, request, pk=None):
+        """
+        Mở xem trực tiếp tệp trong tab trình duyệt (inline display, không bắt buộc tải về)
+        """
+        import os
+        import mimetypes
+        from django.conf import settings
+        from django.http import FileResponse, Http404
+
+        att = self.get_object()
+        file_url = att.path
+        rel_path = file_url.replace('/media/', '', 1) if file_url.startswith('/media/') else file_url
+        disk_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+        if not os.path.exists(disk_path):
+            raise Http404("Tệp không tồn tại trên máy chủ")
+
+        content_type, _ = mimetypes.guess_type(disk_path)
+        if not content_type:
+            ext = att.name.split('.')[-1].lower() if '.' in att.name else ''
+            if ext == 'pdf':
+                content_type = 'application/pdf'
+            elif ext in ['xlsx', 'xls']:
+                content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if ext == 'xlsx' else 'application/vnd.ms-excel'
+            elif ext in ['png', 'jpg', 'jpeg']:
+                content_type = f'image/{ext}'
+            else:
+                content_type = 'application/octet-stream'
+
+        response = FileResponse(open(disk_path, 'rb'), content_type=content_type, as_attachment=False)
+        response['Content-Disposition'] = f'inline; filename="{att.name}"'
+        return response
+
+    @action(detail=True, methods=['get'], url_path='preview')
+    def preview(self, request, pk=None):
+        """
+        API xem trước chi tiết tệp đính kèm:
+        - Excel (.xlsx, .xls): đọc dữ liệu các sheet trả về mảng bảng tính JSON
+        - PDF: trả về thông tin và URL trực tiếp
+        - Image: trả về thông tin và URL trực tiếp
+        - Khác: trả về thông tin tệp
+        """
+        att = self.get_object()
+        file_name = att.name
+        ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
+        file_url = att.path
+
+        if ext in ['xlsx', 'xls']:
+            sheets_data = []
+            try:
+                from django.conf import settings
+                import os
+                rel_path = file_url.replace('/media/', '', 1) if file_url.startswith('/media/') else file_url
+                disk_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+                if os.path.exists(disk_path):
+                    wb = openpyxl.load_workbook(disk_path, data_only=True)
+                    for s_name in wb.sheetnames[:5]:
+                        ws = wb[s_name]
+                        rows_data = []
+                        for row in ws.iter_rows(max_row=100, max_col=26, values_only=True):
+                            row_vals = [
+                                cell.strftime('%d/%m/%Y') if isinstance(cell, (datetime, date))
+                                else str(cell) if cell is not None
+                                else ""
+                                for cell in row
+                            ]
+                            if any(v != "" for v in row_vals):
+                                rows_data.append(row_vals)
+                        sheets_data.append({
+                            'name': s_name,
+                            'rows': rows_data
+                        })
+                    wb.close()
+            except Exception:
+                pass
+            return Response({
+                'id': att.id,
+                'name': att.name,
+                'file_type': 'EXCEL',
+                'file_size': att.file_size,
+                'file_url': file_url,
+                'sheets': sheets_data
+            })
+
+        if ext == 'pdf':
+            return Response({
+                'id': att.id,
+                'name': att.name,
+                'file_type': 'PDF',
+                'file_size': att.file_size,
+                'file_url': file_url,
+            })
+
+        if ext in ['png', 'jpg', 'jpeg', 'webp', 'gif']:
+            return Response({
+                'id': att.id,
+                'name': att.name,
+                'file_type': 'IMAGE',
+                'file_size': att.file_size,
+                'file_url': file_url,
+            })
+
+        return Response({
+            'id': att.id,
+            'name': att.name,
+            'file_type': ext.upper() or 'DOCUMENT',
+            'file_size': att.file_size,
+            'file_url': file_url,
+        })
 
 
