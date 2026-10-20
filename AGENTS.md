@@ -132,7 +132,7 @@ Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
   - Một nhánh không gom nhiều issue; phát sinh vấn đề khác trong lúc làm thì mở issue mới và nhánh mới.
 - **Mỗi PR gắn issue của nhánh.** PR vào `staging`, mô tả có dòng `Closes #<số>` (hoặc `Refs #<số>` khi issue chưa xong hẳn). PR không gắn issue thì không merge.
 - **Vòng đời nhánh kết thúc khi merge vào `staging`.**
-  - Merge xong nhánh bị xoá; issue tự đóng qua `Closes #`.
+  - Merge xong người merge xoá nhánh (nút Delete branch trên PR); issue tự đóng qua `Closes #`.
   - Không tiếp tục commit lên nhánh đã merge. Sửa tiếp hoặc lỗi phát sinh sau merge: issue mới, nhánh mới từ `staging`.
   - Không dùng nhánh nhóm dài hạn làm nhánh trung gian; PR đi thẳng vào `staging`.
 - **Giữ nhánh ngắn để tránh conflict.**

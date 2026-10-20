@@ -26,7 +26,7 @@
 - Mở issue trước khi code; issue có label nhóm (`nhom-1` … `nhom-8`) và milestone.
 - Nhánh tạo từ `staging` mới nhất, tên `<loại>/<số-issue>-<mô-tả-ngắn>` (ví dụ `fix/164-tim-kiem-ho-so`); một nhánh chỉ phục vụ một issue.
 - Mô tả PR có dòng `Closes #<số>` hoặc `Refs #<số>`. PR không gắn issue thì không merge.
-- Nhánh kết thúc khi merge vào `staging` và được xoá; việc tiếp theo mở issue và nhánh mới. Không dùng nhánh nhóm dài hạn.
+- Nhánh kết thúc khi merge vào `staging`, người merge xoá nhánh; việc tiếp theo mở issue và nhánh mới. Không dùng nhánh nhóm dài hạn.
 - Chi tiết: `AGENTS.md` mục 8.
 
 ## 2. Label và milestone
