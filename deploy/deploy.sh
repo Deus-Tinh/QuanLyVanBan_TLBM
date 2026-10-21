@@ -165,6 +165,7 @@ validate_external_root() {
 validate_external_root DJANGO_MEDIA_ROOT "${DJANGO_MEDIA_ROOT:-}"
 validate_external_root SIGNING_DOCUMENT_ROOT "${SIGNING_DOCUMENT_ROOT:-}"
 validate_external_root AI_DATA_DIR "${AI_DATA_DIR:-}"
+validate_external_root DOCUMENT_STORAGE_ROOT "${DOCUMENT_STORAGE_ROOT:-}"
 BACKUP_PARENT="$BASE/backups"
 mkdir -p "$BACKUP_PARENT"
 BACKUP_PARENT=$(readlink -f "$BACKUP_PARENT") || { echo "Khong xac dinh duoc thu muc backup rieng."; exit 1; }
@@ -183,6 +184,7 @@ BACKUP_JSON=$("$PY" "$BACKUP_TOOL" backup \
   --media-dir "$DJANGO_MEDIA_ROOT" \
   --signing-dir "$SIGNING_DOCUMENT_ROOT" \
   --ai-dir "$AI_DATA_DIR" \
+  --storage-dir "$DOCUMENT_STORAGE_ROOT" \
   --private-config "$ENVF" \
   --include-private-config \
   --files-quiesced \
