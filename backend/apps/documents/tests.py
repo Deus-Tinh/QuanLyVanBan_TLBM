@@ -1,9 +1,11 @@
 """Tests cho Module Văn Bản — Kiến trúc 2 Model (VanBanDen, VanBanDi)."""
 
+import atexit
 import io
+import shutil
 import tempfile
+from pathlib import Path
 from django.contrib.auth import get_user_model
-User = get_user_model()
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -49,6 +51,11 @@ from documents.services import (
     import_from_excel,
     log_document_view,
 )
+
+User = get_user_model()
+
+TEMP_STORAGE_ROOT = tempfile.mkdtemp(prefix="documents-tests-")
+atexit.register(shutil.rmtree, TEMP_STORAGE_ROOT, ignore_errors=True)
 
 
 class GenerateSoThuTuTests(TestCase):
@@ -255,7 +262,7 @@ class DocumentFilterTests(TestCase):
         self.assertEqual(f_kw.qs.count(), 1)
 
 
-@override_settings(MEDIA_ROOT=tempfile.gettempdir())
+@override_settings(DOCUMENT_STORAGE_ROOT=TEMP_STORAGE_ROOT)
 class DocumentAPITests(TestCase):
     """Test API endpoints (hỗ trợ cả unified endpoint và dedicated endpoints)."""
 
@@ -352,7 +359,7 @@ class DocumentAPITests(TestCase):
 
     def test_attachment_upload_path_by_document_type(self):
         """Kiểm tra file đính kèm được tự động phân vào folder: den, di theo phân loại: thuong, han_che."""
-        # 1. Văn bản Đến -> 02_documents/den/thuong/
+        # 1. Văn bản Đến -> van-ban-den/YYYY/MM/DD/<uuid>.pdf
         file_den = SimpleUploadedFile("congvan_den.pdf", b"Test content den", content_type="application/pdf")
         att_den = VanBanDenAttachment.objects.create(
             document=self.doc,
@@ -360,13 +367,13 @@ class DocumentAPITests(TestCase):
             name="congvan_den.pdf",
             file_size=16,
         )
-        self.assertTrue(att_den.file.name.startswith("02_documents/den/thuong/"))
-        parts_den = att_den.file.name.split("/")
-        self.assertEqual(len(parts_den), 7)
-        self.assertEqual(parts_den[1], "den")
-        self.assertEqual(parts_den[2], "thuong")
+        today = timezone.localdate()
+        self.assertRegex(att_den.file.name, rf"^van-ban-den/{today:%Y/%m/%d}/[0-9a-f]{{32}}\.pdf$")
+        self.assertEqual((Path(TEMP_STORAGE_ROOT) / att_den.file.name).read_bytes(), b"Test content den")
+        self.assertEqual(att_den.file.url, f"/media/{att_den.file.name}")
+        self.assertEqual(att_den.name, "congvan_den.pdf")
 
-        # 2. Văn bản Đi -> 02_documents/di/thuong/
+        # 2. Văn bản Đi -> van-ban-di/YYYY/MM/DD/<uuid>.pdf
         doc_di = VanBanDi.objects.create(
             nam=2026, so_hieu="10/TB-TLBM", trich_yeu="Thông báo đi", nguoi_tao=self.user
         )
@@ -377,11 +384,48 @@ class DocumentAPITests(TestCase):
             name="thongbao_di.pdf",
             file_size=15,
         )
-        self.assertTrue(att_di.file.name.startswith("02_documents/di/thuong/"))
-        parts_di = att_di.file.name.split("/")
-        self.assertEqual(len(parts_di), 7)
-        self.assertEqual(parts_di[1], "di")
-        self.assertEqual(parts_di[2], "thuong")
+        self.assertRegex(att_di.file.name, rf"^van-ban-di/{today:%Y/%m/%d}/[0-9a-f]{{32}}\.pdf$")
+        self.assertTrue((Path(TEMP_STORAGE_ROOT) / att_di.file.name).is_file())
+
+    def test_create_with_attachment_stores_in_shared_tree_and_downloads(self):
+        self.user.is_staff = True
+        self.user.save()
+        response = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN", "nam": 2026, "so_hieu": "55/CV-TEST", "trich_yeu": "Có tệp",
+                "files": SimpleUploadedFile("Công văn.PDF", b"%PDF-1.4 noi dung", content_type="application/pdf"),
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        att = VanBanDenAttachment.objects.get(document_id=response.data["id"])
+        self.assertEqual(att.name, "Công văn.PDF")
+        self.assertRegex(att.file.name, r"^van-ban-den/\d{4}/\d{2}/\d{2}/[0-9a-f]{32}\.pdf$")
+        download = self.client.get(f"/api/documents/{att.document_id}/attachments/{att.id}/download/")
+        self.assertEqual(download.status_code, status.HTTP_200_OK)
+        self.assertEqual(download.content, b"%PDF-1.4 noi dung")
+
+    def test_create_rejects_disallowed_extension_without_creating_document(self):
+        self.user.is_staff = True
+        self.user.save()
+        before = VanBanDen.objects.count()
+        response = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN", "nam": 2026, "so_hieu": "56/CV-TEST", "trich_yeu": "Tệp sai định dạng",
+                "files": SimpleUploadedFile("chay.exe", b"MZ", content_type="application/octet-stream"),
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(VanBanDen.objects.count(), before)
+        self.assertFalse(VanBanDenAttachment.objects.exists())
+
+    def test_download_missing_file_returns_404(self):
+        att = VanBanDenAttachment.objects.create(document=self.doc, file="van-ban-den/2026/01/01/khong-con.pdf", name="a.pdf")
+        response = self.client.get(f"/api/documents/{self.doc.id}/attachments/{att.id}/download/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_dedicated_endpoints(self):
         """Kiểm tra các endpoint chuyên biệt /api/documents/den/, /di/."""
@@ -789,6 +833,7 @@ class DocumentPermissionOption2Tests(TestCase):
         self.assertEqual(doc_b.link_thay_the, "")
 
 
+@override_settings(DOCUMENT_STORAGE_ROOT=TEMP_STORAGE_ROOT)
 class RestrictedDocumentSecurityIssue82Tests(TestCase):
     """
     Bộ kiểm thử toàn diện cho Issue #82 & PR #92:
@@ -1363,12 +1408,12 @@ class VanBanMatTests(TestCase):
         self.assertTrue(VanBanMat.objects.filter(id=self.doc_mat.id).exists())
 
     def test_attachment_creation_and_path(self):
-        """Tệp đính kèm văn bản mật lưu theo đường dẫn chuẩn 02_documents/..."""
+        """Tệp đính kèm văn bản mật lưu theo đường dẫn chuẩn của văn bản đến."""
         att = VanBanMatAttachment.objects.create(
             document=self.doc_mat,
             name="kehoach_mat.pdf",
         )
-        self.assertTrue(att.file.field.upload_to(att, "kehoach_mat.pdf").startswith("02_documents/"))
+        self.assertTrue(att.file.field.upload_to(att, "kehoach_mat.pdf").startswith("van-ban-den/"))
 
     def test_junction_relations(self):
         """Liên kết Hồ sơ, Danh mục, Đơn vị nhận, Nơi ban hành hoạt động trơn tru."""

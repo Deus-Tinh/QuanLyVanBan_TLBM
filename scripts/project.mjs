@@ -247,6 +247,7 @@ async function deployStaging(...args) {
     const tarball = `qlvb-${sha7}.tar.gz`;
     git(["-c", "core.autocrlf=false", "archive", "--format=tar.gz", "-o", path.join(tmpDir, tarball), commit, ...deployPaths]);
     writeFileSync(path.join(tmpDir, "deploy.sh"), git(["show", `${commit}:deploy/deploy.sh`], { maxBuffer: 16 * 1024 * 1024 }));
+    writeFileSync(path.join(tmpDir, "qlvb-frontend.nginx"), git(["show", `${commit}:deploy/nginx/qlvb-frontend.conf`]));
 
     console.log("");
     console.log(`Commit:  ${sha7} ${subject}`);
@@ -289,7 +290,7 @@ async function deployStaging(...args) {
     const options = { cwd: tmpDir };
 
     await runChecked("ssh", [...sshOptions, target, 'mkdir -p "$HOME/deploy"'], options);
-    await runChecked("scp", [...scpOptions, tarball, "deploy.sh", `${target}:deploy/`], options);
+    await runChecked("scp", [...scpOptions, tarball, "deploy.sh", "qlvb-frontend.nginx", `${target}:deploy/`], options);
     const code = await run("ssh", [...sshOptions, target, `DB_MODE=${dbMode} bash deploy/deploy.sh ${sha7}`], options);
     if (code !== 0) {
       process.exitCode = code;
