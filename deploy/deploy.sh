@@ -3,14 +3,16 @@
 # Can co ~/deploy/qlvb-<ten-release>.tar.gz (thu muc goc chua backend/, scripts/, docs/common/database/ va comparator schema). Tao tren may dev:
 #   git -c core.autocrlf=false archive --format=tar.gz -o qlvb-<sha>.tar.gz <sha> backend scripts docs/common/database .github/scripts/compare_schema_ddl.py
 #   scp -P 2150 qlvb-<sha>.tar.gz <user>@<host>:deploy/
-# Thu tu: giai nen -> venv -> check -> dung service -> full backup/preflight -> DB -> doi symlink -> restart -> readiness.
+# Can co ~/deploy/qlvb-frontend.nginx (ban sao deploy/nginx/qlvb-frontend.conf cung commit).
+# Thu tu: giai nen -> venv -> check -> nginx -> dung service -> full backup/preflight -> DB -> doi symlink -> restart -> readiness.
+#         nginx cai truoc khi dung service: loi nginx chi khoi phuc cau hinh cu, chua cham service/DB/release.
 #         Service dung ca deploy, ke ca sync khong co migration cho; loi truoc DB change co the phuc hoi release cu.
 #         Sau DB mutation attempt, deploy fail-closed va giu service dung.
 # DB_MODE (bien moi truong, mac dinh sync):
 #   sync     xac minh marker/history; thu migration tren ban khoi phuc va so schema voi release DDL/baseline,
 #            sau do chay migration that tren DB hien tai. Khong dung lai DB.
 #   rebuild  xoa va dung lai DB tu release_DDL.sql (`build_db.py --seed`). Chi chon bang thao tac reset ro rang.
-# Bien tuy chon cho test: QLVB_BASE, QLVB_ENVF.
+# Bien tuy chon cho test: QLVB_BASE, QLVB_ENVF, QLVB_NGINX_SITE.
 set -euo pipefail
 umask 022
 
@@ -27,6 +29,10 @@ SERVICE=qlvb-backend
 PORT=8001
 KEEP=5
 LOG=$BASE/deploy.log
+# Ba lenh sudo nginx phai khop dung rule sudoers (install tu ~/deploy/qlvb-frontend.nginx, nginx -t, reload).
+NGINX_NEW=$HOME/deploy/qlvb-frontend.nginx
+NGINX_PREV=$HOME/deploy/qlvb-frontend.nginx.prev
+NGINX_SITE=${QLVB_NGINX_SITE:-/etc/nginx/sites-available/qlvb-frontend}
 
 exec > >(exec 9>&-; exec tee -a "$LOG") 2>&1
 step() { echo; echo "[$(date -u +%H:%M:%S)] $*"; }
@@ -93,8 +99,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-step "1/8 Kiem tra dau vao ($NAME, DB_MODE=$DB_MODE)"
+step "1/9 Kiem tra dau vao ($NAME, DB_MODE=$DB_MODE)"
 [ -f "$TAR" ] || { echo "Thieu file $TAR"; exit 1; }
+[ -s "$NGINX_NEW" ] || { echo "Thieu file cau hinh nginx $NGINX_NEW"; exit 1; }
+[ -f "$NGINX_SITE" ] && [ -r "$NGINX_SITE" ] \
+  || { echo "Khong doc duoc cau hinh nginx dang chay $NGINX_SITE; khong co ban de khoi phuc."; exit 1; }
 [ ! -e "$REL" ] || { echo "Release $NAME da ton tai"; exit 1; }
 PREV=$(readlink -f "$BASE/current")
 echo "Ban hien tai: $PREV"
@@ -112,7 +121,7 @@ else
 fi
 SERVICE_STATE_CAPTURED=1
 
-step "2/8 Giai nen va cai thu vien"
+step "2/9 Giai nen va cai thu vien"
 mkdir -p "$REL"; CREATED=1
 tar -xzf "$TAR" -C "$REL"
 for f in backend/manage.py backend/requirements-linux-py312.lock scripts/build_db.py scripts/backup_restore.py docs/common/database/release_DDL.sql .github/scripts/compare_schema_ddl.py docs/common/database/schema_drift_baseline.txt; do
@@ -127,7 +136,7 @@ BUILD_DB="$REL/scripts/build_db.py"
 BACKUP_TOOL="$REL/scripts/backup_restore.py"
 DDL="$REL/docs/common/database/release_DDL.sql"
 
-step "3/8 Nap cau hinh, check, collectstatic"
+step "3/9 Nap cau hinh, check, collectstatic"
 set -a; . "$ENVF"; set +a
 if [ "$DB_MODE" = rebuild ] && [ -z "${ADMIN_PASSWORD//[[:space:]]/}" ]; then
   echo "Thieu ADMIN_PASSWORD trong $ENVF; tu choi rebuild truoc khi dung service hoac xoa DB."
@@ -137,11 +146,35 @@ cd "$REL/backend"
 $PY manage.py check
 $PY manage.py collectstatic --noinput | tail -1
 
+step "4/9 Cau hinh nginx"
+# Cau hinh khong phu thuoc release (/static/ tro qua current). Lam truoc khi dung service de loi nginx
+# chi can khoi phuc file cu; nginx dang chay giu cau hinh cu vi chua reload.
+if cmp -s -- "$NGINX_NEW" "$NGINX_SITE"; then
+  echo "Cau hinh nginx khong doi; bo qua cai dat va reload."
+else
+  cp -- "$NGINX_SITE" "$NGINX_PREV"
+  echo "Da luu cau hinh nginx dang chay: $NGINX_PREV"
+  if sudo -n /usr/bin/install -m 644 "$NGINX_NEW" "$NGINX_SITE" \
+    && sudo -n /usr/sbin/nginx -t \
+    && sudo -n /usr/bin/systemctl reload nginx; then
+    echo "Da cai va reload cau hinh nginx moi."
+  else
+    echo "Cai cau hinh nginx THAT BAI; khoi phuc ban truoc."
+    cp -- "$NGINX_PREV" "$NGINX_NEW"
+    if sudo -n /usr/bin/install -m 644 "$NGINX_NEW" "$NGINX_SITE" && sudo -n /usr/sbin/nginx -t; then
+      echo "Da khoi phuc cau hinh nginx truoc; chua dung service, chua thay doi DB."
+    else
+      echo "CANH BAO: khoi phuc cau hinh nginx that bai; can xu ly thu cong tu $NGINX_PREV."
+    fi
+    exit 1
+  fi
+fi
+
 # psql bang role ung dung (thong tin tu backend.env)
 pgapp() { PGPASSWORD="${DB_PASSWORD:-}" psql -h "${DB_HOST:-127.0.0.1}" -p "${DB_PORT:-5432}" -U "$DB_USER" -X -At -v ON_ERROR_STOP=1 "$@"; }
 ICU_CREATE=(-T template0 -E UTF8 --locale-provider=icu --icu-locale=vi-VN --locale=C.UTF-8)
 
-step "4/8 Backup truoc khi doi"
+step "5/9 Backup truoc khi doi"
 RELEASES_ROOT=$(readlink -f "$BASE/releases") || { echo "Khong xac dinh duoc thu muc release de kiem tra data root."; exit 1; }
 [[ -d "$PREV" ]] || { echo "Release dang chay truoc deploy khong ton tai: $PREV"; exit 1; }
 case "$PREV" in
@@ -220,7 +253,7 @@ DUMP="$DUMP_DIR/database.dump"
 "$PY" "$BACKUP_TOOL" extract-database-dump --archive "$BACKUP_ARCHIVE" --output "$DUMP"
 test -s "$DUMP" || { echo "Dump PostgreSQL duoc trich xuat bi rong; khong thay doi DB."; exit 1; }
 
-step "5/8 Co so du lieu ($DB_MODE)"
+step "6/9 Co so du lieu ($DB_MODE)"
 if [ "$DB_MODE" = rebuild ]; then
   [[ ${DB_NAME:-} =~ ^[a-z_][a-z0-9_]*$ && ${DB_USER:-} =~ ^[a-z_][a-z0-9_]*$ ]] \
     || { echo "DB_NAME/DB_USER trong $ENVF khong hop le"; exit 1; }
@@ -299,14 +332,14 @@ else
   $PY manage.py migrate --check
 fi
 
-step "6/8 Chuyen release va restart"
+step "7/9 Chuyen release va restart"
 ln -sfn "$REL" "$BASE/current"; SWITCHED=1
 if ! sudo -n /usr/bin/systemctl restart "$SERVICE"; then
   echo "Restart $SERVICE THAT BAI sau khi chuyen release."
   exit 1
 fi
 
-step "7/8 Kiem tra sau deploy"
+step "8/9 Kiem tra sau deploy"
 ok=0; code=000; actual_release=""
 for _ in $(seq 1 15); do
   sleep 2
@@ -327,7 +360,7 @@ if [ $ok -ne 1 ]; then
 fi
 echo "Readiness DAT: DB query OK, release=$actual_release, service active."
 
-step "8/8 Don release cu (giu $KEEP ban moi nhat)"
+step "9/9 Don release cu (giu $KEEP ban moi nhat)"
 CUR=$(readlink -f "$BASE/current")
 ls -1dt "$BASE"/releases/*/ | tail -n +$((KEEP+1)) | while read -r d; do
   d=${d%/}

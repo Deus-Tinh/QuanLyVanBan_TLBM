@@ -97,6 +97,12 @@ jobs:
           bash -n deploy/deploy.sh scripts/test_deploy.sh
           bash scripts/test_deploy.sh
 
+      - name: Nginx config syntax (nginx 1.24, same as Ubuntu 24.04)
+        working-directory: .
+        run: |
+          docker run --rm -v "$PWD/deploy/nginx/qlvb-frontend.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:1.24 nginx -t
+
       - name: Missing migrations check
         run: python manage.py makemigrations --check --dry-run
 
@@ -332,6 +338,7 @@ jobs:
           REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
           $SSH "$REMOTE" 'mkdir -p ~/deploy'
           rsync -az -e "$SSH" "qlvb-$SHA7.tar.gz" deploy/deploy.sh "$REMOTE:deploy/"
+          rsync -az -e "$SSH" deploy/nginx/qlvb-frontend.conf "$REMOTE:deploy/qlvb-frontend.nginx"
           DB_MODE=sync
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$RESET_DATABASE" == "true" ]]; then
             DB_MODE=rebuild
