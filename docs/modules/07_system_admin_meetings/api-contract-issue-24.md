@@ -141,6 +141,7 @@ Tất cả các endpoint đều yêu cầu xác thực (`IsAuthenticated`) qua h
 - **Xử lý đặc biệt**:
   - `username`: Nếu bỏ trống, hệ thống tự động sinh username từ phần tên trước `@` của email (`local_part` + số thứ tự nếu trùng).
   - `password`: Nếu bỏ trống, hệ thống tự động sinh ngẫu nhiên mật khẩu mạnh 10 ký tự. Mật khẩu được băm an toàn lưu vào DB, đồng thời chỉ được trả về **duy nhất 1 lần** trong trường `temporary_password` của response để giao diện hiển thị sao chép cho quản trị viên. Không lưu mật khẩu thô vào DB hay in ra log.
+  - `nhom_quyen_ids`: Nếu bỏ trống hoặc truyền rỗng `[]`, hệ thống tự động gán nhóm quyền mặc định theo chức vụ (`chuc_vu_id`) dựa trên mã `ma_nhom_quyen` qua `authorization.GroupInfo` (ví dụ: Quản trị viên -> `ADMIN`, Tổng Giám đốc/Lãnh đạo cơ quan -> `BGD`, Trưởng phòng -> `TP`, Chuyên viên -> `CV`, Văn thư -> `VT`, Trợ lý TGĐ -> `CV` + `TLBGD`, Kiểm toán viên -> `CV` + `KT`). Nhóm chưa tồn tại trong DB thì bỏ qua, không gây lỗi. Nếu chọn nhóm thủ công thì tôn trọng lựa chọn thủ công, không tự gán.
 - **Mã phản hồi**: `201 Created`
 
 ### 2.4. Cập nhật CBNV

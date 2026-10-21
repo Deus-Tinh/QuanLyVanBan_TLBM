@@ -1734,7 +1734,7 @@ class ExportCbnvMigrationTests(TestCase):
     def test_migration_add_export_cbnv_idempotent(self):
         from importlib import import_module
 
-        mig = import_module("authorization.migrations.0006_add_export_cbnv_permission")
+        mig = import_module("authorization.migrations.0007_add_export_cbnv_permission")
 
         add_export_cbnv_permission = mig.add_export_cbnv_permission
         CODENAME = mig.CODENAME
@@ -1752,5 +1752,185 @@ class ExportCbnvMigrationTests(TestCase):
             cursor.execute("SELECT module_ten FROM auth_permission WHERE codename = %s", [CODENAME])
             row = cursor.fetchone()
             self.assertIsNotNone(row)
-            self.assertEqual(row[0], "Cán bộ nhân viên")
+            self.assertEqual(row[0], "CBNV")
+
+
+class EmployeeDefaultGroupAssignmentTests(EmployeeBaseTestCase):
+    """
+    Kiểm tra tự động gán nhóm quyền theo chức vụ khi tạo mới CBNV (Issue #24 / PR #211).
+    Yêu cầu:
+    1. Tra nhóm theo mã ma_nhom_quyen qua authorization.GroupInfo, không tra theo tên nhóm.
+    2. Một chức vụ có thể nhận hai nhóm (ví dụ: Trợ lý TGĐ -> CV + TLBGD, Kiểm toán viên -> CV + KT).
+    3. Chỉ áp dụng khi tạo CBNV mà không chọn nhóm quyền; nhóm chưa tồn tại trong DB thì bỏ qua, không trả lỗi 500.
+    4. Hai nhóm TLBGD và KT sẽ được thêm bằng PR phân quyền riêng; trước khi PR đó merge, Trợ lý TGĐ và Kiểm toán viên chỉ nhận CV.
+    5. Có chọn nhóm thủ công thì không tự gán.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_authenticate(user=self.admin_user)
+
+        # Đảm bảo các nhóm quyền chuẩn có mã ma_nhom_quyen tương ứng
+        standard_groups = [
+            ("Quản trị hệ thống", "ADMIN"),
+            ("Ban Giám đốc", "BGD"),
+            ("Trưởng phòng", "TP"),
+            ("Chuyên viên", "CV"),
+            ("Văn thư", "VT"),
+        ]
+        for name, code in standard_groups:
+            g, _ = Group.objects.get_or_create(name=name)
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE auth_group SET ma_nhom_quyen = %s WHERE id = %s",
+                    [code, g.id],
+                )
+
+    def _create_position(self, name):
+        max_order = Position.objects.aggregate(Max("display_order"))["display_order__max"] or 0
+        pos, _ = Position.objects.get_or_create(
+            name=name,
+            defaults={"display_order": max_order + 1, "is_public": True},
+        )
+        return pos
+
+    def _post_employee(self, ho_ten, email, pos, nhom_quyen_ids=None):
+        payload = {
+            "ho_ten": ho_ten,
+            "email": email,
+            "ngay_sinh": "1990-01-01",
+            "don_vi_id": self.don_vi_1.id,
+            "chuc_vu_id": pos.id,
+        }
+        if nhom_quyen_ids is not None:
+            payload["nhom_quyen_ids"] = nhom_quyen_ids
+        response = self.client.post(self.employee_list_url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        return User.objects.get(email=email)
+
+    def test_single_group_positions_auto_assign(self):
+        """Các chức vụ gán 1 nhóm quyền: Quản trị viên -> ADMIN, Tổng Giám đốc -> BGD, Trưởng phòng -> TP, Chuyên viên -> CV, Văn thư -> VT."""
+        from authorization.models import GroupInfo
+
+        cases = [
+            ("Quản trị viên", "ADMIN"),
+            ("Tổng Giám đốc", "BGD"),
+            ("Chủ tịch HĐQT", "BGD"),
+            ("Giám đốc Khối", "TP"),
+            ("Trưởng phòng", "TP"),
+            ("Chuyên viên", "CV"),
+            ("Nhân viên", "CV"),
+            ("Văn thư", "VT"),
+        ]
+        for idx, (pos_name, expected_code) in enumerate(cases):
+            pos = self._create_position(pos_name)
+            email = f"emp_auto_{idx}@donvi.gov.vn"
+            emp = self._post_employee(f"CBNV {pos_name}", email, pos)
+
+            assigned_group_ids = list(emp.groups.values_list("id", flat=True))
+            assigned_codes = set(
+                GroupInfo.objects.filter(id__in=assigned_group_ids).values_list("ma_nhom_quyen", flat=True)
+            )
+            self.assertIn(
+                expected_code,
+                assigned_codes,
+                f"Chức vụ {pos_name} cần được tự động gán mã nhóm {expected_code}",
+            )
+            self.assertEqual(
+                len(assigned_group_ids),
+                1,
+                f"Chức vụ {pos_name} chỉ được gán đúng 1 nhóm quyền chuẩn",
+            )
+
+    def test_two_group_position_when_both_groups_exist(self):
+        """Chức vụ gán 2 nhóm: Trợ lý TGĐ -> CV + TLBGD; Kiểm toán viên -> CV + KT khi cả 2 nhóm đều có trong DB."""
+        from authorization.models import GroupInfo
+
+        # Tạo thêm nhóm TLBGD và KT
+        for name, code in [("Trợ lý Ban Giám đốc", "TLBGD"), ("Kiểm toán", "KT")]:
+            g, _ = Group.objects.get_or_create(name=name)
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE auth_group SET ma_nhom_quyen = %s WHERE id = %s",
+                    [code, g.id],
+                )
+
+        pos_tro_ly = self._create_position("Trợ lý TGĐ")
+        emp_tro_ly = self._post_employee("Trần Trợ Lý", "troly_both@donvi.gov.vn", pos_tro_ly)
+        tro_ly_codes = set(
+            GroupInfo.objects.filter(id__in=emp_tro_ly.groups.values_list("id", flat=True)).values_list(
+                "ma_nhom_quyen", flat=True
+            )
+        )
+        self.assertEqual(tro_ly_codes, {"CV", "TLBGD"})
+
+        pos_kiem_toan = self._create_position("Kiểm toán viên")
+        emp_kiem_toan = self._post_employee("Lê Kiểm Toán", "kiemtoan_both@donvi.gov.vn", pos_kiem_toan)
+        kiem_toan_codes = set(
+            GroupInfo.objects.filter(id__in=emp_kiem_toan.groups.values_list("id", flat=True)).values_list(
+                "ma_nhom_quyen", flat=True
+            )
+        )
+        self.assertEqual(kiem_toan_codes, {"CV", "KT"})
+
+    def test_two_group_position_before_second_group_exists(self):
+        """Trước khi nhóm TLBGD/KT tồn tại trong DB, Trợ lý TGĐ và Kiểm toán viên chỉ nhận nhóm CV."""
+        from authorization.models import GroupInfo
+
+        # Đảm bảo TLBGD và KT không tồn tại trong DB
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM auth_group WHERE ma_nhom_quyen IN ('TLBGD', 'KT')")
+
+        pos_tro_ly = self._create_position("Trợ lý TGĐ")
+        emp_tro_ly = self._post_employee("Trần Trợ Lý", "troly_cv_only@donvi.gov.vn", pos_tro_ly)
+        tro_ly_codes = set(
+            GroupInfo.objects.filter(id__in=emp_tro_ly.groups.values_list("id", flat=True)).values_list(
+                "ma_nhom_quyen", flat=True
+            )
+        )
+        self.assertEqual(tro_ly_codes, {"CV"})
+
+        pos_kiem_toan = self._create_position("Kiểm toán viên")
+        emp_kiem_toan = self._post_employee("Lê Kiểm Toán", "kiemtoan_cv_only@donvi.gov.vn", pos_kiem_toan)
+        kiem_toan_codes = set(
+            GroupInfo.objects.filter(id__in=emp_kiem_toan.groups.values_list("id", flat=True)).values_list(
+                "ma_nhom_quyen", flat=True
+            )
+        )
+        self.assertEqual(kiem_toan_codes, {"CV"})
+
+    def test_group_not_exist_in_db_skips_without_500(self):
+        """Nhóm trong bảng ánh xạ chưa tồn tại trong DB thì bỏ qua, không trả lỗi 500."""
+        # Xóa nhóm ADMIN khỏi auth_group
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM auth_group WHERE ma_nhom_quyen = 'ADMIN'")
+
+        pos = self._create_position("Quản trị viên")
+        emp = self._post_employee("Nguyễn Admin Test", "admin_skip_500@donvi.gov.vn", pos)
+        self.assertEqual(emp.groups.count(), 0)
+
+        pos_custom = self._create_position("Chức vụ Chưa Định Nghĩa")
+        emp_custom = self._post_employee("Nguyễn Tự Do", "custom_pos@donvi.gov.vn", pos_custom)
+        self.assertEqual(emp_custom.groups.count(), 0)
+
+    def test_manual_group_selection_does_not_auto_assign(self):
+        """Có chọn nhóm quyền thủ công thì không tự gán theo chức vụ."""
+        from authorization.models import GroupInfo
+
+        pos = self._create_position("Tổng Giám đốc")
+        cv_group = Group.objects.get(name="Chuyên viên")
+
+        emp = self._post_employee(
+            "Phạm Tổng Giám Đốc",
+            "tgd_manual@donvi.gov.vn",
+            pos,
+            nhom_quyen_ids=[cv_group.id],
+        )
+
+        assigned_group_ids = list(emp.groups.values_list("id", flat=True))
+        assigned_codes = set(
+            GroupInfo.objects.filter(id__in=assigned_group_ids).values_list("ma_nhom_quyen", flat=True)
+        )
+        self.assertEqual(assigned_codes, {"CV"})
+        self.assertNotIn("BGD", assigned_codes)
 

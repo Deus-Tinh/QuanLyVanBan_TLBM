@@ -302,6 +302,73 @@ class EmployeeSerializer(serializers.ModelSerializer):
         return EmployeeAssignmentSerializer(assignments, many=True).data
 
 
+# Bảng ánh xạ mã nhóm quyền mặc định theo chức vụ do nhóm trưởng chốt (Issue #24 / PR #211):
+# Tra nhóm theo mã ma_nhom_quyen qua authorization.GroupInfo, không tra theo tên nhóm.
+POSITION_DEFAULT_GROUP_CODES = {
+    # Quản trị hệ thống (ADMIN)
+    "Quản trị viên": ["ADMIN"],
+    # Ban Giám đốc (BGD)
+    "Chủ tịch HĐQT": ["BGD"],
+    "Phó Chủ tịch HĐQT": ["BGD"],
+    "Tổng Giám đốc": ["BGD"],
+    "Lãnh đạo cơ quan": ["BGD"],
+    "Phó Tổng Giám đốc điều hành": ["BGD"],
+    "Phó Tổng Giám đốc kinh doanh": ["BGD"],
+    # Trưởng phòng (TP)
+    "Giám đốc Khối": ["TP"],
+    "Phó Giám đốc Khối": ["TP"],
+    "Giám đốc Vùng": ["TP"],
+    "Giám đốc": ["TP"],
+    "Phó Giám đốc": ["TP"],
+    "Trưởng Ban": ["TP"],
+    "Phó Ban": ["TP"],
+    "Trưởng Bộ phận": ["TP"],
+    "Trưởng phòng": ["TP"],
+    "Phó phòng": ["TP"],
+    # Chuyên viên (CV)
+    "Thành viên HĐQT": ["CV"],
+    "Trưởng nhóm": ["CV"],
+    "Chuyên viên": ["CV"],
+    "Nhân viên": ["CV"],
+    "Thành viên": ["CV"],
+    # Văn thư (VT)
+    "Văn thư": ["VT"],
+    # CV + Trợ lý Ban Giám đốc (TLBGD)
+    "Trợ lý TGĐ": ["CV", "TLBGD"],
+    # CV + Kiểm toán (KT)
+    "Kiểm toán viên": ["CV", "KT"],
+}
+
+
+def get_default_groups_for_position(position):
+    """
+    Tra cứu danh sách auth.models.Group mặc định theo chức vụ qua mã ma_nhom_quyen
+    (bảng authorization.GroupInfo).
+    - Tra cứu qua GroupInfo.ma_nhom_quyen, lấy các Group tương ứng.
+    - Một chức vụ có thể nhận 1 hoặc 2 nhóm (ví dụ: Trợ lý TGĐ -> CV + TLBGD, Kiểm toán viên -> CV + KT).
+    - Nhóm chưa tồn tại trong DB thì bỏ qua, không gây lỗi 500.
+    """
+    if not position:
+        return []
+    pos_name = getattr(position, "name", "")
+    if not pos_name:
+        return []
+    codes = POSITION_DEFAULT_GROUP_CODES.get(pos_name.strip())
+    if not codes:
+        return []
+    try:
+        from authorization.models import GroupInfo
+
+        group_ids = list(
+            GroupInfo.objects.filter(ma_nhom_quyen__in=codes).values_list("id", flat=True)
+        )
+        if not group_ids:
+            return []
+        return list(Group.objects.filter(id__in=group_ids))
+    except Exception:
+        return []
+
+
 class EmployeeCreateSerializer(serializers.Serializer):
     """Thêm mới CBNV kèm tài khoản đăng nhập; không lưu mật khẩu thô, trả mật khẩu tạm một lần."""
 
@@ -500,6 +567,10 @@ class EmployeeCreateSerializer(serializers.Serializer):
             groups = validated_data.get("nhom_quyen_ids")
             if groups:
                 employee.groups.set(groups)
+            else:
+                default_groups = get_default_groups_for_position(employee.chuc_vu)
+                if default_groups:
+                    employee.groups.set(default_groups)
 
             for item in assignments_data:
                 EmployeeAssignment.objects.create(

@@ -103,10 +103,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
       chuc_vu_id: positions.length > 0 ? String(positions[0].id) : '',
       chuc_danh: '',
       sdt: '',
-      nhom_quyen_ids: (() => {
-        const cv = groups.find((g) => g.name === 'Chuyên viên' || g.code === 'CV');
-        return cv ? [cv.id] : ([] as number[]);
-      })(),
+      nhom_quyen_ids: [] as number[],
       trang_thai: 'LAM_VIEC' as const,
       is_public: true,
       ghi_chu: '',
@@ -240,12 +237,6 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
       return;
     }
 
-    if (!isSelfEditOnly && formData.nhom_quyen_ids.length === 0) {
-      const msg = t('employees.validation.roleRequired');
-      setErrorKey(msg);
-      formRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
 
     try {
       let payload: EmployeeCreatePayload | EmployeeUpdatePayload;
@@ -792,7 +783,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
             {groups.length > 0 && (
               <div>
                 <label className="block text-sm font-semibold text-secondary mb-1.5">
-                  {t('employees.fields.groups')} <span className="text-danger">*</span>
+                  {t('employees.fields.groups')}
                 </label>
                 <div className={`grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-surface-elevated border border-border rounded-lg max-h-36 overflow-y-auto ${isSelfEditOnly ? 'opacity-60 cursor-not-allowed' : ''}`}>
                   {groups.map((group) => {
