@@ -1,0 +1,72 @@
+{
+  "navigation": {
+    "roles": "Phân Quyền & Vai Trò"
+  },
+  "pages": {
+    "roles": {
+      "title": "Phân Quyền Sử Dụng Theo Nhóm Quyền",
+      "module": "Module 7.7: Hệ thống Phân quyền",
+      "assignedTeam": "Nhóm 7 (Phân hệ Tiện ích & Quản trị)",
+      "codeRef": "Mục 7.7 · Độ khó: 0.80",
+      "isGroup1": false,
+      "desc": "Quản lý ma trận phân quyền, nhóm vai trò Admin/CBNV/Văn thư."
+    }
+  },
+  "roles": {
+    "title": "Phân Quyền & Vai Trò",
+    "desc": "Quản lý nhóm quyền và các quyền hạn được gán cho từng nhóm.",
+    "matrixSearchPlaceholder": "Tìm quyền theo tên, mã quyền hoặc module...",
+    "matrixSearchEmpty": "Không tìm thấy quyền phù hợp.",
+    "addBtn": "Thêm Nhóm Quyền",
+    "editTitle": "Sửa Nhóm Quyền",
+    "createTitle": "Thêm Nhóm Quyền",
+    "nameLabel": "Tên Nhóm Quyền",
+    "namePlaceholder": "Nhập tên nhóm quyền...",
+    "matrixPlaceholderTitle": "Chức năng phân quyền sử dụng theo nhóm",
+    "matrixPlaceholderStep1": "Chọn nhóm quyền cần thiết lập phân quyền",
+    "matrixPlaceholderStep2": "Thiết lập các quyền sử dụng theo nhóm đã chọn",
+    "deleteConfirmTitle": "Xác nhận xóa nhóm quyền?",
+    "deleteConfirmDesc": "Bạn có chắc muốn xóa nhóm quyền \"{name}\"? Hành động này không thể hoàn tác.",
+    "table": {
+      "name": "Tên Nhóm Quyền",
+      "userCount": "Số Người Dùng",
+      "permissionCount": "Số Quyền",
+      "actions": "Hành Động",
+      "loading": "Đang tải dữ liệu...",
+      "empty": "Chưa có nhóm quyền nào.",
+      "paginationInfo": "Hiển thị {from} - {to} trong {total}"
+    },
+    "actionsColumns": {
+      "view": "Xem",
+      "add": "Thêm",
+      "change": "Sửa",
+      "delete": "Xóa"
+    },
+    "actions": {
+      "searchPlaceholder": "Tìm theo tên nhóm quyền...",
+      "addGroup": "Thêm nhóm",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "retry": "Thử lại",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "create": "Tạo mới",
+      "selectAll": "Chọn tất cả",
+      "deselectAll": "Bỏ chọn"
+    },
+    "messages": {
+      "fetchError": "Không thể tải danh sách nhóm quyền. Vui lòng kiểm tra kết nối mạng.",
+      "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
+      "groupNotFound": "Không tìm thấy nhóm quyền.",
+      "groupHasUsers": "Không thể xóa vì nhóm quyền này vẫn đang được gán cho một hoặc nhiều người dùng.",
+      "groupProtected": "Đây là nhóm quyền chuẩn của hệ thống: không đổi tên và không xóa được.",
+      "adminPermissionsRequired": "Nhóm Quản trị hệ thống phải luôn giữ các quyền quản lý nhóm quyền (xem, thêm, sửa, xóa).",
+      "nameRequired": "Tên nhóm quyền không được để trống.",
+      "nameExists": "Tên nhóm quyền này đã tồn tại.",
+      "permissionInvalid": "Một hoặc nhiều quyền được chọn không hợp lệ.",
+      "createSuccess": "Tạo nhóm quyền thành công!",
+      "updateSuccess": "Cập nhật nhóm quyền thành công!",
+      "deleteSuccess": "Xóa nhóm quyền thành công!"
+    }
+  }
+}
