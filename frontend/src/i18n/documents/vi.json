@@ -1,0 +1,54 @@
+{
+  "navigation": {
+    "documents_incoming": "Văn Bản Đến",
+    "documents_outgoing": "Văn Bản Đi",
+    "documents_confidential": "Văn Bản Mật"
+  },
+  "pages": {
+    "documents_incoming": {
+      "title": "Quản Lý Văn Bản Đến",
+      "module": "Module 2: Quản lý Văn bản (Trang văn bản đến)",
+      "assignedTeam": "Nhóm 2 (Phân hệ Quản lý Văn bản)",
+      "codeRef": "Mục 2.1 · Độ khó: 1.00",
+      "isGroup1": false,
+      "desc": "Danh sách, chi tiết, bộ lọc theo ngày/năm, thêm mới, import/export Excel, phân quyền xem văn bản đến."
+    },
+    "documents_outgoing": {
+      "title": "Quản Lý Văn Bản Đi Nội Bộ",
+      "module": "Module 2: Quản lý Văn bản (Trang văn bản đi)",
+      "assignedTeam": "Nhóm 2 (Phân hệ Quản lý Văn bản)",
+      "codeRef": "Mục 2.2 · Độ khó: 1.00",
+      "isGroup1": false,
+      "desc": "Văn bản nội bộ phát hành, quản lý người ký, đơn vị nhận, hiệu lực và đính kèm file."
+    },
+    "documents_confidential": {
+      "title": "Quản Lý Văn Bản Mật",
+      "module": "Module 2: Quản lý Văn bản (Trang văn bản mật)",
+      "assignedTeam": "Nhóm 2 (Phân hệ Quản lý Văn bản)",
+      "codeRef": "Mục 2.3 · Độ khó: 1.00",
+      "isGroup1": false,
+      "desc": "Văn bản bảo mật chỉ gửi đích danh phòng ban hoặc CBNV được cấp quyền an ninh."
+    }
+  },
+  "documents_incoming_page": {
+    "pageTitle": "Danh mục văn bản đến",
+    "searchTitle": "Tiêu đề",
+    "year": "Năm",
+    "searchBtn": "Tìm kiếm",
+    "addBtn": "Thêm",
+    "importBtn": "Import file",
+    "exportBtn": "Xuất Excel",
+    "viewing": "Đang xem",
+    "colAction": "Tác vụ",
+    "colIncomingDate": "Ngày đến",
+    "colIncomingNum": "Số đến",
+    "colOfficer": "Cán bộ",
+    "colRefNum": "Số, ký hiệu",
+    "colDocDate": "Ngày văn bản",
+    "colTypeSummary": "Tên loại và trích yếu",
+    "colRecipient": "Đơn vị hoặc người nhận",
+    "colIssueDate": "Ngày ban hành",
+    "colNotes": "Ghi chú",
+    "noData": "Không có dữ liệu"
+  }
+}

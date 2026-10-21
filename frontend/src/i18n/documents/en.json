@@ -1,0 +1,54 @@
+{
+  "navigation": {
+    "documents_incoming": "Incoming Docs",
+    "documents_outgoing": "Outgoing Docs",
+    "documents_confidential": "Confidential Docs"
+  },
+  "pages": {
+    "documents_incoming": {
+      "title": "Incoming Documents Management",
+      "module": "Module 2: Document Management (Incoming)",
+      "assignedTeam": "Group 2 (Document Management Subsystem)",
+      "codeRef": "Item 2.1 · Difficulty: 1.00",
+      "isGroup1": false,
+      "desc": "Document registry, details, date/year filtering, creation, Excel import/export, and role-based incoming document viewing."
+    },
+    "documents_outgoing": {
+      "title": "Internal Outgoing Documents",
+      "module": "Module 2: Document Management (Outgoing)",
+      "assignedTeam": "Group 2 (Document Management Subsystem)",
+      "codeRef": "Item 2.2 · Difficulty: 1.00",
+      "isGroup1": false,
+      "desc": "Official internal dispatches, signatory management, receiving departments, validity periods, and file attachments."
+    },
+    "documents_confidential": {
+      "title": "Classified & Confidential Documents",
+      "module": "Module 2: Document Management (Confidential)",
+      "assignedTeam": "Group 2 (Document Management Subsystem)",
+      "codeRef": "Item 2.3 · Difficulty: 1.00",
+      "isGroup1": false,
+      "desc": "Strictly encrypted confidential records routed exclusively to authorized departments or cleared personnel."
+    }
+  },
+  "documents_incoming_page": {
+    "pageTitle": "Incoming Documents List",
+    "searchTitle": "Subject / Title",
+    "year": "Year",
+    "searchBtn": "Search",
+    "addBtn": "Add",
+    "importBtn": "Import file",
+    "exportBtn": "Export Excel",
+    "viewing": "Showing",
+    "colAction": "Actions",
+    "colIncomingDate": "Date Received",
+    "colIncomingNum": "In. No.",
+    "colOfficer": "Officer",
+    "colRefNum": "Ref Code",
+    "colDocDate": "Doc Date",
+    "colTypeSummary": "Type & Summary",
+    "colRecipient": "Recipient",
+    "colIssueDate": "Issue Date",
+    "colNotes": "Notes",
+    "noData": "No data available"
+  }
+}
