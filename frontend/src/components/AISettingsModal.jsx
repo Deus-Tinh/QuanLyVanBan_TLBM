@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { getAISettings, updateAISettings } from "../api";
 
 export default function AISettingsModal({ onClose, onSaved }) {
@@ -75,471 +76,384 @@ export default function AISettingsModal({ onClose, onSaved }) {
     }
   }
 
-  return (
-    <div
-      className="modal fade show d-block"
-      tabIndex="-1"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.72)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        zIndex: 1060,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "1rem",
-        overflowY: "auto",
-      }}
-    >
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto animate-in fade-in duration-150">
+      {/* Backdrop */}
       <div
-        className="modal-dialog modal-dialog-centered modal-lg"
+        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+        onClick={saving ? undefined : onClose}
+      />
+
+      {/* Modal Dialog Card */}
+      <div
+        className="relative bg-surface border border-border-subtle rounded-2xl shadow-2xl w-[680px] max-w-full flex flex-col max-h-[92vh] my-auto overflow-hidden animate-in zoom-in-95 duration-150 z-10"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: "820px",
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-          margin: "auto",
-        }}
       >
-        <div
-          className="modal-content border-0 shadow-lg rounded-4 overflow-hidden"
-          style={{
-            maxHeight: "92vh",
-            display: "flex",
-            flexDirection: "column",
-            background: "#ffffff",
-          }}
-        >
-          {/* Header */}
-          <div
-            className="modal-header text-white p-3 p-sm-4"
-            style={{
-              background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
-              flexShrink: 0,
-            }}
-          >
-            <div className="d-flex align-items-center gap-3" style={{ minWidth: 0 }}>
-              <div
-                className="rounded-3 d-flex align-items-center justify-content-center text-white flex-shrink-0"
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  fontSize: "1.25rem",
-                  background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-                  boxShadow: "0 0 15px rgba(99, 102, 241, 0.5)",
-                }}
-              >
-                <i className="fa-solid fa-microchip" />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <h5 className="modal-title fw-bold mb-0 text-white" style={{ fontSize: "1.15rem" }}>
-                  Cấu hình Động cơ AI & API
-                </h5>
-                <small className="text-white-50 d-block" style={{ fontSize: "0.82rem" }}>
-                  Tùy chỉnh mô hình LLM và Embedding để xử lý truy vấn RAG chính xác nhất
-                </small>
-              </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-elevated/40 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-indigo-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+              <i className="fa-solid fa-microchip" />
             </div>
-
-            {/* Nút đóng rõ ràng và dễ bấm */}
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              title="Đóng cửa sổ (Esc)"
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "10px",
-                border: "1px solid rgba(255, 255, 255, 0.25)",
-                background: "rgba(255, 255, 255, 0.12)",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                flexShrink: 0,
-                fontSize: "1rem",
-                transition: "all 0.18s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#ef4444";
-                e.currentTarget.style.borderColor = "#ef4444";
-                e.currentTarget.style.transform = "scale(1.06)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(255, 255, 255, 0.12)";
-                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.25)";
-                e.currentTarget.style.transform = "none";
-              }}
-            >
-              <i className="fa-solid fa-xmark" />
-            </button>
+            <div>
+              <h3 className="text-base font-bold text-main m-0">
+                Cấu hình Động cơ AI & API
+              </h3>
+              <p className="text-xs text-muted m-0 mt-0.5">
+                Thiết lập nhà cung cấp LLM, khóa API và mô hình Vector Embedding
+              </p>
+            </div>
           </div>
-
-          {/* Body */}
-          <div
-            className="modal-body p-4 bg-light"
-            style={{
-              overflowY: "auto",
-              flex: 1,
-            }}
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="w-8 h-8 rounded-lg text-muted hover:text-main hover:bg-hover flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+            title="Đóng (Esc)"
           >
-            {loading ? (
-              <div className="text-center py-5">
-                <div className="spinner-border text-primary" role="status"></div>
-                <div className="mt-3 text-secondary small fw-semibold">
-                  Đang tải cấu hình hiện tại...
+            <i className="fa-solid fa-xmark text-sm" />
+          </button>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 custom-scrollbar">
+          {loading ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-3 text-muted">
+              <i className="fa-solid fa-circle-notch fa-spin text-2xl text-primary" />
+              <span className="text-sm font-medium">Đang tải cấu hình AI hiện tại...</span>
+            </div>
+          ) : (
+            <form onSubmit={handleSave} className="space-y-5">
+              {/* Alert Feedback Banner */}
+              {message && (
+                <div
+                  className={`rounded-xl p-3.5 flex items-start gap-3 text-xs leading-relaxed transition-all ${
+                    message.type === "success"
+                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
+                      : "bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300"
+                  }`}
+                  role="alert"
+                >
+                  <i
+                    className={`fa-solid ${
+                      message.type === "success" ? "fa-circle-check" : "fa-triangle-exclamation"
+                    } text-base shrink-0 mt-0.5`}
+                  />
+                  <div className="flex-1 font-medium">{message.text}</div>
+                </div>
+              )}
+
+              {/* Engine Status Banner */}
+              <div className="bg-surface-elevated/70 border border-border-subtle rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[11px] font-semibold text-secondary uppercase tracking-wider block mb-1">
+                    Trạng thái Động cơ AI đang chạy
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${
+                        currentConfig?.provider === "openai"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                          : "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30"
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      {currentConfig?.provider || "Chưa cấu hình"}
+                    </span>
+                    <span className="text-xs text-main font-mono font-semibold bg-surface px-2.5 py-1 rounded-md border border-border-subtle">
+                      Model: {currentConfig?.llm_model || "Mặc định"}
+                    </span>
+                  </div>
+                </div>
+
+                {currentConfig?.api_key_masked ? (
+                  <div className="sm:text-right">
+                    <span className="text-[11px] text-muted block mb-0.5">Khóa API hiện hành:</span>
+                    <code className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-surface px-2.5 py-1 rounded-md border border-border-subtle inline-block">
+                      {currentConfig.api_key_masked}
+                    </code>
+                  </div>
+                ) : (
+                  <div className="sm:text-right">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-amber-500 font-medium bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20">
+                      <i className="fa-solid fa-triangle-exclamation text-[11px]" />
+                      Chưa cấu hình API Key
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Step 1: Provider Selection */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-secondary mb-2.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold">
+                    1
+                  </span>
+                  <span>Chọn Nhà cung cấp AI (Provider)</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* Google Gemini Card */}
+                  <div
+                    onClick={() => {
+                      setProvider("gemini");
+                      setLlmModel("gemini-3.8-flash");
+                    }}
+                    className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                      provider === "gemini"
+                        ? "border-primary bg-primary/5 shadow-xs ring-1 ring-primary/20"
+                        : "border-border-subtle bg-surface hover:border-primary/40 hover:bg-hover/40"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-sky-400 text-white flex items-center justify-center text-sm shadow-xs shrink-0">
+                          <i className="fa-solid fa-wand-magic-sparkles" />
+                        </span>
+                        <div>
+                          <strong className="text-main text-sm block">Google Gemini</strong>
+                          <span className="inline-block bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            Khuyên dùng
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-0.5">
+                        {provider === "gemini" ? (
+                          <i className="fa-solid fa-circle-check text-primary text-base" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border-2 border-border-subtle" />
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted leading-relaxed m-0">
+                      Tốc độ cực nhanh, miễn phí từ Google AI Studio, trích xuất dữ liệu và văn bản chính xác cao.
+                    </p>
+                  </div>
+
+                  {/* OpenAI Card */}
+                  <div
+                    onClick={() => {
+                      setProvider("openai");
+                      setLlmModel("gpt-4o-mini");
+                    }}
+                    className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                      provider === "openai"
+                        ? "border-emerald-500 bg-emerald-500/5 shadow-xs ring-1 ring-emerald-500/20"
+                        : "border-border-subtle bg-surface hover:border-emerald-500/40 hover:bg-hover/40"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center text-sm shadow-xs shrink-0">
+                          <i className="fa-solid fa-robot" />
+                        </span>
+                        <div>
+                          <strong className="text-main text-sm block">OpenAI</strong>
+                          <span className="inline-block bg-secondary-subtle text-secondary text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            GPT-4o / GPT-4o-mini
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-0.5">
+                        {provider === "openai" ? (
+                          <i className="fa-solid fa-circle-check text-emerald-500 text-base" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border-2 border-border-subtle" />
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted leading-relaxed m-0">
+                      Dùng GPT-4o, GPT-4o-mini. Cần API key từ tài khoản OpenAI có số dư credits khả dụng.
+                    </p>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <form onSubmit={handleSave}>
-                {message && (
-                  <div
-                    className={`alert alert-${message.type} alert-dismissible fade show rounded-3 shadow-sm border-0`}
-                    role="alert"
-                  >
-                    <div className="d-flex align-items-center gap-2">
-                      <i
-                        className={`fa-solid ${
-                          message.type === "success"
-                            ? "fa-circle-check text-success"
-                            : "fa-triangle-exclamation text-danger"
-                        } fs-5`}
-                      ></i>
-                      <span className="small fw-semibold">{message.text}</span>
-                    </div>
-                  </div>
-                )}
 
-                {/* Current Active Engine Status */}
-                <div className="card border-0 shadow-sm rounded-3 p-3 mb-4 bg-white">
-                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                    <div>
-                      <span className="text-secondary small fw-semibold d-block mb-1">
-                        Engine AI đang kích hoạt:
-                      </span>
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="badge bg-primary text-uppercase px-2 py-1">
-                          {currentConfig?.provider || "Chưa cấu hình"}
-                        </span>
-                        <span className="fw-bold text-dark small">
-                          Model: {currentConfig?.llm_model || "Mặc định"}
-                        </span>
-                      </div>
-                    </div>
-                    {currentConfig?.api_key_masked && (
-                      <div className="text-sm-end">
-                        <small className="text-muted d-block mb-1">API Key hiện hành:</small>
-                        <code className="text-success fw-bold bg-light px-2 py-1 rounded">
-                          {currentConfig.api_key_masked}
-                        </code>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {/* Step 2: API Key & Model Configuration */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-secondary mb-2.5 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold">
+                    2
+                  </span>
+                  <span>Thiết lập Tham số &amp; Khóa API</span>
+                </label>
 
-                {/* Provider Selection */}
-                <div className="mb-4">
-                  <label className="form-label fw-bold text-dark small text-uppercase letter-spacing">
-                    1. Chọn Nhà cung cấp AI (Provider):
-                  </label>
-                  <div className="row g-3">
-                    {/* Google Gemini Card */}
-                    <div className="col-md-6">
-                      <div
-                        className={`card h-100 p-3 rounded-3 border-2 transition ${
+                <div className="bg-surface-elevated/40 border border-border-subtle rounded-xl p-4 sm:p-5 space-y-4">
+                  {/* API Key Field */}
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <label
+                        htmlFor="ai-api-key-input"
+                        className="text-xs font-bold text-main flex items-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-key text-primary text-xs" />
+                        <span>{provider === "gemini" ? "Gemini API Key" : "OpenAI API Key"}</span>
+                        <span className="text-danger">*</span>
+                      </label>
+                      <a
+                        href={
                           provider === "gemini"
-                            ? "border-primary bg-white shadow-sm"
-                            : "border-light-subtle bg-white"
-                        }`}
-                        style={{
-                          cursor: "pointer",
-                          transform: provider === "gemini" ? "scale(1.01)" : "none",
-                        }}
-                        onClick={() => {
-                          setProvider("gemini");
-                          setLlmModel("gemini-3.8-flash");
-                        }}
+                            ? "https://aistudio.google.com/app/apikey"
+                            : "https://platform.openai.com/api-keys"
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-semibold text-primary hover:text-primary-hover hover:underline inline-flex items-center gap-1.5 transition-colors"
                       >
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div className="d-flex align-items-center gap-2">
-                            <span
-                              className="rounded-2 p-2 d-flex align-items-center justify-content-center text-white"
-                              style={{ background: "linear-gradient(135deg, #2563eb, #38bdf8)" }}
-                            >
-                              <i className="fa-solid fa-wand-magic-sparkles"></i>
-                            </span>
-                            <div>
-                              <strong className="text-dark d-block">Google Gemini</strong>
-                              <span className="badge bg-success-subtle text-success small">
-                                Khuyên dùng
-                              </span>
-                            </div>
-                          </div>
-                          {provider === "gemini" && (
-                            <i className="fa-solid fa-circle-check text-primary fs-5"></i>
-                          )}
-                        </div>
-                        <small className="text-muted">
-                          Tốc độ cực nhanh, miễn phí từ Google AI Studio, trích xuất dữ liệu và bảng biểu siêu nét.
-                        </small>
-                      </div>
-                    </div>
-
-                    {/* OpenAI Card */}
-                    <div className="col-md-6">
-                      <div
-                        className={`card h-100 p-3 rounded-3 border-2 transition ${
-                          provider === "openai"
-                            ? "border-primary bg-white shadow-sm"
-                            : "border-light-subtle bg-white"
-                        }`}
-                        style={{
-                          cursor: "pointer",
-                          transform: provider === "openai" ? "scale(1.01)" : "none",
-                        }}
-                        onClick={() => {
-                          setProvider("openai");
-                          setLlmModel("gpt-4o-mini");
-                        }}
-                      >
-                        <div className="d-flex justify-content-between align-items-start mb-2">
-                          <div className="d-flex align-items-center gap-2">
-                            <span
-                              className="rounded-2 p-2 d-flex align-items-center justify-content-center text-white"
-                              style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
-                            >
-                              <i className="fa-solid fa-robot"></i>
-                            </span>
-                            <div>
-                              <strong className="text-dark d-block">OpenAI</strong>
-                              <span className="badge bg-secondary-subtle text-secondary small">
-                                GPT-4o / GPT-4o-mini
-                              </span>
-                            </div>
-                          </div>
-                          {provider === "openai" && (
-                            <i className="fa-solid fa-circle-check text-primary fs-5"></i>
-                          )}
-                        </div>
-                        <small className="text-muted">
-                          Dùng GPT-4o, GPT-4o-mini. Cần API key từ tài khoản OpenAI có số dư credits.
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Gemini Config */}
-                {provider === "gemini" && (
-                  <div className="card border-0 shadow-sm rounded-3 p-3 mb-4 bg-white">
-                    <div className="mb-3">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <label className="form-label fw-bold text-dark small mb-0">
-                          Gemini API Key:
-                        </label>
-                        <a
-                          href="https://aistudio.google.com/app/apikey"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="small text-decoration-none text-primary fw-semibold"
-                        >
-                          <i className="fa-solid fa-arrow-up-right-from-square me-1"></i>
-                          Lấy key miễn phí tại Google AI Studio
-                        </a>
-                      </div>
-                      <div className="input-group">
-                        <span className="input-group-text bg-light border-end-0 text-muted">
-                          <i className="fa-solid fa-key"></i>
+                        <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
+                        <span>
+                          {provider === "gemini"
+                            ? "Lấy key miễn phí tại Google AI Studio"
+                            : "Lấy key tại OpenAI Platform"}
                         </span>
-                        <input
-                          type={showKey ? "text" : "password"}
-                          className="form-control border-start-0 border-end-0"
-                          placeholder={
-                            currentConfig?.has_api_key
-                              ? "Để trống nếu muốn giữ nguyên API Key hiện tại"
-                              : "Dán Gemini API Key (AIza...)"
-                          }
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary"
-                          onClick={() => setShowKey(!showKey)}
-                          title={showKey ? "Ẩn key" : "Hiện key"}
-                        >
-                          <i className={`fa-solid ${showKey ? "fa-eye-slash" : "fa-eye"}`}></i>
-                        </button>
+                      </a>
+                    </div>
+
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3.5 text-muted pointer-events-none flex items-center justify-center text-sm">
+                        <i className="fa-solid fa-lock" />
                       </div>
-                      <div className="form-text small text-muted">
+                      <input
+                        id="ai-api-key-input"
+                        type={showKey ? "text" : "password"}
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder={
+                          currentConfig?.has_api_key
+                            ? "•••••••••••••••••••• (Để trống nếu muốn giữ nguyên API Key hiện tại)"
+                            : provider === "gemini"
+                            ? "Dán Gemini API Key (AIzaSy...)"
+                            : "Dán OpenAI API Key (sk-...)"
+                        }
+                        className="w-full text-sm bg-surface border border-border-subtle rounded-xl pl-10 pr-24 py-2.5 text-main font-mono placeholder:text-muted/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs"
+                        spellCheck={false}
+                        autoComplete="off"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-2 px-2.5 py-1 text-xs font-semibold rounded-lg text-secondary hover:text-main hover:bg-hover flex items-center gap-1.5 transition-colors cursor-pointer border border-border-subtle/70"
+                        title={showKey ? "Ẩn khóa API" : "Hiện khóa API"}
+                      >
+                        <i className={`fa-solid ${showKey ? "fa-eye-slash" : "fa-eye"} text-xs`} />
+                        <span>{showKey ? "Ẩn" : "Hiện"}</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted mt-2">
+                      <i className="fa-solid fa-shield-halved text-emerald-500 text-xs shrink-0" />
+                      <span>
                         Khóa API được lưu cục bộ trên máy chủ của bạn và kiểm tra trực tiếp khi lưu.
-                      </div>
-                    </div>
-
-                    <div className="row g-2">
-                      <div className="col-md-6">
-                        <label className="form-label small fw-semibold text-secondary">
-                          Mô hình LLM (Hỏi đáp & Phân loại):
-                        </label>
-                        <select
-                          className="form-select form-select-sm rounded-3"
-                          value={llmModel}
-                          onChange={(e) => setLlmModel(e.target.value)}
-                        >
-                          <option value="gemini-3.8-flash">
-                            gemini-3.8-flash (Khuyên dùng - Nhanh & Mới nhất)
-                          </option>
-                          <option value="gemini-3.6-flash">
-                            gemini-3.6-flash (Cực kỳ ổn định)
-                          </option>
-                          <option value="gemini-3.5-flash-lite">
-                            gemini-3.5-flash-lite (Siêu nhẹ & Tiết kiệm)
-                          </option>
-                        </select>
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label small fw-semibold text-secondary">
-                          Mô hình Vector Embedding:
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm bg-light rounded-3"
-                          value="models/gemini-embedding-001 (3072 dim)"
-                          disabled
-                        />
-                      </div>
+                      </span>
                     </div>
                   </div>
-                )}
 
-                {/* OpenAI Config */}
-                {provider === "openai" && (
-                  <div className="card border-0 shadow-sm rounded-3 p-3 mb-4 bg-white">
-                    <div className="mb-3">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <label className="form-label fw-bold text-dark small mb-0">
-                          OpenAI API Key:
-                        </label>
-                        <a
-                          href="https://platform.openai.com/api-keys"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="small text-decoration-none text-primary fw-semibold"
+                  {/* Models Configuration (LLM & Embedding) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-3 border-t border-border-subtle/60">
+                    {/* LLM Model Select */}
+                    <div>
+                      <label
+                        htmlFor="ai-llm-select"
+                        className="block text-xs font-semibold text-secondary mb-1.5 flex items-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-microchip text-primary text-xs" />
+                        <span>Mô hình LLM (Hỏi đáp &amp; Phân loại)</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="ai-llm-select"
+                          value={llmModel}
+                          onChange={(e) => setLlmModel(e.target.value)}
+                          className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3.5 py-2.5 text-main appearance-none pr-9 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium shadow-2xs"
                         >
-                          <i className="fa-solid fa-arrow-up-right-from-square me-1"></i>
-                          Lấy key tại OpenAI Platform
-                        </a>
+                          {provider === "gemini" ? (
+                            <>
+                              <option value="gemini-3.8-flash">
+                                gemini-3.8-flash (Khuyên dùng - Nhanh &amp; Mới nhất)
+                              </option>
+                              <option value="gemini-3.6-flash">
+                                gemini-3.6-flash (Cực kỳ ổn định)
+                              </option>
+                              <option value="gemini-3.5-flash-lite">
+                                gemini-3.5-flash-lite (Siêu nhẹ &amp; Tiết kiệm)
+                              </option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="gpt-4o-mini">
+                                gpt-4o-mini (Nhanh &amp; Tiết kiệm chi phí)
+                              </option>
+                              <option value="gpt-4o">gpt-4o (Thông minh cao cấp)</option>
+                            </>
+                          )}
+                        </select>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted text-xs">
+                          <i className="fa-solid fa-chevron-down" />
+                        </div>
                       </div>
-                      <div className="input-group">
-                        <span className="input-group-text bg-light border-end-0 text-muted">
-                          <i className="fa-solid fa-key"></i>
-                        </span>
+                    </div>
+
+                    {/* Embedding Model Box */}
+                    <div>
+                      <label className="block text-xs font-semibold text-secondary mb-1.5 flex items-center gap-1.5">
+                        <i className="fa-solid fa-network-wired text-indigo-500 text-xs" />
+                        <span>Mô hình Vector Embedding</span>
+                      </label>
+                      <div className="relative flex items-center">
                         <input
-                          type={showKey ? "text" : "password"}
-                          className="form-control border-start-0 border-end-0"
-                          placeholder={
-                            currentConfig?.has_api_key
-                              ? "Để trống nếu muốn giữ nguyên API Key hiện tại"
-                              : "Dán OpenAI API Key (sk-...)"
+                          type="text"
+                          readOnly
+                          disabled
+                          value={
+                            provider === "gemini"
+                              ? "models/gemini-embedding-001"
+                              : "text-embedding-3-small"
                           }
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
+                          className="w-full text-sm bg-hover/70 border border-border-subtle rounded-xl pl-3.5 pr-24 py-2.5 text-secondary font-mono cursor-not-allowed select-none shadow-2xs"
                         />
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary"
-                          onClick={() => setShowKey(!showKey)}
-                          title={showKey ? "Ẩn key" : "Hiện key"}
-                        >
-                          <i className={`fa-solid ${showKey ? "fa-eye-slash" : "fa-eye"}`}></i>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="row g-2">
-                      <div className="col-md-6">
-                        <label className="form-label small fw-semibold text-secondary">
-                          Mô hình LLM:
-                        </label>
-                        <select
-                          className="form-select form-select-sm rounded-3"
-                          value={llmModel}
-                          onChange={(e) => setLlmModel(e.target.value)}
-                        >
-                          <option value="gpt-4o-mini">gpt-4o-mini (Nhanh & Tiết kiệm)</option>
-                          <option value="gpt-4o">gpt-4o (Thông minh cao cấp)</option>
-                        </select>
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label small fw-semibold text-secondary">
-                          Mô hình Vector Embedding:
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control form-control-sm bg-light rounded-3"
-                          value="text-embedding-3-small"
-                          disabled
-                        />
+                        <span className="absolute right-2 px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-surface border border-border-subtle text-muted flex items-center gap-1">
+                          <i className="fa-solid fa-lock text-[9px]" />
+                          <span>{provider === "gemini" ? "3072 dim" : "1536 dim"}</span>
+                        </span>
                       </div>
                     </div>
                   </div>
-                )}
-
-                {/* Footer Buttons */}
-                <div
-                  className="d-flex justify-content-end gap-2 pt-3 mt-3"
-                  style={{
-                    borderTop: "1px solid #e2e8f0",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="btn btn-light px-4 rounded-3 border"
-                    onClick={onClose}
-                    disabled={saving}
-                    style={{
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary-gradient px-4 rounded-3 d-inline-flex align-items-center gap-2"
-                    style={{ width: "auto", cursor: "pointer", fontWeight: 600 }}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm" role="status"></span>
-                        <span>Đang kiểm tra & Kích hoạt...</span>
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa-solid fa-circle-check" />
-                        <span>Lưu & Kích hoạt ngay</span>
-                      </>
-                    )}
-                  </button>
                 </div>
-              </form>
-            )}
-          </div>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-border-subtle shrink-0">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={saving}
+                  className="px-4 py-2 text-sm font-semibold rounded-xl text-secondary hover:text-main hover:bg-hover border border-border-subtle transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2 text-sm font-bold rounded-xl text-white bg-primary hover:bg-primary-hover shadow-sm hover:shadow-glow hover:-translate-y-0.5 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {saving ? (
+                    <>
+                      <i className="fa-solid fa-circle-notch fa-spin text-sm" />
+                      <span>Đang kiểm tra &amp; Kích hoạt...</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-circle-check text-sm" />
+                      <span>Lưu &amp; Kích hoạt ngay</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </div>
   );
+
+  return typeof window !== "undefined" ? createPortal(modalContent, window.document.body) : modalContent;
 }
