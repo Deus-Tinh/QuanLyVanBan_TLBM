@@ -79,6 +79,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-linux-py312.lock
 
+      - name: One migration leaf per app (max_migration.txt)
+        run: python ../.github/scripts/check_max_migration.py
+
       - name: Provision restricted role in disposable PostgreSQL service
         env:
           PGPASSWORD: postgres
