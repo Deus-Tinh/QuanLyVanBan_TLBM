@@ -1,19 +1,16 @@
 from datetime import timedelta
 
-from django.contrib.auth import get_user_model
-from django.db.models import Prefetch
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from documents.models import VanBanDenAttachment, VanBanDiAttachment
-from documents.selectors import van_ban_xem_duoc
-
-from work.models import Task, TaskStatus
-from document_templates.models import TaiLieuChiTiet, ChiTietTaiLieuAttachment
-from document_templates.selectors import visible_resources
+from accounts.selectors import nhan_vien_sinh_ngay
+from document_templates.selectors import tai_lieu_hieu_luc_xem_duoc
+from documents.selectors import tep_dinh_kem_hien_hanh, van_ban_xem_duoc
+from work.models import TaskStatus
+from work.selectors import cong_viec_xem_duoc
 
 RECENT_LIMIT = 5
 ATTACHMENT_TYPES = {
@@ -31,7 +28,7 @@ def _attachment_type(name):
     return "pdf"
 
 
-def _recent_documents(user, loai, date_field, attachment_model, extra_field, extra_key, extra_default):
+def _recent_documents(user, loai, date_field, extra_field, extra_key, extra_default):
     """Top văn bản gần nhất mà user được xem, cùng bộ đếm trong năm hiện tại.
 
     Cả bộ đếm và danh sách dùng selector chung `van_ban_xem_duoc` nên không lộ văn bản HAN_CHE.
@@ -41,10 +38,7 @@ def _recent_documents(user, loai, date_field, attachment_model, extra_field, ext
     documents = list(visible.order_by(f"-{date_field}", "-pk")[:RECENT_LIMIT])
 
     attachments = {}
-    rows = attachment_model.objects.filter(
-        document_id__in=[d.pk for d in documents], is_deleted=False
-    ).order_by("created_at", "pk")
-    for att in rows:
+    for att in tep_dinh_kem_hien_hanh(loai, [d.pk for d in documents]):
         attachments.setdefault(att.document_id, []).append(
             {"name": att.name, "url": att.path, "type": _attachment_type(att.name), "size": ""}
         )
@@ -75,7 +69,7 @@ def _tasks(user, today):
         TaskStatus.CHUA_HOAN_THANH: ("overdue", "Chưa hoàn thành", "danger"),
         TaskStatus.QUA_HAN: ("overdue", "Quá hạn", "danger"),
     }
-    rows = Task.objects.visible_to(user).with_status(today).order_by("-pk")[:20]
+    rows = cong_viec_xem_duoc(user, today).order_by("-pk")[:20]
     tasks = []
     for task in rows:
         task_status, label, variant = statuses[task.status]
@@ -92,13 +86,7 @@ def _tasks(user, today):
 
 
 def _resources(user):
-    rows = visible_resources(TaiLieuChiTiet.objects.all(), user).filter(
-        hieu_luc="CON_HIEU_LUC"
-    ).order_by("pk").prefetch_related(Prefetch(
-        "attachments",
-        queryset=ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).order_by("pk"),
-        to_attr="active_attachments",
-    ))[:RECENT_LIMIT]
+    rows = tai_lieu_hieu_luc_xem_duoc(user).order_by("pk")[:RECENT_LIMIT]
     resources = []
     for resource in rows:
         name = resource.active_attachments[0].name if resource.active_attachments else ""
@@ -146,10 +134,10 @@ def overview_view(request):
     tomorrow = today + timedelta(days=1)
 
     incoming_total, recent_incoming = _recent_documents(
-        request.user, "DEN", "ngay_den", VanBanDenAttachment, "noi_ban_hanh", "sender", "Cơ quan ban hành"
+        request.user, "DEN", "ngay_den", "noi_ban_hanh", "sender", "Cơ quan ban hành"
     )
     outgoing_total, recent_outgoing = _recent_documents(
-        request.user, "DI", "ngay_ban_hanh", VanBanDiAttachment, "nguoi_ky", "recipient", "Nơi nhận"
+        request.user, "DI", "ngay_ban_hanh", "nguoi_ky", "recipient", "Nơi nhận"
     )
     tasks = _tasks(request.user, today)
     resources = _resources(request.user)
@@ -157,9 +145,8 @@ def overview_view(request):
     # Lịch họp lấy từ module Nhóm 7 sau khi được tích hợp vào staging.
     today_meetings = []
 
-    employees = get_user_model().objects.filter(is_active=True).select_related("don_vi", "chuc_vu")
-    today_users = list(employees.filter(ngay_sinh__month=today.month, ngay_sinh__day=today.day))
-    tomorrow_users = list(employees.filter(ngay_sinh__month=tomorrow.month, ngay_sinh__day=tomorrow.day))
+    today_users = list(nhan_vien_sinh_ngay(today))
+    tomorrow_users = list(nhan_vien_sinh_ngay(tomorrow))
 
     birthdays_list = [_birthday_payload(u, "Hôm nay", True, today) for u in today_users] + [
         _birthday_payload(u, "Ngày mai", False, tomorrow) for u in tomorrow_users
