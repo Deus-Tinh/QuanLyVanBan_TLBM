@@ -8,20 +8,21 @@ Tài liệu này mô tả backup logic do **scripts/backup_restore.py** tạo. C
 | --- | --- | --- |
 | PostgreSQL | Bản dump custom của đúng database ứng dụng; database comment chứa marker **build_db:v2** hoặc **build_db:v3** được lưu thêm ở sidecar. | DB role, owner và các role/grant mà dump tham chiếu phải tồn tại trước khi restore. |
 | Tệp tải lên | Toàn bộ cây thư mục **MEDIA_ROOT**. | Giá trị **DJANGO_MEDIA_ROOT**; nếu không đặt, Django dùng **media/** cạnh thư mục **backend**. |
+| Tệp nghiệp vụ | Toàn bộ cây thư mục **DOCUMENT_STORAGE_ROOT** (văn bản đến/đi, công việc, biểu mẫu; xem mục Cây thư mục tệp nghiệp vụ). | Giá trị **DOCUMENT_STORAGE_ROOT**; bắt buộc ngoài môi trường dev. |
 | Tệp trình ký | Toàn bộ cây thư mục **SIGNING_DOCUMENT_ROOT**. | Đường dẫn này bắt buộc trong production; storage lưu vị trí tương đối trong CSDL. |
 | AI | Toàn bộ **AI_DATA_DIR**, gồm tài liệu, Chroma và **doc_registry.json**. | **backend/config/__init__.py** là module **config** đang được import; mặc định thư mục là **backend/data**, có thể đổi bằng **AI_DATA_DIR**. |
 | Cấu hình riêng | Tệp được truyền bằng **--private-config**, mặc định triển khai trong source là **/etc/qlvb/backend.env**. | Backup yêu cầu **DJANGO_SECRET_KEY** và **SIGNING_PIN_SECRET** có giá trị literal, không rỗng. |
 
-Ba data root phải được truyền tường minh và tồn tại. Không suy ra đường dẫn từ thư mục release khi chạy backup. **DJANGO_SECRET_KEY** và **SIGNING_PIN_SECRET** được giữ trong bản sao cấu hình riêng; các giá trị này không nằm trong metadata hoặc stdout. Metadata chỉ ghi tên khóa cần có, tên một số khóa được cấu hình và allowlist cấu hình không bí mật.
+Bốn data root (**MEDIA_ROOT**, **SIGNING_DOCUMENT_ROOT**, **AI_DATA_DIR**, **DOCUMENT_STORAGE_ROOT**) phải được truyền tường minh và tồn tại. Không suy ra đường dẫn từ thư mục release khi chạy backup. **DJANGO_SECRET_KEY** và **SIGNING_PIN_SECRET** được giữ trong bản sao cấu hình riêng; các giá trị này không nằm trong metadata hoặc stdout. Metadata chỉ ghi tên khóa cần có, tên một số khóa được cấu hình và allowlist cấu hình không bí mật.
 
 ## Tạo backup
 
 Điều kiện trước khi chạy:
 
 1. Dùng Python 3.12 và các tiện ích **psql**, **pg_dump**, **pg_restore** phiên bản PostgreSQL 16.
-2. Chạy dưới tài khoản backend có quyền đọc ba data root và tệp cấu hình riêng. Thư mục backup mới có quyền **0700**; archive có quyền **0600**.
+2. Chạy dưới tài khoản backend có quyền đọc bốn data root và tệp cấu hình riêng. Thư mục backup mới có quyền **0700**; archive có quyền **0600**.
 3. Tạm dừng thao tác ghi database, upload và trình ký trong suốt thời gian dump database và đóng gói file. **--files-quiesced** chỉ là xác nhận của người vận hành; công cụ không tự dừng dịch vụ hay tạo snapshot filesystem.
-4. Xác định đúng đường dẫn hiệu lực của **MEDIA_ROOT**, **SIGNING_DOCUMENT_ROOT** và **AI_DATA_DIR**. Không đưa tệp .env, systemd override hoặc secret khác vào archive ngoài tệp được chỉ định.
+4. Xác định đúng đường dẫn hiệu lực của **MEDIA_ROOT**, **SIGNING_DOCUMENT_ROOT**, **AI_DATA_DIR** và **DOCUMENT_STORAGE_ROOT**. Không đưa tệp .env, systemd override hoặc secret khác vào archive ngoài tệp được chỉ định.
 5. Chọn **release-id** trùng với release cần khôi phục, ví dụ commit SHA đã dùng để tạo artifact.
 
 Nạp cấu hình trong shell hiện tại mà không in nội dung tệp:
@@ -30,11 +31,12 @@ Nạp cấu hình trong shell hiện tại mà không in nội dung tệp:
     . /etc/qlvb/backend.env
     set +a
 
-Các biến kết nối được lấy từ **DB_NAME**, **DB_HOST**, **DB_PORT**, **DB_USER**, **DB_PASSWORD** hoặc cấu hình **PGPASSFILE**. Không truyền mật khẩu trên command line. Gán ba biến đường dẫn dưới đây từ cấu hình hiệu lực trước khi chạy:
+Các biến kết nối được lấy từ **DB_NAME**, **DB_HOST**, **DB_PORT**, **DB_USER**, **DB_PASSWORD** hoặc cấu hình **PGPASSFILE**. Không truyền mật khẩu trên command line. Gán các biến đường dẫn dưới đây từ cấu hình hiệu lực trước khi chạy:
 
     MEDIA_ROOT_RESOLVED=/duong/dan/media
     SIGNING_ROOT_RESOLVED=/duong/dan/signing
     AI_ROOT_RESOLVED=/duong/dan/ai-data
+    STORAGE_ROOT_RESOLVED=/duong/dan/storage
     BACKUP_DIR=/duong/dan/backup-rieng
     RELEASE_ID=<release-id>
 
@@ -47,6 +49,7 @@ Tạo và tự xác minh archive:
       --media-dir "$MEDIA_ROOT_RESOLVED" \
       --signing-dir "$SIGNING_ROOT_RESOLVED" \
       --ai-dir "$AI_ROOT_RESOLVED" \
+      --storage-dir "$STORAGE_ROOT_RESOLVED" \
       --private-config /etc/qlvb/backend.env \
       --include-private-config \
       --files-quiesced
@@ -67,7 +70,7 @@ Khi deploy tạo archive, `release-id` xác định release đang chạy lúc ch
 
 Kiểm tra xác nhận:
 
-- Có đủ database dump, sidecar marker, ba file root và cấu hình riêng.
+- Có đủ database dump, sidecar marker, các file root và cấu hình riêng.
 - SHA-256 và kích thước từng payload khớp manifest; archive và file root đọc được hết.
 - **pg_restore --list** đọc được dump; member lạ, symlink, hardlink, đường dẫn tuyệt đối và **..** bị từ chối.
 - Marker sidecar khớp metadata; cấu hình riêng có đủ khóa bắt buộc.
@@ -106,12 +109,31 @@ Sau restore, cây thư mục có dạng:
       media/
       signing/
       ai/
+      storage/
       private_config/backend.env
       config/recovered-paths.json
+
+Archive tạo trước khi có kho tệp nghiệp vụ không có **storage/**; restore archive đó chỉ khôi phục ba root còn lại và **recovered-paths.json** không có **DOCUMENT_STORAGE_ROOT**.
 
 Thư mục gốc có quyền owner-only; tệp private config có quyền **0600**. **recovered-paths.json** chỉ là gợi ý đường dẫn mới. Tệp **backend.env** được khôi phục nguyên trạng và vẫn có thể trỏ đến đường dẫn cũ; người vận hành phải kiểm tra rồi hợp nhất các path mới vào cấu hình dịch vụ trước khi khởi động ứng dụng. Không source cấu hình vừa khôi phục trước khi kiểm tra.
 
 Nếu **pg_restore** lỗi, giao dịch restore được rollback và database không bị drop. Nếu marker hoặc cài file lỗi sau khi database đã nạp thành công, database và backup vẫn được giữ; không tự reset, cần kiểm tra trạng thái rồi hoàn tất thủ công từ backup. Thư mục staging được giữ trong trường hợp cần tiếp tục cài file.
+
+## Cây thư mục tệp nghiệp vụ
+
+Biến **DOCUMENT_STORAGE_ROOT** là gốc lưu tệp nghiệp vụ; cột đường dẫn trong CSDL chỉ giữ phần tương đối so với gốc này, nên restore sang gốc mới không đổi dữ liệu CSDL:
+
+| Thư mục | Nội dung | Dạng đường dẫn |
+| --- | --- | --- |
+| van-ban-den, van-ban-di | Tệp đính kèm văn bản đến, văn bản đi | `<module>/YYYY/MM/DD/<uuid>.<ext>` theo ngày upload |
+| cong-viec | Tệp giao việc và tệp bằng chứng | như trên |
+| mau-van-ban | Tệp tài liệu và biểu mẫu | như trên |
+| ho-so | Dành cho tệp hồ sơ (chưa có luồng ghi tệp) | như trên |
+| nguoi-dung, he-thong, tmp | Dành cho tệp gắn đối tượng và tệp tạm | `<module>/<owner>/<filename>` |
+
+Tên gốc của tệp nằm trong CSDL; tên trên đĩa là UUID. Tệp trình ký (**SIGNING_DOCUMENT_ROOT**) và dữ liệu AI (**AI_DATA_DIR**) nằm ngoài cây này.
+
+Trên host staging gốc là **/srv/qlvb/shared/storage**, cùng chủ sở hữu và chế độ quyền với **media/** (user chạy service **qlvb** phải ghi được). Deploy dừng ở bước kiểm tra data root nếu biến thiếu, là đường dẫn tương đối, không tồn tại hoặc nằm trong thư mục release; việc này xảy ra trước khi dừng service.
 
 ## Secret và giới hạn khôi phục
 
@@ -119,7 +141,7 @@ Nếu **pg_restore** lỗi, giao dịch restore được rollback và database k
 - **DJANGO_SECRET_KEY** cần được giữ để ứng dụng tiếp tục dùng cùng khóa phiên/token. Cấu hình DB, API AI, email và tích hợp tùy chọn cũng cần được khôi phục nếu chức năng tương ứng được bật.
 - Archive chứa plaintext database, file nghiệp vụ và tệp cấu hình riêng. Mode **0600/0700** giới hạn user thường trên cùng host; không bảo vệ khi root hoặc storage bị xâm nhập. Chưa có đích off-host/encrypted được cấu hình và xác minh trong milestone này; backup chỉ ở cùng host không bảo vệ khi mất host/disk.
 - Dump giữ owner/ACL của object nhưng không sao lưu role/global password, tablespace, **pg_hba.conf**, cấu hình PostgreSQL hoặc cài đặt extension ở cấp OS. Cần dựng role và môi trường đích trước restore.
-- Archive chứa đúng database và ba root được truyền; không chứa source/release artifact, log, static build, thư mục ngoài các root, systemd override hoặc secret nằm ở nơi khác. AI data được khôi phục nhưng truy vấn AI vẫn cần provider, credential và OS dependency tương ứng. PDF/OCR cũng có thể cần font/Poppler trên host.
+- Archive chứa đúng database và các root được truyền; không chứa source/release artifact, log, static build, thư mục ngoài các root, systemd override hoặc secret nằm ở nơi khác. AI data được khôi phục nhưng truy vấn AI vẫn cần provider, credential và OS dependency tương ứng. PDF/OCR cũng có thể cần font/Poppler trên host.
 - File tree được đóng gói tuần tự, không có filesystem snapshot. Cần quiesce ghi trong suốt backup để hạn chế DB/file mismatch. Công cụ xác minh archive và restore trên dữ liệu synthetic; chưa chạy backup/restore trên host hoặc dữ liệu thật.
 
 Vì chưa xác minh được secret custody độc lập hoặc nơi lưu off-host, đây là backup/restore workflow có thể diễn tập cục bộ, chưa phải bằng chứng disaster recovery đầy đủ hay host acceptance.
