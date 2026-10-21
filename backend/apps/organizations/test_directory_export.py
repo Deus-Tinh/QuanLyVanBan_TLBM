@@ -5,6 +5,7 @@ import openpyxl
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.db import connection
+from django.db.models import Max
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from rest_framework import status
@@ -30,16 +31,22 @@ def first_cells(response):
     return [row[0] for row in body_rows(response)]
 
 
+TEST_UNITS = ("ĐƠN VỊ A1", "ĐƠN VỊ A2", "ĐƠN VỊ B1")
+
+
 class DirectoryExportTest(TestCase):
+    # DB test dựng bằng migration đã có 16 khối và 82 đơn vị của release_DDL.sql: các ca kiểm chỉ so phần dữ liệu
+    # tự tạo, STT ưu tiên (UNIQUE) nối tiếp STT lớn nhất đang có.
     def setUp(self):
         self.block_b = KhoiKhuVuc.objects.create(ten="Khối B", thu_tu_hien_thi=2)
         self.block_a = KhoiKhuVuc.objects.create(ten="Khối A", thu_tu_hien_thi=1)
+        self.priority = (DonVi.objects.aggregate(m=Max("stt_uu_tien"))["m"] or 0) + 1
         self.unit_a1 = DonVi.objects.create(
-            khoi=self.block_a, stt_uu_tien=1, ten="Đơn vị A1", dia_chi="1 Phố A",
+            khoi=self.block_a, stt_uu_tien=self.priority, ten="Đơn vị A1", dia_chi="1 Phố A",
             dien_thoai="0281234567", email="a1@example.com",
         )
-        self.unit_a2 = DonVi.objects.create(khoi=self.block_a, stt_uu_tien=2, ten="Đơn vị A2")
-        self.unit_b1 = DonVi.objects.create(khoi=self.block_b, stt_uu_tien=3, ten="Đơn vị B1")
+        self.unit_a2 = DonVi.objects.create(khoi=self.block_a, stt_uu_tien=self.priority + 1, ten="Đơn vị A2")
+        self.unit_b1 = DonVi.objects.create(khoi=self.block_b, stt_uu_tien=self.priority + 2, ten="Đơn vị B1")
         self.boss = Position.objects.create(display_order=101, name="Giám đốc thử")
         self.mid = Position.objects.create(display_order=102, name="Trưởng phòng thử")
         self.low = Position.objects.create(display_order=103, name="Nhân viên thử")
@@ -72,7 +79,7 @@ class DirectoryExportTest(TestCase):
         return next(i for i, row in enumerate(rows) if isinstance(row[0], str) and row[0].startswith(name.upper()))
 
     def test_title_header_and_template_colours(self):
-        ws = sheet_of(self.export())
+        ws = sheet_of(self.export(query=f"?region_id={self.block_a.id}"))
         self.assertEqual(ws["A1"].value, "Bảo Long Insurance — Hệ Thống Quản Lý Văn Bản & Điều Hành")
         self.assertEqual(ws["A2"].value, "DANH BẠ ĐƠN VỊ, PHÒNG BAN")
         self.assertTrue(str(ws["A3"].value).startswith("Ngày xuất: "))
@@ -92,8 +99,8 @@ class DirectoryExportTest(TestCase):
     def test_blocks_follow_display_order_then_units_follow_priority(self):
         cells = first_cells(self.export())
         self.assertEqual([x for x in cells if x in ("KHỐI A", "KHỐI B")], ["KHỐI A", "KHỐI B"])
-        units = [x.split("  |  ")[0] for x in cells if isinstance(x, str) and x.startswith("ĐƠN VỊ")]
-        self.assertEqual(units, ["ĐƠN VỊ A1", "ĐƠN VỊ A2", "ĐƠN VỊ B1"])
+        units = [x.split("  |  ")[0] for x in cells if isinstance(x, str) and x.split("  |  ")[0] in TEST_UNITS]
+        self.assertEqual(units, list(TEST_UNITS))
         self.assertLess(cells.index("KHỐI A"), cells.index(next(x for x in cells if str(x).startswith("ĐƠN VỊ A1"))))
         self.assertLess(cells.index(next(x for x in cells if str(x).startswith("ĐƠN VỊ A2"))), cells.index("KHỐI B"))
 
@@ -156,10 +163,10 @@ class DirectoryExportTest(TestCase):
     def test_filters_by_region_and_search(self):
         cells = first_cells(self.export(query=f"?region_id={self.block_b.id}"))
         self.assertEqual([x for x in cells if str(x).startswith("KHỐI")], ["KHỐI B"])
-        self.assertEqual(len([x for x in cells if str(x).startswith("ĐƠN VỊ")]), 1)
-        cells = first_cells(self.export(query="?search=A2"))
+        self.assertEqual([x.split("  |  ")[0] for x in cells if str(x).startswith("ĐƠN VỊ")], ["ĐƠN VỊ B1"])
+        cells = first_cells(self.export(query="?search=Đơn+vị+A2"))
         self.assertEqual([x for x in cells if str(x).startswith("KHỐI")], ["KHỐI A"])
-        self.assertEqual(len([x for x in cells if str(x).startswith("ĐƠN VỊ")]), 1)
+        self.assertEqual([x.split("  |  ")[0] for x in cells if str(x).startswith("ĐƠN VỊ")], ["ĐƠN VỊ A2"])
 
     def test_formula_text_is_stored_as_string(self):
         self.person("evil", self.unit_a1, self.boss, ho_ten='=HYPERLINK("http://example.invalid","x")', chuc_danh="=1+1")
@@ -176,7 +183,7 @@ class DirectoryExportTest(TestCase):
         with CaptureQueriesContext(connection) as few:
             client.get(URL)
         for index in range(30):
-            unit = DonVi.objects.create(khoi=self.block_a, stt_uu_tien=100 + index, ten=f"Đơn vị mới {index}")
+            unit = DonVi.objects.create(khoi=self.block_a, stt_uu_tien=self.priority + 100 + index, ten=f"Đơn vị mới {index}")
             self.person(f"head{index}", unit, self.mid)
         with CaptureQueriesContext(connection) as many:
             client.get(URL)

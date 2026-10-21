@@ -2,6 +2,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
+from django.db.models import Max
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -12,11 +13,15 @@ REGIONS = "/api/organizations/regions/"
 UNITS = "/api/organizations/units/"
 
 
+def next_unit_priority():
+    return (DonVi.objects.aggregate(m=Max("stt_uu_tien"))["m"] or 0) + 1
+
+
 class PhongBanRulesTest(TestCase):
     def setUp(self):
         self.block = KhoiKhuVuc.objects.create(ten="Khối Một", thu_tu_hien_thi=1)
         self.other_block = KhoiKhuVuc.objects.create(ten="Khối Hai", thu_tu_hien_thi=2)
-        self.unit = DonVi.objects.create(khoi=self.block, stt_uu_tien=1, ten="Lãnh đạo khối")
+        self.unit = DonVi.objects.create(khoi=self.block, stt_uu_tien=next_unit_priority(), ten="Lãnh đạo khối")
         user = get_user_model().objects.create_user(username="pb_admin", password="x", don_vi=self.unit)
         user.user_permissions.add(
             *Permission.objects.filter(codename__in=["view_donvi", "add_donvi", "change_donvi", "delete_donvi"])
@@ -26,9 +31,10 @@ class PhongBanRulesTest(TestCase):
 
     # N2
     def test_new_region_without_display_order_goes_last_not_first(self):
+        last_order = KhoiKhuVuc.objects.aggregate(m=Max("thu_tu_hien_thi"))["m"]
         response = self.client.post(REGIONS, {"ten": "Khối Mới"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["thu_tu_hien_thi"], 3)
+        self.assertEqual(response.data["thu_tu_hien_thi"], last_order + 1)
         listed = [r["ten"] for r in self.client.get(f"{REGIONS}?all=true").data]
         self.assertEqual(listed[-1], "Khối Mới")
 
@@ -36,7 +42,7 @@ class PhongBanRulesTest(TestCase):
         created = self.client.post(REGIONS, {"ten": "Khối Đầu", "thu_tu_hien_thi": 0}, format="json")
         self.assertEqual(created.data["thu_tu_hien_thi"], 0)
         self.assertEqual(self.client.get(f"{REGIONS}?all=true").data[0]["ten"], "Khối Đầu")
-        moved = self.client.patch(f"{REGIONS}{created.data['id']}/", {"thu_tu_hien_thi": 9}, format="json")
+        moved = self.client.patch(f"{REGIONS}{created.data['id']}/", {"thu_tu_hien_thi": 999}, format="json")
         self.assertEqual(moved.status_code, status.HTTP_200_OK)
         self.assertEqual(self.client.get(f"{REGIONS}?all=true").data[-1]["ten"], "Khối Đầu")
 
@@ -53,7 +59,7 @@ class PhongBanRulesTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_editing_a_unit_keeps_its_own_name_but_cannot_take_a_sibling_name(self):
-        sibling = DonVi.objects.create(khoi=self.block, stt_uu_tien=2, ten="Ban Kế toán")
+        sibling = DonVi.objects.create(khoi=self.block, stt_uu_tien=next_unit_priority(), ten="Ban Kế toán")
         own = self.client.patch(f"{UNITS}{self.unit.id}/", {"ten": "Lãnh đạo khối", "email": "ld@example.com"}, format="json")
         self.assertEqual(own.status_code, status.HTTP_200_OK)
         taken = self.client.patch(f"{UNITS}{sibling.id}/", {"ten": "lãnh đạo khối"}, format="json")
@@ -61,7 +67,7 @@ class PhongBanRulesTest(TestCase):
         self.assertEqual(taken.data["ten"], ["organizations.messages.unitNameExists"])
 
     def test_moving_a_unit_into_a_block_with_the_same_name_is_rejected(self):
-        moving = DonVi.objects.create(khoi=self.other_block, stt_uu_tien=3, ten="Lãnh đạo khối")
+        moving = DonVi.objects.create(khoi=self.other_block, stt_uu_tien=next_unit_priority(), ten="Lãnh đạo khối")
         response = self.client.patch(f"{UNITS}{moving.id}/", {"khoi": self.block.id}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["ten"], ["organizations.messages.unitNameExists"])
