@@ -79,7 +79,7 @@ Quy trình rebuild này chỉ dành cho reset staging. Deploy thường chạy m
 
 ## Deploy backend
 
-`deploy/deploy.sh <tên release>` trong repo là nguồn duy nhất của quy trình deploy backend; mỗi lần deploy script được đẩy lên `~/deploy/` cùng tarball và chạy từ đó. Tarball phải có `scripts/backup_restore.py`; deploy dùng công cụ này để tạo full backup trước preflight, không gọi `/srv/qlvb/tools/backup.sh`. Push vào `staging` deploy với `DB_MODE=sync`; `workflow_dispatch` chỉ rebuild khi chọn rõ `reset_database=true`. Đầu vào là `~/deploy/qlvb-<tên release>.tar.gz` chứa `backend/`, `scripts/`, `docs/common/database/` và `.github/scripts/compare_schema_ddl.py`.
+`deploy/deploy.sh <tên release>` trong repo là nguồn duy nhất của quy trình deploy backend; mỗi lần deploy script được đẩy lên `~/deploy/` cùng tarball và chạy từ đó. Tarball phải có `scripts/backup_restore.py`; deploy dùng công cụ này để tạo full backup trước preflight, không gọi `/srv/qlvb/tools/backup.sh`. Push vào `staging` deploy với `DB_MODE=sync`; `workflow_dispatch` chỉ rebuild khi chọn rõ `reset_database=true`. Đầu vào là `~/deploy/qlvb-<tên release>.tar.gz` chứa `backend/`, `scripts/`, `docs/common/database/` và `.github/scripts/compare_schema_ddl.py`, cùng `~/deploy/qlvb-frontend.nginx` là bản sao `deploy/nginx/qlvb-frontend.conf` của cùng commit.
 
 Tạo tarball từ commit cần phát hành bằng lệnh sau; comparator phải có trong archive vì `build_db.py` dùng nó để preflight schema:
 
@@ -90,14 +90,15 @@ git -c core.autocrlf=false archive --format=tar.gz -o "qlvb-$SHA7.tar.gz" "$SHA7
 
 Các bước (log `/srv/qlvb/deploy.log`, khóa `flock` ở `/srv/qlvb/.deploy.lock`):
 
-1. Kiểm đầu vào (tên release 1–64 ký tự, bắt đầu bằng chữ/số; tarball; release chưa tồn tại).
+1. Kiểm đầu vào (tên release 1–64 ký tự, bắt đầu bằng chữ/số; tarball; `~/deploy/qlvb-frontend.nginx`; cấu hình nginx đang chạy đọc được; release chưa tồn tại).
 2. Giải nén vào `/srv/qlvb/releases/<tên>`, tạo venv bằng Python 3.12, cài `backend/requirements-linux-py312.lock`.
 3. Nạp `/etc/qlvb/backend.env`. Với `rebuild`, kiểm tra `ADMIN_PASSWORD` trước khi dừng service hoặc xóa DB. Sau đó chạy `manage.py check`, `collectstatic`.
-4. Kiểm tra `DJANGO_MEDIA_ROOT`, `SIGNING_DOCUMENT_ROOT`, `AI_DATA_DIR` và `DOCUMENT_STORAGE_ROOT` được đặt tường minh thành các thư mục tuyệt đối ngoài cây release. Dừng `qlvb-backend` trước khi chụp DB và bốn data root; tạo full backup trong thư mục riêng `backups/full`, xác minh archive, rồi trích `database.dump` đã xác minh vào thư mục tạm riêng để chạy preflight. Service tiếp tục dừng qua preflight, migration/kiểm tra DB và switch code, kể cả khi schema không có migration chờ. `release-id` trong archive là release thực tế đang chạy trước deploy; recovery point gồm DB và file trước khi áp dụng release mục tiêu mới. Log ghi đường dẫn archive và SHA-256; archive được giữ lại khi deploy lỗi.
-5. Cơ sở dữ liệu theo `DB_MODE` (xem dưới).
-6. Chuyển symlink `current`, `systemctl restart qlvb-backend`.
-7. Kiểm tra `http://127.0.0.1:8001/api/health/ready/` trả 200 với `status=ready`, truy vấn DB thành công và `release` đúng tên release đang deploy; service cũng phải active (15 lần × 2 giây).
-8. Giữ 5 release mới nhất, không xóa release đang chạy và release trước đó.
+4. Cấu hình nginx (xem mục [Đường vào staging và nginx](#đường-vào-staging-và-nginx)).
+5. Kiểm tra `DJANGO_MEDIA_ROOT`, `SIGNING_DOCUMENT_ROOT`, `AI_DATA_DIR` và `DOCUMENT_STORAGE_ROOT` được đặt tường minh thành các thư mục tuyệt đối ngoài cây release. Dừng `qlvb-backend` trước khi chụp DB và bốn data root; tạo full backup trong thư mục riêng `backups/full`, xác minh archive, rồi trích `database.dump` đã xác minh vào thư mục tạm riêng để chạy preflight. Service tiếp tục dừng qua preflight, migration/kiểm tra DB và switch code, kể cả khi schema không có migration chờ. `release-id` trong archive là release thực tế đang chạy trước deploy; recovery point gồm DB và file trước khi áp dụng release mục tiêu mới. Log ghi đường dẫn archive và SHA-256; archive được giữ lại khi deploy lỗi.
+6. Cơ sở dữ liệu theo `DB_MODE` (xem dưới).
+7. Chuyển symlink `current`, `systemctl restart qlvb-backend`.
+8. Kiểm tra `http://127.0.0.1:8001/api/health/ready/` trả 200 với `status=ready`, truy vấn DB thành công và `release` đúng tên release đang deploy; service cũng phải active (15 lần × 2 giây).
+9. Giữ 5 release mới nhất, không xóa release đang chạy và release trước đó.
 
 Deploy mở một cửa sổ bảo trì có downtime: `qlvb-backend` dừng trước khi chụp database và ba data root, rồi giữ dừng qua backup, preflight, migration/kiểm tra DB và switch code; sau đó deploy restart service rồi kiểm readiness. Deploy `sync` không có migration chờ vẫn có downtime; đây không phải rollout zero-downtime. Nếu lỗi trước khi DB có thể thay đổi, xóa release đang dựng, giữ nguyên `current`, xóa dump tạm và chỉ restart release trước nếu service ban đầu active; service ban đầu inactive vẫn inactive. Archive full backup và marker sidecar được giữ lại để điều tra.
 
@@ -110,7 +111,7 @@ Readiness lấy release ID một lần khi process nạp settings từ đường
 | | `sync` (mặc định) | `rebuild` (chỉ staging) |
 |---|---|---|
 | Dùng cho | Deploy thường, giữ nguyên dữ liệu | Chỉ khi chủ ý xóa dữ liệu staging |
-| Bước 5 | Restore dump đã xác minh vào DB tạm ICU `vi-VN`, chép marker, chạy `--adopt` để xác minh (nếu v2), rồi `--sync` thật trên DB tạm. Sau đó adopt/sync DB thật khi marker cần adopt hoặc migration đang chờ. Marker v3 hợp lệ cùng plan rỗng chỉ cần kiểm tra read-only. Service được giữ dừng từ lúc bắt đầu backup đến lúc deploy hoàn tất. | Kiểm `ADMIN_PASSWORD` và dump đã xác minh trước, service đã dừng, `dropdb --if-exists --force`, `createdb` ICU `vi-VN` owner là role ứng dụng, chạy `build_db.py --seed`; kiểm collation, marker v3, fingerprint schema/history và `migrate --check`. |
+| Bước 6 | Restore dump đã xác minh vào DB tạm ICU `vi-VN`, chép marker, chạy `--adopt` để xác minh (nếu v2), rồi `--sync` thật trên DB tạm. Sau đó adopt/sync DB thật khi marker cần adopt hoặc migration đang chờ. Marker v3 hợp lệ cùng plan rỗng chỉ cần kiểm tra read-only. Service được giữ dừng từ lúc bắt đầu backup đến lúc deploy hoàn tất. | Kiểm `ADMIN_PASSWORD` và dump đã xác minh trước, service đã dừng, `dropdb --if-exists --force`, `createdb` ICU `vi-VN` owner là role ứng dụng, chạy `build_db.py --seed`; kiểm collation, marker v3, fingerprint schema/history và `migrate --check`. |
 | DB thiếu marker hoặc schema/history lệch | Dừng trên bản khôi phục; không sửa DB thật hoặc switch release | Không áp dụng |
 | Lỗi | Lỗi ở preflight không đổi DB thật. Lỗi khi adopt/migration có thể để lại schema/history/data một phần; giữ service stopped, backup và release, không tự đổi code hoặc restore DB. | Sau khi bắt đầu drop, DB có thể rỗng hoặc được nạp một phần; giữ service stopped và backup, không tự đổi code hoặc restore DB; `stop` lỗi thì dừng trước drop |
 
@@ -121,7 +122,14 @@ Readiness lấy release ID một lần khi process nạp settings từ đường
 ### Điều kiện tiên quyết trên host
 
 - User deploy là user chạy script, có quyền ghi `/srv/qlvb` và `~/deploy`, có role PostgreSQL cùng tên (kết nối qua socket `/var/run/postgresql`, peer) để restore vào DB tạm, và `python3` (3.12) kèm `venv`.
-- Quyền `sudo` không mật khẩu đã dùng: `sudo -n -u postgres /usr/bin/createdb`, `sudo -n -u postgres /usr/bin/dropdb`, `sudo -n /usr/bin/systemctl stop qlvb-backend`, `sudo -n /usr/bin/systemctl restart qlvb-backend`.
+- Quyền `sudo` không mật khẩu đã dùng: `sudo -n -u postgres /usr/bin/createdb`, `sudo -n -u postgres /usr/bin/dropdb`, `sudo -n /usr/bin/systemctl stop qlvb-backend`, `sudo -n /usr/bin/systemctl restart qlvb-backend`, và ba lệnh nginx (đúng nguyên văn, không thêm quyền ghi khác vào `/etc/nginx`):
+
+  ```
+  <user deploy> ALL=(root) NOPASSWD: /usr/bin/install -m 644 /home/<user deploy>/deploy/qlvb-frontend.nginx /etc/nginx/sites-available/qlvb-frontend
+  <user deploy> ALL=(root) NOPASSWD: /usr/sbin/nginx -t
+  <user deploy> ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx
+  ```
+- `/etc/nginx/sites-enabled/qlvb-frontend` là symlink tới `/etc/nginx/sites-available/qlvb-frontend`; ngoài `default`, `sites-enabled` không có site nào khác nghe cổng 8088.
 - Mọi deploy dừng `qlvb-backend` trước khi tạo full backup; user deploy cần quyền `systemctl stop` và phải đọc được ba data root tuyệt đối nằm ngoài thư mục release. Với `rebuild`, `ADMIN_PASSWORD` cũng phải có trong `/etc/qlvb/backend.env`:
 
 ```
@@ -142,7 +150,7 @@ pnpm deploy:staging
 pnpm deploy:staging --reset-db
 ```
 
-Lệnh fetch `origin/staging` rồi deploy đúng commit; không pull, không checkout, working tree và nhánh hiện tại không bị đổi. Mặc định in `DB_MODE=sync` và yêu cầu gõ `DEPLOY`. Chỉ khi thêm `--reset-db`, lệnh chọn `rebuild` và bắt buộc gõ `RESET`; `--yes` chỉ bỏ xác nhận `DEPLOY`, không bỏ xác nhận `RESET`. Tarball (`backend`, `scripts`, `docs/common/database`) và `deploy/deploy.sh` của commit đó được gửi vào `~/deploy/`, sau đó chạy với `DB_MODE` đã chọn. Log stream ra terminal; file tạm được xóa sau khi chạy.
+Lệnh fetch `origin/staging` rồi deploy đúng commit; không pull, không checkout, working tree và nhánh hiện tại không bị đổi. Mặc định in `DB_MODE=sync` và yêu cầu gõ `DEPLOY`. Chỉ khi thêm `--reset-db`, lệnh chọn `rebuild` và bắt buộc gõ `RESET`; `--yes` chỉ bỏ xác nhận `DEPLOY`, không bỏ xác nhận `RESET`. Tarball (`backend`, `scripts`, `docs/common/database`), `deploy/deploy.sh` và `deploy/nginx/qlvb-frontend.conf` (thành `qlvb-frontend.nginx`) của commit đó được gửi vào `~/deploy/`, sau đó chạy với `DB_MODE` đã chọn. Log stream ra terminal; file tạm được xóa sau khi chạy.
 
 Workflow `CI` chỉ publish frontend/backend sau khi cả backend tests + migration/schema/baseline gate và frontend lint/i18n/token/tests/build đều đạt. Hai deploy jobs phụ thuộc cả hai gate để frontend và backend không phát hành độc lập sau một phần CI. Deploy tự động luôn dùng `sync`. Reset chỉ chạy qua `workflow_dispatch` trên `staging` khi chọn rõ input `reset_database`.
 
@@ -165,7 +173,7 @@ Cấu hình host (không ghi IP, tên tài khoản hay mật khẩu vào repo):
 
 ### Khôi phục từ dump
 
-Dùng khi `DB_MODE=rebuild` lỗi từ bước 5 trở đi. `<dump>` là đường dẫn in ở cuối log; `<dump>.marker` lưu marker trước deploy; `<release cũ>` là release in ở dòng "Ban dang chay". Dump không mang collation hoặc database comment marker. Khôi phục marker sidecar rồi xác minh/adopt và sync trước khi khởi động service.
+Dùng khi `DB_MODE=rebuild` lỗi từ bước 6 trở đi. `<dump>` là đường dẫn in ở cuối log; `<dump>.marker` lưu marker trước deploy; `<release cũ>` là release in ở dòng "Ban dang chay". Dump không mang collation hoặc database comment marker. Khôi phục marker sidecar rồi xác minh/adopt và sync trước khi khởi động service.
 
 ```bash
 (
@@ -187,6 +195,41 @@ Dùng khi `DB_MODE=rebuild` lỗi từ bước 5 trở đi. `<dump>` là đườ
 ```
 
 Đã kiểm trong container: restore dump của DB libc vào DB ICU thành công (65 bản ghi `django_migrations`). Chưa kiểm trên host thật.
+
+## Đường vào staging và nginx
+
+Đường vào duy nhất: `http://quanlyvanban.duckdns.org:8088`. Router NAT cổng 8088 về host; nginx nghe `8088` (IPv4 và IPv6), phục vụ SPA từ `/var/www/qlvb` và chuyển `/api/` tới Gunicorn `127.0.0.1:8001`. Không có tunnel hay site nginx thứ hai.
+
+Nguồn duy nhất của cấu hình là `deploy/nginx/qlvb-frontend.conf`; không sửa tay `/etc/nginx` trên host. Thay đổi cấu hình đi qua PR, CI kiểm cú pháp bằng `nginx -t` (image `nginx:1.24`, cùng phiên bản Ubuntu 24.04), deploy cài vào `/etc/nginx/sites-available/qlvb-frontend`.
+
+| Đường dẫn | Xử lý |
+|---|---|
+| `/`, route SPA | `try_files` về `index.html`; `index.html` gửi `Cache-Control: no-cache` |
+| `/assets/` | cache 30 ngày, `immutable` |
+| `/api/`, `/api`, `/health/ai` | proxy `127.0.0.1:8001` |
+| `/static/` | alias `/srv/qlvb/current/backend/staticfiles/` |
+| `/media/` | 404 |
+| `/admin` | chỉ `127.0.0.1`/`::1`; từ internet 403 |
+
+Header chuyển tiếp (`Host`, `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`) do nginx ghi đè từ kết nối thực tế, không giữ giá trị client gửi; `X-Forwarded-Proto` là `$scheme` (hiện tại `http`). Giới hạn body 50 MB (ứng dụng giới hạn 20 MB mỗi tệp).
+
+Bước 4 của deploy:
+
+1. Nội dung `~/deploy/qlvb-frontend.nginx` giống hệt file đang chạy: bỏ qua cài đặt và reload.
+2. Khác: chép file đang chạy sang `~/deploy/qlvb-frontend.nginx.prev`, `install` bản mới, `nginx -t`, `systemctl reload nginx`.
+3. Một trong ba lệnh lỗi: chép `.prev` về `~/deploy/qlvb-frontend.nginx`, cài lại, `nginx -t`, rồi deploy báo lỗi. Nginx chưa reload nên vẫn chạy cấu hình cũ.
+
+Bước này chạy trước khi dừng `qlvb-backend`: lỗi nginx chỉ xóa release đang dựng, không gây downtime, không chạm DB hay `current`. Cấu hình không phụ thuộc release (`/static/` trỏ qua `current`), nên được cài trước khi chuyển release. Nếu deploy lỗi ở bước sau, cấu hình nginx mới vẫn giữ.
+
+Truy cập `/admin` từ máy dev qua SSH tunnel (alias `qlvb-staging` như mục [Chạy tay](#chạy-tay-không-qua-ci)):
+
+```bash
+ssh -L 8088:127.0.0.1:8088 qlvb-staging
+```
+
+rồi mở `http://127.0.0.1:8088/admin/`. Đăng nhập admin dùng session và CSRF cookie qua HTTP, nên cần `DJANGO_ALLOWED_HOSTS` có `127.0.0.1`, `DJANGO_CSRF_TRUSTED_ORIGINS` có `http://127.0.0.1:8088`, và trình duyệt chấp nhận cookie `Secure` trên `http://127.0.0.1` khi `DJANGO_SECURE_COOKIES` bật.
+
+Biến môi trường backend tương ứng với đường vào HTTP (`/etc/qlvb/backend.env`): `DJANGO_ALLOWED_HOSTS` gồm `quanlyvanban.duckdns.org`, IP host và `127.0.0.1`; `DJANGO_CSRF_TRUSTED_ORIGINS` gồm `http://quanlyvanban.duckdns.org:8088` và `http://127.0.0.1:8088`; `DJANGO_SECURE_SSL_REDIRECT=False` (không có HTTPS, bật sẽ chuyển hướng tới địa chỉ không phục vụ).
 
 ## Dọn instance PostgreSQL thừa trên host staging
 
