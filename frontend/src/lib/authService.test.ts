@@ -153,7 +153,10 @@ describe('authService Unit Tests (Issue #8 Django Auth & Session Management)', (
           ok: true,
           status: 200,
           headers: new Headers({ 'content-type': 'application/json' }),
-          json: async () => ({ access: 'brand-new-access-token' }),
+          json: async () => ({
+            access: 'brand-new-access-token',
+            refresh: 'brand-new-refresh-token',
+          }),
         });
       }
 
@@ -179,6 +182,7 @@ describe('authService Unit Tests (Issue #8 Django Auth & Session Management)', (
     const result = await apiClient<{ success: boolean; data: string }>('/api/protected-resource/');
     expect(result.data).toBe('secure content');
     expect(localStorage.getItem('tlbm_access_token')).toBe('brand-new-access-token');
+    expect(localStorage.getItem('tlbm_refresh_token')).toBe('brand-new-refresh-token');
   });
 
   it('clears session when refresh token fails on 401', async () => {

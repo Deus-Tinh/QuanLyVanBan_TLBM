@@ -43,7 +43,7 @@ export default function EmployeesPage() {
 
   // Trạng thái tải & thông báo
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; isError?: boolean } | null>(null);
 
   // Quản lý Modal
@@ -59,6 +59,7 @@ export default function EmployeesPage() {
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+  const [isDeletingLastClerkWarning, setIsDeletingLastClerkWarning] = useState<boolean>(false);
 
   // Hiển thị Toast tự tắt sau 4s
   const showToast = useCallback((text: string, isError = false) => {
@@ -126,16 +127,23 @@ export default function EmployeesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, searchQuery, selectedUnitId, selectedPositionId, selectedStatus, reloadKey]);
 
-  // Tải file Excel mẫu
-  const handleDownloadTemplate = async () => {
+  // Xuất file Excel toàn bộ danh sách CBNV (Yêu cầu 1 & 4)
+  const handleExportExcel = async () => {
     try {
-      setIsDownloadingTemplate(true);
-      await downloadBlob('/api/accounts/employees/template/', 'mau_danh_sach_cbnv.xlsx');
-      showToast(t('employees.messages.downloadSuccess'));
+      setIsExporting(true);
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (selectedUnitId) params.append('don_vi_id', selectedUnitId);
+      if (selectedPositionId) params.append('chuc_vu_id', selectedPositionId);
+      if (selectedStatus) params.append('trang_thai', selectedStatus);
+
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      await downloadBlob(`/api/accounts/employees/export/${queryString}`, 'danh_sach_cbnv.xlsx');
+      showToast(t('employees.messages.exportSuccess'));
     } catch {
-      showToast(t('employees.messages.downloadError'), true);
+      showToast(t('employees.messages.exportError'), true);
     } finally {
-      setIsDownloadingTemplate(false);
+      setIsExporting(false);
     }
   };
 
@@ -166,18 +174,27 @@ export default function EmployeesPage() {
   };
 
   // Xóa CBNV
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (password: string, confirmRisk?: boolean) => {
     if (!deletingEmployee) return;
     try {
       setIsDeleting(true);
       setDeleteErrorMessage(null);
-      await apiClient.delete(`/api/accounts/employees/${deletingEmployee.id}/`);
+      const params = new URLSearchParams();
+      if (confirmRisk) params.append('confirm_last_clerk', 'true');
+      if (password) params.append('password', password);
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+
+      await apiClient.delete(`/api/accounts/employees/${deletingEmployee.id}/${queryString}`);
       showToast(t('employees.messages.deleteSuccess'));
       setDeletingEmployee(null);
+      setIsDeletingLastClerkWarning(false);
       refreshList();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'data' in err) {
-        const errorData = (err as { data: { detail?: string } }).data;
+        const errorData = (err as { data: { detail?: string; is_last_clerk?: boolean } }).data;
+        if (errorData?.is_last_clerk) {
+          setIsDeletingLastClerkWarning(true);
+        }
         if (errorData?.detail) {
           setDeleteErrorMessage(t(errorData.detail));
           return;
@@ -202,25 +219,7 @@ export default function EmployeesPage() {
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div
-          className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 animate-fade-in ${
-            toastMessage.isError
-              ? 'bg-danger text-white'
-              : 'bg-success text-white'
-          }`}
-        >
-          <i
-            className={`fa-solid ${
-              toastMessage.isError ? 'fa-circle-exclamation' : 'fa-circle-check'
-            }`}
-          />
-          <span className="text-sm font-medium">{toastMessage.text}</span>
-        </div>
-      )}
-
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -237,15 +236,15 @@ export default function EmployeesPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {can('import_cbnv') && (
+          {can('export_cbnv') && (
             <Button
               type="button"
               variant="secondary"
-              onClick={handleDownloadTemplate}
-              isLoading={isDownloadingTemplate}
+              onClick={handleExportExcel}
+              isLoading={isExporting}
               icon="fa-file-excel"
             >
-              {t('employees.actions.template')}
+              {t('employees.actions.exportExcel')}
             </Button>
           )}
 
@@ -470,6 +469,24 @@ export default function EmployeesPage() {
                             {emp.khoi_ten}
                           </span>
                         )}
+                        {emp.assignments && emp.assignments.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-primary bg-primary-subtle px-1.5 py-0.5 rounded"
+                              title={emp.assignments
+                                .map(
+                                  (a) =>
+                                    `${a.don_vi_ten} (${a.chuc_vu_ten}${
+                                      a.chuc_danh ? ` - ${a.chuc_danh}` : ''
+                                    })`
+                                )
+                                .join('; ')}
+                            >
+                              <i className="fa-solid fa-briefcase text-[9px]" />
+                              {t('employees.fields.concurrentBadge', { count: emp.assignments.length })}
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Chức vụ & Chức danh */}
@@ -485,9 +502,9 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Ngày sinh */}
-                      <td className="py-3.5 px-4 font-mono text-xs">
+                      <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5">
-                          <span>{emp.ngay_sinh || '—'}</span>
+                          <span className="font-medium text-main">{emp.ngay_sinh || '—'}</span>
                           {emp.is_birthday_masked && (
                             <span
                               className="text-warning text-[10px]"
@@ -500,17 +517,17 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* SĐT */}
-                      <td className="py-3.5 px-4 text-xs font-mono text-secondary">
+                      <td className="py-3.5 px-4">
                         {emp.sdt ? (
                           <a
                             href={`tel:${emp.sdt}`}
-                            className="hover:text-primary transition-colors flex items-center gap-1"
+                            className="font-medium text-main hover:text-primary transition-colors inline-flex items-center gap-1.5"
                           >
-                            <i className="fa-solid fa-phone text-[10px]" />
-                            {emp.sdt}
+                            <i className="fa-solid fa-phone text-xs text-muted" />
+                            <span>{emp.sdt}</span>
                           </a>
                         ) : (
-                          '—'
+                          <span className="font-medium text-muted">—</span>
                         )}
                       </td>
 
@@ -558,6 +575,7 @@ export default function EmployeesPage() {
                               type="button"
                               onClick={() => {
                                 setDeleteErrorMessage(null);
+                                setIsDeletingLastClerkWarning(Boolean(emp.is_last_unit_clerk));
                                 setDeletingEmployee(emp);
                               }}
                               className="p-1.5 rounded-lg text-secondary hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer"
@@ -641,26 +659,64 @@ export default function EmployeesPage() {
         }}
       />
 
-      <EmployeeImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onSuccess={(count) => {
-          showToast(t('employees.messages.importSuccess', { count }));
-          refreshList();
-        }}
-      />
+      {isImportModalOpen && (
+        <EmployeeImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={(count) => {
+            showToast(t('employees.messages.importSuccess', { count }));
+            refreshList();
+          }}
+        />
+      )}
 
       <DeleteConfirmModal
+        key={deletingEmployee?.id ? `del-${deletingEmployee.id}` : 'del-closed'}
         isOpen={Boolean(deletingEmployee)}
         onClose={() => {
           setDeletingEmployee(null);
           setDeleteErrorMessage(null);
+          setIsDeletingLastClerkWarning(false);
         }}
         onConfirm={handleConfirmDelete}
         name={deletingEmployee?.ho_ten || ''}
+        unitName={deletingEmployee?.don_vi_ten || ''}
+        isLastClerk={Boolean(deletingEmployee?.is_last_unit_clerk || isDeletingLastClerkWarning)}
         isLoading={isDeleting}
         errorMessage={deleteErrorMessage}
       />
+
+      {/* Toast Notification - Luôn nổi lên trên cùng (z-[9999]), không bị backdrop của Modal làm mờ */}
+      {toastMessage && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className={`fixed bottom-6 right-6 z-[9999] max-w-md px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in border ${
+            toastMessage.isError
+              ? 'bg-danger text-white border-red-300/40 shadow-red-900/30'
+              : 'bg-success text-white border-emerald-300/40 shadow-emerald-900/30'
+          }`}
+        >
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0 text-base">
+            <i
+              className={`fa-solid ${
+                toastMessage.isError ? 'fa-circle-exclamation' : 'fa-circle-check'
+              }`}
+            />
+          </div>
+          <span className="text-sm font-semibold tracking-wide flex-1 break-words leading-snug">
+            {toastMessage.text}
+          </span>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="text-white/80 hover:text-white p-1 rounded transition-colors text-base"
+            aria-label="Đóng thông báo"
+          >
+            <i className="fa-solid fa-xmark" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
