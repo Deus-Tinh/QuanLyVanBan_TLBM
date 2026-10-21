@@ -1,0 +1,15 @@
+{
+  "navigation": {
+    "tasks": "Task Management"
+  },
+  "pages": {
+    "tasks": {
+      "title": "Task Assignment & Progress Tracking",
+      "module": "Module 6: Task Management",
+      "assignedTeam": "Group 6 (Task Management Subsystem)",
+      "codeRef": "Item 6.1 · Difficulty: 0.80",
+      "isGroup1": false,
+      "desc": "Task log, resolution deadlines, lead handlers/participants, task commentary, and Excel reporting."
+    }
+  }
+}

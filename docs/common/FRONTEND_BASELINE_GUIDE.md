@@ -24,7 +24,7 @@ Bản Frontend Baseline là **mốc tham chiếu chuẩn mực** được đưa 
    - `src/components/`: Chứa component chia theo nhóm (`common/`, `layout/`, `auth/`, `dashboard/`).
    - `src/lib/`: Chứa `apiClient.ts`, `authService.ts`, `constants.ts`, `routes.ts`.
    - `src/types/`: Khai báo kiểu dữ liệu TypeScript (auth, navigation, theme...).
-   - `src/i18n/`: Quản lý song ngữ (`vi.json`, `en.json`, `translate.ts`).
+   - `src/i18n/`: Quản lý song ngữ (`<module>/vi.json`, `<module>/en.json`, `translate.ts`).
    - `src/styles/`: Design tokens và biến CSS tập trung (`global.css`, `animations.css`...).
 
 2. **Khung sườn App Shell dùng chung (`MainLayout` & `<Outlet />`):**  

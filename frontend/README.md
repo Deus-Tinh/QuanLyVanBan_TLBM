@@ -14,7 +14,7 @@
 - **Build Tool**: Vite 8 (HMR, tối ưu bundle)
 - **Styling**: Tailwind CSS + Design Tokens CSS Variables tập trung (`src/styles/global.css`)
 - **Icons**: FontAwesome 6 Free Pro CDN + Custom SVGs
-- **i18n**: Song ngữ Tiếng Việt (`vi.json`) / Tiếng Anh (`en.json`) qua hook `useTranslation()`
+- **i18n**: Song ngữ Tiếng Việt (`vi.json`) / Tiếng Anh (`en.json`) theo từng module, qua hook `useTranslation()`
 - **Testing**: Vitest + React Testing Library (Yêu cầu toàn bộ test suite phải pass 100%)
 - **Quality Gate**: ESLint + TypeScript Typecheck + Production Build
 
@@ -57,8 +57,8 @@ src/
 │   └── theme.ts                # ThemeMode (Clean Light / Sleek Dark)
 │
 ├── i18n/                       # Quản lý từ điển đa ngôn ngữ
-│   ├── vi.json                 # Từ điển Tiếng Việt
-│   ├── en.json                 # Từ điển Tiếng Anh
+│   ├── <module>/vi.json        # Từ điển Tiếng Việt của module
+│   ├── <module>/en.json        # Từ điển Tiếng Anh của module
 │   └── translate.ts            # Hook useTranslation()
 │
 ├── styles/                     # Quy chuẩn giao diện & CSS Variables
@@ -125,7 +125,7 @@ const data = await apiClient.get<DocumentResponse>('/api/documents/incoming/');
 Tạo file type riêng hoặc thêm vào `src/types/`, ví dụ `src/types/document.ts`.
 
 ### Bước 5: Bổ sung từ điển đa ngôn ngữ trong `src/i18n/`
-Thêm chuỗi vào cả `src/i18n/vi.json` và `src/i18n/en.json` để hỗ trợ đa ngôn ngữ đồng nhất.
+Thêm chuỗi vào cả `src/i18n/<module>/vi.json` và `src/i18n/<module>/en.json` của module mình (gồm cả `pages.<id>` và `navigation.<id>` của màn hình mới). `translate.ts` tự ghép mọi thư mục module; `pnpm check:i18n` báo lỗi khi lệch key giữa hai file hoặc trùng key với module khác.
 
 ### Bước 6: Viết Unit Test bằng Vitest
 Tạo file test bên cạnh component, ví dụ `IncomingDocumentsPage.test.tsx` và chạy `pnpm test`.

@@ -70,7 +70,7 @@ Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
 ---
 
 ## 4. Các Invariant Kỹ thuật Bắt buộc
-- **i18n (Trụ cột 1)**: 100% text trên giao diện React phải dùng `t('namespace.key')`. Mọi key mới phải có đầy đủ cả 2 nhánh trong `frontend/src/i18n/vi.json` và `frontend/src/i18n/en.json` (kiểm bằng `pnpm --dir frontend check:i18n`). Không dùng dạng `lang === 'en' ? ... : ...` trong component.
+- **i18n (Trụ cột 1)**: 100% text trên giao diện React phải dùng `t('namespace.key')`. Mỗi module giữ từ điển riêng tại `frontend/src/i18n/<module>/vi.json` và `en.json`; mọi key mới phải có đầy đủ cả 2 nhánh trong file của module mình, không khai báo key đã có ở module khác (kiểm bằng `pnpm --dir frontend check:i18n`). Không dùng dạng `lang === 'en' ? ... : ...` trong component.
 - **Design Tokens (Trụ cột 3)**: Không dùng mã màu Hex (`#...`) hay font-size pixel trong CSS. Bắt buộc dùng `var(--color-...)` và `var(--font-...)` từ `src/styles/global.css` (kiểm bằng `pnpm --dir frontend check:tokens`).
 - **Git Flow**: Không commit/push trực tiếp vào `main` và `staging`. Mọi thay đổi đi theo vòng đời Issue → Nhánh → PR (mục 8). Kiểm tra `git status` trước khi commit, không dùng `git add .` bừa bãi.
 
@@ -90,6 +90,7 @@ Mọi Pull Request bắt buộc trình bày đầy đủ các phần:
   - Không thêm dòng mới để PR qua được CI. Lệch mới phải sửa bằng migration hoặc bằng thay đổi DDL theo quy trình trên.
   - Sửa xong lệch nào thì xoá đúng dòng đó (CI báo lỗi khi baseline còn dòng đã hết lệch).
   - Khi conflict ở file này: merge `staging` vào nhánh, chạy lại `.github/scripts/compare_schema_ddl.py --write-baseline` trên DB dựng như CI, giữ kết quả mới, không ghép dòng bằng tay.
+- **Mỗi app một nhánh migration**: mỗi app có `migrations/max_migration.txt` ghi tên migration mới nhất. Thêm migration xong chạy `python .github/scripts/check_max_migration.py --write` và commit file này cùng migration. Hai PR cùng thêm migration cho một app sẽ conflict ở file này; PR sau merge `staging`, đánh lại số migration của mình nối tiếp migration trên `staging` (không sửa migration đã có trên `staging`), rồi chạy lại `--write`.
 - **Function/trigger/view tạo bằng migration** (`RunSQL`) phải chép nguyên văn từ `release_DDL.sql`; bước so schema so nguyên văn, khác một khoảng trắng cũng bị coi là lệch.
 - **Sau khi pull code có đổi schema**: `pnpm db:migrate` (đồng bộ migration mới); nếu `release_DDL.sql` đổi thì `pnpm db:reset` (dựng lại DB local từ DDL).
 

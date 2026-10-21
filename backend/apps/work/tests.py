@@ -1,6 +1,7 @@
 import datetime
 import shutil
 import tempfile
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -8,13 +9,13 @@ from django.core import mail
 from django.core.management import call_command
 from django.core.signals import request_finished
 from django.db import close_old_connections
-from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings, TestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
+from document_storage import get_document_storage
 from organizations.models import DonVi, KhoiKhuVuc
 from documents.models import PhamVi, VanBanDen, VanBanDi
 
@@ -32,7 +33,7 @@ from work.models import (
 
 User = get_user_model()
 
-TEMP_MEDIA_ROOT = tempfile.mkdtemp(prefix="work-tests-")
+TEMP_STORAGE_ROOT = tempfile.mkdtemp(prefix="work-tests-")
 
 
 def pdf_file(name="bang-chung.pdf"):
@@ -40,7 +41,7 @@ def pdf_file(name="bang-chung.pdf"):
 
 
 @override_settings(
-    MEDIA_ROOT=TEMP_MEDIA_ROOT,
+    DOCUMENT_STORAGE_ROOT=TEMP_STORAGE_ROOT,
     MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
 )
 class WorkTestBase(APITestCase):
@@ -49,7 +50,7 @@ class WorkTestBase(APITestCase):
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        shutil.rmtree(TEMP_STORAGE_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.today = timezone.localdate()
@@ -660,8 +661,8 @@ class TaskCreateApiTests(WorkTestBase):
         self.login(self.creator)
         self.client.post("/api/work/tasks/", self.payload(attachments=[pdf_file("Kế hoạch.pdf")]), format="multipart")
         stored = TaskAttachment.objects.get().file.name
-        self.assertTrue(stored.startswith(f"06_tasks/{self.today:%Y/%m}/"), stored)
-        self.assertTrue(stored.endswith(".pdf"))
+        self.assertRegex(stored, rf"^cong-viec/{self.today:%Y/%m/%d}/[0-9a-f]{{32}}\.pdf$")
+        self.assertTrue((Path(TEMP_STORAGE_ROOT) / stored).is_file())
 
     def test_khong_bat_buoc_file_dinh_kem(self):
         self.login(self.creator)
@@ -883,7 +884,7 @@ class TaskUpdateDeleteApiTests(WorkTestBase):
         self.assertEqual(response.data["host"]["id"], self.director.pk)
         self.assertEqual({p["id"] for p in response.data["participants"]}, {self.member.pk, self.outsider.pk})
         self.assertEqual([f["fileName"] for f in response.data["attachments"]], ["moi.pdf"])
-        self.assertFalse(default_storage.exists(old_name))
+        self.assertFalse(get_document_storage().exists(old_name))
 
     def test_gui_thieu_nhom_nguoi_lien_quan_bi_chan(self):
         task = self.make_task()
@@ -902,7 +903,7 @@ class TaskUpdateDeleteApiTests(WorkTestBase):
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Task.objects.filter(pk=task.pk).exists())
-        self.assertFalse(default_storage.exists(file_name))
+        self.assertFalse(get_document_storage().exists(file_name))
 
     def test_can_bo_tham_gia_khong_duoc_xoa(self):
         task = self.make_task()
@@ -1094,7 +1095,7 @@ class TaskEvidenceApiTests(WorkTestBase):
         # Xóa mềm: bản ghi và file vẫn còn, chỉ thôi hiển thị và thôi tính vào trạng thái.
         evidence.refresh_from_db()
         self.assertTrue(evidence.is_deleted)
-        self.assertTrue(default_storage.exists(file_name))
+        self.assertTrue(get_document_storage().exists(file_name))
 
     def test_file_da_xoa_mem_thi_khong_tai_xuong_duoc(self):
         task = self.make_task(first_opened_at=timezone.now())
