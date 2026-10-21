@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -118,11 +119,13 @@ class PostgreSQLBackupRestoreDrill(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory(prefix="qlvb-backup-restore-drill-")
         cls.root = Path(cls.temp.name)
         cls.addClassCleanup(cls._cleanup_test_resources)
-        cls.roots = {name: cls.root / "source" / name for name in ("media", "signing", "ai")}
+        cls.roots = {name: cls.root / "source" / name for name in ("media", "signing", "ai", "storage")}
         for path in cls.roots.values():
             path.mkdir(parents=True)
         (cls.roots["media"] / "records").mkdir()
         (cls.roots["media"] / "records" / "synthetic.bin").write_bytes(b"media-payload-only")
+        (cls.roots["storage"] / "van-ban-den" / "2026" / "10" / "21").mkdir(parents=True)
+        (cls.roots["storage"] / "van-ban-den" / "2026" / "10" / "21" / "synthetic.pdf").write_bytes(b"synthetic-business-file")
         (cls.roots["signing"] / "documents").mkdir()
         (cls.roots["signing"] / "documents" / "synthetic.pdf").write_bytes(b"synthetic-signed-document")
         (cls.roots["ai"] / "docs").mkdir()
@@ -143,6 +146,7 @@ class PostgreSQLBackupRestoreDrill(unittest.TestCase):
                     f"DJANGO_MEDIA_ROOT={cls.roots['media']}",
                     f"SIGNING_DOCUMENT_ROOT={cls.roots['signing']}",
                     f"AI_DATA_DIR={cls.roots['ai']}",
+                    f"DOCUMENT_STORAGE_ROOT={cls.roots['storage']}",
                     "",
                 )
             ),
@@ -353,6 +357,7 @@ class PostgreSQLBackupRestoreDrill(unittest.TestCase):
             "backup", "--database", self.source_db, "--release-id", "synthetic-json",
             "--output-dir", str(output_dir), "--media-dir", str(self.roots["media"]),
             "--signing-dir", str(self.roots["signing"]), "--ai-dir", str(self.roots["ai"]),
+            "--storage-dir", str(self.roots["storage"]),
             "--private-config", str(self.config_path), "--include-private-config", "--files-quiesced", "--json",
         ]
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
@@ -440,6 +445,75 @@ class PostgreSQLBackupRestoreDrill(unittest.TestCase):
                 include_private_config=True,
             )
         self.assertFalse(missing_key_output.exists())
+
+    def test_missing_storage_root_fails_before_archive_creation(self):
+        output = self.output_parent / "missing-storage-backups"
+        with self.assertRaisesRegex(BackupError, "storage path is missing"):
+            _backup(
+                database=self.source_db,
+                release_id="missing-storage",
+                output_dir=output,
+                roots={**self.roots, "storage": self.root / "no-storage-root"},
+                private_config=self.config_path,
+                files_quiesced=True,
+                include_private_config=True,
+            )
+        self.assertFalse(output.exists())
+        with self.assertRaisesRegex(BackupError, "all required"):
+            _backup(
+                database=self.source_db,
+                release_id="no-storage-argument",
+                output_dir=output,
+                roots={name: path for name, path in self.roots.items() if name != "storage"},
+                private_config=self.config_path,
+                files_quiesced=True,
+                include_private_config=True,
+            )
+
+    def _legacy_archive(self) -> Path:
+        """Archive đúng định dạng trước khi có kho tệp nghiệp vụ: không có files/storage.tar."""
+        legacy_dir = self.output_parent / "legacy-backups"
+        legacy_dir.mkdir(mode=0o700, exist_ok=True)
+        legacy = legacy_dir / "qlvb-backup-legacy-20260101T000000Z.tar.gz"
+        with tempfile.TemporaryDirectory(prefix="legacy-archive-") as work_name:
+            work = Path(work_name)
+            payloads = {}
+            with tarfile.open(self.archive_path, "r:gz") as source:
+                for member in source.getmembers():
+                    if member.name in ("manifest.json", "files/storage.tar"):
+                        continue
+                    payloads[member.name] = source.extractfile(member).read()
+            metadata = json.loads(payloads["metadata.json"])
+            del metadata["file_roots"]["storage"]
+            payloads["metadata.json"] = json.dumps(metadata, sort_keys=True).encode()
+            manifest = {
+                "format_version": 1,
+                "files": {
+                    name: {"sha256": hashlib.sha256(data).hexdigest(), "size": len(data), "mode": 0o600}
+                    for name, data in payloads.items()
+                },
+            }
+            payloads["manifest.json"] = json.dumps(manifest, sort_keys=True).encode()
+            with tarfile.open(legacy, "w:gz") as target:
+                for name, data in payloads.items():
+                    info = tarfile.TarInfo(name)
+                    info.size, info.mode = len(data), 0o600
+                    target.addfile(info, io.BytesIO(data))
+        os.chmod(legacy, 0o600)
+        return legacy
+
+    def test_archive_without_storage_root_still_verifies_and_restores(self):
+        legacy = self._legacy_archive()
+        with _verified_archive(legacy) as verified:
+            self.assertEqual(verified["roots"], ("media", "signing", "ai"))
+        restore_db = f"qlvb_backup_test_legacy_{self.suffix}"
+        self._create_database(restore_db)
+        restore_root = self.restore_parent / "restored-legacy"
+        _restore(archive_path=legacy, database=restore_db, confirm_target_db=restore_db, restore_root=restore_root)
+        self.assertTrue((restore_root / "media/records/synthetic.bin").is_file())
+        self.assertFalse((restore_root / "storage").exists())
+        path_map = json.loads((restore_root / "config/recovered-paths.json").read_text(encoding="utf-8"))
+        self.assertNotIn("DOCUMENT_STORAGE_ROOT", path_map)
 
     def test_reset_gate_preserves_nonempty_target(self):
         with self._database_connection(self.guarded_db) as connection:
@@ -543,6 +617,10 @@ class PostgreSQLBackupRestoreDrill(unittest.TestCase):
         self.assertEqual(fingerprint, self.public_fingerprint)
         self.assertEqual(file_path, "documents/synthetic.pdf")
         self.assertEqual((self.restore_root / "media/records/synthetic.bin").read_bytes(), b"media-payload-only")
+        self.assertEqual(
+            (self.restore_root / "storage/van-ban-den/2026/10/21/synthetic.pdf").read_bytes(),
+            b"synthetic-business-file",
+        )
         self.assertEqual((self.restore_root / "ai/docs/synthetic.md").read_text(encoding="utf-8"), "synthetic knowledge base\n")
         self.assertEqual((self.restore_root / "ai/chroma/chroma.sqlite3").read_bytes(), b"synthetic-vector-store")
         self.assertEqual((self.restore_root / "ai/doc_registry.json").read_text(encoding="utf-8"), '{"synthetic": true}\n')
@@ -581,6 +659,7 @@ class PostgreSQLBackupRestoreDrill(unittest.TestCase):
             (self.restore_root / "config/recovered-paths.json").read_text(encoding="utf-8")
         )
         self.assertEqual(path_map["SIGNING_DOCUMENT_ROOT"], str(self.restore_root / "signing"))
+        self.assertEqual(path_map["DOCUMENT_STORAGE_ROOT"], str(self.restore_root / "storage"))
         self.assertEqual(
             (self.restore_root / "private_config/backend.env").stat().st_mode & 0o777,
             0o600,
