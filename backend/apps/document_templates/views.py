@@ -13,7 +13,7 @@ from rest_framework.response import Response
 
 from .selectors import visible_resources
 from .filters import TaiLieuChiTietFilter
-from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment
+from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment, template_disk_path
 from .serializers import (
     DanhMucTaiLieuSerializer,
     LoaiTaiLieuSerializer,
@@ -376,14 +376,11 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
         """
         import os
         import mimetypes
-        from django.conf import settings
         from django.http import FileResponse, Http404
 
         att = self.get_object()
-        file_url = att.path
-        rel_path = file_url.replace('/media/', '', 1) if file_url.startswith('/media/') else file_url
-        disk_path = os.path.join(settings.MEDIA_ROOT, rel_path)
-        if not os.path.exists(disk_path):
+        disk_path = template_disk_path(att.path)
+        if not disk_path or not os.path.exists(disk_path):
             raise Http404("Tệp không tồn tại trên máy chủ")
 
         content_type, _ = mimetypes.guess_type(disk_path)
@@ -419,11 +416,9 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
         if ext in ['xlsx', 'xls']:
             sheets_data = []
             try:
-                from django.conf import settings
                 import os
-                rel_path = file_url.replace('/media/', '', 1) if file_url.startswith('/media/') else file_url
-                disk_path = os.path.join(settings.MEDIA_ROOT, rel_path)
-                if os.path.exists(disk_path):
+                disk_path = template_disk_path(file_url)
+                if disk_path and os.path.exists(disk_path):
                     wb = openpyxl.load_workbook(disk_path, data_only=True)
                     for s_name in wb.sheetnames[:5]:
                         ws = wb[s_name]
