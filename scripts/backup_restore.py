@@ -21,7 +21,13 @@ from pathlib import Path, PurePosixPath
 
 ARCHIVE_VERSION = 1
 POSTGRES_MAJOR = 16
-ROOT_NAMES = ("media", "signing", "ai")
+ROOT_NAMES = ("media", "signing", "ai", "storage")
+# Archive tạo trước khi có kho tệp nghiệp vụ (issue #192) không có gốc này vẫn phải kiểm tra và khôi phục được.
+OPTIONAL_ROOT_NAMES = ("storage",)
+ROOT_PATH_VARIABLES = {
+    "media": "DJANGO_MEDIA_ROOT", "signing": "SIGNING_DOCUMENT_ROOT", "ai": "AI_DATA_DIR",
+    "storage": "DOCUMENT_STORAGE_ROOT",
+}
 PRIVATE_CONFIG_MEMBER = "private_config/backend.env"
 REQUIRED_CONFIG_KEYS = ("DJANGO_SECRET_KEY", "SIGNING_PIN_SECRET")
 KNOWN_SECRET_KEYS = (
@@ -34,7 +40,7 @@ NON_SECRET_ENV_KEYS = (
     "DJANGO_SECURE_HSTS_SECONDS", "DB_ENGINE", "DB_NAME", "DB_HOST", "DB_PORT", "DB_USER",
     "DB_READONLY_USER", "DB_READONLY_NAME", "DB_READONLY_HOST", "DB_READONLY_PORT",
     "DJANGO_MEDIA_ROOT", "SIGNING_DOCUMENT_ROOT", "SIGNING_PDF_FONT", "SIGNING_PDF_FONT_BOLD",
-    "AI_DATA_DIR", "MODEL_PROVIDER", "COLLECTION_NAME", "EMBED_MODEL", "LLM_MODEL", "VISION_MODEL",
+    "DOCUMENT_STORAGE_ROOT", "AI_DATA_DIR", "MODEL_PROVIDER", "COLLECTION_NAME", "EMBED_MODEL", "LLM_MODEL", "VISION_MODEL",
     "VISION_OCR_ENABLED", "VISION_OCR_MODE", "VISION_OCR_PDF_DPI", "VISION_OCR_TIMEOUT",
     "VISION_OCR_MAX_IMAGE_SIZE", "VISION_OCR_JPEG_QUALITY", "VISION_OCR_PARALLEL_WORKERS",
     "CHAT_HISTORY_MAX_TURNS", "CHAT_HISTORY_MAX_CHARS", "EMAIL_HOST", "EMAIL_PORT",
@@ -43,8 +49,9 @@ NON_SECRET_ENV_KEYS = (
 )
 PAYLOAD_MEMBERS = (
     "metadata.json", "db_marker.json", "database.dump", "files/media.tar",
-    "files/signing.tar", "files/ai.tar", PRIVATE_CONFIG_MEMBER,
+    "files/signing.tar", "files/ai.tar", "files/storage.tar", PRIVATE_CONFIG_MEMBER,
 )
+OPTIONAL_PAYLOAD_MEMBERS = tuple(f"files/{name}.tar" for name in OPTIONAL_ROOT_NAMES)
 MAX_CONFIG_BYTES = 2 * 1024 * 1024
 MAX_METADATA_BYTES = 32 * 1024 * 1024
 
@@ -493,7 +500,7 @@ def _backup(
     config_bytes = _check_private_file(private_config, max_bytes=MAX_CONFIG_BYTES)
     _, config_keys = _parse_private_config(config_bytes)
     if set(roots) != set(ROOT_NAMES):
-        raise BackupError("media, signing, and AI data roots are all required.")
+        raise BackupError("media, signing, AI, and document storage roots are all required.")
     resolved_roots = {name: _assert_safe_path(roots[name], name) for name in ROOT_NAMES}
     output = _private_output_dir(output_dir)
     config = private_config.resolve(strict=True)
@@ -558,6 +565,7 @@ def _backup(
             "files/media.tar": temp / "media.tar",
             "files/signing.tar": temp / "signing.tar",
             "files/ai.tar": temp / "ai.tar",
+            "files/storage.tar": temp / "storage.tar",
             PRIVATE_CONFIG_MEMBER: config_copy,
         }
         payloads["metadata.json"].write_bytes(_json_bytes(metadata))
@@ -652,8 +660,10 @@ def _verified_archive(archive_path: Path):
                         if member.name not in (*PAYLOAD_MEMBERS, "manifest.json"):
                             raise BackupError("backup archive contains an unexpected entry.")
                         by_name[member.name] = member
-                    if set(by_name) != {*PAYLOAD_MEMBERS, "manifest.json"}:
+                    required_members = [m for m in PAYLOAD_MEMBERS if m not in OPTIONAL_PAYLOAD_MEMBERS]
+                    if not {*required_members, "manifest.json"} <= set(by_name):
                         raise BackupError("backup archive is missing a required payload.")
+                    payload_members = [m for m in PAYLOAD_MEMBERS if m in by_name]
 
                     manifest_path = temp / "manifest.json"
                     _copy_outer_member(archive, by_name["manifest.json"], manifest_path)
@@ -661,11 +671,11 @@ def _verified_archive(archive_path: Path):
                     files = manifest.get("files")
                     if manifest.get("format_version") != ARCHIVE_VERSION or not isinstance(files, dict):
                         raise BackupError("checksum manifest version or structure is unsupported.")
-                    if set(files) != set(PAYLOAD_MEMBERS):
+                    if set(files) != set(payload_members):
                         raise BackupError("checksum manifest does not describe every required payload.")
 
                     payload_paths: dict[str, Path] = {}
-                    for name in PAYLOAD_MEMBERS:
+                    for name in payload_members:
                         record = files.get(name)
                         member = by_name[name]
                         if not isinstance(record, dict) or member.mode & 0o077:
@@ -701,9 +711,10 @@ def _verified_archive(archive_path: Path):
                 raise BackupError("database marker sidecar is missing or inconsistent.")
 
             roots = metadata.get("file_roots")
-            if not isinstance(roots, dict) or set(roots) != set(ROOT_NAMES):
-                raise BackupError("backup is missing a required media, signing, or AI data root.")
-            for root_name in ROOT_NAMES:
+            present_roots = tuple(name for name in ROOT_NAMES if f"files/{name}.tar" in payload_paths)
+            if not isinstance(roots, dict) or set(roots) != set(present_roots):
+                raise BackupError("backup is missing a required media, signing, AI, or document storage root.")
+            for root_name in present_roots:
                 _inspect_file_tree(payload_paths[f"files/{root_name}.tar"], expected=roots[root_name])
 
             private = metadata.get("private_config")
@@ -716,7 +727,7 @@ def _verified_archive(archive_path: Path):
             _parse_private_config(config_bytes)
             _tool_major("pg_restore")
             _verify_pg_dump(payload_paths["database.dump"])
-            yield {"metadata": metadata, "marker": marker, "payloads": payload_paths}
+            yield {"metadata": metadata, "marker": marker, "payloads": payload_paths, "roots": present_roots}
 
     return manager()
 
@@ -798,7 +809,8 @@ def _restore(*, archive_path: Path, database: str, confirm_target_db: str, resto
             os.chmod(stage, 0o700)
         files_root = stage / "files"
         files_root.mkdir(mode=0o700)
-        for name in ROOT_NAMES:
+        restored_roots = verified["roots"]
+        for name in restored_roots:
             (files_root / name).mkdir(mode=0o700)
             _extract_file_tree(verified["payloads"][f"files/{name}.tar"], files_root / name)
         private_config_dir = stage / "private_config"
@@ -807,11 +819,7 @@ def _restore(*, archive_path: Path, database: str, confirm_target_db: str, resto
         os.chmod(private_config_dir / "backend.env", 0o600)
         config_dir = stage / "config"
         config_dir.mkdir(mode=0o700)
-        path_map = {
-            "DJANGO_MEDIA_ROOT": str(restore_root / "media"),
-            "SIGNING_DOCUMENT_ROOT": str(restore_root / "signing"),
-            "AI_DATA_DIR": str(restore_root / "ai"),
-        }
+        path_map = {ROOT_PATH_VARIABLES[name]: str(restore_root / name) for name in restored_roots}
         recovered_paths = config_dir / "recovered-paths.json"
         recovered_paths.write_bytes(_json_bytes(path_map))
         os.chmod(recovered_paths, 0o600)
@@ -842,7 +850,7 @@ def _restore(*, archive_path: Path, database: str, confirm_target_db: str, resto
         try:
             restore_root.mkdir(mode=0o700)
             os.chmod(restore_root, 0o700)
-            for item in ("media", "signing", "ai"):
+            for item in restored_roots:
                 os.rename(files_root / item, restore_root / item)
             os.rename(private_config_dir, restore_root / "private_config")
             os.rename(config_dir, restore_root / "config")
@@ -939,6 +947,7 @@ def _parser() -> argparse.ArgumentParser:
     backup.add_argument("--media-dir", required=True, type=Path)
     backup.add_argument("--signing-dir", required=True, type=Path)
     backup.add_argument("--ai-dir", required=True, type=Path)
+    backup.add_argument("--storage-dir", required=True, type=Path)
     backup.add_argument("--private-config", required=True, type=Path)
     backup.add_argument("--include-private-config", action="store_true")
     backup.add_argument("--files-quiesced", action="store_true")
@@ -967,7 +976,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "backup":
             archive = _backup(
                 database=args.database, release_id=args.release_id, output_dir=args.output_dir,
-                roots={"media": args.media_dir, "signing": args.signing_dir, "ai": args.ai_dir},
+                roots={
+                    "media": args.media_dir, "signing": args.signing_dir, "ai": args.ai_dir,
+                    "storage": args.storage_dir,
+                },
                 private_config=args.private_config, files_quiesced=args.files_quiesced,
                 include_private_config=args.include_private_config,
             )
