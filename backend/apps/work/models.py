@@ -1,4 +1,3 @@
-import uuid
 from pathlib import Path
 
 from django.conf import settings
@@ -6,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Case, CharField, Exists, F, OuterRef, Q, Value, When
 from django.utils import timezone
+
+from document_storage import build_dated_path, get_document_storage
 
 
 # ==========================================================================
@@ -58,12 +59,11 @@ def validate_work_file(file):
 
 def attachment_upload_to(instance, filename):
     """
-    Lưu vào media/06_tasks/<năm>/<tháng>/ theo quy định của PM.
+    Lưu vào DOCUMENT_STORAGE_ROOT/cong-viec/YYYY/MM/DD/<uuid>.<ext>.
     Tên file trên đĩa là chuỗi ngẫu nhiên để tránh trùng tên và lỗi ký tự tiếng Việt;
     tên gốc được giữ ở cột original_name.
     """
-    extension = Path(filename).suffix.lower()
-    return f"06_tasks/{timezone.localdate():%Y/%m}/{uuid.uuid4().hex}{extension}"
+    return build_dated_path("cong-viec", filename)
 
 
 def delete_stored_files_on_commit(file_names):
@@ -76,11 +76,10 @@ def delete_stored_files_on_commit(file_names):
         return
 
     def _delete():
-        from django.core.files.storage import default_storage
-
+        storage = get_document_storage()
         for name in names:
             try:
-                default_storage.delete(name)
+                storage.delete(name)
             except OSError:
                 # File đã mất trên đĩa thì bỏ qua, không làm hỏng thao tác xóa dữ liệu.
                 pass
@@ -693,6 +692,7 @@ class TaskAttachment(models.Model):
     file = models.FileField(
         "File",
         upload_to=attachment_upload_to,
+        storage=get_document_storage,
         max_length=500,
         validators=[validate_work_file],
         db_column="path",

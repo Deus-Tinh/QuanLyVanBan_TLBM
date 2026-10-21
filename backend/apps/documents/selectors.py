@@ -9,6 +9,7 @@ Cung cấp cho các phân hệ khác (Dashboard Nhóm 1, Hồ sơ Nhóm 3, Công
     Tài khoản bị khóa (is_active = FALSE) mất quyền xem.
 - la_nguoi_xem_duoc(user, van_ban): Kiểm tra boolean quyền xem trên một đối tượng văn bản cụ thể.
 - log_access(document_type, document_id, user, hanh_dong, ...): Ghi nhật ký vào documents_access_log.
+- tep_dinh_kem_hien_hanh(loai, document_ids): Tệp đính kèm chưa xoá mềm của các văn bản, theo thứ tự tải lên.
 """
 
 from django.db.models import Q
@@ -20,6 +21,7 @@ from .models import (
     VanBanDi,
     VanBanMat,
     get_document_model,
+    get_attachment_model,
     DocumentAccessLog,
     canonical_document_kind,
 )
@@ -152,3 +154,13 @@ def log_access(document_type, document_id, user, hanh_dong, doi_tuong_user=None,
         tep_id=tep_id,
         dia_chi_ip=dia_chi_ip,
     )
+
+
+def tep_dinh_kem_hien_hanh(loai, document_ids):
+    """Tệp đính kèm chưa xoá mềm của các văn bản `document_ids` thuộc loại `loai` (DEN/DI), theo thứ tự tải lên.
+
+    Không tự kiểm quyền xem: `document_ids` phải lấy từ `van_ban_xem_duoc`.
+    """
+    return get_attachment_model(loai).objects.filter(
+        document_id__in=document_ids, is_deleted=False
+    ).order_by("created_at", "pk")

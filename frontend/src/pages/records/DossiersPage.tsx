@@ -67,10 +67,15 @@ export default function DossiersPage() {
 
   React.useEffect(() => {
     let active = true;
-    recordsService
-      .listDossiers({ search, year, page, pageSize: PAGE_SIZE })
+    Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setIsLoading(true);
+        setError(null);
+        return recordsService.listDossiers({ search, year, page, pageSize: PAGE_SIZE });
+      })
       .then((result) => {
-        if (!active) return;
+        if (!active || !result) return;
         setItems(sortedDossiers(result.items));
         setCount(result.count);
       })
@@ -93,10 +98,17 @@ export default function DossiersPage() {
     };
   }, [search, year, page, reloadKey, t]);
 
-  const beginReload = () => {
-    setIsLoading(true);
-    setError(null);
-  };
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== search) {
+        setPage(1);
+        setSearch(trimmed);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, search]);
 
   const years = React.useMemo(() => {
     const current = new Date().getFullYear();
@@ -105,9 +117,19 @@ export default function DossiersPage() {
 
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    beginReload();
-    setPage(1);
-    setSearch(searchInput.trim());
+    const trimmed = searchInput.trim();
+    if (search !== trimmed) {
+      setPage(1);
+      setSearch(trimmed);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    if (search !== '') {
+      setPage(1);
+      setSearch('');
+    }
   };
 
   const handleSave = async (payload: DossierPayload) => {
@@ -122,7 +144,6 @@ export default function DossiersPage() {
         setNotice(t('records.dossiers.notices.created'));
       }
       setEditing(undefined);
-      beginReload();
       setReloadKey((value) => value + 1);
     } catch (err) {
       setSaveError(
@@ -144,7 +165,6 @@ export default function DossiersPage() {
       await recordsService.deleteDossier(deleting.id);
       setDeleting(null);
       setNotice(t('records.dossiers.notices.deleted'));
-      beginReload();
       if (items.length === 1 && page > 1) setPage((value) => value - 1);
       else setReloadKey((value) => value + 1);
     } catch (err) {
@@ -194,22 +214,54 @@ export default function DossiersPage() {
             <span className="sr-only">{t('records.dossiers.searchLabel')}</span>
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
-              className={`${controlClass} w-full pl-9`}
+              type="text"
+              className={`${controlClass} w-full pl-9 ${searchInput ? 'pr-8' : ''}`}
               placeholder={t('records.dossiers.searchPlaceholder')}
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
+            {searchInput && (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-0 text-muted transition hover:text-main"
+                onClick={handleClearSearch}
+                aria-label={t('records.actions.reset')}
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            )}
           </label>
           <label>
             <span className="sr-only">{t('records.filters.year')}</span>
-            <select className={`${controlClass} w-full md:w-40`} value={year} onChange={(event) => { beginReload(); setYear(event.target.value); setPage(1); }}>
+            <select
+              className={`${controlClass} w-full md:w-40`}
+              value={year}
+              onChange={(event) => {
+                const nextYear = event.target.value;
+                if (nextYear !== year) {
+                  setYear(nextYear);
+                  setPage(1);
+                }
+              }}
+            >
               <option value="">{t('records.filters.allYears')}</option>
               {years.map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </label>
           <Button type="submit" variant="secondary" icon="fa-filter">{t('records.actions.filter')}</Button>
           {(search || year) && (
-            <Button type="button" variant="ghost" onClick={() => { beginReload(); setSearchInput(''); setSearch(''); setYear(''); setPage(1); }}>{t('records.actions.reset')}</Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSearchInput('');
+                setSearch('');
+                setYear('');
+                setPage(1);
+              }}
+            >
+              {t('records.actions.reset')}
+            </Button>
           )}
         </form>
 
@@ -217,7 +269,7 @@ export default function DossiersPage() {
           <div className="flex min-h-72 flex-col items-center justify-center gap-3 p-8 text-center" role="alert">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-danger-subtle text-xl text-danger"><i className="fa-solid fa-triangle-exclamation" /></span>
             <div><h2 className="m-0 text-base font-bold text-main">{t('records.errors.title')}</h2><p className="mt-1 text-sm text-secondary">{error}</p></div>
-            <Button type="button" variant="secondary" icon="fa-rotate-right" onClick={() => { beginReload(); setReloadKey((value) => value + 1); }}>{t('records.actions.retry')}</Button>
+            <Button type="button" variant="secondary" icon="fa-rotate-right" onClick={() => setReloadKey((value) => value + 1)}>{t('records.actions.retry')}</Button>
           </div>
         ) : isLoading ? (
           <div className="space-y-3 p-5" aria-label={t('records.dossiers.loading')}>
@@ -262,7 +314,7 @@ export default function DossiersPage() {
                 </TableBody>
               </Table>
             </div>
-            <Pagination page={page} pageSize={PAGE_SIZE} count={count} onChange={(value) => { beginReload(); setPage(value); }} />
+            <Pagination page={page} pageSize={PAGE_SIZE} count={count} onChange={(value) => setPage(value)} />
           </>
         )}
       </Card>
