@@ -76,12 +76,17 @@ export default function DocumentTypesPage() {
 
   React.useEffect(() => {
     let active = true;
-    const request = dossierId
-      ? recordsService.listDocumentTypes(dossierId, { search, year, page, pageSize: PAGE_SIZE })
-      : recordsService.listDocumentTypeCatalog({ search, year, page, pageSize: PAGE_SIZE });
-    request
+    Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setIsLoading(true);
+        setError(null);
+        return dossierId
+          ? recordsService.listDocumentTypes(dossierId, { search, year, page, pageSize: PAGE_SIZE })
+          : recordsService.listDocumentTypeCatalog({ search, year, page, pageSize: PAGE_SIZE });
+      })
       .then((result) => {
-        if (!active) return;
+        if (!active || !result) return;
         setItems(result.items);
         setCount(result.count);
       })
@@ -102,9 +107,24 @@ export default function DocumentTypesPage() {
     };
   }, [dossierId, search, year, page, reloadKey, t]);
 
-  const beginReload = () => {
-    setIsLoading(true);
-    setError(null);
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== search) {
+        setPage(1);
+        setSearch(trimmed);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchInput, search]);
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    if (search !== '') {
+      setPage(1);
+      setSearch('');
+    }
   };
 
   const closeEditor = () => {
@@ -153,7 +173,6 @@ export default function DocumentTypesPage() {
       else await recordsService.createDocumentType(parentId, payload);
       setNotice(t(editing ? 'records.documentTypes.notices.updated' : 'records.documentTypes.notices.created'));
       setEditing(undefined);
-      beginReload();
       setReloadKey((value) => value + 1);
     } catch (requestError) {
       setSaveError(errorMessage(requestError, t('records.errors.saveDocumentType'), t('records.errors.forbidden')));
@@ -172,7 +191,6 @@ export default function DocumentTypesPage() {
       await recordsService.deleteDocumentType(deleting.id);
       setDeleting(null);
       setNotice(t('records.documentTypes.notices.deleted'));
-      beginReload();
       if (items.length === 1 && page > 1) setPage((value) => value - 1);
       else setReloadKey((value) => value + 1);
     } catch (requestError) {
@@ -232,28 +250,43 @@ export default function DocumentTypesPage() {
           className="flex flex-col gap-3 border-b border-border-subtle p-4 md:flex-row"
           onSubmit={(event) => {
             event.preventDefault();
-            beginReload();
-            setPage(1);
-            setSearch(searchInput.trim());
+            const trimmed = searchInput.trim();
+            if (search !== trimmed) {
+              setPage(1);
+              setSearch(trimmed);
+            }
           }}
         >
           <label className="relative flex-1">
             <span className="sr-only">{t('records.documentTypes.searchLabel')}</span>
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
-              className={`${controlClass} w-full pl-9`}
+              type="text"
+              className={`${controlClass} w-full pl-9 ${searchInput ? 'pr-8' : ''}`}
               placeholder={t('records.documentTypes.searchPlaceholder')}
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
+            {searchInput && (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-0 text-muted transition hover:text-main"
+                onClick={handleClearSearch}
+                aria-label={t('records.actions.reset')}
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            )}
           </label>
           <select
             className={`${controlClass} w-full md:w-40`}
             value={year}
             onChange={(event) => {
-              beginReload();
-              setYear(event.target.value);
-              setPage(1);
+              const nextYear = event.target.value;
+              if (nextYear !== year) {
+                setYear(nextYear);
+                setPage(1);
+              }
             }}
             aria-label={t('records.filters.year')}
           >
@@ -272,7 +305,6 @@ export default function DocumentTypesPage() {
               type="button"
               variant="ghost"
               onClick={() => {
-                beginReload();
                 setSearchInput('');
                 setSearch('');
                 setYear('');
@@ -298,7 +330,6 @@ export default function DocumentTypesPage() {
               variant="secondary"
               icon="fa-rotate-right"
               onClick={() => {
-                beginReload();
                 setReloadKey((value) => value + 1);
               }}
             >
@@ -390,10 +421,7 @@ export default function DocumentTypesPage() {
               page={page}
               pageSize={PAGE_SIZE}
               count={count}
-              onChange={(value) => {
-                beginReload();
-                setPage(value);
-              }}
+              onChange={(value) => setPage(value)}
             />
           </>
         )}

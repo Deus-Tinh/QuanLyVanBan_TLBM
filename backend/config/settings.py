@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -217,6 +218,20 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 # Server đặt DJANGO_MEDIA_ROOT ra thư mục dùng chung để file không nằm trong thư mục release.
 MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT") or BASE_DIR.parent / "media")
+
+# Nơi lưu tệp nghiệp vụ: <module>/YYYY/MM/DD/<uuid>.<ext> (xem apps/document_storage.py).
+# Dev (DEBUG) mặc định dùng thư mục storage/ cạnh backend (đã gitignore). Ngoài dev phải đặt biến
+# môi trường là thư mục tuyệt đối đã tồn tại, ngoài thư mục release; thiếu biến thì `check --deploy`
+# báo documents.E001 và lần ghi tệp đầu tiên báo lỗi cấu hình.
+DOCUMENT_STORAGE_ROOT = os.environ.get("DOCUMENT_STORAGE_ROOT", "").strip()
+if DEBUG and not DOCUMENT_STORAGE_ROOT:
+    DOCUMENT_STORAGE_ROOT = str(BASE_DIR.parent / "storage")
+if DOCUMENT_STORAGE_ROOT and not DEBUG:
+    _document_storage_root = Path(DOCUMENT_STORAGE_ROOT)
+    if not _document_storage_root.is_absolute() or not _document_storage_root.is_dir():
+        raise ImproperlyConfigured(
+            "Production DOCUMENT_STORAGE_ROOT must be an existing absolute directory on persistent storage."
+        )
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

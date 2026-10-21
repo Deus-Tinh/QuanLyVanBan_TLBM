@@ -79,10 +79,16 @@ if [[ "${1##*/}" == "backup_restore.py" ]]; then
     [[ "$(cat "$SERVICE_STATE")" == "inactive" ]] || exit 60
     [[ "${MOCK_BACKUP_FAIL:-0}" == "0" ]] || exit 61
     release_id=""
+    storage_dir=""
     while (($#)); do
-      if [[ "$1" == "--release-id" ]]; then release_id=$2; shift 2; else shift; fi
+      case "$1" in
+        --release-id) release_id=$2; shift 2 ;;
+        --storage-dir) storage_dir=$2; shift 2 ;;
+        *) shift ;;
+      esac
     done
     [[ -n "$release_id" ]] || exit 65
+    [[ -n "$storage_dir" && "$storage_dir" == "$CASE_ROOT/shared/storage" ]] || exit 66
     printf '%s\n' "$release_id" > "$CASE_ROOT/backup-release-id"
     backup_dir="$QLVB_BASE/backups/full"
     mkdir -p "$backup_dir"
@@ -249,6 +255,17 @@ if [[ "$command" == "/usr/bin/systemctl" ]]; then
       echo active > "$SERVICE_STATE"
       ;;
   esac
+  if [[ "$action" == "reload" ]]; then
+    [[ "${MOCK_NGINX_RELOAD_FAIL:-0}" == "0" ]] || exit 48
+  fi
+elif [[ "$command" == "/usr/bin/install" ]]; then
+  echo nginx-install >> "$EVENTS"
+  [[ "${args[*]:$((i + 1))}" == "-m 644 $HOME/deploy/qlvb-frontend.nginx $QLVB_NGINX_SITE" ]] || exit 49
+  cp "$HOME/deploy/qlvb-frontend.nginx" "$QLVB_NGINX_SITE"
+elif [[ "$command" == "/usr/sbin/nginx" ]]; then
+  echo nginx-test >> "$EVENTS"
+  [[ "$action" == "-t" ]] || exit 50
+  ! grep -q MOCK_INVALID "$QLVB_NGINX_SITE" || exit 47
 elif [[ "$command" == "/usr/bin/dropdb" ]]; then
   echo dropdb >> "$EVENTS"
 elif [[ "$command" == "/usr/bin/createdb" ]]; then
@@ -286,8 +303,11 @@ make_case() {
   RELEASE_DIR="$QLVB_BASE/releases/$NAME"
   QLVB_ENVF="$CASE_ROOT/backend.env"
   mkdir -p "$QLVB_BASE/releases/previous" "$QLVB_BASE/backups" "$QLVB_BASE/tools" "$HOME/deploy"
-  mkdir -p "$CASE_ROOT/shared/media" "$CASE_ROOT/shared/signing" "$CASE_ROOT/shared/ai"
+  mkdir -p "$CASE_ROOT/shared/media" "$CASE_ROOT/shared/signing" "$CASE_ROOT/shared/ai" "$CASE_ROOT/shared/storage"
   : > "$HOME/deploy/qlvb-$NAME.tar.gz"
+  QLVB_NGINX_SITE="$CASE_ROOT/nginx-site"
+  echo 'server { listen 8088; }' > "$QLVB_NGINX_SITE"
+  echo 'server { listen 8088; server_name new; }' > "$HOME/deploy/qlvb-frontend.nginx"
   echo "$QLVB_BASE/releases/previous" > "$CURRENT_FILE"
   echo "$state" > "$SERVICE_STATE"
   : > "$EVENTS"
@@ -300,10 +320,11 @@ SIGNING_PIN_SECRET=synthetic-test-only
 DJANGO_MEDIA_ROOT=$CASE_ROOT/shared/media
 SIGNING_DOCUMENT_ROOT=$CASE_ROOT/shared/signing
 AI_DATA_DIR=$CASE_ROOT/shared/ai
+DOCUMENT_STORAGE_ROOT=$CASE_ROOT/shared/storage
 ADMIN_PASSWORD=test-only
 ENV
-  export CASE_ROOT NAME HOME EVENTS SERVICE_STATE CURRENT_FILE RELEASE_DIR QLVB_BASE QLVB_ENVF
-  export MOCK_BIN MOCK_PYTHON MOCK_PIP
+  export CASE_ROOT NAME HOME EVENTS SERVICE_STATE CURRENT_FILE RELEASE_DIR QLVB_BASE QLVB_ENVF QLVB_NGINX_SITE
+  export MOCK_BIN MOCK_PYTHON MOCK_PIP MOCK_NGINX_RELOAD_FAIL=0
   export MOCK_PENDING=0 MOCK_PREFLIGHT_FAIL=0 MOCK_MIGRATION_FAIL=0 MOCK_NON_ATOMIC=0
   export MOCK_ADOPT_FAIL=0 MOCK_SEED_FAIL=0 MOCK_STOP_FAIL=0 MOCK_STOP_LEAVES_ACTIVE=0 MOCK_RESTART_FAIL=0 MOCK_RESTART_FAIL_ONCE=0 MOCK_SYSTEMCTL_QUERY_ERROR=0
   export MOCK_BACKUP_FAIL=0 MOCK_BACKUP_BAD_JSON=0 MOCK_EXTRACT_FAIL=0 MOCK_OMIT_BACKUP_TOOL=0
@@ -402,6 +423,30 @@ expect_state "$QLVB_BASE/releases/previous" active
 assert_event_absent stop
 assert_event_absent backup
 pass "release-local data root fails before service stop"
+
+make_case missing-storage-root
+sed -i '/^DOCUMENT_STORAGE_ROOT=/d' "$QLVB_ENVF"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_event_absent stop
+assert_event_absent backup
+pass "missing document storage root fails before service stop"
+
+make_case relative-storage-root
+sed -i 's#^DOCUMENT_STORAGE_ROOT=.*#DOCUMENT_STORAGE_ROOT=relative/storage#' "$QLVB_ENVF"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_event_absent stop
+assert_event_absent backup
+pass "relative document storage root fails before service stop"
+
+make_case release-local-storage-root
+sed -i "s#^DOCUMENT_STORAGE_ROOT=.*#DOCUMENT_STORAGE_ROOT=$QLVB_BASE/releases/previous#" "$QLVB_ENVF"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_event_absent stop
+assert_event_absent backup
+pass "release-local document storage root fails before service stop"
 
 make_case backup-failure
 export MOCK_BACKUP_FAIL=1
@@ -564,7 +609,60 @@ assert_event_before backup restart
 assert_backup_release_id
 grep -q 'Full backup archive:' "$CASE_ROOT/output.log" || fail "archive path was not logged"
 grep -q 'Full backup SHA-256:' "$CASE_ROOT/output.log" || fail "archive hash was not logged"
+assert_event_count nginx-install 1
+assert_event_count nginx-test 1
+assert_event_count reload 1
+assert_event_before reload stop
+cmp -s "$QLVB_NGINX_SITE" "$HOME/deploy/qlvb-frontend.nginx" || fail "changed nginx config was not installed"
 pass "no-pending-migration deployment verifies a full backup before read-only preflight"
+
+make_case missing-nginx-config
+rm "$HOME/deploy/qlvb-frontend.nginx"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_event_absent nginx-install
+assert_event_absent stop
+assert_event_absent backup
+pass "missing nginx config fails before nginx or service changes"
+
+make_case nginx-invalid-restored
+echo 'server { MOCK_INVALID; }' > "$HOME/deploy/qlvb-frontend.nginx"
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_eq "$(cat "$QLVB_NGINX_SITE")" 'server { listen 8088; }' "restored nginx site"
+assert_eq "$(cat "$HOME/deploy/qlvb-frontend.nginx")" 'server { listen 8088; }' "nginx install source after restore"
+assert_event_count nginx-install 2
+assert_event_count nginx-test 2
+assert_event_absent reload
+assert_event_absent stop
+assert_event_absent backup
+assert_no_live_database_mutation
+test ! -e "$RELEASE_DIR" || fail "nginx failure left an unused release"
+pass "invalid nginx config is restored before service stop or DB work"
+
+make_case nginx-reload-failure
+export MOCK_NGINX_RELOAD_FAIL=1
+expect_failure
+expect_state "$QLVB_BASE/releases/previous" active
+assert_eq "$(cat "$QLVB_NGINX_SITE")" 'server { listen 8088; }' "restored nginx site after reload failure"
+assert_event_count reload 1
+assert_event_count nginx-install 2
+assert_event_absent stop
+assert_event_absent backup
+pass "nginx reload failure restores the previous config before service stop"
+
+make_case nginx-unchanged
+cp "$QLVB_NGINX_SITE" "$HOME/deploy/qlvb-frontend.nginx"
+if ! run_deploy; then
+  cat "$CASE_ROOT/output.log" >&2
+  cat "$EVENTS" >&2
+  fail "deployment with unchanged nginx config failed unexpectedly"
+fi
+expect_state "$RELEASE_DIR" active
+assert_event_absent nginx-install
+assert_event_absent nginx-test
+assert_event_absent reload
+pass "unchanged nginx config is not reinstalled or reloaded"
 
 make_case rebuild-failure
 export MOCK_SEED_FAIL=1
