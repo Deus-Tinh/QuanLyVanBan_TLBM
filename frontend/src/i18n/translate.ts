@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import viJson from './vi.json';
 import enJson from './en.json';
 
@@ -111,11 +111,15 @@ function getServerSnapshot(): SupportedLanguage {
 export function useTranslation() {
   const lang: SupportedLanguage = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const translations = DICTIONARIES[lang];
+  const translate = useCallback(
+    (key: string, replacements?: Record<string, string | number>) => t(key, replacements, lang),
+    [lang]
+  );
 
   return {
     currentLang: lang,
     setLanguage,
-    t: (key: string, replacements?: Record<string, string | number>) => t(key, replacements, lang),
+    t: translate,
     translations,
   };
 }

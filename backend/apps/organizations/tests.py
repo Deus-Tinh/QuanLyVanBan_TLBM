@@ -12,16 +12,24 @@ from django.contrib.auth.models import Permission
 from organizations.models import KhoiKhuVuc, DonVi
 
 
+def next_unit_priority():
+    latest = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+    return latest + 1
+
+
 class OrganizationModelAndAPITest(TestCase):
     """
     Test suite kiểm tra phân hệ Organizations: Model, Validation Keys, và API Endpoints.
     """
 
     def setUp(self):
+        self.preexisting_region_count = KhoiKhuVuc.objects.count()
+        self.preexisting_unit_count = DonVi.objects.count()
+        self.unit_priority = next_unit_priority()
         self.region = KhoiKhuVuc.objects.create(ten="Khối Cơ quan")
         self.unit = DonVi.objects.create(
             khoi=self.region,
-            stt_uu_tien=1,
+            stt_uu_tien=self.unit_priority,
             ten="Phòng Kế toán",
             dien_thoai="02838123456",
             email="ketoan@itc.edu.vn",
@@ -46,7 +54,7 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertEqual(self.region.don_vi_list.count(), 1)
 
     def test_donvi_creation(self):
-        self.assertEqual(self.unit.stt_uu_tien, 1)
+        self.assertEqual(self.unit.stt_uu_tien, self.unit_priority)
         self.assertTrue(self.unit.is_public)
 
     def test_auto_priority_assignment(self):
@@ -58,7 +66,7 @@ class OrganizationModelAndAPITest(TestCase):
         }
         response = self.client.post("/api/organizations/units/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["stt_uu_tien"], 2)
+        self.assertEqual(response.data["stt_uu_tien"], self.unit_priority + 1)
 
     def test_validation_key_on_blank_name(self):
         data = {
@@ -78,7 +86,7 @@ class OrganizationModelAndAPITest(TestCase):
         with self.assertRaises(ValidationError) as unit_context:
             DonVi(
                 khoi=self.region,
-                stt_uu_tien=2,
+                stt_uu_tien=self.unit_priority + 1,
                 ten="Đơn vị không hợp lệ",
                 dien_thoai="12345678",
             ).save()
@@ -92,7 +100,7 @@ class OrganizationModelAndAPITest(TestCase):
     def test_export_excel_endpoint_and_content(self):
         """Kiểm tra tệp Excel được sinh ra với tiêu đề song ngữ và nội dung chính xác."""
         # 1. Kiểm tra xuất tiếng Việt
-        res_vi = self.client.get("/api/organizations/units/export/?lang=vi")
+        res_vi = self.client.get(f"/api/organizations/units/export/?region_id={self.region.id}&lang=vi")
         self.assertEqual(res_vi.status_code, status.HTTP_200_OK)
         self.assertEqual(
             res_vi["Content-Type"],
@@ -109,7 +117,7 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertEqual(row2_vi[1], "Phòng Kế toán")
 
         # 2. Kiểm tra xuất tiếng Anh
-        res_en = self.client.get("/api/organizations/units/export/?lang=en")
+        res_en = self.client.get(f"/api/organizations/units/export/?region_id={self.region.id}&lang=en")
         self.assertEqual(res_en.status_code, status.HTTP_200_OK)
         wb_en = openpyxl.load_workbook(io.BytesIO(res_en.content))
         ws_en = wb_en.active
@@ -127,7 +135,7 @@ class OrganizationModelAndAPITest(TestCase):
         }
         response = self.client.post("/api/organizations/units/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["stt_uu_tien"], 2)
+        self.assertEqual(response.data["stt_uu_tien"], self.unit_priority + 1)
 
     def test_auto_priority_retries_after_integrity_error(self):
         """Mô phỏng xung đột đồng thời và kiểm tra hệ thống tự thử lại việc cấp STT."""
@@ -153,7 +161,7 @@ class OrganizationModelAndAPITest(TestCase):
             response = self.client.post("/api/organizations/units/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["stt_uu_tien"], 2)
+        self.assertEqual(response.data["stt_uu_tien"], self.unit_priority + 1)
         self.assertEqual(attempts["count"], 2)
 
     def test_export_requires_permission(self):
@@ -169,7 +177,7 @@ class OrganizationModelAndAPITest(TestCase):
         """Kiểm tra không cho phép trùng STT ưu tiên đã tồn tại."""
         data = {
             "khoi": self.region.id,
-            "stt_uu_tien": 1,
+            "stt_uu_tien": self.unit_priority,
             "ten": "Đơn vị Trùng STT",
         }
         response = self.client.post("/api/organizations/units/", data, format="json")
@@ -200,29 +208,30 @@ class OrganizationModelAndAPITest(TestCase):
 
     def test_region_pagination_and_all_param(self):
         """Kiểm tra phân trang mặc định nhiều trang và tham số ?all=true cho Khối/Khu vực."""
-        # Tạo thêm 12 Khối để có tổng cộng 13 Khối (vượt page_size = 10)
+        # Phân trang riêng 12 khối fixture để không phụ thuộc 16 khối seed.
         KhoiKhuVuc.objects.bulk_create([
             KhoiKhuVuc(ten=f"Khối Thử Nghiệm Số {i:02d}") for i in range(2, 14)
         ])
 
         # 1. Gọi trang 1 -> phải có 10 bản ghi và có liên kết trang tiếp theo (next)
-        res_page1 = self.client.get("/api/organizations/regions/?page=1")
+        regions_url = "/api/organizations/regions/?search=Khối Thử Nghiệm"
+        res_page1 = self.client.get(f"{regions_url}&page=1")
         self.assertEqual(res_page1.status_code, status.HTTP_200_OK)
-        self.assertEqual(res_page1.data["count"], 13)
+        self.assertEqual(res_page1.data["count"], 12)
         self.assertEqual(len(res_page1.data["results"]), 10)
         self.assertIsNotNone(res_page1.data["next"])
 
         # 2. Gọi trang 2 -> phải có 3 bản ghi còn lại và có liên kết trang trước (previous)
-        res_page2 = self.client.get("/api/organizations/regions/?page=2")
+        res_page2 = self.client.get(f"{regions_url}&page=2")
         self.assertEqual(res_page2.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res_page2.data["results"]), 3)
+        self.assertEqual(len(res_page2.data["results"]), 2)
         self.assertIsNotNone(res_page2.data["previous"])
 
         # 3. Gọi với ?all=true -> phải trả về toàn bộ 13 bản ghi dạng mảng không phân trang
-        res_all = self.client.get("/api/organizations/regions/?all=true")
+        res_all = self.client.get(f"{regions_url}&all=true")
         self.assertEqual(res_all.status_code, status.HTTP_200_OK)
         self.assertIsInstance(res_all.data, list)
-        self.assertEqual(len(res_all.data), 13)
+        self.assertEqual(len(res_all.data), 12)
 
     def test_unit_search_by_address(self):
         """Kiểm tra tìm kiếm đơn vị theo địa chỉ."""
@@ -233,7 +242,7 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
 
-        response_not_found = self.client.get("/api/organizations/units/?search=Hà+Nội")
+        response_not_found = self.client.get("/api/organizations/units/?search=ZZZ-ADDRESS-NOT-FOUND")
         self.assertEqual(response_not_found.status_code, status.HTTP_200_OK)
         self.assertEqual(response_not_found.data["count"], 0)
 
@@ -246,7 +255,7 @@ class OrganizationModelAndAPITest(TestCase):
         # Tạo Đơn vị 2 có địa chỉ ở Hà Nội (không khớp từ khóa tìm kiếm)
         DonVi.objects.create(
             khoi=self.region,
-            stt_uu_tien=99,
+            stt_uu_tien=self.unit_priority + 1,
             ten="Văn Phòng Đại Diện",
             dia_chi="123 Phố Cầu Giấy, Hà Nội",
         )
@@ -277,7 +286,7 @@ class OrganizationModelAndAPITest(TestCase):
         # Cập nhật PUT
         update_data = {
             "khoi": self.region.id,
-            "stt_uu_tien": 1,
+            "stt_uu_tien": self.unit_priority,
             "ten": "Phòng Kế toán Đổi Tên",
             "dien_thoai": "02838999999",
             "email": "ketoan_new@itc.edu.vn",
@@ -289,7 +298,7 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertFalse(res_put.data["is_public"])
 
         # Xóa DELETE (đơn vị không có nhân viên)
-        spare = DonVi.objects.create(khoi=self.region, stt_uu_tien=2, ten="Phòng Trống")
+        spare = DonVi.objects.create(khoi=self.region, stt_uu_tien=next_unit_priority(), ten="Phòng Trống")
         res_delete = self.client.delete(f"/api/organizations/units/{spare.id}/")
         self.assertEqual(res_delete.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(DonVi.objects.filter(pk=spare.id).exists())
@@ -343,8 +352,10 @@ class OrganizationPermissionAPITest(TestCase):
     """RBAC cho Khối và Đơn vị: 401 chưa đăng nhập, 403 thiếu quyền, 200/201/204 khi đủ quyền."""
 
     def setUp(self):
+        self.preexisting_region_count = KhoiKhuVuc.objects.count()
+        self.preexisting_unit_count = DonVi.objects.count()
         self.region = KhoiKhuVuc.objects.create(ten="Khối Quyền")
-        self.unit = DonVi.objects.create(khoi=self.region, stt_uu_tien=1, ten="Đơn vị Quyền")
+        self.unit = DonVi.objects.create(khoi=self.region, stt_uu_tien=next_unit_priority(), ten="Đơn vị Quyền")
         User = get_user_model()
 
         def make(username, *codenames):
@@ -381,8 +392,8 @@ class OrganizationPermissionAPITest(TestCase):
         self.assert_denied(self.nobody.get("/api/organizations/units/"))
         self.assert_denied(self.nobody.post("/api/organizations/regions/", self.region_payload, format="json"))
         self.assert_denied(self.nobody.post("/api/organizations/units/", self.unit_payload, format="json"))
-        self.assertEqual(KhoiKhuVuc.objects.count(), 1)
-        self.assertEqual(DonVi.objects.count(), 1)
+        self.assertEqual(KhoiKhuVuc.objects.count(), self.preexisting_region_count + 1)
+        self.assertEqual(DonVi.objects.count(), self.preexisting_unit_count + 1)
 
     def test_view_only_user_can_read_but_not_write(self):
         self.assertEqual(self.viewer.get("/api/organizations/regions/?all=true").status_code, status.HTTP_200_OK)
@@ -398,7 +409,7 @@ class OrganizationPermissionAPITest(TestCase):
         self.assert_denied(self.viewer.delete(f"/api/organizations/units/{self.unit.id}/"))
         self.unit.refresh_from_db()
         self.assertEqual(self.unit.ten, "Đơn vị Quyền")
-        self.assertEqual(KhoiKhuVuc.objects.count(), 1)
+        self.assertEqual(KhoiKhuVuc.objects.count(), self.preexisting_region_count + 1)
 
     def test_denied_before_lookup_does_not_leak_existence(self):
         self.assert_denied(self.viewer.delete("/api/organizations/units/999999/"))

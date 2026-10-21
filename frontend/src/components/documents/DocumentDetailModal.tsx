@@ -4,18 +4,21 @@ import { DocumentDetail } from '@app-types/document';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { formatDateTime, formatDate, formatFileSize } from '@lib/dateUtils';
+import { getAbsoluteFileUrl } from '@lib/fileUtils';
 import apiClient from '@lib/apiClient';
 
 export interface DocumentDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   documentId: number | null;
+  loai?: 'DEN' | 'DI' | 'MAT';
 }
 
 export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
   isOpen,
   onClose,
   documentId,
+  loai,
 }) => {
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -33,7 +36,8 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
       setIsLoading(true);
       setError(null);
       try {
-        const data = await apiClient.get<DocumentDetail>(`/api/documents/${documentId}/`);
+        const queryParam = loai ? `?loai=${loai}` : '';
+        const data = await apiClient.get<DocumentDetail>(`/api/documents/${documentId}/${queryParam}`);
         if (!ignore) {
           setDocument(data);
         }
@@ -89,14 +93,25 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
         {/* Header Modal */}
         <div className="px-5 py-4 border-b border-border-subtle flex items-center justify-between gap-3 bg-surface-subtle">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold text-sm shrink-0">
-              <i className="fa-solid fa-file-lines" />
+            <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 ${document?.loai === 'MAT' ? 'bg-rose-500/10 text-rose-600' : 'bg-primary-subtle text-primary'
+              }`}>
+              <i className={document?.loai === 'MAT' ? 'fa-solid fa-shield-halved' : 'fa-solid fa-file-lines'} />
             </span>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-base md:text-lg font-bold text-main m-0 truncate">
-                  Chi Tiết Văn Bản Đến
+                  {document?.loai === 'MAT' ? 'Chi Tiết Văn Bản Mật' : document?.loai === 'DI' ? 'Chi Tiết Văn Bản Đi' : 'Chi Tiết Văn Bản Đến'}
                 </h2>
+                {document?.loai === 'MAT' && (
+                  <span className="px-2 py-0.5 rounded-md text-xs font-bold bg-rose-500/15 text-rose-600 border border-rose-500/25">
+                    MẬT
+                  </span>
+                )}
+                {document?.pham_vi === 'HAN_CHE' && document?.loai !== 'MAT' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/25">
+                    <i className="fa-solid fa-shield-halved text-[10px]" /> HẠN CHẾ
+                  </span>
+                )}
                 {document?.so_hieu && (
                   <span className="px-2 py-0.5 rounded-md text-xs font-semibold bg-primary-subtle text-primary">
                     {document.so_hieu}
@@ -104,7 +119,9 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                 )}
               </div>
               <p className="text-xs text-secondary m-0 truncate">
-                Xem toàn bộ thông tin chi tiết và danh sách tệp đính kèm.
+                {document?.loai === 'MAT'
+                  ? 'Văn bản bảo mật nội bộ — Chỉ cán bộ có thẩm quyền mới có quyền tiếp cận.'
+                  : 'Xem toàn bộ thông tin chi tiết và danh sách tệp đính kèm.'}
               </p>
             </div>
           </div>
@@ -148,7 +165,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
           {document && !isLoading && (
             <>
               {/* Banner liên kết thay thế 2 chiều */}
-              {document.link_thay_the && (document.hieu_luc === 'CON_HIEU_LUC' || document.hieu_luc === 'CON_HIEU_LUC_1_PHAN') && (
+              {(((document.thay_the_cho && document.thay_the_cho.length > 0) || document.link_thay_the) && (document.hieu_luc === 'CON_HIEU_LUC' || document.hieu_luc === 'CON_HIEU_LUC_1_PHAN')) && (
                 <div className="bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center text-sm shrink-0 mt-0.5">
                     <i className="fa-solid fa-repeat" />
@@ -156,13 +173,18 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   <div className="text-xs">
                     <div className="font-bold text-primary mb-0.5">VĂN BẢN THAY THẾ</div>
                     <p className="text-main m-0 leading-relaxed">
-                      Văn bản này được ban hành để thay thế cho: <strong className="font-mono text-primary">{document.link_thay_the}</strong>.
+                      Văn bản này được ban hành để thay thế cho:{' '}
+                      <strong className="font-mono text-primary">
+                        {(document.thay_the_cho && document.thay_the_cho.length > 0)
+                          ? document.thay_the_cho.join(', ')
+                          : document.link_thay_the}
+                      </strong>.
                     </p>
                   </div>
                 </div>
               )}
 
-              {document.hieu_luc === 'HET_VA_THAY_THE' && (
+              {(document.hieu_luc === 'HET_VA_THAY_THE' || (document.bi_thay_boi && document.bi_thay_boi.length > 0)) && (
                 <div className="bg-warning/10 border border-warning/30 rounded-xl p-3.5 flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-warning/20 text-warning-text flex items-center justify-center text-sm shrink-0 mt-0.5">
                     <i className="fa-solid fa-triangle-exclamation" />
@@ -170,8 +192,14 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   <div className="text-xs">
                     <div className="font-bold text-warning-text mb-0.5">VĂN BẢN ĐÃ HẾT HIỆU LỰC (ĐÃ THAY THẾ)</div>
                     <p className="text-main m-0 leading-relaxed">
-                      {document.link_thay_the ? (
-                        <>Văn bản này không còn giá trị thi hành do đã được thay thế bởi văn bản: <strong className="font-mono text-warning-text">{document.link_thay_the}</strong>.</>
+                      {(document.bi_thay_boi && document.bi_thay_boi.length > 0) || document.link_thay_the ? (
+                        <>Văn bản này không còn giá trị thi hành do đã được thay thế bởi văn bản:{' '}
+                          <strong className="font-mono text-warning-text">
+                            {(document.bi_thay_boi && document.bi_thay_boi.length > 0)
+                              ? document.bi_thay_boi.join(', ')
+                              : document.link_thay_the}
+                          </strong>.
+                        </>
                       ) : (
                         <>Văn bản này đã hết hiệu lực và được thay thế bởi văn bản khác.</>
                       )}
@@ -213,17 +241,20 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                 {/* Cột trái */}
                 <div className="space-y-3 bg-surface border border-border-subtle rounded-xl p-4">
                   <h3 className="text-xs font-bold text-main uppercase tracking-wider pb-2 border-b border-border-subtle m-0 flex items-center gap-2">
-                    <i className="fa-solid fa-hashtag text-primary" /> Thông số đến
+                    <i className={document.loai === 'MAT' ? 'fa-solid fa-shield-halved text-rose-500' : 'fa-solid fa-hashtag text-primary'} />
+                    {document.loai === 'MAT' ? 'Thông số văn bản mật' : document.loai === 'DI' ? 'Thông số đi' : 'Thông số đến'}
                   </h3>
 
-                  <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
-                    <span className="text-secondary">Số đến (STT năm):</span>
-                    <span className="font-bold text-main font-mono">
-                      {document.so_thu_tu !== null && document.so_thu_tu !== undefined
-                        ? `#${document.so_thu_tu}`
-                        : '—'}
-                    </span>
-                  </div>
+                  {document.loai !== 'MAT' && (
+                    <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
+                      <span className="text-secondary">{document.loai === 'DI' ? 'Số đi (STT năm):' : 'Số đến (STT năm):'}</span>
+                      <span className="font-bold text-main font-mono">
+                        {document.so_thu_tu !== null && document.so_thu_tu !== undefined
+                          ? `#${document.so_thu_tu}`
+                          : '—'}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
                     <span className="text-secondary">Năm sổ sách:</span>
@@ -231,9 +262,22 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   </div>
 
                   <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
-                    <span className="text-secondary">Ngày đến:</span>
+                    <span className="text-secondary">Phạm vi văn bản:</span>
+                    <span className="font-semibold text-main">
+                      {document.pham_vi === 'HAN_CHE' ? (
+                        <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-semibold">
+                          <i className="fa-solid fa-shield-halved text-[11px]" /> Hạn chế
+                        </span>
+                      ) : (
+                        'Nội bộ'
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
+                    <span className="text-secondary">{document.loai === 'MAT' ? 'Ngày lưu văn bản:' : document.loai === 'DI' ? 'Ngày ban hành:' : 'Ngày đến:'}</span>
                     <span className="font-semibold text-main font-mono">
-                      {document.ngay_den ? formatDate(document.ngay_den) : '—'}
+                      {(document.ngay_den || document.ngay_ban_hanh) ? formatDate(document.ngay_den || document.ngay_ban_hanh) : '—'}
                     </span>
                   </div>
 
@@ -267,20 +311,25 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
 
                   <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
                     <span className="text-secondary">Trạng thái hiệu lực:</span>
-                    <Badge
-                      variant={
-                        document.hieu_luc === 'CON_HIEU_LUC'
-                          ? 'success'
-                          : document.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
-                            ? 'purple'
-                            : document.hieu_luc === 'HET_HIEU_LUC'
-                              ? 'danger'
-                              : 'secondary'
-                      }
-                      size="sm"
-                    >
-                      {document.hieu_luc_display || document.hieu_luc}
-                    </Badge>
+                    {(document.hieu_luc === 'CON_HIEU_LUC' || document.hieu_luc === 'HET_VA_THAY_THE') ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white dark:bg-surface-elevated text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Còn hiệu lực
+                      </span>
+                    ) : document.hieu_luc === 'CON_HIEU_LUC_1_PHAN' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white dark:bg-surface-elevated text-purple-600 dark:text-purple-400 border border-purple-500/30 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        Hiệu lực 1 phần
+                      </span>
+                    ) : document.hieu_luc === 'HET_HIEU_LUC' ? (
+                      <Badge variant="danger" size="sm" withDot>
+                        Hết hiệu lực
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" size="sm">
+                        {document.hieu_luc_display || document.hieu_luc}
+                      </Badge>
+                    )}
                   </div>
 
                   {document.ngay_het_hieu_luc && (
@@ -294,14 +343,14 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
 
                   {/* Hiển thị chi tiết thay thế 2 chiều phân định rõ ràng */}
                   {(document.thay_the_cho && document.thay_the_cho.length > 0) ||
-                  (document.bi_thay_boi && document.bi_thay_boi.length > 0) ? (
+                    (document.bi_thay_boi && document.bi_thay_boi.length > 0) ? (
                     <>
                       {document.thay_the_cho && document.thay_the_cho.length > 0 && (
                         <div className="flex justify-between items-start text-xs py-1">
                           <span className="text-secondary shrink-0 pt-0.5">Thay thế cho:</span>
-                          <div className="flex flex-wrap justify-end gap-1 max-w-[220px]">
+                          <div className="flex flex-wrap justify-end gap-1.5 max-w-[320px]">
                             {document.thay_the_cho.map((s: string, idx: number) => (
-                              <span key={`ttc-${idx}`} className="font-semibold font-mono text-[0.7rem] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                              <span key={`ttc-${idx}`} className="font-semibold font-mono text-[0.7rem] px-2 py-0.5 rounded-md bg-primary-subtle text-primary border border-primary/20">
                                 {s.trim()}
                               </span>
                             ))}
@@ -311,9 +360,9 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                       {document.bi_thay_boi && document.bi_thay_boi.length > 0 && (
                         <div className="flex justify-between items-start text-xs py-1">
                           <span className="text-secondary shrink-0 pt-0.5">Bị thay bởi:</span>
-                          <div className="flex flex-wrap justify-end gap-1 max-w-[220px]">
+                          <div className="flex flex-wrap justify-end gap-1.5 max-w-[320px]">
                             {document.bi_thay_boi.map((s: string, idx: number) => (
-                              <span key={`btb-${idx}`} className="font-semibold font-mono text-[0.7rem] px-1.5 py-0.5 rounded bg-warning/10 text-warning-text border border-warning/30">
+                              <span key={`btb-${idx}`} className="font-semibold font-mono text-[0.7rem] px-2 py-0.5 rounded-md bg-warning/10 text-warning-text border border-warning/30">
                                 {s.trim()}
                               </span>
                             ))}
@@ -326,9 +375,9 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                       <span className="text-secondary shrink-0 pt-0.5">
                         {document.hieu_luc === 'CON_HIEU_LUC' || document.hieu_luc === 'CON_HIEU_LUC_1_PHAN' ? 'Thay thế cho:' : 'Bị thay bởi:'}
                       </span>
-                      <div className="flex flex-wrap justify-end gap-1 max-w-[220px]">
+                      <div className="flex flex-wrap justify-end gap-1.5 max-w-[320px]">
                         {document.link_thay_the.split(',').map((s: string, idx: number) => (
-                          <span key={idx} className="font-semibold font-mono text-[0.7rem] px-1.5 py-0.5 rounded bg-primary-subtle text-primary border border-primary/20">
+                          <span key={idx} className="font-semibold font-mono text-[0.7rem] px-2 py-0.5 rounded-md bg-primary-subtle text-primary border border-primary/20">
                             {s.trim()}
                           </span>
                         ))}
@@ -357,34 +406,55 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
 
                 {document.attachments && document.attachments.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {document.attachments.map((att) => (
-                      <div
-                        key={att.id}
-                        className="flex items-center justify-between p-2.5 rounded-lg border border-border-subtle bg-surface-subtle hover:bg-surface-elevated transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                          <i className={`${getFileIcon(att.file_name)} text-lg shrink-0`} />
-                          <div className="min-w-0">
-                            <span className="text-xs font-medium text-main block truncate" title={att.file_name}>
-                              {att.file_name}
-                            </span>
-                            <span className="text-xs text-muted block">
-                              {formatFileSize(att.file_size)} • {formatDate(att.uploaded_at)}
-                            </span>
+                    {document.attachments.map((att) => {
+                      const absoluteUrl = getAbsoluteFileUrl(att.file);
+                      return (
+                        <div
+                          key={att.id}
+                          className="flex items-center justify-between p-2.5 rounded-lg border border-border-subtle bg-surface-subtle hover:bg-surface-elevated transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <i className={`${getFileIcon(att.file_name)} text-lg shrink-0`} />
+                            <div className="min-w-0">
+                              <a
+                                href={absoluteUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs font-semibold text-main hover:text-primary transition-colors block truncate"
+                                title={`Xem trước: ${att.file_name} (Mở tab mới)`}
+                              >
+                                {att.file_name}
+                              </a>
+                              <span className="text-xs text-muted block">
+                                {formatFileSize(att.file_size)} • {formatDate(att.uploaded_at)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <a
+                              href={absoluteUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary text-white font-medium hover:bg-primary-hover shadow-sm transition-colors"
+                              title="Xem trực tiếp nội dung tệp tin trong tab mới của trình duyệt"
+                            >
+                              <i className="fa-solid fa-arrow-up-right-from-square text-[0.7rem]" /> Xem
+                            </a>
+                            <a
+                              href={absoluteUrl}
+                              download={att.file_name}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-surface-elevated border border-border-subtle text-secondary hover:text-main hover:border-primary/40 transition-colors"
+                              title="Tải tệp tin về máy"
+                            >
+                              <i className="fa-solid fa-download text-[0.7rem]" /> Tải về
+                            </a>
                           </div>
                         </div>
-
-                        <a
-                          href={att.file}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="px-2.5 py-1 text-xs rounded-md bg-primary-subtle text-primary font-medium hover:bg-primary hover:text-white transition-colors shrink-0"
-                          title="Tải / Mở tệp"
-                        >
-                          <i className="fa-solid fa-arrow-down mr-1" /> Mở
-                        </a>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-xs text-muted m-0 italic py-2">

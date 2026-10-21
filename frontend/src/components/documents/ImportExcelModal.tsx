@@ -7,9 +7,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onImported?: () => void;
+  loai?: 'DEN' | 'DI' | 'MAT';
+  phamVi?: 'NOI_BO' | 'HAN_CHE';
 }
 
-export default function ImportExcelModal({ open, onClose, onImported }: Props) {
+export default function ImportExcelModal({ open, onClose, onImported, loai = 'DEN', phamVi = 'NOI_BO' }: Props) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -47,7 +49,7 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
         setAlertOpen(true);
         return;
       }
-      const res = await fetch('/api/documents/template/?loai=DEN', {
+      const res = await fetch(`/api/documents/template/?loai=${loai}&pham_vi=${phamVi}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Không thể tải file mẫu từ máy chủ. Vui lòng kiểm tra lại kết nối!');
@@ -55,7 +57,8 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'Mau_Nhap_Van_Ban_Den.xlsx';
+      const phamViSuffix = phamVi === 'HAN_CHE' ? '_Han_Che' : '_Noi_Bo';
+      a.download = `Mau_Nhap_Van_Ban_${loai === 'MAT' ? 'Mat' : loai === 'DI' ? 'Di' : 'Den'}${phamViSuffix}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error: unknown) {
@@ -74,7 +77,8 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
     try {
       const fd = new FormData();
       fd.append('file', selectedFile);
-      fd.append('loai', 'DEN');
+      fd.append('loai', loai);
+      fd.append('pham_vi', phamVi);
       const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token') || '';
       const res = await fetch('/api/documents/import/', {
         method: 'POST',
@@ -111,12 +115,37 @@ export default function ImportExcelModal({ open, onClose, onImported }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-border-subtle">
           <div className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg">
+            <span className="w-9 h-9 rounded-xl bg-surface-elevated text-secondary flex items-center justify-center text-lg border border-border-subtle">
               <i className="fa-solid fa-file-excel" />
             </span>
             <div>
-              <h3 className="text-base font-bold text-main m-0">Nhập Văn Bản Từ File Excel</h3>
-              <p className="text-xs text-muted m-0">Nạp hàng loạt công văn, văn bản đến vào cơ sở dữ liệu</p>
+              <h3 className="text-base font-bold text-main m-0 flex items-center gap-2">
+                <span>
+                  {loai === 'MAT'
+                    ? 'Nhập Văn Bản Mật Từ File Excel'
+                    : loai === 'DI'
+                    ? phamVi === 'HAN_CHE'
+                      ? 'Nhập Văn Bản Đi Hạn Chế Từ File Excel'
+                      : 'Nhập Văn Bản Đi Từ File Excel'
+                    : phamVi === 'HAN_CHE'
+                    ? 'Nhập Văn Bản Đến Hạn Chế Từ File Excel'
+                    : 'Nhập Văn Bản Đến Từ File Excel'}
+                </span>
+                {phamVi === 'HAN_CHE' && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-surface-elevated text-secondary border border-border-subtle inline-flex items-center gap-1">
+                    <i className="fa-solid fa-shield-halved text-[10px]" /> Hạn chế
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-muted m-0">
+                {loai === 'MAT'
+                  ? 'Nạp hàng loạt văn bản mật vào cơ sở dữ liệu bảo mật'
+                  : phamVi === 'HAN_CHE'
+                  ? 'Nạp danh sách văn bản hạn chế vào hệ thống'
+                  : loai === 'DI'
+                  ? 'Nạp hàng loạt công văn, văn bản đi vào cơ sở dữ liệu'
+                  : 'Nạp hàng loạt công văn, văn bản đến vào cơ sở dữ liệu'}
+              </p>
             </div>
           </div>
           <button

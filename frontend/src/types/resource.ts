@@ -28,6 +28,7 @@ export interface ResourceAttachment {
   path?: string;
   file_size?: number;
   mime_type?: string;
+  is_deleted?: boolean;
 }
 
 export interface ResourceCategory {

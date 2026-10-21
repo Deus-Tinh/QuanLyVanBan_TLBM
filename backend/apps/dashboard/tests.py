@@ -1,13 +1,14 @@
-from datetime import date, timedelta, time
-from django.test import TestCase
+from datetime import date, timedelta
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.test import TestCase
 from django.utils import timezone
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from accounts.models import Position
+from documents.models import PhamVi, VanBanDen, VanBanDi
 from organizations.models import DonVi, KhoiKhuVuc
-from dashboard.models import IncomingDocument, OutgoingDocument, MeetingRoom
 
 
 class DashboardAPITests(TestCase):
@@ -17,71 +18,31 @@ class DashboardAPITests(TestCase):
         self.tomorrow = self.today + timedelta(days=1)
 
         khoi = KhoiKhuVuc.objects.create(ten="Khối Hỗ trợ")
-        don_vi_hc = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Phòng Hành chính")
-        don_vi_vp = DonVi.objects.create(khoi=khoi, stt_uu_tien=2, ten="Văn phòng Trung tâm")
-        cv_van_thu = Position.objects.create(display_order=1, name="Chuyên viên văn thư")
-        cv_quan_tri = Position.objects.create(display_order=2, name="Quản trị viên tối cao")
+        latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+        don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=latest_stt + 1, ten="Phòng Hành chính")
+        chuc_vu = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Chuyên viên văn thư"
+        )
         UserModel = get_user_model()
 
-        # 1. Staff user (cán bộ chuyên viên)
         self.staff_user = UserModel.objects.create_user(
             username="staffuser",
             password="password123",
             ho_ten="Cán Bộ Nhân Viên",
-            don_vi=don_vi_hc,
-            chuc_vu=cv_van_thu,
+            don_vi=don_vi,
+            chuc_vu=chuc_vu,
             ngay_sinh=date(1995, self.today.month, self.today.day),
         )
-
-        # 2. Admin user (quản trị viên)
+        self.staff_user.user_permissions.add(*Permission.objects.filter(
+            codename__in=("view_vanbanden", "view_vanbandi")
+        ))
         self.admin_user = UserModel.objects.create_superuser(
             username="adminuser",
             password="password123",
             ho_ten="Quản Trị Viên",
-            don_vi=don_vi_vp,
-            chuc_vu=cv_quan_tri,
+            don_vi=don_vi,
+            chuc_vu=chuc_vu,
             ngay_sinh=date(1990, self.tomorrow.month, self.tomorrow.day),
-        )
-
-        # 3. Tạo văn bản thường và văn bản mật
-        self.doc_normal = IncomingDocument.objects.create(
-            code="VB-THUONG-01",
-            title="Văn bản thông thường công khai",
-            issued_date=self.today,
-            sender="Sở Giáo Dục",
-            is_confidential=False,
-        )
-        self.doc_secret = IncomingDocument.objects.create(
-            code="VB-MAT-01",
-            title="Văn bản tuyệt mật nội bộ",
-            issued_date=self.today,
-            sender="Ban Cơ Yếu",
-            is_confidential=True,
-        )
-        self.out_normal = OutgoingDocument.objects.create(
-            code="VBD-THUONG-01",
-            title="Văn bản đi công khai",
-            issued_date=self.today,
-            recipient="UBND TP.HCM",
-            is_confidential=False,
-        )
-        self.out_secret = OutgoingDocument.objects.create(
-            code="VBD-MAT-01",
-            title="Văn bản đi mật",
-            issued_date=self.today,
-            recipient="Thủ trưởng đơn vị",
-            is_confidential=True,
-        )
-
-        # 4. Phòng họp
-        MeetingRoom.objects.create(
-            room_name="Phòng họp A1 - Khu A",
-            meeting_title="Họp giao ban định kỳ",
-            date=self.today,
-            start_time=time(8, 30),
-            end_time=time(11, 30),
-            organizer="Văn phòng Trung tâm",
-            status="ready",
         )
 
     def test_overview_unauthorized(self):
@@ -90,57 +51,125 @@ class DashboardAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_overview_authorized_contract(self):
-        """User hợp lệ nhận đủ các trường hợp đồng chuẩn."""
+        """Người dùng hợp lệ nhận đủ các khóa của hợp đồng API."""
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get("/api/dashboard/overview/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("kpis", response.data)
-        self.assertIn("recentIncoming", response.data)
-        self.assertIn("recentOutgoing", response.data)
-        self.assertIn("meetingRooms", response.data)
-        self.assertIn("birthdays", response.data)
+        for key in ("kpis", "recentIncoming", "recentOutgoing", "tasks", "meetingRooms", "birthdays"):
+            self.assertIn(key, response.data)
+        self.assertEqual(
+            set(response.data["kpis"]), {"incomingCount", "outgoingCount", "tasksCount"}
+        )
 
-    def test_overview_as_staff_excludes_confidential(self):
-        """Cán bộ thường (staff) KHÔNG được thấy văn bản mật và confidentialCount bằng 0."""
+    def test_documents_use_shared_visibility_for_counts_and_recent_lists(self):
+        """KPI và 5 bản ghi gần nhất chỉ gồm văn bản mà người gọi được xem."""
+        VanBanDen.objects.create(
+            nam=self.today.year, so_thu_tu=10, so_hieu="DEN-10", trich_yeu="Đến nội bộ",
+            nguoi_tao=self.admin_user, pham_vi=PhamVi.NOI_BO,
+        )
+        VanBanDen.objects.create(
+            nam=self.today.year, so_thu_tu=11, so_hieu="DEN-11", trich_yeu="Đến hạn chế của cán bộ",
+            nguoi_tao=self.staff_user, pham_vi=PhamVi.HAN_CHE,
+        )
+        VanBanDen.objects.create(
+            nam=self.today.year, so_thu_tu=12, so_hieu="DEN-12", trich_yeu="Đến hạn chế khác",
+            nguoi_tao=self.admin_user, pham_vi=PhamVi.HAN_CHE,
+        )
+        VanBanDi.objects.create(
+            nam=self.today.year, so_thu_tu=10, so_hieu="DI-10", trich_yeu="Đi nội bộ",
+            nguoi_tao=self.admin_user, pham_vi=PhamVi.NOI_BO,
+        )
+        VanBanDi.objects.create(
+            nam=self.today.year, so_thu_tu=11, so_hieu="DI-11", trich_yeu="Đi hạn chế của cán bộ",
+            nguoi_tao=self.staff_user, pham_vi=PhamVi.HAN_CHE,
+        )
+
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get("/api/dashboard/overview/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        # Confidential KPI phải bằng 0
-        self.assertEqual(response.data["kpis"]["confidentialCount"], 0)
-        
-        # Danh sách gần đây không được chứa văn bản mật
-        incoming_codes = [d["code"] for d in response.data["recentIncoming"]]
-        outgoing_codes = [d["code"] for d in response.data["recentOutgoing"]]
-        self.assertNotIn("VB-MAT-01", incoming_codes)
-        self.assertNotIn("VBD-MAT-01", outgoing_codes)
-        self.assertIn("VB-THUONG-01", incoming_codes)
-        self.assertIn("VBD-THUONG-01", outgoing_codes)
+        self.assertEqual(response.data["kpis"]["incomingCount"], 2)
+        self.assertEqual(response.data["kpis"]["outgoingCount"], 2)
+        self.assertEqual(
+            {doc["code"] for doc in response.data["recentIncoming"]}, {"DEN-10", "DEN-11"}
+        )
+        self.assertEqual(
+            {doc["code"] for doc in response.data["recentOutgoing"]}, {"DI-10", "DI-11"}
+        )
+        self.assertEqual(response.data["meetingRooms"], [])
 
-    def test_overview_as_admin_includes_confidential(self):
-        """Quản trị viên (admin) được phép thống kê và xem văn bản mật."""
+        # Superuser chỉ thấy văn bản HAN_CHE do chính mình tạo.
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get("/api/dashboard/overview/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["kpis"]["incomingCount"], 2)
+        self.assertEqual(response.data["kpis"]["outgoingCount"], 1)
+        self.assertNotIn("DI-11", {doc["code"] for doc in response.data["recentOutgoing"]})
 
-        # Confidential KPI phản ánh đúng 2 văn bản mật đã tạo
-        self.assertEqual(response.data["kpis"]["confidentialCount"], 2)
+    def test_overview_has_no_confidential_data(self):
+        """Không còn khóa văn bản mật; superuser không có đường xem riêng."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/dashboard/overview/")
+        self.assertNotIn("confidentialCount", response.data["kpis"])
+        self.assertNotIn("confidential_total", response.data["stats"])
 
-        # Danh sách chứa cả văn bản mật
-        incoming_codes = [d["code"] for d in response.data["recentIncoming"]]
-        self.assertIn("VB-MAT-01", incoming_codes)
-
-    def test_overview_empty(self):
-        """Khi cơ sở dữ liệu trống, API trả về 0 và mảng rỗng không bị crash."""
-        IncomingDocument.objects.all().delete()
-        OutgoingDocument.objects.all().delete()
-        MeetingRoom.objects.all().delete()
-
+    def test_overview_birthdays_today_and_tomorrow(self):
+        """Sinh nhật hôm nay và ngày mai vẫn đọc từ bảng nhân viên."""
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get("/api/dashboard/overview/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["kpis"]["incomingCount"], 0)
-        self.assertEqual(response.data["kpis"]["outgoingCount"], 0)
-        self.assertEqual(response.data["recentIncoming"], [])
-        self.assertEqual(response.data["recentOutgoing"], [])
-        self.assertEqual(response.data["meetingRooms"], [])
+        labels = {b["label"] for b in response.data["birthdays"]}
+        self.assertEqual(labels, {"Hôm nay", "Ngày mai"})
+
+    def test_tasks_match_work_visibility_and_status(self):
+        from work.models import Task, TaskAttachment, TaskComment, TaskStatus
+        from dashboard.views import _tasks
+
+        own = Task.objects.create(title="Visible task", created_by=self.staff_user,
+                                  due_date=self.today, requirement="Review")
+        Task.objects.create(title="Other task", created_by=self.admin_user,
+                            due_date=self.today, requirement="Review")
+        # Hidden tasks remain visible to their creator, as in the work API.
+        hidden = Task.objects.create(title="Creator hidden task", created_by=self.staff_user,
+                                     due_date=self.today, requirement="Review", is_public=False)
+        result = _tasks(self.staff_user, self.today)
+        self.assertEqual({row["id"] for row in result}, {str(own.pk), str(hidden.pk)})
+        self.assertTrue(all(row["workStatus"] == TaskStatus.CHO_XU_LY for row in result))
+        # Evidence takes precedence over the deadline in the domain status selector.
+        comment = TaskComment.objects.create(task=own, author=self.staff_user, content="Evidence")
+        TaskAttachment.objects.create(task=own, comment=comment, kind="BANG_CHUNG",
+                                      file="proof.pdf", uploaded_by=self.staff_user)
+        own.due_date = self.today - timedelta(days=1)
+        own.created_date = own.due_date
+        own.save(update_fields=["due_date", "created_date"])
+        result = {row["id"]: row for row in _tasks(self.staff_user, self.today)}
+        self.assertEqual(result[str(own.pk)]["workStatus"], TaskStatus.CHO_DUYET)
+        self.assertEqual(result[str(own.pk)]["status"], "pending")
+        self.assertEqual(len(_tasks(self.admin_user, self.today)), 3)
+
+    def test_resources_match_template_visibility_before_limit(self):
+        from document_templates.models import DanhMucTaiLieu, TaiLieuChiTiet
+        from document_templates.selectors import visible_resources
+        from dashboard.views import _resources
+
+        category = DanhMucTaiLieu.objects.create(
+            ten_tai_lieu="Templates", nguoi_lap=self.admin_user
+        )
+        for i in range(6):
+            TaiLieuChiTiet.objects.create(dm_tai_lieu=category, ky_hieu=f"PRIVATE-{i}",
+                tieu_de="Private", ngay_dang=self.today, hien_thi="NOI_BO_PHONG_BAN",
+                nguoi_tao=self.admin_user, don_vi_id=None)
+        for code, creator, unit, visibility, validity in (
+            ("PUBLIC", self.admin_user, None, "TAT_CA", "CON_HIEU_LUC"),
+            ("OWN", self.staff_user, None, "NOI_BO_PHONG_BAN", "CON_HIEU_LUC"),
+            ("DEPT", self.admin_user, self.staff_user.don_vi_id, "NOI_BO_PHONG_BAN", "CON_HIEU_LUC"),
+            ("EXPIRED", self.staff_user, None, "TAT_CA", "HET_HIEU_LUC"),
+        ):
+            TaiLieuChiTiet.objects.create(dm_tai_lieu=category, ky_hieu=code,
+                tieu_de=code, ngay_dang=self.today, hien_thi=visibility,
+                nguoi_tao=creator, don_vi_id=unit, hieu_luc=validity)
+        expected = set(visible_resources(TaiLieuChiTiet.objects.all(), self.staff_user)
+                       .filter(hieu_luc="CON_HIEU_LUC").values_list("ky_hieu", flat=True))
+        self.assertEqual(expected, {"PUBLIC", "OWN", "DEPT"})
+        self.assertEqual({row["code"] for row in _resources(self.staff_user)}, expected)
+        self.client.force_authenticate(user=self.staff_user)
+        response = self.client.get("/api/dashboard/overview/")
+        self.assertEqual({row["code"] for row in response.data["resources"]}, expected)
