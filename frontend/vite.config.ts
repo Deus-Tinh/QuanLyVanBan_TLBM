@@ -16,6 +16,7 @@ export default defineConfig({
       '@app-types': fileURLToPath(new URL('./src/types', import.meta.url)),
       '@hooks': fileURLToPath(new URL('./src/hooks', import.meta.url)),
       '@app': fileURLToPath(new URL('./src/app', import.meta.url)),
+      '@assets': fileURLToPath(new URL('./src/assets', import.meta.url)),
     },
   },
   test: {
@@ -24,6 +25,7 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
   },
   server: {
+    host: '127.0.0.1',
     port: 5173,
     open: false,
     proxy: {
@@ -36,5 +38,9 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
   },
 });
