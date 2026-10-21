@@ -1,0 +1,195 @@
+{
+  "navigation": {
+    "employees": "Hồ Sơ Cán Bộ NV"
+  },
+  "pages": {
+    "employees": {
+      "title": "Quản Lý Hồ Sơ Cán Bộ Nhân Viên (CBNV)",
+      "module": "Module 7.5: Quản trị CBNV",
+      "assignedTeam": "Nhóm 7 (Phân hệ Tiện ích & Quản trị)",
+      "codeRef": "Mục 7.5 · Độ khó: 0.80",
+      "isGroup1": false,
+      "desc": "Danh sách nhân sự, chức vụ, nhóm quyền, mật khẩu IT cấp và che năm sinh."
+    }
+  },
+  "employees": {
+    "title": "Quản Lý Cán Bộ Nhân Viên (CBNV)",
+    "subtitle": "Hồ sơ nhân sự, phân công công tác, chức vụ và phân quyền hệ thống.",
+    "actions": {
+      "addEmployee": "Thêm nhân viên",
+      "importExcel": "Nhập từ Excel",
+      "template": "Tải file mẫu",
+      "edit": "Chỉnh sửa",
+      "delete": "Xóa",
+      "view": "Xem chi tiết",
+      "cancel": "Hủy bỏ",
+      "save": "Lưu thay đổi",
+      "create": "Thêm mới",
+      "close": "Đóng"
+    },
+    "table": {
+      "employee": "Cán bộ nhân viên",
+      "unit": "Đơn vị / Phòng ban",
+      "position": "Chức vụ & Chức danh",
+      "birthday": "Ngày sinh",
+      "phone": "Số điện thoại",
+      "status": "Trạng thái",
+      "actions": "Thao tác"
+    },
+    "filters": {
+      "allUnits": "Tất cả đơn vị",
+      "allPositions": "Tất cả chức vụ",
+      "allStatuses": "Tất cả trạng thái",
+      "filteringNotice": "Đang lọc: tìm thấy {count} nhân sự",
+      "reset": "Đặt lại bộ lọc"
+    },
+    "status": {
+      "working": "Đang làm việc",
+      "resigned": "Nghỉ việc"
+    },
+    "fields": {
+      "fullName": "Họ và tên",
+      "email": "Email công vụ",
+      "username": "Tên đăng nhập",
+      "initialPassword": "Mật khẩu ban đầu",
+      "birthday": "Ngày sinh",
+      "phone": "Số điện thoại",
+      "unit": "Đơn vị / Phòng ban",
+      "region": "Khối",
+      "position": "Chức vụ",
+      "title": "Chức danh tự do",
+      "status": "Trạng thái làm việc",
+      "groups": "Nhóm quyền (RBAC)",
+      "notes": "Ghi chú",
+      "isPublicLabel": "Công khai danh bạ",
+      "isPublicHelp": "Cho phép hiển thị thông tin liên lạc trong danh bạ nội bộ toàn viện.",
+      "public": "Công khai",
+      "internalOnly": "Nội bộ",
+      "joined": "Ngày tham gia"
+    },
+    "placeholders": {
+      "search": "Tìm theo họ tên, username, email, sđt...",
+      "fullName": "Nhập họ và tên...",
+      "email": "Nhập email (ví dụ: cbnv@donvi.gov.vn)...",
+      "username": "Nhập tên đăng nhập (để trống sẽ tự sinh)...",
+      "initialPassword": "Nhập mật khẩu (để trống sẽ tự sinh ngẫu nhiên)...",
+      "phone": "Nhập số điện thoại (ví dụ: 0912345678)...",
+      "selectUnit": "-- Chọn Đơn vị / Phòng ban --",
+      "selectPosition": "-- Chọn Chức vụ --",
+      "title": "Ví dụ: Chuyên viên chính, Trợ lý viện trưởng...",
+      "notes": "Nhập ghi chú bổ sung nếu có..."
+    },
+    "hints": {
+      "usernameAuto": "Để trống hệ thống sẽ tự động tạo từ phần tên của email.",
+      "passwordAuto": "Để trống hệ thống sẽ sinh mật khẩu an toàn ngẫu nhiên 10 ký tự.",
+      "statusNotice": "Lưu ý: Chuyển sang 'Nghỉ việc' sẽ tự động vô hiệu hóa tài khoản đăng nhập.",
+      "birthdayMaskedTooltip": "Năm sinh được che bảo mật (yêu cầu quyền view_sensitive_cbnv để xem đầy đủ)",
+      "masked": "Đã che năm",
+      "groupsHidden": "Danh sách nhóm quyền bị ẩn theo quyền riêng tư bảo mật.",
+      "selfEditNotice": "Bạn đang cập nhật hồ sơ của chính mình. Chỉ có thể chỉnh sửa thông tin liên hệ và ngày sinh; các thông tin tổ chức do Quản trị viên quản lý."
+    },
+    "modal": {
+      "createTitle": "Thêm Mới Cán Bộ Nhân Viên",
+      "createDesc": "Tạo hồ sơ nhân sự mới kèm tài khoản đăng nhập hệ thống.",
+      "editTitle": "Chỉnh Sửa Hồ Sơ Nhân Viên",
+      "editDesc": "Cập nhật thông tin công tác, chức vụ và phân quyền."
+    },
+    "created": {
+      "successTitle": "Thêm Nhân Viên Thành Công!",
+      "passwordNotice": "Hệ thống đã tự động tạo tài khoản và sinh mật khẩu tạm thời. Hãy sao chép và gửi cho nhân viên:",
+      "copyPassword": "Sao chép mật khẩu",
+      "copied": "Đã sao chép!"
+    },
+    "detail": {
+      "title": "Thông Tin Chi Tiết Cán Bộ Nhân Viên",
+      "noGroups": "Chưa được gán nhóm quyền nào."
+    },
+    "delete": {
+      "confirmTitle": "Xác nhận xóa cán bộ nhân viên",
+      "confirmDesc": "Bạn có chắc chắn muốn xóa cán bộ \"{name}\"? Tài khoản người dùng liên kết cũng sẽ bị xóa vĩnh viễn khỏi hệ thống."
+    },
+    "import": {
+      "title": "Nhập Danh Sách CBNV Từ Excel",
+      "subtitle": "Nạp nhanh hồ sơ cán bộ nhân viên hàng loạt từ tệp bảng tính .xlsx.",
+      "templateGuide": "Chưa có biểu mẫu chuẩn?",
+      "templateDesc": "Tải biểu mẫu Excel chuẩn định dạng có kèm dòng dữ liệu mẫu.",
+      "downloadTemplate": "Tải biểu mẫu .xlsx",
+      "downloadTemplateError": "Không thể tải biểu mẫu. Vui lòng thử lại sau.",
+      "dragDropPrompt": "Kéo thả tệp .xlsx vào đây hoặc bấm để chọn tệp",
+      "formatNotice": "Hỗ trợ định dạng Microsoft Excel (.xlsx), tối đa 5MB",
+      "invalidFileType": "Định dạng tệp không hợp lệ! Vui lòng chọn tệp có đuôi .xlsx.",
+      "noFileSelected": "Vui lòng chọn một tệp Excel để tiến hành nhập dữ liệu.",
+      "hasErrors": "Tệp Excel chứa dữ liệu không hợp lệ. Vui lòng kiểm tra danh sách lỗi bên dưới.",
+      "uploadError": "Có lỗi xảy ra khi tải lên tệp Excel.",
+      "startImport": "Tiến hành nạp dữ liệu",
+      "errorListHeader": "Phát hiện {count} dòng dữ liệu lỗi:",
+      "row": "Dòng",
+      "field": "Cột",
+      "errorDetail": "Chi tiết lỗi",
+      "fields": {
+        "ho_ten": "Họ và tên",
+        "ngay_sinh": "Ngày sinh",
+        "email": "Email",
+        "sdt": "Số điện thoại",
+        "don_vi": "Đơn vị / Phòng ban",
+        "chuc_vu": "Chức vụ",
+        "file": "Tệp tin"
+      },
+      "errors": {
+        "invalidFile": "Tệp tải lên không phải định dạng Excel hợp lệ (.xlsx).",
+        "emptyFile": "Tệp Excel trống hoặc không có dòng dữ liệu nào.",
+        "invalidBirthday": "Ngày sinh '{value}' không đúng định dạng (hỗ trợ YYYY-MM-DD hoặc DD/MM/YYYY).",
+        "invalidEmail": "Email '{value}' không đúng định dạng.",
+        "duplicateEmailInFile": "Email '{value}' bị trùng lặp trong chính tệp Excel tải lên.",
+        "unitRequired": "Tên Đơn vị / Phòng ban không được để trống.",
+        "positionRequired": "Tên Chức vụ không được để trống."
+      }
+    },
+    "validation": {
+      "nameRequired": "Họ và tên nhân viên không được để trống.",
+      "emailRequired": "Địa chỉ email không được để trống.",
+      "birthdayRequired": "Vui lòng chọn ngày sinh cho nhân viên.",
+      "phoneInvalid": "Số điện thoại không hợp lệ theo chuẩn Việt Nam."
+    },
+    "messages": {
+      "fetchError": "Không thể tải danh sách cán bộ nhân viên.",
+      "downloadSuccess": "Tải tệp mẫu Excel thành công!",
+      "downloadError": "Không thể tải tệp mẫu. Vui lòng thử lại sau.",
+      "createSuccess": "Thêm cán bộ nhân viên thành công!",
+      "updateSuccess": "Cập nhật hồ sơ thành công!",
+      "deleteSuccess": "Đã xóa cán bộ nhân viên thành công!",
+      "deleteError": "Không thể xóa cán bộ nhân viên này.",
+      "cannotDeleteSelf": "Bạn không thể tự xóa tài khoản của chính mình.",
+      "cannotDeleteSuperuser": "Không có quyền xóa tài khoản Quản trị viên tối cao (Superuser).",
+      "cannotDeleteLastSuperuser": "Không thể xóa tài khoản Quản trị viên tối cao đang hoạt động cuối cùng.",
+      "cannotDeleteProtected": "Không thể xóa cán bộ nhân viên này do đang có dữ liệu liên kết trong hệ thống (lịch họp, văn bản...). Vui lòng chuyển trạng thái sang 'Nghỉ việc' để vô hiệu hóa tài khoản.",
+      "birthdayInFuture": "Ngày sinh không thể ở trong tương lai.",
+      "birthdayOutOfRange": "Độ tuổi của cán bộ nhân viên phải từ 18 đến 100 tuổi.",
+      "invalidEmail": "Địa chỉ email không đúng định dạng.",
+      "nameTooLong": "Họ và tên không được vượt quá 150 ký tự.",
+      "invalidPhone": "Số điện thoại không hợp lệ theo chuẩn Việt Nam.",
+      "cannotDeactivateSelf": "Bạn không thể tự khóa hoặc đặt trạng thái nghỉ việc cho chính mình.",
+      "cannotDeactivateSuperuser": "Không có quyền khóa hoặc đặt trạng thái nghỉ việc cho tài khoản Quản trị viên tối cao.",
+      "cannotDeactivateLastSuperuser": "Không thể khóa hoặc đặt trạng thái nghỉ việc cho Quản trị viên tối cao đang hoạt động cuối cùng.",
+      "invalidDataFormat": "Dữ liệu yêu cầu phải là một JSON object.",
+      "invalidOrdering": "Tham số sắp xếp không hợp lệ.",
+      "invalidFilterParam": "Tham số bộ lọc không hợp lệ.",
+      "emailExists": "Địa chỉ email đã tồn tại trong hệ thống.",
+      "usernameExists": "Tên đăng nhập đã tồn tại trong hệ thống.",
+      "unitNotFound": "Không tìm thấy Đơn vị có tên '{value}' trong hệ thống.",
+      "unitAmbiguous": "Tên Đơn vị '{value}' trùng lặp giữa nhiều Khối/Khu vực. Vui lòng ghi rõ hoặc chọn đơn vị chính xác.",
+      "positionNotFound": "Không tìm thấy Chức vụ có tên '{value}' trong hệ thống.",
+      "fileRequired": "Vui lòng chọn tệp Excel (.xlsx) để tải lên.",
+      "fileInvalidType": "Định dạng tệp không được hỗ trợ. Vui lòng sử dụng tệp có đuôi .xlsx.",
+      "importHasErrors": "Dữ liệu tệp Excel chứa lỗi. Vui lòng kiểm tra lại theo danh sách bên dưới.",
+      "importSuccess": "Nhập thành công cán bộ nhân viên từ Excel!",
+      "saveError": "Không thể lưu thông tin cán bộ nhân viên.",
+      "loading": "Đang tải dữ liệu...",
+      "noData": "Không tìm thấy cán bộ nhân viên nào",
+      "noDataHelp": "Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc để hiển thị kết quả."
+    },
+    "pagination": {
+      "showing": "Hiển thị {from} - {to} trong tổng số {total} CBNV"
+    }
+  }
+}
