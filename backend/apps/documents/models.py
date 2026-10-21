@@ -39,6 +39,8 @@ from django.db.models.functions import Trim
 from django.db.models.lookups import Exact
 from django.utils import timezone
 
+from document_storage import build_dated_path, get_document_storage
+
 DB_NOW = models.Func(function="now", output_field=models.DateTimeField())
 
 
@@ -1016,34 +1018,12 @@ class VanBanDiNoiBanHanh(models.Model):
 
 def document_attachment_path(instance, filename):
     """
-    Xác định đường dẫn lưu file đính kèm:
-    02_documents/<loai>/<muc_do>/<nam>/<thang>/<ngay>/<filename>
-    - <loai>: den | di
-    - <muc_do>: thuong | han_che
+    Đường dẫn lưu tệp đính kèm trong DOCUMENT_STORAGE_ROOT:
+    van-ban-den|van-ban-di/YYYY/MM/DD/<uuid>.<ext> (ngày upload). Tên gốc giữ ở cột `name`.
     """
     doc = getattr(instance, "document", None)
-    subfolder = "den"
-    muc_do = "thuong"
-    date_val = None
-    year = None
-
-    if doc:
-        loai = getattr(doc, "loai", "DEN")
-        subfolder = "di" if loai == "DI" else "den"
-        pham_vi = getattr(doc, "pham_vi", "NOI_BO")
-        muc_do = "han_che" if pham_vi == "HAN_CHE" else "thuong"
-        year = getattr(doc, "nam", timezone.now().year)
-        if loai == "DEN":
-            date_val = getattr(doc, "ngay_den", None) or getattr(doc, "ngay_van_ban", None)
-        else:
-            date_val = getattr(doc, "ngay_ban_hanh", None) or getattr(doc, "ngay_van_ban", None)
-
-    if not date_val:
-        date_val = timezone.now()
-    if not year:
-        year = date_val.year
-
-    return f"02_documents/{subfolder}/{muc_do}/{year}/{date_val.month:02d}/{date_val.day:02d}/{filename}"
+    module = "van-ban-di" if getattr(doc, "loai", "DEN") == "DI" else "van-ban-den"
+    return build_dated_path(module, filename)
 
 
 class BaseDocumentAttachment(models.Model):
@@ -1053,6 +1033,7 @@ class BaseDocumentAttachment(models.Model):
     file = models.FileField(
         "File đính kèm",
         upload_to=document_attachment_path,
+        storage=get_document_storage,
         db_column="path",
         max_length=500,
         default="",

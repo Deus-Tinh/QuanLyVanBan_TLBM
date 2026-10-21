@@ -45,6 +45,7 @@ venv.bak/
 backend/db.sqlite3
 backend/media/
 media/
+storage/
 data/chroma_db/
 data/docs/*
 !data/docs/.gitkeep
