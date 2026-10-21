@@ -1,4 +1,6 @@
-from django.db.models import Q
+from django.db.models import Prefetch, Q
+
+from .models import ChiTietTaiLieuAttachment, TaiLieuChiTiet
 
 
 def visible_resources(qs, user):
@@ -24,3 +26,17 @@ def visible_resources(qs, user):
         q_filter |= Q(hien_thi='NOI_BO_PHONG_BAN', nguoi_tao__profile__department=user_dept)
 
     return qs.filter(q_filter).distinct()
+
+
+def tai_lieu_hieu_luc_xem_duoc(user):
+    """Tài liệu còn hiệu lực mà user được xem (cùng phạm vi `visible_resources`).
+
+    Mỗi bản ghi có `active_attachments`: tệp đính kèm chưa xoá mềm, theo thứ tự id.
+    """
+    return visible_resources(TaiLieuChiTiet.objects.all(), user).filter(
+        hieu_luc="CON_HIEU_LUC"
+    ).prefetch_related(Prefetch(
+        "attachments",
+        queryset=ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).order_by("pk"),
+        to_attr="active_attachments",
+    ))
