@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment, validate_document_file
+from .models import DanhMucTaiLieu, LoaiTaiLieu, TaiLieuChiTiet, ChiTietTaiLieuAttachment, store_template_file, validate_document_file
 
 
 class DanhMucTaiLieuSerializer(serializers.ModelSerializer):
@@ -173,15 +173,12 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
             uploaded_files = [file_dinh_kem]
 
         if uploaded_files:
-            from django.core.files.storage import default_storage
             for f in uploaded_files:
                 validate_document_file(f)
-                file_path = default_storage.save(f"documents/templates/{f.name}", f)
-                storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
                 ChiTietTaiLieuAttachment.objects.create(
                     document=instance,
                     name=f.name,
-                    path=storage_path,
+                    path=store_template_file(f),
                     file_size=getattr(f, 'size', None),
                     mime_type=getattr(f, 'content_type', None),
                     nguoi_tao=instance.nguoi_tao
@@ -225,15 +222,12 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
             uploaded_files = [file_dinh_kem]
 
         if uploaded_files:
-            from django.core.files.storage import default_storage
             for f in uploaded_files:
                 validate_document_file(f)
-                file_path = default_storage.save(f"documents/templates/{f.name}", f)
-                storage_path = f"/media/{file_path}" if not file_path.startswith('/media/') else file_path
                 ChiTietTaiLieuAttachment.objects.create(
                     document=instance,
                     name=f.name,
-                    path=storage_path,
+                    path=store_template_file(f),
                     file_size=getattr(f, 'size', None),
                     mime_type=getattr(f, 'content_type', None),
                     nguoi_tao=instance.nguoi_tao

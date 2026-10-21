@@ -19,10 +19,11 @@ from django.conf import settings
 from django.db.models import Q
 from django.http import HttpResponse, FileResponse
 from django.utils import timezone
+from document_storage import has_allowed_extension
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, NotFound
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
@@ -227,6 +228,15 @@ from .services import (
 )
 
 
+def validate_attachment_files(request):
+    """Từ chối định dạng tệp không được phép (400) trước khi tạo hoặc sửa văn bản."""
+    for f in request.FILES.getlist("files"):
+        if not has_allowed_extension(f.name):
+            raise ValidationError(
+                {"files": f'Tệp "{f.name}" không đúng định dạng. Chỉ chấp nhận PDF, DOC, DOCX, JPG, JPEG, PNG.'}
+            )
+
+
 def handle_attachments(document, request):
     """Lưu các file đính kèm từ request.FILES vào model attachment tương ứng."""
     files = request.FILES.getlist("files")
@@ -366,6 +376,7 @@ class DocumentViewSet(viewsets.ViewSet):
 
     def create(self, request):
         """POST /api/documents/"""
+        validate_attachment_files(request)
         serializer = DocumentCreateUpdateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
@@ -417,6 +428,7 @@ class DocumentViewSet(viewsets.ViewSet):
 
     def update(self, request, pk=None, partial=False):
         """PUT /api/documents/{id}/"""
+        validate_attachment_files(request)
         instance = self._get_object_across_models(pk, record_log=False)
         user = request.user
         profile = getattr(user, "profile", None)
@@ -505,7 +517,12 @@ class DocumentViewSet(viewsets.ViewSet):
         att = instance.attachments.filter(pk=tep_int, is_deleted=False).first()
         if not att:
             raise NotFound(f"Không tìm thấy tệp đính kèm với ID {tep_id}.")
-        response = HttpResponse(att.file.read(), content_type="application/octet-stream")
+        try:
+            with att.file.open("rb") as stored:
+                content = stored.read()
+        except (FileNotFoundError, OSError):
+            raise NotFound("Tệp không còn trên máy chủ.")
+        response = HttpResponse(content, content_type="application/octet-stream")
         response["Content-Disposition"] = f'attachment; filename="{att.name}"'
         return response
 
@@ -713,6 +730,7 @@ class VanBanDenViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
+        validate_attachment_files(self.request)
         nam = serializer.validated_data.get("nam", timezone.now().year)
         so_thu_tu = generate_so_thu_tu("DEN", nam)
         ngay_den = serializer.validated_data.get("ngay_den") or timezone.now()
@@ -766,6 +784,7 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
+        validate_attachment_files(self.request)
         nam = serializer.validated_data.get("nam", timezone.now().year)
         so_thu_tu = generate_so_thu_tu("DI", nam)
         ngay_ban_hanh = serializer.validated_data.get("ngay_ban_hanh") or timezone.now()
@@ -893,6 +912,7 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     def perform_create(self, serializer):
+        validate_attachment_files(self.request)
         ngay_den = serializer.validated_data.get("ngay_den") or serializer.validated_data.get("ngay_ban_hanh") or timezone.now()
         doc = serializer.save(nguoi_tao=self.request.user, ngay_den=ngay_den, pham_vi=PhamVi.HAN_CHE, gui_mail_toan_he_thong=False)
         handle_attachments(doc, self.request)

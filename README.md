@@ -70,6 +70,8 @@ pnpm bootstrap
 
 Khóa Gemini và cấu hình email/ký: sao chép `.env.example` thành `.env` ở thư mục gốc và điền giá trị cần dùng. Kết nối DB do các lệnh `pnpm` tự đặt, không khai báo trong `.env`.
 
+Tệp nghiệp vụ tải lên (đính kèm văn bản, công việc, biểu mẫu) lưu theo cây `<module>/YYYY/MM/DD/<uuid>.<ext>` dưới `DOCUMENT_STORAGE_ROOT`. Chạy local (`DJANGO_DEBUG=true`) để trống biến này thì dùng thư mục `storage/` ở thư mục gốc dự án (đã gitignore). Staging/production bắt buộc đặt biến là thư mục tuyệt đối đã tồn tại, ngoài thư mục release, user chạy service ghi được; chi tiết sao lưu trong `docs/common/database/backup_restore_runbook.md`.
+
 ### Chạy hằng ngày
 
 Mở Docker Desktop, rồi chạy tại thư mục gốc:
