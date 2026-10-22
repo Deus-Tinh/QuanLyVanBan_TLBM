@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from organizations.models import KhoiKhuVuc, DonVi
 from accounts.models import Employee, Position
+from accounts.standard_positions import ADMIN_POSITION, STANDARD_POSITIONS
 
 KHOI_DATA = [
     ("HỘI ĐỒNG QUẢN TRỊ", 1),
@@ -111,15 +112,8 @@ DONVI_DATA = [
     ("GIÁM ĐỊNH VÙNG", "Giám định vùng"),
 ]
 
-POSITION_DATA = [
-    (1, "Quản trị viên"),
-    (2, "Trưởng phòng"),
-    (3, "Phó phòng"),
-    (4, "Chuyên viên"),
-    (5, "Nhân viên"),
-    (6, "Văn thư"),
-    (7, "Lãnh đạo cơ quan"),
-]
+# Danh mục chức vụ chuẩn: 22 chức vụ của giảng viên và 3 chức vụ cũ đang được dùng (xem standard_positions).
+POSITION_DATA = STANDARD_POSITIONS
 
 
 SYSTEM_PASSWORD_PLACEHOLDER = "!system_seed_placeholder"
@@ -177,7 +171,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f" [OK] Reference positions: {len(pos_map)}."))
 
             admin_donvi = DonVi.objects.filter(ten="Ban công nghệ thông tin").first() or DonVi.objects.first()
-            admin_chucvu = pos_map.get("Quản trị viên")
+            admin_chucvu = pos_map.get(ADMIN_POSITION)
             admin_defaults = {
                 "email": "admin@baolong.vn",
                 "password": make_password(admin_password) if admin_password else SYSTEM_PASSWORD_PLACEHOLDER,
