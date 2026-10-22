@@ -75,14 +75,16 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2">
-        <TruongNhap nhan={t('tao.quyTrinh')}>
-          <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
-            <option value="">{t('tao.chonQuyTrinh')}</option>
-            {dungDuoc.map((p) => (
-              <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
-            ))}
-          </select>
-        </TruongNhap>
+        <div className="md:col-span-2">
+          <TruongNhap nhan={t('tao.quyTrinh')}>
+            <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
+              <option value="">{t('tao.chonQuyTrinh')}</option>
+              {dungDuoc.map((p) => (
+                <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
+              ))}
+            </select>
+          </TruongNhap>
+        </div>
         <TruongNhap nhan={t('tao.hanChot')}>
           <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
         </TruongNhap>
@@ -154,7 +156,6 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
           onKeo={(id, x, y) => setViTri((v) => ({ ...v, [id]: { ...v[id], toa_do_x: String(x), toa_do_y: String(y) } }))} />
       </Card>
       <Card className="p-4 space-y-3 self-start lg:sticky lg:top-4">
-        <div className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{hoSo.ma_bam_tai_lieu}</code></div>
         <h3 className="text-lg font-bold text-main">{t('tao.nguoiKyDuKien')}</h3>
         <ul className="space-y-2">
           {nguoiKy.map((n) => (
@@ -197,7 +198,6 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
           <Button icon="fa-paper-plane" isLoading={dangGui} onClick={gui}>{t('chung.xacNhan')}</Button>
         </>}>
         <p className="text-sm text-main">{t('tao.xacNhanGui')}</p>
-        <p className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{hoSo.ma_bam_tai_lieu}</code></p>
       </HopThoai>
     </div>
   );

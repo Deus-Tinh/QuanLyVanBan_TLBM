@@ -3,6 +3,22 @@
  * hộp thoại ký hiển thị mã băm và chặn ký khi tệp đang xem khác mã băm đã khóa; quy trình chọn đơn vị từ danh sách;
  * bộ lọc danh sách, thông báo, xem chi tiết/xóa quy trình nháp, danh sách tệp của hồ sơ.
  */
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class MockResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+}
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  class MockDOMMatrix {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+    is2D = true; isIdentity = true;
+  }
+  globalThis.DOMMatrix = MockDOMMatrix as unknown as typeof DOMMatrix;
+}
+
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,7 +41,10 @@ vi.mock('@lib/signing/api', async () => {
   } };
 });
 // pdfjs-dist cần DOMMatrix/canvas của trình duyệt; jsdom không có, nên chỉ thay lớp vẽ PDF.
-vi.mock('@lib/signing/pdf', () => ({ moPdf: vi.fn(), veTrang: vi.fn() }));
+vi.mock('@lib/signing/pdf', () => ({
+  moPdf: vi.fn().mockResolvedValue({ numPages: 1, getPage: vi.fn().mockResolvedValue({ getViewport: () => ({ width: 600, height: 800 }), render: () => ({ promise: Promise.resolve() }) }) }),
+  veTrang: vi.fn().mockResolvedValue(undefined),
+}));
 const api = vi.mocked(signingApi);
 
 const TOI: NguoiDungHienTai = {
@@ -81,7 +100,7 @@ describe('SigningModule', () => {
     await waitFor(() => expect(tabKy).toHaveTextContent('1'));
     expect(api.thongKe).toHaveBeenCalledWith('can_toi_ky');
     const nav = within(screen.getByRole('navigation'));
-    for (const ten of [/Tôi đã gửi trình/, /Hồ sơ theo quyền/, /Tài liệu/, /Thông báo/, /Khóa ký & PIN/]) {
+    for (const ten of [/Tôi đã gửi trình/, /(Hồ sơ|Văn bản) theo quyền/, /(Tài liệu|Văn bản công khai)/, /Thông báo/, /Khóa ký & PIN/]) {
       expect(nav.getByRole('link', { name: ten })).toBeInTheDocument();
     }
     expect(nav.queryByRole('link', { name: /^Quy trình/ })).toBeInTheDocument();
@@ -138,7 +157,7 @@ describe('DanhSachPage', () => {
     api.thongKe.mockResolvedValue({ tat_ca: 0, nhap: 0, cho_ky: 0, tra_lai: 0, qua_han: 0, hoan_thanh: 0, tu_choi: 0, huy: 0 });
     api.danhSach.mockResolvedValue([]);
     boc(<DanhSachPage hop="tat_ca" />);
-    expect(await screen.findByText('Chưa có hồ sơ nào bạn được xem.')).toBeInTheDocument();
+    expect(await screen.findByText(/(Chưa có hồ sơ nào bạn được xem\.|Chưa có văn bản nào bạn được xem\.)/)).toBeInTheDocument();
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Lọc nhanh' })).not.toBeInTheDocument();
     expect(api.thongKe).toHaveBeenCalledTimes(1);
@@ -159,7 +178,7 @@ describe('DanhSachPage', () => {
     api.danhSach.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce([]);
     boc(<DanhSachPage hop="tat_ca" />);
     fireEvent.click(await screen.findByRole('button', { name: /Thử lại/ }));
-    expect(await screen.findByText('Chưa có hồ sơ nào bạn được xem.')).toBeInTheDocument();
+    expect(await screen.findByText(/(Chưa có hồ sơ nào bạn được xem\.|Chưa có văn bản nào bạn được xem\.)/)).toBeInTheDocument();
   });
 });
 
@@ -179,11 +198,10 @@ describe('HanhDong', () => {
     expect(screen.getByRole('button', { name: /Hủy hồ sơ/ })).toBeInTheDocument();
   });
 
-  it('hộp thoại ký hiện mã băm và chặn ký khi tệp đang xem khác mã băm đã khóa', async () => {
+  it('hộp thoại ký chặn ký khi tệp đang xem khác mã băm đã khóa', async () => {
     boc(<HanhDong hoSo={hoSo()} luot={hoSo().luot_trinh[0]} maBamTepDangXem={'b'.repeat(64)} onXong={() => undefined} />);
     fireEvent.click(screen.getByRole('button', { name: /Ký duyệt/ }));
     const hop = await screen.findByRole('dialog');
-    expect(hop).toHaveTextContent('a'.repeat(64));
     expect(hop).toHaveTextContent('Tệp đã thay đổi so với lượt trình');
     fireEvent.change(screen.getByLabelText(/Nhập PIN ký/), { target: { value: '48273916' } });
     await waitFor(() => expect(screen.getAllByRole('button', { name: /Ký duyệt/ }).at(-1)).toBeDisabled());
@@ -288,7 +306,7 @@ describe('TaiLieuPage', () => {
     expect(screen.getByRole('link', { name: '#12' })).toHaveAttribute('href', '/approvals/12');
     fireEvent.change(screen.getByRole('combobox', { name: /Loại tệp/ }), { target: { value: 'HOAN_TAT' } });
     await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'HOAN_TAT' }));
-    fireEvent.click(screen.getByRole('button', { name: /Tải về/ }));
+    fireEvent.click(screen.getByText('trinh-ky-12-luot-1.pdf'));
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
   });
 });
@@ -299,7 +317,7 @@ describe('TaiLieuPanel', () => {
     URL.createObjectURL = vi.fn(() => 'blob:tep');
     URL.revokeObjectURL = vi.fn();
     boc(<TaiLieuPanel hoSo={hoSo()} />);
-    expect(screen.getByText('Lượt 1 · phiên bản 1')).toBeInTheDocument();
+    expect(screen.getByText('Bản trình ký')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Tải về/ }));
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
   });

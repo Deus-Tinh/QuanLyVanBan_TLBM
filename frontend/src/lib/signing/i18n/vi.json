@@ -3,12 +3,12 @@
   "nav": {
     "canToiKy": "Cần tôi ký duyệt",
     "toiGui": "Tôi đã gửi trình",
-    "tatCa": "Hồ sơ theo quyền",
+    "tatCa": "Văn bản theo quyền",
     "taoMoi": "Tạo hồ sơ trình ký",
     "quyTrinh": "Quy trình",
     "khoaCuaToi": "Khóa ký & PIN",
     "thongBao": "Thông báo",
-    "taiLieu": "Tài liệu"
+    "taiLieu": "Văn bản công khai"
   },
   "chung": {
     "dangTai": "Đang tải…",
@@ -62,8 +62,10 @@
   "danhSach": {
     "rongCanToiKy": "Không có hồ sơ nào đang chờ bạn ký duyệt.",
     "rongToiGui": "Bạn chưa gửi trình hồ sơ nào.",
-    "rongTatCa": "Chưa có hồ sơ nào bạn được xem.",
+    "rongTatCa": "Chưa có văn bản nào bạn được xem.",
     "maHoSo": "Hồ sơ",
+    "soHieu": "Số hiệu",
+    "trichYeu": "Trích yếu",
     "vanBan": "Văn bản",
     "quyTrinh": "Quy trình",
     "trangThai": "Trạng thái",
@@ -148,8 +150,8 @@
     "thayTep": "Thay tệp PDF (tùy chọn)",
     "goiYThayTep": "Để trống nếu giữ tệp hiện tại; thay tệp sẽ tăng phiên bản văn bản.",
     "danhSachTep": "Danh sách tệp",
-    "banDuThao": "Bản dự thảo (phiên bản {so})",
-    "banLuot": "Lượt {so} · phiên bản {ban}",
+    "banDuThao": "Bản dự thảo",
+    "banLuot": "Bản trình ký",
     "maBam": "Mã băm",
     "bangChungJson": "Tải bằng chứng (JSON)",
     "xemChiTiet": "Xem chi tiết"
@@ -231,6 +233,7 @@
     "thuHoi": "Thu hồi khóa",
     "lyDoThuHoi": "Lý do thu hồi",
     "dauVanTay": "Dấu vân tay",
+    "maPin": "MÃ PIN",
     "dangTao": "Đang tạo khóa (Argon2id có thể mất vài giây)…",
     "pinKhongKhop": "Hai lần nhập PIN không khớp.",
     "canKhoa": "Bạn cần tạo khóa ký trên thiết bị này trước khi ký."
@@ -302,6 +305,8 @@
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
     "loaiTep": "Loại tệp",
     "tep": "Tệp",
+    "soHieu": "Số hiệu",
+    "trichYeu": "Trích yếu",
     "phienBan": "Lượt / phiên bản",
     "ngay": "Ngày",
     "luotBan": "Lượt {so} · bản {ban}",

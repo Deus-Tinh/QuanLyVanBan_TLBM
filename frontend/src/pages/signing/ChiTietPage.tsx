@@ -135,7 +135,7 @@ export default function ChiTietPage() {
       </div>
       <div className="space-y-4">
         <Card className="p-4 space-y-2">
-          <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh} v{hoSo.phien_ban_quy_trinh})</DongThongTin>
+          <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
           <DongThongTin nhan={t('danhSach.ngayGui')}>{dinhDangNgay(hoSo.ngay_gui, lang)}</DongThongTin>
           <DongThongTin nhan={t('danhSach.hanChot')}>{dinhDangNgay(hoSo.han_chot, lang)}</DongThongTin>
@@ -153,7 +153,7 @@ export default function ChiTietPage() {
         {coTraoDoi && luot?.trang_thai === 'YEU_CAU_SUA' && <TraoDoiPanel hoSo={hoSo} onXong={capNhat} />}
         {luot && (
           <Card className="p-4 space-y-2">
-            <h3 className="text-xl font-bold text-main">{t('chiTiet.tienTrinh')} · {t('chiTiet.luot', { so: luot.so_luot })}</h3>
+            <h3 className="text-xl font-bold text-main">{t('chiTiet.tienTrinh')}</h3>
             <TienTrinh luot={luot} toiId={toi?.id} />
           </Card>
         )}

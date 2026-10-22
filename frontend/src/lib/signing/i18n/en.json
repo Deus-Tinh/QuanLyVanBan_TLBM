@@ -3,12 +3,12 @@
   "nav": {
     "canToiKy": "Awaiting my signature",
     "toiGui": "Submitted by me",
-    "tatCa": "Requests I can view",
+    "tatCa": "Documents by permission",
     "taoMoi": "New signing request",
     "quyTrinh": "Workflows",
     "khoaCuaToi": "Signing key & PIN",
     "thongBao": "Notifications",
-    "taiLieu": "Documents"
+    "taiLieu": "Public documents"
   },
   "chung": {
     "dangTai": "Loading…",
@@ -62,8 +62,10 @@
   "danhSach": {
     "rongCanToiKy": "Nothing is waiting for your signature.",
     "rongToiGui": "You have not submitted any request yet.",
-    "rongTatCa": "There are no requests you can view.",
+    "rongTatCa": "There are no documents you can view.",
     "maHoSo": "Request",
+    "soHieu": "Document No.",
+    "trichYeu": "Summary",
     "vanBan": "Document",
     "quyTrinh": "Workflow",
     "trangThai": "Status",
@@ -148,8 +150,8 @@
     "thayTep": "Replace PDF (optional)",
     "goiYThayTep": "Leave empty to keep the current file; replacing increases the document version.",
     "danhSachTep": "Files",
-    "banDuThao": "Draft (version {so})",
-    "banLuot": "Round {so} · version {ban}",
+    "banDuThao": "Draft document",
+    "banLuot": "Signing document",
     "maBam": "Hash",
     "bangChungJson": "Download evidence (JSON)",
     "xemChiTiet": "View details"
@@ -231,6 +233,7 @@
     "thuHoi": "Revoke key",
     "lyDoThuHoi": "Revocation reason",
     "dauVanTay": "Fingerprint",
+    "maPin": "PIN code",
     "dangTao": "Creating the key (Argon2id may take a few seconds)…",
     "pinKhongKhop": "The two PINs do not match.",
     "canKhoa": "Create a signing key on this device before signing."
@@ -302,6 +305,8 @@
     "goiYTim": "Number, summary, request ID, process…",
     "loaiTep": "File type",
     "tep": "File",
+    "soHieu": "Document No.",
+    "trichYeu": "Summary",
     "phienBan": "Round / version",
     "ngay": "Date",
     "luotBan": "Round {so} · v{ban}",
