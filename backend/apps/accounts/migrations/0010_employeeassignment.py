@@ -27,7 +27,7 @@ def drop_employee_assignment_if_exists(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0008_install_employee_updated_at_trigger'),
+        ('accounts', '0009_standard_positions'),
         ('organizations', '0004_align_release_ddl'),
     ]
 

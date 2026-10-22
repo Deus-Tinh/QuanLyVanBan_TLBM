@@ -1492,21 +1492,69 @@ class ReviewRound4FixesTests(EmployeeBaseTestCase):
 
 
 class SeedDbCommandTests(APITestCase):
-    """Lệnh seed_db: đủ 82 đơn vị (tên không duy nhất: "Lãnh đạo khối" có ở 2 khối) và chạy lặp không tạo trùng."""
+    """Seed dữ liệu tham chiếu theo kiểu create-only và giữ nguyên account có sẵn."""
 
     def test_seed_db_is_complete_and_idempotent(self):
         from django.core.management import call_command
 
-        os.environ.setdefault("ADMIN_PASSWORD", "ci-only-not-for-production")
-        call_command("seed_db", verbosity=0)
+        existing_demo = User.objects.create_user(
+            username="truongphong_cntt",
+            password="existing-demo-password",
+            email="existing-demo@example.com",
+            ho_ten="Tài khoản hiện có",
+            don_vi=DonVi.objects.first(),
+            chuc_vu=Position.objects.first(),
+            is_active=False,
+            is_staff=True,
+            is_superuser=False,
+        )
+        existing_demo_hash = existing_demo.password
+
+        with patch.dict("os.environ", {"ADMIN_PASSWORD": "seed-test-admin-password"}):
+            call_command("seed_db", verbosity=0)
         self.assertEqual(KhoiKhuVuc.objects.count(), 16)
         self.assertEqual(DonVi.objects.count(), 82)
         self.assertEqual(DonVi.objects.filter(ten="Lãnh đạo khối").count(), 2)
-        self.assertTrue(User.objects.filter(username="admin", is_superuser=True).exists())
+        admin = User.objects.get(username="admin")
+        self.assertTrue(admin.is_superuser)
+        first_password_hash = admin.password
+        self.assertFalse(User.objects.filter(username="chuyenvien_cntt").exists())
 
-        call_command("seed_db", verbosity=0)
+        with patch.dict("os.environ", {
+            "ADMIN_PASSWORD": "different-seed-password",
+            "DEMO_PASSWORD": "seed-test-demo-password",
+        }):
+            call_command("seed_db", demo_data=True, verbosity=0)
         self.assertEqual(DonVi.objects.count(), 82)
-        self.assertEqual(Position.objects.count(), 7)
+        self.assertEqual(Position.objects.count(), 25)
+        self.assertEqual(User.objects.get(username="admin").password, first_password_hash)
+        preserved_demo = User.objects.get(username="truongphong_cntt")
+        self.assertEqual(preserved_demo.password, existing_demo_hash)
+        self.assertFalse(preserved_demo.is_active)
+        self.assertTrue(preserved_demo.is_staff)
+        created_demo = User.objects.get(username="chuyenvien_cntt")
+        self.assertTrue(created_demo.check_password("seed-test-demo-password"))
+
+        with patch.dict("os.environ", {
+            "ADMIN_PASSWORD": "later-admin-password",
+            "DEMO_PASSWORD": "later-demo-password",
+        }):
+            call_command("seed_db", demo_data=True, verbosity=0)
+        self.assertEqual(User.objects.get(username="admin").password, first_password_hash)
+        self.assertEqual(User.objects.get(username="truongphong_cntt").password, existing_demo_hash)
+        self.assertTrue(User.objects.get(username="chuyenvien_cntt").check_password("seed-test-demo-password"))
+
+    def test_missing_seed_secrets_fail_before_reference_data_changes(self):
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+
+        before = (KhoiKhuVuc.objects.count(), DonVi.objects.count(), Position.objects.count())
+        with patch.dict("os.environ", {}, clear=True), self.assertRaises(CommandError):
+            call_command("seed_db", verbosity=0)
+        with patch.dict("os.environ", {"ADMIN_PASSWORD": "seed-test-admin-password"}, clear=True):
+            with self.assertRaises(CommandError):
+                call_command("seed_db", demo_data=True, verbosity=0)
+        self.assertEqual((KhoiKhuVuc.objects.count(), DonVi.objects.count(), Position.objects.count()), before)
 
 
 class EmployeeAssignmentTests(EmployeeBaseTestCase):

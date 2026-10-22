@@ -35,7 +35,7 @@ def cascade_employee_fk(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("accounts", "0009_employeeassignment"),
+        ("accounts", "0010_employeeassignment"),
     ]
 
     operations = [

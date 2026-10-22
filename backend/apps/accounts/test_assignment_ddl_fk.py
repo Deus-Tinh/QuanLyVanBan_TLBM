@@ -9,7 +9,7 @@ from django.test import TestCase
 from accounts.models import EmployeeAssignment, Position
 from organizations.models import DonVi, KhoiKhuVuc
 
-migration = importlib.import_module("accounts.migrations.0010_employeeassignment_fk_cascade_ddl")
+migration = importlib.import_module("accounts.migrations.0011_employeeassignment_fk_cascade_ddl")
 
 
 @unittest.skipUnless(connection.vendor == "postgresql", "Cấu trúc theo DDL chỉ kiểm trên PostgreSQL")
