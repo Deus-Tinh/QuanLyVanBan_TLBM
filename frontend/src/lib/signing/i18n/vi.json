@@ -1,7 +1,5 @@
 {
-  "nhanPhanHe": "Ký số & Phê duyệt điện tử",
   "tieuDe": "Trình ký duyệt nội bộ",
-  "moTa": "Trình và ký duyệt văn bản theo quy trình nhiều cấp; kết quả là bản duyệt nội bộ, chưa phát hành.",
   "nav": {
     "canToiKy": "Cần tôi ký duyệt",
     "toiGui": "Tôi đã gửi trình",
@@ -87,6 +85,7 @@
     "tuNgay": "Từ ngày",
     "denNgay": "Đến ngày",
     "loc": "Lọc",
+    "locThem": "Lọc thêm",
     "xoaLoc": "Xóa lọc",
     "khongKhopLoc": "Không có hồ sơ nào khớp bộ lọc.",
     "locNhanh": "Lọc nhanh",

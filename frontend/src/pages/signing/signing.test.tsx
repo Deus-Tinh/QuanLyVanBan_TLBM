@@ -69,6 +69,22 @@ describe('SigningModule', () => {
     expect(await screen.findByRole('link', { name: /Cần tôi ký duyệt/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Khóa ký & PIN/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Tạo hồ sơ trình ký/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ký số & Phê duyệt điện tử/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Trình ký duyệt nội bộ' })).toBeInTheDocument();
+  });
+
+  it('tab "Cần tôi ký duyệt" hiện số hồ sơ đang chờ; tab phụ nằm trong nhóm riêng', async () => {
+    api.toi.mockResolvedValue(TOI);
+    api.danhSach.mockResolvedValue([]);
+    render(<MemoryRouter initialEntries={['/approvals']}><SigningModule /></MemoryRouter>);
+    const tabKy = await screen.findByRole('link', { name: /Cần tôi ký duyệt/ });
+    await waitFor(() => expect(tabKy).toHaveTextContent('1'));
+    expect(api.thongKe).toHaveBeenCalledWith('can_toi_ky');
+    const nav = within(screen.getByRole('navigation'));
+    for (const ten of [/Tôi đã gửi trình/, /Hồ sơ theo quyền/, /Tài liệu/, /Thông báo/, /Khóa ký & PIN/]) {
+      expect(nav.getByRole('link', { name: ten })).toBeInTheDocument();
+    }
+    expect(nav.queryByRole('link', { name: /^Quy trình/ })).toBeInTheDocument();
   });
 
   it('có quyền tạo thì có nút riêng "Tạo hồ sơ trình ký" ở đầu trang, không nằm trong tab', async () => {
@@ -91,26 +107,42 @@ describe('DanhSachPage', () => {
   it('hiện dòng hồ sơ với văn bản, mức độ, trạng thái, người đang chờ', async () => {
     api.danhSach.mockResolvedValue([hoSo()]);
     boc(<DanhSachPage hop="toi_gui" />);
-    expect(await screen.findByRole('link', { name: '#12' })).toHaveAttribute('href', '/approvals/12');
-    const bang = within(screen.getByRole('table'));
-    expect(bang.getByText('15/TTr — Mua sắm')).toBeInTheDocument();
+    const bang = within(await screen.findByRole('table'));
+    expect(bang.getByRole('link', { name: /15\/TTr — Mua sắm/ })).toHaveAttribute('href', '/approvals/12');
+    expect(bang.getByText('#12 · Duyệt mua sắm')).toBeInTheDocument();
+    expect(bang.queryByRole('columnheader', { name: /Tác vụ/ })).not.toBeInTheDocument();
     expect(bang.getByText('Khẩn')).toBeInTheDocument();
     expect(bang.getByText('Đang chờ ký')).toBeInTheDocument();
     expect(bang.getByText('Trưởng phòng')).toBeInTheDocument();
   });
 
-  it('bộ lọc: từ khóa gửi khi bấm Lọc, mức độ áp dụng ngay, xóa lọc trả về rỗng', async () => {
+  it('bộ lọc: từ khóa tự áp dụng, Lọc thêm thu gọn mặc định, mức độ áp dụng ngay, xóa lọc trả về rỗng', async () => {
     api.danhSach.mockResolvedValue([]);
     boc(<DanhSachPage hop="toi_gui" />);
     await screen.findByText('Bạn chưa gửi trình hồ sơ nào.');
+    expect(screen.queryByRole('button', { name: /^Lọc$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Mức độ' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Xóa lọc/ })).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '15/TTr' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Lọc$/ }));
     await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { q: '15/TTr' }));
+    fireEvent.click(screen.getByRole('button', { name: /Lọc thêm/ }));
     fireEvent.change(screen.getByRole('combobox', { name: 'Mức độ' }), { target: { value: 'KHAN' } });
     await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { q: '15/TTr', muc_do: 'KHAN' }));
+    expect(screen.getByRole('button', { name: /Lọc thêm \(1\)/ })).toBeInTheDocument();
     expect(await screen.findByText('Không có hồ sơ nào khớp bộ lọc.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Xóa lọc/ }));
     await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', {}));
+    expect(screen.getByRole('searchbox')).toHaveValue('');
+  });
+
+  it('hộp rỗng và chưa lọc: không hiện khối lọc, chỉ hiện trạng thái rỗng; thống kê gọi một lần', async () => {
+    api.thongKe.mockResolvedValue({ tat_ca: 0, nhap: 0, cho_ky: 0, tra_lai: 0, qua_han: 0, hoan_thanh: 0, tu_choi: 0, huy: 0 });
+    api.danhSach.mockResolvedValue([]);
+    boc(<DanhSachPage hop="tat_ca" />);
+    expect(await screen.findByText('Chưa có hồ sơ nào bạn được xem.')).toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Lọc nhanh' })).not.toBeInTheDocument();
+    expect(api.thongKe).toHaveBeenCalledTimes(1);
   });
 
   it('thẻ lọc nhanh hiện số lượng, ẩn thẻ rỗng, bấm thẻ là lọc', async () => {

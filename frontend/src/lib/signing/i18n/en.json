@@ -1,7 +1,5 @@
 {
-  "nhanPhanHe": "Digital Signing & Approval",
   "tieuDe": "Internal approval signing",
-  "moTa": "Submit and sign documents through multi-level workflows; the result is an internal approval copy, not yet issued.",
   "nav": {
     "canToiKy": "Awaiting my signature",
     "toiGui": "Submitted by me",
@@ -87,6 +85,7 @@
     "tuNgay": "From",
     "denNgay": "To",
     "loc": "Filter",
+    "locThem": "More filters",
     "xoaLoc": "Clear filters",
     "khongKhopLoc": "No requests match the filters.",
     "locNhanh": "Quick filters",
