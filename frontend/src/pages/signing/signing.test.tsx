@@ -36,7 +36,7 @@ const TOI: NguoiDungHienTai = {
 function hoSo(sua: Partial<HoSoChiTiet> = {}): HoSoChiTiet {
   return {
     id: 12, document_type: 'vanbandi', van_ban_id: 3, van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
-    quy_trinh: 1, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt mua sắm', phien_ban_quy_trinh: 1, muc_do: 'KHAN',
+    quy_trinh: 1, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt mua sắm', phien_ban_quy_trinh: 1,
     trang_thai: 'CHO_KY', han_chot: null, ngay_gui: null, ngay_hoan_thanh: null, ly_do_tu_choi: '', ly_do_huy: '',
     ghi_chu: '', ho_so_goc: null, phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64), create_by: 3,
     ten_nguoi_tao: 'Văn thư', created_at: '2026-10-07T01:00:00Z', dang_cho: [{ id: 1, nguoi_ky: 7, ten_nguoi_ky: 'Trưởng phòng', vai_tro_ky: 'KY_CHINH' }],
@@ -111,7 +111,6 @@ describe('DanhSachPage', () => {
     expect(bang.getByRole('link', { name: /15\/TTr — Mua sắm/ })).toHaveAttribute('href', '/approvals/12');
     expect(bang.getByText('#12 · Duyệt mua sắm')).toBeInTheDocument();
     expect(bang.queryByRole('columnheader', { name: /Tác vụ/ })).not.toBeInTheDocument();
-    expect(bang.getByText('Khẩn')).toBeInTheDocument();
     expect(bang.getByText('Đang chờ ký')).toBeInTheDocument();
     expect(bang.getByText('Trưởng phòng')).toBeInTheDocument();
   });
@@ -121,13 +120,13 @@ describe('DanhSachPage', () => {
     boc(<DanhSachPage hop="toi_gui" />);
     await screen.findByText('Bạn chưa gửi trình hồ sơ nào.');
     expect(screen.queryByRole('button', { name: /^Lọc$/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole('combobox', { name: 'Mức độ' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Từ ngày')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Xóa lọc/ })).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '15/TTr' } });
     await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { q: '15/TTr' }));
     fireEvent.click(screen.getByRole('button', { name: /Lọc thêm/ }));
-    fireEvent.change(screen.getByRole('combobox', { name: 'Mức độ' }), { target: { value: 'KHAN' } });
-    await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { q: '15/TTr', muc_do: 'KHAN' }));
+    fireEvent.change(screen.getByLabelText('Từ ngày'), { target: { value: '2026-10-01' } });
+    await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { q: '15/TTr', tu_ngay: '2026-10-01' }));
     expect(screen.getByRole('button', { name: /Lọc thêm \(1\)/ })).toBeInTheDocument();
     expect(await screen.findByText('Không có hồ sơ nào khớp bộ lọc.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Xóa lọc/ }));

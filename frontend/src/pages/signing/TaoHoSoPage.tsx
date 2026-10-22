@@ -12,7 +12,7 @@ import { docLoi, signingApi } from '@lib/signing/api';
 import { LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
-import type { HoSoChiTiet, MucDo, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
+import type { HoSoChiTiet, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
 import { khungTuDiemBam, soKhung } from '@lib/signing/viTri';
 
 interface UngVien { cau_hinh: number; ung_vien: Array<{ id: number; ten: string }> }
@@ -25,7 +25,6 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   const quyTrinh = useTai(() => signingApi.quyTrinh('HOAT_DONG'));
   const [chon, setChon] = useState<VanBanDi | null>(null);
   const [qtId, setQtId] = useState('');
-  const [mucDo, setMucDo] = useState<MucDo>('THUONG');
   const [hanChot, setHanChot] = useState('');
   const [ghiChu, setGhiChu] = useState('');
   const [tep, setTep] = useState<File | null>(null);
@@ -45,7 +44,6 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
       form.append('document_type', 'vanbandi');
       form.append('van_ban_id', String(chon.id));
       form.append('quy_trinh', qtId);
-      form.append('muc_do', mucDo);
       if (hanChot) form.append('han_chot', new Date(hanChot).toISOString());
       if (ghiChu) form.append('ghi_chu', ghiChu);
       form.append('tep', tep);
@@ -83,11 +81,6 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
             {dungDuoc.map((p) => (
               <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
             ))}
-          </select>
-        </TruongNhap>
-        <TruongNhap nhan={t('tao.mucDo')}>
-          <select className={LOP_O_NHAP} value={mucDo} onChange={(e) => setMucDo(e.target.value as MucDo)}>
-            {(['THUONG', 'KHAN', 'HOA_TOC'] as MucDo[]).map((m) => <option key={m} value={m}>{t(`mucDo.${m}`)}</option>)}
           </select>
         </TruongNhap>
         <TruongNhap nhan={t('tao.hanChot')}>

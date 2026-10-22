@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, LoiTai, MucDoBadge, Rong, TrangThaiBadge } from '@components/signing/ChungUI';
+import { DangTai, LoiTai, Rong, TrangThaiBadge } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
@@ -14,7 +14,6 @@ import { useSigningT } from '@lib/signing/i18n';
 import type { BoLocHoSo, LocNhanh, ThongKeHoSo } from '@lib/signing/types';
 
 type Hop = 'can_toi_ky' | 'toi_gui' | 'tat_ca';
-const MUC_DO = ['THUONG', 'KHAN', 'HOA_TOC'];
 const THE_NHANH: { khoa: LocNhanh | ''; icon: string }[] = [
   { khoa: '', icon: 'fa-layer-group' },
   { khoa: 'cho_ky', icon: 'fa-hourglass-half' },
@@ -65,7 +64,7 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
   const [moLocThem, setMoLocThem] = useState(false);
   const quyTrinh = useTai(() => signingApi.quyTrinh(), []);
   const coLoc = Object.values(loc).some(Boolean);
-  const soLocThem = [loc.muc_do, loc.quy_trinh, loc.tu_ngay, loc.den_ngay].filter(Boolean).length;
+  const soLocThem = [loc.quy_trinh, loc.tu_ngay, loc.den_ngay].filter(Boolean).length;
 
   useEffect(() => {
     const q = tuKhoa.trim();
@@ -102,14 +101,7 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
         )}
       </div>
       {moLocThem && (
-        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="block">
-            <span className={LOP_NHAN}><i className="fa-solid fa-bolt text-primary" aria-hidden="true" />{t('danhSach.mucDo')}</span>
-            <select className={LOP_O_NHAP} value={loc.muc_do ?? ''} onChange={(e) => capNhat({ muc_do: e.target.value })}>
-              <option value="">{t('danhSach.tatCa')}</option>
-              {MUC_DO.map((m) => <option key={m} value={m}>{t(`mucDo.${m}`)}</option>)}
-            </select>
-          </label>
+        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block">
             <span className={LOP_NHAN}><i className="fa-solid fa-diagram-project text-primary" aria-hidden="true" />{t('danhSach.quyTrinh')}</span>
             <select className={LOP_O_NHAP} value={loc.quy_trinh ?? ''} onChange={(e) => capNhat({ quy_trinh: e.target.value })}>
@@ -158,11 +150,10 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
             <table className="w-full text-sm text-left table-fixed min-w-[48rem]">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3.5 py-2 text-left w-[44%]">{t('danhSach.vanBan')}</th>
-                  <th className="px-2 py-2 text-center whitespace-nowrap w-[9%]">{t('danhSach.mucDo')}</th>
-                  <th className="px-2 py-2 text-center whitespace-nowrap w-[13%]">{t('danhSach.trangThai')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[13%]">{t('danhSach.dangCho')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[11%]">{t('danhSach.nguoiTao')}</th>
+                  <th className="px-3.5 py-2 text-left w-[50%]">{t('danhSach.vanBan')}</th>
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-[14%]">{t('danhSach.trangThai')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[14%]">{t('danhSach.dangCho')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[12%]">{t('danhSach.nguoiTao')}</th>
                   <th className="px-2.5 py-2 text-left whitespace-nowrap w-[10%]">{t('danhSach.hanChot')}</th>
                 </tr>
               </thead>
@@ -176,7 +167,6 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                       </Link>
                       <div className="mt-0.5 truncate text-xs text-muted" title={h.ten_quy_trinh}>#{h.id} · {h.ten_quy_trinh}</div>
                     </td>
-                    <td className="px-2 py-2 text-center whitespace-nowrap"><MucDoBadge mucDo={h.muc_do} /></td>
                     <td className="px-2 py-2 text-center whitespace-nowrap"><TrangThaiBadge trangThai={h.trang_thai} /></td>
                     <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
                     <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">

@@ -51,11 +51,6 @@
     "TAM_DUNG": "Tạm dừng",
     "HOAN_THANH": "Đã xong"
   },
-  "mucDo": {
-    "THUONG": "Thường",
-    "KHAN": "Khẩn",
-    "HOA_TOC": "Hỏa tốc"
-  },
   "vaiTro": {
     "KY_NHAY": "Ký nháy",
     "KY_CHINH": "Ký chính"
@@ -71,7 +66,6 @@
     "maHoSo": "Hồ sơ",
     "vanBan": "Văn bản",
     "quyTrinh": "Quy trình",
-    "mucDo": "Mức độ",
     "trangThai": "Trạng thái",
     "dangCho": "Đang chờ",
     "nguoiTao": "Người trình",
@@ -110,7 +104,6 @@
     "quyTrinh": "Quy trình ký",
     "chonQuyTrinh": "— Chọn quy trình đang hoạt động —",
     "khongCoQuyTrinh": "Chưa có quy trình nào đang hoạt động mà bạn được dùng.",
-    "mucDo": "Mức độ",
     "hanChot": "Hạn chót (tùy chọn)",
     "ghiChu": "Ghi chú (tùy chọn)",
     "tep": "Tệp PDF dự thảo (tối đa 20 MB)",

@@ -122,7 +122,7 @@ class BoLocTests(TrinhKyBase):
     def setUp(self):
         super().setUp()
         VanBanDi.objects.create(id=10, so_hieu="10/QD", trich_yeu="Mua sắm thiết bị", nguoi_tao=self.tao)
-        self.a = self.tao_nhap(muc_do="KHAN", ghi_chu="Gấp").data["id"]
+        self.a = self.tao_nhap(ghi_chu="Gấp").data["id"]
         self.qt2 = self.tao_quy_trinh("QT2")
         self.b = self.tao_nhap(quy_trinh=self.qt2.pk).data["id"]
 
@@ -133,7 +133,7 @@ class BoLocTests(TrinhKyBase):
 
     def test_filters(self):
         self.assertEqual(self.ids(), {self.a, self.b})
-        self.assertEqual(self.ids(muc_do="KHAN"), {self.a})
+        self.assertEqual(self.ids(trang_thai="NHAP"), {self.a, self.b})
         self.assertEqual(self.ids(quy_trinh=self.qt2.pk), {self.b})
         self.assertEqual(self.ids(q="10/qd"), {self.a, self.b})  # số hiệu văn bản (Nhóm 2), không phân biệt hoa
         self.assertEqual(self.ids(q="Gấp"), {self.a})  # ghi chú

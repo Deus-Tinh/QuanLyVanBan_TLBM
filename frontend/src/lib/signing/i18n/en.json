@@ -51,11 +51,6 @@
     "TAM_DUNG": "Paused",
     "HOAN_THANH": "Done"
   },
-  "mucDo": {
-    "THUONG": "Normal",
-    "KHAN": "Urgent",
-    "HOA_TOC": "Express"
-  },
   "vaiTro": {
     "KY_NHAY": "Initial",
     "KY_CHINH": "Main signature"
@@ -71,7 +66,6 @@
     "maHoSo": "Request",
     "vanBan": "Document",
     "quyTrinh": "Workflow",
-    "mucDo": "Priority",
     "trangThai": "Status",
     "dangCho": "Waiting for",
     "nguoiTao": "Submitted by",
@@ -110,7 +104,6 @@
     "quyTrinh": "Signing workflow",
     "chonQuyTrinh": "— Select an active workflow —",
     "khongCoQuyTrinh": "There is no active workflow available to you.",
-    "mucDo": "Priority",
     "hanChot": "Deadline (optional)",
     "ghiChu": "Note (optional)",
     "tep": "Draft PDF (max 20 MB)",

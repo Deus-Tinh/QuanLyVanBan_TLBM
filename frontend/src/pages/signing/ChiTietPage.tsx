@@ -6,7 +6,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, LoiTai, MucDoBadge, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
+import { DangTai, LoiTai, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
 import HanhDong from '@components/signing/HanhDong';
 import KetQuaPanel from '@components/signing/KetQuaPanel';
 import SuaNhapDialog from '@components/signing/SuaNhapDialog';
@@ -117,7 +117,6 @@ export default function ChiTietPage() {
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
             <TrangThaiBadge trangThai={hoSo.trang_thai} />
             {luot && luot.trang_thai !== hoSo.trang_thai && <TrangThaiBadge trangThai={luot.trang_thai} />}
-            <MucDoBadge mucDo={hoSo.muc_do} />
           </div>
           <div className="text-base font-semibold text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
           {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
