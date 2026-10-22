@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
@@ -173,3 +173,195 @@ class DashboardAPITests(TestCase):
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get("/api/dashboard/overview/")
         self.assertEqual({row["code"] for row in response.data["resources"]}, expected)
+
+
+class DashboardOverviewPayloadTests(DashboardAPITests):
+    """Đặc tả nội dung từng phần của /api/dashboard/overview/ (giá trị, thứ tự, giới hạn, giá trị mặc định)."""
+
+    def _at(self, month, day, hour=9):
+        return timezone.make_aware(datetime(self.today.year, month, day, hour))
+
+    def test_recent_incoming_payload(self):
+        from documents.models import VanBanDenAttachment
+
+        docs = []
+        for i in range(6):
+            docs.append(VanBanDen.objects.create(
+                nam=self.today.year, so_thu_tu=100 + i, so_hieu=f"DEN-{100 + i}", trich_yeu=f"Đến {i}",
+                nguoi_tao=self.admin_user, pham_vi=PhamVi.NOI_BO, ngay_den=self._at(1, 1 + i),
+                ngay_van_ban=self._at(1, 1 + i),
+                noi_ban_hanh="" if i == 5 else f"Cơ quan {i}",
+            ))
+        newest = docs[5]
+        newest.ngay_van_ban = self._at(1, 20)
+        newest.save(update_fields=["ngay_van_ban"])
+        att_docx = VanBanDenAttachment.objects.create(document=newest, name="a.DOCX", path="den/a.docx",
+                                                      created_at=self._at(2, 1))
+        att_png = VanBanDenAttachment.objects.create(document=newest, name="b.png", path="den/b.png",
+                                                     created_at=self._at(2, 2))
+        VanBanDenAttachment.objects.create(document=newest, name="c.xlsx", path="den/c.xlsx",
+                                           created_at=self._at(2, 3), is_deleted=True)
+        att_noext = VanBanDenAttachment.objects.create(document=newest, name="scan", path="den/scan",
+                                                       created_at=self._at(2, 4))
+
+        self.client.force_authenticate(user=self.staff_user)
+        data = self.client.get("/api/dashboard/overview/").data
+        self.assertEqual(data["kpis"]["incomingCount"], 6)
+        self.assertEqual(data["stats"]["incoming_total"], 6)
+        self.assertEqual([row["code"] for row in data["recentIncoming"]],
+                         ["DEN-105", "DEN-104", "DEN-103", "DEN-102", "DEN-101"])
+        self.assertEqual(data["recentIncoming"][0], {
+            "id": newest.pk,
+            "code": "DEN-105",
+            "title": "Đến 5",
+            "date": "20/01/" + str(self.today.year),
+            "sender": "Cơ quan ban hành",
+            "scope": PhamVi.NOI_BO,
+            "attachments": [
+                {"name": "a.DOCX", "url": att_docx.path, "type": "word", "size": ""},
+                {"name": "b.png", "url": att_png.path, "type": "image", "size": ""},
+                {"name": "scan", "url": att_noext.path, "type": "pdf", "size": ""},
+            ],
+        })
+        self.assertEqual(data["recentIncoming"][1]["sender"], "Cơ quan 4")
+        self.assertEqual(data["recentIncoming"][1]["date"], "05/01/" + str(self.today.year))
+        self.assertEqual(data["recentIncoming"][1]["attachments"], [])
+        self.assertEqual(data["recent_incoming"], data["recentIncoming"])
+
+    def test_recent_outgoing_payload(self):
+        from documents.models import VanBanDiAttachment
+
+        doc = VanBanDi.objects.create(
+            nam=self.today.year, so_thu_tu=200, so_hieu="DI-200", trich_yeu="Đi 200",
+            nguoi_tao=self.admin_user, pham_vi=PhamVi.NOI_BO, ngay_ban_hanh=self._at(3, 4), ngay_van_ban=None, nguoi_ky="",
+        )
+        older = VanBanDi.objects.create(
+            nam=self.today.year - 1, so_thu_tu=201, so_hieu="DI-201", trich_yeu="Đi năm trước",
+            nguoi_tao=self.admin_user, pham_vi=PhamVi.NOI_BO,
+            ngay_ban_hanh=timezone.make_aware(datetime(self.today.year - 1, 12, 31, 9)),
+            ngay_van_ban=None, nguoi_ky="Giám đốc",
+        )
+        att = VanBanDiAttachment.objects.create(document=doc, name="bao-cao.xls", path="di/bao-cao.xls")
+
+        self.client.force_authenticate(user=self.staff_user)
+        data = self.client.get("/api/dashboard/overview/").data
+        self.assertEqual(data["kpis"]["outgoingCount"], 1)
+        self.assertEqual(data["recentOutgoing"], [
+            {
+                "id": doc.pk,
+                "code": "DI-200",
+                "title": "Đi 200",
+                "date": "04/03/" + str(self.today.year),
+                "recipient": "Nơi nhận",
+                "scope": PhamVi.NOI_BO,
+                "attachments": [{"name": "bao-cao.xls", "url": att.path, "type": "excel", "size": ""}],
+            },
+            {
+                "id": older.pk,
+                "code": "DI-201",
+                "title": "Đi năm trước",
+                "date": "31/12/" + str(self.today.year - 1),
+                "recipient": "Giám đốc",
+                "scope": PhamVi.NOI_BO,
+                "attachments": [],
+            },
+        ])
+
+    def test_tasks_payload_and_pending_count(self):
+        from work.models import Task
+
+        tasks = [
+            Task.objects.create(title=f"Task {i}", created_by=self.staff_user,
+                                due_date=self.today + timedelta(days=1), requirement="Review")
+            for i in range(22)
+        ]
+        self.client.force_authenticate(user=self.staff_user)
+        data = self.client.get("/api/dashboard/overview/").data
+        self.assertEqual(len(data["tasks"]), 20)
+        self.assertEqual(data["tasks"][0], {
+            "id": str(tasks[-1].pk),
+            "title": "Task 21",
+            "due": (self.today + timedelta(days=1)).strftime("%d/%m/%Y"),
+            "status": "processing",
+            "statusLabel": "Chờ xử lý",
+            "workStatus": "CHO_XU_LY",
+            "variant": "info",
+        })
+        self.assertEqual([row["id"] for row in data["tasks"]], [str(t.pk) for t in reversed(tasks[2:])])
+        self.assertEqual(data["kpis"]["tasksCount"], 20)
+        self.assertEqual(data["stats"]["tasks_pending"], 20)
+
+    def test_resources_payload(self):
+        from document_templates.models import ChiTietTaiLieuAttachment, DanhMucTaiLieu, TaiLieuChiTiet
+
+        category = DanhMucTaiLieu.objects.create(ten_tai_lieu="Mẫu", nguoi_lap=self.admin_user)
+        rows = [
+            TaiLieuChiTiet.objects.create(dm_tai_lieu=category, ky_hieu=code, tieu_de=f"Mẫu {i}",
+                                          ngay_dang=self.today, hien_thi="TAT_CA", nguoi_tao=self.admin_user)
+            for i, code in enumerate(["MAU-0", None, "", "MAU-3", "MAU-4", "MAU-5"])
+        ]
+        ChiTietTaiLieuAttachment.objects.create(document=rows[0], name="old.pdf", path="r/old.pdf",
+                                                is_deleted=True)
+        ChiTietTaiLieuAttachment.objects.create(document=rows[0], name="mau.xlsx", path="r/mau.xlsx")
+        ChiTietTaiLieuAttachment.objects.create(document=rows[0], name="mau.pdf", path="r/mau.pdf")
+        ChiTietTaiLieuAttachment.objects.create(document=rows[3], name="khong-duoi", path="r/khong-duoi")
+
+        self.client.force_authenticate(user=self.staff_user)
+        data = self.client.get("/api/dashboard/overview/").data
+        self.assertEqual(data["resources"], [
+            {"code": "MAU-0", "title": "Mẫu 0", "format": "XLSX"},
+            {"code": f"BM-{rows[1].pk:02d}", "title": "Mẫu 1", "format": "DOCX"},
+            {"code": f"BM-{rows[2].pk:02d}", "title": "Mẫu 2", "format": "DOCX"},
+            {"code": "MAU-3", "title": "Mẫu 3", "format": "DOCX"},
+            {"code": "MAU-4", "title": "Mẫu 4", "format": "DOCX"},
+        ])
+
+    def test_birthdays_payload(self):
+        UserModel = get_user_model()
+        UserModel.objects.create_user(
+            username="inactive_birthday", password="password123", ho_ten="Đã nghỉ",
+            ngay_sinh=date(1990, self.today.month, self.today.day), is_active=False,
+        )
+        no_name = UserModel.objects.create_user(
+            username="no_name_birthday", password="password123", ho_ten="",
+            ngay_sinh=date(1991, self.tomorrow.month, self.tomorrow.day),
+        )
+        no_name.refresh_from_db()
+
+        self.client.force_authenticate(user=self.staff_user)
+        data = self.client.get("/api/dashboard/overview/").data
+        today_label = self.today.strftime("%d/%m") + " (Hôm nay)"
+        tomorrow_label = self.tomorrow.strftime("%d/%m") + " (Ngày mai)"
+        birthdays = {row["id"]: row for row in data["birthdays"]}
+        self.assertEqual(set(birthdays), {self.staff_user.pk, self.admin_user.pk, no_name.pk})
+        self.assertEqual(birthdays[self.staff_user.pk], {
+            "id": self.staff_user.pk,
+            "name": "Cán Bộ Nhân Viên",
+            "fullName": "Cán Bộ Nhân Viên",
+            "full_name": "Cán Bộ Nhân Viên",
+            "birthdate": today_label,
+            "position": "Chuyên viên văn thư",
+            "roleTitle": "Chuyên viên văn thư",
+            "department": "Phòng Hành chính",
+            "unit": "Phòng Hành chính",
+            "isToday": True,
+            "label": "Hôm nay",
+        })
+        self.assertEqual(birthdays[no_name.pk]["name"], "no_name_birthday")
+        self.assertEqual(birthdays[no_name.pk]["position"], no_name.chuc_vu.name)
+        self.assertEqual(birthdays[no_name.pk]["department"], no_name.don_vi.ten)
+        self.assertEqual(birthdays[no_name.pk]["birthdate"], tomorrow_label)
+        self.assertFalse(birthdays[no_name.pk]["isToday"])
+        self.assertEqual(data["birthdays"][0]["id"], self.staff_user.pk)
+        self.assertEqual(data["birthdays_by_day"]["today"], [
+            {"full_name": "Cán Bộ Nhân Viên", "department": "Phòng Hành chính", "position": "Chuyên viên văn thư"},
+        ])
+        self.assertEqual(
+            sorted(data["birthdays_by_day"]["tomorrow"], key=lambda row: row["full_name"]),
+            [
+                {"full_name": "Quản Trị Viên", "department": "Phòng Hành chính", "position": "Chuyên viên văn thư"},
+                {"full_name": "no_name_birthday", "department": no_name.don_vi.ten, "position": no_name.chuc_vu.name},
+            ],
+        )
+        self.assertEqual(data["meetingRooms"], [])
+        self.assertEqual(data["today_meetings"], [])
