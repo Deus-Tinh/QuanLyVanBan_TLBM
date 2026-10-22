@@ -63,6 +63,8 @@
       "adminPermissionsRequired": "The System Administrator role must always keep the role-management permissions (view, add, change, delete).",
       "nameRequired": "Role name cannot be empty.",
       "nameExists": "This role name already exists.",
+      "nameTooLong": "Role name must be at most 150 characters.",
+      "unsavedConfirm": "You have unsaved permission changes. Discard them?",
       "permissionInvalid": "One or more selected permissions are invalid.",
       "createSuccess": "Role created successfully!",
       "updateSuccess": "Role updated successfully!",

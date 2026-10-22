@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '@i18n/translate';
 import { ApiError, apiClient, downloadBlob } from '@lib/apiClient';
+import { usePermissions } from '@lib/permissions';
 import { Region, Unit, PaginatedResponse, RegionFormData, UnitFormData } from '@app-types/organization';
 import { Button } from '@components/common/Button';
 import { Badge } from '@components/common/Badge';
@@ -11,6 +12,9 @@ import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 
 export default function OrganizationsPage() {
   const { t, currentLang } = useTranslation();
+  const { can } = usePermissions();
+  // Khối và Đơn vị dùng chung bộ quyền *_donvi của DDL; backend vẫn kiểm quyền thật ở mọi API.
+  const showRowActions = can('change_donvi') || can('delete_donvi');
 
   // Tab chuyển đổi: 'units' (Đơn vị) hoặc 'regions' (Khối)
   const [activeTab, setActiveTab] = useState<'units' | 'regions'>('units');
@@ -46,6 +50,7 @@ export default function OrganizationsPage() {
   const [isUnitModalOpen, setIsUnitModalOpen] = useState<boolean>(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [deletingUnit, setDeletingUnit] = useState<Unit | null>(null);
+  const [unitDeleteErrorKey, setUnitDeleteErrorKey] = useState<string | null>(null);
   const [isSubmittingUnit, setIsSubmittingUnit] = useState<boolean>(false);
   const [isDeletingUnit, setIsDeletingUnit] = useState<boolean>(false);
 
@@ -241,10 +246,15 @@ export default function OrganizationsPage() {
     try {
       await apiClient.delete(`/api/organizations/units/${deletingUnit.id}/`);
       setDeletingUnit(null);
+      setUnitDeleteErrorKey(null);
       showToast('organizations.messages.deleteSuccess');
       await refreshUnits();
-    } catch {
-      showToast('organizations.messages.fetchError', true);
+    } catch (err: unknown) {
+      // Giữ hộp thoại mở và nêu đúng lý do server trả về (đơn vị còn CBNV, đang được dùng, thiếu quyền...).
+      const candidate = err instanceof ApiError ? err.data.key ?? err.data.detail : null;
+      setUnitDeleteErrorKey(
+        typeof candidate === 'string' && candidate.includes('.') ? candidate : 'organizations.messages.deleteError',
+      );
     } finally {
       setIsDeletingUnit(false);
     }
@@ -307,36 +317,42 @@ export default function OrganizationsPage() {
         <div className="flex items-center gap-3">
           {activeTab === 'units' ? (
             <>
-              <Button
-                variant="outline"
-                icon="fa-file-excel"
-                onClick={handleExportExcel}
-                isLoading={isExporting}
-              >
-                {isExporting ? t('organizations.actions.exporting') : t('organizations.actions.exportExcel')}
-              </Button>
+              {can('export_donvi') && (
+                <Button
+                  variant="outline"
+                  icon="fa-file-excel"
+                  onClick={handleExportExcel}
+                  isLoading={isExporting}
+                >
+                  {isExporting ? t('organizations.actions.exporting') : t('organizations.actions.exportExcel')}
+                </Button>
+              )}
+              {can('add_donvi') && (
+                <Button
+                  variant="primary"
+                  icon="fa-plus"
+                  onClick={() => {
+                    setEditingUnit(null);
+                    setIsUnitModalOpen(true);
+                  }}
+                >
+                  {t('organizations.unit.addBtn')}
+                </Button>
+              )}
+            </>
+          ) : (
+            can('add_donvi') && (
               <Button
                 variant="primary"
                 icon="fa-plus"
                 onClick={() => {
-                  setEditingUnit(null);
-                  setIsUnitModalOpen(true);
+                  setEditingRegion(null);
+                  setIsRegionModalOpen(true);
                 }}
               >
-                {t('organizations.unit.addBtn')}
+                {t('organizations.region.addBtn')}
               </Button>
-            </>
-          ) : (
-            <Button
-              variant="primary"
-              icon="fa-plus"
-              onClick={() => {
-                setEditingRegion(null);
-                setIsRegionModalOpen(true);
-              }}
-            >
-              {t('organizations.region.addBtn')}
-            </Button>
+            )
           )}
         </div>
       </div>
@@ -431,20 +447,22 @@ export default function OrganizationsPage() {
                     <th className="px-4 py-3">{t('organizations.table.phone')}</th>
                     <th className="px-4 py-3">{t('organizations.table.email')}</th>
                     <th className="px-4 py-3 text-center">{t('organizations.table.status')}</th>
-                    <th className="px-4 py-3 text-center w-28">{t('organizations.table.actions')}</th>
+                    {showRowActions && (
+                      <th className="px-4 py-3 text-center w-28">{t('organizations.table.actions')}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-12 text-secondary">
+                      <td colSpan={showRowActions ? 7 : 6} className="text-center py-12 text-secondary">
                         <i className="fa-solid fa-spinner fa-spin text-2xl text-primary mb-2 block" />
                         {t('organizations.table.loading')}
                       </td>
                     </tr>
                   ) : units.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-12 text-secondary">
+                      <td colSpan={showRowActions ? 7 : 6} className="text-center py-12 text-secondary">
                         <i className="fa-solid fa-folder-open text-3xl text-muted mb-2 block" />
                         {t('organizations.table.empty')}
                       </td>
@@ -488,29 +506,38 @@ export default function OrganizationsPage() {
                               </Badge>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingUnit(unit);
-                                  setIsUnitModalOpen(true);
-                                }}
-                                title={t('organizations.actions.edit')}
-                                className="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors cursor-pointer"
-                              >
-                                <i className="fa-solid fa-pen-to-square" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeletingUnit(unit)}
-                                title={t('organizations.actions.delete')}
-                                className="p-1.5 text-secondary hover:text-danger rounded-lg transition-colors cursor-pointer"
-                              >
-                                <i className="fa-solid fa-trash-can" />
-                              </button>
-                            </div>
-                          </td>
+                          {showRowActions && (
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {can('change_donvi') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingUnit(unit);
+                                      setIsUnitModalOpen(true);
+                                    }}
+                                    title={t('organizations.actions.edit')}
+                                    className="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <i className="fa-solid fa-pen-to-square" />
+                                  </button>
+                                )}
+                                {can('delete_donvi') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDeletingUnit(unit);
+                                      setUnitDeleteErrorKey(null);
+                                    }}
+                                    title={t('organizations.actions.delete')}
+                                    className="p-1.5 text-secondary hover:text-danger rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <i className="fa-solid fa-trash-can" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       );
                     })
@@ -569,7 +596,7 @@ export default function OrganizationsPage() {
                 setRegionSearchQuery(e.target.value);
                 setRegionPage(1);
               }}
-              placeholder={t('organizations.region.namePlaceholder')}
+              placeholder={t('organizations.actions.searchRegionPlaceholder')}
               className="w-full pl-10 pr-3.5 py-2 text-sm bg-surface border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary"
             />
           </div>
@@ -580,15 +607,18 @@ export default function OrganizationsPage() {
               <thead className="bg-surface-elevated text-secondary text-xs uppercase font-bold border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-center w-16">{t('organizations.table.id')}</th>
+                  <th className="px-2 sm:px-4 py-3 text-center w-16 sm:w-32">{t('organizations.table.displayOrder')}</th>
                   <th className="px-4 py-3">{t('organizations.table.regionName')}</th>
                   <th className="px-4 py-3 text-center">{t('organizations.table.unitsCount')}</th>
-                  <th className="px-4 py-3 text-center w-28">{t('organizations.table.actions')}</th>
+                  {showRowActions && (
+                    <th className="px-4 py-3 text-center w-28">{t('organizations.table.actions')}</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {regions.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center py-12 text-secondary">
+                    <td colSpan={showRowActions ? 5 : 4} className="text-center py-12 text-secondary">
                       <i className="fa-solid fa-folder-open text-3xl text-muted mb-2 block" />
                       {t('organizations.table.empty')}
                     </td>
@@ -597,38 +627,45 @@ export default function OrganizationsPage() {
                   regions.map((region) => (
                     <tr key={region.id} className="transition-colors hover:bg-surface-hover">
                       <td className="px-4 py-3 text-center font-mono text-xs text-muted">{region.id}</td>
+                      <td className="px-2 sm:px-4 py-3 text-center font-mono text-xs text-secondary">{region.thu_tu_hien_thi ?? 0}</td>
                       <td className="px-4 py-3 font-bold text-main">{region.ten}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant="info" size="sm">
                           {t('organizations.table.unitCountLabel', { count: String(region.don_vi_count ?? 0) })}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingRegion(region);
-                              setIsRegionModalOpen(true);
-                            }}
-                            title={t('organizations.actions.edit')}
-                            className="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors cursor-pointer"
-                          >
-                            <i className="fa-solid fa-pen-to-square" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeletingRegion(region);
-                              setRegionDeleteErrorKey(null);
-                            }}
-                            title={t('organizations.actions.delete')}
-                            className="p-1.5 text-secondary hover:text-danger rounded-lg transition-colors cursor-pointer"
-                          >
-                            <i className="fa-solid fa-trash-can" />
-                          </button>
-                        </div>
-                      </td>
+                      {showRowActions && (
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {can('change_donvi') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingRegion(region);
+                                  setIsRegionModalOpen(true);
+                                }}
+                                title={t('organizations.actions.edit')}
+                                className="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors cursor-pointer"
+                              >
+                                <i className="fa-solid fa-pen-to-square" />
+                              </button>
+                            )}
+                            {can('delete_donvi') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeletingRegion(region);
+                                  setRegionDeleteErrorKey(null);
+                                }}
+                                title={t('organizations.actions.delete')}
+                                className="p-1.5 text-secondary hover:text-danger rounded-lg transition-colors cursor-pointer"
+                              >
+                                <i className="fa-solid fa-trash-can" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -712,11 +749,15 @@ export default function OrganizationsPage() {
       {/* Xác nhận xóa Đơn vị */}
       <DeleteConfirmModal
         isOpen={!!deletingUnit}
-        onClose={() => setDeletingUnit(null)}
+        onClose={() => {
+          setDeletingUnit(null);
+          setUnitDeleteErrorKey(null);
+        }}
         onConfirm={handleConfirmDeleteUnit}
         titleKey="organizations.unit.deleteConfirmTitle"
         descKey="organizations.unit.deleteConfirmDesc"
         name={deletingUnit?.ten}
+        errorKey={unitDeleteErrorKey}
         isLoading={isDeletingUnit}
       />
     </div>
