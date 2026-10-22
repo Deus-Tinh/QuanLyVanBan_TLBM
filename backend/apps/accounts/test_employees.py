@@ -1123,7 +1123,7 @@ class SeedDbCommandTests(APITestCase):
         }):
             call_command("seed_db", demo_data=True, verbosity=0)
         self.assertEqual(DonVi.objects.count(), 82)
-        self.assertEqual(Position.objects.count(), 7)
+        self.assertEqual(Position.objects.count(), 25)
         self.assertEqual(User.objects.get(username="admin").password, first_password_hash)
         preserved_demo = User.objects.get(username="truongphong_cntt")
         self.assertEqual(preserved_demo.password, existing_demo_hash)
