@@ -2,6 +2,7 @@ import io
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
+from django.db import IntegrityError, transaction
 from django.db.models import Q, ProtectedError
 from django.http import HttpResponse
 from rest_framework import status
@@ -12,6 +13,7 @@ from rest_framework.response import Response
 
 from .excel_i18n import get_excel_translations
 from .models import KhoiKhuVuc, DonVi
+from .references import unit_in_use
 from .serializers import KhoiKhuVucSerializer, DonViSerializer
 
 
@@ -23,6 +25,18 @@ def _invalid_region_filter(region_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
     return None
+
+
+def _can_see_internal_units(user) -> bool:
+    """Đơn vị is_public = False (nội bộ) chỉ hiển thị với quản trị: superuser hoặc có change_donvi (giống Chức vụ)."""
+    return bool(user.is_superuser or user.has_perm("change_donvi"))
+
+
+def _visible_units(user):
+    queryset = DonVi.objects.select_related("khoi").order_by("stt_uu_tien", "ten")
+    if not _can_see_internal_units(user):
+        queryset = queryset.filter(is_public=True)
+    return queryset
 
 
 class StandardPagination(PageNumberPagination):
@@ -144,7 +158,7 @@ def unit_list_create_view(request):
         return _permission_denied()
 
     if request.method == "GET":
-        queryset = DonVi.objects.select_related("khoi").all().order_by("stt_uu_tien", "ten")
+        queryset = _visible_units(request.user)
 
         region_id = request.query_params.get("region_id")
         invalid = _invalid_region_filter(region_id)
@@ -161,6 +175,11 @@ def unit_list_create_view(request):
                 Q(email__icontains=search_query) |
                 Q(dia_chi__icontains=search_query)
             )
+
+        # Trả về toàn bộ danh sách không phân trang nếu có all=true (dành cho dropdown/select, giống API Khối)
+        if request.query_params.get("all", "").lower() == "true":
+            serializer = DonViSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         paginator = StandardPagination()
         page = paginator.paginate_queryset(queryset, request)
@@ -186,7 +205,7 @@ def unit_detail_view(request, pk):
         return _permission_denied()
 
     try:
-        unit = DonVi.objects.select_related("khoi").get(pk=pk)
+        unit = _visible_units(request.user).get(pk=pk)
     except DonVi.DoesNotExist:
         return Response(
             {"detail": "organizations.messages.unitNotFound", "key": "organizations.messages.unitNotFound"},
@@ -206,13 +225,22 @@ def unit_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == "DELETE":
+        in_use = Response(
+            {"detail": "organizations.messages.unitInUse", "key": "organizations.messages.unitInUse"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+        if unit_in_use(unit.pk):
+            return in_use
         try:
-            unit.delete()
+            with transaction.atomic():
+                unit.delete()
         except ProtectedError:
             return Response(
                 {"detail": "organizations.messages.unitHasEmployees", "key": "organizations.messages.unitHasEmployees"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        except IntegrityError:  # DB dựng từ DDL chặn bằng ON DELETE RESTRICT
+            return in_use
         return Response(
             {"detail": "organizations.messages.deleteSuccess", "key": "organizations.messages.deleteSuccess"},
             status=status.HTTP_204_NO_CONTENT,
@@ -225,7 +253,7 @@ def unit_export_excel_view(request):
     lang = request.query_params.get("lang", "vi").lower()
     i18n = get_excel_translations(lang)
 
-    queryset = DonVi.objects.select_related("khoi").all().order_by("stt_uu_tien", "ten")
+    queryset = _visible_units(request.user)
 
     region_id = request.query_params.get("region_id")
     invalid = _invalid_region_filter(region_id)
