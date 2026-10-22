@@ -24,6 +24,8 @@ from .models import (
     VanBanMatAttachment,
     DocumentViewLog,
     DocumentAccessLog,
+    Folder,
+    FolderFile,
     get_document_model,
 )
 
@@ -848,3 +850,164 @@ class DocumentViewLogSerializer(serializers.ModelSerializer):
             return getattr(obj.user.don_vi, "ten", "")
         profile = getattr(obj.user, "profile", None)
         return getattr(profile, "department", "") if profile else ""
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Folder & FolderFile Serializers — Thư mục nhiều cấp
+# ═══════════════════════════════════════════════════════════════════
+
+class FolderFileSerializer(serializers.ModelSerializer):
+    """Serializer cho file trong thư mục."""
+    uploaded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FolderFile
+        fields = [
+            "id",
+            "folder",
+            "file_name",
+            "file_path",
+            "file_size",
+            "file_type",
+            "description",
+            "is_local",
+            "uploaded_by",
+            "uploaded_by_name",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at", "uploaded_by_name"]
+
+    def get_uploaded_by_name(self, obj):
+        if obj.uploaded_by:
+            return getattr(obj.uploaded_by, "full_name", None) or getattr(obj.uploaded_by, "username", str(obj.uploaded_by))
+        return None
+
+
+class FolderSerializer(serializers.ModelSerializer):
+    """
+    Serializer cho CRUD Folder đơn lẻ.
+    Hỗ trợ parent_id để tạo/gán thư mục cha.
+    """
+    parent_id = serializers.PrimaryKeyRelatedField(
+        queryset=Folder.objects.all(),
+        source="parent",
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    full_path_display = serializers.ReadOnlyField()
+    children_count = serializers.SerializerMethodField()
+    files_count = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Folder
+        fields = [
+            "id",
+            "name",
+            "parent_id",
+            "path",
+            "depth",
+            "order",
+            "description",
+            "is_local",
+            "local_path",
+            "full_path_display",
+            "children_count",
+            "files_count",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "path",
+            "depth",
+            "full_path_display",
+            "children_count",
+            "files_count",
+            "created_by",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        validators = []
+
+    def get_children_count(self, obj):
+        return obj.children.count()
+
+    def get_files_count(self, obj):
+        return obj.files.count()
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return getattr(obj.created_by, "full_name", None) or getattr(obj.created_by, "username", str(obj.created_by))
+        return None
+
+    def validate(self, attrs):
+        parent = attrs.get("parent", getattr(self.instance, "parent", None) if self.instance else None)
+        name = attrs.get("name", getattr(self.instance, "name", None) if self.instance else None)
+        qs = Folder.objects.filter(parent=parent, name=name)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            parent_name = parent.name if parent else "Gốc (Root)"
+            raise serializers.ValidationError(
+                {"name": f"Thư mục '{name}' đã tồn tại trong thư mục '{parent_name}'."}
+            )
+        return attrs
+
+
+class FolderTreeSerializer(serializers.ModelSerializer):
+    """
+    Serializer đệ quy để xuất cây thư mục đầy đủ (Tree View).
+    Mỗi node bao gồm children của nó và số lượng file.
+    """
+    children = serializers.SerializerMethodField()
+    files_count = serializers.SerializerMethodField()
+    full_path_display = serializers.ReadOnlyField()
+    parent_id = serializers.PrimaryKeyRelatedField(source="parent", read_only=True)
+
+    class Meta:
+        model = Folder
+        fields = [
+            "id",
+            "name",
+            "parent_id",
+            "path",
+            "depth",
+            "order",
+            "description",
+            "is_local",
+            "local_path",
+            "full_path_display",
+            "files_count",
+            "children",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_children(self, obj):
+        children = obj.children.all().order_by("order", "name")
+        return FolderTreeSerializer(children, many=True, context=self.context).data
+
+    def get_files_count(self, obj):
+        return obj.files.count()
+
+
+class FolderBreadcrumbSerializer(serializers.ModelSerializer):
+    """Serializer cho một node trong breadcrumb."""
+    class Meta:
+        model = Folder
+        fields = ["id", "name", "depth", "path"]
+
+
+class FolderMoveSerializer(serializers.Serializer):
+    """Serializer nhận dữ liệu di chuyển thư mục."""
+    target_parent_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID của thư mục cha mới. null nếu muốn di chuyển thành thư mục gốc.",
+    )
+

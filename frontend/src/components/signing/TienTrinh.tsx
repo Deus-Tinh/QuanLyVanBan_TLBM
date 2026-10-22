@@ -15,12 +15,12 @@ export default function TienTrinh({ luot, toiId }: { luot: LuotTrinh; toiId?: nu
           <li key={cap.id} className={`rounded-lg border p-3 ${
             cap.trang_thai === 'DANG_KY' ? 'border-primary-border bg-primary-subtle/40' : 'border-border-subtle'}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-bold text-sm text-main">
+              <div className="font-bold text-base text-main">
                 {cap.cap_ky}. {cap.ten_cap_ky}
               </div>
               <div className="flex items-center gap-2">
                 {cap.han_xu_ly && (
-                  <span className={`text-xs ${qua_han ? 'text-danger font-bold' : 'text-secondary'}`}>
+                  <span className={`text-sm ${qua_han ? 'text-danger font-bold' : 'text-secondary'}`}>
                     <i className="fa-regular fa-clock mr-1" aria-hidden="true" />
                     {t('chiTiet.han')}: {dinhDangNgay(cap.han_xu_ly, lang)}
                   </span>

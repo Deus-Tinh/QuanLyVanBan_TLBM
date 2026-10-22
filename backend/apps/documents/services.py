@@ -33,6 +33,7 @@ from .models import (
     VanBanMatAttachment,
     DocumentViewLog,
     get_document_model,
+    canonical_document_kind,
 )
 
 
@@ -374,6 +375,7 @@ def log_document_view(document, user, doc_type=None):
                 doc_type = "vanbanden"
 
     doc_id = document.pk if hasattr(document, "pk") else document.id
+    doc_type = canonical_document_kind(doc_type)
 
     DocumentViewLog.objects.update_or_create(
         document_type=doc_type,

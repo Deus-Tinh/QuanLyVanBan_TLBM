@@ -904,6 +904,50 @@ CREATE INDEX idx_vanbandi_attachment_deleted ON documents_vanbandi_attachment (i
 -- INSERT ... ON CONFLICT (document_type, document_id, user_id)
 -- DO UPDATE SET viewed_at = EXCLUDED.viewed_at).
 -- =====================================================================
+-- Hierarchical document folders (Django documents migrations 0006 and 0007).
+CREATE TABLE documents_folder (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    parent_id BIGINT,
+    path VARCHAR(1000) NOT NULL,
+    depth INTEGER NOT NULL CONSTRAINT documents_folder_depth_check CHECK (depth >= 0),
+    "order" INTEGER NOT NULL CONSTRAINT documents_folder_order_check CHECK ("order" >= 0),
+    description TEXT NOT NULL,
+    is_local BOOLEAN NOT NULL,
+    local_path VARCHAR(1000) NOT NULL,
+    created_by_id BIGINT,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uq_folder_parent_name UNIQUE (parent_id, name),
+    CONSTRAINT fk_documents_folder_parent FOREIGN KEY (parent_id)
+        REFERENCES documents_folder (id),
+    CONSTRAINT fk_documents_folder_created_by FOREIGN KEY (created_by_id)
+        REFERENCES accounts_employee (id)
+);
+
+CREATE INDEX idx_folder_parent ON documents_folder (parent_id);
+CREATE INDEX idx_folder_path ON documents_folder (path);
+CREATE INDEX idx_folder_depth ON documents_folder (depth);
+
+CREATE TABLE documents_folder_file (
+    id BIGSERIAL PRIMARY KEY,
+    file_name VARCHAR(500) NOT NULL,
+    file_path VARCHAR(1000) NOT NULL,
+    file_size BIGINT NOT NULL CONSTRAINT documents_folder_file_file_size_check CHECK (file_size >= 0),
+    file_type VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL,
+    is_local BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    folder_id BIGINT NOT NULL,
+    uploaded_by_id BIGINT,
+    CONSTRAINT fk_documents_folder_file_folder FOREIGN KEY (folder_id)
+        REFERENCES documents_folder (id),
+    CONSTRAINT fk_documents_folder_file_uploaded_by FOREIGN KEY (uploaded_by_id)
+        REFERENCES accounts_employee (id)
+);
+
+CREATE INDEX idx_folder_file_folder ON documents_folder_file (folder_id);
+
 CREATE TABLE documents_view_log (
     id BIGSERIAL PRIMARY KEY,
     document_type document_kind NOT NULL,
@@ -1801,21 +1845,52 @@ WHERE
     )
 ORDER BY x.vi_tri;
 
--- 3) Seed Chức vụ và Tài khoản quản trị hệ thống mẫu (Idempotent, không hard-code ID)
+-- 3) Seed 25 Chức vụ chuẩn (STT 1 = cao nhất: 22 chức vụ của đặc tả, giữ "Quản trị viên",
+--    "Lãnh đạo cơ quan", "Văn thư" chèn theo cấp bậc) và Tài khoản quản trị hệ thống mẫu
+--    (Idempotent, không hard-code ID)
 INSERT INTO
     accounts_position (
         display_order,
         name,
         is_public
     )
-SELECT 1, 'Quản trị viên', TRUE
+SELECT x.stt, x.ten, TRUE
+FROM (
+        VALUES
+        (1, 'Quản trị viên'),
+        (2, 'Chủ tịch HĐQT'),
+        (3, 'Phó Chủ tịch HĐQT'),
+        (4, 'Thành viên HĐQT'),
+        (5, 'Tổng Giám đốc'),
+        (6, 'Lãnh đạo cơ quan'),
+        (7, 'Phó Tổng Giám đốc điều hành'),
+        (8, 'Phó Tổng Giám đốc kinh doanh'),
+        (9, 'Giám đốc Khối'),
+        (10, 'Phó Giám đốc Khối'),
+        (11, 'Giám đốc Vùng'),
+        (12, 'Trợ lý TGĐ'),
+        (13, 'Giám đốc'),
+        (14, 'Phó Giám đốc'),
+        (15, 'Trưởng Ban'),
+        (16, 'Phó Ban'),
+        (17, 'Trưởng Bộ phận'),
+        (18, 'Trưởng nhóm'),
+        (19, 'Trưởng phòng'),
+        (20, 'Phó phòng'),
+        (21, 'Chuyên viên'),
+        (22, 'Văn thư'),
+        (23, 'Kiểm toán viên'),
+        (24, 'Nhân viên'),
+        (25, 'Thành viên')
+    ) AS x (stt, ten)
 WHERE
     NOT EXISTS (
         SELECT 1
-        FROM accounts_position
+        FROM accounts_position p
         WHERE
-            name = 'Quản trị viên'
-    );
+            p.name = x.ten
+    )
+ORDER BY x.stt;
 
 -- Đảm bảo có tài khoản quản trị hệ thống mẫu làm nguoi_lap_id nếu chưa có (truy vấn động ID)
 INSERT INTO
@@ -1831,7 +1906,7 @@ INSERT INTO
         is_superuser,
         is_active
     )
-SELECT 'admin', 'admin@baolong.vn', 'pbkdf2_sha256$system_seed_placeholder', 'Quản trị hệ thống', '1990-01-01', (
+SELECT 'admin', 'admin@baolong.vn', '!system_seed_placeholder', 'Quản trị hệ thống', '1990-01-01', (
         SELECT id
         FROM accounts_position
         WHERE

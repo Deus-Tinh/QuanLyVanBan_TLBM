@@ -14,10 +14,18 @@ import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Captured from the resolved release source at process startup. Do not resolve the
+# current symlink per request: an old process must keep identifying its own code.
+def release_id_from_source(source_file):
+    return Path(source_file).resolve().parents[2].name
+
+
+RELEASE_ID = release_id_from_source(__file__)
 
 # Tải biến môi trường từ .env
 load_dotenv(BASE_DIR / ".env")
@@ -78,8 +86,10 @@ INSTALLED_APPS = [
     "django_filters",
     # Các app nghiệp vụ
     "accounts",
+    "records",
     "dashboard",
     "birthdays",
+    "work",
     "documents",
     "signing",
     "document_templates",
@@ -88,10 +98,10 @@ INSTALLED_APPS = [
     "authorization",
 ]
 
-# Custom User Model theo SQL_Fix4: accounts_employee là bảng người dùng
+# Custom User Model theo SQL_Fix4 / release_DDL: accounts_employee là bảng người dùng
 AUTH_USER_MODEL = "accounts.Employee"
 
-# RBAC theo SQL_Fix4: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+# RBAC theo release_DDL: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
 AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
@@ -134,29 +144,37 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
+# PostgreSQL là engine duy nhất (local, CI, staging). DB_ENGINE chỉ còn để tương thích env cũ.
+DB_ENGINE = os.getenv("DB_ENGINE", "postgresql").lower()
+if DB_ENGINE not in ("postgresql", "postgres"):
+    raise RuntimeError("Dự án chỉ hỗ trợ PostgreSQL: bỏ DB_ENGINE hoặc đặt DB_ENGINE=postgresql.")
 
-if DB_ENGINE in ("postgresql", "postgres"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", "qlvb_db"),
-            "USER": os.getenv("DB_USER", "postgres"),
-            "PASSWORD": os.getenv("DB_PASSWORD", ""),
-            "HOST": os.getenv("DB_HOST", "localhost"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "qlvb_db"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+}
 
-if "test" in sys.argv and DB_ENGINE not in ("postgresql", "postgres"):
-    raise RuntimeError("Test chạy trên PostgreSQL: đặt DB_ENGINE=postgresql và các biến DB_*.")
+# Kết nối chỉ đọc cho AI SQL (backend/docs/sql_document_source.md): role riêng, session read-only,
+# không bao giờ dùng user của "default". Thiếu DB_READONLY_USER thì không khai báo alias; đường AI SQL
+# từ chối truy vấn (SqlDocumentAccessError) còn app và các route khác chạy bình thường.
+if os.getenv("DB_READONLY_USER"):
+    DATABASES["readonly"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_READONLY_NAME") or DATABASES["default"]["NAME"],
+        "USER": os.environ["DB_READONLY_USER"],
+        "PASSWORD": os.getenv("DB_READONLY_PASSWORD", ""),
+        "HOST": os.getenv("DB_READONLY_HOST") or DATABASES["default"]["HOST"],
+        "PORT": os.getenv("DB_READONLY_PORT") or DATABASES["default"]["PORT"],
+        "OPTIONS": {"options": "-c default_transaction_read_only=on"},
+        # Test dùng chung kết nối test của "default" (role chỉ đọc không có quyền tạo DB).
+        "TEST": {"MIRROR": "default"},
+    }
 
 
 # Password validation
@@ -200,6 +218,20 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 # Server đặt DJANGO_MEDIA_ROOT ra thư mục dùng chung để file không nằm trong thư mục release.
 MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT") or BASE_DIR.parent / "media")
+
+# Nơi lưu tệp nghiệp vụ: <module>/YYYY/MM/DD/<uuid>.<ext> (xem apps/document_storage.py).
+# Dev (DEBUG) mặc định dùng thư mục storage/ cạnh backend (đã gitignore). Ngoài dev phải đặt biến
+# môi trường là thư mục tuyệt đối đã tồn tại, ngoài thư mục release; thiếu biến thì `check --deploy`
+# báo documents.E001 và lần ghi tệp đầu tiên báo lỗi cấu hình.
+DOCUMENT_STORAGE_ROOT = os.environ.get("DOCUMENT_STORAGE_ROOT", "").strip()
+if DEBUG and not DOCUMENT_STORAGE_ROOT:
+    DOCUMENT_STORAGE_ROOT = str(BASE_DIR.parent / "storage")
+if DOCUMENT_STORAGE_ROOT and not DEBUG:
+    _document_storage_root = Path(DOCUMENT_STORAGE_ROOT)
+    if not _document_storage_root.is_absolute() or not _document_storage_root.is_dir():
+        raise ImproperlyConfigured(
+            "Production DOCUMENT_STORAGE_ROOT must be an existing absolute directory on persistent storage."
+        )
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -280,6 +312,11 @@ SIGNING_PIN_SECRET = os.environ.get("SIGNING_PIN_SECRET", "")
 SIGNING_PDF_FONT = os.environ.get("SIGNING_PDF_FONT", "")
 SIGNING_PDF_FONT_BOLD = os.environ.get("SIGNING_PDF_FONT_BOLD", "")
 
+# Trình ký — email thông báo người trong luồng. Để trống thì dùng cấu hình email chung của dự án; dev có thể đặt
+# `django.core.mail.backends.console.EmailBackend`. Địa chỉ giao diện dùng cho liên kết trong email.
+SIGNING_EMAIL_BACKEND = os.environ.get("SIGNING_EMAIL_BACKEND", "")
+SIGNING_FRONTEND_URL = os.environ.get("SIGNING_FRONTEND_URL", "http://localhost:5173")
+
 # ─────────────────────────────────────────────────
 # SimpleJWT — Cấu hình token
 # ─────────────────────────────────────────────────
@@ -299,3 +336,15 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+# ─────────────────────────────────────────────────
+# Bảo Long Insurance (Alpaca) Authentication Config
+# ─────────────────────────────────────────────────
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "")
+ALPACA_CHECK_AUTH_URL = os.getenv(
+    "ALPACA_CHECK_AUTH_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-auth-user",
+)
+ALPACA_CHECK_USER_URL = os.getenv(
+    "ALPACA_CHECK_USER_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-user-exist",
+)

@@ -10,7 +10,7 @@ from datetime import timedelta, datetime, time, date
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from unittest import skipUnless
+from unittest import mock, skipUnless
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
@@ -305,15 +305,14 @@ class MeetingBookingModelTestCase(TestCase):
             name="Phòng Hội Thảo Model Test",
             capacity=20,
         )
+        self.booking_date = timezone.localdate() + timedelta(days=7)
 
     def test_create_booking_success_model(self):
-        tz = timezone.get_current_timezone()
-        base = timezone.make_aware(datetime(2026, 10, 20, 8, 0, 0), tz)
         booking = MeetingBooking.objects.create(
             room=self.room,
             organizer=self.user,
             title="Họp Bàn Giao",
-            date=date(2026, 10, 20),
+            date=self.booking_date,
             start_time=time(9, 0),
             end_time=time(10, 0),
             attendees_count=10,
@@ -322,13 +321,11 @@ class MeetingBookingModelTestCase(TestCase):
         self.assertIn("Họp Bàn Giao", str(booking))
 
     def test_clean_end_time_before_start_time(self):
-        tz = timezone.get_current_timezone()
-        base = timezone.make_aware(datetime(2026, 10, 20, 8, 0, 0), tz)
         booking = MeetingBooking(
             room=self.room,
             organizer=self.user,
             title="Họp Lỗi Giờ",
-            date=date(2026, 10, 20),
+            date=self.booking_date,
             start_time=time(10, 0),
             end_time=time(9, 0),
             attendees_count=5,
@@ -337,13 +334,11 @@ class MeetingBookingModelTestCase(TestCase):
             booking.clean()
 
     def test_clean_capacity_exceeded(self):
-        tz = timezone.get_current_timezone()
-        base = timezone.make_aware(datetime(2026, 10, 20, 8, 0, 0), tz)
         booking = MeetingBooking(
             room=self.room,
             organizer=self.user,
             title="Họp Quá Tải",
-            date=date(2026, 10, 20),
+            date=self.booking_date,
             start_time=time(9, 0),
             end_time=time(10, 0),
             attendees_count=25,  # sức chứa phòng là 20
@@ -389,18 +384,32 @@ class MeetingBookingAPITestCase(APITestCase):
             is_public=True,
         )
 
-        vn_tz = timezone.get_current_timezone()
-        self.base_time = timezone.make_aware(datetime(2026, 10, 20, 0, 0, 0), vn_tz)
+        # Mốc tương đối so với ngày chạy để test không phụ thuộc đồng hồ thật
+        self.booking_date = timezone.localdate() + timedelta(days=7)
+        self.base_time = timezone.make_aware(
+            datetime.combine(self.booking_date, time(0, 0)), timezone.get_current_timezone()
+        )
         self.booking1 = MeetingBooking.objects.create(
             room=self.room1,
             organizer=self.user1,
             title="Cuộc họp sáng của User 1",
-            date=date(2026, 10, 20),
+            date=self.booking_date,
             start_time=time(9, 0),
             end_time=time(10, 30),
             attendees_count=8,
             trang_thai=MeetingBooking.Status.CONFIRMED,
         )
+
+    def test_booking_fixture_uses_a_coherent_future_date(self):
+        """Booking date anchors align and its aware start remains in the future."""
+        self.assertGreater(self.booking_date, timezone.localdate())
+        self.assertEqual(self.base_time.date(), self.booking_date)
+        self.assertEqual(self.booking1.date, self.booking_date)
+        booking_start = timezone.make_aware(
+            datetime.combine(self.booking1.date, self.booking1.start_time),
+            timezone.get_current_timezone(),
+        )
+        self.assertGreater(booking_start, timezone.now())
 
     def test_list_bookings_authenticated(self):
         """User đã xác thực có thể xem danh sách lịch đặt."""
@@ -426,7 +435,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room1.id,
             "title": "Họp Triển Khai Chiều",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "14:00",
             "end_time": "16:00",
             "attendees_count": 10,
@@ -445,7 +454,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room1.id,
             "title": "Họp Cố Tình Trùng Lịch",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "10:00",
             "end_time": "11:30",
             "attendees_count": 5,
@@ -459,7 +468,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room2.id,  # sức chứa 10
             "title": "Họp Quá Đông",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "14:00",
             "end_time": "15:00",
             "attendees_count": 50,
@@ -491,7 +500,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room1.id,
             "title": "Họp Khẩn Cấp Chiếm Slot Đã Hủy",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "09:00",
             "end_time": "10:30",
             "attendees_count": 6,
@@ -568,7 +577,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": u_room.id,
             "title": "Họp Thử Phòng Khóa",
-            "date": "2026-10-23",
+            "date": (self.booking_date + timedelta(days=3)).isoformat(),
             "start_time": "09:00",
             "end_time": "10:00",
             "attendees_count": 4,
@@ -1012,6 +1021,12 @@ class MeetingBookingAPITestCase(APITestCase):
 
     def test_ongoing_meeting_can_update_title_without_reschedule_error(self):
         """Cuộc họp đang diễn ra có thể cập nhật tiêu đề/ghi chú bằng PUT mà không bị coi là dời lịch về quá khứ."""
+        # Cố định "hiện tại" ở giữa ngày để khung -15/+45 phút không vượt qua nửa đêm (#225).
+        fixed_now = timezone.make_aware(datetime.combine(timezone.localdate(), time(10, 0)))
+        with mock.patch("django.utils.timezone.now", return_value=fixed_now):
+            self._assert_ongoing_meeting_title_update()
+
+    def _assert_ongoing_meeting_title_update(self):
         now_local = timezone.localtime(timezone.now())
         today = now_local.date()
         start_time = (now_local - timedelta(minutes=15)).time().replace(microsecond=0)
@@ -1074,7 +1089,7 @@ class MeetingsReleaseDdlSchemaTestCase(TestCase):
         room = MeetingRoom.objects.create(name="Phòng Kiểm Tra Schema", location="Tầng 1", capacity=5)
         with self.assertRaises(IntegrityError), transaction.atomic():
             MeetingRoom.objects.filter(pk=room.pk).update(capacity=0)
-        booking_date = date(2026, 12, 1)
+        booking_date = timezone.localdate() + timedelta(days=30)
         with self.assertRaises(IntegrityError), transaction.atomic():
             MeetingBooking.objects.create(room=room, organizer=user, title="Giờ ngược", date=booking_date,
                                           start_time=time(10, 0), end_time=time(9, 0))
