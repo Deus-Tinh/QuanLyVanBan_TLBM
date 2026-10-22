@@ -10,7 +10,7 @@ from datetime import timedelta, datetime, time, date
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from unittest import skipUnless
+from unittest import mock, skipUnless
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, connection, transaction
@@ -1021,6 +1021,12 @@ class MeetingBookingAPITestCase(APITestCase):
 
     def test_ongoing_meeting_can_update_title_without_reschedule_error(self):
         """Cuộc họp đang diễn ra có thể cập nhật tiêu đề/ghi chú bằng PUT mà không bị coi là dời lịch về quá khứ."""
+        # Cố định "hiện tại" ở giữa ngày để khung -15/+45 phút không vượt qua nửa đêm (#225).
+        fixed_now = timezone.make_aware(datetime.combine(timezone.localdate(), time(10, 0)))
+        with mock.patch("django.utils.timezone.now", return_value=fixed_now):
+            self._assert_ongoing_meeting_title_update()
+
+    def _assert_ongoing_meeting_title_update(self):
         now_local = timezone.localtime(timezone.now())
         today = now_local.date()
         start_time = (now_local - timedelta(minutes=15)).time().replace(microsecond=0)
