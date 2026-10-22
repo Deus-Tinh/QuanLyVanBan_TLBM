@@ -314,9 +314,15 @@ export default function ResourceManagementPage() {
         return [];
       };
 
-      setCategories(normalizeList<ResourceCategory>(catsRes));
-      setTypes(normalizeList<ResourceType>(typesRes));
-      setDocuments(normalizeList<ResourceItem>(docsRes));
+      const isDifferent = (a: any, b: any) => JSON.stringify(a) !== JSON.stringify(b);
+
+      const nextCats = normalizeList<ResourceCategory>(catsRes);
+      const nextTypes = normalizeList<ResourceType>(typesRes);
+      const nextDocs = normalizeList<ResourceItem>(docsRes);
+
+      setCategories((prev) => (isDifferent(prev, nextCats) ? nextCats : prev));
+      setTypes((prev) => (isDifferent(prev, nextTypes) ? nextTypes : prev));
+      setDocuments((prev) => (isDifferent(prev, nextDocs) ? nextDocs : prev));
     } catch (e) {
       console.warn('Lỗi khi tải dữ liệu từ API backend:', e);
     } finally {
@@ -2261,6 +2267,7 @@ export default function ResourceManagementPage() {
         categories={categories}
         types={types}
         isLoading={isSubmittingDoc}
+        defaultCategoryId={selectedCategory !== 'all' ? Number(selectedCategory) : undefined}
       />
 
       {/* MODAL QUẢN LÝ CẤU TRÚC DANH MỤC CẤP 1 & LOẠI BIỂU MẪU CẤP 2 (MỤC 8) */}
