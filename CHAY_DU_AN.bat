@@ -66,11 +66,13 @@ echo   + Trang quan tri Django Admin:    http://127.0.0.1:8000/admin/
 echo   + Co so du lieu:                  PostgreSQL Windows (Database: qlvb_dev)
 echo.
 echo   -----------------------------------------------------------------------------
-echo   [TAI KHOAN DANG NHAP THU NGHIEM (NHOM 7)]:
-echo   + Quan tri vien [Admin]:          admin             /  Admin@123
-echo   + Truong Phong CNTT:              truongphong_cntt  /  Admin@123
-echo   + Van Thu Luu Tru:                vanthu_cntt       /  Admin@123
-echo   + Chuyen Vien CNTT:               chuyenvien_cntt   /  Admin@123
+echo   [TAI KHOAN DANG NHAP THU NGHIEM (THEO THONG BAO LE THANH HAU)]:
+echo   + Mat khau chung:                 @django_CD25CT_CLC
+echo   + Quan tri vien [Admin]:          admin
+echo   + Truong Phong:                   truongphong
+echo   + Chuyen Vien:                    chuyenvien
+echo   + Van Thu:                        vanthu
+echo   + Giam Doc:                       giamdoc
 echo   -----------------------------------------------------------------------------
 echo.
 echo   [UU DIEM]:
