@@ -288,9 +288,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   const [replacementSuggestions, setReplacementSuggestions] = useState<SuggestedDoc[]>([]);
   const [isSearchingReplacement, setIsSearchingReplacement] = useState(false);
   const [showReplacementDropdown, setShowReplacementDropdown] = useState(false);
-  const [selectedReplacementDoc, setSelectedReplacementDoc] = useState<SuggestedDoc | null>(null);
   const [selectedReplacementDocs, setSelectedReplacementDocs] = useState<SuggestedDoc[]>([]);
-  const [replacementSearchInput, setReplacementSearchInput] = useState('');
   const [isReplacingOther, setIsReplacingOther] = useState(() => {
     return Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
   });
@@ -322,9 +320,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       setIsDragging(false);
       setReplacementSuggestions([]);
       setShowReplacementDropdown(false);
-      setSelectedReplacementDoc(null);
       setSelectedReplacementDocs([]);
-      setReplacementSearchInput('');
       setAutoUpdateReplaced(true);
       const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
       setIsReplacingOther(hasReplacement);
@@ -427,7 +423,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
           ).then(docs => {
             if (cancelled) return;
             setSelectedReplacementDocs(docs);
-            if (docs.length > 0) setSelectedReplacementDoc(docs[0]);
           });
         }
       }
@@ -513,6 +508,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initDoc?.don_vi_nhan, initDoc?.linkThayThe, initDoc?.link_thay_the, initial?.id]);
 
   function handleUnitChange(unit: string) {
@@ -653,9 +649,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     setForm(prev => ({ ...prev, link_thay_the: val }));
     const codes = val.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
     setSelectedReplacementDocs(prev => prev.filter(d => codes.includes(d.so_hieu.toLowerCase())));
-    if (codes.length === 0) {
-      setSelectedReplacementDoc(null);
-    }
     searchReplacementDocs(val);
   };
 
@@ -687,7 +680,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
 
     setForm(prev => ({ ...prev, link_thay_the: nextList.join(', ') }));
     setSelectedReplacementDocs(nextDocs);
-    setSelectedReplacementDoc(nextDocs[0] || null);
   };
 
   const handleRemoveReplacementDoc = (soHieuToRemove: string) => {
@@ -695,12 +687,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     const nextDocs = selectedReplacementDocs.filter(d => (d.so_hieu || '').trim().toLowerCase() !== soHieuToRemove.trim().toLowerCase());
     setForm(prev => ({ ...prev, link_thay_the: nextList.join(', ') }));
     setSelectedReplacementDocs(nextDocs);
-    setSelectedReplacementDoc(nextDocs[0] || null);
-  };
-
-  const handleSelectReplacementDoc = (doc: SuggestedDoc) => {
-    handleToggleReplacementDoc(doc);
-    setShowReplacementDropdown(false);
   };
 
   const handleReplacementInputFocus = () => {
@@ -1558,7 +1544,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                       setForm({ ...form, hieu_luc: newHieuLuc });
                       if (newHieuLuc === 'CON_HIEU_LUC' && !isReplacingOther) {
                         setForm(prev => ({ ...prev, link_thay_the: '' }));
-                        setSelectedReplacementDoc(null);
                         setShowReplacementDropdown(false);
                       }
                     }}
@@ -1607,9 +1592,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         setIsReplacingOther(e.target.checked);
                         if (!e.target.checked) {
                           setForm(prev => ({ ...prev, link_thay_the: '' }));
-                          setSelectedReplacementDoc(null);
                           setSelectedReplacementDocs([]);
-                          setReplacementSearchInput('');
                           setShowReplacementDropdown(false);
                         }
                       }}
@@ -1683,7 +1666,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                           onClick={() => {
                             setForm(prev => ({ ...prev, link_thay_the: '' }));
                             setSelectedReplacementDocs([]);
-                            setSelectedReplacementDoc(null);
                           }}
                           className="text-[11px] text-muted hover:text-danger hover:underline ml-auto pl-1"
                         >
@@ -1720,7 +1702,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                           onClick={() => {
                             setForm(prev => ({ ...prev, link_thay_the: '' }));
                             setSelectedReplacementDocs([]);
-                            setSelectedReplacementDoc(null);
                             searchReplacementDocs('');
                           }}
                           className="text-muted hover:text-danger p-0.5 rounded transition-colors"

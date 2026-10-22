@@ -174,17 +174,6 @@ export const InboundDocumentPage: React.FC = () => {
   const [availableFolders, setAvailableFolders] = useState<string[]>([]);
   const [folderDocTypesMap, setFolderDocTypesMap] = useState<Record<string, string[]>>({});
   const [allStatsItems, setAllStatsItems] = useState<DocumentItem[]>([]);
-  const [stats, setStats] = useState<{
-    total: number;
-    active: number;
-    partial: number;
-    replaced: number;
-  }>({
-    total: 0,
-    active: 0,
-    partial: 0,
-    replaced: 0,
-  });
 
   // Lấy danh sách các năm thực tế có văn bản trong CSDL
   const fetchYears = useCallback(async () => {
@@ -205,15 +194,6 @@ export const InboundDocumentPage: React.FC = () => {
       const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DEN&page_size=1000');
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       setAllStatsItems(items);
-      const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
-      const partial = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
-      const replaced = items.filter((d) => d.hieu_luc === 'HET_VA_THAY_THE').length;
-      setStats({
-        total: items.length,
-        active,
-        partial,
-        replaced,
-      });
 
       // Trích xuất các Loại văn bản và ánh xạ Danh mục hồ sơ -> Loại văn bản thực tế từ các văn bản trong hệ thống
       const extractedTypes = new Set<string>();

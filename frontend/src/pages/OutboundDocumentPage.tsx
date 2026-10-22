@@ -155,17 +155,6 @@ export const OutboundDocumentPage: React.FC = () => {
   const [isAlertOpen, setIsAlertOpen] = useState<boolean>(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [allStatsItems, setAllStatsItems] = useState<DocumentItem[]>([]);
-  const [stats, setStats] = useState<{
-    total: number;
-    active: number;
-    partial: number;
-    replaced: number;
-  }>({
-    total: 0,
-    active: 0,
-    partial: 0,
-    replaced: 0,
-  });
 
   // Lấy danh sách các năm thực tế có văn bản đi trong CSDL
   const fetchYears = useCallback(async () => {
@@ -186,15 +175,6 @@ export const OutboundDocumentPage: React.FC = () => {
       const res = await apiClient.get<PaginatedResponse<DocumentItem>>(`/api/documents/?loai=DI&page_size=1000${extraQuery}`);
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       setAllStatsItems(items);
-      const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
-      const partial = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
-      const replaced = items.filter((d) => d.hieu_luc === 'HET_VA_THAY_THE').length;
-      setStats({
-        total: items.length,
-        active,
-        partial,
-        replaced,
-      });
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
     }

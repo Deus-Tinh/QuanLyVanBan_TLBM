@@ -20,12 +20,14 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
   const [alertMsg, setAlertMsg] = useState('');
   const [fileWarning, setFileWarning] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setSelectedFile(null);
       setFileWarning(null);
     }
-  }, [open]);
+  }
 
   function checkFileMismatch(file: File): string | null {
     const name = file.name.toLowerCase();

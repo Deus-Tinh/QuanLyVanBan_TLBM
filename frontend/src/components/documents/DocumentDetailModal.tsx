@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DocumentDetail } from '@app-types/document';
-import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { formatDateTime, formatDate, formatFileSize } from '@lib/dateUtils';
 import { getAbsoluteFileUrl } from '@lib/fileUtils';
@@ -58,7 +57,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
     return () => {
       ignore = true;
     };
-  }, [isOpen, documentId, reloadKey]);
+  }, [isOpen, documentId, reloadKey, loai]);
 
   // Đóng bằng phím ESC
   useEffect(() => {
