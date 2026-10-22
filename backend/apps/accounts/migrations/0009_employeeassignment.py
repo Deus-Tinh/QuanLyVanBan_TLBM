@@ -6,6 +6,24 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def create_employee_assignment_if_missing(apps, schema_editor):
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        table_names = connection.introspection.table_names(cursor)
+    if "accounts_employee_assignment" not in table_names:
+        from accounts.models import EmployeeAssignment
+        schema_editor.create_model(EmployeeAssignment)
+
+
+def drop_employee_assignment_if_exists(apps, schema_editor):
+    connection = schema_editor.connection
+    with connection.cursor() as cursor:
+        table_names = connection.introspection.table_names(cursor)
+    if "accounts_employee_assignment" in table_names:
+        from accounts.models import EmployeeAssignment
+        schema_editor.delete_model(EmployeeAssignment)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -14,22 +32,32 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='EmployeeAssignment',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('chuc_danh', models.CharField(blank=True, default='', max_length=150, null=True, verbose_name='Chức danh kiêm nhiệm (tự do)')),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_default=accounts.models.DbNow(), verbose_name='Ngày phân công')),
-                ('chuc_vu', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='employee_assignments', to='accounts.position', verbose_name='Chức vụ')),
-                ('don_vi', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='employee_assignments', to='organizations.donvi', verbose_name='Đơn vị / Phòng ban')),
-                ('employee', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assignments', to=settings.AUTH_USER_MODEL, verbose_name='Cán bộ nhân viên')),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    create_employee_assignment_if_missing,
+                    drop_employee_assignment_if_exists,
+                ),
             ],
-            options={
-                'verbose_name': 'Phân công kiêm nhiệm',
-                'verbose_name_plural': 'Danh sách phân công kiêm nhiệm',
-                'db_table': 'accounts_employee_assignment',
-                'indexes': [models.Index(fields=['employee'], name='idx_emp_assign_emp'), models.Index(fields=['don_vi'], name='idx_emp_assign_donvi'), models.Index(fields=['chuc_vu'], name='idx_emp_assign_chucvu')],
-                'unique_together': {('employee', 'don_vi', 'chuc_vu')},
-            },
+            state_operations=[
+                migrations.CreateModel(
+                    name='EmployeeAssignment',
+                    fields=[
+                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                        ('chuc_danh', models.CharField(blank=True, default='', max_length=150, null=True, verbose_name='Chức danh kiêm nhiệm (tự do)')),
+                        ('created_at', models.DateTimeField(auto_now_add=True, db_default=accounts.models.DbNow(), verbose_name='Ngày phân công')),
+                        ('chuc_vu', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='employee_assignments', to='accounts.position', verbose_name='Chức vụ')),
+                        ('don_vi', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='employee_assignments', to='organizations.donvi', verbose_name='Đơn vị / Phòng ban')),
+                        ('employee', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assignments', to=settings.AUTH_USER_MODEL, verbose_name='Cán bộ nhân viên')),
+                    ],
+                    options={
+                        'verbose_name': 'Phân công kiêm nhiệm',
+                        'verbose_name_plural': 'Danh sách phân công kiêm nhiệm',
+                        'db_table': 'accounts_employee_assignment',
+                        'indexes': [models.Index(fields=['employee'], name='idx_emp_assign_emp'), models.Index(fields=['don_vi'], name='idx_emp_assign_donvi'), models.Index(fields=['chuc_vu'], name='idx_emp_assign_chucvu')],
+                        'unique_together': {('employee', 'don_vi', 'chuc_vu')},
+                    },
+                ),
+            ],
         ),
     ]
