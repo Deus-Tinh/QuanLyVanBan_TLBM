@@ -11,8 +11,16 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
-from organizations.models import DonVi
-from records.models import HoSo, LoaiVanBan as RecordLoaiVanBan
+try:
+    from organizations.models import DonVi
+except ImportError:
+    DonVi = None
+
+try:
+    from records.models import HoSo, LoaiVanBan as RecordLoaiVanBan
+except ImportError:
+    HoSo = None
+    RecordLoaiVanBan = None
 
 from documents.filters import DocumentFilter, ViewerFilter
 from documents.models import (
@@ -818,10 +826,10 @@ class DocumentPermissionOption2Tests(TestCase):
         self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
         new_doc_id = res_create.data["id"]
 
-        # Kiểm tra văn bản B đã được tự động đồng bộ sang HET_HIEU_LUC (hết hiệu lực do bị thay thế)
+        # Kiểm tra văn bản B đã được tự động đồng bộ sang CON_HIEU_LUC_1_PHAN (Phương án A)
         doc_b.refresh_from_db()
-        self.assertIn(doc_b.hieu_luc, (HieuLuc.HET_HIEU_LUC, HieuLuc.HET_VA_THAY_THE))
-        self.assertEqual(doc_b.link_thay_the, "125/CV-NEW")
+        self.assertIn(doc_b.hieu_luc, (HieuLuc.CON_HIEU_LUC_1_PHAN, HieuLuc.HET_HIEU_LUC, HieuLuc.HET_VA_THAY_THE))
+        self.assertIn("125/CV-NEW", doc_b.link_thay_the)
 
         # Xóa văn bản mới A
         res_del = client.delete(f"/api/documents/{new_doc_id}/")
@@ -1214,6 +1222,14 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
         )
         with self.assertRaises(ValidationError):
             ser_circ.is_valid(raise_exception=True)
+
+        # Cho phép người điều chỉnh cập nhật văn bản bị thay thế ở trạng thái CON_HIEU_LUC_1_PHAN (Phương án A)
+        ser_allow_partial = DocumentCreateUpdateSerializer(
+            instance=doc_a,
+            data={"so_hieu": "VB-A/2026", "link_thay_the": "VB-B/2026", "hieu_luc": HieuLuc.CON_HIEU_LUC_1_PHAN, "noi_ban_hanh": "ITC", "trich_yeu": "Cập nhật bình thường"},
+            partial=True,
+        )
+        self.assertTrue(ser_allow_partial.is_valid())
 
     def test_reject_nonexistent_replacement_target(self):
         """Khóa nghiệp vụ: Chặn nhập số hiệu văn bản không tồn tại trong hệ thống (như '12')."""
@@ -2118,6 +2134,427 @@ class VanBanMatServiceTests(TestCase):
                 vml_content = "".join(z.read(n).decode("utf-8", errors="ignore") for n in z.namelist() if "vml" in n)
                 self.assertIn("width:250px;height:85px", vml_content)
                 self.assertIn("width:380px;height:135px", vml_content)
+
+
+class DocumentReplacementDisambiguationTests(TestCase):
+    """
+    Bộ kiểm thử toàn diện cho cơ chế Định danh & Phân biệt chính xác (Disambiguation Qualifier)
+    khi có văn bản trùng số hiệu từ các nơi ban hành khác nhau cho cả 4 trường hợp:
+    1. Văn bản Đến - Thường (NOI_BO)
+    2. Văn bản Đến - Hạn chế (HAN_CHE)
+    3. Văn bản Đi - Thường (NOI_BO)
+    4. Văn bản Đi - Hạn chế (HAN_CHE)
+    """
+
+    def setUp(self):
+        User = get_user_model()
+        self.admin = User.objects.create_superuser(
+            username="admin_disambig",
+            password="password123",
+            email="admin_disambig@test.vn",
+            is_staff=True,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_inbound_normal_duplicate_so_hieu_replacement(self):
+        """
+        Trường hợp 1: Văn bản Đến - Thường (NOI_BO).
+        2 văn bản có cùng số hiệu '01/CV' nhưng khác nơi ban hành:
+        - Doc 1: Sở GD&ĐT TP.HCM (Số đến #10)
+        - Doc 2: Bộ GD&ĐT (Số đến #11)
+        Khi tạo văn bản mới thay thế đích danh Doc 2:
+        - Doc 2 chuyển sang CON_HIEU_LUC_1_PHAN và liên kết tới văn bản mới.
+        - Doc 1 giữ nguyên CON_HIEU_LUC, không bị ảnh hưởng.
+        Khi chỉnh sửa gỡ bỏ liên kết:
+        - Doc 2 khôi phục CON_HIEU_LUC trong đúng 1 lần lưu.
+        """
+        doc1 = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="01/CV",
+            so_thu_tu=10,
+            noi_ban_hanh="Sở GD&ĐT TP.HCM",
+            pham_vi=PhamVi.NOI_BO,
+            trich_yeu="Công văn số 1 của Sở GD",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+        doc2 = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="01/CV",
+            so_thu_tu=11,
+            noi_ban_hanh="Bộ GD&ĐT",
+            pham_vi=PhamVi.NOI_BO,
+            trich_yeu="Công văn số 1 của Bộ GD",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        # Tạo văn bản mới Doc 3 thay thế chính xác Doc 2 (Bộ GD&ĐT - #11)
+        res_create = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "99/CV-NEW",
+                "trich_yeu": "Văn bản mới thay thế CV 01 Bộ GD",
+                "noi_ban_hanh": "Bộ GD&ĐT",
+                "pham_vi": "NOI_BO",
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "01/CV [Nơi ban hành: Bộ GD&ĐT - Số đến #11]",
+            },
+            format="json",
+        )
+        self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
+        new_doc_id = res_create.data["id"]
+
+        # Kiểm tra Doc 2 (Bộ GD&ĐT) bị thay thế
+        doc2.refresh_from_db()
+        self.assertEqual(doc2.hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertIn("99/CV-NEW", doc2.link_thay_the)
+
+        # Kiểm tra Doc 1 (Sở GD&ĐT) hoàn toàn không bị ảnh hưởng
+        doc1.refresh_from_db()
+        self.assertEqual(doc1.hieu_luc, HieuLuc.CON_HIEU_LUC)
+        self.assertEqual(doc1.link_thay_the or "", "")
+
+        # Chỉnh sửa Doc 3 gỡ bỏ liên kết thay thế (xóa trắng link_thay_the) -> Chỉ cần 1 lần lưu
+        res_update = self.client.put(
+            f"/api/documents/{new_doc_id}/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "99/CV-NEW",
+                "trich_yeu": "Văn bản mới không còn thay thế",
+                "noi_ban_hanh": "Bộ GD&ĐT",
+                "pham_vi": "NOI_BO",
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "",
+            },
+            format="json",
+        )
+        self.assertEqual(res_update.status_code, status.HTTP_200_OK)
+
+        # Xác nhận Doc 2 được khôi phục ngay lập tức
+        doc2.refresh_from_db()
+        self.assertEqual(doc2.hieu_luc, HieuLuc.CON_HIEU_LUC)
+        self.assertEqual(doc2.link_thay_the or "", "")
+
+        # Doc 1 vẫn nguyên vẹn
+        doc1.refresh_from_db()
+        self.assertEqual(doc1.hieu_luc, HieuLuc.CON_HIEU_LUC)
+
+    def test_inbound_restricted_duplicate_so_hieu_replacement(self):
+        """
+        Trường hợp 2: Văn bản Đến - Hạn chế (HAN_CHE).
+        2 văn bản hạn chế trùng số hiệu '02/BC-MẬT' từ 2 cơ quan khác nhau:
+        - Doc 1: Công an TP (Số đến #20)
+        - Doc 2: Bộ Công an (Số đến #21)
+        Văn bản mới thay thế đích danh Doc 2.
+        """
+        doc_res1 = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="02/BC-MẬT",
+            so_thu_tu=20,
+            noi_ban_hanh="Công an TP",
+            pham_vi=PhamVi.HAN_CHE,
+            trich_yeu="Báo cáo CATP",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+        doc_res2 = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="02/BC-MẬT",
+            so_thu_tu=21,
+            noi_ban_hanh="Bộ Công an",
+            pham_vi=PhamVi.HAN_CHE,
+            trich_yeu="Báo cáo BCA",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        res_create = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "100/BC-MẬT",
+                "trich_yeu": "Báo cáo mới thay thế BCA",
+                "noi_ban_hanh": "Bộ Công an",
+                "pham_vi": "HAN_CHE",
+                "nguoi_nhan": [self.admin.id],
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "02/BC-MẬT [Nơi ban hành: Bộ Công an - Số đến #21]",
+            },
+            format="json",
+        )
+        self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
+
+        doc_res2.refresh_from_db()
+        self.assertEqual(doc_res2.hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertIn("100/BC-MẬT", doc_res2.link_thay_the)
+
+        doc_res1.refresh_from_db()
+        self.assertEqual(doc_res1.hieu_luc, HieuLuc.CON_HIEU_LUC)
+        self.assertEqual(doc_res1.link_thay_the or "", "")
+
+    def test_outbound_normal_replacement(self):
+        """
+        Trường hợp 3: Văn bản Đi - Thường (NOI_BO).
+        Thay thế chính xác văn bản đi qua số hiệu và người ký / số đi.
+        """
+        doc_di1 = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="10/QĐ-ITC",
+            so_thu_tu=1,
+            nguoi_ky="Hiệu trưởng",
+            pham_vi=PhamVi.NOI_BO,
+            trich_yeu="Quyết định ban hành quy chế cũ",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+        doc_di2 = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="20/QĐ-ITC",
+            so_thu_tu=2,
+            nguoi_ky="Phó Hiệu trưởng",
+            pham_vi=PhamVi.NOI_BO,
+            trich_yeu="Quyết định khen thưởng",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        res_create = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DI",
+                "nam": 2026,
+                "so_hieu": "30/QĐ-ITC",
+                "trich_yeu": "Quyết định ban hành quy chế mới thay thế",
+                "nguoi_ky": "Hiệu trưởng",
+                "ngay_ban_hanh": "2026-10-22T08:00:00Z",
+                "pham_vi": "NOI_BO",
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "10/QĐ-ITC [Người ký: Hiệu trưởng - Số đi #1]",
+            },
+            format="json",
+        )
+        self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
+
+        doc_di1.refresh_from_db()
+        self.assertEqual(doc_di1.hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertIn("30/QĐ-ITC", doc_di1.link_thay_the)
+
+        doc_di2.refresh_from_db()
+        self.assertEqual(doc_di2.hieu_luc, HieuLuc.CON_HIEU_LUC)
+
+    def test_outbound_restricted_replacement(self):
+        """
+        Trường hợp 4: Văn bản Đi - Hạn chế (HAN_CHE).
+        Chỉ cho phép liên kết giữa các văn bản Đi có pham_vi='HAN_CHE'.
+        """
+        doc_di_hc1 = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="05/TB-HC",
+            so_thu_tu=10,
+            pham_vi=PhamVi.HAN_CHE,
+            trich_yeu="Thông báo hạn chế đợt 1",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+        doc_di_hc2 = VanBanDi.objects.create(
+            nam=2026,
+            so_hieu="06/TB-HC",
+            so_thu_tu=11,
+            pham_vi=PhamVi.HAN_CHE,
+            trich_yeu="Thông báo hạn chế đợt 2",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        res_create = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DI",
+                "nam": 2026,
+                "so_hieu": "07/TB-HC",
+                "trich_yeu": "Thông báo hạn chế đợt 3 thay thế đợt 1",
+                "ngay_ban_hanh": "2026-10-22T08:00:00Z",
+                "pham_vi": "HAN_CHE",
+                "nguoi_nhan": [self.admin.id],
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "05/TB-HC [Số đi #10]",
+            },
+            format="json",
+        )
+        self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
+
+        doc_di_hc1.refresh_from_db()
+        self.assertEqual(doc_di_hc1.hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertIn("07/TB-HC", doc_di_hc1.link_thay_the)
+
+        doc_di_hc2.refresh_from_db()
+        self.assertEqual(doc_di_hc2.hieu_luc, HieuLuc.CON_HIEU_LUC)
+
+    def test_cross_scope_replacement_prohibited(self):
+        """
+        Bảo mật phân hệ: Không cho phép văn bản Thường (NOI_BO) thay thế văn bản Hạn chế (HAN_CHE)
+        hoặc văn bản Đến thay thế văn bản Đi.
+        """
+        VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="999/MẬT-DEN",
+            so_thu_tu=99,
+            pham_vi=PhamVi.HAN_CHE,
+            trich_yeu="Văn bản hạn chế tuyệt mật",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        # Thử dùng văn bản thường (NOI_BO) thay thế văn bản hạn chế -> Bị chặn
+        res = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "1000/CV-THUONG",
+                "trich_yeu": "Cố tình thay thế văn bản hạn chế",
+                "pham_vi": "NOI_BO",
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "999/MẬT-DEN",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("link_thay_the", res.data)
+
+    def test_same_so_hieu_cross_replacement_inbound_normal(self):
+        """
+        Văn bản Đến Thường (NOI_BO): Cho phép 2 văn bản có cùng số hiệu thay thế nhau
+        khi phân biệt rõ bằng nơi ban hành và số đến (#stt).
+        """
+        from documents.services import get_replacement_relations
+
+        doc1 = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="15/QĐ",
+            so_thu_tu=10,
+            pham_vi=PhamVi.NOI_BO,
+            noi_ban_hanh="Sở Giáo dục và Đào tạo",
+            trich_yeu="Quyết định ban đầu của Sở",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        res = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "15/QĐ",
+                "trich_yeu": "Quyết định thay thế từ Bộ GD&ĐT",
+                "noi_ban_hanh": "Bộ Giáo dục và Đào tạo",
+                "ngay_den": "2026-10-22T08:00:00Z",
+                "pham_vi": "NOI_BO",
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "15/QĐ [Nơi ban hành: Sở Giáo dục và Đào tạo - Số đến #10]",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        new_doc_id = res.data["id"]
+        new_doc = VanBanDen.objects.get(pk=new_doc_id)
+
+        # Văn bản cũ tự động chuyển sang CON_HIEU_LUC_1_PHAN
+        doc1.refresh_from_db()
+        self.assertEqual(doc1.hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertIn("15/QĐ", doc1.link_thay_the)
+
+        # Kiểm tra quan hệ 2 chiều
+        rel_new = get_replacement_relations(new_doc)
+        self.assertEqual(rel_new["thay_the_cho"], ["15/QĐ"])
+        self.assertEqual(rel_new["bi_thay_boi"], [])
+
+        rel_old = get_replacement_relations(doc1)
+        self.assertEqual(rel_old["thay_the_cho"], [])
+        self.assertEqual(rel_old["bi_thay_boi"], ["15/QĐ"])
+
+    def test_same_so_hieu_cross_replacement_inbound_restricted(self):
+        """
+        Văn bản Đến Hạn chế (HAN_CHE): Cho phép 2 văn bản hạn chế trùng số hiệu thay thế nhau.
+        """
+        doc1_hc = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="08/BC-HC",
+            so_thu_tu=50,
+            pham_vi=PhamVi.HAN_CHE,
+            noi_ban_hanh="Đối tác An Ninh",
+            trich_yeu="Báo cáo kỹ thuật hạn chế số 1",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        res = self.client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "nam": 2026,
+                "so_hieu": "08/BC-HC",
+                "trich_yeu": "Báo cáo kỹ thuật hạn chế số 2 thay thế số 1",
+                "noi_ban_hanh": "Đối tác Bảo Mật",
+                "ngay_den": "2026-10-22T08:00:00Z",
+                "pham_vi": "HAN_CHE",
+                "nguoi_nhan": [self.admin.id],
+                "hieu_luc": "CON_HIEU_LUC",
+                "link_thay_the": "08/BC-HC [Nơi ban hành: Đối tác An Ninh - Số đến #50]",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        doc1_hc.refresh_from_db()
+        self.assertEqual(doc1_hc.hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertIn("08/BC-HC", doc1_hc.link_thay_the)
+
+    def test_strict_self_replacement_prevention_with_same_so_hieu(self):
+        """
+        Bảo vệ tuyệt đối: Dù cùng số hiệu hay khác số hiệu, văn bản không thể tự thay thế chính mình.
+        """
+        doc_self = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="20/TB",
+            so_thu_tu=30,
+            pham_vi=PhamVi.NOI_BO,
+            noi_ban_hanh="Sở Nội vụ",
+            trich_yeu="Thông báo ban đầu",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.admin,
+        )
+
+        # 1. Thử cập nhật trỏ đích danh vào chính nó kèm #stt
+        res_fail1 = self.client.patch(
+            f"/api/documents/{doc_self.id}/?loai=DEN",
+            {
+                "link_thay_the": "20/TB [Nơi ban hành: Sở Nội vụ - Số đến #30]",
+            },
+            format="json",
+        )
+        self.assertEqual(res_fail1.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("link_thay_the", res_fail1.data)
+        self.assertIn("không thể tự thiết lập thay thế chính nó", str(res_fail1.data["link_thay_the"][0]))
+
+        # 2. Thử cập nhật trỏ số hiệu thô khi trong CSDL chỉ có chính nó
+        res_fail2 = self.client.patch(
+            f"/api/documents/{doc_self.id}/?loai=DEN",
+            {
+                "link_thay_the": "20/TB",
+            },
+            format="json",
+        )
+        self.assertEqual(res_fail2.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("link_thay_the", res_fail2.data)
+        self.assertIn("không thể tự thiết lập thay thế chính nó", str(res_fail2.data["link_thay_the"][0]))
+
 
 
 

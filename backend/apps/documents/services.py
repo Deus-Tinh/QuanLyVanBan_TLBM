@@ -12,6 +12,7 @@ Bao gồm:
 
 import io
 import math
+import re
 from datetime import datetime
 
 from django.db import models, transaction
@@ -100,6 +101,118 @@ def check_and_update_expired_documents() -> int:
 # 2.1 TRUY VẤN ĐỘNG VÀ ĐỒNG BỘ QUAN HỆ THAY THẾ (Replacements)
 # ═══════════════════════════════════════════════════════════════════
 
+def parse_replacement_target(target_str: str) -> dict:
+    """
+    Phân tích chuỗi mục tiêu thay thế thành các thành phần định danh:
+    - base_so_hieu: Số hiệu văn bản gốc (ví dụ: '1' hoặc '125/CV-NEW')
+    - so_thu_tu: Số thứ tự trong năm (nếu có, ví dụ: 16)
+    - extra_info: Thông tin bổ sung (nơi ban hành / người ký)
+    - raw: Chuỗi gốc
+    """
+    raw = (target_str or "").strip()
+    if not raw:
+        return {"base_so_hieu": "", "so_thu_tu": None, "extra_info": "", "raw": ""}
+
+    match = re.match(r"^(.+?)\s*(?:\[|\()([^\]\)]+)(?:\]|\))$", raw)
+    if match:
+        base_so = match.group(1).strip()
+        bracket_content = match.group(2).strip()
+        stt_match = re.search(r"#(\d+)", bracket_content)
+        if not stt_match:
+            stt_match = re.search(r"(?:Số đến|Số đi|STT)\s*[:#]?\s*(\d+)", bracket_content, re.IGNORECASE)
+        stt = int(stt_match.group(1)) if stt_match else None
+        extra = bracket_content
+        if stt_match:
+            extra = re.sub(r"(?:Số đến|Số đi|STT)\s*[:#]?\s*\d+", "", extra, flags=re.IGNORECASE)
+            extra = re.sub(r"#\d+", "", extra)
+            extra = re.sub(r"Nơi ban hành\s*:\s*", "", extra, flags=re.IGNORECASE)
+            extra = re.sub(r"Người ký\s*:\s*", "", extra, flags=re.IGNORECASE)
+            extra = extra.strip(" -:;,[]()")
+        return {
+            "base_so_hieu": base_so,
+            "so_thu_tu": stt,
+            "extra_info": extra,
+            "raw": raw,
+        }
+
+    return {
+        "base_so_hieu": raw,
+        "so_thu_tu": None,
+        "extra_info": "",
+        "raw": raw,
+    }
+
+
+def _model_has_field(model, field_name: str) -> bool:
+    try:
+        model._meta.get_field(field_name)
+        return True
+    except Exception:
+        return False
+
+
+def find_replacement_target_document(target_str: str, current_doc=None, target_model=None, current_pham_vi=None):
+    """
+    Truy vấn chính xác văn bản mục tiêu thay thế theo bộ ba định danh:
+    (so_hieu, so_thu_tu, noi_ban_hanh/nguoi_ky) kết hợp phạm vi (NOI_BO/HAN_CHE) và phân hệ (DEN/DI).
+    """
+    parsed = parse_replacement_target(target_str)
+    base_so = parsed["base_so_hieu"]
+    target_stt = parsed["so_thu_tu"]
+    extra = parsed["extra_info"]
+    if not base_so:
+        return None
+
+    from .models import VanBanDen, VanBanDi, VanBanMat
+
+    models_to_check = [target_model] if target_model else (
+        [current_doc.__class__] if current_doc else [VanBanDen, VanBanDi, VanBanMat]
+    )
+
+    for model in models_to_check:
+        if not model:
+            continue
+        qs = model.objects.filter(so_hieu__iexact=base_so)
+        if current_doc and getattr(current_doc, "pk", None):
+            qs = qs.exclude(pk=current_doc.pk)
+
+        # 1. Khóa theo phạm vi (NOI_BO / HAN_CHE)
+        scope = current_pham_vi or (getattr(current_doc, "pham_vi", None) if current_doc else None)
+        scoped_qs = qs.filter(pham_vi=scope) if scope else qs
+
+        # 2. Khóa chính xác theo số thứ tự (Số đến / Số đi trong năm)
+        if target_stt is not None:
+            match_stt = scoped_qs.filter(so_thu_tu=target_stt).first()
+            if match_stt:
+                return match_stt
+            match_stt_fallback = qs.filter(so_thu_tu=target_stt).first()
+            if match_stt_fallback:
+                return match_stt_fallback
+
+        # 3. Khớp theo nơi ban hành hoặc người ký nếu có (chỉ filter nếu là database field thực tế)
+        if extra:
+            if _model_has_field(model, "noi_ban_hanh"):
+                match_extra = scoped_qs.filter(noi_ban_hanh__icontains=extra).first()
+                if match_extra:
+                    return match_extra
+            if _model_has_field(model, "nguoi_ky"):
+                match_extra = scoped_qs.filter(nguoi_ky__icontains=extra).first()
+                if match_extra:
+                    return match_extra
+
+        # 4. Nếu không có định danh phụ, ưu tiên bản ghi trong cùng phạm vi
+        match_scope = scoped_qs.first()
+        if match_scope:
+            return match_scope
+
+        # 5. Fallback nếu không có trong scope
+        fallback_match = qs.first()
+        if fallback_match:
+            return fallback_match
+
+    return None
+
+
 def get_replacement_relations(doc) -> dict:
     """
     Phân định rõ ràng 2 chiều quan hệ thay thế:
@@ -129,7 +242,7 @@ def get_replacement_relations(doc) -> dict:
 
     # Chiều 1: doc.link_thay_the chứa các số hiệu mục tiêu
     own_link = (getattr(doc_obj, "link_thay_the", "") or "").strip() if doc_obj else ""
-    target_numbers = [s.strip() for s in own_link.split(",") if s.strip() and s.strip().lower() != so_hieu_clean]
+    target_raws = [s.strip() for s in own_link.split(",") if s.strip()]
 
     # Chiều 2: Các văn bản khác có link_thay_the chứa so_hieu của doc
     referencing_docs = []
@@ -139,9 +252,18 @@ def get_replacement_relations(doc) -> dict:
             if doc_obj and getattr(doc_obj, "pk", None):
                 qs = qs.exclude(pk=doc_obj.pk)
             for other in qs:
-                other_links = [t.strip().lower() for t in (other.link_thay_the or "").split(",") if t.strip()]
-                if so_hieu_clean in other_links and other.so_hieu:
-                    referencing_docs.append(other)
+                other_targets = [t.strip() for t in (other.link_thay_the or "").split(",") if t.strip()]
+                for ot in other_targets:
+                    p = parse_replacement_target(ot)
+                    if p["base_so_hieu"].lower() == so_hieu_clean:
+                        is_match = True
+                        if p["so_thu_tu"] is not None and getattr(doc_obj, "so_thu_tu", None) is not None:
+                            is_match = (doc_obj.so_thu_tu == p["so_thu_tu"])
+                        elif p["extra_info"] and hasattr(doc_obj, "noi_ban_hanh") and getattr(doc_obj, "noi_ban_hanh", None):
+                            is_match = (p["extra_info"].lower() in doc_obj.noi_ban_hanh.lower())
+                        
+                        if is_match and other not in referencing_docs:
+                            referencing_docs.append(other)
         except Exception:
             pass
 
@@ -153,12 +275,13 @@ def get_replacement_relations(doc) -> dict:
     norm_doc_date = to_date_norm(doc_date)
 
     # Phân loại theo bản chất quan hệ, thời gian và trạng thái hiệu lực
-    for target_so in target_numbers:
-        target_obj = None
-        for model in (VanBanDen, VanBanDi, VanBanMat):
-            target_obj = model.objects.filter(so_hieu__iexact=target_so).first()
-            if target_obj:
-                break
+    for raw_target in target_raws:
+        parsed_target = parse_replacement_target(raw_target)
+        target_obj = find_replacement_target_document(raw_target, current_doc=doc_obj)
+        if not target_obj:
+            continue
+        if doc_obj and getattr(doc_obj, "pk", None) and target_obj.pk == doc_obj.pk:
+            continue
 
         if target_obj:
             target_date = (
@@ -170,6 +293,12 @@ def get_replacement_relations(doc) -> dict:
             if getattr(doc_obj, "hieu_luc", "") in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC):
                 if target_obj.so_hieu not in bi_thay_boi:
                     bi_thay_boi.append(target_obj.so_hieu)
+            elif getattr(doc_obj, "hieu_luc", "") == HieuLuc.CON_HIEU_LUC_1_PHAN and (
+                (target_obj.hieu_luc == HieuLuc.CON_HIEU_LUC and any(parse_replacement_target(s)["base_so_hieu"].lower() == so_hieu_clean for s in (target_obj.link_thay_the or "").split(",") if s.strip()))
+                or (norm_doc_date and norm_target_date and norm_target_date > norm_doc_date)
+            ):
+                if target_obj.so_hieu not in bi_thay_boi:
+                    bi_thay_boi.append(target_obj.so_hieu)
             elif target_obj.hieu_luc == HieuLuc.HET_VA_THAY_THE and (not norm_doc_date or not norm_target_date or norm_target_date <= norm_doc_date):
                 if target_obj.so_hieu not in thay_the_cho:
                     thay_the_cho.append(target_obj.so_hieu)
@@ -179,7 +308,6 @@ def get_replacement_relations(doc) -> dict:
             else:
                 if target_obj.so_hieu not in bi_thay_boi:
                     bi_thay_boi.append(target_obj.so_hieu)
-        # Nếu target_obj không tồn tại trong CSDL: Bỏ qua hoàn toàn, không tạo badge cho số hiệu không tồn tại.
 
     for ref_doc in referencing_docs:
         ref_so = ref_doc.so_hieu
@@ -228,74 +356,116 @@ def sync_replacement_document(doc):
         return
 
     targets = [t.strip() for t in raw_target.split(",") if t.strip()]
-    now = timezone.now()
-    effective_date = (
-        getattr(doc, "ngay_van_ban", None)
-        or getattr(doc, "ngay_den", None)
-        or getattr(doc, "ngay_ban_hanh", None)
-        or now
-    )
-
     from .models import VanBanDen, VanBanDi, VanBanMat, HieuLuc
-    doc_model = doc.__class__
+
     for target in targets:
-        other_doc = None
-        # Ưu tiên tìm trong đúng model và cùng pham_vi của văn bản
-        qs = doc_model.objects.filter(so_hieu__iexact=target)
-        if getattr(doc, "pham_vi", None):
-            qs = qs.filter(pham_vi=doc.pham_vi)
-        if getattr(doc, "pk", None):
-            qs = qs.exclude(pk=doc.pk)
-        other_doc = qs.first()
-
-        # Fallback tìm trong doc_model nếu văn bản mục tiêu chưa set pham_vi
-        if not other_doc:
-            fallback_qs = doc_model.objects.filter(so_hieu__iexact=target)
-            if getattr(doc, "pk", None):
-                fallback_qs = fallback_qs.exclude(pk=doc.pk)
-            other_doc = fallback_qs.first()
-
+        other_doc = find_replacement_target_document(
+            target,
+            current_doc=doc,
+            target_model=doc.__class__,
+            current_pham_vi=getattr(doc, "pham_vi", None),
+        )
         if not other_doc:
             continue
 
         existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
-        if getattr(doc, "so_hieu", "") and doc.so_hieu not in existing_links:
-            existing_links.append(doc.so_hieu)
+        doc_so = (doc.so_hieu or "").strip()
+
+        def is_already_linked(link: str) -> bool:
+            p = parse_replacement_target(link)
+            if p["base_so_hieu"].lower() != doc_so.lower():
+                return False
+            if p["so_thu_tu"] is not None and getattr(doc, "so_thu_tu", None) is not None:
+                return p["so_thu_tu"] == doc.so_thu_tu
+            if p["extra_info"]:
+                doc_extra = getattr(doc, "noi_ban_hanh", None) or getattr(doc, "nguoi_ky", None) or ""
+                return p["extra_info"].lower() in str(doc_extra).lower()
+            return True
+
+        already_linked = any(is_already_linked(link) for link in existing_links)
+        if doc_so and not already_linked:
+            # Tạo định danh phân biệt chiều ngược lại
+            if hasattr(doc, "noi_ban_hanh") and getattr(doc, "noi_ban_hanh", None) and getattr(doc, "so_thu_tu", None):
+                back_link = f"{doc_so} [Nơi ban hành: {doc.noi_ban_hanh} - Số đến #{doc.so_thu_tu}]"
+            elif hasattr(doc, "nguoi_ky") and getattr(doc, "nguoi_ky", None) and getattr(doc, "so_thu_tu", None):
+                back_link = f"{doc_so} [Người ký: {doc.nguoi_ky} - Số đi #{doc.so_thu_tu}]"
+            else:
+                back_link = doc_so
+            existing_links.append(back_link)
         other_doc.link_thay_the = ", ".join(existing_links)
 
-        # Trạng thái hiệu lực do người thao tác quyết định:
-        # Nếu văn bản bị thay thế đang là Còn hiệu lực 1 phần (CON_HIEU_LUC_1_PHAN), BẢO LƯU trạng thái này.
-        # Nếu đang là Còn hiệu lực thông thường và được thay thế toàn bộ, chuyển sang HET_HIEU_LUC.
+        # Trạng thái hiệu lực (Phương án A):
+        # Khi văn bản A thay thế cho B, nếu B đang Còn hiệu lực (CON_HIEU_LUC),
+        # tự động chuyển B sang trạng thái Còn hiệu lực 1 phần (CON_HIEU_LUC_1_PHAN).
+        # Nếu B đã là Còn hiệu lực 1 phần hoặc Hết hiệu lực, bảo lưu trạng thái hiện tại.
         if getattr(doc, "hieu_luc", "") in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
-            if other_doc.hieu_luc != HieuLuc.CON_HIEU_LUC_1_PHAN:
-                other_doc.hieu_luc = HieuLuc.HET_HIEU_LUC
-                other_doc.ngay_het_hieu_luc = effective_date
-            other_doc.save(update_fields=["hieu_luc", "link_thay_the", "ngay_het_hieu_luc"])
+            if other_doc.hieu_luc == HieuLuc.CON_HIEU_LUC:
+                other_doc.hieu_luc = HieuLuc.CON_HIEU_LUC_1_PHAN
+                other_doc.save(update_fields=["hieu_luc", "link_thay_the"])
+            else:
+                other_doc.save(update_fields=["link_thay_the"])
         else:
             other_doc.save(update_fields=["link_thay_the"])
 
 
-def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu):
+def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu, new_target_so_hieu=None):
     """Dọn dẹp quan hệ thay thế cũ khi văn bản sửa đổi/xóa link_thay_the."""
     if not old_target_so_hieu:
         return
 
     from .models import VanBanDen, VanBanDi, VanBanMat, HieuLuc
-    from django.db.models import Q
-    query = Q(so_hieu__iexact=old_target_so_hieu) | Q(link_thay_the__iexact=current_so_hieu)
-    for model in (VanBanDen, VanBanDi, VanBanMat):
-        for doc in model.objects.filter(query):
+
+    old_list = [s.strip() for s in str(old_target_so_hieu).split(",") if s.strip()]
+    new_list = [s.strip() for s in str(new_target_so_hieu or "").split(",") if s.strip()]
+
+    # Những mục tiêu thực sự bị gỡ bỏ khỏi link_thay_the
+    if new_list:
+        removed_targets = [
+            ot for ot in old_list
+            if not any(
+                parse_replacement_target(ot)["base_so_hieu"].lower() == parse_replacement_target(nt)["base_so_hieu"].lower()
+                and (
+                    parse_replacement_target(ot)["so_thu_tu"] is None
+                    or parse_replacement_target(nt)["so_thu_tu"] is None
+                    or parse_replacement_target(ot)["so_thu_tu"] == parse_replacement_target(nt)["so_thu_tu"]
+                )
+                for nt in new_list
+            )
+        ]
+    else:
+        removed_targets = old_list
+
+    for old_target in removed_targets:
+        parsed = parse_replacement_target(old_target)
+        target_doc = find_replacement_target_document(old_target)
+        docs_to_clean = [target_doc] if target_doc else []
+
+        if not docs_to_clean:
+            for model in (VanBanDen, VanBanDi, VanBanMat):
+                docs_to_clean.extend(list(model.objects.filter(so_hieu__iexact=parsed["base_so_hieu"])))
+
+        for doc in docs_to_clean:
             updated_fields = []
-            if current_so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == current_so_hieu.lower():
-                doc.link_thay_the = ""
-                updated_fields.append("link_thay_the")
-            if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC):
+            if current_so_hieu and doc.link_thay_the:
+                cur_so_clean = str(current_so_hieu).strip().lower()
+                links = [l.strip() for l in doc.link_thay_the.split(",") if l.strip()]
+                remaining_links = [
+                    l for l in links
+                    if parse_replacement_target(l)["base_so_hieu"].lower() != cur_so_clean
+                ]
+                new_link_str = ", ".join(remaining_links)
+                if new_link_str != doc.link_thay_the:
+                    doc.link_thay_the = new_link_str
+                    updated_fields.append("link_thay_the")
+
+            if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
                 doc.hieu_luc = HieuLuc.CON_HIEU_LUC
                 doc.ngay_het_hieu_luc = None
                 if "ngay_het_hieu_luc" not in updated_fields:
                     updated_fields.append("ngay_het_hieu_luc")
                 if "hieu_luc" not in updated_fields:
                     updated_fields.append("hieu_luc")
+
             if updated_fields:
                 doc.save(update_fields=updated_fields)
 
@@ -311,18 +481,28 @@ def cleanup_replacement_links_on_delete(instance):
     from django.db.models import Q
     query = Q()
     if so_hieu:
-        query |= Q(link_thay_the__iexact=so_hieu)
+        query |= Q(link_thay_the__icontains=so_hieu)
     if link_target:
-        query |= Q(so_hieu__iexact=link_target)
+        for t in link_target.split(","):
+            p = parse_replacement_target(t)
+            if p["base_so_hieu"]:
+                query |= Q(so_hieu__iexact=p["base_so_hieu"])
 
     for model in (VanBanDen, VanBanDi, VanBanMat):
         for doc in model.objects.filter(query).exclude(pk=instance.pk):
             updated_fields = []
-            if so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == so_hieu.lower():
-                doc.link_thay_the = ""
-                updated_fields.append("link_thay_the")
+            if so_hieu and doc.link_thay_the and so_hieu.lower() in doc.link_thay_the.lower():
+                links = [l.strip() for l in doc.link_thay_the.split(",") if l.strip()]
+                remaining_links = [
+                    l for l in links
+                    if parse_replacement_target(l)["base_so_hieu"].lower() != so_hieu.lower()
+                ]
+                new_str = ", ".join(remaining_links)
+                if new_str != doc.link_thay_the:
+                    doc.link_thay_the = new_str
+                    updated_fields.append("link_thay_the")
 
-            if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC):
+            if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
                 doc.hieu_luc = HieuLuc.CON_HIEU_LUC
                 doc.ngay_het_hieu_luc = None
                 if "ngay_het_hieu_luc" not in updated_fields:

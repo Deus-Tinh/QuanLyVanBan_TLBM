@@ -364,7 +364,7 @@ class DocumentViewSet(viewsets.ViewSet):
             action_type=DocumentAccessLog.HanhDong.XEM,
         )
         if (
-            instance.hieu_luc == HieuLuc.CON_HIEU_LUC
+            instance.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN)
             and instance.ngay_het_hieu_luc
             and instance.ngay_het_hieu_luc <= timezone.now()
         ):
@@ -408,7 +408,7 @@ class DocumentViewSet(viewsets.ViewSet):
         handle_attachments(instance, request)
 
         if (
-            instance.hieu_luc == HieuLuc.CON_HIEU_LUC
+            instance.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN)
             and instance.ngay_het_hieu_luc
             and instance.ngay_het_hieu_luc <= timezone.now()
         ):
@@ -468,7 +468,7 @@ class DocumentViewSet(viewsets.ViewSet):
         handle_attachments(doc, request)
 
         if (
-            doc.hieu_luc == HieuLuc.CON_HIEU_LUC
+            doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN)
             and doc.ngay_het_hieu_luc
             and doc.ngay_het_hieu_luc <= timezone.now()
         ):
@@ -477,7 +477,7 @@ class DocumentViewSet(viewsets.ViewSet):
 
         new_link = (doc.link_thay_the or "").strip()
         if old_link and old_link.lower() != new_link.lower():
-            cleanup_old_replacement_link(old_link, old_so_hieu)
+            cleanup_old_replacement_link(old_link, old_so_hieu, new_link)
 
         auto_update = request.data.get("auto_update_replaced_doc", "true")
         if str(auto_update).lower() in ("true", "1") and doc.link_thay_the:

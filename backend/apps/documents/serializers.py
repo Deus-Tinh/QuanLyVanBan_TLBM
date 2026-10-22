@@ -450,36 +450,56 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         raw_link = attrs.get("link_thay_the") if "link_thay_the" in attrs else (getattr(self.instance, "link_thay_the", "") if self.instance else "")
         raw_link_str = str(raw_link or "").strip()
         if raw_link_str:
+            from .services import parse_replacement_target, find_replacement_target_document
             targets = [t.strip() for t in raw_link_str.split(",") if t.strip()]
             target_model = VanBanDi if str(loai).upper() in ("DI", "VANBANDI") else (VanBanMat if str(loai).upper() in ("MAT", "VANBANMAT") else VanBanDen)
             current_pham_vi = attrs.get("pham_vi") or (getattr(self.instance, "pham_vi", PhamVi.NOI_BO) if self.instance else PhamVi.NOI_BO)
             loai_label = "Văn bản Đi" if str(loai).upper() in ("DI", "VANBANDI") else ("Văn bản Mật" if str(loai).upper() in ("MAT", "VANBANMAT") else "Văn bản Đến")
 
             for target in targets:
-                # 1. Chặn tự thay thế chính mình
-                if so_hieu and target.lower() == so_hieu.lower():
-                    raise serializers.ValidationError(
-                        {"link_thay_the": "Văn bản không thể tự thiết lập thay thế chính nó."}
-                    )
+                parsed = parse_replacement_target(target)
+                base_target = parsed["base_so_hieu"]
+
+                # 1. Chặn tự thay thế chính mình:
+                # Nếu đang chỉnh sửa bản ghi hiện tại và mục tiêu chỉ rõ số thứ tự trùng với bản ghi hiện tại:
+                if self.instance and so_hieu and base_target.lower() == so_hieu.lower():
+                    target_stt = parsed.get("so_thu_tu")
+                    inst_stt = getattr(self.instance, "so_thu_tu", None)
+                    if target_stt is not None and inst_stt is not None and target_stt == inst_stt:
+                        raise serializers.ValidationError(
+                            {"link_thay_the": "Văn bản không thể tự thiết lập thay thế chính nó."}
+                        )
 
                 # 2. Khóa nghiệp vụ: Bắt buộc văn bản mục tiêu phải cùng phân hệ (loai)
                 for other_model, other_label in ((VanBanDen, "Văn bản Đến"), (VanBanDi, "Văn bản Đi"), (VanBanMat, "Văn bản Mật")):
                     if other_model != target_model:
-                        other_match = other_model.objects.filter(so_hieu__iexact=target).first()
+                        other_match = find_replacement_target_document(target, target_model=other_model)
                         if other_match:
                             raise serializers.ValidationError(
                                 {"link_thay_the": f"Văn bản mục tiêu '{target}' là {other_label}. {loai_label} chỉ được phép thay thế cho văn bản cùng phân hệ ({loai_label})."}
                             )
 
-                # Tìm trong đúng model mục tiêu
-                matching_qs = target_model.objects.filter(so_hieu__iexact=target)
-                if self.instance and getattr(self.instance, "pk", None):
-                    matching_qs = matching_qs.exclude(pk=self.instance.pk)
-
-                target_doc = matching_qs.first()
+                # Tìm trong đúng model mục tiêu và khớp theo định danh (loại trừ chính bản ghi đang sửa)
+                target_doc = find_replacement_target_document(
+                    target,
+                    current_doc=self.instance,
+                    target_model=target_model,
+                    current_pham_vi=current_pham_vi,
+                )
                 if not target_doc:
+                    # Nếu không tìm thấy văn bản khác và số hiệu trùng nhau, người dùng đang cố ý thay thế chính nó
+                    if self.instance and so_hieu and base_target.lower() == so_hieu.lower():
+                        raise serializers.ValidationError(
+                            {"link_thay_the": "Văn bản không thể tự thiết lập thay thế chính nó."}
+                        )
                     raise serializers.ValidationError(
                         {"link_thay_the": f"Văn bản mục tiêu '{target}' không tồn tại trong hệ thống {loai_label}. Vui lòng chọn văn bản hợp lệ từ danh sách gợi ý."}
+                    )
+
+                # Nếu tìm thấy nhưng lại trùng đúng PK của bản ghi đang sửa
+                if self.instance and target_doc.pk == self.instance.pk:
+                    raise serializers.ValidationError(
+                        {"link_thay_the": "Văn bản không thể tự thiết lập thay thế chính nó."}
                     )
 
                 # 3. Khóa nghiệp vụ: Bắt buộc cùng phạm vi (Nội bộ chỉ thay thế Nội bộ, Hạn chế chỉ thay thế Hạn chế)
@@ -490,11 +510,28 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                         {"link_thay_the": f"Văn bản mục tiêu '{target}' là văn bản {scope_target_label}. {scope_curr_label} chỉ được phép thay thế cho văn bản cùng phạm vi."}
                     )
 
-                # 4. Chặn vòng lặp thay thế hai chiều
-                other_links = [s.strip().lower() for s in (target_doc.link_thay_the or "").split(",") if s.strip()]
-                if so_hieu and so_hieu.lower() in other_links and target_doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
+                # 4. Chặn vòng lặp thay thế hai chiều khi cả hai văn bản đều đòi Còn hiệu lực toàn phần
+                other_links = [
+                    s.strip() for s in (target_doc.link_thay_the or "").split(",") if s.strip()
+                ]
+                current_hieu_luc = attrs.get("hieu_luc", HieuLuc.CON_HIEU_LUC)
+
+                def link_targets_current(l_str: str) -> bool:
+                    p = parse_replacement_target(l_str)
+                    if p["base_so_hieu"].lower() != so_hieu.lower():
+                        return False
+                    if self.instance and getattr(self.instance, "so_thu_tu", None) is not None and p["so_thu_tu"] is not None:
+                        return p["so_thu_tu"] == self.instance.so_thu_tu
+                    return True
+
+                if (
+                    so_hieu
+                    and any(link_targets_current(l) for l in other_links)
+                    and target_doc.hieu_luc == HieuLuc.CON_HIEU_LUC
+                    and current_hieu_luc == HieuLuc.CON_HIEU_LUC
+                ):
                     raise serializers.ValidationError(
-                        {"link_thay_the": f"Xung đột nghiệp vụ: Văn bản '{target_doc.so_hieu}' đang còn hiệu lực và đã được thiết lập thay thế cho văn bản này. Không thể tạo vòng lặp thay thế hai chiều!"}
+                        {"link_thay_the": f"Xung đột nghiệp vụ: Văn bản '{target_doc.so_hieu}' đang còn hiệu lực toàn phần và đã được thiết lập thay thế cho văn bản này. Không thể tạo vòng lặp thay thế hai chiều!"}
                     )
 
         # Issue #82 & Quyền thay đổi phạm vi lưu hành:
