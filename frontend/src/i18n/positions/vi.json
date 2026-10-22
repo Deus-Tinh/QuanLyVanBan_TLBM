@@ -64,6 +64,7 @@
       "sttExists": "STT ưu tiên này đã được sử dụng. Vui lòng chọn số khác.",
       "notFound": "Không tìm thấy chức vụ.",
       "inUse": "Không thể xóa chức vụ này vì đang được gán cho cán bộ nhân viên.",
+      "inUseByModule": "Không thể xóa chức vụ này vì đang được dùng trong quy trình trình ký.",
       "permissionDenied": "Bạn không có quyền thực hiện thao tác này.",
       "createSuccess": "Đã thêm chức vụ thành công.",
       "updateSuccess": "Đã cập nhật chức vụ thành công.",
