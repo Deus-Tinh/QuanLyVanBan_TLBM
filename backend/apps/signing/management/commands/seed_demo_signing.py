@@ -327,7 +327,7 @@ class Command(BaseCommand):
             step_signer.save(update_fields=["chu_ky_hien_hanh", "trang_thai", "ngay_ky"])
             return ck
 
-        def tao_ho_so_cho_ky_cap2(so_hieu, quy_trinh, nguoi_tao, muc_do, ghi_chu):
+        def tao_ho_so_cho_ky_cap2(so_hieu, quy_trinh, nguoi_tao, ghi_chu):
             """Hồ sơ 2 cấp: cấp 1 (Trưởng phòng) đã ký xong, đang chờ cấp 2 (Giám đốc) ký."""
             vb = van_ban_map[so_hieu]
             req = SigningRequest.objects.filter(van_ban_id=vb.pk, quy_trinh=quy_trinh).first()
@@ -336,7 +336,7 @@ class Command(BaseCommand):
             req = SigningRequest.objects.create(
                 document_type="vanbandi", van_ban_id=vb.pk, phien_ban_van_ban="1",
                 vi_tri_luu_tep=vi_tri_tep, ma_bam_tai_lieu=hash_tep, quy_trinh=quy_trinh,
-                phien_ban_quy_trinh=1, muc_do=muc_do, trang_thai=enums.TrangThaiYeuCau.CHO_KY,
+                phien_ban_quy_trinh=1, trang_thai=enums.TrangThaiYeuCau.CHO_KY,
                 han_chot=bay_gio + timedelta(days=2), ngay_gui=bay_gio - timedelta(hours=6),
                 ghi_chu=ghi_chu, create_by=nguoi_tao,
             )
@@ -379,7 +379,7 @@ class Command(BaseCommand):
             )
             return req
 
-        def tao_ho_so_cho_ky_cap1(so_hieu, quy_trinh, nguoi_tao, nguoi_ky_cho, muc_do, ghi_chu):
+        def tao_ho_so_cho_ky_cap1(so_hieu, quy_trinh, nguoi_tao, nguoi_ky_cho, ghi_chu):
             """Hồ sơ đang chờ người ký tại cấp 1."""
             vb = van_ban_map[so_hieu]
             req = SigningRequest.objects.filter(van_ban_id=vb.pk, quy_trinh=quy_trinh).first()
@@ -388,7 +388,7 @@ class Command(BaseCommand):
             req = SigningRequest.objects.create(
                 document_type="vanbandi", van_ban_id=vb.pk, phien_ban_van_ban="1",
                 vi_tri_luu_tep=vi_tri_tep, ma_bam_tai_lieu=hash_tep, quy_trinh=quy_trinh,
-                phien_ban_quy_trinh=1, muc_do=muc_do, trang_thai=enums.TrangThaiYeuCau.CHO_KY,
+                phien_ban_quy_trinh=1, trang_thai=enums.TrangThaiYeuCau.CHO_KY,
                 han_chot=bay_gio + timedelta(days=2), ngay_gui=bay_gio - timedelta(hours=4),
                 ghi_chu=ghi_chu, create_by=nguoi_tao,
             )
@@ -429,7 +429,7 @@ class Command(BaseCommand):
             SigningAuditLog.objects.create(
                 trinh_ky=req, luot_trinh=att, loai_doi_tuong="signing_request", ma_doi_tuong=req.pk,
                 nguoi_thuc_hien=nguoi_tao, hanh_dong="GUI_TRINH", trang_thai_truoc="NHAP",
-                trang_thai_sau="CHO_KY", chi_tiet=f"Gửi hồ sơ trình ký ({muc_do}).",
+                trang_thai_sau="CHO_KY", chi_tiet="Gửi hồ sơ trình ký.",
             )
             SigningNotification.objects.create(
                 trinh_ky=req, nguoi_nhan=nguoi_ky_cho, kenh=enums.KenhThongBao.IN_APP,
@@ -442,28 +442,28 @@ class Command(BaseCommand):
         self.stdout.write("--- Tạo thêm các hồ sơ Cần tôi ký duyệt cho tất cả vai trò ---")
 
         # Cho GIÁM ĐỐC (Đang chờ Giám đốc ký chính):
-        tao_ho_so_cho_ky_cap2("50/QĐ-BGD", qt2, truongphong, enums.MucDoTrinhKy.KHAN, "Kính trình Tổng Giám đốc ký ban hành Quyết định thành lập Tổ công tác.")
-        tao_ho_so_cho_ky_cap2("51/HĐ-BGD", qt1, chuyenvien, enums.MucDoTrinhKy.HOA_TOC, "Hợp đồng bảo trì hạ tầng trung tâm dữ liệu, kính trình Giám đốc phê duyệt.")
-        tao_ho_so_cho_ky_cap2("52/TTr-BGD", qt1, chuyenvien, enums.MucDoTrinhKy.THUONG, "Đề án chuyển đổi IPv6 cơ quan, Trưởng ban CNTT đã duyệt nháy.")
-        tao_ho_so_cho_ky_cap2("53/KH-BGD", qt2, truongphong, enums.MucDoTrinhKy.KHAN, "Kế hoạch tổ chức diễn tập an ninh mạng hàng năm.")
+        tao_ho_so_cho_ky_cap2("50/QĐ-BGD", qt2, truongphong, "Kính trình Tổng Giám đốc ký ban hành Quyết định thành lập Tổ công tác.")
+        tao_ho_so_cho_ky_cap2("51/HĐ-BGD", qt1, chuyenvien, "Hợp đồng bảo trì hạ tầng trung tâm dữ liệu, kính trình Giám đốc phê duyệt.")
+        tao_ho_so_cho_ky_cap2("52/TTr-BGD", qt1, chuyenvien, "Đề án chuyển đổi IPv6 cơ quan, Trưởng ban CNTT đã duyệt nháy.")
+        tao_ho_so_cho_ky_cap2("53/KH-BGD", qt2, truongphong, "Kế hoạch tổ chức diễn tập an ninh mạng hàng năm.")
         self.stdout.write(" [OK] Đã bổ sung 4 hồ sơ chờ Giám đốc ký chính (Tổng: 5 hồ sơ)")
 
         # Cho TRƯỞNG PHÒNG (Đang chờ Trưởng phòng ký duyệt/nháy):
-        tao_ho_so_cho_ky_cap1("60/TTr-CNTT", qt1, chuyenvien, truongphong, enums.MucDoTrinhKy.KHAN, "Tờ trình gia hạn bản quyền phần mềm bảo vệ thiết bị đầu cuối.")
-        tao_ho_so_cho_ky_cap1("61/BB-CNTT", qt3, chuyenvien, truongphong, enums.MucDoTrinhKy.THUONG, "Biên bản đánh giá kỹ thuật và thử nghiệm giải pháp bảo mật.")
-        tao_ho_so_cho_ky_cap1("62/ĐX-CNTT", qt1, chuyenvien, truongphong, enums.MucDoTrinhKy.HOA_TOC, "Đề xuất khẩn trang bị bộ lưu điện dự phòng phòng máy chủ.")
+        tao_ho_so_cho_ky_cap1("60/TTr-CNTT", qt1, chuyenvien, truongphong, "Tờ trình gia hạn bản quyền phần mềm bảo vệ thiết bị đầu cuối.")
+        tao_ho_so_cho_ky_cap1("61/BB-CNTT", qt3, chuyenvien, truongphong, "Biên bản đánh giá kỹ thuật và thử nghiệm giải pháp bảo mật.")
+        tao_ho_so_cho_ky_cap1("62/ĐX-CNTT", qt1, chuyenvien, truongphong, "Đề xuất khẩn trang bị bộ lưu điện dự phòng phòng máy chủ.")
         self.stdout.write(" [OK] Đã bổ sung 3 hồ sơ chờ Trưởng phòng ký (Tổng: 7 hồ sơ)")
 
         # Cho QUẢN TRỊ VIÊN (Đang chờ Quản trị viên duyệt):
-        tao_ho_so_cho_ky_cap1("70/TTr-QT", qt_ad, chuyenvien, admin, enums.MucDoTrinhKy.KHAN, "Rà soát và cấp phát tài khoản đặc quyền PAM.")
-        tao_ho_so_cho_ky_cap1("71/BB-QT", qt_ad, chuyenvien, admin, enums.MucDoTrinhKy.THUONG, "Biên bản kiểm tra an ninh định kỳ hệ thống tường lửa.")
-        tao_ho_so_cho_ky_cap1("72/ĐX-QT", qt_ad, chuyenvien, admin, enums.MucDoTrinhKy.HOA_TOC, "Gia hạn chứng thư số SSL Wildcard cổng trực tuyến.")
+        tao_ho_so_cho_ky_cap1("70/TTr-QT", qt_ad, chuyenvien, admin, "Rà soát và cấp phát tài khoản đặc quyền PAM.")
+        tao_ho_so_cho_ky_cap1("71/BB-QT", qt_ad, chuyenvien, admin, "Biên bản kiểm tra an ninh định kỳ hệ thống tường lửa.")
+        tao_ho_so_cho_ky_cap1("72/ĐX-QT", qt_ad, chuyenvien, admin, "Gia hạn chứng thư số SSL Wildcard cổng trực tuyến.")
         self.stdout.write(" [OK] Đã bổ sung 3 hồ sơ chờ Quản trị viên ký")
 
         # Cho CHUYÊN VIÊN (Đang chờ Chuyên viên thẩm định/ký nháy):
-        tao_ho_so_cho_ky_cap1("80/TTr-CV", qt_cv, vanthu, chuyenvien, enums.MucDoTrinhKy.THUONG, "Phiếu đánh giá kỹ thuật phương án sao lưu dữ liệu tự động.")
-        tao_ho_so_cho_ky_cap1("81/BB-CV", qt_cv, admin, chuyenvien, enums.MucDoTrinhKy.KHAN, "Biên bản rà soát an toàn thông tin phần mềm nội bộ.")
-        tao_ho_so_cho_ky_cap1("82/ĐX-CV", qt_cv, vanthu, chuyenvien, enums.MucDoTrinhKy.THUONG, "Phiếu đăng ký tài sản và cấp phát thiết bị tin học đợt 2.")
+        tao_ho_so_cho_ky_cap1("80/TTr-CV", qt_cv, vanthu, chuyenvien, "Phiếu đánh giá kỹ thuật phương án sao lưu dữ liệu tự động.")
+        tao_ho_so_cho_ky_cap1("81/BB-CV", qt_cv, admin, chuyenvien, "Biên bản rà soát an toàn thông tin phần mềm nội bộ.")
+        tao_ho_so_cho_ky_cap1("82/ĐX-CV", qt_cv, vanthu, chuyenvien, "Phiếu đăng ký tài sản và cấp phát thiết bị tin học đợt 2.")
         self.stdout.write(" [OK] Đã bổ sung 3 hồ sơ chờ Chuyên viên ký")
 
         self.stdout.write(self.style.SUCCESS("=== Hoàn tất bổ sung hồ sơ Cần tôi ký duyệt thành công ==="))
