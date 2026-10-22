@@ -250,7 +250,9 @@ function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | nu
     ten_loai_van_ban: (initDoc.ten_loai_van_ban || initDoc.loaiVanBan || 'Công văn') as string,
     nguoi_ky: (initDoc.nguoi_ky || initDoc.nguoiKy || '') as string,
     chuc_vu: (initDoc.chuc_vu || initDoc.chucVu || '') as string,
-    hieu_luc: ((initDoc.hieu_luc || initDoc.hieuLuc) as FormState['hieu_luc']) || 'CON_HIEU_LUC',
+    hieu_luc: ((initDoc.hieu_luc || initDoc.hieuLuc) === 'HET_VA_THAY_THE'
+      ? 'HET_HIEU_LUC'
+      : ((initDoc.hieu_luc || initDoc.hieuLuc) as FormState['hieu_luc'])) || 'CON_HIEU_LUC',
     ngay_het_hieu_luc: toLocalDateString((initDoc.ngay_het_hieu_luc || initDoc.ngayHetHieuLuc) as string),
     link_thay_the: (initDoc.link_thay_the || initDoc.linkThayThe || '') as string,
     ghi_chu: (initDoc.ghi_chu || initDoc.ghiChu || '') as string,
@@ -290,8 +292,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   const [selectedReplacementDocs, setSelectedReplacementDocs] = useState<SuggestedDoc[]>([]);
   const [replacementSearchInput, setReplacementSearchInput] = useState('');
   const [isReplacingOther, setIsReplacingOther] = useState(() => {
-    const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
-    return hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE';
+    return Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
   });
   const [autoUpdateReplaced, setAutoUpdateReplaced] = useState(true);
   const replacementDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -326,7 +327,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       setReplacementSearchInput('');
       setAutoUpdateReplaced(true);
       const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
-      setIsReplacingOther(hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE');
+      setIsReplacingOther(hasReplacement);
       if (initDoc?.attachments && Array.isArray(initDoc.attachments)) {
         setExistingAttachments(initDoc.attachments as ExistingAttachment[]);
       } else {
@@ -798,7 +799,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       setAlertOpen(true);
       return;
     }
-    if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther)) {
+    if (isReplacingOther) {
       const rawLink = (form.link_thay_the || '').trim();
       if (!rawLink) {
         setAlertMsg('Vui lòng chọn hoặc nhập ít nhất một Số hiệu văn bản thay thế (*)');
@@ -909,7 +910,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       if (form.ghi_chu?.trim()) {
         payload.append('ghi_chu', form.ghi_chu.trim());
       }
-      if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && form.link_thay_the?.trim()) {
+      if (isReplacingOther && form.link_thay_the?.trim()) {
         payload.append('link_thay_the', form.link_thay_the.trim());
         payload.append('auto_update_replaced_doc', autoUpdateReplaced ? 'true' : 'false');
       } else {
@@ -1529,12 +1530,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                       Hết giá trị
                     </span>
                   )}
-                  {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      Đã bị thay thế
-                    </span>
-                  )}
                 </div>
 
                 <div className="relative">
@@ -1551,20 +1546,17 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500" />
                       </span>
                     )}
-                    {form.hieu_luc === 'HET_HIEU_LUC' && (
+                    {(form.hieu_luc === 'HET_HIEU_LUC' || form.hieu_luc === 'HET_VA_THAY_THE') && (
                       <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
-                    )}
-                    {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                      <span className="inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
                     )}
                   </div>
 
                   <select
-                    value={form.hieu_luc}
+                    value={form.hieu_luc === 'HET_VA_THAY_THE' ? 'HET_HIEU_LUC' : form.hieu_luc}
                     onChange={e => {
                       const newHieuLuc = e.target.value as FormState['hieu_luc'];
                       setForm({ ...form, hieu_luc: newHieuLuc });
-                      if (newHieuLuc !== 'HET_VA_THAY_THE' && !isReplacingOther) {
+                      if (newHieuLuc === 'CON_HIEU_LUC' && !isReplacingOther) {
                         setForm(prev => ({ ...prev, link_thay_the: '' }));
                         setSelectedReplacementDoc(null);
                         setShowReplacementDropdown(false);
@@ -1575,16 +1567,9 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-xs'
                         : form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
                         ? 'bg-purple-500/10 border-purple-500/40 text-purple-700 dark:text-purple-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-xs'
-                        : form.hieu_luc === 'HET_HIEU_LUC'
-                        ? 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-400 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 shadow-xs'
-                        : 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-xs'
+                        : 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-400 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 shadow-xs'
                     }`}
                   >
-                    {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                      <option value="HET_VA_THAY_THE" disabled className="bg-surface text-main font-normal">
-                        Đã bị thay thế (Hệ thống tự động)
-                      </option>
-                    )}
                     <option value="CON_HIEU_LUC" className="bg-surface text-emerald-600 font-semibold">
                       Còn hiệu lực
                     </option>
@@ -1639,7 +1624,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
               )}
 
               {/* Link văn bản thay thế (Hỗ trợ 1-nhiều văn bản, phân hệ & phạm vi riêng biệt) */}
-              {(form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && (
+              {(isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN' || Boolean(form.link_thay_the)) && (
                 <div className="col-span-12 animate-in fade-in duration-150" ref={replacementDropdownRef}>
                   <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
                     <label className="block text-xs font-semibold text-warning-text m-0">

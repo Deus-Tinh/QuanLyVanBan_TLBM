@@ -767,9 +767,9 @@ class DocumentPermissionOption2Tests(TestCase):
         self.assertEqual(res_create.status_code, status.HTTP_201_CREATED)
         new_doc_id = res_create.data["id"]
 
-        # Kiểm tra văn bản B đã được tự động đồng bộ sang HET_VA_THAY_THE
+        # Kiểm tra văn bản B đã được tự động đồng bộ sang HET_HIEU_LUC (hết hiệu lực do bị thay thế)
         doc_b.refresh_from_db()
-        self.assertEqual(doc_b.hieu_luc, HieuLuc.HET_VA_THAY_THE)
+        self.assertIn(doc_b.hieu_luc, (HieuLuc.HET_HIEU_LUC, HieuLuc.HET_VA_THAY_THE))
         self.assertEqual(doc_b.link_thay_the, "125/CV-NEW")
 
         # Xóa văn bản mới A
@@ -1638,6 +1638,105 @@ class VanBanDiServiceTests(TestCase):
         export_bio = export_to_excel(VanBanDi.objects.filter(so_hieu="11/TB-DI"), "DI")
         self.assertTrue(export_bio.getvalue().startswith(b"PK"))
 
+    def test_excel_import_parse_all_hieu_luc_variants(self):
+        """Kiểm tra import Excel nhận diện đúng cả 3 trạng thái hiệu lực bằng tiếng Việt lẫn mã enum cho cả Đến và Đi (Nội bộ & Hạn chế)."""
+        from documents.services import import_from_excel
+        from documents.models import HieuLuc, VanBanDen, VanBanDi
+        from openpyxl import Workbook
+
+        # 1. Test cho Văn bản Đến (Nội bộ & Hạn chế)
+        wb_den = Workbook()
+        ws_den = wb_den.active
+        ws_den.append(["Số, ký hiệu VB", "Ngày đến", "Trích yếu nội dung", "Hiệu lực", "Phạm vi"])
+        ws_den.append(["91/CV-DEN", "15/09/2026 09:00:00", "Văn bản Đến còn hiệu lực", "Còn hiệu lực", "Nội bộ"])
+        ws_den.append(["92/CV-DEN", "15/09/2026 09:00:00", "Văn bản Đến còn hiệu lực 1 phần", "Còn hiệu lực 1 phần", "Nội bộ"])
+        ws_den.append(["93/CV-DEN", "15/09/2026 09:00:00", "Văn bản Đến hết hiệu lực", "Hết hiệu lực", "Nội bộ"])
+        ws_den.append(["94/CV-DEN", "15/09/2026 09:00:00", "Văn bản Đến để trống hiệu lực", "", "Nội bộ"])
+
+        bio_den = io.BytesIO()
+        wb_den.save(bio_den)
+        bio_den.seek(0)
+
+        res_den = import_from_excel(bio_den, "DEN", self.creator, pham_vi="NOI_BO")
+        self.assertEqual(res_den["created"], 4)
+
+        self.assertEqual(VanBanDen.objects.get(so_hieu="91/CV-DEN").hieu_luc, HieuLuc.CON_HIEU_LUC)
+        self.assertEqual(VanBanDen.objects.get(so_hieu="92/CV-DEN").hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertEqual(VanBanDen.objects.get(so_hieu="93/CV-DEN").hieu_luc, HieuLuc.HET_HIEU_LUC)
+        self.assertEqual(VanBanDen.objects.get(so_hieu="94/CV-DEN").hieu_luc, HieuLuc.CON_HIEU_LUC)
+
+        # 2. Test cho Văn bản Đi (Nội bộ & Hạn chế)
+        wb_di = Workbook()
+        ws_di = wb_di.active
+        ws_di.append(["Số, ký hiệu VB", "Ngày ban hành", "Trích yếu nội dung", "Hiệu lực", "Phạm vi"])
+        ws_di.append(["91/TB-DI", "15/09/2026 09:00:00", "Văn bản Đi còn hiệu lực một phần (chữ)", "Còn hiệu lực một phần", "Nội bộ"])
+        ws_di.append(["92/TB-DI", "15/09/2026 09:00:00", "Văn bản Đi hết hiệu lực (mã enum)", "HET_HIEU_LUC", "Nội bộ"])
+        ws_di.append(["93/TB-DI", "15/09/2026 09:00:00", "Văn bản Đi còn hiệu lực 1 phần", "CON_HIEU_LUC_1_PHAN", "Nội bộ"])
+
+        bio_di = io.BytesIO()
+        wb_di.save(bio_di)
+        bio_di.seek(0)
+
+        res_di = import_from_excel(bio_di, "DI", self.creator, pham_vi="NOI_BO")
+        self.assertEqual(res_di["created"], 3)
+
+        self.assertEqual(VanBanDi.objects.get(so_hieu="91/TB-DI").hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+        self.assertEqual(VanBanDi.objects.get(so_hieu="92/TB-DI").hieu_luc, HieuLuc.HET_HIEU_LUC)
+        self.assertEqual(VanBanDi.objects.get(so_hieu="93/TB-DI").hieu_luc, HieuLuc.CON_HIEU_LUC_1_PHAN)
+
+    def test_excel_import_scope_and_type_guards(self):
+        """Khóa nghiệp vụ: Chặn import chéo giữa Nội bộ và Hạn chế, chặn chéo giữa Đến và Đi."""
+        from documents.services import generate_excel_template, import_from_excel
+        import openpyxl
+
+        # 1. Mẫu Hạn chế không được nạp vào Nội bộ
+        tpl_hc = generate_excel_template("DI", "HAN_CHE")
+        res1 = import_from_excel(tpl_hc, "DI", self.creator, pham_vi="NOI_BO")
+        self.assertEqual(res1["created"], 0)
+        self.assertIn("Hạn chế", res1["errors"][0]["message"])
+        self.assertIn("Nội bộ", res1["errors"][0]["message"])
+
+        # 2. Mẫu Nội bộ không được nạp vào Hạn chế
+        tpl_nb = generate_excel_template("DI", "NOI_BO")
+        res2 = import_from_excel(tpl_nb, "DI", self.creator, pham_vi="HAN_CHE")
+        self.assertEqual(res2["created"], 0)
+        self.assertIn("Nội bộ", res2["errors"][0]["message"])
+        self.assertIn("Hạn chế", res2["errors"][0]["message"])
+
+        # 3. Mẫu Đến không được nạp vào Đi
+        tpl_den = generate_excel_template("DEN", "NOI_BO")
+        res3 = import_from_excel(tpl_den, "DI", self.creator, pham_vi="NOI_BO")
+        self.assertEqual(res3["created"], 0)
+        self.assertIn("Văn bản Đến", res3["errors"][0]["message"])
+
+        # 4. Mẫu Đi không được nạp vào Đến
+        res4 = import_from_excel(tpl_nb, "DEN", self.creator, pham_vi="NOI_BO")
+        self.assertEqual(res4["created"], 0)
+        self.assertIn("Văn bản Đi", res4["errors"][0]["message"])
+
+        # 5. File chỉ chứa dòng ví dụ mẫu báo lỗi thân thiện
+        res5 = import_from_excel(tpl_hc, "DI", self.creator, pham_vi="HAN_CHE")
+        self.assertEqual(res5["created"], 0)
+        self.assertIn("chỉ chứa dòng ví dụ mẫu", res5["errors"][0]["message"])
+
+        # 6. Import mẫu Hạn chế với dữ liệu thực và cán bộ nhận thành công
+        wb = openpyxl.load_workbook(generate_excel_template("DI", "HAN_CHE"))
+        ws = wb.active
+        ws.append([
+            "123/TB-HC-OK", "Hạn chế", "22/09/2026", "22/09/2026",
+            "Trích yếu hợp lệ cho văn bản hạn chế", "Ban Giám hiệu",
+            self.recipient.username, "Hội đồng trường", "Hiệu trưởng", "Hiệu trưởng", "CON_HIEU_LUC", "", ""
+        ])
+        bio = io.BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        res6 = import_from_excel(bio, "DI", self.creator, pham_vi="HAN_CHE")
+        self.assertEqual(res6["created"], 1)
+        doc_hc = VanBanDi.objects.filter(so_hieu="123/TB-HC-OK").first()
+        self.assertIsNotNone(doc_hc)
+        self.assertEqual(doc_hc.pham_vi, PhamVi.HAN_CHE)
+        self.assertTrue(doc_hc.nguoi_nhan.filter(id=self.recipient.id).exists())
+
     def test_di_viewlog_and_viewers_endpoint(self):
         """Ghi nhận lịch sử xem DocumentViewLog (document_type='vanbandi') và query viewers."""
         doc = VanBanDi.objects.create(
@@ -1885,9 +1984,63 @@ class VanBanMatServiceTests(TestCase):
         self.assertTrue(result["is_confidential"])
         self.assertIn(self.recipient.email, result["recipients"])
 
+    def test_excel_template_columns_and_formatting(self):
+        """Kiểm tra file mẫu Excel tải về cho cả 4 biểu mẫu (Đến/Đi - Nội bộ/Hạn chế) đều có cột Link văn bản thay thế và định dạng chuẩn."""
+        from documents.services import generate_excel_template
+        import openpyxl
 
+        configs = [
+            ("DEN", "NOI_BO"),
+            ("DEN", "HAN_CHE"),
+            ("DI", "NOI_BO"),
+            ("DI", "HAN_CHE"),
+        ]
 
+        for loai, pham_vi in configs:
+            bio = generate_excel_template(loai, pham_vi)
+            wb = openpyxl.load_workbook(bio)
+            ws = wb.active
 
+            # Kiểm tra hàng tiêu đề có đủ "Link văn bản thay thế", "Hiệu lực" và "Ghi chú"
+            headers = [cell.value for cell in ws[1] if cell.value]
+            self.assertIn("Link văn bản thay thế", headers, f"Thiếu cột 'Link văn bản thay thế' trong mẫu {loai} {pham_vi}")
+            self.assertIn("Ghi chú", headers)
+            self.assertIn("Hiệu lực", headers)
+
+            # Cột Link văn bản thay thế phải đứng ngay trước Ghi chú
+            idx_link = headers.index("Link văn bản thay thế")
+            idx_note = headers.index("Ghi chú")
+            self.assertEqual(idx_link + 1, idx_note)
+
+            # Chiều cao dòng 2 mẫu phải là 36 để không bị cắt xén font tiếng Việt
+            self.assertEqual(ws.row_dimensions[2].height, 36)
+
+            # Kiểm tra dòng mẫu ghi chú rút gọn rõ ràng
+            note_val = ws[2][idx_note].value
+            self.assertIn("xóa trước khi import", str(note_val).lower())
+            self.assertEqual(str(note_val), "(Dòng ví dụ mẫu — xóa trước khi import)")
+
+            # Kiểm tra cột Link văn bản thay thế có comment gợi ý và giá trị mẫu trực quan
+            cell_link_hdr = ws.cell(row=1, column=idx_link + 1)
+            self.assertIsNotNone(cell_link_hdr.comment, f"Cột 'Link văn bản thay thế' cần có hover comment trong {loai} {pham_vi}")
+            self.assertIn("Số hiệu", cell_link_hdr.comment.text)
+
+            sample_link_val = ws.cell(row=2, column=idx_link + 1).value
+            self.assertTrue(bool(sample_link_val), f"Dòng mẫu cần có số hiệu văn bản trực quan cho cột link_thay_the trong {loai} {pham_vi}")
+
+            # Kiểm tra cột Hiệu lực có comment gợi ý 3 trạng thái
+            idx_hl = headers.index("Hiệu lực")
+            cell_hl_hdr = ws.cell(row=1, column=idx_hl + 1)
+            self.assertIsNotNone(cell_hl_hdr.comment, f"Cột 'Hiệu lực' cần có hover comment trong {loai} {pham_vi}")
+            self.assertIn("Còn hiệu lực 1 phần", cell_hl_hdr.comment.text)
+
+            # Kiểm tra VML shape định nghĩa chuẩn width:250px;height:85px cho link_thay_the và width:380px;height:135px cho hieu_luc
+            import zipfile
+            bio.seek(0)
+            with zipfile.ZipFile(bio) as z:
+                vml_content = "".join(z.read(n).decode("utf-8", errors="ignore") for n in z.namelist() if "vml" in n)
+                self.assertIn("width:250px;height:85px", vml_content)
+                self.assertIn("width:380px;height:135px", vml_content)
 
 
 

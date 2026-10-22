@@ -18,8 +18,64 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
   const [loading, setLoading] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState('');
+  const [fileWarning, setFileWarning] = useState<string | null>(null);
 
-  if (!open) return null;
+  React.useEffect(() => {
+    if (open) {
+      setSelectedFile(null);
+      setFileWarning(null);
+    }
+  }, [open]);
+
+  function checkFileMismatch(file: File): string | null {
+    const name = file.name.toLowerCase();
+
+    // 1. Kiểm tra lệch phạm vi (Nội bộ vs Hạn chế)
+    const isHanChe =
+      name.includes('han_che') ||
+      name.includes('hanche') ||
+      name.includes('hạn_chế') ||
+      name.includes('hạn chế') ||
+      name.includes('mat') ||
+      name.includes('mật');
+
+    const isNoiBo =
+      name.includes('noi_bo') ||
+      name.includes('noibo') ||
+      name.includes('nội_bộ') ||
+      name.includes('nội bộ');
+
+    if (phamVi === 'NOI_BO' && isHanChe) {
+      return 'File bạn chọn là biểu mẫu hoặc dữ liệu Văn bản Hạn chế. Bạn đang ở phân hệ Văn bản Nội bộ, không thể nạp file này để tránh làm lộ lọt thông tin. Vui lòng chuyển sang tab "Văn bản Hạn chế" để import.';
+    }
+
+    if (phamVi === 'HAN_CHE' && isNoiBo && !isHanChe) {
+      return 'File bạn chọn là biểu mẫu hoặc dữ liệu Văn bản Nội bộ. Bạn đang ở phân hệ Văn bản Hạn chế, không thể nạp file này vì thiếu thông tin phân quyền cán bộ nhận. Vui lòng chuyển sang tab "Văn bản Nội bộ" để import.';
+    }
+
+    // 2. Kiểm tra lệch hệ (Đến vs Đi)
+    const isDen =
+      name.includes('_den') ||
+      name.includes('van_ban_den') ||
+      name.includes('văn_bản_đến') ||
+      name.includes('văn bản đến');
+
+    const isDi =
+      name.includes('_di') ||
+      name.includes('van_ban_di') ||
+      name.includes('văn_bản_đi') ||
+      name.includes('văn bản đi');
+
+    if (loai === 'DI' && isDen && !isDi) {
+      return 'File bạn chọn là biểu mẫu Văn bản Đến. Bạn đang ở phân hệ Văn bản Đi, vui lòng chọn đúng file mẫu Văn bản Đi.';
+    }
+
+    if (loai === 'DEN' && isDi && !isDen) {
+      return 'File bạn chọn là biểu mẫu Văn bản Đi. Bạn đang ở phân hệ Văn bản Đến, vui lòng chọn đúng file mẫu Văn bản Đến.';
+    }
+
+    return null;
+  }
 
   function handleFileChange(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -30,6 +86,8 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
       setAlertOpen(true);
       return;
     }
+    const warning = checkFileMismatch(file);
+    setFileWarning(warning);
     setSelectedFile(file);
   }
 
@@ -73,6 +131,11 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
       setAlertOpen(true);
       return;
     }
+    if (fileWarning) {
+      setAlertMsg(fileWarning);
+      setAlertOpen(true);
+      return;
+    }
     setLoading(true);
     try {
       const fd = new FormData();
@@ -85,15 +148,28 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
         body: fd,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      const data = await res.json() as { message?: string; error?: string };
+      const data = await res.json() as {
+        message?: string;
+        error?: string;
+        errors?: Array<{ row?: number; message: string }>;
+      };
       if (res.ok) {
         setAlertMsg(data.message || 'Nhập danh sách văn bản thành công!');
         setAlertOpen(true);
         setSelectedFile(null);
+        setFileWarning(null);
         onImported?.();
         onClose();
       } else {
-        setAlertMsg('Lỗi nhập dữ liệu: ' + (data.error || data.message || JSON.stringify(data)));
+        let msg = data.error || data.message || 'Lỗi nhập dữ liệu từ máy chủ.';
+        if (data.errors && data.errors.length > 0 && !data.error) {
+          const detail = data.errors
+            .slice(0, 3)
+            .map((e) => (e.row ? `Dòng ${e.row}: ${e.message}` : e.message))
+            .join('\n');
+          msg = `${msg}\n\n${detail}`;
+        }
+        setAlertMsg(msg);
         setAlertOpen(true);
       }
     } catch (error: unknown) {
@@ -104,6 +180,8 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
       setLoading(false);
     }
   }
+
+  if (!open) return null;
 
   const content = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -202,7 +280,9 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
           className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-fast ${isDragging
               ? 'border-primary bg-primary-subtle/40 scale-[1.01]'
               : selectedFile
-                ? 'border-emerald-500/50 bg-emerald-500/5'
+                ? fileWarning
+                  ? 'border-amber-500/50 bg-amber-500/5'
+                  : 'border-emerald-500/50 bg-emerald-500/5'
                 : 'border-border-subtle hover:border-primary/50 hover:bg-hover'
             }`}
         >
@@ -216,8 +296,10 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
 
           {selectedFile ? (
             <div className="flex items-center justify-center gap-3">
-              <span className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-2xl shrink-0">
-                <i className="fa-solid fa-file-excel" />
+              <span className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 ${
+                fileWarning ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'
+              }`}>
+                <i className={`fa-solid ${fileWarning ? 'fa-triangle-exclamation' : 'fa-file-excel'}`} />
               </span>
               <div className="text-left overflow-hidden">
                 <div className="text-sm font-semibold text-main truncate max-w-[280px]">
@@ -243,6 +325,17 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
           )}
         </div>
 
+        {/* Warning mismatch banner */}
+        {fileWarning && (
+          <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-150">
+            <i className="fa-solid fa-triangle-exclamation text-sm shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-semibold block mb-0.5">Cảnh báo không đúng phân hệ:</span>
+              <p className="m-0 leading-relaxed text-[11px]">{fileWarning}</p>
+            </div>
+          </div>
+        )}
+
         {/* Footer Actions */}
         <div className="flex justify-end items-center gap-2.5 mt-5 pt-3 border-t border-border-subtle">
           <Button
@@ -259,7 +352,7 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
             size="sm"
             icon="fa-file-import"
             onClick={handleImport}
-            disabled={!selectedFile || loading}
+            disabled={!selectedFile || loading || Boolean(fileWarning)}
             isLoading={loading}
           >
             {loading ? 'Đang nạp dữ liệu...' : 'Bắt đầu Nhập'}

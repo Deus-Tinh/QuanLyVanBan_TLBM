@@ -580,13 +580,24 @@ class DocumentViewSet(viewsets.ViewSet):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
 
         result = import_from_excel(file_obj, loai, request.user, pham_vi=raw_pham_vi)
+        if result["created"] > 0:
+            return Response(
+                {
+                    "message": f"Import thành công {result['created']} văn bản.",
+                    "created": result["created"],
+                    "errors": result["errors"],
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        first_err = result["errors"][0]["message"] if result.get("errors") else "Không có dữ liệu hợp lệ để import."
         return Response(
             {
-                "message": f"Import thành công {result['created']} văn bản.",
-                "created": result["created"],
+                "error": first_err,
+                "message": first_err,
+                "created": 0,
                 "errors": result["errors"],
             },
-            status=status.HTTP_201_CREATED if result["created"] > 0 else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     @action(
@@ -817,13 +828,24 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
         result = import_from_excel(file_obj, "DI", request.user, pham_vi=raw_pham_vi)
+        if result["created"] > 0:
+            return Response(
+                {
+                    "message": f"Import thành công {result['created']} văn bản.",
+                    "created": result["created"],
+                    "errors": result["errors"],
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        first_err = result["errors"][0]["message"] if result.get("errors") else "Không có dữ liệu hợp lệ để import."
         return Response(
             {
-                "message": f"Import thành công {result['created']} văn bản.",
-                "created": result["created"],
+                "error": first_err,
+                "message": first_err,
+                "created": 0,
                 "errors": result["errors"],
             },
-            status=status.HTTP_201_CREATED if result["created"] > 0 else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -954,11 +976,22 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
         result = import_from_excel(file_obj, "MAT", request.user)
+        if result["created"] > 0:
+            return Response(
+                {
+                    "message": f"Import thành công {result['created']} văn bản.",
+                    "created": result["created"],
+                    "errors": result["errors"],
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        first_err = result["errors"][0]["message"] if result.get("errors") else "Không có dữ liệu hợp lệ để import."
         return Response(
             {
-                "message": f"Import thành công {result['created']} văn bản.",
-                "created": result["created"],
+                "error": first_err,
+                "message": first_err,
+                "created": 0,
                 "errors": result["errors"],
             },
-            status=status.HTTP_201_CREATED if result["created"] > 0 else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST,
         )

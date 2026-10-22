@@ -46,7 +46,9 @@ export const OutboundDocumentPage: React.FC = () => {
     if (currentFilters.hieu_luc) nextParams.set('hieu_luc', currentFilters.hieu_luc);
     if (currentFilters.loai_van_ban) nextParams.set('loai_van_ban', String(currentFilters.loai_van_ban));
     if (currentFilters.ho_so) nextParams.set('ho_so', currentFilters.ho_so);
-    if (currentFilters.pham_vi) nextParams.set('pham_vi', String(currentFilters.pham_vi));
+    if (currentFilters.pham_vi && currentFilters.pham_vi !== 'NOI_BO') {
+      nextParams.set('pham_vi', String(currentFilters.pham_vi));
+    }
     if (currentFilters.page && currentFilters.page > 1) nextParams.set('page', String(currentFilters.page));
 
     // Bảo toàn các params trạng thái modal (detail, viewers, action, edit)

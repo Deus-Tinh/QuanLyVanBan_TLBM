@@ -17,6 +17,7 @@ from datetime import datetime
 from django.db import models, transaction
 from django.utils import timezone
 from openpyxl import Workbook, load_workbook
+from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -256,19 +257,20 @@ def sync_replacement_document(doc):
         if not other_doc:
             continue
 
+        existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
+        if getattr(doc, "so_hieu", "") and doc.so_hieu not in existing_links:
+            existing_links.append(doc.so_hieu)
+        other_doc.link_thay_the = ", ".join(existing_links)
+
+        # Trạng thái hiệu lực do người thao tác quyết định:
+        # Nếu văn bản bị thay thế đang là Còn hiệu lực 1 phần (CON_HIEU_LUC_1_PHAN), BẢO LƯU trạng thái này.
+        # Nếu đang là Còn hiệu lực thông thường và được thay thế toàn bộ, chuyển sang HET_HIEU_LUC.
         if getattr(doc, "hieu_luc", "") in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
-            other_doc.hieu_luc = HieuLuc.HET_VA_THAY_THE
-            existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
-            if getattr(doc, "so_hieu", "") and doc.so_hieu not in existing_links:
-                existing_links.append(doc.so_hieu)
-            other_doc.link_thay_the = ", ".join(existing_links)
-            other_doc.ngay_het_hieu_luc = effective_date
+            if other_doc.hieu_luc != HieuLuc.CON_HIEU_LUC_1_PHAN:
+                other_doc.hieu_luc = HieuLuc.HET_HIEU_LUC
+                other_doc.ngay_het_hieu_luc = effective_date
             other_doc.save(update_fields=["hieu_luc", "link_thay_the", "ngay_het_hieu_luc"])
-        elif getattr(doc, "hieu_luc", "") == HieuLuc.HET_VA_THAY_THE:
-            existing_links = [s.strip() for s in (other_doc.link_thay_the or "").split(",") if s.strip()]
-            if getattr(doc, "so_hieu", "") and doc.so_hieu not in existing_links:
-                existing_links.append(doc.so_hieu)
-            other_doc.link_thay_the = ", ".join(existing_links)
+        else:
             other_doc.save(update_fields=["link_thay_the"])
 
 
@@ -286,7 +288,7 @@ def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu):
             if current_so_hieu and doc.link_thay_the and doc.link_thay_the.strip().lower() == current_so_hieu.lower():
                 doc.link_thay_the = ""
                 updated_fields.append("link_thay_the")
-            if doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
+            if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC):
                 doc.hieu_luc = HieuLuc.CON_HIEU_LUC
                 doc.ngay_het_hieu_luc = None
                 if "ngay_het_hieu_luc" not in updated_fields:
@@ -319,7 +321,7 @@ def cleanup_replacement_links_on_delete(instance):
                 doc.link_thay_the = ""
                 updated_fields.append("link_thay_the")
 
-            if doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
+            if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC):
                 doc.hieu_luc = HieuLuc.CON_HIEU_LUC
                 doc.ngay_het_hieu_luc = None
                 if "ngay_het_hieu_luc" not in updated_fields:
@@ -396,7 +398,8 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
-        ("ghi_chu", "Ghi chú", 30),
+        ("link_thay_the", "Link văn bản thay thế", 28),
+        ("ghi_chu", "Ghi chú", 36),
     ],
     (LoaiVanBan.DEN, PhamVi.HAN_CHE): [
         ("so_hieu", "Số, ký hiệu VB", 24),
@@ -410,7 +413,8 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
-        ("ghi_chu", "Ghi chú", 30),
+        ("link_thay_the", "Link văn bản thay thế", 28),
+        ("ghi_chu", "Ghi chú", 36),
     ],
     (LoaiVanBan.DI, PhamVi.NOI_BO): [
         ("so_hieu", "Số, ký hiệu VB", 24),
@@ -423,7 +427,8 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
-        ("ghi_chu", "Ghi chú", 30),
+        ("link_thay_the", "Link văn bản thay thế", 28),
+        ("ghi_chu", "Ghi chú", 36),
     ],
     (LoaiVanBan.DI, PhamVi.HAN_CHE): [
         ("so_hieu", "Số, ký hiệu VB", 24),
@@ -437,7 +442,8 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
-        ("ghi_chu", "Ghi chú", 30),
+        ("link_thay_the", "Link văn bản thay thế", 28),
+        ("ghi_chu", "Ghi chú", 36),
     ],
     LoaiVanBan.MAT: [
         ("so_hieu", "Số, ký hiệu VB", 24),
@@ -451,7 +457,8 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
-        ("ghi_chu", "Ghi chú", 30),
+        ("link_thay_the", "Link văn bản thay thế", 28),
+        ("ghi_chu", "Ghi chú", 36),
     ],
 }
 
@@ -469,8 +476,9 @@ SAMPLE_DATA = {
         "noi_ban_hanh": "Bộ Giáo dục và Đào tạo",
         "nguoi_ky": "Nguyễn Văn A",
         "chuc_vu": "Thứ trưởng",
-        "hieu_luc": "CON_HIEU_LUC",
-        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+        "hieu_luc": "Còn hiệu lực",
+        "link_thay_the": "12/QĐ-BGDDT",
+        "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
     (LoaiVanBan.DEN, PhamVi.HAN_CHE): {
         "so_hieu": "04/TB-SGDDT",
@@ -483,8 +491,9 @@ SAMPLE_DATA = {
         "don_vi_nhan": "Ban Giám hiệu",
         "nguoi_ky": "Trần Thị C",
         "chuc_vu": "Phó Giám đốc Sở",
-        "hieu_luc": "CON_HIEU_LUC",
-        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+        "hieu_luc": "Còn hiệu lực",
+        "link_thay_the": "02/TB-SGDDT",
+        "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
     (LoaiVanBan.DI, PhamVi.NOI_BO): {
         "so_hieu": "88/QD-SNN",
@@ -496,8 +505,9 @@ SAMPLE_DATA = {
         "don_vi_nhan": "Toàn thể các đơn vị",
         "nguoi_ky": "Lê Văn D",
         "chuc_vu": "Hiệu trưởng",
-        "hieu_luc": "CON_HIEU_LUC",
-        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+        "hieu_luc": "Còn hiệu lực",
+        "link_thay_the": "45/QĐ-SNN",
+        "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
     (LoaiVanBan.DI, PhamVi.HAN_CHE): {
         "so_hieu": "12/BC-SNN-HC",
@@ -510,8 +520,9 @@ SAMPLE_DATA = {
         "don_vi_nhan": "Hội đồng trường",
         "nguoi_ky": "Lê Văn D",
         "chuc_vu": "Hiệu trưởng",
-        "hieu_luc": "CON_HIEU_LUC",
-        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+        "hieu_luc": "Còn hiệu lực",
+        "link_thay_the": "08/BC-SNN-HC",
+        "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
     LoaiVanBan.MAT: {
         "so_hieu": "01/GM-BGH",
@@ -524,13 +535,34 @@ SAMPLE_DATA = {
         "don_vi_nhan": "Ban Giám hiệu",
         "nguoi_ky": "Hiệu trưởng",
         "chuc_vu": "Hiệu trưởng",
-        "hieu_luc": "CON_HIEU_LUC",
-        "ghi_chu": "(Dòng ví dụ — xóa trước khi import)",
+        "hieu_luc": "Còn hiệu lực",
+        "link_thay_the": "01/KH-BGH",
+        "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
 }
 
 SAMPLE_DATA[LoaiVanBan.DEN] = SAMPLE_DATA[(LoaiVanBan.DEN, PhamVi.NOI_BO)]
 SAMPLE_DATA[LoaiVanBan.DI] = SAMPLE_DATA[(LoaiVanBan.DI, PhamVi.NOI_BO)]
+
+HEADER_COMMENTS = {
+    "link_thay_the": (
+        "• Số hiệu VB bị thay thế (VD: 12/QĐ-BGDDT).\n"
+        "• Nhiều VB cách nhau bằng dấu phẩy.\n"
+        "• Để trống nếu không thay thế."
+    ),
+    "hieu_luc": (
+        "• Chấp nhận 3 trạng thái hiệu lực:\n"
+        "  - Còn hiệu lực\n"
+        "  - Còn hiệu lực 1 phần\n"
+        "  - Hết hiệu lực\n"
+        "• Để trống mặc định là 'Còn hiệu lực'."
+    ),
+}
+
+COMMENT_SIZES = {
+    "link_thay_the": (250, 85),
+    "hieu_luc": (380, 135),
+}
 
 _header_font = Font(name="Arial", bold=True, size=11, color="FFFFFF")
 _header_fill = PatternFill(start_color="1E40AF", end_color="1E40AF", fill_type="solid")
@@ -541,7 +573,7 @@ _header_fill_di_hanche = PatternFill(start_color="C2410C", end_color="C2410C", f
 _header_fill_mat = PatternFill(start_color="922B21", end_color="922B21", fill_type="solid")          # Đỏ đô bảo mật
 _header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 _sample_fill = PatternFill(start_color="FFF9C4", end_color="FFF9C4", fill_type="solid")
-_sample_font = Font(name="Arial", italic=True, size=10, color="888888")
+_sample_font = Font(name="Arial", size=10, color="374151")
 _cell_font = Font(name="Arial", size=10)
 _cell_font_han_che = Font(name="Arial", size=10, color="922B21")
 _cell_font_han_che_bold = Font(name="Arial", size=10, bold=True, color="C00000")
@@ -589,10 +621,16 @@ def generate_excel_template(loai: str, pham_vi: str = "NOI_BO") -> io.BytesIO:
         cell.fill = active_fill
         cell.alignment = _header_alignment
         cell.border = _thin_border
+        if field_name in HEADER_COMMENTS:
+            cmt = Comment(HEADER_COMMENTS[field_name], "Hệ thống QLVB")
+            w, h = COMMENT_SIZES.get(field_name, (400, 120))
+            cmt.width = w
+            cmt.height = h
+            cell.comment = cmt
         col_letter = get_column_letter(col_idx)
         ws.column_dimensions[col_letter].width = col_width
 
-    ws.row_dimensions[2].height = 28
+    ws.row_dimensions[2].height = 36
     for col_idx, (field_name, _, _) in enumerate(columns, start=1):
         val = sample.get(field_name, "")
         cell = ws.cell(row=2, column=col_idx, value=val)
@@ -640,8 +678,12 @@ HEADER_TO_FIELD = {
     "Người ký": "nguoi_ky",
     "Chức vụ": "chuc_vu",
     "Hiệu lực": "hieu_luc",
-    "Ghi chú": "ghi_chu",
+    "Trạng thái hiệu lực": "hieu_luc",
     "Link văn bản thay thế": "link_thay_the",
+    "Số hiệu văn bản thay thế": "link_thay_the",
+    "Văn bản thay thế": "link_thay_the",
+    "Link thay thế": "link_thay_the",
+    "Ghi chú": "ghi_chu",
 }
 
 
@@ -662,19 +704,45 @@ def _parse_date(value):
     return None
 
 
+def _normalize_text(s: str) -> str:
+    if not s:
+        return ""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s))
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return s.strip().lower()
+
+
 def _parse_hieu_luc(value):
     if value is None:
         return HieuLuc.CON_HIEU_LUC
-    text = str(value).strip().upper()
-    mapping = {
-        "CON_HIEU_LUC": HieuLuc.CON_HIEU_LUC,
-        "CÒN HIỆU LỰC": HieuLuc.CON_HIEU_LUC,
-        "HET_HIEU_LUC": HieuLuc.HET_HIEU_LUC,
-        "HẾT HIỆU LỰC": HieuLuc.HET_HIEU_LUC,
-        "HET_VA_THAY_THE": HieuLuc.HET_VA_THAY_THE,
-        "HẾT HIỆU LỰC VÀ THAY THẾ": HieuLuc.HET_VA_THAY_THE,
-    }
-    return mapping.get(text, HieuLuc.CON_HIEU_LUC)
+    raw = str(value).strip()
+    if not raw:
+        return HieuLuc.CON_HIEU_LUC
+    text = raw.upper()
+    norm = _normalize_text(raw)
+
+    # 1. Còn hiệu lực 1 phần (nhận diện: "Còn hiệu lực 1 phần", "Một phần", "CON_HIEU_LUC_1_PHAN", v.v.)
+    if (
+        text in ("CON_HIEU_LUC_1_PHAN", "CON_HIEU_LUC_MOT_PHAN", "1_PHAN", "MOT_PHAN", "PARTIAL")
+        or "1 phan" in norm
+        or "mot phan" in norm
+        or "sua doi" in norm
+        or "bo sung" in norm
+    ):
+        return HieuLuc.CON_HIEU_LUC_1_PHAN
+
+    # 2. Hết hiệu lực (nhận diện: "Hết hiệu lực", "HET_HIEU_LUC", "Đã thay thế", "HET_VA_THAY_THE", v.v.)
+    if (
+        text in ("HET_HIEU_LUC", "HET_VA_THAY_THE", "EXPIRED", "THAY_THE")
+        or "het" in norm
+        or "thay the" in norm
+        or "bai bo" in norm
+    ):
+        return HieuLuc.HET_HIEU_LUC
+
+    # 3. Mặc định là Còn hiệu lực (kể cả khi gõ "Còn hiệu lực", "CON_HIEU_LUC", hoặc để trống)
+    return HieuLuc.CON_HIEU_LUC
 
 
 def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
@@ -699,6 +767,105 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
         return {
             "created": 0,
             "errors": [{"row": 1, "message": "Không nhận diện được cột. Vui lòng dùng file mẫu."}],
+        }
+
+    # ── Xác định phân hệ đích và phạm vi đích mong đợi ──
+    norm_loai = (
+        LoaiVanBan.MAT
+        if loai_str in ("MAT", "VANBANMAT")
+        else (LoaiVanBan.DI if loai_str in ("DI", "VANBANDI") else LoaiVanBan.DEN)
+    )
+    if loai_str in ("MAT", "VANBANMAT"):
+        target_pv = PhamVi.HAN_CHE
+    elif pham_vi:
+        pv_req_norm = _normalize_text(pham_vi)
+        target_pv = PhamVi.HAN_CHE if ("han" in pv_req_norm or "mat" in pv_req_norm) else PhamVi.NOI_BO
+    else:
+        target_pv = PhamVi.NOI_BO
+
+    # ── Phân tích thông tin từ Sheet title, Cột và Dữ liệu ──
+    sheet_title_norm = _normalize_text(getattr(ws, "title", ""))
+    has_recipient_col = any(f == "nguoi_nhan" for f in col_map.values())
+    has_ngay_den_col = any(f == "ngay_den" for f in col_map.values())
+    has_ngay_ban_hanh_col = any(f == "ngay_ban_hanh" for f in col_map.values())
+
+    title_is_han_che = any(k in sheet_title_norm for k in ("han che", "mat", "bao mat"))
+    title_is_noi_bo = any(k in sheet_title_norm for k in ("noi bo",))
+    title_is_den = any(k in sheet_title_norm for k in ("vb den", "van ban den", "mau den"))
+    title_is_di = any(k in sheet_title_norm for k in ("vb di", "van ban di", "mau di"))
+
+    sample_rows_count = 0
+    valid_data_rows_count = 0
+    file_has_han_che_data = False
+    file_has_noi_bo_data = False
+
+    for r in rows[1:]:
+        r_text = " ".join(str(v) for v in r if v)
+        if "xóa trước khi import" in r_text.lower():
+            sample_rows_count += 1
+            continue
+        if not any(v for v in r):
+            continue
+        valid_data_rows_count += 1
+        for c_idx, f_name in col_map.items():
+            if f_name == "pham_vi" and c_idx < len(r) and r[c_idx]:
+                pv_val = _normalize_text(r[c_idx])
+                if "han" in pv_val or "mat" in pv_val:
+                    file_has_han_che_data = True
+                elif "noi" in pv_val:
+                    file_has_noi_bo_data = True
+
+    # 1. Khóa nghiệp vụ: Phạm vi (Nội bộ vs Hạn chế)
+    is_file_han_che = title_is_han_che or has_recipient_col or file_has_han_che_data
+    is_file_noi_bo = title_is_noi_bo or (file_has_noi_bo_data and not has_recipient_col)
+
+    if target_pv == PhamVi.NOI_BO and is_file_han_che:
+        return {
+            "created": 0,
+            "errors": [{
+                "row": 1,
+                "message": "File Excel bạn chọn là biểu mẫu hoặc chứa dữ liệu Văn bản Hạn chế. Bạn đang ở phân hệ Văn bản Nội bộ, hệ thống từ chối nạp để ngăn ngừa lộ lọt thông tin. Vui lòng chuyển sang tab 'Văn bản Hạn chế' để import file này."
+            }],
+        }
+
+    if target_pv == PhamVi.HAN_CHE and is_file_noi_bo and not has_recipient_col:
+        return {
+            "created": 0,
+            "errors": [{
+                "row": 1,
+                "message": "File Excel bạn chọn là biểu mẫu hoặc chứa dữ liệu Văn bản Nội bộ. Bạn đang ở phân hệ Văn bản Hạn chế, hệ thống từ chối nạp do thiếu thông tin phân quyền cán bộ nhận. Vui lòng chuyển sang tab 'Văn bản Nội bộ' để import file này."
+            }],
+        }
+
+    # 2. Khóa nghiệp vụ: Loại văn bản (Đến vs Đi)
+    if norm_loai == LoaiVanBan.DI:
+        if title_is_den or (has_ngay_den_col and not has_ngay_ban_hanh_col and not title_is_di):
+            return {
+                "created": 0,
+                "errors": [{
+                    "row": 1,
+                    "message": "File Excel bạn chọn là biểu mẫu Văn bản Đến. Bạn đang ở phân hệ Văn bản Đi, vui lòng chọn đúng file mẫu Văn bản Đi để tiếp tục."
+                }],
+            }
+
+    if norm_loai == LoaiVanBan.DEN:
+        if title_is_di or (has_ngay_ban_hanh_col and not has_ngay_den_col and not title_is_den):
+            return {
+                "created": 0,
+                "errors": [{
+                    "row": 1,
+                    "message": "File Excel bạn chọn là biểu mẫu Văn bản Đi. Bạn đang ở phân hệ Văn bản Đến, vui lòng chọn đúng file mẫu Văn bản Đến để tiếp tục."
+                }],
+            }
+
+    # 3. Nếu file chỉ chứa duy nhất dòng ví dụ mẫu của template mà không có dữ liệu thực
+    if valid_data_rows_count == 0 and sample_rows_count > 0:
+        return {
+            "created": 0,
+            "errors": [{
+                "row": 2,
+                "message": "File tải lên chỉ chứa dòng ví dụ mẫu ('xóa trước khi import'). Vui lòng xóa dòng ví dụ hoặc nhập thêm dữ liệu văn bản thực tế trước khi thực hiện import."
+            }],
         }
 
     created_count = 0
@@ -744,15 +911,8 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
             if not doc_data.get("ngay_van_ban"):
                 doc_data["ngay_van_ban"] = doc_data["ngay_ban_hanh"]
         else:
-            # Gán phạm vi văn bản: nếu truyền pham_vi từ request thì ưu tiên áp dụng
-            if pham_vi:
-                norm_pv = PhamVi.HAN_CHE if str(pham_vi).strip().upper() == "HAN_CHE" else PhamVi.NOI_BO
-                doc_data["pham_vi"] = norm_pv
-            elif "pham_vi" in doc_data and doc_data["pham_vi"]:
-                pv_raw = str(doc_data["pham_vi"]).strip().upper()
-                doc_data["pham_vi"] = PhamVi.HAN_CHE if ("HAN_CHE" in pv_raw or "HẠN CHẾ" in pv_raw) else PhamVi.NOI_BO
-            else:
-                doc_data["pham_vi"] = PhamVi.NOI_BO
+            # Gán phạm vi văn bản: tuân thủ target_pv
+            doc_data["pham_vi"] = target_pv
 
             # Tự cấp số nếu file trống hoặc không hợp lệ (concurrency-safe)
             current_stt = doc_data.get("so_thu_tu")
@@ -778,8 +938,11 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
                     doc_data["ngay_van_ban"] = doc_data["ngay_ban_hanh"]
 
         try:
-            model_fields = {f.name for f in model._meta.get_fields() if hasattr(f, "attname")}
-            payload = {k: v for k, v in doc_data.items() if k in model_fields}
+            model_fields = {
+                f.name for f in model._meta.get_fields()
+                if hasattr(f, "attname") and not getattr(f, "many_to_many", False) and not getattr(f, "one_to_many", False)
+            }
+            payload = {k: v for k, v in doc_data.items() if k in model_fields and k != "nguoi_nhan"}
             if "nguoi_tao" in model_fields and user and user.is_authenticated and "nguoi_tao" not in payload:
                 payload["nguoi_tao"] = user
             created_doc = model.objects.create(**payload)
@@ -847,6 +1010,10 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
                         VanBanDiNoiBanHanh.objects.get_or_create(vanbandi=created_doc, donvi_id=dv_nbh.id)
                 except Exception:
                     pass
+
+            # 5. Đồng bộ quan hệ thay thế 2 chiều nếu file Excel có cung cấp link_thay_the
+            if getattr(created_doc, "link_thay_the", None):
+                sync_replacement_document(created_doc)
 
             created_count += 1
         except Exception as e:
@@ -926,7 +1093,7 @@ def export_to_excel(queryset, loai: str, pham_vi: str = None) -> io.BytesIO:
     align_left_wrap = Alignment(horizontal="left", vertical="center", wrap_text=True)
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=False)
 
-    center_fields = {"so_hieu", "pham_vi", "ngay_den", "ngay_ban_hanh", "ngay_van_ban", "hieu_luc"}
+    center_fields = {"so_hieu", "pham_vi", "ngay_den", "ngay_ban_hanh", "ngay_van_ban", "hieu_luc", "link_thay_the"}
     wrap_fields = {"trich_yeu", "noi_ban_hanh", "ghi_chu"}
 
     for row_idx, doc in enumerate(queryset, start=2):
