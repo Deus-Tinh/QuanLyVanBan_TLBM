@@ -70,7 +70,7 @@ describe('SigningModule', () => {
     expect(screen.getByRole('link', { name: /Khóa ký & PIN/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Tạo hồ sơ trình ký/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/Ký số & Phê duyệt điện tử/)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Trình ký duyệt nội bộ' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Trình ký' })).toBeInTheDocument();
   });
 
   it('tab "Cần tôi ký duyệt" hiện số hồ sơ đang chờ; tab phụ nằm trong nhóm riêng', async () => {
