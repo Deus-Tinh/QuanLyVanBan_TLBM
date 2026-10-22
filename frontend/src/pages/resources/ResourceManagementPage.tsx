@@ -23,6 +23,22 @@ const STORAGE_TYPES = 'tlbm_types_v2';
 const STORAGE_VISIBLE_CATS = 'tlbm_visible_categories_v2';
 const STORAGE_VISIBLE_TYPES = 'tlbm_visible_types_v2';
 
+const SYNC_CHANNEL_NAME = 'tlbm_resource_realtime_sync';
+const SYNC_STORAGE_KEY = 'tlbm_resource_realtime_event';
+
+const notifyMutation = () => {
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+      channel.postMessage({ action: 'MUTATION', timestamp: Date.now() });
+      channel.close();
+    }
+    localStorage.setItem(SYNC_STORAGE_KEY, Date.now().toString());
+  } catch {
+    /* ignore */
+  }
+};
+
 interface PersistedResourceState {
   category?: string;
   type?: string;
@@ -126,35 +142,42 @@ export default function ResourceManagementPage() {
   });
 
   // Tự động đồng bộ các danh mục hiển thị khi nạp danh mục:
-  // - Nếu chưa từng tùy chỉnh (saved === null): Mặc định hiển thị toàn bộ danh mục
-  // - Nếu đã tùy chỉnh: Giữ nguyên 100% lựa chọn của người dùng, chỉ loại bỏ danh mục đã bị xóa trong CSDL
+  // - Nếu chưa từng tùy chỉnh hoặc prev rỗng: Mặc định hiển thị toàn bộ danh mục
+  // - Nếu có danh mục mới được tạo từ client/tab khác: Tự động thêm vào danh sách hiển thị
+  // - Giữ nguyên các danh mục hợp lệ còn tồn tại trong CSDL
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (categories.length > 0) {
       const allCatIds = categories.map((c) => c.id);
-      const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
+      setVisibleCategoryIds((prev) => {
+        const stillExisting = prev.filter((id) => allCatIds.includes(id));
+        const newCatIds = allCatIds.filter((id) => !prev.includes(id));
 
-      if (saved === null) {
-        setVisibleCategoryIds(allCatIds);
-        try {
-          localStorage.setItem(STORAGE_VISIBLE_CATS, JSON.stringify(allCatIds));
-        } catch {
-          /* ignore */
-        }
-      } else {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            const valid = parsed.filter((id) => allCatIds.includes(id));
-            setVisibleCategoryIds(valid);
-          } else {
-            setVisibleCategoryIds(allCatIds);
+        if (!isCategoriesLoadedRef.current || prev.length === 0) {
+          const saved = localStorage.getItem(STORAGE_VISIBLE_CATS);
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                const valid = parsed.filter((id) => allCatIds.includes(id));
+                const extraNew = allCatIds.filter((id) => !parsed.includes(id));
+                return [...valid, ...extraNew];
+              }
+            } catch {
+              /* ignore */
+            }
           }
-        } catch {
-          setVisibleCategoryIds(allCatIds);
+          return allCatIds;
         }
-      }
+
+        if (newCatIds.length > 0) {
+          return [...stillExisting, ...newCatIds];
+        }
+        return stillExisting;
+      });
       isCategoriesLoadedRef.current = true;
+    } else {
+      setVisibleCategoryIds([]);
     }
   }, [categories]);
 
@@ -205,35 +228,41 @@ export default function ResourceManagementPage() {
   });
 
   // Tự động đồng bộ các loại tài liệu hiển thị:
-  // - Nếu chưa từng tùy chỉnh (saved === null): Mặc định hiển thị toàn bộ loại tài liệu
-  // - Nếu đã tùy chỉnh: Giữ nguyên 100% lựa chọn của người dùng, chỉ loại bỏ loại đã bị xóa trong CSDL
+  // - Nếu chưa từng tùy chỉnh hoặc prev rỗng: Mặc định hiển thị toàn bộ loại tài liệu
+  // - Nếu có loại tài liệu mới được tạo từ client/tab khác: Tự động thêm vào danh sách hiển thị
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (types.length > 0) {
       const allTypeIds = types.map((t) => t.id);
-      const saved = localStorage.getItem(STORAGE_VISIBLE_TYPES);
+      setVisibleTypeIds((prev) => {
+        const stillExisting = prev.filter((id) => allTypeIds.includes(id));
+        const newTypeIds = allTypeIds.filter((id) => !prev.includes(id));
 
-      if (saved === null) {
-        setVisibleTypeIds(allTypeIds);
-        try {
-          localStorage.setItem(STORAGE_VISIBLE_TYPES, JSON.stringify(allTypeIds));
-        } catch {
-          /* ignore */
-        }
-      } else {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            const valid = parsed.filter((id) => allTypeIds.includes(id));
-            setVisibleTypeIds(valid);
-          } else {
-            setVisibleTypeIds(allTypeIds);
+        if (!isTypesLoadedRef.current || prev.length === 0) {
+          const saved = localStorage.getItem(STORAGE_VISIBLE_TYPES);
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                const valid = parsed.filter((id) => allTypeIds.includes(id));
+                const extraNew = allTypeIds.filter((id) => !parsed.includes(id));
+                return [...valid, ...extraNew];
+              }
+            } catch {
+              /* ignore */
+            }
           }
-        } catch {
-          setVisibleTypeIds(allTypeIds);
+          return allTypeIds;
         }
-      }
+
+        if (newTypeIds.length > 0) {
+          return [...stillExisting, ...newTypeIds];
+        }
+        return stillExisting;
+      });
       isTypesLoadedRef.current = true;
+    } else {
+      setVisibleTypeIds([]);
     }
   }, [types]);
 
@@ -262,9 +291,12 @@ export default function ResourceManagementPage() {
 
   // Trạng thái đang tải dữ liệu từ Backend API
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isFetchingRef = useRef<boolean>(false);
 
   // Tải dữ liệu từ Backend API (/api/resources/...)
   const fetchResources = useCallback(async (silent?: boolean) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     if (!silent) setIsLoading(true);
     try {
       const [catsRes, typesRes, docsRes] = await Promise.all([
@@ -288,18 +320,68 @@ export default function ResourceManagementPage() {
     } catch (e) {
       console.warn('Lỗi khi tải dữ liệu từ API backend:', e);
     } finally {
+      isFetchingRef.current = false;
       if (!silent) setIsLoading(false);
     }
   }, []);
 
-  // Refetch ngầm (không hiển thị loading spinner) để đồng bộ dữ liệu sau mutation
+  // Refetch ngầm (không hiển thị loading spinner) để đồng bộ dữ liệu real-time
   const silentRefetch = useCallback(() => {
     fetchResources(true);
   }, [fetchResources]);
 
+  // Hệ thống đồng bộ Real-time đa tầng:
+  // 1. Initial Load khi component mount
+  // 2. BroadcastChannel: Đồng bộ tức thì (0ms) giữa các tab cùng trình duyệt
+  // 3. Storage Event: Đồng bộ giữa các tab qua localStorage
+  // 4. Window Focus & VisibilityChange: Tự động cập nhật ngay khi người dùng click chuyển qua lại giữa các cửa sổ
+  // 5. Polling định kỳ mỗi 3 giây: Đảm bảo đồng bộ liên tục cho cửa sổ ẩn danh (Incognito) hoặc giữa các thiết bị khác nhau
   useEffect(() => {
     fetchResources();
-  }, [fetchResources]);
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
+        channel.onmessage = () => {
+          silentRefetch();
+        };
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === SYNC_STORAGE_KEY) {
+        silentRefetch();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    const handleFocus = () => {
+      silentRefetch();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        silentRefetch();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const pollInterval = setInterval(() => {
+      silentRefetch();
+    }, 3000);
+
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(pollInterval);
+    };
+  }, [fetchResources, silentRefetch]);
 
 
 
@@ -324,6 +406,25 @@ export default function ResourceManagementPage() {
     }
     return types.filter((t) => t.dm_tai_lieu === Number(selectedCategory));
   }, [types, selectedCategory]);
+
+  // Tự động reset bộ lọc nếu danh mục hoặc loại tài liệu đang chọn bị xóa từ client/tab khác
+  useEffect(() => {
+    if (selectedCategory !== 'all' && categories.length > 0) {
+      const exists = categories.some((c) => String(c.id) === selectedCategory);
+      if (!exists) {
+        setSelectedCategory('all');
+      }
+    }
+  }, [categories, selectedCategory]);
+
+  useEffect(() => {
+    if (selectedType !== 'all' && types.length > 0) {
+      const exists = types.some((t) => String(t.id) === selectedType);
+      if (!exists) {
+        setSelectedType('all');
+      }
+    }
+  }, [types, selectedType]);
 
   const toggleAllTypesVisibility = (selectAll: boolean) => {
     const currentScopeTypeIds = availableTypesForFilter.map((t) => t.id);
@@ -795,8 +896,9 @@ export default function ResourceManagementPage() {
         setCurrentPage(newTotalPages);
       }
 
-      // Đồng bộ ngầm với server
+      // Đồng bộ ngầm với server và thông báo cho các tab/client khác
       silentRefetch();
+      notifyMutation();
     } finally {
       setIsDeleting(false);
     }
@@ -859,8 +961,9 @@ export default function ResourceManagementPage() {
         setIsFormOpen(false);
         showToast(`Đã thêm mới thành công tài liệu: "${savedDoc.tieu_de}"`, 'success', 'Thêm mới tài liệu');
       }
-      // Đồng bộ ngầm với server sau khi cập nhật local state
+      // Đồng bộ ngầm với server sau khi cập nhật local state và thông báo cho các tab/client khác
       silentRefetch();
+      notifyMutation();
     } catch (error) {
       console.error('Lỗi khi lưu tài liệu lên server:', error);
       showToast('Không thể lưu tài liệu lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
@@ -935,8 +1038,9 @@ export default function ResourceManagementPage() {
         const extraMsg = childCount && childCount > 0 ? ` (kèm ${childCount} loại con)` : '';
         showToast(`Đã thêm mới thành công thư mục: "${savedCat.ten_tai_lieu}"${extraMsg}`, 'success', 'Thêm mới Thư mục');
       }
-      // Đồng bộ ngầm với server sau khi cập nhật local state
+      // Đồng bộ ngầm với server sau khi cập nhật local state và thông báo cho các tab/client khác
       silentRefetch();
+      notifyMutation();
     } catch (e) {
       console.error('Lỗi khi lưu thư mục lên máy chủ:', e);
       showToast('Không thể lưu thư mục lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
@@ -956,8 +1060,9 @@ export default function ResourceManagementPage() {
       if (selectedCategory === String(id)) {
         setSelectedCategory('all');
       }
-      // Đồng bộ ngầm với server
+      // Đồng bộ ngầm với server và thông báo cho các tab/client khác
       silentRefetch();
+      notifyMutation();
     } catch (e) {
       console.error('Lỗi khi xóa danh mục trên máy chủ:', e);
       showToast('Không thể xóa thư mục trên hệ thống máy chủ', 'danger', 'Lỗi thao tác');
@@ -1007,8 +1112,9 @@ export default function ResourceManagementPage() {
           showToast(`Đã thêm mới thành công loại tài liệu: "${saved.ten_loai}"`, 'success', 'Thêm mới Loại tài liệu');
         }
       }
-      // Đồng bộ ngầm với server sau khi cập nhật local state
+      // Đồng bộ ngầm với server sau khi cập nhật local state và thông báo cho các tab/client khác
       silentRefetch();
+      notifyMutation();
     } catch (e) {
       console.error('Lỗi khi lưu loại tài liệu lên máy chủ:', e);
       showToast('Không thể lưu loại tài liệu lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
@@ -1035,8 +1141,9 @@ export default function ResourceManagementPage() {
       if (selectedType === String(id)) {
         setSelectedType('all');
       }
-      // Đồng bộ ngầm với server
+      // Đồng bộ ngầm với server và thông báo cho các tab/client khác
       silentRefetch();
+      notifyMutation();
     } catch (e) {
       console.error('Lỗi khi xóa loại tài liệu trên máy chủ:', e);
       showToast('Không thể xóa loại tài liệu trên hệ thống máy chủ', 'danger', 'Lỗi thao tác');
