@@ -38,43 +38,6 @@ def user_can_view_sensitive(user) -> bool:
     return bool(user.is_superuser or user.has_perm(SENSITIVE_PERMISSION))
 
 
-def is_last_clerk_in_unit(employee: Employee) -> bool:
-    """
-    Kiểm tra xem nhân sự có phải là Văn thư duy nhất còn đang làm việc của đơn vị hay không.
-    Xét theo: Nhóm quyền 'Văn thư', Chức vụ chứa 'Văn thư', hoặc Chức danh chứa 'Văn thư'.
-    """
-    if not employee or not employee.don_vi_id:
-        return False
-
-    if not employee.is_active or employee.trang_thai == Employee.Status.NGHI_VIEC:
-        return False
-
-    is_clerk = (
-        any(g.name == "Văn thư" for g in employee.groups.all())
-        or (employee.chuc_vu and "văn thư" in (employee.chuc_vu.name or "").lower())
-        or ("văn thư" in (employee.chuc_danh or "").lower())
-    )
-    if not is_clerk:
-        return False
-
-    other_active_clerks = (
-        Employee.objects.filter(
-            Q(don_vi_id=employee.don_vi_id) | Q(assignments__don_vi_id=employee.don_vi_id),
-            is_active=True,
-        )
-        .exclude(trang_thai=Employee.Status.NGHI_VIEC)
-        .exclude(id=employee.id)
-        .filter(
-            Q(groups__name="Văn thư")
-            | Q(chuc_vu__name__icontains="Văn thư")
-            | Q(chuc_danh__icontains="Văn thư")
-            | Q(assignments__chuc_vu__name__icontains="Văn thư", assignments__don_vi_id=employee.don_vi_id)
-            | Q(assignments__chuc_danh__icontains="Văn thư", assignments__don_vi_id=employee.don_vi_id)
-        )
-        .distinct()
-    )
-    return not other_active_clerks.exists()
-
 
 class ChangePasswordSerializer(serializers.Serializer):
     """Serializer xác thực payload đổi mật khẩu."""
@@ -218,7 +181,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
     trang_thai_display = serializers.CharField(source="get_trang_thai_display", read_only=True)
     has_sensitive_permission = serializers.SerializerMethodField()
     temporary_password = serializers.SerializerMethodField()
-    is_last_unit_clerk = serializers.SerializerMethodField()
     assignments = serializers.SerializerMethodField()
 
     class Meta:
@@ -246,7 +208,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "nhom_quyen",
             "has_sensitive_permission",
             "temporary_password",
-            "is_last_unit_clerk",
             "assignments",
             "created_at",
             "updated_at",
@@ -269,16 +230,12 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def get_has_sensitive_permission(self, obj) -> bool:
         return self._can_view_sensitive(obj)
 
-    def get_is_last_unit_clerk(self, obj) -> bool:
-        return is_last_clerk_in_unit(obj)
-
     def get_ngay_sinh(self, obj):
         if not obj.ngay_sinh:
             return None
         if self._can_view_sensitive(obj):
             return obj.ngay_sinh.strftime("%d/%m/%Y")
-        century = str(obj.ngay_sinh.year)[:2]
-        return f"{obj.ngay_sinh.strftime('%d/%m/')}{century}xx"
+        return obj.ngay_sinh.strftime("%d/%m/----")
 
     def get_ngay_sinh_iso(self, obj):
         if not obj.ngay_sinh:
@@ -356,17 +313,14 @@ def get_default_groups_for_position(position):
     codes = POSITION_DEFAULT_GROUP_CODES.get(pos_name.strip())
     if not codes:
         return []
-    try:
-        from authorization.models import GroupInfo
+    from authorization.models import GroupInfo
 
-        group_ids = list(
-            GroupInfo.objects.filter(ma_nhom_quyen__in=codes).values_list("id", flat=True)
-        )
-        if not group_ids:
-            return []
-        return list(Group.objects.filter(id__in=group_ids))
-    except Exception:
+    group_ids = list(
+        GroupInfo.objects.filter(ma_nhom_quyen__in=codes).values_list("id", flat=True)
+    )
+    if not group_ids:
         return []
+    return list(Group.objects.filter(id__in=group_ids))
 
 
 class EmployeeCreateSerializer(serializers.Serializer):

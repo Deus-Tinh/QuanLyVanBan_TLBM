@@ -21,7 +21,6 @@ from .serializers import (
     EmployeeCreateSerializer,
     EmployeeUpdateSerializer,
     user_can_view_sensitive,
-    is_last_clerk_in_unit,
 )
 from .excel_cbnv import generate_cbnv_template, import_cbnv_from_excel, export_cbnv_to_excel
 from .permissions import CanChangeEmployeePermission, CanViewGroupPermission, require_permission
@@ -265,19 +264,16 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         user = request.user
 
-        # 0. Xác thực mật khẩu người thực hiện nếu có cung cấp từ giao diện bảo mật
+        # 0. Bắt buộc xác thực mật khẩu người thực hiện trong body JSON của DELETE
         password = None
-        if isinstance(request.data, dict) and "password" in request.data:
+        if isinstance(request.data, dict):
             password = request.data.get("password")
-        if not password:
-            password = request.query_params.get("password")
 
-        if password:
-            if not user.check_password(password):
-                return Response(
-                    {"detail": "employees.messages.invalidPassword"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        if not password or not user.check_password(str(password)):
+            return Response(
+                {"detail": "employees.messages.invalidPassword"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # 1. Không cho phép tự xóa chính mình
         if instance.id == user.id:
@@ -303,21 +299,6 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             if not other_active.exists():
                 return Response(
                     {"detail": "employees.messages.cannotDeleteLastSuperuser"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        # 4. Ràng buộc & Cảnh báo: Văn thư duy nhất của đơn vị
-        if is_last_clerk_in_unit(instance):
-            confirm_last_clerk = (
-                request.query_params.get("confirm_last_clerk", "").strip().lower() in ["true", "1"]
-            )
-            if not confirm_last_clerk:
-                return Response(
-                    {
-                        "detail": "employees.messages.warnLastUnitClerk",
-                        "is_last_clerk": True,
-                        "unit_name": instance.don_vi.ten if instance.don_vi else "",
-                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -359,7 +340,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], url_path="import", parser_classes=[MultiPartParser, FormParser])
     def import_excel(self, request):
         """
-        Nhập danh sách cán bộ nhân viên từ tệp Excel (.xlsx, .xls).
+        Nhập danh sách cán bộ nhân viên từ tệp Excel (.xlsx).
         Yêu cầu quyền import_cbnv hoặc superuser (kiểm soát bởi get_permissions).
         """
 

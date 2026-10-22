@@ -59,7 +59,6 @@ export default function EmployeesPage() {
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
-  const [isDeletingLastClerkWarning, setIsDeletingLastClerkWarning] = useState<boolean>(false);
 
   // Hiển thị Toast tự tắt sau 4s
   const showToast = useCallback((text: string, isError = false) => {
@@ -174,27 +173,21 @@ export default function EmployeesPage() {
   };
 
   // Xóa CBNV
-  const handleConfirmDelete = async (password: string, confirmRisk?: boolean) => {
+  const handleConfirmDelete = async (password: string) => {
     if (!deletingEmployee) return;
     try {
       setIsDeleting(true);
       setDeleteErrorMessage(null);
-      const params = new URLSearchParams();
-      if (confirmRisk) params.append('confirm_last_clerk', 'true');
-      if (password) params.append('password', password);
-      const queryString = params.toString() ? `?${params.toString()}` : '';
 
-      await apiClient.delete(`/api/accounts/employees/${deletingEmployee.id}/${queryString}`);
+      await apiClient.delete(`/api/accounts/employees/${deletingEmployee.id}/`, {
+        body: JSON.stringify({ password }),
+      });
       showToast(t('employees.messages.deleteSuccess'));
       setDeletingEmployee(null);
-      setIsDeletingLastClerkWarning(false);
       refreshList();
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'data' in err) {
-        const errorData = (err as { data: { detail?: string; is_last_clerk?: boolean } }).data;
-        if (errorData?.is_last_clerk) {
-          setIsDeletingLastClerkWarning(true);
-        }
+        const errorData = (err as { data: { detail?: string } }).data;
         if (errorData?.detail) {
           setDeleteErrorMessage(t(errorData.detail));
           return;
@@ -575,7 +568,6 @@ export default function EmployeesPage() {
                               type="button"
                               onClick={() => {
                                 setDeleteErrorMessage(null);
-                                setIsDeletingLastClerkWarning(Boolean(emp.is_last_unit_clerk));
                                 setDeletingEmployee(emp);
                               }}
                               className="p-1.5 rounded-lg text-secondary hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer"
@@ -676,12 +668,9 @@ export default function EmployeesPage() {
         onClose={() => {
           setDeletingEmployee(null);
           setDeleteErrorMessage(null);
-          setIsDeletingLastClerkWarning(false);
         }}
         onConfirm={handleConfirmDelete}
         name={deletingEmployee?.ho_ten || ''}
-        unitName={deletingEmployee?.don_vi_ten || ''}
-        isLastClerk={Boolean(deletingEmployee?.is_last_unit_clerk || isDeletingLastClerkWarning)}
         isLoading={isDeleting}
         errorMessage={deleteErrorMessage}
       />

@@ -1,5 +1,5 @@
 """
-Hỗ trợ xuất tệp mẫu và nhập dữ liệu Cán bộ Nhân viên (CBNV) bằng Excel (.xlsx, .xls).
+Hỗ trợ xuất tệp mẫu và nhập dữ liệu Cán bộ Nhân viên (CBNV) bằng Excel (.xlsx).
 Tác giả: Lê Duy Khánh (leduykhanhdevs).
 """
 import re
@@ -150,7 +150,7 @@ def _read_rows_from_excel(file_obj) -> list[tuple]:
 
 def import_cbnv_from_excel(file_obj) -> dict:
     """
-    Đọc và kiểm tra tính hợp lệ từng dòng của tệp Excel nhập danh sách CBNV (.xlsx hoặc .xls).
+    Đọc và kiểm tra tính hợp lệ từng dòng của tệp Excel nhập danh sách CBNV (.xlsx).
     Trả về dict gồm:
       - success: bool
       - message: str
@@ -448,14 +448,32 @@ def export_cbnv_to_excel(queryset, user) -> BytesIO:
             or user.has_perm("view_full_cbnv")
         )
     )
+    can_view_internal_units = bool(
+        user
+        and (
+            user.is_superuser
+            or user.has_perm("organizations.change_donvi")
+            or user.has_perm("change_donvi")
+        )
+    )
 
-    # Lọc chỉ CBNV đang làm việc
-    active_employees = queryset.filter(
-        trang_thai=Employee.Status.LAM_VIEC,
-        is_active=True,
+    # Lọc chỉ CBNV đang làm việc, loại bỏ tài khoản superuser/quản trị hệ thống mẫu
+    active_employees = (
+        queryset.filter(
+            trang_thai=Employee.Status.LAM_VIEC,
+            is_active=True,
+        )
+        .exclude(is_superuser=True)
+        .exclude(email__iexact="admin@baolong.vn")
+        .exclude(username="admin")
     )
     if not can_view_full:
         active_employees = active_employees.filter(is_public=True)
+
+    if not can_view_internal_units:
+        active_employees = active_employees.filter(
+            don_vi__isnull=False, don_vi__is_public=True
+        )
 
     active_employees = (
         active_employees.select_related("don_vi__khoi", "chuc_vu")
@@ -470,6 +488,8 @@ def export_cbnv_to_excel(queryset, user) -> BytesIO:
     for emp in active_employees:
         active_emp_ids.add(emp.id)
         if emp.don_vi_id:
+            if not can_view_internal_units and emp.don_vi and not emp.don_vi.is_public:
+                continue
             disp_order = emp.chuc_vu.display_order if emp.chuc_vu else 999999
             unit_persons.setdefault(emp.don_vi_id, []).append({
                 "ho_ten": emp.ho_ten,
@@ -482,12 +502,14 @@ def export_cbnv_to_excel(queryset, user) -> BytesIO:
 
     # Phân công kiêm nhiệm của các nhân sự đang làm việc
     if active_emp_ids:
-        assignments = (
+        assignments_qs = (
             EmployeeAssignment.objects.filter(employee_id__in=active_emp_ids)
             .select_related("employee", "don_vi__khoi", "chuc_vu")
-            .all()
         )
-        for assign in assignments:
+        if not can_view_internal_units:
+            assignments_qs = assignments_qs.filter(don_vi__is_public=True)
+
+        for assign in assignments_qs.all():
             if assign.don_vi_id:
                 disp_order = assign.chuc_vu.display_order if assign.chuc_vu else 999999
                 raw_chuc_danh = (assign.chuc_danh or "").strip()
@@ -508,11 +530,10 @@ def export_cbnv_to_excel(queryset, user) -> BytesIO:
                 })
 
     all_don_vi_ids = list(unit_persons.keys())
-    don_vis = (
-        DonVi.objects.filter(id__in=all_don_vi_ids)
-        .select_related("khoi")
-        .order_by("stt_uu_tien", "id")
-    )
+    don_vis_qs = DonVi.objects.filter(id__in=all_don_vi_ids)
+    if not can_view_internal_units:
+        don_vis_qs = don_vis_qs.filter(is_public=True)
+    don_vis = don_vis_qs.select_related("khoi").order_by("stt_uu_tien", "id")
 
     khoi_units_map = {}
     don_vis_without_khoi = []

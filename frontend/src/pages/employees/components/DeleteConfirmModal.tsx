@@ -5,10 +5,8 @@ import { Button } from '@components/common/Button';
 interface DeleteConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (password: string, confirmLastClerk?: boolean) => Promise<void> | void;
+  onConfirm: (password: string) => Promise<void> | void;
   name?: string;
-  unitName?: string;
-  isLastClerk?: boolean;
   isLoading?: boolean;
   errorMessage?: string | null;
 }
@@ -18,32 +16,27 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   onClose,
   onConfirm,
   name = '',
-  unitName = '',
-  isLastClerk = false,
   isLoading = false,
   errorMessage = null,
 }) => {
   const { t } = useTranslation();
   const [password, setPassword] = useState<string>('');
   const [confirmDelete, setConfirmDelete] = useState<boolean>(false);
-  const [confirmRisk, setConfirmRisk] = useState<boolean>(false);
 
   const handleClose = () => {
     setPassword('');
     setConfirmDelete(false);
-    setConfirmRisk(false);
     onClose();
   };
 
   if (!isOpen) return null;
 
-  const isDeleteDisabled =
-    isLoading || !password.trim() || !confirmDelete || (isLastClerk && !confirmRisk);
+  const isDeleteDisabled = isLoading || !password.trim() || !confirmDelete;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isDeleteDisabled) {
-      onConfirm(password.trim(), confirmRisk);
+      onConfirm(password.trim());
     }
   };
 
@@ -68,30 +61,6 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             <p className="text-sm text-secondary leading-relaxed">
               {t('employees.delete.confirmDesc', { name })}
             </p>
-          )}
-
-          {/* Cảnh báo cấp cao: Văn thư duy nhất của đơn vị */}
-          {isLastClerk && (
-            <div className="p-3.5 bg-warning-subtle border border-warning-border rounded-xl text-left space-y-2.5">
-              <div className="flex items-center gap-2 text-warning font-semibold text-sm">
-                <i className="fa-solid fa-triangle-exclamation" />
-                <span>{t('employees.delete.lastUnitClerkWarningTitle')}</span>
-              </div>
-              <p className="text-xs text-secondary leading-relaxed">
-                {t('employees.delete.lastUnitClerkWarningDesc', { unitName: unitName || t('employees.fields.unit') })}
-              </p>
-              <label className="flex items-start gap-2 pt-1 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={confirmRisk}
-                  onChange={(e) => setConfirmRisk(e.target.checked)}
-                  className="mt-0.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                />
-                <span className="text-xs font-semibold text-warning leading-snug">
-                  {t('employees.delete.confirmLastClerkCheckbox')}
-                </span>
-              </label>
-            </div>
           )}
 
           {/* Bắt buộc nhập mật khẩu của tài khoản đang thao tác */}

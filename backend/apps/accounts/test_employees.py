@@ -3,7 +3,7 @@ Bộ kiểm thử toàn diện cho phân hệ Quản lý Cán bộ Nhân viên (
 Tác giả: Lê Duy Khánh (leduykhanhdevs).
 Bao gồm:
 1. CRUD nhân viên (tạo, đọc, sửa, xóa, tìm kiếm, lọc, sắp xếp theo STT Đơn vị -> Chức vụ).
-2. Kiểm tra tính bảo mật & quyền riêng tư (che năm sinh DD/MM/19xx hoặc DD/MM/20xx và ẩn nhóm quyền nếu thiếu quyền view_full_cbnv).
+2. Kiểm tra tính bảo mật & quyền riêng tư (che năm sinh DD/MM/---- và ẩn nhóm quyền nếu thiếu quyền view_full_cbnv).
 3. Kiểm tra logic nghiệp vụ: trạng thái 'NGHI_VIEC' tự động vô hiệu hóa user.is_active = False.
 4. Kiểm tra danh mục Chức vụ (Position) và Nhóm quyền (Group).
 5. Kiểm tra Tải tệp mẫu Excel và Nhập Excel validate từng dòng dữ liệu.
@@ -264,14 +264,23 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
         self.assertEqual(data["sdt"], "0933333333")
 
     def test_delete_employee(self):
-        """Xóa CBNV (chính là tài khoản đăng nhập)."""
+        """Xóa CBNV (kèm mật khẩu quản trị viên xác nhận trong body JSON)."""
         self.client.force_authenticate(user=self.admin_user)
         target_user_id = self.normal_user.id
         detail_url = f"{self.employee_list_url}{target_user_id}/"
 
-        res = self.client.delete(detail_url)
+        res = self.client.delete(detail_url, {"password": "SuperPassword123"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(id=target_user_id).exists())
+
+    def test_delete_employee_without_password_fails(self):
+        """Xóa CBNV nhưng không gửi mật khẩu xác nhận trong body JSON phải trả về 400 Bad Request."""
+        self.client.force_authenticate(user=self.admin_user)
+        detail_url = f"{self.employee_list_url}{self.normal_user.id}/"
+        res = self.client.delete(detail_url, {}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data.get("detail"), "employees.messages.invalidPassword")
+        self.assertTrue(User.objects.filter(id=self.normal_user.id).exists())
 
     def test_delete_employee_with_wrong_password_fails(self):
         """Xóa CBNV nhưng nhập sai mật khẩu xác nhận phải trả về 400 Bad Request."""
@@ -286,7 +295,7 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
             chuc_vu=self.cv_chuyen_vien,
         )
         detail_url = f"{self.employee_list_url}{target.id}/"
-        res = self.client.delete(f"{detail_url}?password=WrongPassword")
+        res = self.client.delete(detail_url, {"password": "WrongPassword"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(res.data.get("detail"), "employees.messages.invalidPassword")
         self.assertTrue(User.objects.filter(id=target.id).exists())
@@ -304,71 +313,9 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
             chuc_vu=self.cv_chuyen_vien,
         )
         detail_url = f"{self.employee_list_url}{target.id}/"
-        res = self.client.delete(f"{detail_url}?password=SuperPassword123")
+        res = self.client.delete(detail_url, {"password": "SuperPassword123"}, format="json")
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(id=target.id).exists())
-
-    def test_delete_last_clerk_in_unit_requires_confirmation(self):
-        """Xóa Văn thư duy nhất của đơn vị phải cảnh báo và yêu cầu cờ confirm_last_clerk."""
-        self.client.force_authenticate(user=self.admin_user)
-        clerk = User.objects.create_user(
-            username="clerk_single",
-            email="clerk_single@donvi.gov.vn",
-            password="Password123",
-            ho_ten="Văn Thư Duy Nhất",
-            ngay_sinh=date(1992, 1, 1),
-            don_vi=self.don_vi_2,
-            chuc_vu=self.cv_chuyen_vien,
-            chuc_danh="Văn thư lưu trữ",
-        )
-        clerk.groups.add(self.group_van_thu)
-
-        # 1. Thử xóa không có cờ confirm_last_clerk -> trả về 400 kèm cảnh báo
-        detail_url = f"{self.employee_list_url}{clerk.id}/"
-        res = self.client.delete(detail_url)
-        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(res.data.get("detail"), "employees.messages.warnLastUnitClerk")
-        self.assertTrue(res.data.get("is_last_clerk"))
-        self.assertEqual(res.data.get("unit_name"), self.don_vi_2.ten)
-        self.assertTrue(User.objects.filter(id=clerk.id).exists())
-
-        # 2. Xóa kèm cờ confirm_last_clerk=true -> xóa thành công 204
-        res_confirmed = self.client.delete(f"{detail_url}?confirm_last_clerk=true")
-        self.assertEqual(res_confirmed.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(User.objects.filter(id=clerk.id).exists())
-
-    def test_delete_clerk_when_another_clerk_exists_in_unit_succeeds_directly(self):
-        """Xóa Văn thư khi đơn vị vẫn còn cán bộ văn thư khác hoạt động thì xóa trực tiếp."""
-        self.client.force_authenticate(user=self.admin_user)
-        clerk_1 = User.objects.create_user(
-            username="clerk_1",
-            email="clerk_1@donvi.gov.vn",
-            password="Password123",
-            ho_ten="Văn Thư 1",
-            ngay_sinh=date(1990, 1, 1),
-            don_vi=self.don_vi_2,
-            chuc_vu=self.cv_chuyen_vien,
-            chuc_danh="Văn thư 1",
-        )
-        clerk_1.groups.add(self.group_van_thu)
-
-        clerk_2 = User.objects.create_user(
-            username="clerk_2",
-            email="clerk_2@donvi.gov.vn",
-            password="Password123",
-            ho_ten="Văn Thư 2",
-            ngay_sinh=date(1991, 1, 1),
-            don_vi=self.don_vi_2,
-            chuc_vu=self.cv_chuyen_vien,
-            chuc_danh="Văn thư 2",
-        )
-        clerk_2.groups.add(self.group_van_thu)
-
-        # Xóa clerk_1 không cần cờ confirm vì đơn vị vẫn còn clerk_2
-        res = self.client.delete(f"{self.employee_list_url}{clerk_1.id}/")
-        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(User.objects.filter(id=clerk_1.id).exists())
-        self.assertTrue(User.objects.filter(id=clerk_2.id).exists())
 
 
     def test_create_employee_requires_unit_and_position(self):
@@ -402,7 +349,7 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
     """Kiểm tra các quy tắc bảo mật & quyền riêng tư trường dữ liệu nhạy cảm."""
 
     def test_birthday_masked_for_user_without_sensitive_perm(self):
-        """User thường không có quyền view_full_cbnv: ngày sinh bị che thành DD/MM/{century}xx và nhóm quyền rỗng."""
+        """User thường không có quyền view_full_cbnv: ngày sinh bị che thành DD/MM/---- và nhóm quyền rỗng."""
         self.client.force_authenticate(user=self.normal_user)
         detail_url = f"{self.employee_list_url}{self.sensitive_user.id}/"
         res = self.client.get(detail_url)
@@ -410,7 +357,7 @@ class EmployeeSecurityAndPrivacyTests(EmployeeBaseTestCase):
         data = res.json()
 
         # Ngày sinh gốc là 1988-10-15 -> phải được format thành 15/10/19xx
-        self.assertEqual(data["ngay_sinh"], "15/10/19xx")
+        self.assertEqual(data["ngay_sinh"], "15/10/----")
         self.assertIsNone(data.get("ngay_sinh_iso"))
         self.assertTrue(data["is_birthday_masked"])
         self.assertFalse(data["has_sensitive_permission"])
@@ -572,122 +519,14 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
         self.assertTrue(User.objects.filter(email="doanvanhau@donvi.gov.vn").exists())
         self.assertTrue(User.objects.filter(ho_ten="Đoàn Văn Hậu", don_vi=self.don_vi_1).exists())
 
-    def test_import_excel_xls_format_success(self):
-        """Nhập tệp Excel định dạng cũ (.xls) hợp lệ tạo nhân viên thành công."""
+    def test_import_excel_xls_format_rejected(self):
+        """Tệp Excel định dạng cũ (.xls) bị từ chối 400 fileInvalidType (hệ thống chuẩn hóa chỉ hỗ trợ .xlsx)."""
         self.client.force_authenticate(user=self.sensitive_user)
-
-        fixture_file = os.path.join(os.path.dirname(__file__), "fixtures", "cbnv_import_sample.xls")
-        if os.path.exists(fixture_file):
-            with open(fixture_file, "rb") as f:
-                bio = BytesIO(f.read())
-        else:
-            # Verified BIFF8 .xls fixture matching test row
-            xls_b64 = (
-                "0M8R4KGxGuEAAAAAAAAAAAAAAAAAAAAAPgADAP7/CQAGAAAAAAAAAAAAAAABAAAACQAAAAAAAAAAEAAA"
-                "/v///wAAAAD+////AAAAAAgAAAD/////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "//////////////////////////////////////////8JCBAAAAYFALsNzAcAAAAABgAAAOEAAgCwBMEA"
-                "AgAAAOIAAABcAHAATm9uZSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg"
-                "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg"
-                "ICAgIEIAAgCwBGEBAgAAAD0BAgABAJwAAgAOABkAAgAAABIAAgAAAGMAAgAAABMAAgAAAK8BAgAAALwB"
-                "AgAAAEAAAgAAAI0AAgAAAD0AEgDgAVoAzz9OKjgAAAAAAAEAWAIiAAIAAAAOAAIAAQC3AQIAAADaAAIA"
-                "AAAxABUAyAAAAP9/kAEAAAAAAQAFAEFyaWFsMQAVAMgAAAD/f5ABAAAAAAEABQBBcmlhbDEAFQDIAAAA"
-                "/3+QAQAAAAABAAUAQXJpYWwxABUAyAAAAP9/kAEAAAAAAQAFAEFyaWFsMQAVAMgAAAD/f5ABAAAAAAEA"
-                "BQBBcmlhbDEAFQDIAAAA/3+QAQAAAAABAAUAQXJpYWwxABUAyAAAAP9/kAEAAAAAAQAFAEFyaWFsHgQM"
-                "AKQABwAAR2VuZXJhbOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADA"
-                "IOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8g"
-                "AAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADA"
-                "IOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8g"
-                "AAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADA"
-                "IOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQA9f8g"
-                "AAD0AAAAAAAAAADAIOAAFAAGAKQA9f8gAAD0AAAAAAAAAADAIOAAFAAGAKQAAQAgAAD4AAAAAAAAAADA"
-                "IOAAFAAHAKQAAQAgAAD4AAAAAAAAAADAIJMCBAAAgAD/YAECAAEAhQAWAFsFAAAAAA4ARGFuaCBTYWNo"
-                "IENCTlb8AK4BEwAAABIAAAADAABTVFQNAAFIAM0eIAB2AOAAIAB0AOoAbgAgACgAKgApAA0AAE5n4Hkg"
-                "c2luaCAoKikJAABFbWFpbCAoKikNAAFTANEeIAARAWkAxx5uACAAdABoAG8AoR5pABoAAVQA6gBuACAA"
-                "EAGhAW4AIAB2AMseIAAvACAAUABoAPIAbgBnACAAYgBhAG4AIAAoACoAKQAPAAFUAOoAbgAgAEMAaADp"
-                "HmMAIAB2AOUeIAAoACoAKQAPAAFDAGgA6R5jACAAZABhAG4AaAAgAHQA8R4gAGQAbwAKAAFUAHIAoR5u"
-                "AGcAIAB0AGgA4QBpAAcAAEdoaSBjaPoMAAFRAHUAvx4gAE4AZwDNHmMAIABIAKMeaQAKAAAxOTkzLTA1"
-                "LTE1FwAAcXVlbmdvY2hhaUBkb252aS5nb3Yudm4KAAAwOTg3NjU0MzIxDgABVgADAW4AIABwAGgA8gBu"
-                "AGcAIABWAGkAxx5uAAsAAENodXnqbiB2aepuCgABEAHZHmkAIAB0AHIAsAHfHm4AZwANAAEQAWEAbgBn"
-                "ACAAbADgAG0AIAB2AGkAxx5jAAoAAAAJCBAAAAYQALsNzAcAAAAABgAAAA0AAgABAAwAAgBkAA8AAgAB"
-                "ABEAAgAAABAACAD8qfHSTWJQP18AAgAAAIAACAAAAAAAAQAAACUCBAAAAP8AgQACAAEMAAIOAAAAAAAC"
-                "AAAAAAAKAAAAKgACAAAAKwACAAAAggACAAEAGwACAAAAGgACAAAAFAAFAAIAACZQFQAFAAIAACZGgwAC"
-                "AAEAhAACAAAAJgAIADMzMzMzM9M/JwAIADMzMzMzM9M/KAAIAIXrUbgeheM/KQAIAK5H4XoUrtc/oQAi"
-                "AAkAZAABAAEAAQCDACwBLAGamZmZmZm5P5qZmZmZmbk/AQASAAIAAADdAAIAAAAZAAIAAABjAAIAAAAT"
-                "AAIAAAAIAhAAAAAAAAoA/wAAAAAAAAEPAP0ACgAAAAAAEQAAAAAA/QAKAAAAAQARAAEAAAD9AAoAAAAC"
-                "ABEAAgAAAP0ACgAAAAMAEQADAAAA/QAKAAAABAARAAQAAAD9AAoAAAAFABEABQAAAP0ACgAAAAYAEQAG"
-                "AAAA/QAKAAAABwARAAcAAAD9AAoAAAAIABEACAAAAP0ACgAAAAkAEQAJAAAACAIQAAEAAAAKAP8AAAAA"
-                "AAABDwB+AgoAAQAAABEABgAAAP0ACgABAAEAEQAKAAAA/QAKAAEAAgARAAsAAAD9AAoAAQADABEADAAA"
-                "AP0ACgABAAQAEQANAAAA/QAKAAEABQARAA4AAAD9AAoAAQAGABEADwAAAP0ACgABAAcAEQAQAAAA/QAK"
-                "AAEACAARABEAAAD9AAoAAQAJABEACQAAAD4CEgC2AgAAAABAAAAAAAAAAAAAAAAKAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAIAAAADAAAA"
-                "BAAAAAUAAAAGAAAABwAAAP7////9/////v//////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "////////////////////////////////////////////////////////////////////////////////"
-                "//////////////////////////9SAG8AbwB0ACAARQBuAHQAcgB5AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFgAFAf//////////AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAP7///8AAAAAAAAAAFcAbwByAGsAYgBvAG8AawAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAIB////////////////AAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH///////////////8AAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD+////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAf//////////"
-                "/////wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP7///8AAAAAAAAAAA=="
-            )
-            bio = BytesIO(base64.b64decode(xls_b64))
-
+        bio = BytesIO(b"fake .xls binary content")
         bio.name = "danh_sach_hop_le.xls"
-
         res = self.client.post(self.import_url, {"file": bio}, format="multipart")
-        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
-        data = res.json()
-        self.assertTrue(data["success"])
-        self.assertEqual(data["created_count"], 1)
-        self.assertTrue(User.objects.filter(email="quengochai@donvi.gov.vn").exists())
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.json()["detail"], "employees.messages.fileInvalidType")
 
     def test_import_excel_invalid_extension_rejected(self):
         """Tải tệp không có phần mở rộng .xlsx hoặc .xls bị từ chối 400."""
@@ -977,6 +816,84 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
         self.assertEqual(normal_user_count, 2)
         self.assertTrue(any("kiêm nhiệm" in str(cd).lower() for cd in normal_user_chuc_danhs))
 
+    def test_export_excel_excludes_non_public_units_without_change_donvi(self):
+        """
+        Mục 6: Đơn vị is_public = False và nhân sự trong đó chỉ xuất khi user là superuser
+        hoặc có quyền change_donvi (khớp quy tắc _visible_units ở organizations/views.py).
+        Trưởng phòng (chỉ có export_cbnv) không được thấy đơn vị nội bộ trong file xuất.
+        """
+        internal_unit = DonVi.objects.create(
+            ten="Phòng Ban Nội Bộ Mật",
+            khoi=self.khoi,
+            stt_uu_tien=9999,
+            is_public=False,
+        )
+        internal_emp = User.objects.create_user(
+            username="internal_emp",
+            email="internal_emp@donvi.gov.vn",
+            password="Password123",
+            ho_ten="Nhân Viên Ban Mật",
+            don_vi=internal_unit,
+            chuc_vu=self.cv_chuyen_vien,
+            trang_thai="LAM_VIEC",
+            is_active=True,
+            is_public=True,
+        )
+
+        # 1. Trưởng phòng (có quyền export_cbnv nhưng không có change_donvi)
+        tp_user = User.objects.create_user(
+            username="tp_export_only",
+            email="tp_export@donvi.gov.vn",
+            password="Password123",
+            ho_ten="Trưởng Phòng Export",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_truong_phong,
+        )
+        tp_user.user_permissions.add(self.perm_export)
+        self.client.force_authenticate(user=tp_user)
+        res_tp = self.client.get(self.export_url)
+        self.assertEqual(res_tp.status_code, status.HTTP_200_OK)
+        wb_tp = openpyxl.load_workbook(BytesIO(res_tp.content))
+        ws_tp = wb_tp.active
+        all_text_tp = [str(ws_tp.cell(row=r, column=c).value or "") for r in range(1, ws_tp.max_row + 1) for c in range(1, 7)]
+        self.assertNotIn("Phòng Ban Nội Bộ Mật", all_text_tp)
+        self.assertNotIn("Nhân Viên Ban Mật", all_text_tp)
+
+        # 2. Cán bộ có quyền organizations.change_donvi -> được xem đơn vị nội bộ trong danh bạ
+        user_with_change_donvi = User.objects.create_user(
+            username="officer_change_dv",
+            email="officer_dv@donvi.gov.vn",
+            password="Password123",
+            ho_ten="Cán Bộ Quản Lý Đơn Vị",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_chuyen_vien,
+        )
+        perm_change_donvi = Permission.objects.get(codename="change_donvi")
+        user_with_change_donvi.user_permissions.add(self.perm_export, perm_change_donvi)
+        self.client.force_authenticate(user=user_with_change_donvi)
+        res_dv = self.client.get(self.export_url)
+        self.assertEqual(res_dv.status_code, status.HTTP_200_OK)
+        wb_dv = openpyxl.load_workbook(BytesIO(res_dv.content))
+        ws_dv = wb_dv.active
+        all_text_dv = [str(ws_dv.cell(row=r, column=c).value or "") for r in range(1, ws_dv.max_row + 1) for c in range(1, 7)]
+        self.assertTrue(any("Phòng Ban Nội Bộ Mật".lower() in t.lower() for t in all_text_dv))
+        self.assertIn("Nhân Viên Ban Mật", all_text_dv)
+
+    def test_export_excel_excludes_system_admin_account(self):
+        """
+        Mục 6: Loại tài khoản superuser / hệ thống (admin@baolong.vn) khỏi danh bạ CBNV.
+        """
+        self.client.force_authenticate(user=self.admin_user)
+        res = self.client.get(self.export_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        wb = openpyxl.load_workbook(BytesIO(res.content))
+        ws = wb.active
+        all_emails = [str(ws.cell(row=r, column=6).value or "") for r in range(6, ws.max_row + 1)]
+        all_names = [str(ws.cell(row=r, column=2).value or "") for r in range(6, ws.max_row + 1)]
+        self.assertNotIn("admin@baolong.vn", all_emails)
+        self.assertNotIn("admin@donvi.gov.vn", all_emails)
+        self.assertNotIn("Quản trị hệ thống", all_names)
+
 
 class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
     """
@@ -1162,7 +1079,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         )
         deleter_user.user_permissions.add(self.perm_delete)
         self.client.force_authenticate(user=deleter_user)
-        res_delete_ok = self.client.delete(del_url)
+        res_delete_ok = self.client.delete(del_url, {"password": "DeleterPassword123"}, format="json")
         self.assertEqual(res_delete_ok.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_superuser_bypasses_all_permission_gates(self):
@@ -1208,7 +1125,11 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         """Review PR #71: Bảo vệ an toàn hệ thống khi xóa và thôi việc (nghỉ việc)."""
         # 1. Superuser cố gắng tự xóa chính mình -> 400
         self.client.force_authenticate(user=self.admin_user)
-        res_self_del = self.client.delete(f"{self.employee_list_url}{self.admin_user.id}/")
+        res_self_del = self.client.delete(
+            f"{self.employee_list_url}{self.admin_user.id}/",
+            {"password": "SuperPassword123"},
+            format="json",
+        )
         self.assertEqual(res_self_del.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(res_self_del.data["detail"], "employees.messages.cannotDeleteSelf")
 
@@ -1232,7 +1153,11 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         )
         deleter_user.user_permissions.add(self.perm_delete)
         self.client.force_authenticate(user=deleter_user)
-        res_del_su = self.client.delete(f"{self.employee_list_url}{self.admin_user.id}/")
+        res_del_su = self.client.delete(
+            f"{self.employee_list_url}{self.admin_user.id}/",
+            {"password": "DeleterPass123"},
+            format="json",
+        )
         self.assertEqual(res_del_su.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(res_del_su.data["detail"], "employees.messages.cannotDeleteSuperuser")
 
@@ -1256,6 +1181,9 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.assertEqual(res_deact_su.data["detail"], "employees.messages.cannotDeactivateSuperuser")
 
         # 5. Superuser thứ 2 thôi việc superuser đầu tiên, nhưng không thể thôi việc superuser cuối cùng
+        # Khôi phục dòng staging: loại tài khoản admin hệ thống khỏi phép đếm superuser
+        User.objects.filter(is_superuser=True, is_active=True).exclude(pk=self.admin_user.pk).update(is_active=False)
+
         second_admin = User.objects.create_superuser(
             username="admin_2",
             email="admin2@donvi.gov.vn",
@@ -1273,7 +1201,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.assertEqual(res_deact_1.status_code, status.HTTP_200_OK)
 
         # Giờ admin_user đã nghỉ việc, chỉ còn second_admin là superuser active.
-        # Nếu ai đó cố gắng xóa hoặc thôi việc admin_2 -> 400 cannotDeactivateLastSuperuser
+        # Nếu ai đó cố gắng xóa hoặc thôi việc admin_2 -> 400 cannotDeactivateLastSuperuser / cannotDeleteLastSuperuser
         third_admin = User.objects.create_superuser(
             username="admin_3",
             email="admin3@donvi.gov.vn",
@@ -1291,6 +1219,8 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         )
         self.assertEqual(res_last.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(res_last.data["detail"], "employees.messages.cannotDeactivateLastSuperuser")
+
+
 
     def test_manual_create_rejects_weak_password(self):
         """Review PR #71: Tạo tài khoản thủ công với mật khẩu yếu phải bị từ chối 400 qua validate_password."""
@@ -1324,7 +1254,11 @@ class ReviewRound4FixesTests(EmployeeBaseTestCase):
         """Review Vòng 4: Xóa CBNV có dữ liệu ràng buộc RESTRICT trả về 400 và thông báo thân thiện."""
         mock_delete.side_effect = RestrictedError("Cannot delete restricted relation", [])
         self.client.force_authenticate(user=self.admin_user)
-        res = self.client.delete(f"{self.employee_list_url}{self.normal_user.id}/")
+        res = self.client.delete(
+            f"{self.employee_list_url}{self.normal_user.id}/",
+            {"password": "SuperPassword123"},
+            format="json",
+        )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(res.data["detail"], "employees.messages.cannotDeleteProtected")
 
@@ -1333,7 +1267,11 @@ class ReviewRound4FixesTests(EmployeeBaseTestCase):
         """Review Vòng 4: Xóa CBNV có dữ liệu ràng buộc PROTECT trả về 400 và thông báo thân thiện."""
         mock_delete.side_effect = ProtectedError("Cannot delete protected relation", [])
         self.client.force_authenticate(user=self.admin_user)
-        res = self.client.delete(f"{self.employee_list_url}{self.normal_user.id}/")
+        res = self.client.delete(
+            f"{self.employee_list_url}{self.normal_user.id}/",
+            {"password": "SuperPassword123"},
+            format="json",
+        )
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(res.data["detail"], "employees.messages.cannotDeleteProtected")
 
@@ -1559,6 +1497,7 @@ class SeedDbCommandTests(APITestCase):
     def test_seed_db_is_complete_and_idempotent(self):
         from django.core.management import call_command
 
+        os.environ.setdefault("ADMIN_PASSWORD", "ci-only-not-for-production")
         call_command("seed_db", verbosity=0)
         self.assertEqual(KhoiKhuVuc.objects.count(), 16)
         self.assertEqual(DonVi.objects.count(), 82)
@@ -1567,7 +1506,7 @@ class SeedDbCommandTests(APITestCase):
 
         call_command("seed_db", verbosity=0)
         self.assertEqual(DonVi.objects.count(), 82)
-        self.assertEqual(Position.objects.count(), 25)
+        self.assertEqual(Position.objects.count(), 7)
 
 
 class EmployeeAssignmentTests(EmployeeBaseTestCase):

@@ -145,9 +145,6 @@ export async function apiClient<T = unknown>(
             if (newAccess) {
               localStorage.setItem('tlbm_access_token', newAccess);
               localStorage.setItem('tlbm_token', newAccess);
-              if (refreshData.refresh) {
-                localStorage.setItem('tlbm_refresh_token', refreshData.refresh);
-              }
               processQueue(null, newAccess);
               isRefreshing = false;
 

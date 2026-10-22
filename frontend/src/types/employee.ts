@@ -43,7 +43,6 @@ export interface Employee {
   nhom_quyen: EmployeeGroup[];
   has_sensitive_permission: boolean;
   temporary_password?: string | null;
-  is_last_unit_clerk?: boolean;
   assignments?: EmployeeAssignmentItem[];
   created_at: string;
   updated_at: string;

@@ -53,7 +53,7 @@ Tất cả các endpoint đều yêu cầu xác thực (`IsAuthenticated`) qua h
   ```
 - **Quy tắc che dữ liệu (Data Masking)**:
   - Người dùng **chỉ có** `view_list_cbnv`:
-    - `ngay_sinh` hiển thị dạng `DD/MM/19xx` hoặc `DD/MM/20xx`.
+    - `ngay_sinh` hiển thị dạng `DD/MM/----`.
     - `is_birthday_masked: true`.
     - `nhom_quyen`: Ẩn (trả về rỗng).
     - `has_sensitive_permission: false`.
@@ -93,7 +93,6 @@ Tất cả các endpoint đều yêu cầu xác thực (`IsAuthenticated`) qua h
     "nhom_quyen": [
       { "id": 3, "name": "Trưởng phòng" }
     ],
-    "is_last_unit_clerk": false,
     "assignments": [
       {
         "id": 1,
@@ -159,23 +158,19 @@ Tất cả các endpoint đều yêu cầu xác thực (`IsAuthenticated`) qua h
 
 - **URL**: `DELETE /api/accounts/employees/{id}/`
 - **Quyền yêu cầu**: `delete_cbnv` (hoặc `is_superuser`)
-- **Query Parameters**:
-  - `password` (string, bắt buộc): Mật khẩu đăng nhập của chính người thực hiện thao tác xóa để chống bấm nhầm/chiếm quyền phiên làm việc.
-  - `confirm_last_clerk` (boolean, tùy chọn): Đặt `true` khi đã nhận cảnh báo và xác nhận rủi ro xóa văn thư duy nhất.
+- **Request Body (JSON)**:
+  ```json
+  {
+    "password": "..."
+  }
+  ```
+  - `password` (string, bắt buộc): Mật khẩu đăng nhập của chính người thực hiện thao tác xóa để chống bấm nhầm/chiếm quyền phiên làm việc (truyền trong body JSON, không truyền qua query string URL để tránh ghi log).
 - **Quy tắc kiểm tra nghiệp vụ**:
-  1. Sai mật khẩu xác thực: Trả về `400 employees.messages.invalidPassword`.
+  1. Thiếu hoặc sai mật khẩu xác thực: Trả về `400 employees.messages.invalidPassword`.
   2. Tự xóa tài khoản của chính mình: Trả về `400 employees.messages.cannotDeleteSelf`.
   3. Xóa Superuser khi người xóa không phải Superuser: Trả về `403 employees.messages.cannotDeleteSuperuser`.
-  4. **Kiểm tra Văn thư duy nhất (Last clerk protection)**:
-     - Nếu CBNV thuộc nhóm Văn thư (`VT`) và là văn thư DUY NHẤT đang làm việc tại đơn vị/phòng ban của họ, việc xóa sẽ khiến phòng ban không còn ai tiếp nhận văn bản đến.
-     - Khi `confirm_last_clerk` không truyền hoặc bằng `false`, hệ thống chặn xóa và trả về `400` kèm thông tin cảnh báo:
-       ```json
-       {
-         "detail": "employees.messages.deleteLastClerkWarning",
-         "is_last_clerk": true
-       }
-       ```
-     - Giao diện người dùng sẽ kích hoạt hộp thoại cảnh báo rủi ro 2 bước, buộc người dùng tích vào ô `"Tôi hiểu rủi ro và xác nhận xóa"` rồi gửi lại request với `?confirm_last_clerk=true`.
+  4. Xóa Superuser đang hoạt động cuối cùng: Trả về `400 employees.messages.cannotDeleteLastSuperuser`.
+  5. Xóa CBNV có dữ liệu liên kết được bảo vệ (văn bản, công việc...): Trả về `400 employees.messages.cannotDeleteProtected`.
 
 ### 2.6. Xuất danh bạ Excel phân cấp
 
@@ -188,16 +183,16 @@ Tất cả các endpoint đều yêu cầu xác thực (`IsAuthenticated`) qua h
   3. Phân nhóm theo Đơn vị / Phòng ban theo `stt_uu_tien`: Dòng tiêu đề Đơn vị in đậm, nền xám nhạt (`#F1F5F9`), hiển thị thông tin kèm theo (Địa chỉ, Điện thoại, Email phòng).
   4. Danh sách cán bộ trực thuộc đơn vị được sắp xếp theo thứ tự ưu tiên chức vụ (`Position.display_order` tăng dần). STT tự động đếm lại từ 1 ở đầu mỗi đơn vị.
   5. Cán bộ kiêm nhiệm: Xuất hiện dưới từng đơn vị kiêm nhiệm, chức vụ kiêm nhiệm được ghi rõ kèm nhãn `(Kiêm nhiệm)`.
-  6. Lọc dữ liệu: Chỉ xuất CBNV `trang_thai = 'LAM_VIEC'` và `is_active = True`. Cán bộ nội bộ (`is_public = False`) chỉ được hiển thị nếu người xuất có quyền `view_full_cbnv`.
+  6. Lọc dữ liệu: Chỉ xuất CBNV `trang_thai = 'LAM_VIEC'` và `is_active = True`. Đơn vị nội bộ (`is_public = False`) và CBNV thuộc đơn vị nội bộ chỉ được hiển thị nếu người xuất có quyền `change_donvi` hoặc `is_superuser`. Loại trừ tài khoản superuser / quản trị hệ thống (`username = 'admin'` hoặc `email = 'admin@baolong.vn'`) khỏi danh bạ xuất bản.
   7. **An toàn CSV/Formula Injection**: Mọi giá trị bắt đầu bằng `=`, `+`, `-`, `@` được ép kiểu chuỗi an toàn (`data_type = 's'`) bằng `openpyxl`, triệt tiêu rủi ro thực thi lệnh macro/DDE nguy hiểm.
 
 ### 2.7. Nhập CBNV từ Excel
 
 - **URL**: `POST /api/accounts/employees/import/`
 - **Quyền yêu cầu**: `import_cbnv` (Nhóm `ADMIN`).
-- **Dữ liệu gửi**: `multipart/form-data` chứa `file` (.xlsx hoặc .xls).
+- **Dữ liệu gửi**: `multipart/form-data` chứa `file` (.xlsx).
 - **Quy tắc xử lý**:
-  - Hỗ trợ định dạng `.xlsx` tiêu chuẩn (OpenPyXL).
+  - Hỗ trợ định dạng `.xlsx` tiêu chuẩn (OpenPyXL). Từ chối tệp không có đuôi `.xlsx` (bao gồm tệp `.xls` nhị phân cũ).
   - Giao dịch nguyên tử (ACID `transaction.atomic()`): Nếu bất kỳ dòng nào không hợp lệ (sai ngày sinh, sai định dạng điện thoại, trùng email...), toàn bộ thao tác import sẽ được rollback an toàn và trả về lỗi chi tiết theo từng dòng (ví dụ `Dòng 4: Email đã tồn tại`).
 
 ### 2.8. Tải tệp Excel mẫu

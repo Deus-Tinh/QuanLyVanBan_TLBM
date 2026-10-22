@@ -392,21 +392,25 @@ describe('EmployeesPage Component (Issue #24)', () => {
     expect(confirmBtn).not.toBeDisabled();
     fireEvent.click(confirmBtn);
 
-    expect(mockedApiClient.delete).toHaveBeenCalled();
+    expect(mockedApiClient.delete).toHaveBeenCalledWith(
+      '/api/accounts/employees/1/',
+      expect.objectContaining({
+        body: JSON.stringify({ password: 'Admin@123' }),
+      })
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Bạn không thể tự xóa tài khoản của chính mình.')).toBeInTheDocument();
     });
   });
 
-  it('enforces 2-step confirmation with warning banner and mandatory checkbox when deleting the only clerk in a unit', async () => {
-    const clerkEmployee = {
+  it('requires password and confirmation checkbox to delete employee', async () => {
+    const targetEmployee = {
       ...mockEmployeeData[0],
       id: 99,
-      ho_ten: 'Lê Văn Thư',
+      ho_ten: 'Lê Văn Thử',
       don_vi_id: 1,
       don_vi_ten: 'Văn phòng Viện',
-      is_last_unit_clerk: true,
     };
 
     mockedApiClient.mockImplementation(async (endpoint: string) => {
@@ -421,7 +425,7 @@ describe('EmployeesPage Component (Issue #24)', () => {
           count: 1,
           next: null,
           previous: null,
-          results: [clerkEmployee],
+          results: [targetEmployee],
         };
       }
       return [];
@@ -436,22 +440,18 @@ describe('EmployeesPage Component (Issue #24)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Lê Văn Thư')).toBeInTheDocument();
+      expect(screen.getByText('Lê Văn Thử')).toBeInTheDocument();
     });
 
-    // 1. Bấm nút xóa cán bộ văn thư
+    // 1. Bấm nút xóa cán bộ
     const deleteBtn = screen.getByTitle('Xóa');
     fireEvent.click(deleteBtn);
 
     await waitFor(() => {
-      expect(screen.getByText('Cảnh báo vai trò Văn thư duy nhất')).toBeInTheDocument();
+      expect(screen.getByText('Xác nhận xóa cán bộ nhân viên')).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText(/Cán bộ này là nhân sự Văn thư duy nhất đang công tác tại đơn vị/i)
-    ).toBeInTheDocument();
-
-    // 2. Nút Xóa phải bị vô hiệu hóa (disabled) khi chưa nhập mật khẩu và chưa tick checkbox xác nhận
+    // 2. Nút Xóa phải bị vô hiệu hóa khi chưa nhập mật khẩu và chưa tick checkbox xác nhận
     const deleteActionBtns = screen.getAllByRole('button', { name: /^Xóa$/i });
     const confirmBtn = deleteActionBtns[deleteActionBtns.length - 1];
     expect(confirmBtn).toBeDisabled();
@@ -460,17 +460,20 @@ describe('EmployeesPage Component (Issue #24)', () => {
     const passwordInput = screen.getByPlaceholderText(/Nhập mật khẩu/i);
     fireEvent.change(passwordInput, { target: { value: 'Admin@123' } });
 
-    // Tick vào các checkbox
-    const checkboxes = screen.getAllByRole('checkbox');
-    checkboxes.forEach((cb) => fireEvent.click(cb));
+    // Tick vào checkbox
+    const checkbox = screen.getByRole('checkbox');
+    fireEvent.click(checkbox);
 
     // 4. Nút Xóa được kích hoạt
     expect(confirmBtn).not.toBeDisabled();
     fireEvent.click(confirmBtn);
 
-    // 5. API DELETE được gọi kèm query parameter
+    // 5. API DELETE được gọi với body chứa password
     expect(mockedApiClient.delete).toHaveBeenCalledWith(
-      expect.stringContaining('/api/accounts/employees/99/')
+      '/api/accounts/employees/99/',
+      expect.objectContaining({
+        body: JSON.stringify({ password: 'Admin@123' }),
+      })
     );
   });
 
@@ -621,10 +624,10 @@ describe('EmployeesPage Component (Issue #24)', () => {
     expect(screen.queryByText('mau_danh_sach_cbnv (1).xlsx')).not.toBeInTheDocument();
     expect(screen.queryByText('Dữ liệu tệp Excel chứa lỗi. Vui lòng kiểm tra lại theo danh sách bên dưới.')).not.toBeInTheDocument();
     expect(screen.queryByText(/Địa chỉ email.*đã tồn tại/i)).not.toBeInTheDocument();
-    expect(screen.getByText('Kéo thả tệp .xlsx, .xls vào đây hoặc bấm để chọn tệp')).toBeInTheDocument();
+    expect(screen.getByText('Kéo thả tệp .xlsx vào đây hoặc bấm để chọn tệp')).toBeInTheDocument();
   });
 
-  it('supports selecting and importing legacy .xls Excel files', async () => {
+  it('supports selecting and importing valid .xlsx Excel files', async () => {
     mockedApiClient.post.mockResolvedValue({
       success: true,
       message: 'employees.messages.importSuccess',
