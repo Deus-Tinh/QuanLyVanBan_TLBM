@@ -383,7 +383,11 @@ export default function ModernDashboardView({
                             </button>
                           </div>
                         </td>
-                        <td className="p-2.5 text-main group-hover:text-primary transition-colors">{row.title}</td>
+                        <td className="p-2.5 text-main group-hover:text-primary transition-colors">
+                          <div className="line-clamp-2 leading-snug break-words" title={row.title}>
+                            {row.title}
+                          </div>
+                        </td>
                         <td className="p-2.5 text-muted whitespace-nowrap">{row.date}</td>
                       </tr>
                     ))}
@@ -454,7 +458,11 @@ export default function ModernDashboardView({
                             </button>
                           </div>
                         </td>
-                        <td className="p-2.5 text-main group-hover:text-success transition-colors">{row.title}</td>
+                        <td className="p-2.5 text-main group-hover:text-success transition-colors">
+                          <div className="line-clamp-2 leading-snug break-words" title={row.title}>
+                            {row.title}
+                          </div>
+                        </td>
                         <td className="p-2.5 text-muted whitespace-nowrap">{row.date}</td>
                       </tr>
                     ))}
@@ -632,7 +640,11 @@ export default function ModernDashboardView({
                               <span className="whitespace-nowrap">{row.code}</span>
                             </div>
                           </td>
-                          <td className="p-2.5 text-main group-hover:text-primary transition-colors">{row.title}</td>
+                          <td className="p-2.5 text-main group-hover:text-primary transition-colors">
+                            <div className="line-clamp-2 leading-snug break-words" title={row.title}>
+                              {row.title}
+                            </div>
+                          </td>
                           <td className="p-2.5 text-center whitespace-nowrap">
                             <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-primary-subtle text-primary uppercase">
                               {row.format}
