@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DocumentItem, DocumentFilterParams, DocumentStatus, PaginatedResponse } from '@app-types/document';
 import FilterBar from '@components/documents/FilterBar';
@@ -63,7 +63,9 @@ export const InboundDocumentPage: React.FC = () => {
     if (currentFilters.hieu_luc) nextParams.set('hieu_luc', currentFilters.hieu_luc);
     if (currentFilters.loai_van_ban) nextParams.set('loai_van_ban', String(currentFilters.loai_van_ban));
     if (currentFilters.ho_so) nextParams.set('ho_so', currentFilters.ho_so);
-    if (currentFilters.pham_vi) nextParams.set('pham_vi', String(currentFilters.pham_vi));
+    if (currentFilters.pham_vi && currentFilters.pham_vi !== 'NOI_BO') {
+      nextParams.set('pham_vi', String(currentFilters.pham_vi));
+    }
     if (currentFilters.page && currentFilters.page > 1) nextParams.set('page', String(currentFilters.page));
 
     // Bảo toàn các params trạng thái modal (detail, viewers, action, edit)
@@ -171,17 +173,7 @@ export const InboundDocumentPage: React.FC = () => {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [availableFolders, setAvailableFolders] = useState<string[]>([]);
   const [folderDocTypesMap, setFolderDocTypesMap] = useState<Record<string, string[]>>({});
-  const [stats, setStats] = useState<{
-    total: number;
-    active: number;
-    partial: number;
-    replaced: number;
-  }>({
-    total: 0,
-    active: 0,
-    partial: 0,
-    replaced: 0,
-  });
+  const [allStatsItems, setAllStatsItems] = useState<DocumentItem[]>([]);
 
   // Lấy danh sách các năm thực tế có văn bản trong CSDL
   const fetchYears = useCallback(async () => {
@@ -201,15 +193,7 @@ export const InboundDocumentPage: React.FC = () => {
       // Luôn tải từ toàn bộ văn bản để danh mục Loại văn bản không bị co cụm khi người dùng lọc
       const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DEN&page_size=1000');
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
-      const active = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC').length;
-      const partial = items.filter((d) => d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
-      const replaced = items.filter((d) => d.hieu_luc === 'HET_VA_THAY_THE').length;
-      setStats({
-        total: items.length,
-        active,
-        partial,
-        replaced,
-      });
+      setAllStatsItems(items);
 
       // Trích xuất các Loại văn bản và ánh xạ Danh mục hồ sơ -> Loại văn bản thực tế từ các văn bản trong hệ thống
       const extractedTypes = new Set<string>();
@@ -540,10 +524,19 @@ export const InboundDocumentPage: React.FC = () => {
   };
 
 
-  // Thống kê số lượng: Mục tổng văn bản đến và top card gộp cả Còn hiệu lực và Còn hiệu lực 1 phần
-  const countActive = stats.total > 0
-    ? (stats.active + stats.partial)
-    : documents.filter((d) => d.hieu_luc === 'CON_HIEU_LUC' || d.hieu_luc === 'CON_HIEU_LUC_1_PHAN').length;
+  const currentPhamVi = filters.pham_vi || 'NOI_BO';
+
+  // Thống kê số lượng: Mục tổng văn bản đến và top card gộp cả Còn hiệu lực và Còn hiệu lực 1 phần theo đúng phạm vi (Nội bộ / Hạn chế / Tất cả)
+  const countActive = useMemo(() => {
+    const sourceList = allStatsItems.length > 0 ? allStatsItems : documents;
+    return sourceList.filter((d) => {
+      const isActive = d.hieu_luc === 'CON_HIEU_LUC' || d.hieu_luc === 'CON_HIEU_LUC_1_PHAN';
+      if (!isActive) return false;
+      if (currentPhamVi === 'ALL') return true;
+      const docPhamVi = d.pham_vi || 'NOI_BO';
+      return docPhamVi === currentPhamVi;
+    }).length;
+  }, [allStatsItems, documents, currentPhamVi]);
 
   return (
     <div className="w-full p-2 sm:p-4 md:p-6 animate-in fade-in duration-150">
@@ -716,7 +709,12 @@ export const InboundDocumentPage: React.FC = () => {
               <i className="fa-solid fa-file-circle-check" />
             </div>
             <div>
-              <span className="text-sm text-muted block mb-0.5 font-medium">Tổng số văn bản đến</span>
+              <span className="text-sm text-muted block mb-0.5 font-medium">
+                <span>Tổng số văn bản đến</span>
+                {currentPhamVi === 'HAN_CHE' && <span className="ml-1 text-rose-500 font-semibold">(Hạn chế)</span>}
+                {currentPhamVi === 'ALL' && <span className="ml-1 text-primary font-semibold">(Tất cả)</span>}
+                {currentPhamVi === 'NOI_BO' && <span className="ml-1 text-secondary font-medium">(Nội bộ)</span>}
+              </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl sm:text-3xl font-bold text-main">{countActive}</span>
                 <span className="text-sm text-muted font-medium">văn bản còn hiệu lực</span>
