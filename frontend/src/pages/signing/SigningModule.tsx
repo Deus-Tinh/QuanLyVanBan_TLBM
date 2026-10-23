@@ -32,18 +32,21 @@ export default function SigningModule() {
 
   return (
     <SigningContext.Provider value={ngu_canh}>
-      <div className="mx-auto max-w-7xl space-y-4 p-4 md:p-6">
-        <header className="space-y-1">
-          <h1 className="text-xl font-bold text-main">
-            <i className="fa-solid fa-file-signature mr-2 text-primary" aria-hidden="true" />{t('tieuDe')}
-          </h1>
-          <p className="text-sm text-secondary">{t('moTa')}</p>
+      <div className="space-y-6">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-border shadow-sm">
+          <div>
+            <h1 className="text-2xl font-bold text-main flex items-center gap-2.5">
+              <i className="fa-solid fa-file-signature text-primary" aria-hidden="true" />{t('tieuDe')}
+            </h1>
+            <p className="text-secondary text-sm mt-1">{t('moTa')}</p>
+          </div>
         </header>
-        <nav className="flex flex-wrap gap-1 border-b border-border-subtle" aria-label={t('tieuDe')}>
+        <nav className="flex flex-wrap items-center gap-2 border-b border-border-subtle pb-px" aria-label={t('tieuDe')}>
           {tab.map((m) => (
             <NavLink key={m.den} to={m.den} end={m.end}
-              className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-semibold transition-colors duration-fast ${
-                isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main'}`}>
+              className={({ isActive }) => `flex items-center gap-2.5 px-5 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
+                isActive ? 'text-primary border-primary bg-primary-subtle'
+                  : 'text-secondary border-transparent hover:text-main hover:bg-surface-hover'}`}>
               <i className={`fa-solid ${m.icon}`} aria-hidden="true" />{m.nhan}
             </NavLink>
           ))}
