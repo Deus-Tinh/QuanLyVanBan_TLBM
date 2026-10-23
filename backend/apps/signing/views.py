@@ -680,6 +680,7 @@ class ThongBaoView(SigningAPIView):
         }
         for tb in danh_sach:
             _, _, ten_van_ban = thong_bao_service.noi_dung(tb)
+            nguoi_thao_tac, ly_do = thong_bao_service.thao_tac(tb)
             email_key = (
                 tb.khoa_chong_gui_trung[:-7] + ":EMAIL"
                 if tb.khoa_chong_gui_trung.endswith(":IN_APP")
@@ -698,6 +699,8 @@ class ThongBaoView(SigningAPIView):
                 "email_da_gui": email_nb.trang_thai == enums.TrangThaiThongBao.DA_GUI if email_nb else False,
                 "email_trang_thai": email_nb.trang_thai if email_nb else None,
                 "email_nguoi_nhan": tb.nguoi_nhan.email or None,
+                "nguoi_thao_tac": nguoi_thao_tac or None,
+                "ly_do": ly_do or None,
             })
         return Response(ket_qua)
 

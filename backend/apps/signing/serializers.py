@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -300,8 +301,23 @@ class TrinhKySerializer(serializers.ModelSerializer):
                   "phien_ban_quy_trinh", "trang_thai", "han_chot", "ngay_gui", "ngay_hoan_thanh",
                   "ngay_tu_choi", "ly_do_tu_choi", "ngay_huy", "ly_do_huy", "ghi_chu", "ho_so_goc",
                   "phien_ban_van_ban", "ma_bam_tai_lieu", "create_by", "ten_nguoi_tao", "created_at", "update_at",
-                  "dang_cho"]
+                  "dang_cho", "trang_thai_luot", "qua_han"]
         read_only_fields = fields
+
+    trang_thai_luot = serializers.SerializerMethodField()
+    qua_han = serializers.SerializerMethodField()
+
+    def get_trang_thai_luot(self, obj):
+        """Trạng thái lượt trình hiện hành (YEU_CAU_SUA: hồ sơ đang trả lại để sửa dù hồ sơ vẫn CHO_KY)."""
+        return obj.luot_trinh_set.order_by("-so_luot").values_list("trang_thai", flat=True).first()
+
+    def get_qua_han(self, obj):
+        """Hồ sơ chờ ký đã qua hạn chót, hoặc có cấp đang ký đã qua hạn xử lý (cùng điều kiện thẻ lọc "quá hạn")."""
+        if obj.trang_thai != enums.TrangThaiYeuCau.CHO_KY:
+            return False
+        bay_gio = timezone.now()
+        return bool(obj.han_chot and obj.han_chot < bay_gio) or SigningRequestStep.objects.filter(
+            luot_trinh__trinh_ky=obj, trang_thai=enums.TrangThaiCapKy.DANG_KY, han_xu_ly__lt=bay_gio).exists()
 
     def get_ten_nguoi_tao(self, obj):
         return to_chuc.ten_hien_thi(obj.create_by)

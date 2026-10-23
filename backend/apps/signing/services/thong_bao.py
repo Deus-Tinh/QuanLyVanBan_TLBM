@@ -22,7 +22,7 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 
 from .. import enums
-from ..models import SigningNotification, SigningRequestStepSigner
+from ..models import SigningAuditLog, SigningChangeThread, SigningNotification, SigningRequestStepSigner
 from ..tich_hop.to_chuc import ten_hien_thi
 from ..tich_hop.van_ban import mo_ta_van_ban
 
@@ -136,13 +136,44 @@ def nhac_han(bay_gio=None):
     return SigningNotification.objects.count() - truoc
 
 
+# Loại thông báo -> hành động nhật ký sinh ra nó (để lấy người thao tác và lý do)
+HANH_DONG_CUA_LOAI = {"TU_CHOI": "TU_CHOI", "HUY": "HUY_TRINH_KY", "YEU_CAU_SUA": "YEU_CAU_SUA",
+                      "UY_QUYEN": "UY_QUYEN_KY"}
+
+
+def thao_tac(tb):
+    """(tên người thao tác, lý do) của sự kiện sinh ra thông báo; ("", "") với loại không có thao tác người dùng."""
+    hanh_dong = HANH_DONG_CUA_LOAI.get(tb.loai_thong_bao)
+    if not hanh_dong:
+        return "", ""
+    log = (SigningAuditLog.objects.filter(trinh_ky_id=tb.trinh_ky_id, hanh_dong=hanh_dong,
+                                          created_at__lte=tb.created_at)
+           .select_related("nguoi_thuc_hien").order_by("-created_at", "-pk").first())
+    yeu_cau = tb.trinh_ky
+    if tb.loai_thong_bao == "TU_CHOI":
+        ly_do = yeu_cau.ly_do_tu_choi
+    elif tb.loai_thong_bao == "HUY":
+        ly_do = yeu_cau.ly_do_huy
+    elif tb.loai_thong_bao == "YEU_CAU_SUA":
+        thread = (SigningChangeThread.objects.filter(luot_trinh__trinh_ky=yeu_cau, created_at__lte=tb.created_at)
+                  .order_by("-created_at", "-pk").first())
+        ly_do = f"{thread.tieu_de}: {thread.ly_do}" if thread else ""
+    else:
+        ly_do = log.chi_tiet if log else ""
+    return (ten_hien_thi(log.nguoi_thuc_hien) if log else ""), (ly_do or "")
+
+
 def noi_dung(tb):
     van_ban = mo_ta_van_ban(tb.trinh_ky.document_type, tb.trinh_ky.van_ban_id)
     ten_van_ban = " — ".join(x for x in (van_ban.get("so_hieu"), van_ban.get("trich_yeu")) if x) or f"#{tb.trinh_ky_id}"
     duong_dan = f"{settings.SIGNING_FRONTEND_URL.rstrip('/')}/approvals/{tb.trinh_ky_id}"
     tieu_de = f"[Trình ký] {TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)}: {ten_van_ban}"
+    nguoi_thao_tac, ly_do = thao_tac(tb)
+    chi_tiet = (f"Người thực hiện: {nguoi_thao_tac}.\n" if nguoi_thao_tac else "") + \
+        (f"Lý do: {ly_do}\n" if ly_do else "")
     than = (f"Xin chào {ten_hien_thi(tb.nguoi_nhan)},\n\n"
             f"{TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)} — hồ sơ trình ký #{tb.trinh_ky_id}: {ten_van_ban}.\n"
+            f"{chi_tiet}"
             f"Quy trình: {tb.trinh_ky.quy_trinh.ten_quy_trinh}. Người trình: {ten_hien_thi(tb.trinh_ky.create_by)}.\n\n"
             f"Xem hồ sơ: {duong_dan}\n\n"
             "Thư gửi tự động từ phân hệ Trình ký, vui lòng không trả lời.")
