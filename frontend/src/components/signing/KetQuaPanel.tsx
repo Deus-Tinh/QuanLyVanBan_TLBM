@@ -88,7 +88,6 @@ export default function KetQuaPanel({ hoSo, luot, onTaiLai }: {
               </li>
             ))}
           </ul>
-          <div className="text-xs text-muted break-all">{t('chiTiet.maBamBangChung')}: <code>{bangChung.ma_bam_bang_chung}</code></div>
         </div>
       )}
       {thongBao && <ThongBao>{thongBao}</ThongBao>}
