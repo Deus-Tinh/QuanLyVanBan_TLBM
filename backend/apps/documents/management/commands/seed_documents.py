@@ -104,14 +104,17 @@ class Command(BaseCommand):
             Path("frontend/public/demo_files/test.png"),
         ])
         doc_ke_hoach = get_file_content("doc_ke_hoach", [
+            Path("Quy_Trinh_Ky_So_Va_Trinh_Ky_Van_Ban.docx"),
             Path("docs/modules/02_documents/BangPhanCong_Nhom2_GiaiDoan2_VanBanDi_v2.docx"),
             Path("KeHoach_ModuleVanBan_Nhom2.docx"),
         ])
         doc_quy_che = get_file_content("doc_quy_che", [
+            Path("Quy_Che_Bao_Mat_Thong_Tin_TLBM.docx"),
             Path("tai_lieu_test_ai/01_Bao_Mat_Va_Luu_Tru/Quy_Che_Bao_Mat_Thong_Tin_TLBM.docx"),
             Path("docs/modules/02_documents/BangPhanCong_Nhom2_GiaiDoan2_VanBanDi_v2.docx"),
         ])
         doc_ky_so = get_file_content("doc_ky_so", [
+            Path("Quy_Trinh_Ky_So_Va_Trinh_Ky_Van_Ban.docx"),
             Path("tai_lieu_test_ai/02_Quy_Trinh_Trinh_Ky_Dien_Tu/Quy_Trinh_Ky_So_Va_Trinh_Ky_Van_Ban.docx"),
             Path("docs/modules/02_documents/BangPhanCong_Nhom2_GiaiDoan2_VanBanDi_v2.docx"),
         ])
