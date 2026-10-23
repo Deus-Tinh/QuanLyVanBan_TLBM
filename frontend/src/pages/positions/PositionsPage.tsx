@@ -109,7 +109,9 @@ export default function PositionsPage() {
     }
   };
 
-  const columnCount = 5;
+  // Người chỉ có quyền xem: không có nút sửa/xóa nên ẩn luôn cột Thao tác (tránh cột trống).
+  const showActions = can('change_chucvu') || can('delete_chucvu');
+  const columnCount = showActions ? 5 : 4;
 
   return (
     <div className="space-y-6">
@@ -179,7 +181,7 @@ export default function PositionsPage() {
                 <th className="px-4 py-3">{t('positions.table.name')}</th>
                 <th className="px-4 py-3 text-center">{t('positions.table.status')}</th>
                 <th className="px-4 py-3">{t('positions.table.notes')}</th>
-                <th className="px-4 py-3 text-center w-28">{t('positions.table.actions')}</th>
+                {showActions && <th className="px-4 py-3 text-center w-28">{t('positions.table.actions')}</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -195,6 +197,7 @@ export default function PositionsPage() {
                   <td colSpan={columnCount} className="text-center py-12 text-danger" role="alert">
                     <i className="fa-solid fa-circle-exclamation text-3xl mb-2 block" />
                     {t(loadErrorKey)}
+                    {loadErrorKey !== 'positions.messages.permissionDenied' && (
                     <div className="mt-3">
                       <Button
                         variant="outline"
@@ -207,6 +210,7 @@ export default function PositionsPage() {
                         {t('positions.actions.retry')}
                       </Button>
                     </div>
+                    )}
                   </td>
                 </tr>
               ) : positions.length === 0 ? (
@@ -222,11 +226,11 @@ export default function PositionsPage() {
                     key={position.id}
                     data-testid={`position-row-${position.id}`}
                     className={`transition-colors hover:bg-surface-hover ${
-                      position.is_public ? '' : 'bg-warning-subtle/20 border-l-4 border-l-warning'
+                      position.is_public ? '' : 'bg-warning-subtle border-l-4 border-l-warning'
                     }`}
                   >
-                    <td className="px-4 py-3 text-center font-bold text-main">{position.stt_uu_tien}</td>
-                    <td className="px-4 py-3 font-semibold text-main">{position.ten_chuc_vu}</td>
+                    <td className="px-4 py-3 text-center font-bold text-main">{position.display_order}</td>
+                    <td className="px-4 py-3 font-semibold text-main">{position.name}</td>
                     <td className="px-4 py-3 text-center">
                       {position.is_public ? (
                         <Badge variant="success" size="sm">
@@ -238,14 +242,15 @@ export default function PositionsPage() {
                         </Badge>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-secondary">{position.ghi_chu || t('positions.table.emptyValue')}</td>
+                    <td className="px-4 py-3 text-secondary">{position.note || t('positions.table.emptyValue')}</td>
+                    {showActions && (
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
                         {can('change_chucvu') && (
                           <button
                             type="button"
                             title={t('positions.actions.edit')}
-                            aria-label={`${t('positions.actions.edit')} ${position.ten_chuc_vu}`}
+                            aria-label={`${t('positions.actions.edit')} ${position.name}`}
                             onClick={() => {
                               setEditing(position);
                               setIsFormOpen(true);
@@ -259,7 +264,7 @@ export default function PositionsPage() {
                           <button
                             type="button"
                             title={t('positions.actions.delete')}
-                            aria-label={`${t('positions.actions.delete')} ${position.ten_chuc_vu}`}
+                            aria-label={`${t('positions.actions.delete')} ${position.name}`}
                             onClick={() => {
                               setDeleteErrorKey(null);
                               setDeleting(position);
@@ -271,6 +276,7 @@ export default function PositionsPage() {
                         )}
                       </div>
                     </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -310,7 +316,7 @@ export default function PositionsPage() {
 
       {deleting && (
         <DeleteConfirmModal
-          name={deleting.ten_chuc_vu}
+          name={deleting.name}
           isLoading={isDeleting}
           errorKey={deleteErrorKey}
           onClose={() => {

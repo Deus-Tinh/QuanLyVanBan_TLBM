@@ -15,6 +15,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from accounts.models import Position
 from signing import enums
 from signing.models import SigningAttempt, SigningAuditLog, SigningRequest
 from signing.services import process as process_service
@@ -22,7 +23,7 @@ from signing.services import trinh_ky as trinh_ky_service
 from signing.storage import get_storage
 from signing.tich_hop.van_ban import VanBanDi
 
-from .helpers import cap_quyen
+from .helpers import cap_quyen, tao_chuc_vu
 
 User = get_user_model()
 BASE = "/api/v1/signing/trinh-ky"
@@ -48,6 +49,7 @@ PDF = pdf_mau()
 VAN_BAN = {
     10: VanBanDi(id=10, pham_vi="NOI_BO", nguoi_tao_id=None, so_hieu="10/QD", trich_yeu="Mua sắm"),
     11: VanBanDi(id=11, pham_vi="HAN_CHE", nguoi_tao_id=None, so_hieu="11/QD", trich_yeu="Hạn chế"),
+    12: VanBanDi(id=12, pham_vi="NOI_BO", hien_thi=False, nguoi_tao_id=None, so_hieu="12/QD", trich_yeu="Không công khai"),
 }
 
 
@@ -78,6 +80,9 @@ class TrinhKyBase(TestCase):
         self.ky2 = User.objects.create_user("phap_che")
         self.ky3 = User.objects.create_user("giam_doc")
         self.la = User.objects.create_user("nguoi_ngoai")
+        self.position = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Trưởng phòng"
+        )
         cap_quyen(self.tao, "add_trinhky", "send_trinhky", "view_vanbandi")
         self.process = self.tao_quy_trinh()
         self.c = self.client_cua(self.tao)
@@ -103,7 +108,7 @@ class TrinhKyBase(TestCase):
         return process_service.kich_hoat(quy_trinh, self.tao)
 
     def tao_nhap(self, client=None, **kw):
-        data = {"document_type": "vanbandi", "van_ban_id": 10, "quy_trinh": self.process.pk, "muc_do": "THUONG",
+        data = {"document_type": "vanbandi", "van_ban_id": 10, "quy_trinh": self.process.pk,
                 "tep": tep_pdf()}
         data.update(kw)
         return (client or self.c).post(f"{BASE}/", data, format="multipart")
@@ -136,7 +141,6 @@ class TaoNhapTests(TrinhKyBase):
             ({"van_ban_id": 11}, 400, "van_ban_han_che_khong_trinh_ky"),
             ({"van_ban_id": 99}, 404, "khong_tim_thay_van_ban"),
             ({"document_type": "vanbanden"}, 400, "du_lieu_khong_hop_le"),
-            ({"muc_do": "SIEU_GAP"}, 400, "du_lieu_khong_hop_le"),
             ({"han_chot": (timezone.now() - timedelta(hours=1)).isoformat()}, 400, "han_chot_khong_hop_le"),
         ]
         for kw, ma_http, code in cases:
@@ -157,17 +161,22 @@ class TaoNhapTests(TrinhKyBase):
     def test_requires_add_permission_and_document_visibility(self):
         r = self.tao_nhap(client=self.client_cua(self.la))
         self.assertEqual((r.status_code, r.data["code"]), (403, "khong_co_quyen"))
-        cap_quyen(self.la, "add_trinhky")  # có quyền tạo nhưng không xem được văn bản
+        cap_quyen(self.la, "add_trinhky")  # có quyền tạo nhưng không xem được văn bản (nội bộ, không công khai)
         la = User.objects.get(pk=self.la.pk)
-        r = self.tao_nhap(client=self.client_cua(la))
+        r = self.tao_nhap(client=self.client_cua(la), van_ban_id=12)
         self.assertEqual((r.status_code, r.data["code"]), (404, "khong_tim_thay_van_ban"))
+
+    def test_create_without_muc_do_returns_201_and_no_muc_do_in_response(self):
+        r = self.tao_nhap()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertNotIn("muc_do", r.data)
 
     def test_edit_draft_replaces_file_and_bumps_version(self):
         pk = self.tao_nhap().data["id"]
         moi = PDF + b"% ban sua\n"
-        r = self.c.patch(f"{BASE}/{pk}/", {"muc_do": "KHAN", "tep": tep_pdf(moi)}, format="multipart")
+        r = self.c.patch(f"{BASE}/{pk}/", {"ghi_chu": "Bản sửa", "tep": tep_pdf(moi)}, format="multipart")
         self.assertEqual(r.status_code, 200, r.data)
-        self.assertEqual((r.data["muc_do"], r.data["phien_ban_van_ban"]), ("KHAN", "2"))
+        self.assertEqual((r.data["ghi_chu"], r.data["phien_ban_van_ban"]), ("Bản sửa", "2"))
         self.assertEqual(r.data["ma_bam_tai_lieu"], hashlib.sha256(moi).hexdigest())
         self.gui(pk)
         r = self.c.patch(f"{BASE}/{pk}/", {"ghi_chu": "x"}, format="multipart")
@@ -239,7 +248,7 @@ class GuiTests(TrinhKyBase):
 
     def test_signer_by_position_zero_one_or_many_candidates(self):
         self.process = self.tao_quy_trinh("QTCV", [{"cap_ky": 1, "ten_cap_ky": "Trưởng phòng", "thu_tu": 1,
-                                                   "nguoi_ky": [{"chuc_vu_id": 7, "thu_tu": 1}]}])
+                                                   "nguoi_ky": [{"chuc_vu_id": self.position.pk, "thu_tu": 1}]}])
         tim = "signing.tich_hop.to_chuc.tim_ung_vien_theo_chuc_vu"
         pk = self.tao_nhap().data["id"]
         with mock.patch(tim, return_value=[]):
@@ -259,7 +268,7 @@ class GuiTests(TrinhKyBase):
 
     def test_same_person_twice_in_level_rejected(self):
         self.process = self.tao_quy_trinh("QTT", [{"cap_ky": 1, "ten_cap_ky": "C", "thu_tu": 1, "nguoi_ky": [
-            {"nguoi_ky": self.ky1, "thu_tu": 1}, {"chuc_vu_id": 3, "thu_tu": 2}]}])
+            {"nguoi_ky": self.ky1, "thu_tu": 1}, {"chuc_vu_id": self.position.pk, "thu_tu": 2}]}])
         pk = self.tao_nhap().data["id"]
         with mock.patch("signing.tich_hop.to_chuc.tim_ung_vien_theo_chuc_vu", return_value=[self.ky1]):
             r = self.gui(pk)

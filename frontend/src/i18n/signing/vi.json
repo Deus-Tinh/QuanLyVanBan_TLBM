@@ -1,0 +1,15 @@
+{
+  "navigation": {
+    "approvals": "Trình Ký"
+  },
+  "pages": {
+    "approvals": {
+      "title": "Quy Trình Trình Ký Số Điện Tử",
+      "module": "Module 5: Trình ký điện tử",
+      "assignedTeam": "Nhóm 5 (Phân hệ Trình ký số)",
+      "codeRef": "Mục 5.1 · Độ khó: 1.00",
+      "isGroup1": false,
+      "desc": "Tạo luồng trình ký, kiểm tra sơ đồ ký, thông báo người ký, gửi email và ký số."
+    }
+  }
+}

@@ -3,6 +3,7 @@
  * CSS theo Design Tokens (class Tailwind ngữ nghĩa), không mã màu cứng.
  */
 import React, { useEffect, useId } from 'react';
+import { createPortal } from 'react-dom';
 import { Badge, Button } from '@components/common';
 import type { BadgeProps } from '@components/common/Badge';
 import { useSigningT } from '@lib/signing/i18n';
@@ -22,12 +23,6 @@ export function TrangThaiBadge({ trangThai, nhom = 'trangThai' }: { trangThai: s
       {t(`${nhom}.${trangThai}`)}
     </Badge>
   );
-}
-
-export function MucDoBadge({ mucDo }: { mucDo: string }) {
-  const { t } = useSigningT();
-  const mau: BadgeProps['variant'] = mucDo === 'HOA_TOC' ? 'danger' : mucDo === 'KHAN' ? 'warning' : 'secondary';
-  return <Badge variant={mau} size="sm">{t(`mucDo.${mucDo}`)}</Badge>;
 }
 
 export function ThongBao({ loai = 'loi', children }: { loai?: 'loi' | 'thanh_cong' | 'thong_tin' | 'canh_bao';
@@ -88,27 +83,29 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
     return () => window.removeEventListener('keydown', esc);
   }, [mo, onDong]);
   if (!mo) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-backdrop p-4 animate-fade-in">
+  // Render vào body như modal dùng chung (phủ cả header, sidebar); khung hộp thoại tự giữ cỡ chữ phân hệ (signing-zoom)
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-backdrop p-4 animate-fade-in">
       <div role="dialog" aria-modal="true" aria-labelledby={id}
-        className="w-full max-w-lg rounded-xl border border-border-subtle bg-surface-elevated shadow-lg animate-slide-in-bottom">
-        <div className="flex items-center justify-between border-b border-border-subtle px-5 py-3">
-          <h2 id={id} className="text-base font-bold text-main">{moTieuDe}</h2>
-          <button type="button" onClick={onDong} className="text-secondary hover:text-main" aria-label={t('chung.dong')}>
+        className="signing-zoom w-full max-w-2xl rounded-2xl border border-border-subtle bg-surface-elevated shadow-xl animate-slide-in-bottom">
+        <div className="flex items-center justify-between border-b border-border-subtle px-6 py-4">
+          <h2 id={id} className="text-xl font-bold text-main">{moTieuDe}</h2>
+          <button type="button" onClick={onDong} className="rounded-full p-1.5 text-secondary hover:text-main hover:bg-surface-hover transition-colors" aria-label={t('chung.dong')}>
             <i className="fa-solid fa-xmark" aria-hidden="true" />
           </button>
         </div>
-        <div className="px-5 py-4 space-y-3">{children}</div>
-        {chanDuoi && <div className="flex justify-end gap-2 border-t border-border-subtle px-5 py-3">{chanDuoi}</div>}
+        <div className="px-6 py-5 space-y-4">{children}</div>
+        {chanDuoi && <div className="flex justify-end gap-2.5 border-t border-border-subtle px-6 py-4">{chanDuoi}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 export function TruongNhap({ nhan, children, ghiChu }: { nhan: string; children: React.ReactNode; ghiChu?: string }) {
   return (
-    <label className="block space-y-1">
-      <span className="text-xs font-bold text-secondary">{nhan}</span>
+    <label className="block space-y-1.5">
+      <span className="block text-sm font-medium text-main">{nhan}</span>
       {children}
       {ghiChu && <span className="block text-xs text-muted">{ghiChu}</span>}
     </label>

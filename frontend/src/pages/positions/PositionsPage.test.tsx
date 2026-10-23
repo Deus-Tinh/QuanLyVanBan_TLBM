@@ -30,8 +30,8 @@ const { ApiError } = apiClientModule;
 const ALL_PERMISSIONS = ['view_chucvu', 'add_chucvu', 'change_chucvu', 'delete_chucvu', 'import_chucvu'];
 
 const POSITIONS = [
-  { id: 1, stt_uu_tien: 1, ten_chuc_vu: 'Tổng Giám đốc', is_public: true, ghi_chu: 'Cấp cao nhất' },
-  { id: 2, stt_uu_tien: 2, ten_chuc_vu: 'Cộng tác viên', is_public: false, ghi_chu: '' },
+  { id: 1, display_order: 1, name: 'Tổng Giám đốc', is_public: true, note: 'Cấp cao nhất' },
+  { id: 2, display_order: 2, name: 'Cộng tác viên', is_public: false, note: '' },
 ];
 
 function mockApi(options: { permissions?: string[]; list?: unknown; listError?: unknown } = {}) {
@@ -89,6 +89,8 @@ describe('PositionsPage (Issue #20)', () => {
     expect(screen.queryByRole('button', { name: /Import Excel/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Chỉnh sửa Tổng Giám đốc/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Xóa Tổng Giám đốc/ })).not.toBeInTheDocument();
+    // C1: không còn cột Thao tác trống
+    expect(screen.queryByRole('columnheader', { name: /Thao tác/i })).not.toBeInTheDocument();
   });
 
   it('shows write actions when the user has the permissions', async () => {
@@ -99,6 +101,7 @@ describe('PositionsPage (Issue #20)', () => {
     expect(screen.getByRole('button', { name: /Import Excel/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Chỉnh sửa Tổng Giám đốc/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Xóa Tổng Giám đốc/ })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /Thao tác/i })).toBeInTheDocument();
   });
 
   it('shows the empty state', async () => {
@@ -111,6 +114,8 @@ describe('PositionsPage (Issue #20)', () => {
     mockApi({ listError: new ApiError(403, { detail: 'positions.messages.permissionDenied' }) });
     renderPage();
     expect(await screen.findByText('Bạn không có quyền thực hiện thao tác này.')).toBeInTheDocument();
+    // Thử lại cũng vẫn bị chặn nên không hiện nút
+    expect(screen.queryByRole('button', { name: /Thử lại/ })).not.toBeInTheDocument();
   });
 
   it('shows an error state with retry that reloads the list', async () => {
@@ -157,10 +162,10 @@ describe('PositionsPage (Issue #20)', () => {
 
     await waitFor(() =>
       expect(mockedApiClient.post).toHaveBeenCalledWith('/api/positions/', {
-        stt_uu_tien: undefined,
-        ten_chuc_vu: 'Phó phòng',
+        display_order: undefined,
+        name: 'Phó phòng',
         is_public: true,
-        ghi_chu: 'ghi chú',
+        note: 'ghi chú',
       }),
     );
     expect(await screen.findByText('Đã thêm chức vụ thành công.')).toBeInTheDocument();
@@ -194,10 +199,24 @@ describe('PositionsPage (Issue #20)', () => {
     expect(mockedApiClient.post).not.toHaveBeenCalled();
   });
 
+  it('rejects an STT above the database limit on the client', async () => {
+    mockApi();
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Thêm Chức vụ/ }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText(/Tên chức vụ/), { target: { value: 'Hợp lệ' } });
+    fireEvent.change(within(dialog).getByLabelText('STT Ưu tiên'), { target: { value: '2147483648' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Tạo mới' }));
+
+    expect(await within(dialog).findByText('STT ưu tiên tối đa 2147483647.')).toBeInTheDocument();
+    expect(mockedApiClient.post).not.toHaveBeenCalled();
+  });
+
   it('shows server field errors and keeps the modal open', async () => {
     mockApi();
     vi.mocked(mockedApiClient.post).mockRejectedValue(
-      new ApiError(400, { ten_chuc_vu: ['positions.messages.nameExists'], stt_uu_tien: ['positions.messages.sttExists'] }),
+      new ApiError(400, { name: ['positions.messages.nameExists'], display_order: ['positions.messages.sttExists'] }),
     );
     renderPage();
 
@@ -227,10 +246,10 @@ describe('PositionsPage (Issue #20)', () => {
 
     await waitFor(() =>
       expect(mockedApiClient.put).toHaveBeenCalledWith('/api/positions/1/', {
-        stt_uu_tien: 1,
-        ten_chuc_vu: 'Tổng Giám đốc điều hành',
+        display_order: 1,
+        name: 'Tổng Giám đốc điều hành',
         is_public: true,
-        ghi_chu: 'Cấp cao nhất',
+        note: 'Cấp cao nhất',
       }),
     );
     expect(await screen.findByText('Đã cập nhật chức vụ thành công.')).toBeInTheDocument();
@@ -292,8 +311,8 @@ describe('PositionsPage (Issue #20)', () => {
           imported: 1,
           failed: 2,
           errors: [
-            { row: 3, field: 'ten_chuc_vu', code: 'positions.messages.nameExists', value: 'Tổng Giám đốc' },
-            { row: 4, field: 'stt_uu_tien', code: 'positions.import.errors.invalidStt', value: 'abc' },
+            { row: 3, field: 'name', code: 'positions.messages.nameExists', value: 'Tổng Giám đốc' },
+            { row: 4, field: 'display_order', code: 'positions.import.errors.invalidStt', value: 'abc' },
           ],
         };
       }

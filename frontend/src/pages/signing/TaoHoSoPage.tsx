@@ -12,7 +12,7 @@ import { docLoi, signingApi } from '@lib/signing/api';
 import { LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
-import type { HoSoChiTiet, MucDo, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
+import type { HoSoChiTiet, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
 import { khungTuDiemBam, soKhung } from '@lib/signing/viTri';
 
 interface UngVien { cau_hinh: number; ung_vien: Array<{ id: number; ten: string }> }
@@ -25,7 +25,6 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   const quyTrinh = useTai(() => signingApi.quyTrinh('HOAT_DONG'));
   const [chon, setChon] = useState<VanBanDi | null>(null);
   const [qtId, setQtId] = useState('');
-  const [mucDo, setMucDo] = useState<MucDo>('THUONG');
   const [hanChot, setHanChot] = useState('');
   const [ghiChu, setGhiChu] = useState('');
   const [tep, setTep] = useState<File | null>(null);
@@ -45,7 +44,6 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
       form.append('document_type', 'vanbandi');
       form.append('van_ban_id', String(chon.id));
       form.append('quy_trinh', qtId);
-      form.append('muc_do', mucDo);
       if (hanChot) form.append('han_chot', new Date(hanChot).toISOString());
       if (ghiChu) form.append('ghi_chu', ghiChu);
       form.append('tep', tep);
@@ -60,7 +58,7 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
 
   return (
     <Card className="p-5 space-y-4">
-      <h2 className="font-bold text-main">1. {t('tao.buoc1')}</h2>
+      <h2 className="text-lg font-bold text-main">1. {t('tao.buoc1')}</h2>
       <TruongNhap nhan={t('tao.vanBanDi')}>
         <input className={LOP_O_NHAP} placeholder={t('tao.timVanBan')} value={q} onChange={(e) => setQ(e.target.value)} />
       </TruongNhap>
@@ -77,19 +75,16 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2">
-        <TruongNhap nhan={t('tao.quyTrinh')}>
-          <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
-            <option value="">{t('tao.chonQuyTrinh')}</option>
-            {dungDuoc.map((p) => (
-              <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
-            ))}
-          </select>
-        </TruongNhap>
-        <TruongNhap nhan={t('tao.mucDo')}>
-          <select className={LOP_O_NHAP} value={mucDo} onChange={(e) => setMucDo(e.target.value as MucDo)}>
-            {(['THUONG', 'KHAN', 'HOA_TOC'] as MucDo[]).map((m) => <option key={m} value={m}>{t(`mucDo.${m}`)}</option>)}
-          </select>
-        </TruongNhap>
+        <div className="md:col-span-2">
+          <TruongNhap nhan={t('tao.quyTrinh')}>
+            <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
+              <option value="">{t('tao.chonQuyTrinh')}</option>
+              {dungDuoc.map((p) => (
+                <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
+              ))}
+            </select>
+          </TruongNhap>
+        </div>
         <TruongNhap nhan={t('tao.hanChot')}>
           <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
         </TruongNhap>
@@ -151,8 +146,8 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <Card className="p-4 space-y-3">
-        <h2 className="font-bold text-main">2. {t('tao.buoc2')}</h2>
-        <p className="text-xs text-secondary">{t('tao.datViTri')}</p>
+        <h2 className="text-lg font-bold text-main">2. {t('tao.buoc2')}</h2>
+        <p className="text-sm text-secondary">{t('tao.datViTri')}</p>
         <XemPdf duLieu={tep} khung={khung} khungDangDat={dangDat}
           onDat={(id, trang, x, y) => {
             setViTri((v) => ({ ...v, [id]: khungTuDiemBam(trang, x, y) }));
@@ -161,8 +156,7 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
           onKeo={(id, x, y) => setViTri((v) => ({ ...v, [id]: { ...v[id], toa_do_x: String(x), toa_do_y: String(y) } }))} />
       </Card>
       <Card className="p-4 space-y-3 self-start lg:sticky lg:top-4">
-        <div className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{hoSo.ma_bam_tai_lieu}</code></div>
-        <h3 className="font-bold text-sm text-main">{t('tao.nguoiKyDuKien')}</h3>
+        <h3 className="text-lg font-bold text-main">{t('tao.nguoiKyDuKien')}</h3>
         <ul className="space-y-2">
           {nguoiKy.map((n) => (
             <li key={n.id} className="rounded-lg border border-border-subtle p-2 text-sm space-y-1">
@@ -204,7 +198,6 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
           <Button icon="fa-paper-plane" isLoading={dangGui} onClick={gui}>{t('chung.xacNhan')}</Button>
         </>}>
         <p className="text-sm text-main">{t('tao.xacNhanGui')}</p>
-        <p className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{hoSo.ma_bam_tai_lieu}</code></p>
       </HopThoai>
     </div>
   );

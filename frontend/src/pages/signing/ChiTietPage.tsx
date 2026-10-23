@@ -1,13 +1,16 @@
 /**
  * Chi tiết hồ sơ (#80 mục E): PDF của lượt hiện hành kèm lớp phủ chữ ký, tiến trình, người đang chờ, vai trò,
- * hạn xử lý, lịch sử; hành động theo quyền/trạng thái; trao đổi khi trả sửa; kết quả khi hoàn tất.
+ * hạn xử lý, lịch sử; hành động theo quyền/trạng thái; trao đổi khi trả sửa; kết quả khi hoàn tất; sửa hồ sơ nháp;
+ * danh sách tệp mọi lượt (trang tài liệu).
  */
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Card } from '@components/common';
-import { DangTai, LoiTai, MucDoBadge, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
+import { Button, Card } from '@components/common';
+import { DangTai, LoiTai, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
 import HanhDong from '@components/signing/HanhDong';
 import KetQuaPanel from '@components/signing/KetQuaPanel';
+import SuaNhapDialog from '@components/signing/SuaNhapDialog';
+import TaiLieuPanel from '@components/signing/TaiLieuPanel';
 import TienTrinh from '@components/signing/TienTrinh';
 import TraoDoiPanel from '@components/signing/TraoDoiPanel';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
@@ -37,6 +40,7 @@ export default function ChiTietPage() {
   const luot = hoSo?.luot_trinh[0] || null;
   const [tepTai, setTepTai] = useState<{ khoa: string; buf: ArrayBuffer | null; maBam: string | null; loi: unknown } | null>(null);
   const [anh, setAnh] = useState<Record<number, string>>({});
+  const [dangSua, setDangSua] = useState(false);
 
   const { setDuLieu, tai } = ct;
   const capNhat = useCallback((moi?: HoSoChiTiet) => {
@@ -110,12 +114,14 @@ export default function ChiTietPage() {
       <div className="space-y-4 min-w-0">
         <Card className="p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold text-main">#{hoSo.id}</h2>
+            <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
             <TrangThaiBadge trangThai={hoSo.trang_thai} />
             {luot && luot.trang_thai !== hoSo.trang_thai && <TrangThaiBadge trangThai={luot.trang_thai} />}
-            <MucDoBadge mucDo={hoSo.muc_do} />
           </div>
-          <div className="text-sm text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
+          <div className="text-base font-semibold text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
+          {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
+            <Button size="sm" variant="secondary" icon="fa-pen" onClick={() => setDangSua(true)}>{t('chiTiet.suaHoSo')}</Button>
+          )}
           <HanhDong hoSo={hoSo} luot={luot} maBamTepDangXem={maBam} onXong={capNhat} />
           {hoSo.trang_thai === 'TU_CHOI' && hoSo.ly_do_tu_choi && (
             <ThongBao>{t('chiTiet.lyDoTuChoi')}: {hoSo.ly_do_tu_choi}</ThongBao>
@@ -123,13 +129,13 @@ export default function ChiTietPage() {
           {hoSo.trang_thai === 'HUY' && hoSo.ly_do_huy && <ThongBao loai="canh_bao">{t('chiTiet.lyDoHuy')}: {hoSo.ly_do_huy}</ThongBao>}
         </Card>
         <Card className="p-4 space-y-2">
-          <h3 className="font-bold text-sm text-main">{t('chiTiet.taiLieu')}</h3>
+          <h3 className="text-xl font-bold text-main">{t('chiTiet.taiLieu')}</h3>
           {loiTep ? <LoiTai thongBao={loi(loiTep)} /> : tep ? <XemPdf duLieu={tep} khung={khung} /> : <DangTai />}
         </Card>
       </div>
       <div className="space-y-4">
         <Card className="p-4 space-y-2">
-          <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh} v{hoSo.phien_ban_quy_trinh})</DongThongTin>
+          <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
           <DongThongTin nhan={t('danhSach.ngayGui')}>{dinhDangNgay(hoSo.ngay_gui, lang)}</DongThongTin>
           <DongThongTin nhan={t('danhSach.hanChot')}>{dinhDangNgay(hoSo.han_chot, lang)}</DongThongTin>
@@ -137,16 +143,17 @@ export default function ChiTietPage() {
             {hoSo.dang_cho.length ? hoSo.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') : t('chiTiet.khongAiCho')}
           </DongThongTin>
           {hoSo.ho_so_goc && (
-            <Link to={`/approvals/${hoSo.ho_so_goc}`} className="text-xs text-primary hover:underline">
+            <Link to={`/approvals/${hoSo.ho_so_goc}`} className="text-sm font-medium text-primary hover:underline">
               {t('chiTiet.hoSoGoc', { so: hoSo.ho_so_goc })}
             </Link>
           )}
         </Card>
         {hoSo.trang_thai === 'HOAN_THANH' && luot && <KetQuaPanel hoSo={hoSo} luot={luot} onTaiLai={capNhat} />}
+        <TaiLieuPanel hoSo={hoSo} />
         {coTraoDoi && luot?.trang_thai === 'YEU_CAU_SUA' && <TraoDoiPanel hoSo={hoSo} onXong={capNhat} />}
         {luot && (
           <Card className="p-4 space-y-2">
-            <h3 className="font-bold text-sm text-main">{t('chiTiet.tienTrinh')} · {t('chiTiet.luot', { so: luot.so_luot })}</h3>
+            <h3 className="text-xl font-bold text-main">{t('chiTiet.tienTrinh')}</h3>
             <TienTrinh luot={luot} toiId={toi?.id} />
           </Card>
         )}
@@ -159,8 +166,8 @@ export default function ChiTietPage() {
           </details>
         ))}
         <Card className="p-4 space-y-2">
-          <h3 className="font-bold text-sm text-main">{t('chiTiet.lichSu')}</h3>
-          <ol className="space-y-1 text-xs">
+          <h3 className="text-xl font-bold text-main">{t('chiTiet.lichSu')}</h3>
+          <ol className="space-y-1.5 text-sm">
             {hoSo.lich_su.map((e) => (
               <li key={e.id} className="flex justify-between gap-2">
                 <span className="text-main">
@@ -172,6 +179,7 @@ export default function ChiTietPage() {
           </ol>
         </Card>
       </div>
+      {dangSua && <SuaNhapDialog hoSo={hoSo} onDong={() => setDangSua(false)} onXong={(moi) => { setDangSua(false); capNhat(moi); }} />}
     </div>
   );
 }

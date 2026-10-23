@@ -10,12 +10,14 @@ export interface DocumentViewersModalProps {
   isOpen: boolean;
   onClose: () => void;
   documentId: number | null;
+  loai?: 'DEN' | 'DI' | 'MAT';
 }
 
 export const DocumentViewersModal: React.FC<DocumentViewersModalProps> = ({
   isOpen,
   onClose,
   documentId,
+  loai,
 }) => {
   const [viewers, setViewers] = useState<DocumentViewer[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -35,7 +37,8 @@ export const DocumentViewersModal: React.FC<DocumentViewersModalProps> = ({
       setIsLoading(true);
       setError(null);
       try {
-        const endpoint = `/api/documents/${documentId}/viewers/`;
+        const queryParam = loai ? `?loai=${loai}` : '';
+        const endpoint = `/api/documents/${documentId}/viewers/${queryParam}`;
         const response = await apiClient.get<PaginatedResponse<DocumentViewer> | DocumentViewer[]>(endpoint);
 
         if (ignore) return;
@@ -79,7 +82,7 @@ export const DocumentViewersModal: React.FC<DocumentViewersModalProps> = ({
     return () => {
       ignore = true;
     };
-  }, [isOpen, documentId, reloadKey]);
+  }, [isOpen, documentId, reloadKey, loai]);
 
   // Đóng bằng phím ESC
   useEffect(() => {

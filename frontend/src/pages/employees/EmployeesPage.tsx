@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from '@i18n/translate';
 import { apiClient, downloadBlob } from '@lib/apiClient';
+import { usePermissions } from '@lib/permissions';
+import { authService } from '@lib/authService';
 import {
   Employee,
   Position,
@@ -19,6 +21,8 @@ import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
+  const { can } = usePermissions();
+  const currentSession = authService.getSession();
 
   // Dữ liệu danh sách & phân trang
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -119,7 +123,8 @@ export default function EmployeesPage() {
     return () => {
       ignore = true;
     };
-  }, [currentPage, searchQuery, selectedUnitId, selectedPositionId, selectedStatus, reloadKey, showToast, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, searchQuery, selectedUnitId, selectedPositionId, selectedStatus, reloadKey]);
 
   // Tải file Excel mẫu
   const handleDownloadTemplate = async () => {
@@ -174,7 +179,7 @@ export default function EmployeesPage() {
       if (err && typeof err === 'object' && 'data' in err) {
         const errorData = (err as { data: { detail?: string } }).data;
         if (errorData?.detail) {
-          setDeleteErrorMessage(errorData.detail);
+          setDeleteErrorMessage(t(errorData.detail));
           return;
         }
       }
@@ -220,7 +225,7 @@ export default function EmployeesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-main flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-base">
+            <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-base">
               <i className="fa-solid fa-users" />
             </span>
             {t('employees.title')}
@@ -232,36 +237,42 @@ export default function EmployeesPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleDownloadTemplate}
-            isLoading={isDownloadingTemplate}
-            icon="fa-file-excel"
-          >
-            {t('employees.actions.template')}
-          </Button>
+          {can('import_cbnv') && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleDownloadTemplate}
+              isLoading={isDownloadingTemplate}
+              icon="fa-file-excel"
+            >
+              {t('employees.actions.template')}
+            </Button>
+          )}
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setIsImportModalOpen(true)}
-            icon="fa-file-import"
-          >
-            {t('employees.actions.importExcel')}
-          </Button>
+          {can('import_cbnv') && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsImportModalOpen(true)}
+              icon="fa-file-import"
+            >
+              {t('employees.actions.importExcel')}
+            </Button>
+          )}
 
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => {
-              setEditingEmployee(null);
-              setIsEmployeeModalOpen(true);
-            }}
-            icon="fa-user-plus"
-          >
-            {t('employees.actions.addEmployee')}
-          </Button>
+          {can('add_cbnv') && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setEditingEmployee(null);
+                setIsEmployeeModalOpen(true);
+              }}
+              icon="fa-user-plus"
+            >
+              {t('employees.actions.addEmployee')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -318,7 +329,7 @@ export default function EmployeesPage() {
               { value: '', label: t('employees.filters.allPositions') },
               ...positions.map((p) => ({
                 value: String(p.id),
-                label: p.ten_chuc_vu,
+                label: p.name,
               })),
             ]}
           />
@@ -336,13 +347,13 @@ export default function EmployeesPage() {
             options={[
               { value: '', label: t('employees.filters.allStatuses') },
               {
-                value: 'dang_lam_viec',
+                value: 'LAM_VIEC',
                 label: t('employees.status.working'),
                 icon: 'fa-circle-check',
                 badge: <Badge variant="success" size="sm">{t('employees.status.working')}</Badge>,
               },
               {
-                value: 'nghi_viec',
+                value: 'NGHI_VIEC',
                 label: t('employees.status.resigned'),
                 icon: 'fa-circle-xmark',
                 badge: <Badge variant="secondary" size="sm">{t('employees.status.resigned')}</Badge>,
@@ -409,18 +420,18 @@ export default function EmployeesPage() {
                 </tr>
               ) : (
                 employees.map((emp, idx) => {
-                  const initials = (emp.ho_ten || emp.full_name || 'NV')
+                  const initials = (emp.ho_ten || 'NV')
                     .split(' ')
                     .filter(Boolean)
                     .slice(-2)
                     .map((w) => w[0])
                     .join('')
                     .toUpperCase();
-                  const isWorking = emp.trang_thai === 'dang_lam_viec';
+                  const isWorking = emp.trang_thai === 'LAM_VIEC';
                   const rowNumber = (currentPage - 1) * pageSize + idx + 1;
 
                   return (
-                    <tr key={emp.id} className="hover:bg-hover transition-colors">
+                    <tr key={emp.id} className="hover:bg-surface-hover transition-colors">
                       {/* STT */}
                       <td className="py-3.5 px-4 text-center text-xs text-muted font-mono">
                         {rowNumber}
@@ -429,7 +440,7 @@ export default function EmployeesPage() {
                       {/* Họ tên & Avatar */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary to-accent text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary to-primary-hover text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
                             {initials}
                           </div>
                           <div className="min-w-0">
@@ -440,7 +451,7 @@ export default function EmployeesPage() {
                               }}
                               className="font-semibold text-main hover:text-primary cursor-pointer truncate block"
                             >
-                              {emp.ho_ten || emp.full_name}
+                              {emp.ho_ten}
                             </span>
                             <span className="text-xs text-muted truncate block">
                               @{emp.username} • {emp.email}
@@ -476,10 +487,10 @@ export default function EmployeesPage() {
                       {/* Ngày sinh */}
                       <td className="py-3.5 px-4 font-mono text-xs">
                         <div className="flex items-center gap-1.5">
-                          <span>{emp.ngay_sinh || emp.birthday || '—'}</span>
+                          <span>{emp.ngay_sinh || '—'}</span>
                           {emp.is_birthday_masked && (
                             <span
-                              className="text-amber-500 text-[10px]"
+                              className="text-warning text-[10px]"
                               title={t('employees.hints.birthdayMaskedTooltip')}
                             >
                               <i className="fa-solid fa-lock" />
@@ -490,13 +501,13 @@ export default function EmployeesPage() {
 
                       {/* SĐT */}
                       <td className="py-3.5 px-4 text-xs font-mono text-secondary">
-                        {emp.sdt || emp.phone ? (
+                        {emp.sdt ? (
                           <a
-                            href={`tel:${emp.sdt || emp.phone}`}
+                            href={`tel:${emp.sdt}`}
                             className="hover:text-primary transition-colors flex items-center gap-1"
                           >
                             <i className="fa-solid fa-phone text-[10px]" />
-                            {emp.sdt || emp.phone}
+                            {emp.sdt}
                           </a>
                         ) : (
                           '—'
@@ -526,31 +537,35 @@ export default function EmployeesPage() {
                             <i className="fa-solid fa-eye text-sm" />
                           </button>
 
-                          {/* Chỉnh sửa */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingEmployee(emp);
-                              setIsEmployeeModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-elevated transition-colors"
-                            title={t('employees.actions.edit')}
-                          >
-                            <i className="fa-solid fa-pen-to-square text-sm" />
-                          </button>
+                          {/* Chỉnh sửa: Có quyền change_full_cbnv hoặc change_self_cbnv đối với chính mình */}
+                          {(can('change_full_cbnv') || (can('change_self_cbnv') && Boolean(currentSession?.username && currentSession.username === emp.username))) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingEmployee(emp);
+                                setIsEmployeeModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-secondary hover:text-primary hover:bg-surface-elevated transition-colors cursor-pointer"
+                              title={t('employees.actions.edit')}
+                            >
+                              <i className="fa-solid fa-pen-to-square text-sm" />
+                            </button>
+                          )}
 
                           {/* Xóa */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeleteErrorMessage(null);
-                              setDeletingEmployee(emp);
-                            }}
-                            className="p-1.5 rounded-lg text-secondary hover:text-danger hover:bg-danger-subtle transition-colors"
-                            title={t('employees.actions.delete')}
-                          >
-                            <i className="fa-solid fa-trash-can text-sm" />
-                          </button>
+                          {can('delete_cbnv') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setDeleteErrorMessage(null);
+                                setDeletingEmployee(emp);
+                              }}
+                              className="p-1.5 rounded-lg text-secondary hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer"
+                              title={t('employees.actions.delete')}
+                            >
+                              <i className="fa-solid fa-trash-can text-sm" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -576,7 +591,7 @@ export default function EmployeesPage() {
               type="button"
               disabled={currentPage <= 1 || isLoading}
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               <i className="fa-solid fa-chevron-left" />
             </button>
@@ -589,7 +604,7 @@ export default function EmployeesPage() {
               type="button"
               disabled={currentPage >= totalPages || isLoading}
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              className="px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               <i className="fa-solid fa-chevron-right" />
             </button>
@@ -642,7 +657,7 @@ export default function EmployeesPage() {
           setDeleteErrorMessage(null);
         }}
         onConfirm={handleConfirmDelete}
-        name={deletingEmployee?.ho_ten || deletingEmployee?.full_name || ''}
+        name={deletingEmployee?.ho_ten || ''}
         isLoading={isDeleting}
         errorMessage={deleteErrorMessage}
       />

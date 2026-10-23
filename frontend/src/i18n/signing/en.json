@@ -1,0 +1,15 @@
+{
+  "navigation": {
+    "approvals": "Signing"
+  },
+  "pages": {
+    "approvals": {
+      "title": "Digital Signature & Electronic Approval Workflow",
+      "module": "Module 5: Digital Approvals & Signing",
+      "assignedTeam": "Group 5 (Digital Approvals Subsystem)",
+      "codeRef": "Item 5.1 · Difficulty: 1.00",
+      "isGroup1": false,
+      "desc": "Create signing workflows, inspect approval trees, notify signatories, automated email routing, and PKI digital signatures."
+    }
+  }
+}

@@ -14,18 +14,18 @@ from pydantic import Field
 
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
 DEFAULT_GEMINI_FALLBACKS = [
+    "gemini-3-flash-preview",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
     "gemini-flash-latest",
     "gemini-flash-lite-latest",
-    "gemini-pro-latest",
-    "gemini-2.5-flash-lite",
-    "gemini-3.8-flash",
 ]
 
 
 class GeminiRESTLLM(CustomLLM):
     api_key: str = Field(description="Gemini API key")
     model_name: str = Field(default="gemini-3.8-flash")
-    timeout_sec: float = Field(default=60.0)
+    timeout_sec: float = Field(default=8.0)
 
     @property
     def metadata(self) -> LLMMetadata:

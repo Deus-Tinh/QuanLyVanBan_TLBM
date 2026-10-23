@@ -19,14 +19,13 @@ from django.utils import timezone
 from rest_framework import status
 
 from .. import crypto, enums
-from .. import email as thong_bao
 from ..errors import ConflictError, SigningError
 from ..models import (
     SigningAttempt, SigningKey, SigningRequest, SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
 from ..storage import StorageError, get_storage
 from ..tich_hop import to_chuc
-from . import tep_hoan_tat
+from . import tep_hoan_tat, thong_bao
 from .audit import ghi_nhat_ky
 from .bang_chung import chot_bang_chung
 from .trinh_ky import luot_hien_hanh, mo_cap, mo_nguoi_ky_trong_cap
@@ -95,10 +94,10 @@ def _hoan_tat_neu_du(luot, cap, nguoi, thoi_diem):
     yeu_cau.save(update_fields=["trang_thai", "ngay_hoan_thanh", "update_at"])
     ghi_nhat_ky(nguoi, "signing_request", yeu_cau.pk, "HOAN_THANH_TRINH_KY", trinh_ky=yeu_cau, luot_trinh=luot,
                 trang_thai_truoc=enums.TrangThaiYeuCau.CHO_KY, trang_thai_sau=yeu_cau.trang_thai)
-    thong_bao.thong_bao_nguoi_tao(yeu_cau, "HOAN_THANH", luot)
     # Phase 10 lõi: chốt bằng chứng cùng transaction; tệp PDF hoàn tất sinh sau commit, lỗi thì thử lại được
     chot_bang_chung(luot, nguoi, thoi_diem)
     tep_hoan_tat.bat_dau_sau_commit(luot, nguoi)
+    thong_bao.su_kien(yeu_cau, luot, "HOAN_THANH", nguoi)
 
 
 def _chup_anh_chu_ky(nguoi):
@@ -197,7 +196,7 @@ def tu_choi(yeu_cau, nguoi, *, ly_do_tu_choi, khoa_chong_trung, dia_chi_ip=None)
     ghi_nhat_ky(nguoi, LOAI, dong.pk, "TU_CHOI", trinh_ky=yeu_cau, luot_trinh=luot, buoc_ky=dong,
                 trang_thai_truoc=enums.TrangThaiYeuCau.CHO_KY, trang_thai_sau=yeu_cau.trang_thai,
                 chi_tiet=ly_do_tu_choi, dia_chi_ip=dia_chi_ip)
-    thong_bao.thong_bao_nguoi_tao(yeu_cau, "TU_CHOI", luot)
+    thong_bao.su_kien(yeu_cau, luot, "TU_CHOI", nguoi)
     return yeu_cau
 
 
@@ -233,10 +232,14 @@ def thu_hoi(yeu_cau, nguoi, *, khoa_chong_trung, dia_chi_ip=None):
     if dong.vai_tro_ky == enums.VaiTroKy.KY_NHAY and dong.chan_ky_chinh:
         # Ký nháy chặn quay về chờ ký: khóa lại ký chính đã mở mà chưa ký (plan LUONG-08)
         for n in nguoi_cap:
-            if n.vai_tro_ky == enums.VaiTroKy.KY_CHINH and n.trang_thai == enums.TrangThaiNguoiKy.CHO_KY:
+            if (
+                n.vai_tro_ky == enums.VaiTroKy.KY_CHINH
+                and n.trang_thai == enums.TrangThaiNguoiKy.CHO_KY
+                and n.thoi_diem_mo is not None
+            ):
                 n.thoi_diem_mo = None
                 n.save(update_fields=["thoi_diem_mo"])
-    ghi_nhat_ky(nguoi, LOAI, dong.pk, "THU_HOI_CHU_KY", trinh_ky=luot.trinh_ky, luot_trinh=luot, buoc_ky=dong,
+    ghi_nhat_ky(nguoi, LOAI, dong.pk, "THU_HOI_CHU_KY", trinh_ky=yeu_cau, luot_trinh=luot, buoc_ky=dong,
                 trang_thai_truoc=enums.TrangThaiNguoiKy.DA_KY, trang_thai_sau=dong.trang_thai,
                 dia_chi_ip=dia_chi_ip, du_lieu_kem_theo={"chu_ky_thu_hoi": chu_ky_cu})
     return SigningRequest.objects.get(pk=yeu_cau.pk)

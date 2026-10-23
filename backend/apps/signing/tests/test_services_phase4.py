@@ -6,11 +6,14 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
+from accounts.models import Position
 from signing import enums
 from signing.errors import ConflictError, SigningError
-from signing.models import SigningAuditLog, SigningKey, SigningProcess
+from signing.models import SigningAuditLog, SigningKey, SigningProcess, SigningProcessStepSigner
 from signing.services import keys as key_service
 from signing.services import process as process_service
+
+from .helpers import tao_chuc_vu
 
 User = get_user_model()
 
@@ -29,13 +32,16 @@ class ProcessServiceTests(TestCase):
     def setUp(self):
         self.u1 = User.objects.create_user("u1")
         self.u2 = User.objects.create_user("u2")
+        self.position = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Trưởng phòng"
+        )
 
     def create(self, ma="QT1", cap_ky=None):
         cap_ky = cap_ky if cap_ky is not None else [
             {"cap_ky": 1, "ten_cap_ky": "Cấp 1", "thu_tu": 1,
              "nguoi_ky": [{"nguoi_ky": self.u2, "thu_tu": 1}]},
             {"cap_ky": 2, "ten_cap_ky": "Cấp 2", "thu_tu": 2,
-             "nguoi_ky": [{"chuc_vu_id": 7, "thu_tu": 1, "vai_tro_ky": enums.VaiTroKy.KY_NHAY}]},
+             "nguoi_ky": [{"chuc_vu_id": self.position.pk, "thu_tu": 1, "vai_tro_ky": enums.VaiTroKy.KY_NHAY}]},
         ]
         return process_service.tao_quy_trinh(
             self.u1, ma_quy_trinh=ma, ten_quy_trinh="Quy trình", pham_vi=enums.PhamViQuyTrinh.CONG_TY, cap_ky=cap_ky,
@@ -52,6 +58,43 @@ class ProcessServiceTests(TestCase):
         self.assertEqual(p.cap_ky_set.count(), 2)
         self.assertEqual(p.cau_hinh_nhac_han, {"truoc_han_gio": [24], "dung_han": True})
         self.assertIn("TAO_QUY_TRINH", self.actions(p))
+
+    def test_missing_reference_ids_are_rejected_by_service_before_writes(self):
+        with self.assertRaises(SigningError) as ctx:
+            process_service.tao_quy_trinh(
+                self.u1,
+                ma_quy_trinh="QT_MISSING_UNIT",
+                ten_quy_trinh="Quy trình",
+                pham_vi=enums.PhamViQuyTrinh.PHONG_BAN,
+                don_vi_ap_dung_id=987654321,
+                cap_ky=[],
+            )
+        self.assertEqual(ctx.exception.get_codes(), "don_vi_khong_ton_tai")
+        self.assertIn("don_vi_ap_dung_id", ctx.exception.fields)
+        self.assertFalse(SigningProcess.objects.filter(ma_quy_trinh="QT_MISSING_UNIT").exists())
+
+        process = self.create("QT_STEP_UNIT", cap_ky=[])
+        audit_count = SigningAuditLog.objects.count()
+        with self.assertRaises(SigningError) as ctx:
+            process_service.them_cap_ky(
+                process, self.u1, cap_ky=1, ten_cap_ky="Cấp 1", thu_tu=1, don_vi_id=987654321
+            )
+        self.assertEqual(ctx.exception.get_codes(), "don_vi_khong_ton_tai")
+        self.assertIn("don_vi_id", ctx.exception.fields)
+        self.assertEqual(process.cap_ky_set.count(), 0)
+        self.assertEqual(SigningAuditLog.objects.count(), audit_count)
+
+        process = self.create("QT_SIGNER_POSITION", cap_ky=[
+            {"cap_ky": 1, "ten_cap_ky": "Cấp 1", "thu_tu": 1},
+        ])
+        step = process.cap_ky_set.get()
+        audit_count = SigningAuditLog.objects.count()
+        with self.assertRaises(SigningError) as ctx:
+            process_service.them_nguoi_ky(step, self.u1, thu_tu=1, chuc_vu_id=987654321)
+        self.assertEqual(ctx.exception.get_codes(), "chuc_vu_khong_ton_tai")
+        self.assertIn("chuc_vu_id", ctx.exception.fields)
+        self.assertEqual(SigningProcessStepSigner.objects.filter(buoc_quy_trinh=step).count(), 0)
+        self.assertEqual(SigningAuditLog.objects.count(), audit_count)
 
     def test_duplicate_code_rejected(self):
         self.create("QT1")

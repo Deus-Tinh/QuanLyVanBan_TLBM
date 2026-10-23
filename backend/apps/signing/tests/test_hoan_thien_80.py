@@ -14,7 +14,7 @@ from signing.models import SigningProcessStepSigner, SigningRequestStepSigner, S
 from signing.services import process as process_service
 from signing.storage import get_storage
 
-from .helpers import cap_quyen
+from .helpers import cap_quyen, tao_don_vi
 from .test_hanh_dong_ky_phase8 import KyBase, ky_so
 from .test_hoan_tat_phase10 import HoanTatBase
 from .test_trinh_ky_phase7 import BASE, TrinhKyBase, pdf_mau, tep_pdf
@@ -44,7 +44,8 @@ class PhamViQuyTrinhTests(TrinhKyBase):
         cap_quyen(self.tao, "view_trinhky")
         cap_quyen(self.cv6, "view_trinhky", "add_trinhky", "view_vanbandi")
         ma_nhom = {self.quan_tri.pk: {"ADMIN"}, self.tp.pk: {"TP"}}
-        don_vi = {self.tp.pk: 5, self.tao.pk: 5, self.cv6.pk: 6}
+        self.dv5, self.dv6 = tao_don_vi().pk, tao_don_vi().pk
+        don_vi = {self.tp.pk: self.dv5, self.tao.pk: self.dv5, self.cv6.pk: self.dv6}
         for ten, bang in (("ma_nhom_cua", ma_nhom), ("don_vi_cua", don_vi)):
             vay = mock.patch(f"signing.tich_hop.to_chuc.{ten}", side_effect=lambda u, b=bang: b.get(u.pk, set()
                              if b is ma_nhom else None))
@@ -63,19 +64,19 @@ class PhamViQuyTrinhTests(TrinhKyBase):
     def test_unit_is_required_for_department_scope_only(self):
         r = self.tao_qt(self.quan_tri, "PB-THIEU", "PHONG_BAN")
         self.assertEqual((r.status_code, r.data["code"]), (400, "quy_trinh_phong_ban_thieu_don_vi"))
-        r = self.tao_qt(self.quan_tri, "CT-THUA", "CONG_TY", don_vi=5)
+        r = self.tao_qt(self.quan_tri, "CT-THUA", "CONG_TY", don_vi=self.dv5)
         self.assertEqual((r.status_code, r.data["code"]), (400, "quy_trinh_cong_ty_co_don_vi"))
 
     def test_management_by_scope_visibility_and_usage(self):
         self.assertEqual(self.tao_qt(self.tp, "CT-TP", "CONG_TY").status_code, 403)  # công ty: chỉ quản trị
-        self.assertEqual(self.tao_qt(self.tp, "PB6-TP", "PHONG_BAN", 6).status_code, 403)  # đơn vị khác
-        pb5 = self.tao_qt(self.tp, "PB5", "PHONG_BAN", 5)
+        self.assertEqual(self.tao_qt(self.tp, "PB6-TP", "PHONG_BAN", self.dv6).status_code, 403)  # đơn vị khác
+        pb5 = self.tao_qt(self.tp, "PB5", "PHONG_BAN", self.dv5)
         self.assertEqual(pb5.status_code, 201, pb5.data)
         self.assertEqual(self.kich_hoat(self.tp, pb5.data["id"]).status_code, 200)
         ct = self.tao_qt(self.quan_tri, "CT", "CONG_TY")
         self.assertEqual(self.kich_hoat(self.quan_tri, ct.data["id"]).status_code, 200)
-        nhap5 = self.tao_qt(self.tp, "PB5-NHAP", "PHONG_BAN", 5).data["id"]
-        self.assertEqual(self.kich_hoat(self.quan_tri, self.tao_qt(self.quan_tri, "PB6", "PHONG_BAN", 6).data["id"])
+        nhap5 = self.tao_qt(self.tp, "PB5-NHAP", "PHONG_BAN", self.dv5).data["id"]
+        self.assertEqual(self.kich_hoat(self.quan_tri, self.tao_qt(self.quan_tri, "PB6", "PHONG_BAN", self.dv6).data["id"])
                          .status_code, 200)  # quản trị quản lý được quy trình phòng ban
 
         def ma_thay(user):
@@ -89,22 +90,22 @@ class PhamViQuyTrinhTests(TrinhKyBase):
         self.assertEqual(self.client_cua(User.objects.get(pk=self.tao.pk)).get(f"{QT}/{nhap5}/").status_code, 404)
 
         r = self.client_cua(User.objects.get(pk=self.cv6.pk)).post(f"{BASE}/", {
-            "document_type": "vanbandi", "van_ban_id": 10, "quy_trinh": pb5.data["id"], "muc_do": "THUONG",
+            "document_type": "vanbandi", "van_ban_id": 10, "quy_trinh": pb5.data["id"],
             "tep": tep_pdf()}, format="multipart")
         self.assertEqual((r.status_code, r.data["code"]), (403, "quy_trinh_khong_ap_dung"))
-        r = self.tao_nhap(quy_trinh=pb5.data["id"])  # người tạo cùng đơn vị 5
+        r = self.tao_nhap(quy_trinh=pb5.data["id"])  # người tạo cùng đơn vị dv5
         self.assertEqual(r.status_code, 201, r.data)
 
     def test_clone_keeps_unit(self):
-        pb5 = self.tao_qt(self.tp, "PB5-NB", "PHONG_BAN", 5).data
+        pb5 = self.tao_qt(self.tp, "PB5-NB", "PHONG_BAN", self.dv5).data
         moi = process_service.nhan_ban(process_service.SigningProcess.objects.get(pk=pb5["id"]), self.tp)
-        self.assertEqual((moi.pham_vi, moi.don_vi_ap_dung_id), ("PHONG_BAN", 5))
+        self.assertEqual((moi.pham_vi, moi.don_vi_ap_dung_id), ("PHONG_BAN", self.dv5))
 
     def test_user_lookup_for_process_configuration(self):
         c = self.client_cua(User.objects.get(pk=self.quan_tri.pk))
         r = c.get("/api/v1/signing/nguoi-dung/", {"q": "ke_t"})
         self.assertEqual([u["ten_dang_nhap"] for u in r.data], ["ke_toan"])
-        self.assertEqual(set(r.data[0]), {"id", "ten", "ten_dang_nhap", "chuc_vu", "don_vi_id"})
+        self.assertEqual(set(r.data[0]), {"id", "ten", "ten_dang_nhap", "chuc_vu", "don_vi_id", "don_vi"})
         self.assertEqual(self.c.get("/api/v1/signing/nguoi-dung/").status_code, 403)
 
 

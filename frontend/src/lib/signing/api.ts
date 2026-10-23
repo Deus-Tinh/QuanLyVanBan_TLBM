@@ -5,8 +5,8 @@
  */
 import apiClient, { ApiError } from '@lib/apiClient';
 import type {
-  BangChung, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh, ThamSoKdf, TinNhan,
-  TraoDoi, VanBanDi, ViTriKy,
+  BangChung, BoLocHoSo, BoLocTaiLieu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
+  ThamSoKdf, ThongBaoTrinhKy, TinNhan, TraoDoi, VanBanDi, ViTriKy,
 } from './types';
 
 export const SIGNING_BASE = '/api/v1/signing';
@@ -57,10 +57,18 @@ export const signingApi = {
   toi: () => apiClient.get<NguoiDungHienTai>(`${SIGNING_BASE}/toi/`),
 
   // ── Hồ sơ ────────────────────────────────────────────────────────────────
-  danhSach: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', trang_thai?: string) =>
-    apiClient.get<HoSo[]>(`${SIGNING_BASE}/trinh-ky/?hop=${hop}${trang_thai ? `&trang_thai=${trang_thai}` : ''}`),
+  danhSach: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', loc: BoLocHoSo = {}) => {
+    const tham_so = new URLSearchParams({ hop });
+    Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
+    return apiClient.get<HoSo[]>(`${SIGNING_BASE}/trinh-ky/?${tham_so}`);
+  },
+  thongKe: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca') =>
+    apiClient.get<ThongKeHoSo>(`${SIGNING_BASE}/trinh-ky/thong-ke/?hop=${hop}`),
   chiTiet: (id: number) => apiClient.get<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`),
   taoNhap: (form: FormData) => postForm<HoSoChiTiet>('/trinh-ky/', form),
+  /** Sửa hồ sơ nháp: mức độ, hạn chót, ghi chú, thay tệp (multipart). */
+  suaNhap: (id: number, form: FormData) =>
+    apiClient<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`, { method: 'PATCH', body: form }),
   gui: (id: number, khoa: string, chon_nguoi_ky: Record<string, number>, vi_tri_ky: Record<string, ViTriKy>) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/gui/`, { chon_nguoi_ky, vi_tri_ky }, tieuDe(khoa)),
   huy: (id: number, khoa: string, ly_do: string) =>
@@ -94,6 +102,7 @@ export const signingApi = {
   taoLaiTepHoanTat: (id: number) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/tao-lai-tep-hoan-tat/`, {}),
   tepGoc: (id: number) => layBlob(`/trinh-ky/${id}/tep/`),
+  tepCuaLuot: (id: number, luot: number) => layBlob(`/trinh-ky/${id}/tep/?luot=${luot}`),
   tepHoanTat: (id: number) => layBlob(`/trinh-ky/${id}/tep-hoan-tat/`),
   anhChuKy: (id: number, chuKyId: number) => layBlob(`/trinh-ky/${id}/anh-chu-ky/${chuKyId}/`),
 
@@ -101,10 +110,20 @@ export const signingApi = {
   quyTrinh: (trang_thai?: string) =>
     apiClient.get<QuyTrinh[]>(`${SIGNING_BASE}/quy-trinh/${trang_thai ? `?trang_thai=${trang_thai}` : ''}`),
   taoQuyTrinh: (body: unknown) => apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/`, body),
+  chiTietQuyTrinh: (id: number) => apiClient.get<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/`),
+  suaQuyTrinh: (id: number, body: unknown) => apiClient.put<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/`, body),
+  xoaQuyTrinh: (id: number) => apiClient.delete<unknown>(`${SIGNING_BASE}/quy-trinh/${id}/`),
   thaoTacQuyTrinh: (id: number, thao_tac: 'kich-hoat' | 'ngung' | 'nhan-ban') =>
     apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/${thao_tac}/`, {}),
   timNguoiDung: (q: string) =>
     apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?q=${encodeURIComponent(q)}`),
+  donVi: () => apiClient.get<DonViLuaChon[]>(`${SIGNING_BASE}/don-vi/`),
+  taiLieu: (loc: BoLocTaiLieu = {}) => {
+    const tham_so = new URLSearchParams();
+    Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
+    return apiClient.get<TepTaiLieu[]>(`${SIGNING_BASE}/tai-lieu/?${tham_so}`);
+  },
+  thongBao: () => apiClient.get<ThongBaoTrinhKy[]>(`${SIGNING_BASE}/thong-bao/`),
   timVanBanDi: (q: string) => apiClient.get<VanBanDi[]>(`${SIGNING_BASE}/van-ban-di/?q=${encodeURIComponent(q)}`),
 
   // ── Khóa ký, PIN ─────────────────────────────────────────────────────────

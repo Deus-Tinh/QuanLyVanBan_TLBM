@@ -54,7 +54,12 @@ async function handleResponse<T>(res: Response): Promise<T> {
   if (isJson && typeof res.json === 'function') {
     data = await res.json().catch(() => ({}));
   } else if (typeof res.text === 'function') {
-    data = await res.text();
+    const text = await res.text();
+    const isHtml =
+      Boolean(contentType?.includes('text/html')) || /^\s*<!doctype\s+html|^\s*<html\b/i.test(text);
+    data = !res.ok && isHtml
+      ? { error: t('common.apiError', { status: String(res.status) }) }
+      : text;
   } else {
     data = {};
   }
@@ -176,6 +181,13 @@ export async function apiClient<T = unknown>(
           });
         });
       }
+    } else {
+      // Không có refresh token -> Dọn sạch session và đăng xuất ngay
+      localStorage.removeItem('tlbm_access_token');
+      localStorage.removeItem('tlbm_token');
+      localStorage.removeItem('tlbm_refresh_token');
+      localStorage.removeItem('tlbm_session');
+      window.dispatchEvent(new Event('tlbm_auth_changed'));
     }
   }
 

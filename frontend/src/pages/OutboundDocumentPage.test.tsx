@@ -116,7 +116,7 @@ describe('OutboundDocumentPage Component (Phân hệ Văn bản Đi)', () => {
 
       expect(screen.getByText('Quản Lý Văn Bản Đi')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Thêm mới/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Nhập Excel/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /(Import Excel|Nhập Excel)/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Xuất Excel/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Làm mới/i })).toBeInTheDocument();
 
@@ -225,6 +225,27 @@ describe('OutboundDocumentPage Component (Phân hệ Văn bản Đi)', () => {
       });
     });
 
+    it('hiển thị badge lọc và gửi param pham_vi khi có trên URL cho văn bản đi', async () => {
+      render(
+        <MemoryRouter initialEntries={['/documents/outgoing?loai_van_ban=8&pham_vi=HAN_CHE']}>
+          <OutboundDocumentPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Đang lọc danh sách theo phạm vi/i)).toBeInTheDocument();
+        expect(screen.getByText(/Văn bản hạn chế \(Mật\)/i)).toBeInTheDocument();
+        expect(mockedApiClient.get).toHaveBeenCalledWith(expect.stringContaining('pham_vi=HAN_CHE'));
+      });
+
+      const clearPhamViBtn = screen.getByTitle('Xóa bộ lọc phạm vi');
+      fireEvent.click(clearPhamViBtn);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/Đang lọc danh sách theo phạm vi/i)).not.toBeInTheDocument();
+      });
+    });
+
     it('mở ConfirmModal khi yêu cầu xóa và thực hiện xóa thành công', async () => {
       mockedApiClient.delete.mockResolvedValueOnce({ success: true });
 
@@ -250,6 +271,30 @@ describe('OutboundDocumentPage Component (Phân hệ Văn bản Đi)', () => {
       await waitFor(() => {
         expect(mockedApiClient.delete).toHaveBeenCalledWith('/api/documents/201/');
         expect(screen.getByText(/Đã xóa văn bản "201\/QĐ-TLBM" thành công/i)).toBeInTheDocument();
+      });
+    });
+
+    it('tự động mở modal Chi tiết khi có query param ?detail=201 trên URL', async () => {
+      render(
+        <MemoryRouter initialEntries={['/documents/outgoing?detail=201']}>
+          <OutboundDocumentPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Chi Tiết Văn Bản Đi/i)).toBeInTheDocument();
+      });
+    });
+
+    it('tự động mở modal Thêm mới khi có query param ?action=create trên URL', async () => {
+      render(
+        <MemoryRouter initialEntries={['/documents/outgoing?action=create']}>
+          <OutboundDocumentPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/Thêm Mới Văn Bản Đi/i)).toBeInTheDocument();
       });
     });
   });

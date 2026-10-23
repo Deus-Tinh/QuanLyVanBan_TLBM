@@ -4,6 +4,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
+from accounts.models import Position
 from signing import enums
 from signing.errors import ImmutableEvidenceError
 from signing.models import (
@@ -11,6 +12,8 @@ from signing.models import (
     SigningProcess, SigningProcessStep, SigningProcessStepSigner, SigningRequest,
     SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
+
+from .helpers import tao_chuc_vu
 
 User = get_user_model()
 
@@ -40,7 +43,7 @@ class Base(TestCase):
     def make_request(self, **kw):
         data = dict(
             document_type=enums.LoaiVanBan.VAN_BAN_DI, van_ban_id=1, quy_trinh=self.process, phien_ban_quy_trinh=1,
-            muc_do="THUONG", create_by=self.u1,
+            create_by=self.u1,
         )
         data.update(kw)
         return SigningRequest.objects.create(**data)
@@ -61,13 +64,16 @@ class Base(TestCase):
 
 class ProcessStepSignerTests(Base):
     def test_exactly_one_of_person_or_position(self):
+        position = Position.objects.create(
+            display_order=Position.get_next_display_order(), name="Chức vụ kiểm tra"
+        )
         SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, thu_tu=1)
-        SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, chuc_vu_id=5, thu_tu=2)
+        SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, chuc_vu=position, thu_tu=2)
         with self.assertRaises(IntegrityError), transaction.atomic():
             SigningProcessStepSigner.objects.create(buoc_quy_trinh=self.pstep, thu_tu=3)
         with self.assertRaises(IntegrityError), transaction.atomic():
             SigningProcessStepSigner.objects.create(
-                buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, chuc_vu_id=5, thu_tu=4
+                buoc_quy_trinh=self.pstep, nguoi_ky=self.u1, chuc_vu=position, thu_tu=4
             )
 
 
@@ -77,18 +83,18 @@ class RequestAttemptTests(Base):
         # So đúng danh sách cột để phát hiện cả cột thừa lẫn cột thiếu so với DDL.
         self.assertEqual(enums.LoaiVanBan.values, ["vanbandi"])
         self.assertEqual(sorted(f.name for f in SigningProcess._meta.concrete_fields), [
-            "cau_hinh_nhac_han", "create_by", "created_at", "don_vi_ap_dung_id", "id", "ma_quy_trinh", "mo_ta",
+            "cau_hinh_nhac_han", "create_by", "created_at", "don_vi_ap_dung", "id", "ma_quy_trinh", "mo_ta",
             "pham_vi", "phien_ban", "ten_quy_trinh", "trang_thai", "update_at", "update_by",
         ])
         self.assertEqual(sorted(f.name for f in SigningRequest._meta.concrete_fields), [
             "create_by", "created_at", "document_type", "ghi_chu", "han_chot", "ho_so_goc", "id", "ly_do_huy",
-            "ly_do_tu_choi", "ma_bam_tai_lieu", "muc_do", "ngay_gui", "ngay_hoan_thanh", "ngay_huy",
+            "ly_do_tu_choi", "ma_bam_tai_lieu", "ngay_gui", "ngay_hoan_thanh", "ngay_huy",
             "ngay_tu_choi", "phien_ban_quy_trinh", "phien_ban_van_ban", "quy_trinh", "trang_thai",
             "update_at", "update_by", "van_ban_id", "vi_tri_luu_tep",
         ])
         for loai in ("vanbanden", "vanbanmat"):
             yeu_cau = SigningRequest(document_type=loai, van_ban_id=1, quy_trinh=self.process,
-                                     phien_ban_quy_trinh=1, muc_do="THUONG", create_by=self.u1)
+                                     phien_ban_quy_trinh=1, create_by=self.u1)
             with self.assertRaises(ValidationError) as ctx:
                 yeu_cau.full_clean()
             self.assertIn("document_type", ctx.exception.message_dict)

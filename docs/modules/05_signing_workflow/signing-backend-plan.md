@@ -110,8 +110,8 @@ Theo #80 mục 8, MVP dùng chữ ký điện tử nội bộ Ed25519 và kết 
 - Giao diện (React PDF viewer) hiển thị ảnh chữ ký như một lớp phủ CSS/Canvas đè lên bản xem trước theo tọa độ; không tạo tệp trung gian.
 - **Phẳng hóa (Stamping & Flattening):** chỉ khi lượt trình chuyển `HOAN_THANH`, tác vụ nền đọc tệp gốc, lấy snapshot ảnh và tọa độ của toàn bộ chữ ký hiện hành, dán một lần và sinh tệp PDF hoàn tất. Vị trí và mã băm tệp này lưu tại `signing_attempt.vi_tri_tep_hoan_tat`, `signing_attempt.ma_bam_tep_hoan_tat`.
 - Không sinh tệp theo từng người ký.
-- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành". Đã làm ở lõi Phase 10 (#80): dòng nhận diện ở chân mọi trang, trang phê duyệt và bằng chứng JSON đính kèm; MVP chưa dán ảnh chữ ký (chưa có nguồn ảnh, chưa chốt tọa độ).
-- Đã triển khai (#80): snapshot ảnh lúc ký qua `tich_hop.to_chuc.anh_chu_ky` (field `anh_chu_ky` của Nhóm 7 khi có); tệp hoàn tất dán ảnh vào khung, chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT"; mã băm ảnh ghi trong bằng chứng và được kiểm khi dựng tệp.
+- Tệp hoàn tất của giai đoạn nội bộ chỉ chứa ảnh chữ ký, không nhúng chữ ký số, nên không verify được bằng phần mềm đọc PDF. Phải có dòng nhận diện "bản duyệt nội bộ, chưa phát hành". Đã làm ở lõi Phase 10 (#80): dòng nhận diện ở chân mọi trang, trang phê duyệt và bằng chứng JSON đính kèm; MVP chưa dán ảnh chữ ký vì chưa có nguồn ảnh (Nhóm 7 chốt cột `anh_chu_ky` để sau MVP, #67 mục 2).
+- Đã triển khai (#80): snapshot ảnh lúc ký qua `tich_hop.to_chuc.anh_chu_ky` (field `anh_chu_ky` của Nhóm 7 khi có); tệp hoàn tất dán ảnh vào khung, chưa có ảnh thì in khối chữ "ĐÃ KÝ DUYỆT" kèm họ tên, chức vụ, thời điểm ký; mã băm ảnh ghi trong bằng chứng và được kiểm khi dựng tệp.
 
 ### 3.3. Yêu cầu, lượt trình và nội dung văn bản
 
@@ -245,6 +245,7 @@ GVHD đã chốt bỏ văn bản mật hành chính. Tài liệu nội bộ hạ
 - **Redis:** broker Celery, khóa ngắn hạn nếu cần; challenge khóa ký chỉ dùng Redis khi chuyển sang challenge ngẫu nhiên (mục 3.4).
 - **Celery worker:** gửi thông báo, nhắc hạn, escalation, phẳng hóa PDF, chốt bằng chứng tổng hợp. Task chỉ nhận ID, retry có backoff và jitter, idempotent.
 - **Outbox:** dùng chính bảng `signing_notification`. Bản ghi `CHO_GUI` được tạo trong cùng transaction nghiệp vụ; sau commit (`transaction.on_commit`) mới đẩy task gửi; một tác vụ định kỳ quét các bản ghi `CHO_GUI` bị sót. Không tạo bảng outbox riêng trong MVP.
+- Đã triển khai (`services/thong_bao.py`): sự kiện `CAN_KY` (người ký vừa được mở), `HOAN_THANH`, `TU_CHOI`, `YEU_CAU_SUA`, `HUY` tạo bản ghi kênh `IN_APP` (hiện ở tab Thông báo, API `GET /thong-bao/`) và `EMAIL` (khi người nhận có email) trong cùng transaction, `khoa_chong_gui_trung` chống trùng; email gửi sau commit, lỗi ghi `THAT_BAI` + `loi_gui`, lệnh `manage.py gui_thong_bao_trinh_ky` gửi lại (chạy định kỳ thay cho Celery trong MVP). Cấu hình: `SIGNING_EMAIL_BACKEND` (trống: dùng email chung của dự án), `SIGNING_FRONTEND_URL` (liên kết trong email).
 
 ### 4.2. Transaction và xử lý đồng thời
 
@@ -298,7 +299,7 @@ Ràng buộc: unique `(ma_quy_trinh, phien_ban)`; CHECK `pham_vi = PHONG_BAN` th
 | Cấp ký | `cap_ky` | Number (SmallInt) | X | Số hiệu hiển thị |
 | Tên cấp ký | `ten_cap_ky` | Text (255) | X | |
 | Thứ tự ký | `thu_tu` | Number (SmallInt) | X | Quyết định thứ tự mở cấp |
-| Đơn vị ký | `don_vi_id` | Number (BigInt) | | Tạm là số nguyên; đổi sang ForeignKey (Đơn vị/phòng ban) khi Nhóm 7 chốt (Phase 7) |
+| Đơn vị ký | `don_vi_id` | ForeignKey (Đơn vị) | | FK `organizations_donvi` của Nhóm 7 (migration `0010`) |
 | Số giờ xử lý của cấp | `so_gio_xu_ly` | Number | | Rỗng: dùng quy tắc chia hạn mục 3.5 |
 | Đang áp dụng | `dang_ap_dung` | Boolean | X | Mặc định True |
 | Ghi chú | `ghi_chu` | Text | | |
@@ -313,7 +314,7 @@ Ràng buộc: unique `(quy_trinh, thu_tu)`.
 | ID | `id` | Number (auto) | | |
 | Cấp ký trong quy trình | `buoc_quy_trinh` | ForeignKey (signing_process_step) | X | |
 | Người ký | `nguoi_ky` | ForeignKey (auth_user) | | Nhập người ký HOẶC chức vụ |
-| Chức vụ ký | `chuc_vu_id` | Number (BigInt) | | Nhập người ký HOẶC chức vụ; tạm là số nguyên, đổi sang ForeignKey (Chức vụ) ở Phase 7 |
+| Chức vụ ký | `chuc_vu_id` | ForeignKey (Chức vụ) | | Nhập người ký HOẶC chức vụ; FK `accounts_position` của Nhóm 7 (migration `0010`) |
 | Phạm vi chức vụ | `pham_vi_chuc_vu` | Text (20) [DON_VI_NGUOI_TAO, DON_VI_CO_DINH, TOAN_CO_QUAN] | | Bắt buộc khi cấu hình theo chức vụ (mục 3.2). Thêm ở Phase 7 |
 | Vai trò ký | `vai_tro_ky` | Text (20) [KY_NHAY, KY_CHINH] | X | Mặc định KY_CHINH |
 | Chặn ký chính | `chan_ky_chinh` | Boolean | X | Mặc định True; ký nháy xong mới mở ký chính |
@@ -334,7 +335,6 @@ Ràng buộc: CHECK có đúng một trong `nguoi_ky`, `chuc_vu`. Mọi người
 | Mã băm tài liệu | `ma_bam_tai_lieu` | Text (64) - SHA-256 | | Bản sao từ lượt trình hiện hành |
 | Quy trình trình ký | `quy_trinh` | ForeignKey (signing_process) | X | Không đổi sau khi gửi |
 | Phiên bản quy trình | `phien_ban_quy_trinh` | Number (SmallInt) | X | Không đổi sau khi gửi |
-| Mức độ | `muc_do` | Text (20) | X | Theo danh mục mức độ chung |
 | Hồ sơ gốc | `ho_so_goc` | ForeignKey (signing_request) | | Trỏ về yêu cầu bị từ chối khi trình lại (mục 3.3); `PROTECT` |
 | Trạng thái | `trang_thai` | Text (20) [NHAP, CHO_KY, HOAN_THANH, TU_CHOI, HUY] | X | Mặc định NHAP |
 | Hạn chót trình ký | `han_chot` | DateTime | | Chỉ quản trị viên đổi sau khi gửi, có nhật ký |
@@ -669,15 +669,15 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 ### 7.2. Yêu cầu trình ký
 
 Đã triển khai ở Phase 7 (#80), đường dẫn `/signing/trinh-ky/`:
-- `GET /signing/trinh-ky/?hop=can_toi_ky|toi_gui|tat_ca&trang_thai=&muc_do=`: `can_toi_ky` = người ký đã được mở, đang chờ ký, trên lượt `CHO_KY`; `tat_ca` = hồ sơ người dùng được xem (người tạo, người ký của hồ sơ; `view_signing_audit` xem tất cả).
-- `POST /signing/trinh-ky/` (multipart): `document_type` (`vanbandi`), `van_ban_id`, `quy_trinh` (đang hoạt động), `muc_do` (`THUONG`, `KHAN`, `HOA_TOC`), `han_chot`, `ghi_chu`, `tep` (PDF ≤ 20 MB). Server tự lưu tệp và tính SHA-256; tạo `NHAP`. Quyền `add_trinhky`.
+- `GET /signing/trinh-ky/?hop=can_toi_ky|toi_gui|tat_ca&trang_thai=`: `can_toi_ky` = người ký đã được mở, đang chờ ký, trên lượt `CHO_KY`; `tat_ca` = hồ sơ người dùng được xem (người tạo, người ký của hồ sơ; `view_signing_audit` xem tất cả).
+- `POST /signing/trinh-ky/` (multipart): `document_type` (`vanbandi`), `van_ban_id`, `quy_trinh` (đang hoạt động), `han_chot`, `ghi_chu`, `tep` (PDF ≤ 20 MB). Server tự lưu tệp và tính SHA-256; tạo `NHAP`. Quyền `add_trinhky`.
 - `GET /signing/trinh-ky/{id}/`: tổng quan, các lượt trình (cấp, người ký, hạn), người đang chờ, lịch sử. Không trả đường dẫn lưu tệp.
 - `PATCH /signing/trinh-ky/{id}/`: chỉ khi `NHAP`, chỉ người tạo; thay tệp tăng `phien_ban_van_ban`.
 - `GET /signing/trinh-ky/{id}/tep/`: tệp của lượt trình hiện hành (hoặc dự thảo khi còn nháp), kiểm quyền xem.
 - `POST /signing/trinh-ky/{id}/gui/`: khóa tệp/mã băm, snapshot cấp, người ký và vị trí ký, mở cấp đầu. Nhận `chon_nguoi_ky` (`{id người ký cấu hình: id tài khoản}`) khi chức vụ có nhiều ứng viên; thiếu thì lỗi `can_chon_nguoi_ky` kèm ứng viên. Nhận `vi_tri_ky` (`{id người ký cấu hình: {trang_ky, toa_do_x, toa_do_y, chieu_rong_khung, chieu_cao_khung}}`, tỷ lệ % gốc trên-trái, khung trong trang); trang vượt số trang hoặc khóa không phải người ký cấu hình: `vi_tri_ky_khong_hop_le`. Quyền `send_trinhky` + người tạo.
 - Tạo/trình lại kiểm quy trình áp dụng cho người tạo: `CONG_TY` hoặc `PHONG_BAN` của đơn vị mình (403 `quy_trinh_khong_ap_dung`). Tải lên kiểm PDF đọc được trang, không mật khẩu.
 - `POST /signing/trinh-ky/{id}/huy/`: người tạo; hoặc `cancel_trinhky` hủy thay (bắt buộc `ly_do`).
-- `POST /signing/trinh-ky/{id}/trinh-lai/`: chỉ khi `TU_CHOI`; tạo hồ sơ `NHAP` mới (văn bản, tệp lượt cuối, mức độ; phiên bản đang hoạt động của cùng mã quy trình), `ho_so_goc` trỏ về hồ sơ cũ. Quyền `send_trinhky` + người tạo.
+- `POST /signing/trinh-ky/{id}/trinh-lai/`: chỉ khi `TU_CHOI`; tạo hồ sơ `NHAP` mới (văn bản, tệp lượt cuối; phiên bản đang hoạt động của cùng mã quy trình), `ho_so_goc` trỏ về hồ sơ cũ. Quyền `send_trinhky` + người tạo.
 - `gui`, `huy`, `trinh-lai` bắt buộc header `Idempotency-Key`; gửi lặp cùng khóa trả kết quả lần trước.
 - Phát hành pháp lý (`phat-hanh`): ngoài MVP, đã gỡ khỏi roadmap #80.
 
@@ -688,7 +688,7 @@ Prefix `/api/v1/`. Tên đoạn đường dẫn theo convention tiếng Việt �
 - `POST /signing/trinh-ky/{id}/tu-choi/`: "Không đồng ý ban hành", `ly_do_tu_choi` bắt buộc; chỉ người ký đang được mở; lượt và hồ sơ `TU_CHOI` (kết thúc).
 - `POST /signing/trinh-ky/{id}/thu-hoi/`: khi cấp của người ký còn `DANG_KY`; ký nháy chặn không thu hồi khi ký chính cùng cấp đã ký; thu hồi ký nháy chặn khóa lại ký chính đã mở mà chưa ký. Chữ ký cũ giữ nguyên, ký lại tạo bản ghi mới.
 - Đồng thời: mọi hành động khóa dòng lượt trình trước khi xử lý; thao tác lặp cùng khóa trả kết quả lần trước.
-- Ảnh chữ ký cá nhân chưa có nguồn (#67 mục 2), `vi_tri_anh_chu_ky` để trống ở MVP.
+- Ảnh chữ ký cá nhân để sau MVP (Nhóm 7 chốt ở #67 mục 2), `vi_tri_anh_chu_ky` để trống ở MVP; tệp hoàn tất in khối chữ thay ảnh.
 
 Trả lại để sửa, đã triển khai ở lõi Phase 9 (#80):
 - `POST /signing/trinh-ky/{id}/yeu-cau-sua/`: "Trả lại để sửa", `tieu_de` và `ly_do` bắt buộc; chỉ người ký đang được mở (quyền `sign_trinhky`, `Idempotency-Key`). Người ký và lượt `YEU_CAU_SUA`, cấp đang ký `TAM_DUNG`, mở thread; hồ sơ vẫn `CHO_KY` nhưng không ai ký tiếp trên lượt này.

@@ -109,7 +109,6 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
       <HopThoai moTieuDe={t('hanhDong.kyDuyet')} mo={mo === 'ky'} onDong={dong}
         chanDuoi={nutXacNhan(ky, t('hanhDong.kyDuyet'), 'primary', !maBamKhop || pin.length !== 8)}>
         <div className="text-sm text-main">{t('hanhDong.xacNhanTep')} <b>trinh-ky-{hoSo.id}.pdf</b></div>
-        <div className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{luot?.ma_bam_tai_lieu}</code></div>
         {!maBamKhop && <ThongBao>{t('loi.ma_bam_khong_khop')}</ThongBao>}
         <TruongNhap nhan={t('hanhDong.ghiChuKy')}>
           <input className={LOP_O_NHAP} value={o1} onChange={(e) => setO1(e.target.value)} />

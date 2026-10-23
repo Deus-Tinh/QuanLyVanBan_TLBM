@@ -269,7 +269,7 @@ class DongThoiTests(TransactionTestCase):
             {"cap_ky": 1, "ten_cap_ky": "C", "thu_tu": 1, "nguoi_ky": [{"nguoi_ky": self.ky1, "thu_tu": 1}]}])
         qt = process_service.kich_hoat(qt, self.tao)
         self.ho_so = trinh_ky_service.tao_nhap(self.tao, document_type="vanbandi", van_ban_id=10, quy_trinh=qt,
-                                               muc_do="THUONG", tep=tep_pdf())
+                                               tep=tep_pdf())
         self.ho_so = trinh_ky_service.gui(self.ho_so, self.tao, khoa_chong_trung="g")
         self.private, self.key = khoa_hoat_dong(self.ky1, "K-DT")
 

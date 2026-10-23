@@ -7,6 +7,7 @@ import { Button } from '@components/common/Button';
 import { RoleModal } from './components/RoleModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { PermissionMatrix } from './components/PermissionMatrix';
+import { filterPermissions } from './components/permissionFilter';
 
 export default function RolesPage() {
   const { t } = useTranslation();
@@ -26,6 +27,7 @@ export default function RolesPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<number>>(new Set());
   const [isSavingPermissions, setIsSavingPermissions] = useState<boolean>(false);
+  const [permissionQuery, setPermissionQuery] = useState<string>('');
 
   const [isRoleModalOpen, setIsRoleModalOpen] = useState<boolean>(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -43,6 +45,26 @@ export default function RolesPage() {
   };
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId) || null;
+  // Năm nhóm chuẩn của DDL (có mã nhóm quyền) không đổi tên, không xóa được; quyền vẫn chỉnh được.
+  const isProtectedRole = !!selectedRole?.ma_nhom_quyen;
+
+  // Có tick/bỏ tick mà chưa bấm Lưu (so với quyền đã lưu của nhóm đang chọn)
+  const savedPermissionIds = new Set(selectedRole?.permission_ids || []);
+  const hasUnsavedChanges =
+    !!selectedRole &&
+    (savedPermissionIds.size !== selectedPermissionIds.size ||
+      Array.from(selectedPermissionIds).some((id) => !savedPermissionIds.has(id)));
+  const confirmDiscardChanges = () => !hasUnsavedChanges || window.confirm(t('roles.messages.unsavedConfirm'));
+
+  // "Chọn tất cả" / "Bỏ chọn" chỉ tác động lên các quyền đang hiện theo ô tìm, giữ nguyên quyền đang ẩn
+  const setVisiblePermissions = (checked: boolean) => {
+    const visibleIds = filterPermissions(permissions, permissionQuery).map((p) => p.id);
+    setSelectedPermissionIds((prev) => {
+      const next = new Set(prev);
+      visibleIds.forEach((id) => (checked ? next.add(id) : next.delete(id)));
+      return next;
+    });
+  };
 
   // Tải toàn bộ danh sách quyền hệ thống (1 lần, dùng chung cho mọi nhóm quyền)
   useEffect(() => {
@@ -68,6 +90,17 @@ export default function RolesPage() {
         ? (err as { data?: { detail?: string } }).data?.detail
         : undefined;
     return detail || 'roles.messages.fetchError';
+  };
+
+  // Lấy key i18n lỗi từ phản hồi lưu quyền (vd nhóm ADMIN bắt buộc giữ quyền quản lý nhóm quyền)
+  const saveErrorKey = (err: unknown): string => {
+    const data =
+      err && typeof err === 'object' && 'data' in err
+        ? (err as { data?: { detail?: unknown; permission_ids?: unknown } }).data
+        : undefined;
+    const candidates = [data?.detail, ...(Array.isArray(data?.permission_ids) ? data.permission_ids : [])];
+    const key = candidates.find((c) => typeof c === 'string' && c.startsWith('roles.'));
+    return (key as string | undefined) || 'roles.messages.fetchError';
   };
 
   // Tải lần đầu / khi bấm "Thử lại" (trạng thái đang tải ban đầu đã là true, nút Thử lại tự đặt lại trước khi đổi retryToken)
@@ -111,6 +144,7 @@ export default function RolesPage() {
 
   // Khi chọn 1 nhóm quyền bên trái, dùng permission_ids đã có sẵn trong danh sách (list trả đủ field)
   const selectRole = (roleId: number) => {
+    if (roleId === selectedRoleId || !confirmDiscardChanges()) return;
     setSelectedRoleId(roleId);
     const role = roles.find((r) => r.id === roleId);
     setSelectedPermissionIds(new Set(role?.permission_ids || []));
@@ -135,8 +169,8 @@ export default function RolesPage() {
       });
       showToast('roles.messages.updateSuccess');
       await reloadRoles();
-    } catch {
-      showToast('roles.messages.fetchError', true);
+    } catch (err: unknown) {
+      showToast(saveErrorKey(err), true);
     } finally {
       setIsSavingPermissions(false);
     }
@@ -224,6 +258,8 @@ export default function RolesPage() {
                 variant="ghost"
                 icon="fa-plus"
                 onClick={() => {
+                  // Tạo nhóm mới sẽ chuyển sang nhóm vừa tạo, nên hỏi trước nếu còn thay đổi chưa lưu
+                  if (!confirmDiscardChanges()) return;
                   setEditingRole(null);
                   setIsRoleModalOpen(true);
                 }}
@@ -236,7 +272,7 @@ export default function RolesPage() {
                 size="sm"
                 variant="ghost"
                 icon="fa-pen"
-                disabled={!selectedRole}
+                disabled={!selectedRole || isProtectedRole}
                 onClick={() => {
                   if (selectedRole) {
                     setEditingRole(selectedRole);
@@ -252,7 +288,7 @@ export default function RolesPage() {
                 size="sm"
                 variant="ghost"
                 icon="fa-xmark"
-                disabled={!selectedRole}
+                disabled={!selectedRole || isProtectedRole}
                 onClick={() => {
                   if (selectedRole) {
                     setDeletingRole(selectedRole);
@@ -275,13 +311,16 @@ export default function RolesPage() {
                 <div className="text-center py-10 px-3">
                   <i className="fa-solid fa-triangle-exclamation text-2xl text-danger mb-2 block" />
                   <p className="text-danger text-sm font-semibold mb-2">{t(fetchError)}</p>
-                  <Button variant="outline" size="sm" icon="fa-rotate-right" onClick={() => {
-                      setIsLoadingRoles(true);
-                      setFetchError(null);
-                      setRetryToken((n) => n + 1);
-                    }}>
-                    {t('roles.actions.retry')}
-                  </Button>
+                  {/* Không có quyền (403) thì thử lại cũng không được, nên chỉ hiện nút với lỗi tải/mạng */}
+                  {fetchError !== 'roles.messages.permissionDenied' && (
+                    <Button variant="outline" size="sm" icon="fa-rotate-right" onClick={() => {
+                        setIsLoadingRoles(true);
+                        setFetchError(null);
+                        setRetryToken((n) => n + 1);
+                      }}>
+                      {t('roles.actions.retry')}
+                    </Button>
+                  )}
                 </div>
               ) : roles.length === 0 ? (
                 <div className="text-center py-10 text-secondary text-sm">
@@ -328,7 +367,7 @@ export default function RolesPage() {
                 variant="secondary"
                 icon="fa-check-double"
                 disabled={!selectedRole}
-                onClick={() => setSelectedPermissionIds(new Set(permissions.map((p) => p.id)))}
+                onClick={() => setVisiblePermissions(true)}
               >
                 {t('roles.actions.selectAll')}
               </Button>
@@ -337,7 +376,7 @@ export default function RolesPage() {
                 variant="secondary"
                 icon="fa-square"
                 disabled={!selectedRole}
-                onClick={() => setSelectedPermissionIds(new Set())}
+                onClick={() => setVisiblePermissions(false)}
               >
                 {t('roles.actions.deselectAll')}
               </Button>
@@ -358,6 +397,8 @@ export default function RolesPage() {
                 permissions={permissions}
                 selectedIds={selectedPermissionIds}
                 onToggle={togglePermission}
+                query={permissionQuery}
+                onQueryChange={setPermissionQuery}
                 readOnly={!canChange}
               />
             )}

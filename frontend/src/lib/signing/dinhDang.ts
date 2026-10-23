@@ -1,7 +1,7 @@
 /** Tiện ích hiển thị dùng chung của phân hệ Trình ký. */
 
 export const LOP_O_NHAP =
-  'w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-main placeholder:text-muted ' +
+  'w-full rounded-xl border border-border-subtle bg-surface px-3.5 py-2 text-sm text-main placeholder:text-muted ' +
   'focus:outline-none focus:border-focus focus:ring-2 focus:ring-primary-subtle';
 
 export function dinhDangNgay(iso: string | null | undefined, lang: 'vi' | 'en'): string {

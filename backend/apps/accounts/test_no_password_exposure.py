@@ -35,8 +35,9 @@ class NoPasswordExposureTests(APITestCase):
     def setUp(self):
         User = get_user_model()
         khoi = KhoiKhuVuc.objects.create(ten="Khối Kiểm Thử")
-        self.don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=1, ten="Đơn vị kiểm thử")
-        self.chuc_vu = Position.objects.create(display_order=1, name="Chuyên viên")
+        latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
+        self.don_vi = DonVi.objects.create(khoi=khoi, stt_uu_tien=latest_stt + 1, ten="Đơn vị kiểm thử")
+        self.chuc_vu = Position.objects.create(display_order=Position.get_next_display_order(), name="Chuyên viên")
         self.admin = User.objects.create_superuser(
             username="admin_nopw",
             password=self.PASSWORD,

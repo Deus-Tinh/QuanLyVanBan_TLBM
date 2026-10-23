@@ -226,7 +226,7 @@ class AuthorizationAPITest(TestCase):
         self.assertNotIn("content_type", sample)
 
     def test_permission_list_matches_ddl_seed(self):
-        """73 quyền chuẩn SQL_Fix4 + 4 quyền Phân quyền, gom theo module_ten tiếng Việt."""
+        """69 quyền chuẩn của DDL base + 8 quyền bổ sung (77, đã bỏ văn bản mật), gom theo module_ten tiếng Việt."""
         response = self.viewer_client.get("/api/permissions/")
         codenames = {p["codename"] for p in response.data}
         self.assertGreaterEqual(len(codenames), 77)

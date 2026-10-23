@@ -52,7 +52,7 @@ export const RoleModal: React.FC<RoleModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-backdrop backdrop-blur-sm animate-fade-in">
       <div className="bg-surface border border-border rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-scale-up">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface-elevated">
@@ -89,6 +89,7 @@ export const RoleModal: React.FC<RoleModalProps> = ({
                 if (errorKey) setErrorKey(null);
               }}
               placeholder={t('roles.namePlaceholder')}
+              maxLength={150}
               className="w-full px-3.5 py-2 text-sm bg-surface-elevated border border-border-subtle rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               autoFocus
             />
