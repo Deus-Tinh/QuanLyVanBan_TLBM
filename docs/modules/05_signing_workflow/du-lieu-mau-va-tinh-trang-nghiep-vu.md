@@ -63,6 +63,9 @@ Tên lệnh theo đề xuất trong [`danh-gia-plan-va-tich-hop.md`](danh-gia-pl
 `management/commands`). Đường dẫn này không bị `.gitignore` bỏ qua (`git check-ignore` không khớp; `.gitignore` chỉ bỏ
 qua `seed_data.py`, `migrations/*seed*.py`, `seed_accounts.py`).
 
+Đây là lệnh dữ liệu mẫu duy nhất của phân hệ: lệnh cũ `seed_demo_signing` đã gỡ vì trùng chức năng, ghi cứng mật khẩu
+trong mã nguồn (trái AGENTS.md mục 6) và sinh khóa bí mật Ed25519 từ chuỗi cố định.
+
 Lệnh tự đủ trên DB vừa `migrate`: đơn vị, chức vụ, nhóm quyền chuẩn có sẵn từ migration; thiếu đơn vị thì tạo.
 
 ### 5.1. Dữ liệu tạo ra
@@ -223,4 +226,3 @@ Tài khoản nên đăng nhập để thấy dữ liệu: `truongphong` (2 hồ 
 | `seed_signing_demo` | Dữ liệu mẫu (mục 5) |
 | `nhac_han_trinh_ky` | Thông báo `NHAC_HAN` khi còn dưới 24 giờ tới hạn cấp; `QUA_HAN` mỗi ngày quá hạn (người ký và người tạo) |
 | `gui_thong_bao_trinh_ky` | Gửi lại email `CHO_GUI`/`THAT_BAI` (tối đa 5 lần) |
-| `seed_demo_signing` | Lệnh dữ liệu mẫu cũ trên `staging`; ghi cứng mật khẩu trong mã nguồn và khóa bí mật suy ra từ chuỗi cố định, đề xuất gỡ bỏ ở issue riêng |
