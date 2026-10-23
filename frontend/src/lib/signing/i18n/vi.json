@@ -8,7 +8,7 @@
     "quyTrinh": "Quy trình",
     "khoaCuaToi": "Khóa ký & PIN",
     "thongBao": "Thông báo",
-    "taiLieu": "Văn bản công khai",
+    "taiLieu": "Tệp trình ký",
     "moi": "mới"
   },
   "chung": {
@@ -45,7 +45,8 @@
     "CHO_KICH_HOAT": "Chờ kích hoạt",
     "DA_XOAY_VONG": "Đã thay thế",
     "THU_HOI": "Đã thu hồi",
-    "HET_HAN": "Hết hạn"
+    "HET_HAN": "Hết hạn",
+    "KHONG_CAN_KY": "Không còn cần ký"
   },
   "trangThaiCap": {
     "CHUA_MO": "Chưa đến lượt",
@@ -97,7 +98,8 @@
       "hoan_thanh": "Hoàn tất",
       "tu_choi": "Không đồng ý",
       "huy": "Đã hủy"
-    }
+    },
+    "quaHan": "Quá hạn"
   },
   "tao": {
     "buoc1": "Thông tin hồ sơ",
@@ -290,7 +292,8 @@
     "khong_tim_thay_nguoi_ky": "Không tìm thấy người ký trên lượt trình hiện hành.",
     "nguoi_ky_khong_cho_ky": "Chỉ ủy quyền người ký đang chờ ký.",
     "nguoi_nhan_khong_hop_le": "Người nhận không hoạt động hoặc không có quyền ký.",
-    "nguoi_nhan_da_co_trong_cap": "Người nhận đã có mặt trong cùng cấp ký."
+    "nguoi_nhan_da_co_trong_cap": "Người nhận đã có mặt trong cùng cấp ký.",
+    "khong_hien_thi_duoc_pdf": "Không hiển thị được tệp PDF trên trình duyệt này. Tải tệp về để xem; nếu vẫn lỗi, báo quản trị."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Tạo hồ sơ",
@@ -329,7 +332,9 @@
       "emailDaGui": "Email: Đã gửi",
       "emailChoGui": "Email: Đang gửi",
       "emailNguoiNhan": "Người nhận"
-    }
+    },
+    "nguoiThaoTac": "Người thực hiện",
+    "lyDo": "Lý do"
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",

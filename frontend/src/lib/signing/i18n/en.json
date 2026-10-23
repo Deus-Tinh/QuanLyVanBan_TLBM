@@ -8,7 +8,7 @@
     "quyTrinh": "Workflows",
     "khoaCuaToi": "Signing key & PIN",
     "thongBao": "Notifications",
-    "taiLieu": "Public documents",
+    "taiLieu": "Signing files",
     "moi": "new"
   },
   "chung": {
@@ -45,7 +45,8 @@
     "CHO_KICH_HOAT": "Pending activation",
     "DA_XOAY_VONG": "Replaced",
     "THU_HOI": "Revoked",
-    "HET_HAN": "Expired"
+    "HET_HAN": "Expired",
+    "KHONG_CAN_KY": "No longer required"
   },
   "trangThaiCap": {
     "CHUA_MO": "Not yet open",
@@ -97,7 +98,8 @@
       "hoan_thanh": "Completed",
       "tu_choi": "Rejected",
       "huy": "Cancelled"
-    }
+    },
+    "quaHan": "Overdue"
   },
   "tao": {
     "buoc1": "Request details",
@@ -290,7 +292,8 @@
     "khong_tim_thay_nguoi_ky": "Signer not found in the current round.",
     "nguoi_ky_khong_cho_ky": "Only signers awaiting signature can be delegated.",
     "nguoi_nhan_khong_hop_le": "The delegate is inactive or lacks signing permission.",
-    "nguoi_nhan_da_co_trong_cap": "The delegate is already in the same level."
+    "nguoi_nhan_da_co_trong_cap": "The delegate is already in the same level.",
+    "khong_hien_thi_duoc_pdf": "This PDF cannot be displayed in this browser. Download the file to view it; if the problem persists, contact the administrator."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Request created",
@@ -329,7 +332,9 @@
       "emailDaGui": "Email: Sent",
       "emailChoGui": "Email: Sending",
       "emailNguoiNhan": "Recipient"
-    }
+    },
+    "nguoiThaoTac": "By",
+    "lyDo": "Reason"
   },
   "taiLieu": {
     "goiYTim": "Number, summary, request ID, process…",

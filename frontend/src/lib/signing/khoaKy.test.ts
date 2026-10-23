@@ -7,6 +7,7 @@ import {
   b64, bocKhoa, danXuatPin, kiemTraPin, kyBytes, moBanBoc, sha256Hex, sinhCapKhoa, taoThamSoKdf, tuB64, tuHex,
   verifierTuMaster,
 } from './khoaKy';
+import { trangThaiNguoiKy } from './dinhDang';
 import { docFileKhoa, kiemTraFileKhop, noiDungFileKhoa, tenFileKhoa } from './fileKhoa';
 import en from './i18n/en.json';
 import vi from './i18n/vi.json';
@@ -114,5 +115,16 @@ describe('file khóa', () => {
     const that = { ...ban, ...(await bocKhoa(cap.privatePkcs8, MASTER, K_SRV)) };
     const doc_lai = docFileKhoa(noiDungFileKhoa(that));
     expect(b64(await moBanBoc(doc_lai, MASTER, K_SRV))).toBe(b64(cap.privatePkcs8));
+  });
+});
+
+describe('trạng thái người ký theo lượt', () => {
+  it('lượt kết thúc: người chưa ký không còn cần ký; trả sửa: tạm dừng; đang ký: theo thời điểm mở', () => {
+    expect(trangThaiNguoiKy('TU_CHOI', 'CHO_KY', true)).toBe('KHONG_CAN_KY');
+    expect(trangThaiNguoiKy('HUY', 'CHO_KY', false)).toBe('KHONG_CAN_KY');
+    expect(trangThaiNguoiKy('YEU_CAU_SUA', 'CHO_KY', true)).toBe('TAM_DUNG');
+    expect(trangThaiNguoiKy('CHO_KY', 'CHO_KY', false)).toBe('CHUA_MO');
+    expect(trangThaiNguoiKy('CHO_KY', 'CHO_KY', true)).toBe('CHO_KY');
+    expect(trangThaiNguoiKy('HUY', 'DA_KY', true)).toBe('DA_KY');
   });
 });

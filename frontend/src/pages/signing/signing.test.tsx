@@ -45,7 +45,8 @@ vi.mock('@lib/signing/api', async () => {
 // pdfjs-dist cần DOMMatrix/canvas của trình duyệt; jsdom không có, nên chỉ thay lớp vẽ PDF.
 vi.mock('@lib/signing/pdf', () => ({
   moPdf: vi.fn().mockResolvedValue({ numPages: 1, getPage: vi.fn().mockResolvedValue({ getViewport: () => ({ width: 600, height: 800 }), render: () => ({ promise: Promise.resolve() }) }) }),
-  veTrang: vi.fn().mockResolvedValue(undefined),
+  veTrang: vi.fn(() => ({ xong: Promise.resolve(undefined), huy: vi.fn() })),
+  laLoiHuyVe: vi.fn(() => false),
 }));
 const api = vi.mocked(signingApi);
 
@@ -66,7 +67,7 @@ function hoSo(sua: Partial<HoSoChiTiet> = {}): HoSoChiTiet {
       ly_do: '', thoi_diem_gui: null, thoi_diem_hoan_thanh: null, trang_thai_tep_hoan_tat: null, loi_tep_hoan_tat: '',
       ma_bam_tep_hoan_tat: '', ma_bam_bang_chung: null, cap_ky: [], yeu_cau_sua: [],
     }],
-    lich_su: [],
+    lich_su: [], trang_thai_luot: 'CHO_KY', qua_han: false,
     ...sua,
   };
 }
@@ -110,7 +111,7 @@ describe('SigningModule', () => {
     await waitFor(() => expect(tabKy).toHaveTextContent('1'));
     expect(api.thongKe).toHaveBeenCalledWith('can_toi_ky');
     const nav = within(screen.getByRole('navigation'));
-    for (const ten of [/Tôi đã gửi trình/, /(Hồ sơ|Văn bản) theo quyền/, /(Tài liệu|Văn bản công khai)/, /Thông báo/, /Khóa ký & PIN/]) {
+    for (const ten of [/Tôi đã gửi trình/, /(Hồ sơ|Văn bản) theo quyền/, /Tệp trình ký/, /Thông báo/, /Khóa ký & PIN/]) {
       expect(nav.getByRole('link', { name: ten })).toBeInTheDocument();
     }
     expect(nav.queryByRole('link', { name: /^Quy trình/ })).toBeInTheDocument();
@@ -234,6 +235,15 @@ function luotCo(nguoi: NguoiKyLuot[]): LuotTrinh {
       thoi_diem_mo: null, thoi_diem_hoan_thanh: null, nguoi_ky: nguoi }],
   };
 }
+
+describe('Danh sách: trạng thái trả lại, quá hạn', () => {
+  it('hồ sơ chờ ký mà lượt đang trả sửa hiện "Đang trả lại để sửa" và dấu quá hạn (cả bảng và thẻ mobile)', async () => {
+    api.danhSach.mockResolvedValue([hoSo({ trang_thai_luot: 'YEU_CAU_SUA', qua_han: true })]);
+    boc(<DanhSachPage hop="tat_ca" />);
+    expect((await screen.findAllByText('Đang trả lại để sửa')).length).toBe(2);
+    expect(screen.getAllByText('Quá hạn').length).toBeGreaterThanOrEqual(2);
+  });
+});
 
 describe('Ủy quyền ký', () => {
   const QUAN_TRI: NguoiDungHienTai = { ...TOI, id: 1, quyen: { ...TOI.quyen, delegate_trinhky: true } };

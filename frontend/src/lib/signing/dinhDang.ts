@@ -24,3 +24,11 @@ export function taiXuong(blob: Blob, ten: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Người ký chưa ký trên lượt đã kết thúc (từ chối, hủy) không còn phải ký; lượt đang trả sửa thì tạm dừng. */
+export function trangThaiNguoiKy(luot: string, nguoi: string, da_mo: boolean): string {
+  if (nguoi !== 'CHO_KY') return nguoi;
+  if (luot === 'TU_CHOI' || luot === 'HUY') return 'KHONG_CAN_KY';
+  if (luot === 'YEU_CAU_SUA') return 'TAM_DUNG';
+  return da_mo ? 'CHO_KY' : 'CHUA_MO';
+}

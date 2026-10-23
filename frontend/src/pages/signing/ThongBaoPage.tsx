@@ -68,6 +68,13 @@ export default function ThongBaoPage() {
                   )}
                 </div>
                 <div className="truncate text-sm text-main" title={tb.van_ban}>#{tb.trinh_ky} · {tb.van_ban}</div>
+                {(tb.nguoi_thao_tac || tb.ly_do) && (
+                  <div className="text-xs text-secondary break-words">
+                    {tb.nguoi_thao_tac && <span>{t('thongBao.nguoiThaoTac')}: {tb.nguoi_thao_tac}</span>}
+                    {tb.nguoi_thao_tac && tb.ly_do && ' · '}
+                    {tb.ly_do && <span>{t('thongBao.lyDo')}: {tb.ly_do}</span>}
+                  </div>
+                )}
                 <div className="text-xs text-secondary">{tb.ten_quy_trinh} · {dinhDangNgay(tb.created_at, lang)}</div>
               </div>
             </Link>

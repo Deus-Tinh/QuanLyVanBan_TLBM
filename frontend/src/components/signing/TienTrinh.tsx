@@ -1,6 +1,6 @@
 /** Tiến trình ký của một lượt trình: cấp mở tuần tự, người trong cấp ký song song (#80 mục B, E). */
 import { Badge } from '@components/common';
-import { dinhDangNgay } from '@lib/signing/dinhDang';
+import { dinhDangNgay, trangThaiNguoiKy } from '@lib/signing/dinhDang';
 import { useSigningT } from '@lib/signing/i18n';
 import type { LuotTrinh } from '@lib/signing/types';
 import { TrangThaiBadge } from './ChungUI';
@@ -49,7 +49,7 @@ export default function TienTrinh({ luot, toiId }: { luot: LuotTrinh; toiId?: nu
                   <div className="flex items-center gap-2">
                     {n.chu_ky?.ky_tre_han && <Badge variant="danger" size="sm">{t('chiTiet.treHan')}</Badge>}
                     {n.ngay_ky && <span className="text-xs text-secondary">{dinhDangNgay(n.ngay_ky, lang)}</span>}
-                    <TrangThaiBadge trangThai={n.trang_thai === 'CHO_KY' && !n.thoi_diem_mo ? 'CHUA_MO' : n.trang_thai} />
+                    <TrangThaiBadge trangThai={trangThaiNguoiKy(luot.trang_thai, n.trang_thai, Boolean(n.thoi_diem_mo))} />
                   </div>
                 </li>
               ))}

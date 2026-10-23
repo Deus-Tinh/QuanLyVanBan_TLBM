@@ -50,7 +50,8 @@ export default function SigningModule() {
 
   return (
     <SigningContext.Provider value={ngu_canh}>
-      <div className="signing-scope space-y-5 animate-in fade-in duration-150">
+      {/* pb-24: chừa chỗ cho nút trợ lý AI nổi ở góc dưới để không che nút hành động cuối trang */}
+      <div className="signing-scope space-y-5 pb-24 animate-in fade-in duration-150">
         <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
           {coQuyen(toi.duLieu, 'add_trinhky') && (

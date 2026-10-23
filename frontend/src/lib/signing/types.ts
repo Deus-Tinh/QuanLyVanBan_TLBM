@@ -178,6 +178,9 @@ export interface HoSo {
   ten_nguoi_tao: string;
   created_at: string;
   dang_cho: DangCho[];
+  /** Trạng thái lượt trình hiện hành (YEU_CAU_SUA: đang trả lại để sửa) */
+  trang_thai_luot: TrangThaiLuot | null;
+  qua_han: boolean;
 }
 
 export interface HoSoChiTiet extends HoSo {
@@ -295,6 +298,8 @@ export interface ThongBaoTrinhKy {
   email_da_gui?: boolean;
   email_trang_thai?: string | null;
   email_nguoi_nhan?: string | null;
+  nguoi_thao_tac?: string | null;
+  ly_do?: string | null;
 }
 
 /** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */
