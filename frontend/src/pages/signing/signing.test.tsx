@@ -20,13 +20,14 @@ if (typeof globalThis.DOMMatrix === 'undefined') {
 }
 
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HanhDong from '@components/signing/HanhDong';
 import TaiLieuPanel from '@components/signing/TaiLieuPanel';
+import TienTrinh from '@components/signing/TienTrinh';
 import { signingApi } from '@lib/signing/api';
 import { SigningContext } from '@lib/signing/hooks';
-import type { HoSoChiTiet, NguoiDungHienTai, QuyTrinh } from '@lib/signing/types';
+import type { HoSoChiTiet, LuotTrinh, NguoiKyLuot, NguoiDungHienTai, QuyTrinh } from '@lib/signing/types';
 import DanhSachPage from './DanhSachPage';
 import QuyTrinhPage from './QuyTrinhPage';
 import SigningModule from './SigningModule';
@@ -38,6 +39,7 @@ vi.mock('@lib/signing/api', async () => {
   return { ...actual, signingApi: {
     toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
     xoaQuyTrinh: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
+    uyQuyen: vi.fn(), timNguoiNhanUyQuyen: vi.fn(),
   } };
 });
 // pdfjs-dist cần DOMMatrix/canvas của trình duyệt; jsdom không có, nên chỉ thay lớp vẽ PDF.
@@ -69,6 +71,13 @@ function hoSo(sua: Partial<HoSoChiTiet> = {}): HoSoChiTiet {
   };
 }
 
+// Gắn dưới route cha như ứng dụng thật (/approvals/*) để route con `:id` không khớp nhầm "/approvals".
+const moModule = (duong_dan = '/approvals') => render(
+  <MemoryRouter initialEntries={[duong_dan]}>
+    <Routes><Route path="/approvals/*" element={<SigningModule />} /></Routes>
+  </MemoryRouter>,
+);
+
 const boc = (ui: React.ReactNode, toi: NguoiDungHienTai = TOI) => render(
   <MemoryRouter><SigningContext.Provider value={{ toi, taiLaiToi: () => undefined }}>{ui}</SigningContext.Provider></MemoryRouter>,
 );
@@ -76,6 +85,7 @@ const boc = (ui: React.ReactNode, toi: NguoiDungHienTai = TOI) => render(
 beforeEach(() => {
   vi.clearAllMocks();
   api.quyTrinh.mockResolvedValue([]);
+  api.thongBao.mockResolvedValue([]);
   api.thongKe.mockResolvedValue({ tat_ca: 3, nhap: 0, cho_ky: 1, tra_lai: 1, qua_han: 1, hoan_thanh: 0, tu_choi: 0, huy: 0 });
   localStorage.setItem('tlbm_lang', 'vi');
 });
@@ -84,7 +94,7 @@ describe('SigningModule', () => {
   it('chỉ hiện tab theo quyền (không có quyền tạo thì không có tab tạo hồ sơ)', async () => {
     api.toi.mockResolvedValue(TOI);
     api.danhSach.mockResolvedValue([]);
-    render(<MemoryRouter initialEntries={['/approvals']}><SigningModule /></MemoryRouter>);
+    moModule();
     expect(await screen.findByRole('link', { name: /Cần tôi ký duyệt/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Khóa ký & PIN/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Tạo hồ sơ trình ký/ })).not.toBeInTheDocument();
@@ -95,7 +105,7 @@ describe('SigningModule', () => {
   it('tab "Cần tôi ký duyệt" hiện số hồ sơ đang chờ; tab phụ nằm trong nhóm riêng', async () => {
     api.toi.mockResolvedValue(TOI);
     api.danhSach.mockResolvedValue([]);
-    render(<MemoryRouter initialEntries={['/approvals']}><SigningModule /></MemoryRouter>);
+    moModule();
     const tabKy = await screen.findByRole('link', { name: /Cần tôi ký duyệt/ });
     await waitFor(() => expect(tabKy).toHaveTextContent('1'));
     expect(api.thongKe).toHaveBeenCalledWith('can_toi_ky');
@@ -109,7 +119,7 @@ describe('SigningModule', () => {
   it('có quyền tạo thì có nút riêng "Tạo hồ sơ trình ký" ở đầu trang, không nằm trong tab', async () => {
     api.toi.mockResolvedValue({ ...TOI, quyen: { ...TOI.quyen, add_trinhky: true } });
     api.danhSach.mockResolvedValue([]);
-    render(<MemoryRouter initialEntries={['/approvals']}><SigningModule /></MemoryRouter>);
+    moModule();
     expect(await screen.findByRole('button', { name: /Tạo hồ sơ trình ký/ })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Tạo hồ sơ trình ký/ })).not.toBeInTheDocument();
   });
@@ -208,6 +218,72 @@ describe('HanhDong', () => {
   });
 });
 
+function nguoiKy(sua: Partial<NguoiKyLuot>): NguoiKyLuot {
+  return {
+    id: 21, nguoi_ky: 9, ten_nguoi_ky: 'Giám đốc', ten_chuc_vu: null, vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true,
+    trang_thai: 'CHO_KY', thoi_diem_mo: '2026-10-07T01:00:00Z', ngay_ky: null, ngay_tu_choi: null, ly_do_tu_choi: '',
+    uy_quyen_tu: null, ten_nguoi_uy_quyen: null, ly_do_uy_quyen: '', ngay_uy_quyen: null, trang_ky: null,
+    toa_do_x: null, toa_do_y: null, chieu_rong_khung: null, chieu_cao_khung: null, chu_ky: null, ...sua,
+  };
+}
+
+function luotCo(nguoi: NguoiKyLuot[]): LuotTrinh {
+  return {
+    ...hoSo().luot_trinh[0],
+    cap_ky: [{ id: 2, cap_ky: 1, ten_cap_ky: 'Duyệt', thu_tu: 1, trang_thai: 'DANG_KY', han_xu_ly: null,
+      thoi_diem_mo: null, thoi_diem_hoan_thanh: null, nguoi_ky: nguoi }],
+  };
+}
+
+describe('Ủy quyền ký', () => {
+  const QUAN_TRI: NguoiDungHienTai = { ...TOI, id: 1, quyen: { ...TOI.quyen, delegate_trinhky: true } };
+
+  it('không có delegate_trinhky thì không thấy nút ủy quyền', () => {
+    const luot = luotCo([nguoiKy({})]);
+    boc(<HanhDong hoSo={hoSo({ luot_trinh: [luot] })} luot={luot} maBamTepDangXem={null} onXong={() => undefined} />,
+      { ...TOI, id: 1 });
+    expect(screen.queryByRole('button', { name: /Ủy quyền ký/ })).not.toBeInTheDocument();
+  });
+
+  it('chọn người ký, tìm người nhận, nhập lý do rồi gửi đúng payload kèm Idempotency-Key', async () => {
+    const luot = luotCo([nguoiKy({}), nguoiKy({ id: 22, nguoi_ky: 10, ten_nguoi_ky: 'Đã ký', trang_thai: 'DA_KY' })]);
+    const ho_so = hoSo({ luot_trinh: [luot] });
+    api.timNguoiNhanUyQuyen.mockResolvedValue([
+      { id: 15, ten: 'Phó giám đốc', ten_dang_nhap: 'pgd', chuc_vu: 'Phó giám đốc', don_vi_id: 1, don_vi: 'Ban TGĐ' },
+    ]);
+    api.uyQuyen.mockResolvedValue(ho_so);
+    const xong = vi.fn();
+    boc(<HanhDong hoSo={ho_so} luot={luot} maBamTepDangXem={null} onXong={xong} />, QUAN_TRI);
+    fireEvent.click(screen.getByRole('button', { name: /Ủy quyền ký/ }));
+    const chonNguoiKy = await screen.findByRole('combobox', { name: /Người ký được thay/ });
+    expect(within(chonNguoiKy).queryByRole('option', { name: /Đã ký/ })).not.toBeInTheDocument();
+    fireEvent.change(chonNguoiKy, { target: { value: '21' } });
+    const chonNhan = screen.getByRole('combobox', { name: /Người nhận ủy quyền/ });
+    await waitFor(() => expect(within(chonNhan).getByRole('option', { name: /Phó giám đốc/ })).toBeInTheDocument());
+    fireEvent.change(chonNhan, { target: { value: '15' } });
+    fireEvent.change(screen.getByLabelText(/Lý do ủy quyền/), { target: { value: 'Đi công tác' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Ủy quyền ký/ }).at(-1)!);
+    await waitFor(() => expect(api.uyQuyen).toHaveBeenCalledWith(12, expect.any(String),
+      { dong_nguoi_ky: 21, nguoi_nhan: 15, ly_do_uy_quyen: 'Đi công tác' }));
+    await waitFor(() => expect(xong).toHaveBeenCalledWith(ho_so));
+  });
+
+  it('tiến trình hiện người ký thay', () => {
+    boc(<TienTrinh luot={luotCo([nguoiKy({ ten_nguoi_ky: 'Phó giám đốc', ten_nguoi_uy_quyen: 'Giám đốc' })])} />);
+    expect(screen.getByText('Ký thay Giám đốc')).toBeInTheDocument();
+  });
+});
+
+describe('Ký bằng file khóa', () => {
+  it('hộp thoại ký có ô tải file khóa và báo lỗi khi file sai định dạng', async () => {
+    boc(<HanhDong hoSo={hoSo()} luot={hoSo().luot_trinh[0]} maBamTepDangXem={'a'.repeat(64)} onXong={() => undefined} />);
+    fireEvent.click(screen.getByRole('button', { name: /Ký duyệt/ }));
+    const o = await screen.findByLabelText(/File khóa ký/);
+    fireEvent.change(o, { target: { files: [new File(['khong phai json'], 'sai.tlbmkey')] } });
+    expect(await screen.findByText('File khóa không đúng định dạng.')).toBeInTheDocument();
+  });
+});
+
 describe('QuyTrinhPage', () => {
   const TP: NguoiDungHienTai = { ...TOI, don_vi_id: 4, la_lanh_dao_don_vi: true, quyen: { ...TOI.quyen, manage_signing_process: true } };
   const QT: QuyTrinh = {
@@ -282,6 +358,32 @@ describe('ThongBaoPage', () => {
     const lienKet = await screen.findByRole('link', { name: /Cần ký duyệt/ });
     expect(lienKet).toHaveAttribute('href', '/approvals/12');
     expect(within(lienKet).getByText('#12 · 15/TTr — Mua sắm')).toBeInTheDocument();
+  });
+
+  it('loại thông báo mới (ủy quyền, tin nhắn, nhắc hạn) có nhãn riêng; mở trang thì đánh dấu đã xem', async () => {
+    localStorage.removeItem('tlbm_signing_thong_bao_xem_luc:7');
+    api.thongBao.mockResolvedValue(['UY_QUYEN', 'TIN_NHAN', 'QUA_HAN'].map((loai, i) => ({
+      id: i + 1, loai_thong_bao: loai as 'UY_QUYEN', trinh_ky: 12, van_ban: '15/TTr', trang_thai_ho_so: 'CHO_KY' as const,
+      ten_quy_trinh: 'Duyệt', created_at: '2026-10-07T01:00:00Z',
+    })));
+    boc(<ThongBaoPage />);
+    expect(await screen.findByText('Ủy quyền ký')).toBeInTheDocument();
+    expect(screen.getByText('Tin nhắn trao đổi')).toBeInTheDocument();
+    expect(screen.getByText('Quá hạn ký')).toBeInTheDocument();
+    await waitFor(() => expect(Number(localStorage.getItem('tlbm_signing_thong_bao_xem_luc:7'))).toBeGreaterThan(0));
+  });
+
+  it('tab Thông báo hiện số thông báo mới kể từ lần xem trước', async () => {
+    localStorage.setItem('tlbm_signing_thong_bao_xem_luc:7', String(Date.parse('2026-10-07T00:00:00Z')));
+    api.toi.mockResolvedValue(TOI);
+    api.danhSach.mockResolvedValue([]);
+    api.thongBao.mockResolvedValue([
+      { id: 1, loai_thong_bao: 'CAN_KY', trinh_ky: 12, van_ban: 'a', trang_thai_ho_so: 'CHO_KY', ten_quy_trinh: 'Q', created_at: '2026-10-07T01:00:00Z' },
+      { id: 2, loai_thong_bao: 'HUY', trinh_ky: 13, van_ban: 'b', trang_thai_ho_so: 'HUY', ten_quy_trinh: 'Q', created_at: '2026-10-06T01:00:00Z' },
+    ]);
+    moModule();
+    const tab = await screen.findByRole('link', { name: /Thông báo/ });
+    await waitFor(() => expect(tab).toHaveTextContent('Thông báo1'));
   });
 
   it('chưa có thông báo', async () => {

@@ -84,6 +84,10 @@ export interface NguoiKyLuot {
   ngay_ky: string | null;
   ngay_tu_choi: string | null;
   ly_do_tu_choi: string;
+  uy_quyen_tu: number | null;
+  ten_nguoi_uy_quyen: string | null;
+  ly_do_uy_quyen: string;
+  ngay_uy_quyen: string | null;
   trang_ky: number | null;
   toa_do_x: string | null;
   toa_do_y: string | null;
@@ -136,6 +140,7 @@ export interface NhatKy {
   id: number;
   hanh_dong: string;
   nguoi_thuc_hien: number;
+  ten_nguoi_thuc_hien: string;
   trang_thai_truoc: string;
   trang_thai_sau: string;
   chi_tiet: string;
@@ -274,7 +279,8 @@ export interface BoLocTaiLieu {
   den_ngay?: string;
 }
 
-export type LoaiThongBao = 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY';
+export type LoaiThongBao =
+  | 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY' | 'UY_QUYEN' | 'TIN_NHAN' | 'NHAC_HAN' | 'QUA_HAN';
 
 /** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP và trạng thái EMAIL). */
 export interface ThongBaoTrinhKy {
