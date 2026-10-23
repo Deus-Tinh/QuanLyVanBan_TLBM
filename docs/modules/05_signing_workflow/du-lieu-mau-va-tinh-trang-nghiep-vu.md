@@ -1,6 +1,6 @@
 # Dữ liệu mẫu và tình trạng nghiệp vụ Trình ký (Nhóm 5)
 
-Cập nhật 23/10/2026, nhánh `feat/5-hoan-thien-nghiep-vu`. Đối chiếu với [`signing-backend-plan.md`](signing-backend-plan.md).
+Cập nhật 23/10/2026, nhánh `feat/5-hoan-thien-nghiep-vu`. Đối chiếu với [`signing-backend-plan.md`](signing-backend-plan.md). Tổng quan module: [`README.md`](README.md).
 
 ## 1. Tình trạng các flow nghiệp vụ
 
