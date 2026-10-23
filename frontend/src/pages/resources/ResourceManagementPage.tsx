@@ -146,7 +146,6 @@ export default function ResourceManagementPage() {
   // - Nếu có danh mục mới được tạo từ client/tab khác: Tự động thêm vào danh sách hiển thị
   // - Giữ nguyên các danh mục hợp lệ còn tồn tại trong CSDL
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
     if (categories.length > 0) {
       const allCatIds = categories.map((c) => c.id);
       setVisibleCategoryIds((prev) => {
@@ -306,68 +305,68 @@ export default function ResourceManagementPage() {
     }
     isFetchingRef.current = true;
     if (!silent) setIsLoading(true);
-    const seq = ++fetchSeqRef.current;
 
     try {
-      const [catsRes, typesRes, docsRes] = await Promise.all([
-        apiClient<unknown>('/api/resources/categories/').catch((err) => {
-          console.warn('Lỗi tải categories:', err);
-          return null;
-        }),
-        apiClient<unknown>('/api/resources/types/').catch((err) => {
-          console.warn('Lỗi tải types:', err);
-          return null;
-        }),
-        apiClient<unknown>('/api/resources/documents/').catch((err) => {
-          console.warn('Lỗi tải documents:', err);
-          return null;
-        }),
-      ]);
+      let keepFetching = true;
+      while (keepFetching) {
+        pendingForceRefetchRef.current = false;
+        const seq = ++fetchSeqRef.current;
 
-      // Nếu có request mới hơn đã cam kết, bỏ qua response cũ này để tránh race condition
-      if (seq < latestCommittedSeqRef.current) {
-        return;
-      }
-      latestCommittedSeqRef.current = seq;
+        const [catsRes, typesRes, docsRes] = await Promise.all([
+          apiClient<unknown>('/api/resources/categories/').catch((err) => {
+            console.warn('Lỗi tải categories:', err);
+            return null;
+          }),
+          apiClient<unknown>('/api/resources/types/').catch((err) => {
+            console.warn('Lỗi tải types:', err);
+            return null;
+          }),
+          apiClient<unknown>('/api/resources/documents/').catch((err) => {
+            console.warn('Lỗi tải documents:', err);
+            return null;
+          }),
+        ]);
 
-      const normalizeList = <T,>(data: unknown): T[] => {
-        if (!data) return [];
-        if (Array.isArray(data)) return data as T[];
-        if (data && typeof data === 'object' && 'results' in data && Array.isArray((data as { results: unknown }).results)) {
-          return (data as { results: T[] }).results;
+        // Nếu có request mới hơn đã cam kết, bỏ qua response cũ này để tránh race condition
+        if (seq >= latestCommittedSeqRef.current) {
+          latestCommittedSeqRef.current = seq;
+
+          const normalizeList = <T,>(data: unknown): T[] => {
+            if (!data) return [];
+            if (Array.isArray(data)) return data as T[];
+            if (data && typeof data === 'object' && 'results' in data && Array.isArray((data as { results: unknown }).results)) {
+              return (data as { results: T[] }).results;
+            }
+            return [];
+          };
+
+          const isDifferent = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
+
+          if (catsRes !== null) {
+            const nextCats = normalizeList<ResourceCategory>(catsRes);
+            setCategories((prev) => (isDifferent(prev, nextCats) ? nextCats : prev));
+            isCategoriesLoadedRef.current = true;
+          }
+
+          if (typesRes !== null) {
+            const nextTypes = normalizeList<ResourceType>(typesRes);
+            setTypes((prev) => (isDifferent(prev, nextTypes) ? nextTypes : prev));
+            isTypesLoadedRef.current = true;
+          }
+
+          if (docsRes !== null) {
+            const nextDocs = normalizeList<ResourceItem>(docsRes);
+            setDocuments((prev) => (isDifferent(prev, nextDocs) ? nextDocs : prev));
+          }
         }
-        return [];
-      };
 
-      const isDifferent = (a: any, b: any) => JSON.stringify(a) !== JSON.stringify(b);
-
-      if (catsRes !== null) {
-        const nextCats = normalizeList<ResourceCategory>(catsRes);
-        setCategories((prev) => (isDifferent(prev, nextCats) ? nextCats : prev));
-        isCategoriesLoadedRef.current = true;
-      }
-
-      if (typesRes !== null) {
-        const nextTypes = normalizeList<ResourceType>(typesRes);
-        setTypes((prev) => (isDifferent(prev, nextTypes) ? nextTypes : prev));
-        isTypesLoadedRef.current = true;
-      }
-
-      if (docsRes !== null) {
-        const nextDocs = normalizeList<ResourceItem>(docsRes);
-        setDocuments((prev) => (isDifferent(prev, nextDocs) ? nextDocs : prev));
+        keepFetching = pendingForceRefetchRef.current;
       }
     } catch (e) {
       console.warn('Lỗi khi tải dữ liệu từ API backend:', e);
     } finally {
       isFetchingRef.current = false;
       if (!silent) setIsLoading(false);
-
-      // Nếu có yêu cầu force refetch đang chờ (từ mutation), thực hiện ngay
-      if (pendingForceRefetchRef.current) {
-        pendingForceRefetchRef.current = false;
-        fetchResources(true, true);
-      }
     }
   }, []);
 

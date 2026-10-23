@@ -321,15 +321,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [typePage, setTypePage] = useState(1);
   const [typePageSize, setTypePageSize] = useState(5);
 
-  // Tự động reset về trang 1 khi thay đổi từ khóa tìm kiếm hoặc lọc
-  useEffect(() => {
-    setCatPage(1);
-  }, [catSearch]);
-
-  useEffect(() => {
-    setTypePage(1);
-  }, [typeSearch, filterParentCat]);
-
   // States cho Modal thông báo/xác nhận UI chuẩn
   const [deleteCatTarget, setDeleteCatTarget] = useState<ResourceCategory | null>(null);
   const [deleteTypeTarget, setDeleteTypeTarget] = useState<ResourceType | null>(null);
@@ -909,13 +900,19 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                     type="text"
                     placeholder={t('resourceManagement.catSearchPlaceholder')}
                     value={catSearch}
-                    onChange={(e) => setCatSearch(e.target.value)}
+                    onChange={(e) => {
+                      setCatSearch(e.target.value);
+                      setCatPage(1);
+                    }}
                     className="w-full pl-8 pr-8 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary transition-all shadow-2xs"
                   />
                   {catSearch && (
                     <button
                       type="button"
-                      onClick={() => setCatSearch('')}
+                      onClick={() => {
+                        setCatSearch('');
+                        setCatPage(1);
+                      }}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1 cursor-pointer"
                       title="Xóa tìm kiếm"
                     >
@@ -1065,7 +1062,10 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   {/* Dropdown lọc Thư mục cha */}
                   <select
                     value={filterParentCat}
-                    onChange={(e) => setFilterParentCat(e.target.value)}
+                    onChange={(e) => {
+                      setFilterParentCat(e.target.value);
+                      setTypePage(1);
+                    }}
                     className="w-full sm:w-auto h-9 px-3 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary cursor-pointer shrink-0 shadow-2xs font-medium"
                     aria-label="Lọc theo thư mục cha"
                   >
@@ -1084,13 +1084,19 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                       type="text"
                       placeholder="Tìm tên loại tài liệu..."
                       value={typeSearch}
-                      onChange={(e) => setTypeSearch(e.target.value)}
+                      onChange={(e) => {
+                        setTypeSearch(e.target.value);
+                        setTypePage(1);
+                      }}
                       className="w-full pl-8 pr-8 py-2 bg-surface border border-border-subtle rounded-xl text-xs text-main focus:outline-hidden focus:border-primary transition-all shadow-2xs"
                     />
                     {typeSearch && (
                       <button
                         type="button"
-                        onClick={() => setTypeSearch('')}
+                        onClick={() => {
+                          setTypeSearch('');
+                          setTypePage(1);
+                        }}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1 cursor-pointer"
                         title="Xóa tìm kiếm"
                       >
