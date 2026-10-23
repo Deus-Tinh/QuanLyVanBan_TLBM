@@ -57,9 +57,13 @@ Server kiểm quyền ở từng API; giao diện chỉ ẩn/hiện thao tác.
 - Ghi `uy_quyen_tu`, `ly_do_uy_quyen`, `ngay_uy_quyen`; nhật ký `UY_QUYEN_KY`; thông báo cho người nhận và người
   giao. Người giao vẫn xem được hồ sơ.
 
-## 5. Lệnh dữ liệu mẫu `tao_du_lieu_mau_trinh_ky`
+## 5. Lệnh dữ liệu mẫu `seed_signing_demo`
 
-Tên lệnh không chứa chữ "seed" vì `.gitignore` bỏ qua mọi tệp có chữ này.
+Tên lệnh theo đề xuất trong [`danh-gia-plan-va-tich-hop.md`](danh-gia-plan-va-tich-hop.md) (`seed_signing_demo` trong
+`management/commands`). Đường dẫn này không bị `.gitignore` bỏ qua (`git check-ignore` không khớp; `.gitignore` chỉ bỏ
+qua `seed_data.py`, `migrations/*seed*.py`, `seed_accounts.py`).
+
+Lệnh tự đủ trên DB vừa `migrate`: đơn vị, chức vụ, nhóm quyền chuẩn có sẵn từ migration; thiếu đơn vị thì tạo.
 
 ### 5.1. Dữ liệu tạo ra
 
@@ -91,7 +95,11 @@ Lịch sử và thông báo (`CAN_KY`, `HOAN_THANH`, `TU_CHOI`, `YEU_CAU_SUA`, `
 
 - Mật khẩu tài khoản mẫu đọc từ biến môi trường `DEMO_PASSWORD`; không ghi trong mã nguồn. Tài khoản chưa có mà
   thiếu biến thì lệnh dừng. Tài khoản đã có giữ mật khẩu, trừ khi chạy với `--dat-lai-mat-khau`. Tài khoản `admin`
-  đã có không bao giờ bị đổi mật khẩu (do `seed_db` và `ADMIN_PASSWORD` quản lý).
+  chỉ được đặt mật khẩu khi còn mật khẩu không dùng được (sentinel của DDL, DB vừa `migrate`); admin đã khởi tạo bằng
+  `seed_db`/`ADMIN_PASSWORD` thì giữ nguyên.
+- `--reset`: làm mới bộ hồ sơ mẫu. Lượt trình, chữ ký, nhật ký, bằng chứng tổng hợp bất biến theo trigger của DDL nên
+  không xóa được: hồ sơ mẫu cũ còn mở được hủy (có nhật ký), ghi chú đổi sang "Dữ liệu mẫu cũ", sau đó tạo bộ mới.
+- Ngày trình của các hồ sơ cách nhau 24 giờ để danh sách và Dashboard có ngày khác nhau.
 - Chữ ký mẫu dùng khóa Ed25519 tạm sinh trong bộ nhớ, thu hồi ngay sau khi ký; khóa bí mật không lưu. Khi lệnh cần
   ký (lần chạy đầu), khóa đang hoạt động của `truongphong`, `giamdoc`, `admin` được xoay vòng sang khóa tạm rồi thu
   hồi. Sau đó mỗi người tự tạo khóa ký ở trang **Khóa ký & PIN** để ký tiếp các hồ sơ đang chờ.
@@ -102,8 +110,8 @@ Lịch sử và thông báo (`CAN_KY`, `HOAN_THANH`, `TU_CHOI`, `YEU_CAU_SUA`, `
 ```bash
 pnpm db:setup                                   # hoặc: python scripts/build_db.py --seed
 cd backend
-DEMO_PASSWORD='<mật khẩu demo>' python manage.py tao_du_lieu_mau_trinh_ky
-python manage.py tao_du_lieu_mau_trinh_ky        # chạy lại: không tạo thêm bản ghi
+DEMO_PASSWORD='<mật khẩu demo>' python manage.py seed_signing_demo
+python manage.py seed_signing_demo        # chạy lại: không tạo thêm bản ghi
 python manage.py nhac_han_trinh_ky               # nhắc hạn/quá hạn (chạy định kỳ)
 python manage.py gui_thong_bao_trinh_ky          # gửi lại email lỗi (chạy định kỳ)
 ```
@@ -119,17 +127,100 @@ xong, người có quyền SSH chạy một lần:
 ```bash
 cd /srv/qlvb/current/backend
 set -a; . /etc/qlvb/backend.env; set +a          # cấu hình DB, SIGNING_DOCUMENT_ROOT của staging
-DEMO_PASSWORD='<mật khẩu demo của lớp>' /srv/qlvb/current/venv/bin/python manage.py tao_du_lieu_mau_trinh_ky
+DEMO_PASSWORD='<mật khẩu demo của lớp>' /srv/qlvb/current/venv/bin/python manage.py seed_signing_demo
 ```
 
 Nếu `backend.env` đã có `DEMO_PASSWORD` thì bỏ phần gán biến trước lệnh. Lệnh chạy lại an toàn. Nên đặt lịch
 `nhac_han_trinh_ky` và `gui_thong_bao_trinh_ky` (ví dụ mỗi 15 phút) bằng cron/systemd timer trên máy chủ.
 
-## 6. Lệnh quản trị của phân hệ
+## 6. Dữ liệu cho Dashboard (Nhóm 1)
+
+### 6.1. Selector (gọi trong backend)
+
+`signing.selectors.tong_quan_dashboard(user, gioi_han=5)` trả cùng cấu trúc với API dưới đây. Dashboard gọi selector
+này, không truy vấn bảng `signing_*` trực tiếp (AGENTS.md mục 6).
+
+### 6.2. API
+
+`GET /api/v1/signing/dashboard/` — yêu cầu đăng nhập (JWT `Authorization: Bearer <token>`), không tham số; chưa đăng
+nhập trả 401. Chỉ dữ liệu của người đang đăng nhập (người tạo hoặc người có tên trong luồng ký, kể cả người
+nhận/giao ủy quyền); quyền kiểm toán không mở rộng danh sách này.
+
+| Trường | Ý nghĩa |
+|---|---|
+| `so_cho_ky` | Số hồ sơ đang chờ chính người dùng ký (cùng điều kiện tab "Cần tôi ký duyệt"); dùng cho KPI và thông báo Header |
+| `gan_day[]` | Tối đa 5 phiếu liên quan, mới nhất trước theo ngày trình |
+| `gan_day[].id` | Mã hồ sơ; trang chi tiết `/approvals/<id>` |
+| `gan_day[].tieu_de` | "Số hiệu — trích yếu" của văn bản đi |
+| `gan_day[].nguoi_trinh` | Họ tên người trình |
+| `gan_day[].ngay_trinh` | ISO 8601 giờ Việt Nam; ngày gửi, hồ sơ nháp dùng ngày tạo |
+| `gan_day[].trang_thai` | `NHAP`, `CHO_KY`, `HOAN_THANH`, `TU_CHOI`, `HUY` |
+| `gan_day[].nhan_trang_thai` | Nháp, Chờ ký, Đã ký, Từ chối, Đã hủy |
+| `gan_day[].can_toi_ky` | `true` khi phiếu đang chờ chính người dùng ký |
+
+Response thật của tài khoản `truongphong` sau khi chạy `seed_signing_demo` trên DB vừa `migrate`:
+
+```json
+{
+  "so_cho_ky": 2,
+  "gan_day": [
+    {
+      "id": 11,
+      "tieu_de": "110/BC-CNTT — Báo cáo đánh giá rủi ro hệ thống thanh toán phí bảo hiểm",
+      "nguoi_trinh": "Văn thư Ban CNTT",
+      "ngay_trinh": "2026-10-23T15:29:43.256419+07:00",
+      "trang_thai": "CHO_KY",
+      "nhan_trang_thai": "Chờ ký",
+      "can_toi_ky": false
+    },
+    {
+      "id": 4,
+      "tieu_de": "104/BC-CNTT — Báo cáo tổng kết công tác an toàn thông tin quý III",
+      "nguoi_trinh": "Văn thư Ban CNTT",
+      "ngay_trinh": "2026-10-22T15:29:42.189461+07:00",
+      "trang_thai": "HOAN_THANH",
+      "nhan_trang_thai": "Đã ký",
+      "can_toi_ky": false
+    },
+    {
+      "id": 2,
+      "tieu_de": "102/TTr-CNTT — Tờ trình mua sắm thiết bị mạng cho văn phòng khu vực",
+      "nguoi_trinh": "Văn thư Ban CNTT",
+      "ngay_trinh": "2026-10-21T15:29:41.935258+07:00",
+      "trang_thai": "CHO_KY",
+      "nhan_trang_thai": "Chờ ký",
+      "can_toi_ky": true
+    },
+    {
+      "id": 5,
+      "tieu_de": "105/ĐX-CNTT — Đề xuất thuê dịch vụ trung tâm dữ liệu dự phòng",
+      "nguoi_trinh": "Văn thư Ban CNTT",
+      "ngay_trinh": "2026-10-20T15:29:42.467615+07:00",
+      "trang_thai": "TU_CHOI",
+      "nhan_trang_thai": "Từ chối",
+      "can_toi_ky": false
+    },
+    {
+      "id": 3,
+      "tieu_de": "103/KH-CNTT — Kế hoạch triển khai hệ thống quản lý văn bản điện tử năm 2027",
+      "nguoi_trinh": "Văn thư Ban CNTT",
+      "ngay_trinh": "2026-10-19T15:29:42.083004+07:00",
+      "trang_thai": "CHO_KY",
+      "nhan_trang_thai": "Chờ ký",
+      "can_toi_ky": false
+    }
+  ]
+}
+```
+
+Tài khoản nên đăng nhập để thấy dữ liệu: `truongphong` (2 hồ sơ chờ ký), `giamdoc` (3 hồ sơ chờ ký), `vanthu`
+(người trình, có đủ trạng thái), `admin`.
+
+## 7. Lệnh quản trị của phân hệ
 
 | Lệnh | Mục đích |
 |---|---|
-| `tao_du_lieu_mau_trinh_ky` | Dữ liệu mẫu (mục 5) |
+| `seed_signing_demo` | Dữ liệu mẫu (mục 5) |
 | `nhac_han_trinh_ky` | Thông báo `NHAC_HAN` khi còn dưới 24 giờ tới hạn cấp; `QUA_HAN` mỗi ngày quá hạn (người ký và người tạo) |
 | `gui_thong_bao_trinh_ky` | Gửi lại email `CHO_GUI`/`THAT_BAI` (tối đa 5 lần) |
 | `seed_demo_signing` | Lệnh dữ liệu mẫu cũ trên `staging`; ghi cứng mật khẩu trong mã nguồn và khóa bí mật suy ra từ chuỗi cố định, đề xuất gỡ bỏ ở issue riêng |

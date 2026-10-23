@@ -63,5 +63,6 @@ urlpatterns = [
     path("tai-lieu/", views.TaiLieuView.as_view(), name="tai-lieu"),
     # Hỗ trợ giao diện: người dùng hiện tại, chọn văn bản đi
     path("toi/", views.ToiView.as_view(), name="toi"),
+    path("dashboard/", views.DashboardView.as_view(), name="dashboard"),
     path("van-ban-di/", views.VanBanDiView.as_view(), name="van-ban-di"),
 ]

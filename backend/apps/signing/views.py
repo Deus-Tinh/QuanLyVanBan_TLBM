@@ -12,7 +12,7 @@ from rest_framework.decorators import api_view
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from . import crypto, enums
+from . import crypto, enums, selectors
 from .errors import ConflictError, SigningAPIView, SigningError
 from .models import (
     SigningAttempt, SigningKey, SigningNotification, SigningRequest, SigningRequestStep, SigningSignature,
@@ -743,6 +743,16 @@ class NguoiDungView(SigningAPIView):
             if len(ket_qua) >= self.TOI_DA:
                 break
         return Response(ket_qua)
+
+
+class DashboardView(SigningAPIView):
+    """
+    GET /dashboard/: số hồ sơ đang chờ người dùng hiện tại ký và 5 phiếu gần nhất liên quan tới người đó (tạo hoặc
+    có tên trong luồng ký) cho Dashboard/Header (Nhóm 1). Chỉ đọc, chỉ dữ liệu của chính người dùng.
+    """
+
+    def get(self, request):
+        return Response(selectors.tong_quan_dashboard(request.user))
 
 
 class ToiView(SigningAPIView):

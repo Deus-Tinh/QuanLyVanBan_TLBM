@@ -1,4 +1,4 @@
-"""Lệnh `tao_du_lieu_mau_trinh_ky`: đủ trạng thái hồ sơ, lịch sử, thông báo; chạy lại không nhân bản."""
+"""Lệnh `seed_signing_demo`: đủ trạng thái hồ sơ, lịch sử, thông báo, dữ liệu Dashboard; chạy lại không nhân bản."""
 
 import io
 import os
@@ -9,6 +9,7 @@ from unittest import mock
 from django.contrib.auth import get_user_model
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
+from rest_framework.test import APIClient
 
 from signing import enums
 from signing.models import (
@@ -27,7 +28,7 @@ def chay(test, *args, **env):
     """Chạy lệnh; tác vụ sau commit (gửi email, tạo tệp hoàn tất) được thực thi như khi chạy thật."""
     out = io.StringIO()
     with mock.patch.dict(os.environ, env, clear=False), test.captureOnCommitCallbacks(execute=True):
-        call_command("tao_du_lieu_mau_trinh_ky", *args, stdout=out)
+        call_command("seed_signing_demo", *args, stdout=out)
     return out.getvalue()
 
 
@@ -48,12 +49,12 @@ class DuLieuMauTests(TestCase):
     def test_requires_demo_password_to_create_accounts(self):
         with mock.patch.dict(os.environ, {"DEMO_PASSWORD": ""}):
             with self.assertRaisesMessage(CommandError, "DEMO_PASSWORD"):
-                call_command("tao_du_lieu_mau_trinh_ky", stdout=io.StringIO())
+                call_command("seed_signing_demo", stdout=io.StringIO())
         self.assertFalse(SigningRequest.objects.exists())
 
     def test_creates_all_states_and_is_idempotent(self):
         chay(self, DEMO_PASSWORD=MAT_KHAU)
-        for username in ("vanthu", "chuyenvien", "truongphong", "giamdoc"):  # admin đã có sẵn: giữ mật khẩu
+        for username in ("admin", "vanthu", "chuyenvien", "truongphong", "giamdoc"):  # admin còn sentinel: khởi tạo
             self.assertTrue(User.objects.get(username=username).check_password(MAT_KHAU), username)
         self.assertEqual(SigningProcess.objects.filter(ma_quy_trinh__startswith="QT-TK-").count(), 4)
         self.assertEqual(SigningProcess.objects.filter(ma_quy_trinh="QT-TK-NHAP").get().trang_thai, "NHAP")
@@ -101,3 +102,28 @@ class DuLieuMauTests(TestCase):
         chay(self, "--dat-lai-mat-khau", DEMO_PASSWORD="mat-khau-moi-2")
         self.assertTrue(User.objects.get(username="admin").check_password("mat-khau-quan-tri"))
         self.assertTrue(User.objects.get(username="giamdoc").check_password("mat-khau-moi-2"))
+
+    def test_dashboard_data_for_signers_with_distinct_dates(self):
+        chay(self, DEMO_PASSWORD=MAT_KHAU)
+        for username, toi_thieu in (("truongphong", 2), ("giamdoc", 3)):
+            c = APIClient()
+            c.force_authenticate(User.objects.get(username=username))
+            d = c.get("/api/v1/signing/dashboard/").data
+            self.assertGreaterEqual(d["so_cho_ky"], toi_thieu, username)
+            self.assertLessEqual(d["so_cho_ky"], 3, username)
+            self.assertEqual(len(d["gan_day"]), 5, username)
+            self.assertEqual(len({p["ngay_trinh"][:10] for p in d["gan_day"]}), 5, username)
+            self.assertTrue({"CHO_KY", "HOAN_THANH", "TU_CHOI"} <= {p["trang_thai"] for p in d["gan_day"]},
+                            (username, d))
+
+    def test_reset_cancels_old_sample_and_recreates(self):
+        chay(self, DEMO_PASSWORD=MAT_KHAU)
+        cu = set(SigningRequest.objects.filter(ghi_chu__startswith="Dữ liệu mẫu M").values_list("pk", flat=True))
+        out = chay(self, "--reset", DEMO_PASSWORD=MAT_KHAU)
+        self.assertIn("10 hồ sơ mẫu mới", out)
+        self.assertTrue(SigningRequest.objects.filter(pk__in=cu).exclude(trang_thai__in=["NHAP", "CHO_KY"]).count()
+                        == len(cu))
+        self.assertTrue(all(g.startswith("Dữ liệu mẫu cũ") for g in
+                            SigningRequest.objects.filter(pk__in=cu).values_list("ghi_chu", flat=True)))
+        self.assertEqual(SigningRequest.objects.filter(ghi_chu__startswith="Dữ liệu mẫu M", ho_so_goc__isnull=True)
+                         .count(), 10)

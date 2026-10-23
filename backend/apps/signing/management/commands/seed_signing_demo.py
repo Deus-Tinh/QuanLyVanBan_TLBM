@@ -1,5 +1,6 @@
 """
-Dữ liệu mẫu phân hệ Trình ký (Nhóm 5) — chạy lại không nhân bản dữ liệu.
+Dữ liệu mẫu phân hệ Trình ký (Nhóm 5): `manage.py seed_signing_demo [--reset]` — chạy lại không nhân bản dữ liệu.
+Tự đủ trên DB vừa `migrate` (đơn vị, chức vụ, nhóm quyền chuẩn có sẵn từ migration; thiếu đơn vị thì tạo).
 
 Tạo qua chính các service nghiệp vụ (tạo nháp, gửi, ký Ed25519, từ chối, trả sửa, trao đổi, gửi bản sửa, hủy,
 trình lại, ủy quyền) nên lịch sử, bằng chứng, tệp hoàn tất và thông báo nhất quán như thao tác thật:
@@ -7,11 +8,15 @@ trình lại, ủy quyền) nên lịch sử, bằng chứng, tệp hoàn tất 
 - 5 tài khoản: admin (quản trị), vanthu (văn thư, tạo và trình), chuyenvien (soạn nháp), truongphong (trưởng
   phòng, ký cấp 1), giamdoc (giám đốc, ký cấp 2); gán đơn vị, chức vụ, nhóm quyền chuẩn (VT, CV, TP, BGD, ADMIN).
   Mật khẩu đọc từ biến môi trường DEMO_PASSWORD (không ghi trong mã nguồn). Tài khoản đã có thì giữ mật khẩu,
-  trừ khi dùng `--dat-lai-mat-khau` (tài khoản `admin` đã có không bao giờ bị đổi mật khẩu: do `seed_db` quản lý).
+  trừ khi dùng `--dat-lai-mat-khau`. Tài khoản `admin` chỉ được đặt mật khẩu khi còn mật khẩu không dùng được
+  (sentinel của DDL); admin đã khởi tạo bằng `seed_db`/ADMIN_PASSWORD thì giữ nguyên.
 - 4 quy trình mẫu (3 đang hoạt động: hai cấp tuần tự, có ký nháy chặn ký chính, hai người ký song song; 1 nháp).
 - Hồ sơ ở đủ trạng thái: nháp, đang ký (cấp 1, cấp 2), quá hạn, hoàn thành (có bằng chứng và tệp hoàn tất),
   bị từ chối (kèm hồ sơ trình lại), trả lại để sửa (có trao đổi), đã sửa và trình lại lượt 2, đã hủy, ủy quyền ký.
-- Thông báo trong ứng dụng sinh từ các thao tác trên và lệnh nhắc hạn.
+- Thông báo trong ứng dụng sinh từ các thao tác trên và lệnh nhắc hạn. Ngày trình giãn theo nhiều ngày để
+  Dashboard (Nhóm 1, `signing.selectors.tong_quan_dashboard`) có phiếu gần đây với ngày khác nhau.
+- `--reset`: làm mới bộ hồ sơ mẫu. Bằng chứng (lượt trình, chữ ký, nhật ký, bằng chứng tổng hợp) bất biến theo
+  trigger của DDL nên không xóa: hồ sơ mẫu cũ còn mở được hủy, ghi chú đổi sang "Dữ liệu mẫu cũ", rồi tạo bộ mới.
 
 Ký mẫu dùng khóa Ed25519 tạm sinh trong bộ nhớ (khóa bí mật không lưu); xong thì thu hồi khóa tạm, người dùng tự tạo
 khóa ký của mình ở trang Khóa ký (file khóa + PIN). Hồ sơ nhận diện qua ghi chú "Dữ liệu mẫu <mã>:".
@@ -33,13 +38,16 @@ from django.utils import timezone
 from accounts.models import Employee, Position
 from authorization.models import GroupInfo
 from documents.models import PhamVi, VanBanDi
-from organizations.models import DonVi
+from organizations.models import DonVi, KhoiKhuVuc
 from signing import enums
-from signing.models import SigningKey, SigningProcess, SigningRequest, SigningRequestStep, SigningRequestStepSigner
+from signing.models import (
+    SigningAttempt, SigningKey, SigningProcess, SigningRequest, SigningRequestStep, SigningRequestStepSigner,
+)
 from signing.pdf_hoan_tat import tim_phong_chu
 from signing.services import hanh_dong_ky, keys, process, thong_bao, trinh_ky, uy_quyen, yeu_cau_sua
 
 TIEN_TO = "Dữ liệu mẫu"
+TIEN_TO_CU = "Dữ liệu mẫu cũ"
 DON_VI_CHINH = "Ban công nghệ thông tin"
 DON_VI_LANH_DAO = "Ban tổng giám đốc"
 
@@ -69,6 +77,10 @@ QUY_TRINH = {
         ("Trưởng phòng duyệt", None, [("truongphong", "KY_CHINH")]),
     ], False),
 }
+
+# Số giờ lùi ngày trình của từng hồ sơ (ngày trình khác nhau trên danh sách và Dashboard)
+LUI_GIO = {"M01": 1, "M10": 3, "M04": 27, "M02": 51, "M05": 75, "M03": 99, "M08": 123, "M06": 147, "M07": 171,
+           "M09": 195}
 
 # mã: (số hiệu, trích yếu)
 VAN_BAN = {
@@ -140,6 +152,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--dat-lai-mat-khau", action="store_true",
                             help="Đặt lại mật khẩu DEMO_PASSWORD cho tài khoản mẫu đã có (trừ admin).")
+        parser.add_argument("--reset", action="store_true",
+                            help="Hủy bộ hồ sơ mẫu hiện có (giữ làm lịch sử) rồi tạo bộ mới.")
         parser.add_argument("--email-domain", default="",
                             help="Gán email <username>@<domain> cho tài khoản mẫu chưa có email (để thử gửi mail).")
 
@@ -147,7 +161,10 @@ class Command(BaseCommand):
         self.mat_khau = (os.environ.get("DEMO_PASSWORD") or "").strip()
         self.khoa_tam = {}
         self.dem = 0
+        self.lan_chay = f"{timezone.now():%Y%m%d%H%M%S%f}"
         nguoi = self._tai_khoan(options["dat_lai_mat_khau"], options["email_domain"].strip().lstrip("@"))
+        if options["reset"]:
+            self._reset(nguoi)
         quy_trinh = self._quy_trinh(nguoi)
         try:
             self._ho_so(nguoi, quy_trinh)
@@ -157,7 +174,21 @@ class Command(BaseCommand):
         so_nhac = thong_bao.nhac_han()
         self.stdout.write(self.style.SUCCESS(
             f"Xong: {self.dem} hồ sơ mẫu mới, {so_nhac} thông báo nhắc hạn mới. "
-            f"Tổng hồ sơ mẫu: {SigningRequest.objects.filter(ghi_chu__startswith=TIEN_TO).count()}."))
+            f"Tổng hồ sơ mẫu: {self._mau().count()}."))
+
+    def _mau(self):
+        return SigningRequest.objects.filter(ghi_chu__startswith=f"{TIEN_TO} M")
+
+    def _reset(self, nguoi):
+        """Hủy hồ sơ mẫu còn mở (bằng chứng giữ nguyên) và đổi ghi chú để bộ mới được tạo lại."""
+        so = 0
+        for h in self._mau().order_by("pk"):
+            if h.trang_thai in (enums.TrangThaiYeuCau.NHAP, enums.TrangThaiYeuCau.CHO_KY):
+                trinh_ky.huy(h, h.create_by, ly_do=f"{TIEN_TO}: làm mới bộ dữ liệu mẫu",
+                             khoa_chong_trung=self._khoa(h.pk, f"reset-{timezone.now().timestamp()}"))
+            SigningRequest.objects.filter(pk=h.pk).update(ghi_chu=TIEN_TO_CU + h.ghi_chu[len(TIEN_TO):])
+            so += 1
+        self.stdout.write(f" [OK] --reset: {so} hồ sơ mẫu cũ đã hủy/đánh dấu cũ")
 
     # ── Tài khoản ───────────────────────────────────────────────────────────
 
@@ -171,16 +202,16 @@ class Command(BaseCommand):
         ket_qua = {}
         with transaction.atomic():
             for username, (ho_ten, ten_chuc_vu, ma_nhom, ten_don_vi) in TAI_KHOAN.items():
-                don_vi = DonVi.objects.filter(ten=ten_don_vi).order_by("pk").first() \
-                    or DonVi.objects.order_by("stt_uu_tien", "pk").first()
-                if don_vi is None:
-                    raise CommandError("Chưa có dữ liệu đơn vị; chạy `manage.py seed_db` trước.")
+                don_vi = DonVi.objects.filter(ten=ten_don_vi).order_by("pk").first() or self._tao_don_vi(ten_don_vi)
                 u = User.objects.filter(username=username).first()
                 moi = u is None
                 if moi:
                     u = User.objects.create_user(username, password=self.mat_khau, ho_ten=ho_ten, don_vi=don_vi,
                                                  chuc_vu=Position.objects.filter(name=ten_chuc_vu).first())
-                elif dat_lai and username != "admin":
+                elif username == "admin":
+                    if not u.has_usable_password() and self.mat_khau:  # còn sentinel của DDL: khởi tạo cho demo
+                        u.set_password(self.mat_khau)
+                elif dat_lai:
                     u.set_password(self.mat_khau)
                 if moi or username != "admin":  # admin đã có: giữ nguyên hồ sơ do seed_db quản lý
                     u.ho_ten = u.ho_ten or ho_ten
@@ -199,6 +230,12 @@ class Command(BaseCommand):
                 ket_qua[username] = User.objects.get(pk=u.pk)
                 self.stdout.write(f" [OK] Tài khoản {username} ({'tạo mới' if moi else 'đã có'})")
         return ket_qua
+
+    def _tao_don_vi(self, ten):
+        """Đơn vị chưa có (DB không có dữ liệu nền của Nhóm 7): tạo tối thiểu để gán tài khoản mẫu."""
+        khoi = KhoiKhuVuc.objects.order_by("pk").first() or KhoiKhuVuc.objects.create(ten="KHỐI HỖ TRỢ")
+        stt = (DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0) + 1
+        return DonVi.objects.create(khoi=khoi, ten=ten, stt_uu_tien=stt)
 
     # ── Quy trình ───────────────────────────────────────────────────────────
 
@@ -236,7 +273,20 @@ class Command(BaseCommand):
         return SimpleUploadedFile(f"{ma}-ban-{ban}.pdf", noi_dung, content_type="application/pdf")
 
     def _khoa(self, ma, buoc):
-        return f"{TIEN_TO}:{ma}:{buoc}"
+        # Gắn lần chạy: --reset tạo lại hồ sơ cùng mã mà không trùng Idempotency-Key của lần trước
+        return f"{TIEN_TO}:{self.lan_chay}:{ma}:{buoc}"
+
+    def _lui_ngay(self, ho_so, gio):
+        """Lùi ngày tạo/ngày trình của hồ sơ mẫu để danh sách và Dashboard có ngày trình khác nhau."""
+        if not gio:
+            return
+        lui = timedelta(hours=gio)
+        h = SigningRequest.objects.get(pk=ho_so.pk)
+        SigningRequest.objects.filter(pk=h.pk).update(
+            created_at=h.created_at - lui, ngay_gui=h.ngay_gui - lui if h.ngay_gui else None)
+        for luot in SigningAttempt.objects.filter(trinh_ky=h):
+            SigningAttempt.objects.filter(pk=luot.pk).update(
+                created_at=luot.created_at - lui, thoi_diem_gui=luot.thoi_diem_gui - lui if luot.thoi_diem_gui else None)
 
     def _co_roi(self, ma):
         return SigningRequest.objects.filter(ghi_chu__startswith=f"{TIEN_TO} {ma}:", ho_so_goc__isnull=True).exists()
@@ -259,6 +309,7 @@ class Command(BaseCommand):
                                   ghi_chu=ghi_chu)
         if gui:
             ho_so = trinh_ky.gui(ho_so, nguoi_tao, khoa_chong_trung=self._khoa(ma, "gui"))
+        self._lui_ngay(ho_so, LUI_GIO.get(ma, 0))
         self.dem += 1
         self.stdout.write(f" [OK] Hồ sơ {ma}: {mo_ta}")
         return ho_so
