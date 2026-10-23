@@ -25,12 +25,6 @@ export function TrangThaiBadge({ trangThai, nhom = 'trangThai' }: { trangThai: s
   );
 }
 
-export function MucDoBadge({ mucDo }: { mucDo: string }) {
-  const { t } = useSigningT();
-  const mau: BadgeProps['variant'] = mucDo === 'HOA_TOC' ? 'danger' : mucDo === 'KHAN' ? 'warning' : 'secondary';
-  return <Badge variant={mau} size="sm">{t(`mucDo.${mucDo}`)}</Badge>;
-}
-
 export function ThongBao({ loai = 'loi', children }: { loai?: 'loi' | 'thanh_cong' | 'thong_tin' | 'canh_bao';
   children: React.ReactNode }) {
   const kieu = {

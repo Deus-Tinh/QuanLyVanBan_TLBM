@@ -183,7 +183,7 @@ def _thao_tac_da_xu_ly(hanh_dong, khoa_chong_trung, yeu_cau):
 
 
 @transaction.atomic
-def tao_nhap(nguoi_tao, *, document_type, van_ban_id, quy_trinh, muc_do, tep, han_chot=None, ghi_chu="",
+def tao_nhap(nguoi_tao, *, document_type, van_ban_id, quy_trinh, tep, han_chot=None, ghi_chu="",
              dia_chi_ip=None):
     kiem_tra_van_ban_trinh_ky(nguoi_tao, document_type, van_ban_id)
     quy_trinh = SigningProcess.objects.get(pk=quy_trinh.pk)
@@ -192,7 +192,7 @@ def tao_nhap(nguoi_tao, *, document_type, van_ban_id, quy_trinh, muc_do, tep, ha
     vi_tri, ma_bam = luu_tep_pdf(tep)
     yeu_cau = SigningRequest.objects.create(
         document_type=document_type, van_ban_id=van_ban_id, quy_trinh=quy_trinh,
-        phien_ban_quy_trinh=quy_trinh.phien_ban, muc_do=muc_do, han_chot=han_chot, ghi_chu=ghi_chu,
+        phien_ban_quy_trinh=quy_trinh.phien_ban, han_chot=han_chot, ghi_chu=ghi_chu,
         phien_ban_van_ban="1", vi_tri_luu_tep=vi_tri, ma_bam_tai_lieu=ma_bam, create_by=nguoi_tao,
     )
     ghi_nhat_ky(nguoi_tao, LOAI, yeu_cau.pk, "TAO_TRINH_KY", trinh_ky=yeu_cau,
@@ -203,7 +203,7 @@ def tao_nhap(nguoi_tao, *, document_type, van_ban_id, quy_trinh, muc_do, tep, ha
 
 @transaction.atomic
 def cap_nhat_nhap(yeu_cau, nguoi, *, tep=None, dia_chi_ip=None, **thay_doi):
-    """Sửa hồ sơ NHAP (mức độ, hạn chót, ghi chú, tệp). Thay tệp tăng `phien_ban_van_ban`."""
+    """Sửa hồ sơ NHAP (hạn chót, ghi chú, tệp). Thay tệp tăng `phien_ban_van_ban`."""
     yeu_cau = _khoa_yeu_cau(yeu_cau.pk)
     _yeu_cau_nguoi_tao(yeu_cau, nguoi)
     if yeu_cau.trang_thai != enums.TrangThaiYeuCau.NHAP:
@@ -437,7 +437,7 @@ def huy(yeu_cau, nguoi, *, khoa_chong_trung, ly_do="", dia_chi_ip=None):
 @transaction.atomic
 def trinh_lai(yeu_cau, nguoi, *, khoa_chong_trung, han_chot=None, dia_chi_ip=None):
     """
-    Tạo hồ sơ NHAP mới từ hồ sơ bị từ chối (plan mục 3.3): giữ văn bản, tệp của lượt cuối, mức độ;
+    Tạo hồ sơ NHAP mới từ hồ sơ bị từ chối (plan mục 3.3): giữ văn bản, tệp của lượt cuối;
     dùng phiên bản đang hoạt động của cùng mã quy trình; `ho_so_goc` trỏ về hồ sơ cũ.
     """
     da_xu_ly = _thao_tac_da_xu_ly("TRINH_LAI", khoa_chong_trung, yeu_cau)
@@ -462,7 +462,7 @@ def trinh_lai(yeu_cau, nguoi, *, khoa_chong_trung, han_chot=None, dia_chi_ip=Non
     luot = luot_hien_hanh(yeu_cau)
     moi = SigningRequest.objects.create(
         document_type=yeu_cau.document_type, van_ban_id=yeu_cau.van_ban_id, quy_trinh=quy_trinh,
-        phien_ban_quy_trinh=quy_trinh.phien_ban, muc_do=yeu_cau.muc_do, han_chot=han_chot,
+        phien_ban_quy_trinh=quy_trinh.phien_ban, han_chot=han_chot,
         ghi_chu=yeu_cau.ghi_chu, phien_ban_van_ban=luot.phien_ban_van_ban, vi_tri_luu_tep=luot.vi_tri_luu_tep,
         ma_bam_tai_lieu=luot.ma_bam_tai_lieu, ho_so_goc=yeu_cau, create_by=nguoi,
     )

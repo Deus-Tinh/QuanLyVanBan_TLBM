@@ -163,7 +163,6 @@ class SigningRequest(models.Model):
     ma_bam_tai_lieu = models.CharField(max_length=64, null=True, blank=True)
     quy_trinh = models.ForeignKey(SigningProcess, on_delete=models.PROTECT, related_name="+")
     phien_ban_quy_trinh = models.PositiveSmallIntegerField()
-    muc_do = models.CharField(max_length=20, choices=enums.MucDoTrinhKy.choices)
     # Trình lại sau từ chối tạo yêu cầu mới trỏ về yêu cầu bị từ chối (#80 Phase 7)
     ho_so_goc = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="trinh_lai_set")
     trang_thai = models.CharField(
