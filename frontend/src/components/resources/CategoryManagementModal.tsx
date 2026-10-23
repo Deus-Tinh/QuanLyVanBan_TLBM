@@ -23,6 +23,272 @@ export interface CategoryManagementModalProps {
   onDeleteType: (id: number) => void | Promise<void>;
 }
 
+// ============================================================================
+// COMPONENT PHÂN TRANG NỘI BỘ CHO MODAL (ĐỒNG BỘ PHONG CÁCH VỚI BẢNG TÀI LIỆU)
+// ============================================================================
+interface ModalPaginationProps {
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (newPageSize: number) => void;
+  itemLabel: string;
+  pageSizeOptions?: number[];
+}
+
+const ModalPagination: React.FC<ModalPaginationProps> = ({
+  currentPage,
+  totalPages,
+  pageSize,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+  itemLabel,
+  pageSizeOptions = [5, 10, 20, 50],
+}) => {
+  const [jumpPageInput, setJumpPageInput] = useState('');
+
+  const handleJump = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const pageNum = parseInt(jumpPageInput.trim(), 10);
+    if (!isNaN(pageNum)) {
+      const validPage = Math.max(1, Math.min(pageNum, totalPages));
+      onPageChange(validPage);
+      setJumpPageInput('');
+    }
+  };
+
+  type PageItem =
+    | { type: 'page'; num: number }
+    | { type: 'ellipsis'; direction: 'prev' | 'next'; targetPage: number };
+
+  const getPageElements = (): PageItem[] => {
+    if (totalPages <= 4) {
+      return Array.from({ length: totalPages }, (_, i) => ({
+        type: 'page',
+        num: i + 1,
+      }));
+    }
+
+    const items: PageItem[] = [];
+
+    if (currentPage <= 2) {
+      items.push({ type: 'page', num: 1 });
+      items.push({ type: 'page', num: 2 });
+      items.push({
+        type: 'ellipsis',
+        direction: 'next',
+        targetPage: Math.min(totalPages, currentPage + 2),
+      });
+      items.push({ type: 'page', num: totalPages });
+    } else if (currentPage >= totalPages - 1) {
+      items.push({ type: 'page', num: 1 });
+      items.push({
+        type: 'ellipsis',
+        direction: 'prev',
+        targetPage: Math.max(1, currentPage - 2),
+      });
+      items.push({ type: 'page', num: totalPages - 1 });
+      items.push({ type: 'page', num: totalPages });
+    } else {
+      items.push({ type: 'page', num: 1 });
+      if (currentPage - 1 > 2) {
+        items.push({
+          type: 'ellipsis',
+          direction: 'prev',
+          targetPage: Math.max(1, currentPage - 2),
+        });
+      } else {
+        items.push({ type: 'page', num: 2 });
+      }
+
+      items.push({ type: 'page', num: currentPage });
+
+      if (currentPage + 1 < totalPages - 1) {
+        items.push({
+          type: 'ellipsis',
+          direction: 'next',
+          targetPage: Math.min(totalPages, currentPage + 2),
+        });
+      } else {
+        items.push({ type: 'page', num: totalPages - 1 });
+      }
+
+      items.push({ type: 'page', num: totalPages });
+    }
+
+    return items;
+  };
+
+  const startRecord = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endRecord = Math.min(currentPage * pageSize, totalItems);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-t border-border-subtle text-xs text-secondary bg-surface select-none">
+      {/* Bên trái: Chọn số dòng & Tóm tắt phạm vi */}
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
+        <span className="font-medium text-muted">Hiển thị</span>
+        <select
+          value={pageSize}
+          onChange={(e) => onPageSizeChange(Number(e.target.value))}
+          className="px-2 py-1 bg-surface-elevated border border-border-subtle rounded-md text-main text-xs focus:outline-hidden focus:border-primary cursor-pointer font-medium"
+          aria-label={`Chọn số ${itemLabel} hiển thị trên mỗi trang`}
+        >
+          {pageSizeOptions.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt} dòng
+            </option>
+          ))}
+        </select>
+        <span className="font-medium text-muted">/ trang</span>
+        <span className="text-muted">·</span>
+        <span className="text-secondary font-medium">
+          {totalItems === 0 ? (
+            `0 ${itemLabel}`
+          ) : (
+            <>
+              Hiển thị <strong className="text-main font-semibold">{startRecord}–{endRecord}</strong> / <strong className="text-main font-semibold">{totalItems}</strong> {itemLabel}
+            </>
+          )}
+        </span>
+      </div>
+
+      {/* Bên phải: Cụm nút điều hướng */}
+      {totalPages > 1 ? (
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
+          {/* Nút về đầu */}
+          <button
+            type="button"
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(1)}
+            className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+            title="Về trang đầu (Trang 1)"
+            aria-label="Về trang đầu"
+          >
+            <i className="fa-solid fa-angles-left text-[10px]" />
+          </button>
+
+          {/* Nút trang trước */}
+          <button
+            type="button"
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+            title="Trang trước"
+            aria-label="Trang trước"
+          >
+            <i className="fa-solid fa-chevron-left text-[10px]" />
+          </button>
+
+          {/* Danh sách các nút số trang */}
+          {getPageElements().map((item, idx) => {
+            if (item.type === 'ellipsis') {
+              return (
+                <button
+                  key={`ellipsis-${idx}`}
+                  type="button"
+                  onClick={() => onPageChange(item.targetPage)}
+                  className="group min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1 text-xs font-medium rounded-lg border border-transparent hover:border-border-subtle hover:bg-surface-elevated text-muted hover:text-primary transition-all cursor-pointer flex items-center justify-center"
+                  title={
+                    item.direction === 'prev'
+                      ? `Lùi 2 trang (Về trang ${item.targetPage})`
+                      : `Tiến 2 trang (Đến trang ${item.targetPage})`
+                  }
+                  aria-label={item.direction === 'prev' ? 'Lùi 2 trang' : 'Tiến 2 trang'}
+                >
+                  <span className="group-hover:hidden tracking-widest text-[10px] font-bold">•••</span>
+                  <i
+                    className={`hidden group-hover:inline fa-solid text-[9px] ${
+                      item.direction === 'prev' ? 'fa-angles-left' : 'fa-angles-right'
+                    }`}
+                  />
+                </button>
+              );
+            }
+
+            const isActive = item.num === currentPage;
+            return (
+              <button
+                key={`page-${item.num}`}
+                type="button"
+                onClick={() => onPageChange(item.num)}
+                className={`min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-2 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center ${
+                  isActive
+                    ? 'bg-primary text-white shadow-xs font-bold border border-primary'
+                    : 'border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main'
+                }`}
+                aria-label={`Trang ${item.num}`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {item.num}
+              </button>
+            );
+          })}
+
+          {/* Nút trang sau */}
+          <button
+            type="button"
+            disabled={currentPage >= totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+            className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+            title="Trang sau"
+            aria-label="Trang sau"
+          >
+            <i className="fa-solid fa-chevron-right text-[10px]" />
+          </button>
+
+          {/* Nút đến trang cuối */}
+          <button
+            type="button"
+            disabled={currentPage >= totalPages}
+            onClick={() => onPageChange(totalPages)}
+            className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
+            title={`Đến trang cuối (Trang ${totalPages})`}
+            aria-label="Đến trang cuối"
+          >
+            <i className="fa-solid fa-angles-right text-[10px]" />
+          </button>
+
+          {/* Nhập trang nhảy nhanh khi có từ 5 trang trở lên */}
+          {totalPages > 4 && (
+            <form
+              onSubmit={handleJump}
+              className="flex items-center gap-1 pl-1.5 border-l border-border-subtle text-secondary"
+            >
+              <span className="text-[10px] whitespace-nowrap">Đến</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={jumpPageInput}
+                onChange={(e) => setJumpPageInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleJump();
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                placeholder={String(currentPage)}
+                title="Nhập số trang và nhấn Enter"
+                className="w-9 h-7 px-1 text-center bg-surface-elevated border border-border-subtle rounded-lg text-main text-xs focus:outline-hidden focus:border-primary font-medium"
+                aria-label="Nhập số trang muốn chuyển tới"
+              />
+            </form>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-muted font-medium px-2 py-0.5 rounded-md bg-surface-elevated border border-border-subtle">
+            Trang 1 / 1
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = ({
   isOpen,
   onClose,
@@ -46,6 +312,23 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [typeSearch, setTypeSearch] = useState('');
   const [filterParentCat, setFilterParentCat] = useState<string>('all');
   const [catDeleteBlockedMsg, setCatDeleteBlockedMsg] = useState<string | null>(null);
+
+  // Phân trang Tab Thư mục (Category)
+  const [catPage, setCatPage] = useState(1);
+  const [catPageSize, setCatPageSize] = useState(5);
+
+  // Phân trang Tab Loại tài liệu (Type)
+  const [typePage, setTypePage] = useState(1);
+  const [typePageSize, setTypePageSize] = useState(5);
+
+  // Tự động reset về trang 1 khi thay đổi từ khóa tìm kiếm hoặc lọc
+  useEffect(() => {
+    setCatPage(1);
+  }, [catSearch]);
+
+  useEffect(() => {
+    setTypePage(1);
+  }, [typeSearch, filterParentCat]);
 
   // States cho Modal thông báo/xác nhận UI chuẩn
   const [deleteCatTarget, setDeleteCatTarget] = useState<ResourceCategory | null>(null);
@@ -467,6 +750,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       .sort((a, b) => a.stt_uu_tien - b.stt_uu_tien);
   }, [categories, catSearch]);
 
+  // Tính toán phân trang cho Thư mục
+  const totalCatPages = Math.max(1, Math.ceil(filteredCategories.length / catPageSize));
+  const effectiveCatPage = Math.min(Math.max(1, catPage), totalCatPages);
+  const paginatedCategories = useMemo(() => {
+    const start = (effectiveCatPage - 1) * catPageSize;
+    return filteredCategories.slice(start, start + catPageSize);
+  }, [filteredCategories, effectiveCatPage, catPageSize]);
+
   // Loại tài liệu đã lọc
   const filteredTypes = useMemo(() => {
     return types.filter((t) => {
@@ -480,6 +771,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       return true;
     });
   }, [types, filterParentCat, typeSearch]);
+
+  // Tính toán phân trang cho Loại tài liệu
+  const totalTypePages = Math.max(1, Math.ceil(filteredTypes.length / typePageSize));
+  const effectiveTypePage = Math.min(Math.max(1, typePage), totalTypePages);
+  const paginatedTypes = useMemo(() => {
+    const start = (effectiveTypePage - 1) * typePageSize;
+    return filteredTypes.slice(start, start + typePageSize);
+  }, [filteredTypes, effectiveTypePage, typePageSize]);
 
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
@@ -665,7 +964,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         </td>
                       </tr>
                     ) : (
-                      filteredCategories.map((cat) => {
+                      paginatedCategories.map((cat) => {
                         const childCount = types.filter((t) => t.dm_tai_lieu === cat.id).length;
                         return (
                           <tr key={cat.id} className="hover:bg-surface-elevated/70 transition-colors">
@@ -733,6 +1032,26 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                     )}
                   </tbody>
                 </table>
+
+                {/* Thanh phân trang Thư mục */}
+                {filteredCategories.length > 0 && (
+                  <ModalPagination
+                    currentPage={effectiveCatPage}
+                    totalPages={totalCatPages}
+                    pageSize={catPageSize}
+                    totalItems={filteredCategories.length}
+                    onPageChange={(p) => {
+                      setCatPage(p);
+                      closeAllMenus();
+                    }}
+                    onPageSizeChange={(newSize) => {
+                      setCatPageSize(newSize);
+                      setCatPage(1);
+                      closeAllMenus();
+                    }}
+                    itemLabel="thư mục"
+                  />
+                )}
               </div>
             </div>
           )}
@@ -820,7 +1139,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         </td>
                       </tr>
                     ) : (
-                      filteredTypes.map((t) => {
+                      paginatedTypes.map((t) => {
                         const parentCat = categories.find((c) => c.id === t.dm_tai_lieu);
                         return (
                           <tr
@@ -909,6 +1228,26 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                     )}
                   </tbody>
                 </table>
+
+                {/* Thanh phân trang Loại tài liệu */}
+                {filteredTypes.length > 0 && (
+                  <ModalPagination
+                    currentPage={effectiveTypePage}
+                    totalPages={totalTypePages}
+                    pageSize={typePageSize}
+                    totalItems={filteredTypes.length}
+                    onPageChange={(p) => {
+                      setTypePage(p);
+                      closeAllMenus();
+                    }}
+                    onPageSizeChange={(newSize) => {
+                      setTypePageSize(newSize);
+                      setTypePage(1);
+                      closeAllMenus();
+                    }}
+                    itemLabel="loại tài liệu"
+                  />
+                )}
               </div>
             </div>
           )}
