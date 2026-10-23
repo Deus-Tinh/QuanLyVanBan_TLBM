@@ -15,6 +15,7 @@ from django.utils import timezone
 from rest_framework import status
 
 from .. import crypto, enums
+from .. import email as thong_bao
 from ..errors import ConflictError, SigningError
 from ..models import (
     SigningAttempt, SigningAuditLog, SigningProcess, SigningRequest, SigningRequestStep, SigningRequestStepSigner,
@@ -283,6 +284,7 @@ def mo_nguoi_ky_trong_cap(cap, thoi_diem):
         n.thoi_diem_mo = thoi_diem
         n.save(update_fields=["thoi_diem_mo"])
         vua_mo.append(n)
+    thong_bao.thong_bao_den_luot_ky(vua_mo)  # email gửi sau commit
     return vua_mo
 
 
@@ -428,6 +430,8 @@ def huy(yeu_cau, nguoi, *, khoa_chong_trung, ly_do="", dia_chi_ip=None):
     ghi_nhat_ky(nguoi, LOAI, yeu_cau.pk, "HUY_TRINH_KY", trinh_ky=yeu_cau, luot_trinh=luot,
                 trang_thai_truoc=truoc, trang_thai_sau=yeu_cau.trang_thai, chi_tiet=ly_do, dia_chi_ip=dia_chi_ip,
                 du_lieu_kem_theo={"khoa_chong_trung": khoa_chong_trung, "huy_thay": not la_nguoi_tao})
+    if not la_nguoi_tao:  # người tạo tự hủy thì không cần báo lại cho chính mình
+        thong_bao.thong_bao_nguoi_tao(yeu_cau, "HUY", luot)
     return yeu_cau
 
 

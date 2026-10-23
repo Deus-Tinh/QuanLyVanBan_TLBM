@@ -416,14 +416,20 @@ class SeedDbCommandTests(APITestCase):
     """Lệnh seed_db: đủ 82 đơn vị (tên không duy nhất: "Lãnh đạo khối" có ở 2 khối) và chạy lặp không tạo trùng."""
 
     def test_seed_db_is_complete_and_idempotent(self):
+        import os
+        from io import StringIO
+        from unittest import mock
+
         from django.core.management import call_command
 
-        call_command("seed_db", verbosity=0)
+        with mock.patch.dict(os.environ, {"DEMO_PASSWORD": "mat-khau-kiem-thu"}):
+            call_command("seed_db", verbosity=0, stdout=StringIO())
         self.assertEqual(KhoiKhuVuc.objects.count(), 16)
         self.assertEqual(DonVi.objects.count(), 82)
         self.assertEqual(DonVi.objects.filter(ten="Lãnh đạo khối").count(), 2)
         self.assertTrue(User.objects.filter(username="admin", is_superuser=True).exists())
 
-        call_command("seed_db", verbosity=0)
+        with mock.patch.dict(os.environ, {"DEMO_PASSWORD": ""}):
+            call_command("seed_db", verbosity=0, stdout=StringIO())
         self.assertEqual(DonVi.objects.count(), 82)
         self.assertEqual(Position.objects.count(), 7)
