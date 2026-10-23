@@ -60,6 +60,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [isConfirmDiscardUnifiedOpen, setIsConfirmDiscardUnifiedOpen] = useState(false);
   const [unifiedMode, setUnifiedMode] = useState<'create' | 'edit'>('create');
   const [unifiedTarget, setUnifiedTarget] = useState<'category' | 'type'>('category');
+  const [isSubmittingUnified, setIsSubmittingUnified] = useState(false);
 
   const currentSession = authService.getSession();
   const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
@@ -339,8 +340,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   };
 
   // Submit Form hợp nhất
-  const handleUnifiedSubmit = (e: React.FormEvent) => {
+  const handleUnifiedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingUnified) return;
 
     if (unifiedTarget === 'category') {
       // Validate Thư mục
@@ -381,11 +383,20 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         finalChildTypes.push(pendingChild);
       }
 
-      onSaveCategory(payload, Boolean(editingCatId), finalChildTypes.length, finalChildTypes);
-
-      setIsUnifiedDirty(false);
-      setIsConfirmDiscardUnifiedOpen(false);
-      setIsUnifiedModalOpen(false);
+      try {
+        setIsSubmittingUnified(true);
+        setCatError(null);
+        await onSaveCategory(payload, Boolean(editingCatId), finalChildTypes.length, finalChildTypes);
+        setIsUnifiedDirty(false);
+        setIsConfirmDiscardUnifiedOpen(false);
+        setIsUnifiedModalOpen(false);
+      } catch (err: unknown) {
+        console.error('Lỗi khi lưu thư mục:', err);
+        const errMsg = err instanceof Error ? err.message : 'Có lỗi xảy ra khi lưu thư mục lên hệ thống';
+        setCatError(errMsg);
+      } finally {
+        setIsSubmittingUnified(false);
+      }
     } else {
       // Validate & Lưu Loại tài liệu
       if (categories.length === 0 || !typeForm.dm_tai_lieu) {
@@ -407,10 +418,20 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
         ngay_lap: new Date().toISOString().split('T')[0],
       };
 
-      onSaveType(payload, Boolean(editingTypeId));
-      setIsUnifiedDirty(false);
-      setIsConfirmDiscardUnifiedOpen(false);
-      setIsUnifiedModalOpen(false);
+      try {
+        setIsSubmittingUnified(true);
+        setTypeError(null);
+        await onSaveType(payload, Boolean(editingTypeId));
+        setIsUnifiedDirty(false);
+        setIsConfirmDiscardUnifiedOpen(false);
+        setIsUnifiedModalOpen(false);
+      } catch (err: unknown) {
+        console.error('Lỗi khi lưu loại tài liệu:', err);
+        const errMsg = err instanceof Error ? err.message : 'Có lỗi xảy ra khi lưu loại tài liệu lên hệ thống';
+        setTypeError(errMsg);
+      } finally {
+        setIsSubmittingUnified(false);
+      }
     }
   };
 
@@ -1290,15 +1311,17 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                   type="submit"
                   variant="primary"
                   size="sm"
-                  icon="fa-check"
-                  disabled={unifiedTarget === 'type' && categories.length === 0}
+                  icon={isSubmittingUnified ? 'fa-spinner fa-spin' : 'fa-check'}
+                  disabled={(unifiedTarget === 'type' && categories.length === 0) || isSubmittingUnified}
                   className="rounded-xl text-xs font-bold shadow-sm hover:shadow-glow px-4"
                 >
-                  {unifiedMode === 'create'
-                    ? unifiedTarget === 'category'
-                      ? 'Lưu thư mục'
-                      : 'Lưu loại tài liệu'
-                    : 'Cập nhật thay đổi'}
+                  {isSubmittingUnified
+                    ? 'Đang lưu...'
+                    : unifiedMode === 'create'
+                      ? unifiedTarget === 'category'
+                        ? 'Lưu thư mục'
+                        : 'Lưu loại tài liệu'
+                      : 'Cập nhật thay đổi'}
                 </Button>
               </div>
             </form>
@@ -1396,10 +1419,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       <ConfirmationModal
         isOpen={deleteCatTarget !== null}
         onClose={() => setDeleteCatTarget(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteCatTarget) {
-            onDeleteCategory(deleteCatTarget.id);
+            const catId = deleteCatTarget.id;
             setDeleteCatTarget(null);
+            await onDeleteCategory(catId);
           }
         }}
         variant="danger"
@@ -1432,10 +1456,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       <ConfirmationModal
         isOpen={deleteTypeTarget !== null}
         onClose={() => setDeleteTypeTarget(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteTypeTarget) {
-            onDeleteType(deleteTypeTarget.id);
+            const typeId = deleteTypeTarget.id;
             setDeleteTypeTarget(null);
+            await onDeleteType(typeId);
           }
         }}
         variant="danger"

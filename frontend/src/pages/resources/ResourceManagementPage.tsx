@@ -176,7 +176,7 @@ export default function ResourceManagementPage() {
         return stillExisting;
       });
       isCategoriesLoadedRef.current = true;
-    } else {
+    } else if (isCategoriesLoadedRef.current) {
       setVisibleCategoryIds([]);
     }
   }, [categories]);
@@ -261,7 +261,7 @@ export default function ResourceManagementPage() {
         return stillExisting;
       });
       isTypesLoadedRef.current = true;
-    } else {
+    } else if (isTypesLoadedRef.current) {
       setVisibleTypeIds([]);
     }
   }, [types]);
@@ -292,18 +292,43 @@ export default function ResourceManagementPage() {
   // Trạng thái đang tải dữ liệu từ Backend API
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const isFetchingRef = useRef<boolean>(false);
+  const fetchSeqRef = useRef<number>(0);
+  const latestCommittedSeqRef = useRef<number>(0);
+  const pendingForceRefetchRef = useRef<boolean>(false);
 
   // Tải dữ liệu từ Backend API (/api/resources/...)
-  const fetchResources = useCallback(async (silent?: boolean) => {
-    if (isFetchingRef.current) return;
+  const fetchResources = useCallback(async (silent?: boolean, force?: boolean): Promise<void> => {
+    if (isFetchingRef.current) {
+      if (force) {
+        pendingForceRefetchRef.current = true;
+      }
+      return;
+    }
     isFetchingRef.current = true;
     if (!silent) setIsLoading(true);
+    const seq = ++fetchSeqRef.current;
+
     try {
       const [catsRes, typesRes, docsRes] = await Promise.all([
-        apiClient<unknown>('/api/resources/categories/').catch(() => null),
-        apiClient<unknown>('/api/resources/types/').catch(() => null),
-        apiClient<unknown>('/api/resources/documents/').catch(() => null),
+        apiClient<unknown>('/api/resources/categories/').catch((err) => {
+          console.warn('Lỗi tải categories:', err);
+          return null;
+        }),
+        apiClient<unknown>('/api/resources/types/').catch((err) => {
+          console.warn('Lỗi tải types:', err);
+          return null;
+        }),
+        apiClient<unknown>('/api/resources/documents/').catch((err) => {
+          console.warn('Lỗi tải documents:', err);
+          return null;
+        }),
       ]);
+
+      // Nếu có request mới hơn đã cam kết, bỏ qua response cũ này để tránh race condition
+      if (seq < latestCommittedSeqRef.current) {
+        return;
+      }
+      latestCommittedSeqRef.current = seq;
 
       const normalizeList = <T,>(data: unknown): T[] => {
         if (!data) return [];
@@ -316,24 +341,39 @@ export default function ResourceManagementPage() {
 
       const isDifferent = (a: any, b: any) => JSON.stringify(a) !== JSON.stringify(b);
 
-      const nextCats = normalizeList<ResourceCategory>(catsRes);
-      const nextTypes = normalizeList<ResourceType>(typesRes);
-      const nextDocs = normalizeList<ResourceItem>(docsRes);
+      if (catsRes !== null) {
+        const nextCats = normalizeList<ResourceCategory>(catsRes);
+        setCategories((prev) => (isDifferent(prev, nextCats) ? nextCats : prev));
+        isCategoriesLoadedRef.current = true;
+      }
 
-      setCategories((prev) => (isDifferent(prev, nextCats) ? nextCats : prev));
-      setTypes((prev) => (isDifferent(prev, nextTypes) ? nextTypes : prev));
-      setDocuments((prev) => (isDifferent(prev, nextDocs) ? nextDocs : prev));
+      if (typesRes !== null) {
+        const nextTypes = normalizeList<ResourceType>(typesRes);
+        setTypes((prev) => (isDifferent(prev, nextTypes) ? nextTypes : prev));
+        isTypesLoadedRef.current = true;
+      }
+
+      if (docsRes !== null) {
+        const nextDocs = normalizeList<ResourceItem>(docsRes);
+        setDocuments((prev) => (isDifferent(prev, nextDocs) ? nextDocs : prev));
+      }
     } catch (e) {
       console.warn('Lỗi khi tải dữ liệu từ API backend:', e);
     } finally {
       isFetchingRef.current = false;
       if (!silent) setIsLoading(false);
+
+      // Nếu có yêu cầu force refetch đang chờ (từ mutation), thực hiện ngay
+      if (pendingForceRefetchRef.current) {
+        pendingForceRefetchRef.current = false;
+        fetchResources(true, true);
+      }
     }
   }, []);
 
   // Refetch ngầm (không hiển thị loading spinner) để đồng bộ dữ liệu real-time
-  const silentRefetch = useCallback(() => {
-    fetchResources(true);
+  const silentRefetch = useCallback((force?: boolean) => {
+    fetchResources(true, force);
   }, [fetchResources]);
 
   // Hệ thống đồng bộ Real-time đa tầng:
@@ -350,7 +390,7 @@ export default function ResourceManagementPage() {
       try {
         channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
         channel.onmessage = () => {
-          silentRefetch();
+          silentRefetch(true);
         };
       } catch {
         /* ignore */
@@ -359,7 +399,7 @@ export default function ResourceManagementPage() {
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === SYNC_STORAGE_KEY) {
-        silentRefetch();
+        silentRefetch(true);
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -415,7 +455,12 @@ export default function ResourceManagementPage() {
 
   // Tự động reset bộ lọc nếu danh mục hoặc loại tài liệu đang chọn bị xóa từ client/tab khác
   useEffect(() => {
-    if (selectedCategory !== 'all' && categories.length > 0) {
+    if (
+      selectedCategory !== 'all' &&
+      isCategoriesLoadedRef.current &&
+      categories.length > 0 &&
+      !isFetchingRef.current
+    ) {
       const exists = categories.some((c) => String(c.id) === selectedCategory);
       if (!exists) {
         setSelectedCategory('all');
@@ -424,7 +469,12 @@ export default function ResourceManagementPage() {
   }, [categories, selectedCategory]);
 
   useEffect(() => {
-    if (selectedType !== 'all' && types.length > 0) {
+    if (
+      selectedType !== 'all' &&
+      isTypesLoadedRef.current &&
+      types.length > 0 &&
+      !isFetchingRef.current
+    ) {
       const exists = types.some((t) => String(t.id) === selectedType);
       if (!exists) {
         setSelectedType('all');
@@ -903,7 +953,7 @@ export default function ResourceManagementPage() {
       }
 
       // Đồng bộ ngầm với server và thông báo cho các tab/client khác
-      silentRefetch();
+      await fetchResources(true, true);
       notifyMutation();
     } finally {
       setIsDeleting(false);
@@ -968,7 +1018,7 @@ export default function ResourceManagementPage() {
         showToast(`Đã thêm mới thành công tài liệu: "${savedDoc.tieu_de}"`, 'success', 'Thêm mới tài liệu');
       }
       // Đồng bộ ngầm với server sau khi cập nhật local state và thông báo cho các tab/client khác
-      silentRefetch();
+      await fetchResources(true, true);
       notifyMutation();
     } catch (error) {
       console.error('Lỗi khi lưu tài liệu lên server:', error);
@@ -1013,8 +1063,8 @@ export default function ResourceManagementPage() {
         };
         const savedCat = await apiClient.post<ResourceCategory>('/api/resources/categories/', payload);
         // Cập nhật local state ngay lập tức (instant UI feedback)
-        setCategories((prev) => [...prev, savedCat]);
-        setVisibleCategoryIds((prev) => [...prev, savedCat.id]);
+        setCategories((prev) => [...prev.filter((c) => c.id !== savedCat.id), savedCat]);
+        setVisibleCategoryIds((prev) => (prev.includes(savedCat.id) ? prev : [...prev, savedCat.id]));
 
         // Nếu có danh sách loại con khởi tạo kèm theo:
         if (childTypes && childTypes.length > 0) {
@@ -1036,8 +1086,11 @@ export default function ResourceManagementPage() {
             }
           }
           if (createdTypes.length > 0) {
-            setTypes((prev) => [...prev, ...createdTypes]);
-            setVisibleTypeIds((prev) => [...prev, ...createdTypes.map((ct) => ct.id)]);
+            setTypes((prev) => [...prev.filter((t) => !createdTypes.some((ct) => ct.id === t.id)), ...createdTypes]);
+            setVisibleTypeIds((prev) => [
+              ...prev,
+              ...createdTypes.map((ct) => ct.id).filter((id) => !prev.includes(id)),
+            ]);
           }
         }
 
@@ -1045,11 +1098,12 @@ export default function ResourceManagementPage() {
         showToast(`Đã thêm mới thành công thư mục: "${savedCat.ten_tai_lieu}"${extraMsg}`, 'success', 'Thêm mới Thư mục');
       }
       // Đồng bộ ngầm với server sau khi cập nhật local state và thông báo cho các tab/client khác
-      silentRefetch();
+      await fetchResources(true, true);
       notifyMutation();
     } catch (e) {
       console.error('Lỗi khi lưu thư mục lên máy chủ:', e);
       showToast('Không thể lưu thư mục lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
+      throw e;
     }
   };
 
@@ -1067,11 +1121,12 @@ export default function ResourceManagementPage() {
         setSelectedCategory('all');
       }
       // Đồng bộ ngầm với server và thông báo cho các tab/client khác
-      silentRefetch();
+      await fetchResources(true, true);
       notifyMutation();
     } catch (e) {
       console.error('Lỗi khi xóa danh mục trên máy chủ:', e);
       showToast('Không thể xóa thư mục trên hệ thống máy chủ', 'danger', 'Lỗi thao tác');
+      throw e;
     }
   };
 
@@ -1112,18 +1167,19 @@ export default function ResourceManagementPage() {
         };
         const saved = await apiClient.post<ResourceType>('/api/resources/types/', payload);
         // Cập nhật local state ngay lập tức (instant UI feedback)
-        setTypes((prev) => [...prev, saved]);
-        setVisibleTypeIds((prev) => [...prev, saved.id]);
+        setTypes((prev) => [...prev.filter((t) => t.id !== saved.id), saved]);
+        setVisibleTypeIds((prev) => (prev.includes(saved.id) ? prev : [...prev, saved.id]));
         if (!silent) {
           showToast(`Đã thêm mới thành công loại tài liệu: "${saved.ten_loai}"`, 'success', 'Thêm mới Loại tài liệu');
         }
       }
       // Đồng bộ ngầm với server sau khi cập nhật local state và thông báo cho các tab/client khác
-      silentRefetch();
+      await fetchResources(true, true);
       notifyMutation();
     } catch (e) {
       console.error('Lỗi khi lưu loại tài liệu lên máy chủ:', e);
       showToast('Không thể lưu loại tài liệu lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
+      throw e;
     }
   };
 
@@ -1148,11 +1204,12 @@ export default function ResourceManagementPage() {
         setSelectedType('all');
       }
       // Đồng bộ ngầm với server và thông báo cho các tab/client khác
-      silentRefetch();
+      await fetchResources(true, true);
       notifyMutation();
     } catch (e) {
       console.error('Lỗi khi xóa loại tài liệu trên máy chủ:', e);
       showToast('Không thể xóa loại tài liệu trên hệ thống máy chủ', 'danger', 'Lỗi thao tác');
+      throw e;
     }
   };
 
