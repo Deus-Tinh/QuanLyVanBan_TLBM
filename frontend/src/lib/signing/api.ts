@@ -83,6 +83,8 @@ export const signingApi = {
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/tu-choi/`, { ly_do_tu_choi }, tieuDe(khoa)),
   thuHoi: (id: number, khoa: string) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/thu-hoi/`, {}, tieuDe(khoa)),
+  uyQuyen: (id: number, khoa: string, body: { dong_nguoi_ky: number; nguoi_nhan: number; ly_do_uy_quyen: string }) =>
+    apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/uy-quyen/`, body, tieuDe(khoa)),
   yeuCauSua: (id: number, khoa: string, tieu_de: string, ly_do: string) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/yeu-cau-sua/`, { tieu_de, ly_do }, tieuDe(khoa)),
 
@@ -117,6 +119,9 @@ export const signingApi = {
     apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/${thao_tac}/`, {}),
   timNguoiDung: (q: string) =>
     apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?q=${encodeURIComponent(q)}`),
+  /** Người nhận ủy quyền ký: tài khoản có quyền ký (cần delegate_trinhky). */
+  timNguoiNhanUyQuyen: (q: string) =>
+    apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?muc_dich=uy_quyen&q=${encodeURIComponent(q)}`),
   donVi: () => apiClient.get<DonViLuaChon[]>(`${SIGNING_BASE}/don-vi/`),
   taiLieu: (loc: BoLocTaiLieu = {}) => {
     const tham_so = new URLSearchParams();

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, LoiTai, Rong, TrangThaiBadge } from '@components/signing/ChungUI';
+import { DangTai, LoiTai, Rong, TrangThaiHoSo } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
@@ -146,7 +146,26 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
         {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
         {!ds.dangTai && !ds.loi && ds.duLieu?.length === 0 && <Rong>{t(coLoc ? 'danhSach.khongKhopLoc' : rong)}</Rong>}
         {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
-          <div className="overflow-x-auto">
+          <>
+          {/* Màn hình hẹp: thẻ thay cho bảng để luôn thấy trạng thái, người đang chờ, hạn chót */}
+          <ul className="space-y-2 md:hidden" aria-label={t('danhSach.vanBan')}>
+            {ds.duLieu.map((h) => (
+              <li key={h.id} className="rounded-lg border border-border-subtle p-3">
+                <Link to={`/approvals/${h.id}`} className="block font-semibold text-main hover:text-primary break-words">
+                  {moTaVanBan(h.van_ban, h.van_ban_id)}
+                </Link>
+                <div className="mt-1 text-xs text-muted break-words">#{h.id} · {h.ten_quy_trinh}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2"><TrangThaiHoSo hoSo={h} /></div>
+                <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs text-secondary">
+                  <dt>{t('danhSach.dangCho')}</dt>
+                  <dd className="text-main break-words">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</dd>
+                  <dt>{t('danhSach.nguoiTao')}</dt><dd className="text-main break-words">{h.ten_nguoi_tao}</dd>
+                  <dt>{t('danhSach.hanChot')}</dt><dd className="text-main">{dinhDangNgay(h.han_chot, lang)}</dd>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm text-left table-fixed min-w-[48rem]">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
@@ -167,7 +186,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                       </Link>
                       <div className="mt-0.5 truncate text-xs text-muted" title={h.ten_quy_trinh}>#{h.id} · {h.ten_quy_trinh}</div>
                     </td>
-                    <td className="px-2 py-2 text-center whitespace-nowrap"><TrangThaiBadge trangThai={h.trang_thai} /></td>
+                    <td className="px-2 py-2 text-center"><TrangThaiHoSo hoSo={h} /></td>
                     <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
                     <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">
                       <div className="flex items-center gap-1.5 truncate">
@@ -186,6 +205,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
     </div>
