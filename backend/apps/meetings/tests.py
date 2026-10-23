@@ -708,7 +708,12 @@ class MeetingBookingAPITestCase(APITestCase):
         room_err = str(res.data.get("room", ""))
         self.assertIn("meetings.messages.privateRoomForbidden", room_err)
 
-        # 2. Thử sửa phòng họp của lịch hiện có sang phòng nội bộ -> 400 Bad Request
+        # 2a. Thử sửa lịch của người khác (booking1 của user1) -> 403 Forbidden
+        res_other = self.client.patch(f"/api/meeting-bookings/{self.booking1.id}/", {"room": private_room.id})
+        self.assertEqual(res_other.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 2b. Chủ sở hữu (user1 không có change_phonghop) dời lịch của mình sang phòng nội bộ -> 400 Bad Request
+        self.client.force_authenticate(user=self.user1)
         res_patch = self.client.patch(f"/api/meeting-bookings/{self.booking1.id}/", {"room": private_room.id})
         self.assertEqual(res_patch.status_code, status.HTTP_400_BAD_REQUEST)
         patch_err = str(res_patch.data.get("room", ""))
