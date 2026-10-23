@@ -10,6 +10,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from accounts.models import Employee, Position
+from accounts.standard_positions import STANDARD_POSITIONS
 from organizations.models import DonVi, KhoiKhuVuc
 
 organizations_seed = importlib.import_module("organizations.migrations.0005_reference_data_ddl")
@@ -30,7 +31,9 @@ class SeedReferenceDataMigrationTests(TestCase):
         self.run_seeds()
         self.assertEqual(KhoiKhuVuc.objects.count(), 16)
         self.assertEqual(DonVi.objects.count(), 82)
-        self.assertEqual(list(Position.objects.values_list("name", flat=True)), ["Quản trị viên"])
+        # 0006 chỉ nạp "Quản trị viên" khi chưa có; 24 chức vụ chuẩn còn lại do accounts/0009 nạp.
+        self.assertEqual(Position.objects.filter(name="Quản trị viên").count(), 1)
+        self.assertEqual(list(Position.objects.order_by("display_order").values_list("name", flat=True)), [name for _, name in STANDARD_POSITIONS])
         admin = Employee.objects.get(username="admin")
         self.assertEqual(admin.password, "!system_seed_placeholder")
         self.assertFalse(is_password_usable(admin.password))
@@ -66,7 +69,7 @@ class SeedReferenceDataMigrationTests(TestCase):
 
         self.assertEqual(KhoiKhuVuc.objects.count(), 16)
         self.assertEqual(DonVi.objects.count(), 82)
-        self.assertEqual(Position.objects.count(), 1)
+        self.assertEqual(Position.objects.count(), len(STANDARD_POSITIONS))
         admin.refresh_from_db()
         self.assertEqual(admin.ho_ten, "Tài khoản có sẵn")
         self.assertFalse(admin.is_active)

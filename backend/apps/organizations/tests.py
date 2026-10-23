@@ -9,12 +9,24 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 
+from organizations.directory_export import HEADER_ROW
 from organizations.models import KhoiKhuVuc, DonVi
 
 
 def next_unit_priority():
     latest = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
     return latest + 1
+
+
+def export_unit_names(content):
+    """Tên đơn vị (chữ in hoa như mẫu danh bạ) ở các dòng đơn vị của file xuất, theo thứ tự trong file."""
+    sheet = openpyxl.load_workbook(io.BytesIO(content)).active
+    names = []
+    for row in sheet.iter_rows(min_row=HEADER_ROW + 1):
+        cell = row[0]
+        if isinstance(cell.value, str) and cell.alignment.horizontal == "left":
+            names.append(cell.value.split("  |  ")[0])
+    return names
 
 
 class OrganizationModelAndAPITest(TestCase):
@@ -106,25 +118,22 @@ class OrganizationModelAndAPITest(TestCase):
             res_vi["Content-Type"],
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
+        self.assertRegex(res_vi["Content-Disposition"], r'filename="DanhBa_BAOLONG_\d{2}_\d{2}_\d{4}_\d{4}\.xlsx"')
         wb_vi = openpyxl.load_workbook(io.BytesIO(res_vi.content))
         ws_vi = wb_vi.active
-        self.assertEqual(ws_vi.title, "Danh Sách Đơn Vị")
-        headers_vi = [cell.value for cell in ws_vi[1]]
-        self.assertIn("STT Ưu Tiên", headers_vi)
-        self.assertIn("Tên Đơn Vị / Phòng Ban", headers_vi)
-        # Kiểm tra nội dung hàng 2
-        row2_vi = [cell.value for cell in ws_vi[2]]
-        self.assertEqual(row2_vi[1], "Phòng Kế toán")
+        self.assertEqual(ws_vi.title, "Danh bạ")
+        self.assertEqual(ws_vi["A1"].value, "Bảo Long Insurance — Hệ Thống Quản Lý Văn Bản & Điều Hành")
+        headers_vi = [cell.value for cell in ws_vi[HEADER_ROW]]
+        self.assertEqual(headers_vi, ["STT", "Họ và tên", "Chức vụ", "Chức danh", "Điện thoại", "Email"])
+        self.assertEqual(export_unit_names(res_vi.content), ["PHÒNG KẾ TOÁN"])
 
         # 2. Kiểm tra xuất tiếng Anh
         res_en = self.client.get(f"/api/organizations/units/export/?region_id={self.region.id}&lang=en")
         self.assertEqual(res_en.status_code, status.HTTP_200_OK)
-        wb_en = openpyxl.load_workbook(io.BytesIO(res_en.content))
-        ws_en = wb_en.active
-        self.assertEqual(ws_en.title, "Departments Directory")
-        headers_en = [cell.value for cell in ws_en[1]]
-        self.assertIn("Priority Index", headers_en)
-        self.assertIn("Unit / Department Name", headers_en)
+        self.assertIn('filename="Directory_BAOLONG_', res_en["Content-Disposition"])
+        ws_en = openpyxl.load_workbook(io.BytesIO(res_en.content)).active
+        self.assertEqual(ws_en.title, "Directory")
+        self.assertEqual([cell.value for cell in ws_en[HEADER_ROW]], ["No.", "Full name", "Position", "Job title", "Phone", "Email"])
 
     def test_auto_priority_on_blank_string(self):
         """Kiểm tra khi frontend gửi chuỗi rỗng stt_uu_tien="", hệ thống vẫn tự động gán max + 1."""
@@ -233,6 +242,33 @@ class OrganizationModelAndAPITest(TestCase):
         self.assertIsInstance(res_all.data, list)
         self.assertEqual(len(res_all.data), 12)
 
+    def test_region_list_sorted_by_display_order_not_by_name(self):
+        """16 khối cấp 1 của danh bạ: danh sách phân trang và dropdown (?all=true) theo thu_tu_hien_thi 1-16."""
+        names = [
+            f"{name} (thử)"
+            for name in [
+                "HỘI ĐỒNG QUẢN TRỊ", "VĂN PHÒNG HỘI ĐỒNG QUẢN TRỊ", "BAN TỔNG GIÁM ĐỐC",
+                "VĂN PHÒNG BAN ĐIỀU HÀNH TẠI TP.HCM & HÀ NỘI", "KHỐI KINH DOANH", "KHỐI NGHIỆP VỤ", "KHỐI HỖ TRỢ",
+                "KHỐI QUẢN LÝ RỦI RO", "KHỐI TÀI CHÍNH", "KHỐI KẾ TOÁN", "VĂN PHÒNG 2",
+                "KHU VỰC THÀNH PHỐ HỒ CHÍ MINH", "KHU VỰC MIỀN BẮC", "KHU VỰC MIỀN TRUNG TÂY NGUYÊN",
+                "KHU VỰC ĐÔNG NAM BỘ", "GIÁM ĐỊNH VÙNG",
+            ]
+        ]
+        self.assertNotEqual(names, sorted(names))  # thứ tự theo tên khác thứ tự chuẩn
+        # tạo theo thứ tự ngược để không trùng với thứ tự id
+        for order, name in reversed(list(enumerate(names, start=1))):
+            KhoiKhuVuc.objects.create(ten=name, thu_tu_hien_thi=order)
+
+        res_all = self.client.get("/api/organizations/regions/?all=true")
+        self.assertEqual(res_all.status_code, status.HTTP_200_OK)
+        got = [r["ten"] for r in res_all.data if r["ten"] in names]
+        self.assertEqual(got, names)
+
+        res_page = self.client.get("/api/organizations/regions/?page=1")
+        page_names = [r["ten"] for r in res_page.data["results"] if r["ten"] in names]
+        self.assertTrue(page_names)
+        self.assertEqual(page_names, names[: len(page_names)])
+
     def test_unit_search_by_address(self):
         """Kiểm tra tìm kiếm đơn vị theo địa chỉ."""
         self.unit.dia_chi = "254 Nguyễn Văn Linh, Đà Nẵng"
@@ -264,22 +300,15 @@ class OrganizationModelAndAPITest(TestCase):
         response = self.client.get("/api/organizations/units/export/?search=Nguyễn+Văn+Linh")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Mở file Excel từ luồng byte và đọc các dòng
-        wb = openpyxl.load_workbook(io.BytesIO(response.content))
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
+        # Chỉ đơn vị khớp địa chỉ có trong file; dòng đơn vị mang địa chỉ như mẫu danh bạ
+        self.assertEqual(export_unit_names(response.content), ["PHÒNG KẾ TOÁN"])
+        sheet = openpyxl.load_workbook(io.BytesIO(response.content)).active
+        unit_row = next(r for r in sheet.iter_rows(min_row=HEADER_ROW + 1, values_only=True) if r[0] and str(r[0]).startswith("PHÒNG KẾ TOÁN"))
+        self.assertIn("Địa chỉ: 254 Nguyễn Văn Linh, Đà Nẵng", unit_row[0])
 
-        # Phải có đúng 2 dòng: dòng 1 là tiêu đề cột, dòng 2 là đơn vị khớp địa chỉ
-        self.assertEqual(len(rows), 2)
-        self.assertEqual(rows[1][1], "Phòng Kế toán")
-        self.assertIn("Nguyễn Văn Linh", rows[1][5])
-
-        # 2. Xuất file với từ khóa không tồn tại -> chỉ có đúng 1 dòng tiêu đề cột
+        # 2. Xuất file với từ khóa không tồn tại -> không có dòng đơn vị nào
         res_empty = self.client.get("/api/organizations/units/export/?search=Địa+Chỉ+Không+Tồn+Tại")
-        wb_empty = openpyxl.load_workbook(io.BytesIO(res_empty.content))
-        ws_empty = wb_empty.active
-        rows_empty = list(ws_empty.iter_rows(values_only=True))
-        self.assertEqual(len(rows_empty), 1)
+        self.assertEqual(export_unit_names(res_empty.content), [])
 
     def test_unit_update_and_delete(self):
         """Kiểm tra cập nhật và xóa đơn vị thành công."""
@@ -442,3 +471,73 @@ class OrganizationPermissionAPITest(TestCase):
         client = APIClient()
         client.force_authenticate(user=root)
         self.assertEqual(client.post("/api/organizations/regions/", {"ten": "Khối Root"}, format="json").status_code, status.HTTP_201_CREATED)
+
+
+class UnitAllParamAndInternalVisibilityTest(TestCase):
+    """?all=true trả đủ đơn vị (không cắt ở 10); đơn vị nội bộ (is_public=False) chỉ quản trị mới thấy."""
+
+    def setUp(self):
+        self.region = KhoiKhuVuc.objects.create(ten="Khối Hiển thị")
+        first_priority = next_unit_priority()
+        for index in range(12):
+            DonVi.objects.create(
+                khoi=self.region, stt_uu_tien=first_priority + index, ten=f"Đơn vị công khai {index + 1}", is_public=True
+            )
+        self.internal = DonVi.objects.create(
+            khoi=self.region, stt_uu_tien=first_priority + 12, ten="Đơn vị nội bộ", is_public=False
+        )
+        self.in_region = f"region_id={self.region.id}"
+        User = get_user_model()
+        home = DonVi.objects.filter(khoi=self.region).first()
+
+        def make(username, *codenames, superuser=False):
+            if superuser:
+                user = User.objects.create_superuser(username=username, password="x", email=f"{username}@example.com", don_vi=home)
+            else:
+                user = User.objects.create_user(username=username, password="x", don_vi=home)
+                user.user_permissions.add(*Permission.objects.filter(codename__in=codenames))
+            client = APIClient()
+            client.force_authenticate(user=user)
+            return client
+
+        self.viewer = make("vis_viewer", "view_donvi", "export_donvi")
+        self.manager = make("vis_manager", "view_donvi", "change_donvi", "export_donvi")
+        self.root = make("vis_root", superuser=True)
+
+    def test_all_true_returns_every_visible_unit_not_only_first_page(self):
+        response = self.viewer.get(f"/api/organizations/units/?all=true&{self.in_region}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+        self.assertEqual(len(response.data), 12)
+        paged = self.viewer.get(f"/api/organizations/units/?{self.in_region}")
+        self.assertEqual(paged.data["count"], 12)
+        self.assertEqual(len(paged.data["results"]), 10)
+        everything = self.viewer.get("/api/organizations/units/?all=true")
+        self.assertEqual(len(everything.data), DonVi.objects.filter(is_public=True).count())
+
+    def test_all_true_keeps_search_and_region_filters(self):
+        found = self.viewer.get("/api/organizations/units/?all=true&search=công khai 12")
+        self.assertEqual([u["ten"] for u in found.data], ["Đơn vị công khai 12"])
+        other = KhoiKhuVuc.objects.create(ten="Khối khác")
+        self.assertEqual(self.viewer.get(f"/api/organizations/units/?all=true&region_id={other.id}").data, [])
+
+    def test_internal_unit_hidden_from_non_admin_everywhere(self):
+        names = lambda data: [u["ten"] for u in data]
+        self.assertNotIn("Đơn vị nội bộ", names(self.viewer.get(f"/api/organizations/units/?page_size=100&{self.in_region}").data["results"]))
+        self.assertNotIn("Đơn vị nội bộ", names(self.viewer.get("/api/organizations/units/?all=true").data))
+        self.assertNotIn("Đơn vị nội bộ", names(self.viewer.get("/api/organizations/units/?search=nội bộ&all=true").data))
+        self.assertEqual(self.viewer.get(f"/api/organizations/units/{self.internal.id}/").status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_internal_unit_hidden_from_non_admin_export(self):
+        response = self.viewer.get(f"/api/organizations/units/export/?{self.in_region}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        exported = export_unit_names(response.content)
+        self.assertEqual(len(exported), 12)
+        self.assertNotIn("ĐƠN VỊ NỘI BỘ", exported)
+
+    def test_admin_with_change_permission_and_superuser_see_internal_unit(self):
+        for client in (self.manager, self.root):
+            self.assertEqual(len(client.get(f"/api/organizations/units/?all=true&{self.in_region}").data), 13)
+            self.assertEqual(client.get(f"/api/organizations/units/{self.internal.id}/").status_code, status.HTTP_200_OK)
+            exported = export_unit_names(client.get(f"/api/organizations/units/export/?{self.in_region}").content)
+            self.assertIn("ĐƠN VỊ NỘI BỘ", exported)

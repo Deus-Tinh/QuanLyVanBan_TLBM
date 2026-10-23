@@ -1,7 +1,4 @@
-import io
-import openpyxl
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-
+from django.db import IntegrityError, transaction
 from django.db.models import Q, ProtectedError
 from django.http import HttpResponse
 from rest_framework import status
@@ -10,8 +7,10 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
+from .directory_export import build_directory_workbook
 from .excel_i18n import get_excel_translations
 from .models import KhoiKhuVuc, DonVi
+from .references import unit_in_use
 from .serializers import KhoiKhuVucSerializer, DonViSerializer
 
 
@@ -23,6 +22,18 @@ def _invalid_region_filter(region_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
     return None
+
+
+def _can_see_internal_units(user) -> bool:
+    """Đơn vị is_public = False (nội bộ) chỉ hiển thị với quản trị: superuser hoặc có change_donvi (giống Chức vụ)."""
+    return bool(user.is_superuser or user.has_perm("change_donvi"))
+
+
+def _visible_units(user):
+    queryset = DonVi.objects.select_related("khoi").order_by("stt_uu_tien", "ten")
+    if not _can_see_internal_units(user):
+        queryset = queryset.filter(is_public=True)
+    return queryset
 
 
 class StandardPagination(PageNumberPagination):
@@ -64,7 +75,7 @@ def region_list_create_view(request):
         return _permission_denied()
 
     if request.method == "GET":
-        queryset = KhoiKhuVuc.objects.all().order_by("ten")
+        queryset = KhoiKhuVuc.objects.all().order_by("thu_tu_hien_thi", "ten", "id")
         search_query = request.query_params.get("search", "").strip()
         if search_query:
             queryset = queryset.filter(ten__icontains=search_query)
@@ -144,7 +155,7 @@ def unit_list_create_view(request):
         return _permission_denied()
 
     if request.method == "GET":
-        queryset = DonVi.objects.select_related("khoi").all().order_by("stt_uu_tien", "ten")
+        queryset = _visible_units(request.user)
 
         region_id = request.query_params.get("region_id")
         invalid = _invalid_region_filter(region_id)
@@ -161,6 +172,11 @@ def unit_list_create_view(request):
                 Q(email__icontains=search_query) |
                 Q(dia_chi__icontains=search_query)
             )
+
+        # Trả về toàn bộ danh sách không phân trang nếu có all=true (dành cho dropdown/select, giống API Khối)
+        if request.query_params.get("all", "").lower() == "true":
+            serializer = DonViSerializer(queryset, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         paginator = StandardPagination()
         page = paginator.paginate_queryset(queryset, request)
@@ -186,7 +202,7 @@ def unit_detail_view(request, pk):
         return _permission_denied()
 
     try:
-        unit = DonVi.objects.select_related("khoi").get(pk=pk)
+        unit = _visible_units(request.user).get(pk=pk)
     except DonVi.DoesNotExist:
         return Response(
             {"detail": "organizations.messages.unitNotFound", "key": "organizations.messages.unitNotFound"},
@@ -206,13 +222,22 @@ def unit_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == "DELETE":
+        in_use = Response(
+            {"detail": "organizations.messages.unitInUse", "key": "organizations.messages.unitInUse"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+        if unit_in_use(unit.pk):
+            return in_use
         try:
-            unit.delete()
+            with transaction.atomic():
+                unit.delete()
         except ProtectedError:
             return Response(
                 {"detail": "organizations.messages.unitHasEmployees", "key": "organizations.messages.unitHasEmployees"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        except IntegrityError:  # DB dựng từ DDL chặn bằng ON DELETE RESTRICT
+            return in_use
         return Response(
             {"detail": "organizations.messages.deleteSuccess", "key": "organizations.messages.deleteSuccess"},
             status=status.HTTP_204_NO_CONTENT,
@@ -225,7 +250,7 @@ def unit_export_excel_view(request):
     lang = request.query_params.get("lang", "vi").lower()
     i18n = get_excel_translations(lang)
 
-    queryset = DonVi.objects.select_related("khoi").all().order_by("stt_uu_tien", "ten")
+    queryset = _visible_units(request.user)
 
     region_id = request.query_params.get("region_id")
     invalid = _invalid_region_filter(region_id)
@@ -243,65 +268,10 @@ def unit_export_excel_view(request):
             Q(dia_chi__icontains=search_query)
         )
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = i18n["sheet_title"]
-
-    header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-    center_align = Alignment(horizontal="center", vertical="center")
-    left_align = Alignment(horizontal="left", vertical="center")
-    thin_border = Border(
-        left=Side(style="thin", color="D1D5DB"),
-        right=Side(style="thin", color="D1D5DB"),
-        top=Side(style="thin", color="D1D5DB"),
-        bottom=Side(style="thin", color="D1D5DB"),
-    )
-
-    headers = i18n["headers"]
-    ws.append(headers)
-
-    for col_num in range(1, len(headers) + 1):
-        cell = ws.cell(row=1, column=col_num)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center_align
-        cell.border = thin_border
-
-    for row_idx, unit in enumerate(queryset, start=2):
-        status_text = i18n["public"] if unit.is_public else i18n["internal"]
-        row_data = [
-            unit.stt_uu_tien,
-            unit.ten,
-            unit.khoi.ten if unit.khoi else "",
-            unit.dien_thoai,
-            unit.email,
-            unit.dia_chi,
-            status_text,
-            unit.ghi_chu,
-        ]
-        ws.append(row_data)
-
-        for col_idx in range(1, len(row_data) + 1):
-            c = ws.cell(row=row_idx, column=col_idx)
-            c.border = thin_border
-            if col_idx in [1, 4, 7]:
-                c.alignment = center_align
-            else:
-                c.alignment = left_align
-
-    for col in ws.columns:
-        max_len = max(len(str(cell.value or "")) for cell in col)
-        col_letter = openpyxl.utils.get_column_letter(col[0].column)
-        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
-
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    filename = i18n["filename"]
+    content, generated_at = build_directory_workbook(queryset, request.user, i18n)
+    filename = f"{i18n['filename_prefix']}_{generated_at.strftime('%d_%m_%Y_%H%M')}.xlsx"
     response = HttpResponse(
-        output.getvalue(),
+        content,
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'

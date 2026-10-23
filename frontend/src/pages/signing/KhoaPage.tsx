@@ -1,6 +1,7 @@
 /**
  * Khóa ký và PIN cá nhân theo contract #79 (#80 mục E): tạo khóa trên thiết bị (proof-of-possession, đặt PIN,
- * kích hoạt hoặc xoay vòng khóa của thiết bị cũ), đổi PIN, thu hồi. PIN và private key không rời trình duyệt.
+ * kích hoạt hoặc xoay vòng khóa của thiết bị cũ), xuất/nhập file khóa, đổi PIN, thu hồi. PIN và private key
+ * không rời trình duyệt; file khóa chứa private key đã mã hóa, chỉ mở được khi có PIN và máy chủ xác minh PIN.
  */
 import { useEffect, useState } from 'react';
 import { Button, Card } from '@components/common';
@@ -9,8 +10,9 @@ import { signingApi } from '@lib/signing/api';
 import { LOP_O_NHAP } from '@lib/signing/dinhDang';
 import { useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
+import { docFileKhoaTuTep, DUOI_FILE_KHOA, taiXuongFileKhoa } from '@lib/signing/fileKhoa';
 import { hoTroEd25519, kiemTraPin, layBanBoc } from '@lib/signing/khoaKy';
-import { dangKyKhoaThietBi, doiPin, khoaHoatDong } from '@lib/signing/luongKhoa';
+import { dangKyKhoaThietBi, doiPin, khoaHoatDong, nhapFileKhoa } from '@lib/signing/luongKhoa';
 
 function OPin({ nhan, gia_tri, onDoi }: { nhan: string; gia_tri: string; onDoi: (v: string) => void }) {
   return (
@@ -33,6 +35,7 @@ export default function KhoaPage() {
   const [lyDo, setLyDo] = useState('');
   const [dangLam, setDangLam] = useState(false);
   const [thongBao, setThongBao] = useState<{ loai: 'loi' | 'thanh_cong'; noi_dung: string } | null>(null);
+  const [lanTaiBanBoc, setLanTaiBanBoc] = useState(0);
   const hoatDong = khoaHoatDong(ds.duLieu || []);
 
   useEffect(() => {
@@ -45,12 +48,12 @@ export default function KhoaPage() {
     if (hoatDongId == null || !toi) return;
     layBanBoc(toi.id, hoatDongId).then((b) => setBanBoc({ keyId: hoatDongId, co: Boolean(b) }))
       .catch(() => setBanBoc({ keyId: hoatDongId, co: false }));
-  }, [hoatDongId, toi]);
+  }, [hoatDongId, toi, lanTaiBanBoc]);
 
   const loiPin = pin ? kiemTraPin(pin) : null;
   const pinHopLe = !loiPin && pin.length === 8 && pin === pin2;
 
-  const lam = async (ham: () => Promise<unknown>) => {
+  const lam = async (ham: () => Promise<unknown>, thanh_cong = t('hanhDong.thanhCong')) => {
     setDangLam(true);
     setThongBao(null);
     try {
@@ -59,7 +62,8 @@ export default function KhoaPage() {
       setPin2('');
       setPinCu('');
       setLyDo('');
-      setThongBao({ loai: 'thanh_cong', noi_dung: t('hanhDong.thanhCong') });
+      setThongBao({ loai: 'thanh_cong', noi_dung: thanh_cong });
+      setLanTaiBanBoc((n) => n + 1);
       ds.tai();
     } catch (err) {
       setThongBao({ loai: 'loi', noi_dung: loi(err) });
@@ -73,6 +77,14 @@ export default function KhoaPage() {
   if (hoTro === false) return <ThongBao>{t('khoa.khongHoTro')}</ThongBao>;
 
   const sanSang = hoatDong && coBanBoc;
+  const taiFile = () => lam(async () => {
+    const ban = hoatDong && await layBanBoc(toi.id, hoatDong.id);
+    if (!ban) throw new Error('thieu_ban_boc_thiet_bi');
+    taiXuongFileKhoa(ban);
+  }, t('khoa.daTaiFile'));
+  const nhapFile = (tep: File | undefined) => tep && hoatDong && lam(async () => {
+    await nhapFileKhoa(toi.id, hoatDong, await docFileKhoaTuTep(tep));
+  }, t('khoa.daNhapFile'));
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card className="p-4 space-y-3">
@@ -88,7 +100,23 @@ export default function KhoaPage() {
             {pin2 && pin !== pin2 && <ThongBao loai="canh_bao">{t('khoa.pinKhongKhop')}</ThongBao>}
             {dangLam && <ThongBao loai="thong_tin">{t('khoa.dangTao')}</ThongBao>}
             <Button icon="fa-key" isLoading={dangLam} disabled={!pinHopLe}
-              onClick={() => lam(() => dangKyKhoaThietBi(toi.id, pin, ds.duLieu || []))}>{t('khoa.taoKhoa')}</Button>
+              onClick={() => lam(async () => {
+                taiXuongFileKhoa((await dangKyKhoaThietBi(toi.id, pin, ds.duLieu || [])).banBoc);
+              }, t('khoa.daTaoVaTaiFile'))}>{t('khoa.taoKhoa')}</Button>
+            {hoatDong && (
+              <TruongNhap nhan={t('khoa.nhapFile')} ghiChu={t('khoa.nhapFileGhiChu')}>
+                <input className={LOP_O_NHAP} type="file" accept={`${DUOI_FILE_KHOA},application/json`}
+                  aria-label={t('khoa.nhapFile')} onChange={(e) => nhapFile(e.target.files?.[0])} />
+              </TruongNhap>
+            )}
+          </div>
+        )}
+        {sanSang && (
+          <div className="space-y-2">
+            <p className="text-sm text-secondary">{t('khoa.fileGhiChu')}</p>
+            <Button variant="outline" icon="fa-file-arrow-down" isLoading={dangLam} onClick={taiFile}>
+              {t('khoa.taiFile')}
+            </Button>
           </div>
         )}
         {sanSang && (
@@ -99,7 +127,9 @@ export default function KhoaPage() {
             <OPin nhan={t('khoa.pinNhapLai')} gia_tri={pin2} onDoi={setPin2} />
             {loiPin && <ThongBao loai="canh_bao">{t(`loi.${loiPin}`)}</ThongBao>}
             <Button variant="secondary" icon="fa-rotate" isLoading={dangLam} disabled={!pinHopLe || pinCu.length !== 8}
-              onClick={() => lam(() => doiPin(toi.id, hoatDong, pinCu, pin))}>{t('khoa.doiPin')}</Button>
+              onClick={() => lam(async () => {
+                taiXuongFileKhoa(await doiPin(toi.id, hoatDong, pinCu, pin));
+              }, t('khoa.daDoiPinTaiFile'))}>{t('khoa.doiPin')}</Button>
           </div>
         )}
         {thongBao && <ThongBao loai={thongBao.loai}>{thongBao.noi_dung}</ThongBao>}
@@ -108,10 +138,12 @@ export default function KhoaPage() {
         {(ds.duLieu || []).map((k) => (
           <div key={k.id} className="space-y-1 rounded-lg border border-border-subtle p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-lg font-bold text-main">{k.ma_khoa}</span>
+              <span className="text-lg font-bold text-main" title={k.ma_khoa}>{t('khoa.maPin')}</span>
               <TrangThaiBadge trangThai={k.trang_thai} />
             </div>
-            <div className="text-xs text-secondary break-all">{t('khoa.dauVanTay')}: <code>{k.dau_van_tay}</code></div>
+            <div className="text-xs text-secondary">
+              {t('khoa.dauVanTay')}: <code title={k.dau_van_tay}>{k.dau_van_tay.length > 10 ? `${k.dau_van_tay.slice(0, 8)}****` : k.dau_van_tay}</code>
+            </div>
             {k.trang_thai === 'HOAT_DONG' && (
               <div className="flex gap-2 pt-1">
                 <input className={LOP_O_NHAP} placeholder={t('khoa.lyDoThuHoi')} value={lyDo} onChange={(e) => setLyDo(e.target.value)} />

@@ -42,6 +42,7 @@ export interface ResourceFormModalProps {
   categories?: ResourceCategory[];
   types?: ResourceType[];
   isLoading?: boolean;
+  defaultCategoryId?: number;
 }
 
 const MAX_FILE_SIZE_MB = 20;
@@ -122,6 +123,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   categories = [],
   types = [],
   isLoading = false,
+  defaultCategoryId,
 }) => {
   const { t } = useTranslation();
   const isEditMode = Boolean(initialData);
@@ -131,22 +133,33 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     authService.getSession()?.username ||
     '';
 
+  const prevIsOpenRef = useRef(false);
+  const prevInitialDataIdRef = useRef<number | undefined>(undefined);
+
   // Form State
-  const [formData, setFormData] = useState<ResourceFormData>({
-    dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
-    loai_tai_lieu: [],
-    ky_hieu: '',
-    tieu_de: '',
-    ngay_dang: new Date().toISOString().split('T')[0],
-    noi_ban_hanh: '',
-    nguoi_tao_name: defaultAuthor,
-    hieu_luc: 'CON_HIEU_LUC',
-    ngay_het_hieu_luc: '',
-    link_thay_the: '',
-    ghi_chu: '',
-    hien_thi: 'TAT_CA',
-    file: null,
-    files: [],
+  const [formData, setFormData] = useState<ResourceFormData>(() => {
+    const initialCatId =
+      defaultCategoryId && categories.some((c) => c.id === defaultCategoryId)
+        ? defaultCategoryId
+        : categories.length > 0
+        ? categories[0].id
+        : '';
+    return {
+      dm_tai_lieu: initialCatId,
+      loai_tai_lieu: [],
+      ky_hieu: '',
+      tieu_de: '',
+      ngay_dang: new Date().toISOString().split('T')[0],
+      noi_ban_hanh: '',
+      nguoi_tao_name: defaultAuthor,
+      hieu_luc: 'CON_HIEU_LUC',
+      ngay_het_hieu_luc: '',
+      link_thay_the: '',
+      ghi_chu: '',
+      hien_thi: 'TAT_CA',
+      file: null,
+      files: [],
+    };
   });
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -187,73 +200,102 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Khởi tạo form khi mở modal
+  // Khởi tạo form khi mở modal - CHỈ chạy một lần khi modal vừa mở, KHÔNG ghi đè khi polling nạp lại categories
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (isOpen) {
-      if (initialData) {
-        setFormData({
-          dm_tai_lieu: initialData.dm_tai_lieu,
-          loai_tai_lieu: initialData.loai_tai_lieu || [],
-          ky_hieu: initialData.ky_hieu || '',
-          tieu_de: initialData.tieu_de || '',
-          ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
-          noi_ban_hanh: initialData.noi_ban_hanh || '',
-          nguoi_tao_name: initialData.nguoi_tao_name || defaultAuthor,
-          hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
-          ngay_het_hieu_luc: initialData.ngay_het_hieu_luc || '',
-          link_thay_the: initialData.link_thay_the || '',
-          ghi_chu: initialData.ghi_chu || '',
-          hien_thi: initialData.hien_thi || 'TAT_CA',
-          file: null,
-          files: [],
-        });
-        const activeAttachments = (initialData.attachments || []).filter((att) => !att.is_deleted);
-        if (activeAttachments.length > 0) {
-          setExistingFiles(
-            activeAttachments.map((att) => ({
-              id: att.id,
-              name: att.name,
-              size: att.file_size,
-              path: att.path,
-            }))
-          );
-        } else if (initialData.file_dinh_kem) {
-          const fallbackName =
-            initialData.file_dinh_kem.startsWith('blob:')
-              ? `${initialData.tieu_de || 'Tệp đính kèm'}.pdf`
-              : initialData.file_dinh_kem.split('?')[0].split('/').pop() || 'Tệp đính kèm';
-          setExistingFiles([{ name: fallbackName, path: initialData.file_dinh_kem }]);
+      const justOpened = !prevIsOpenRef.current || prevInitialDataIdRef.current !== initialData?.id;
+      prevIsOpenRef.current = true;
+      prevInitialDataIdRef.current = initialData?.id;
+
+      if (justOpened) {
+        if (initialData) {
+          setFormData({
+            dm_tai_lieu: initialData.dm_tai_lieu,
+            loai_tai_lieu: initialData.loai_tai_lieu || [],
+            ky_hieu: initialData.ky_hieu || '',
+            tieu_de: initialData.tieu_de || '',
+            ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
+            noi_ban_hanh: initialData.noi_ban_hanh || '',
+            nguoi_tao_name: initialData.nguoi_tao_name || defaultAuthor,
+            hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
+            ngay_het_hieu_luc: initialData.ngay_het_hieu_luc || '',
+            link_thay_the: initialData.link_thay_the || '',
+            ghi_chu: initialData.ghi_chu || '',
+            hien_thi: initialData.hien_thi || 'TAT_CA',
+            file: null,
+            files: [],
+          });
+          const activeAttachments = (initialData.attachments || []).filter((att) => !att.is_deleted);
+          if (activeAttachments.length > 0) {
+            setExistingFiles(
+              activeAttachments.map((att) => ({
+                id: att.id,
+                name: att.name,
+                size: att.file_size,
+                path: att.path,
+              }))
+            );
+          } else if (initialData.file_dinh_kem) {
+            const fallbackName =
+              initialData.file_dinh_kem.startsWith('blob:')
+                ? `${initialData.tieu_de || 'Tệp đính kèm'}.pdf`
+                : initialData.file_dinh_kem.split('?')[0].split('/').pop() || 'Tệp đính kèm';
+            setExistingFiles([{ name: fallbackName, path: initialData.file_dinh_kem }]);
+          } else {
+            setExistingFiles([]);
+          }
         } else {
+          const initialCatId =
+            defaultCategoryId && categories.some((c) => c.id === defaultCategoryId)
+              ? defaultCategoryId
+              : categories.length > 0
+              ? categories[0].id
+              : '';
+
+          setFormData({
+            dm_tai_lieu: initialCatId,
+            loai_tai_lieu: [],
+            ky_hieu: '',
+            tieu_de: '',
+            ngay_dang: new Date().toISOString().split('T')[0],
+            noi_ban_hanh: '',
+            nguoi_tao_name: defaultAuthor,
+            hieu_luc: 'CON_HIEU_LUC',
+            ngay_het_hieu_luc: '',
+            link_thay_the: '',
+            ghi_chu: '',
+            hien_thi: 'TAT_CA',
+            file: null,
+            files: [],
+          });
           setExistingFiles([]);
         }
+        setSelectedFiles([]);
+        setDeletedAttachmentIds([]);
+        setErrors({});
+        setFileError(null);
+        setIsDirty(false);
+        setIsConfirmDiscardOpen(false);
       } else {
-        setFormData({
-          dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
-          loai_tai_lieu: [],
-          ky_hieu: '',
-          tieu_de: '',
-          ngay_dang: new Date().toISOString().split('T')[0],
-          noi_ban_hanh: '',
-          nguoi_tao_name: defaultAuthor,
-          hieu_luc: 'CON_HIEU_LUC',
-          ngay_het_hieu_luc: '',
-          link_thay_the: '',
-          ghi_chu: '',
-          hien_thi: 'TAT_CA',
-          file: null,
-          files: [],
+        // Modal đã mở sẵn: nếu ban đầu chưa có danh mục nào (rỗng) mà nay categories mới nạp xong
+        setFormData((prev) => {
+          if (!prev.dm_tai_lieu && categories.length > 0) {
+            const initialCatId =
+              defaultCategoryId && categories.some((c) => c.id === defaultCategoryId)
+                ? defaultCategoryId
+                : categories[0].id;
+            return { ...prev, dm_tai_lieu: initialCatId };
+          }
+          return prev;
         });
-        setExistingFiles([]);
       }
-      setSelectedFiles([]);
-      setDeletedAttachmentIds([]);
-      setErrors({});
-      setFileError(null);
-      setIsDirty(false);
-      setIsConfirmDiscardOpen(false);
+    } else {
+      prevIsOpenRef.current = false;
+      prevInitialDataIdRef.current = undefined;
     }
-  }, [isOpen, initialData, categories, defaultAuthor]);
+  }, [isOpen, initialData, categories, defaultAuthor, defaultCategoryId]);
+
 
   // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
   const handleSafeClose = useCallback(() => {

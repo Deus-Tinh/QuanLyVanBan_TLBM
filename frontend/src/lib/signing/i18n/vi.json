@@ -1,16 +1,15 @@
 {
-  "nhanPhanHe": "Ký số & Phê duyệt điện tử",
-  "tieuDe": "Trình ký duyệt nội bộ",
-  "moTa": "Trình và ký duyệt văn bản theo quy trình nhiều cấp; kết quả là bản duyệt nội bộ, chưa phát hành.",
+  "tieuDe": "Trình ký",
   "nav": {
     "canToiKy": "Cần tôi ký duyệt",
     "toiGui": "Tôi đã gửi trình",
-    "tatCa": "Hồ sơ theo quyền",
+    "tatCa": "Văn bản theo quyền",
     "taoMoi": "Tạo hồ sơ trình ký",
     "quyTrinh": "Quy trình",
     "khoaCuaToi": "Khóa ký & PIN",
     "thongBao": "Thông báo",
-    "taiLieu": "Tài liệu"
+    "taiLieu": "Tệp trình ký",
+    "moi": "mới"
   },
   "chung": {
     "dangTai": "Đang tải…",
@@ -27,7 +26,8 @@
     "tiepTuc": "Tiếp tục",
     "batBuoc": "Bắt buộc",
     "khongCoQuyen": "Bạn không có quyền thực hiện thao tác này.",
-    "loiMang": "Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại."
+    "loiMang": "Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại.",
+    "chon": "— Chọn —"
   },
   "trangThai": {
     "NHAP": "Nháp",
@@ -45,18 +45,14 @@
     "CHO_KICH_HOAT": "Chờ kích hoạt",
     "DA_XOAY_VONG": "Đã thay thế",
     "THU_HOI": "Đã thu hồi",
-    "HET_HAN": "Hết hạn"
+    "HET_HAN": "Hết hạn",
+    "KHONG_CAN_KY": "Không còn cần ký"
   },
   "trangThaiCap": {
     "CHUA_MO": "Chưa đến lượt",
     "DANG_KY": "Đang ký",
     "TAM_DUNG": "Tạm dừng",
     "HOAN_THANH": "Đã xong"
-  },
-  "mucDo": {
-    "THUONG": "Thường",
-    "KHAN": "Khẩn",
-    "HOA_TOC": "Hỏa tốc"
   },
   "vaiTro": {
     "KY_NHAY": "Ký nháy",
@@ -69,11 +65,12 @@
   "danhSach": {
     "rongCanToiKy": "Không có hồ sơ nào đang chờ bạn ký duyệt.",
     "rongToiGui": "Bạn chưa gửi trình hồ sơ nào.",
-    "rongTatCa": "Chưa có hồ sơ nào bạn được xem.",
+    "rongTatCa": "Chưa có văn bản nào bạn được xem.",
     "maHoSo": "Hồ sơ",
+    "soHieu": "Số hiệu",
+    "trichYeu": "Trích yếu",
     "vanBan": "Văn bản",
     "quyTrinh": "Quy trình",
-    "mucDo": "Mức độ",
     "trangThai": "Trạng thái",
     "dangCho": "Đang chờ",
     "nguoiTao": "Người trình",
@@ -87,6 +84,7 @@
     "tuNgay": "Từ ngày",
     "denNgay": "Đến ngày",
     "loc": "Lọc",
+    "locThem": "Lọc thêm",
     "xoaLoc": "Xóa lọc",
     "khongKhopLoc": "Không có hồ sơ nào khớp bộ lọc.",
     "locNhanh": "Lọc nhanh",
@@ -100,7 +98,8 @@
       "hoan_thanh": "Hoàn tất",
       "tu_choi": "Không đồng ý",
       "huy": "Đã hủy"
-    }
+    },
+    "quaHan": "Quá hạn"
   },
   "tao": {
     "buoc1": "Thông tin hồ sơ",
@@ -111,7 +110,6 @@
     "quyTrinh": "Quy trình ký",
     "chonQuyTrinh": "— Chọn quy trình đang hoạt động —",
     "khongCoQuyTrinh": "Chưa có quy trình nào đang hoạt động mà bạn được dùng.",
-    "mucDo": "Mức độ",
     "hanChot": "Hạn chót (tùy chọn)",
     "ghiChu": "Ghi chú (tùy chọn)",
     "tep": "Tệp PDF dự thảo (tối đa 20 MB)",
@@ -156,11 +154,12 @@
     "thayTep": "Thay tệp PDF (tùy chọn)",
     "goiYThayTep": "Để trống nếu giữ tệp hiện tại; thay tệp sẽ tăng phiên bản văn bản.",
     "danhSachTep": "Danh sách tệp",
-    "banDuThao": "Bản dự thảo (phiên bản {so})",
-    "banLuot": "Lượt {so} · phiên bản {ban}",
+    "banDuThao": "Bản dự thảo",
+    "banLuot": "Bản trình ký",
     "maBam": "Mã băm",
     "bangChungJson": "Tải bằng chứng (JSON)",
-    "xemChiTiet": "Xem chi tiết"
+    "xemChiTiet": "Xem chi tiết",
+    "uyQuyenTu": "Ký thay {ten}"
   },
   "hanhDong": {
     "kyDuyet": "Ký duyệt",
@@ -179,7 +178,15 @@
     "lyDoHuy": "Lý do hủy",
     "xacNhanThuHoi": "Thu hồi chữ ký của bạn? Chữ ký cũ vẫn được giữ làm lịch sử.",
     "xacNhanTrinhLai": "Tạo hồ sơ nháp mới từ hồ sơ bị từ chối?",
-    "thanhCong": "Đã thực hiện."
+    "thanhCong": "Đã thực hiện.",
+    "uyQuyen": "Ủy quyền ký",
+    "fileKhoa": "File khóa ký",
+    "fileKhoaGhiChu": "Tải lên file khóa (.tlbmkey) đã xuất ở trang Khóa ký; bỏ trống thì dùng khóa đã lưu trên thiết bị này.",
+    "daChonFile": "Đã đọc file khóa {ma}. File chỉ được đọc trên trình duyệt, không gửi lên máy chủ.",
+    "nguoiDuocUyQuyen": "Người ký được thay",
+    "nguoiNhanUyQuyen": "Người nhận ủy quyền",
+    "timNguoiNhan": "Tìm theo tên, chức vụ, đơn vị…",
+    "lyDoUyQuyen": "Lý do ủy quyền"
   },
   "traoDoi": {
     "tieuDe": "Trao đổi về yêu cầu sửa",
@@ -226,7 +233,7 @@
     "khongKhopLoc": "Không có quy trình nào khớp bộ lọc."
   },
   "khoa": {
-    "gioiThieu": "Khóa ký được tạo và giữ trên trình duyệt này, bảo vệ bằng PIN 8 chữ số. Máy chủ không nhận PIN hay khóa bí mật.",
+    "gioiThieu": "Khóa ký được tạo trên trình duyệt, bảo vệ bằng PIN 8 chữ số (Argon2id). Khóa bí mật đã mã hóa được xuất ra file khóa; khi ký, tải file khóa lên và nhập PIN. Máy chủ không nhận PIN, file khóa hay khóa bí mật.",
     "khongHoTro": "Trình duyệt chưa hỗ trợ Ed25519 (WebCrypto). Hãy dùng phiên bản Chrome, Edge, Firefox hoặc Safari mới.",
     "chuaCo": "Bạn chưa có khóa ký trên thiết bị này.",
     "khacThietBi": "Khóa đang hoạt động thuộc thiết bị khác. Đăng ký khóa mới cho thiết bị này sẽ thay thế khóa cũ.",
@@ -239,9 +246,18 @@
     "thuHoi": "Thu hồi khóa",
     "lyDoThuHoi": "Lý do thu hồi",
     "dauVanTay": "Dấu vân tay",
+    "maPin": "MÃ PIN",
     "dangTao": "Đang tạo khóa (Argon2id có thể mất vài giây)…",
     "pinKhongKhop": "Hai lần nhập PIN không khớp.",
-    "canKhoa": "Bạn cần tạo khóa ký trên thiết bị này trước khi ký."
+    "canKhoa": "Bạn cần tạo khóa ký trên thiết bị này trước khi ký.",
+    "taiFile": "Tải file khóa",
+    "fileGhiChu": "Giữ file khóa ở nơi an toàn. Đổi PIN thì file cũ không còn dùng được, hãy tải lại file.",
+    "nhapFile": "Hoặc nhập file khóa đã có vào thiết bị này",
+    "nhapFileGhiChu": "File phải là của khóa đang hoạt động.",
+    "daTaiFile": "Đã tải file khóa.",
+    "daNhapFile": "Đã nhập file khóa vào thiết bị này.",
+    "daTaoVaTaiFile": "Đã tạo khóa và tải file khóa về máy.",
+    "daDoiPinTaiFile": "Đã đổi PIN và tải file khóa mới; file cũ không còn dùng được."
   },
   "loi": {
     "pin_8_chu_so": "PIN phải gồm đúng 8 chữ số.",
@@ -270,7 +286,14 @@
     "dang_tao_tep_hoan_tat": "Tệp hoàn tất đang được tạo, thử lại sau ít phút.",
     "khong_co_quyen": "Bạn không có quyền thực hiện thao tác này.",
     "quy_trinh_khong_hoat_dong": "Quy trình của hồ sơ không còn hoạt động; hủy nháp và tạo hồ sơ mới.",
-    "khong_tim_thay": "Không tìm thấy hoặc bạn không được xem hồ sơ này."
+    "khong_tim_thay": "Không tìm thấy hoặc bạn không được xem hồ sơ này.",
+    "file_khoa_khong_hop_le": "File khóa không đúng định dạng.",
+    "file_khoa_khong_khop": "File khóa không thuộc tài khoản này hoặc không phải khóa đang hoạt động.",
+    "khong_tim_thay_nguoi_ky": "Không tìm thấy người ký trên lượt trình hiện hành.",
+    "nguoi_ky_khong_cho_ky": "Chỉ ủy quyền người ký đang chờ ký.",
+    "nguoi_nhan_khong_hop_le": "Người nhận không hoạt động hoặc không có quyền ký.",
+    "nguoi_nhan_da_co_trong_cap": "Người nhận đã có mặt trong cùng cấp ký.",
+    "khong_hien_thi_duoc_pdf": "Không hiển thị được tệp PDF trên trình duyệt này. Tải tệp về để xem; nếu vẫn lỗi, báo quản trị."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Tạo hồ sơ",
@@ -288,7 +311,8 @@
     "CHOT_BANG_CHUNG": "Chốt bằng chứng",
     "TAO_TEP_HOAN_TAT": "Tạo tệp hoàn tất",
     "LOI_TAO_TEP_HOAN_TAT": "Lỗi tạo tệp hoàn tất",
-    "TAO_LAI_TEP_HOAN_TAT": "Tạo lại tệp hoàn tất"
+    "TAO_LAI_TEP_HOAN_TAT": "Tạo lại tệp hoàn tất",
+    "UY_QUYEN_KY": "Ủy quyền ký"
   },
   "thongBao": {
     "rong": "Chưa có thông báo nào.",
@@ -297,19 +321,27 @@
       "HOAN_THANH": "Đã hoàn tất duyệt nội bộ",
       "TU_CHOI": "Không đồng ý ban hành",
       "YEU_CAU_SUA": "Trả lại để sửa",
-      "HUY": "Hồ sơ đã hủy"
+      "HUY": "Hồ sơ đã hủy",
+      "UY_QUYEN": "Ủy quyền ký",
+      "TIN_NHAN": "Tin nhắn trao đổi",
+      "NHAC_HAN": "Sắp đến hạn ký",
+      "QUA_HAN": "Quá hạn ký"
     },
     "kenh": {
       "inApp": "Ứng dụng",
       "emailDaGui": "Email: Đã gửi",
       "emailChoGui": "Email: Đang gửi",
       "emailNguoiNhan": "Người nhận"
-    }
+    },
+    "nguoiThaoTac": "Người thực hiện",
+    "lyDo": "Lý do"
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
     "loaiTep": "Loại tệp",
     "tep": "Tệp",
+    "soHieu": "Số hiệu",
+    "trichYeu": "Trích yếu",
     "phienBan": "Lượt / phiên bản",
     "ngay": "Ngày",
     "luotBan": "Lượt {so} · bản {ban}",
