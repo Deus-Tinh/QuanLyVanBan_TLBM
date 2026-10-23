@@ -166,12 +166,11 @@ Phân hệ phòng họp áp dụng nghiêm ngặt hợp đồng RBAC dự án (`
 2. **Cập nhật không tự xung đột (Self-conflict Exclusion)**:
    - Khi chỉnh sửa tiêu đề, mục đích họp, số lượng người tham gia mà không đổi khung giờ, hệ thống exclude chính ID của booking đang sửa khỏi kiểm tra trùng -> `200 OK`.
 3. **An toàn tương tranh (Concurrency & Database Locks)**:
-   - Tầng ứng dụng: Khóa dòng `MeetingRoom.objects.select_for_update()` trong khối `transaction.atomic()`.
-   - Tầng CSDL: Ràng buộc loại trừ PostgreSQL GiST `excl_room_time` bảo vệ tầng sâu nhất.
-   - Khi 2 request đồng thời gửi tới cùng 1 phòng và khung giờ: chính xác 1 request thành công (`201`), 1 request nhận `400 Bad Request` (bắt qua `IntegrityError`), **không bao giờ trả về lỗi 500**.
+   - Tầng ứng dụng: Khóa dòng `MeetingRoom.objects.select_for_update()` trong khối `transaction.atomic()`. Khi 2 request đồng thời gửi tới cùng 1 phòng và khung giờ, request 1 được xử lý tạo booking thành công (`201 Created`); request 2 được tuần tự hóa, sau khi nhận khóa sẽ chạy truy vấn kiểm tra trùng (`conflicts.exists()`), phát hiện cuộc họp vừa tạo và trả về **`400 Bad Request`** kèm tham số cuộc họp xung đột (`meetings.messages.roomTimeConflict`).
+   - Tầng CSDL: Ràng buộc loại trừ PostgreSQL GiST `excl_room_time` đóng vai trò phòng vệ chiều sâu (defense-in-depth); khối `try...except IntegrityError` đảm bảo bắt lỗi cấp CSDL nếu có, **không bao giờ trả về lỗi 500**.
 4. **Phòng họp nội bộ (`is_public = False`)**:
-   - Chỉ người dùng có quyền `change_phonghop` hoặc `is_superuser` mới được phép đặt phòng nội bộ.
-   - CBNV bình thường cố tình đặt vào phòng nội bộ sẽ nhận `403 Forbidden` (`meetings.messages.privateRoomForbidden`).
+   - Chỉ người dùng có quyền `change_phonghop` hoặc `is_superuser` mới được phép đặt hoặc sửa lịch vào phòng nội bộ.
+   - CBNV bình thường cố tình đặt hoặc sửa lịch vào phòng nội bộ sẽ nhận **`400 Bad Request`** ở tầng serializer validation (`{"room": "meetings.messages.privateRoomForbidden"}`).
 5. **Ràng buộc giá trị biên (Boundary Validation)**:
    - Số người tham gia (`attendees_count`):
      - `attendees_count == capacity`: Hợp lệ (`201 Created`).
@@ -189,7 +188,7 @@ Phân hệ phòng họp áp dụng nghiêm ngặt hợp đồng RBAC dự án (`
 | Mã lỗi i18n | HTTP Status | Ngữ cảnh phát sinh |
 |---|---|---|
 | `meetings.messages.permissionDenied` | 403 Forbidden | Người dùng không đủ quyền thực hiện thao tác |
-| `meetings.messages.privateRoomForbidden` | 403 Forbidden | Đặt lịch vào phòng nội bộ khi không có quyền quản lý |
+| `meetings.messages.privateRoomForbidden` | 400 Bad Request | Đặt hoặc dời lịch vào phòng nội bộ khi không có quyền quản lý (trường `room`) |
 | `meetings.messages.roomTimeConflict` | 400 Bad Request | Khung giờ bị trùng với một cuộc họp khác đã xác nhận |
 | `meetings.messages.bookingInPast` | 400 Bad Request | Tạo lịch hoặc dời lịch về ngày/giờ trong quá khứ |
 | `meetings.messages.bookingAlreadyEnded` | 400 Bad Request | Thao tác sửa hoặc hủy lịch họp đã kết thúc |

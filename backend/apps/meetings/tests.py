@@ -687,7 +687,7 @@ class MeetingBookingAPITestCase(APITestCase):
         self.assertEqual(private_room.capacity, 12)
 
     def test_regular_user_cannot_book_private_room(self):
-        """Người dùng thường không có quyền change_phonghop thì không được đặt lịch vào phòng nội bộ."""
+        """Người dùng thường không có quyền change_phonghop thì không được đặt lịch hoặc dời lịch vào phòng nội bộ."""
         private_room = MeetingRoom.objects.create(
             name="Phòng Riêng VIP Ban Giám Đốc",
             capacity=8,
@@ -702,10 +702,19 @@ class MeetingBookingAPITestCase(APITestCase):
             "end_time": "15:00:00",
             "attendees_count": 4,
         }
+        # 1. Thử tạo mới vào phòng nội bộ -> 400 Bad Request với key privateRoomForbidden
         res = self.client.post("/api/meeting-bookings/", payload)
-        self.assertIn(res.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN])
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        room_err = str(res.data.get("room", ""))
+        self.assertIn("meetings.messages.privateRoomForbidden", room_err)
 
-        # Admin hoặc người có quyền change_phonghop thì đặt được
+        # 2. Thử sửa phòng họp của lịch hiện có sang phòng nội bộ -> 400 Bad Request
+        res_patch = self.client.patch(f"/api/meeting-bookings/{self.booking1.id}/", {"room": private_room.id})
+        self.assertEqual(res_patch.status_code, status.HTTP_400_BAD_REQUEST)
+        patch_err = str(res_patch.data.get("room", ""))
+        self.assertIn("meetings.messages.privateRoomForbidden", patch_err)
+
+        # 3. Admin hoặc người có quyền change_phonghop thì đặt được -> 201 Created
         self.client.force_authenticate(user=self.admin_user)
         res_admin = self.client.post("/api/meeting-bookings/", payload)
         self.assertEqual(res_admin.status_code, status.HTTP_201_CREATED)
@@ -1484,3 +1493,5 @@ class MeetingBookingConcurrencyTestCase(TransactionTestCase):
             trang_thai=MeetingBooking.Status.CONFIRMED,
         ).count()
         self.assertEqual(created_count, 1)
+
+
