@@ -8,7 +8,7 @@ import DossiersPage from './DossiersPage';
 import DocumentTypesPage from './DocumentTypesPage';
 
 vi.mock('@lib/recordsService', () => ({ recordsService: {
-  listDossiers: vi.fn(), getDossier: vi.fn(), listDocumentTypes: vi.fn(), listDocumentTypeCatalog: vi.fn(),
+  listDossiers: vi.fn(), getDossier: vi.fn(), getDocumentType: vi.fn(), listDocumentTypes: vi.fn(), listDocumentTypeCatalog: vi.fn(),
 } }));
 const dossier = { id: 9, so_ky_hieu: 'HS', ten_ho_so: 'Hồ sơ & Kế hoạch?/2026' };
 const category = { id: 23, ho_so: 9, ten_loai: 'Category' };
@@ -24,6 +24,7 @@ describe('two-level record navigation', () => {
   beforeEach(() => { vi.resetAllMocks(); setLanguage('en');
     vi.mocked(recordsService.listDossiers).mockResolvedValue({ items: [dossier], count: 1, next: null, previous: null });
     vi.mocked(recordsService.getDossier).mockResolvedValue(dossier);
+    vi.mocked(recordsService.getDocumentType).mockResolvedValue(category);
     vi.mocked(recordsService.listDocumentTypes).mockResolvedValue({ items: [category], count: 1, next: null, previous: null });
   });
   afterEach(() => { cleanup(); setLanguage('vi'); });

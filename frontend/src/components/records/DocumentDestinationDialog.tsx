@@ -18,23 +18,35 @@ export default function DocumentDestinationDialog({ category, dossierId, onClose
   const [direction, setDirection] = React.useState<DocumentDirection>('DEN');
   const [restricted, setRestricted] = React.useState(false);
   const dialog = React.useRef<HTMLFormElement>(null);
-  const [context, setContext] = React.useState<{ category: DocumentType; routeId?: string; dossier: Dossier | null } | null>(null);
+  const [context, setContext] = React.useState<{
+    category: DocumentType; routeId?: string; dossier: Dossier | null; verifiedCategory: DocumentType | null;
+  } | null>(null);
   const currentContext = context?.category === category && context.routeId === dossierId ? context : null;
-  const destination = currentContext?.dossier
-    ? documentListDestination(category, currentContext.dossier, direction, restricted)
+  const destination = currentContext?.dossier && currentContext.verifiedCategory
+    ? documentListDestination(currentContext.verifiedCategory, currentContext.dossier, direction, restricted)
     : null;
 
   React.useEffect(() => {
     let active = true;
-    Promise.resolve().then(() => {
+    Promise.resolve().then(async () => {
+      if (!active) return null;
       const parentId = categoryDossierId(category);
       if (dossierId !== undefined && parentId !== dossierId) throw new Error('Mismatched dossier context');
-      return recordsService.getDossier(parentId);
-    }).then((dossier) => {
-      documentListDestination(category, dossier, 'DEN');
-      if (active) setContext({ category, routeId: dossierId, dossier });
+      const verifiedCategory = await recordsService.getDocumentType(category.id);
+      if (!active) return null;
+      if (
+        String(verifiedCategory.id) !== String(category.id)
+        || categoryDossierId(verifiedCategory) !== parentId
+        || !verifiedCategory.ten_loai.trim()
+      ) throw new Error('Document type context changed');
+      const dossier = await recordsService.getDossier(parentId);
+      return { dossier, verifiedCategory };
+    }).then((result) => {
+      if (!active || !result) return;
+      documentListDestination(result.verifiedCategory, result.dossier, 'DEN');
+      setContext({ category, routeId: dossierId, ...result });
     }).catch(() => {
-      if (active) setContext({ category, routeId: dossierId, dossier: null });
+      if (active) setContext({ category, routeId: dossierId, dossier: null, verifiedCategory: null });
     });
     return () => { active = false; };
   }, [category, dossierId]);
@@ -71,7 +83,7 @@ export default function DocumentDestinationDialog({ category, dossierId, onClose
             : currentContext.dossier ? <p>{t('records.common.dossier')}: <strong>{currentContext.dossier.ten_ho_so}</strong></p>
             : <p role="alert">{t('records.destination.contextUnavailable')}</p>}
         </div>
-        <p className="text-sm text-secondary">{t('records.documentTypes.name')}: <strong>{category.ten_loai}</strong></p>
+        <p className="text-sm text-secondary">{t('records.documentTypes.name')}: <strong>{currentContext?.verifiedCategory?.ten_loai ?? category.ten_loai}</strong></p>
         <label className="block space-y-2 text-sm text-main">
           <span>{t('records.destination.direction')}</span>
           <select value={direction} onChange={(event) => setDirection(event.target.value as DocumentDirection)}

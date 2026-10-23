@@ -7,7 +7,7 @@ import { ApiError } from '@lib/apiClient';
 import DocumentTypesPage from './DocumentTypesPage';
 
 vi.mock('@lib/recordsService', () => ({ recordsService: {
-  getDossier: vi.fn(), listDocumentTypes: vi.fn(), listDocumentTypeCatalog: vi.fn(),
+  getDossier: vi.fn(), getDocumentType: vi.fn(), listDocumentTypes: vi.fn(), listDocumentTypeCatalog: vi.fn(),
   listDossiers: vi.fn(), createDocumentType: vi.fn(), updateDocumentType: vi.fn(), deleteDocumentType: vi.fn(),
 } }));
 const categories = { items: [{ id: 23, ho_so: 9, ten_ho_so: 'Parent', ten_loai: 'Category A' }], count: 1, next: null, previous: null };
@@ -24,6 +24,7 @@ describe('DocumentTypesPage shared-list handoff', () => {
     vi.mocked(recordsService.listDocumentTypeCatalog).mockResolvedValue(categories);
     vi.mocked(recordsService.listDocumentTypes).mockResolvedValue(categories);
     vi.mocked(recordsService.getDossier).mockResolvedValue({ id: 9, ten_ho_so: 'Parent', so_ky_hieu: 'HS' });
+    vi.mocked(recordsService.getDocumentType).mockResolvedValue(categories.items[0]);
     vi.mocked(recordsService.listDossiers).mockResolvedValue({ items: [{ id: 9, ten_ho_so: 'Parent', so_ky_hieu: 'HS' }], count: 1, next: null, previous: null });
     vi.mocked(recordsService.createDocumentType).mockResolvedValue(categories.items[0]);
     vi.mocked(recordsService.updateDocumentType).mockResolvedValue(categories.items[0]);
