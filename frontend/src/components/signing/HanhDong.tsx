@@ -208,7 +208,8 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
           </select>
         </TruongNhap>
         <TruongNhap nhan={t('hanhDong.nguoiNhanUyQuyen')}>
-          <input className={LOP_O_NHAP} placeholder={t('hanhDong.timNguoiNhan')} value={timNhan}
+          <input className={LOP_O_NHAP} placeholder={t('hanhDong.timNguoiNhan')} aria-label={t('hanhDong.timNguoiNhan')}
+            value={timNhan}
             onChange={(e) => setTimNhan(e.target.value)} />
           <select className={`${LOP_O_NHAP} mt-2`} aria-label={t('hanhDong.nguoiNhanUyQuyen')} value={nguoiNhan}
             onChange={(e) => setNguoiNhan(e.target.value)}>
