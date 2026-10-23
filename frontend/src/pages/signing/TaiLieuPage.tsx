@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Badge, Button, Card } from '@components/common';
-import { DangTai, LoiTai, Rong, ThongBao } from '@components/signing/ChungUI';
+import { DangTai, LoiTai, Rong } from '@components/signing/ChungUI';
 import XemPdf from '@components/signing/XemPdf';
 import { signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP } from '@lib/signing/dinhDang';
@@ -33,7 +33,6 @@ export default function TaiLieuPage() {
   const { t, loi, lang } = useSigningT();
   const [loc, setLoc] = useState<BoLocTaiLieu>({});
   const [tuKhoa, setTuKhoa] = useState('');
-  const [thongBao, setThongBao] = useState('');
   const [tepXem, setTepXem] = useState<TepTaiLieu | null>(null);
   const [duLieuXem, setDuLieuXem] = useState<{ buf: ArrayBuffer | null; dangTai: boolean; loi: unknown } | null>(null);
   const ds = useTai(() => signingApi.taiLieu(loc), [loc]);
@@ -104,7 +103,6 @@ export default function TaiLieuPage() {
         </form>
       </Card>
       <Card className="p-4 space-y-3">
-        {thongBao && <ThongBao>{thongBao}</ThongBao>}
         {ds.dangTai && <DangTai />}
         {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
         {!ds.dangTai && !ds.loi && ds.duLieu?.length === 0 && (

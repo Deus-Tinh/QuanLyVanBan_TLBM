@@ -10,8 +10,18 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='signingrequest',
-            name='muc_do',
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="ALTER TABLE IF EXISTS signing_request DROP COLUMN IF EXISTS muc_do;",
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.RemoveField(
+                    model_name='signingrequest',
+                    name='muc_do',
+                ),
+            ],
         ),
     ]
