@@ -3,7 +3,7 @@
  * Tab chỉ là bộ lọc hiển thị; quyền đọc/ghi do server kiểm ở từng API.
  */
 import { lazy, Suspense, useMemo } from 'react';
-import { NavLink, Route, Routes, useNavigate } from 'react-router-dom';
+import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@components/common';
 import { DangTai, LoiTai } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
@@ -25,10 +25,16 @@ export default function SigningModule() {
   const dieuHuong = useNavigate();
   const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai }), [toi.duLieu, toi.tai]);
 
-  const tab = [
-    { den: '/approvals', nhan: t('nav.canToiKy'), icon: 'fa-pen-nib', end: true },
+  const { pathname } = useLocation();
+  const canKy = useTai(() => signingApi.thongKe('can_toi_ky'), [pathname]);
+  const soCanKy = canKy.duLieu?.cho_ky;
+
+  const tabChinh = [
+    { den: '/approvals', nhan: t('nav.canToiKy'), icon: 'fa-pen-nib', end: true, so: soCanKy },
     { den: '/approvals/toi-gui', nhan: t('nav.toiGui'), icon: 'fa-paper-plane' },
     { den: '/approvals/tat-ca', nhan: t('nav.tatCa'), icon: 'fa-folder-open' },
+  ];
+  const tabPhu = [
     { den: '/approvals/tai-lieu', nhan: t('nav.taiLieu'), icon: 'fa-folder-tree' },
     { den: '/approvals/thong-bao', nhan: t('nav.thongBao'), icon: 'fa-bell' },
     ...(coQuyen(toi.duLieu, 'manage_signing_process') || coQuyen(toi.duLieu, 'view_trinhky')
@@ -40,27 +46,33 @@ export default function SigningModule() {
     <SigningContext.Provider value={ngu_canh}>
       <div className="signing-scope space-y-5 animate-in fade-in duration-150">
         <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
-          <div>
-            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
-              <i className="fa-solid fa-file-signature" aria-hidden="true" />
-              <span>{t('nhanPhanHe')}</span>
-            </div>
-            <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
-            <p className="m-0 mt-1 text-sm text-secondary">{t('moTa')}</p>
-          </div>
+          <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
             <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
           )}
         </header>
-        <nav className="flex flex-wrap gap-1 border-b border-border-subtle" aria-label={t('tieuDe')}>
-          {tab.map((m) => (
-            <NavLink key={m.den} to={m.den} end={m.end}
-              className={({ isActive }) => `-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors duration-fast ${
-                isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
-              <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
-              <span>{m.nhan}</span>
-            </NavLink>
-          ))}
+        <nav className="flex flex-wrap items-end justify-between gap-x-4 border-b border-border-subtle" aria-label={t('tieuDe')}>
+          <div className="flex flex-wrap gap-1">
+            {tabChinh.map((m) => (
+              <NavLink key={m.den} to={m.den} end={m.end}
+                className={({ isActive }) => `-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors duration-fast ${
+                  isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
+                <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
+                <span>{m.nhan}</span>
+                {!!m.so && <span className="rounded-full bg-primary-subtle px-2 py-0.5 text-xs font-bold text-primary">{m.so}</span>}
+              </NavLink>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {tabPhu.map((m) => (
+              <NavLink key={m.den} to={m.den}
+                className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors duration-fast ${
+                  isActive ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-main hover:border-border'}`}>
+                <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
+                <span>{m.nhan}</span>
+              </NavLink>
+            ))}
+          </div>
         </nav>
         {toi.dangTai && !toi.duLieu && <DangTai />}
         {toi.loi && <LoiTai thongBao={loi(toi.loi)} onThuLai={toi.tai} />}

@@ -596,7 +596,7 @@ export default function OrganizationsPage() {
                 setRegionSearchQuery(e.target.value);
                 setRegionPage(1);
               }}
-              placeholder={t('organizations.region.namePlaceholder')}
+              placeholder={t('organizations.actions.searchRegionPlaceholder')}
               className="w-full pl-10 pr-3.5 py-2 text-sm bg-surface border border-border rounded-lg text-main placeholder-muted focus:outline-none focus:border-primary"
             />
           </div>
@@ -607,6 +607,7 @@ export default function OrganizationsPage() {
               <thead className="bg-surface-elevated text-secondary text-xs uppercase font-bold border-b border-border">
                 <tr>
                   <th className="px-4 py-3 text-center w-16">{t('organizations.table.id')}</th>
+                  <th className="px-2 sm:px-4 py-3 text-center w-16 sm:w-32">{t('organizations.table.displayOrder')}</th>
                   <th className="px-4 py-3">{t('organizations.table.regionName')}</th>
                   <th className="px-4 py-3 text-center">{t('organizations.table.unitsCount')}</th>
                   {showRowActions && (
@@ -617,7 +618,7 @@ export default function OrganizationsPage() {
               <tbody className="divide-y divide-border">
                 {regions.length === 0 ? (
                   <tr>
-                    <td colSpan={showRowActions ? 4 : 3} className="text-center py-12 text-secondary">
+                    <td colSpan={showRowActions ? 5 : 4} className="text-center py-12 text-secondary">
                       <i className="fa-solid fa-folder-open text-3xl text-muted mb-2 block" />
                       {t('organizations.table.empty')}
                     </td>
@@ -626,6 +627,7 @@ export default function OrganizationsPage() {
                   regions.map((region) => (
                     <tr key={region.id} className="transition-colors hover:bg-surface-hover">
                       <td className="px-4 py-3 text-center font-mono text-xs text-muted">{region.id}</td>
+                      <td className="px-2 sm:px-4 py-3 text-center font-mono text-xs text-secondary">{region.thu_tu_hien_thi ?? 0}</td>
                       <td className="px-4 py-3 font-bold text-main">{region.ten}</td>
                       <td className="px-4 py-3 text-center">
                         <Badge variant="info" size="sm">

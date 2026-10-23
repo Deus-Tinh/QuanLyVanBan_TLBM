@@ -20,14 +20,6 @@ class PhamViChucVu(models.TextChoices):
     TOAN_CO_QUAN = "TOAN_CO_QUAN", "Toàn cơ quan"
 
 
-class MucDoTrinhKy(models.TextChoices):
-    """Mức độ ưu tiên xử lý hồ sơ (spec bộ lọc "mức độ"); tạm dùng đến khi có danh mục mức độ chung."""
-
-    THUONG = "THUONG", "Thường"
-    KHAN = "KHAN", "Khẩn"
-    HOA_TOC = "HOA_TOC", "Hỏa tốc"
-
-
 class VaiTroKy(models.TextChoices):
     KY_NHAY = "KY_NHAY", "Ký nháy"
     KY_CHINH = "KY_CHINH", "Ký chính"
