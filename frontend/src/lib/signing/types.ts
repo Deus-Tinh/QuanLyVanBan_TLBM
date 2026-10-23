@@ -7,7 +7,6 @@ export type TrangThaiLuot = 'CHO_KY' | 'YEU_CAU_SUA' | 'HOAN_THANH' | 'TU_CHOI' 
 export type TrangThaiCap = 'CHUA_MO' | 'DANG_KY' | 'TAM_DUNG' | 'HOAN_THANH';
 export type TrangThaiNguoiKy = 'CHO_KY' | 'DA_KY' | 'TU_CHOI' | 'YEU_CAU_SUA';
 export type TrangThaiTepHoanTat = 'DANG_XU_LY' | 'LOI' | 'THANH_CONG' | null;
-export type MucDo = 'THUONG' | 'KHAN' | 'HOA_TOC';
 export type VaiTroKy = 'KY_NHAY' | 'KY_CHINH';
 export type PhamViQuyTrinh = 'CONG_TY' | 'PHONG_BAN';
 
@@ -160,7 +159,6 @@ export interface HoSo {
   ma_quy_trinh: string;
   ten_quy_trinh: string;
   phien_ban_quy_trinh: number;
-  muc_do: MucDo;
   trang_thai: TrangThaiHoSo;
   han_chot: string | null;
   ngay_gui: string | null;
@@ -246,7 +244,6 @@ export type ThongKeHoSo = Record<LocNhanh | 'tat_ca', number>;
 export interface BoLocHoSo {
   nhanh?: LocNhanh | '';
   trang_thai?: string;
-  muc_do?: string;
   quy_trinh?: string;
   q?: string;
   tu_ngay?: string;

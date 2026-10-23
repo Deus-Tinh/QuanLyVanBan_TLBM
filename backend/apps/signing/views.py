@@ -295,11 +295,10 @@ def _ho_so_theo_hop(request):
 
 
 def _loc_ho_so(queryset, tham_so):
-    """Bộ lọc danh sách: trạng thái, mức độ, quy trình (id), từ khóa (số hiệu, trích yếu văn bản, mã/tên quy trình,
+    """Bộ lọc danh sách: trạng thái, quy trình (id), từ khóa (số hiệu, trích yếu văn bản, mã/tên quy trình,
     ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
-    for ten in ("trang_thai", "muc_do"):
-        if tham_so.get(ten):
-            queryset = queryset.filter(**{ten: tham_so[ten]})
+    if tham_so.get("trang_thai"):
+        queryset = queryset.filter(trang_thai=tham_so["trang_thai"])
     if tham_so.get("nhanh"):
         if tham_so["nhanh"] not in NHANH:
             raise SigningError(code="tham_so_khong_hop_le", detail=f"nhanh phải là một trong {', '.join(NHANH)}.",

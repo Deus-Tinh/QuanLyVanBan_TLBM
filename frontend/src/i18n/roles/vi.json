@@ -63,6 +63,8 @@
       "adminPermissionsRequired": "Nhóm Quản trị hệ thống phải luôn giữ các quyền quản lý nhóm quyền (xem, thêm, sửa, xóa).",
       "nameRequired": "Tên nhóm quyền không được để trống.",
       "nameExists": "Tên nhóm quyền này đã tồn tại.",
+      "nameTooLong": "Tên nhóm quyền tối đa 150 ký tự.",
+      "unsavedConfirm": "Bạn có thay đổi quyền chưa lưu. Bỏ các thay đổi này?",
       "permissionInvalid": "Một hoặc nhiều quyền được chọn không hợp lệ.",
       "createSuccess": "Tạo nhóm quyền thành công!",
       "updateSuccess": "Cập nhật nhóm quyền thành công!",

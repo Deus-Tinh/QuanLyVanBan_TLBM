@@ -1,16 +1,14 @@
 {
-  "nhanPhanHe": "Ký số & Phê duyệt điện tử",
-  "tieuDe": "Trình ký duyệt nội bộ",
-  "moTa": "Trình và ký duyệt văn bản theo quy trình nhiều cấp; kết quả là bản duyệt nội bộ, chưa phát hành.",
+  "tieuDe": "Trình ký",
   "nav": {
     "canToiKy": "Cần tôi ký duyệt",
     "toiGui": "Tôi đã gửi trình",
-    "tatCa": "Hồ sơ theo quyền",
+    "tatCa": "Văn bản theo quyền",
     "taoMoi": "Tạo hồ sơ trình ký",
     "quyTrinh": "Quy trình",
     "khoaCuaToi": "Khóa ký & PIN",
     "thongBao": "Thông báo",
-    "taiLieu": "Tài liệu"
+    "taiLieu": "Văn bản công khai"
   },
   "chung": {
     "dangTai": "Đang tải…",
@@ -53,11 +51,6 @@
     "TAM_DUNG": "Tạm dừng",
     "HOAN_THANH": "Đã xong"
   },
-  "mucDo": {
-    "THUONG": "Thường",
-    "KHAN": "Khẩn",
-    "HOA_TOC": "Hỏa tốc"
-  },
   "vaiTro": {
     "KY_NHAY": "Ký nháy",
     "KY_CHINH": "Ký chính"
@@ -69,11 +62,12 @@
   "danhSach": {
     "rongCanToiKy": "Không có hồ sơ nào đang chờ bạn ký duyệt.",
     "rongToiGui": "Bạn chưa gửi trình hồ sơ nào.",
-    "rongTatCa": "Chưa có hồ sơ nào bạn được xem.",
+    "rongTatCa": "Chưa có văn bản nào bạn được xem.",
     "maHoSo": "Hồ sơ",
+    "soHieu": "Số hiệu",
+    "trichYeu": "Trích yếu",
     "vanBan": "Văn bản",
     "quyTrinh": "Quy trình",
-    "mucDo": "Mức độ",
     "trangThai": "Trạng thái",
     "dangCho": "Đang chờ",
     "nguoiTao": "Người trình",
@@ -87,6 +81,7 @@
     "tuNgay": "Từ ngày",
     "denNgay": "Đến ngày",
     "loc": "Lọc",
+    "locThem": "Lọc thêm",
     "xoaLoc": "Xóa lọc",
     "khongKhopLoc": "Không có hồ sơ nào khớp bộ lọc.",
     "locNhanh": "Lọc nhanh",
@@ -111,7 +106,6 @@
     "quyTrinh": "Quy trình ký",
     "chonQuyTrinh": "— Chọn quy trình đang hoạt động —",
     "khongCoQuyTrinh": "Chưa có quy trình nào đang hoạt động mà bạn được dùng.",
-    "mucDo": "Mức độ",
     "hanChot": "Hạn chót (tùy chọn)",
     "ghiChu": "Ghi chú (tùy chọn)",
     "tep": "Tệp PDF dự thảo (tối đa 20 MB)",
@@ -156,8 +150,8 @@
     "thayTep": "Thay tệp PDF (tùy chọn)",
     "goiYThayTep": "Để trống nếu giữ tệp hiện tại; thay tệp sẽ tăng phiên bản văn bản.",
     "danhSachTep": "Danh sách tệp",
-    "banDuThao": "Bản dự thảo (phiên bản {so})",
-    "banLuot": "Lượt {so} · phiên bản {ban}",
+    "banDuThao": "Bản dự thảo",
+    "banLuot": "Bản trình ký",
     "maBam": "Mã băm",
     "bangChungJson": "Tải bằng chứng (JSON)",
     "xemChiTiet": "Xem chi tiết"
@@ -239,6 +233,7 @@
     "thuHoi": "Thu hồi khóa",
     "lyDoThuHoi": "Lý do thu hồi",
     "dauVanTay": "Dấu vân tay",
+    "maPin": "MÃ PIN",
     "dangTao": "Đang tạo khóa (Argon2id có thể mất vài giây)…",
     "pinKhongKhop": "Hai lần nhập PIN không khớp.",
     "canKhoa": "Bạn cần tạo khóa ký trên thiết bị này trước khi ký."
@@ -310,6 +305,8 @@
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
     "loaiTep": "Loại tệp",
     "tep": "Tệp",
+    "soHieu": "Số hiệu",
+    "trichYeu": "Trích yếu",
     "phienBan": "Lượt / phiên bản",
     "ngay": "Ngày",
     "luotBan": "Lượt {so} · bản {ban}",

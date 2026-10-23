@@ -62,7 +62,6 @@ class SigningDatabaseIntegrityTests(TestCase):
             van_ban_id=1,
             quy_trinh=self.process,
             phien_ban_quy_trinh=1,
-            muc_do="THUONG",
             create_by=self.user,
         )
         self.attempt = SigningAttempt.objects.create(
@@ -222,7 +221,6 @@ class SigningDatabaseIntegrityTests(TestCase):
             van_ban_id=2,
             quy_trinh=self.process,
             phien_ban_quy_trinh=1,
-            muc_do="THUONG",
             create_by=self.user,
         )
         SigningNotification.objects.create(

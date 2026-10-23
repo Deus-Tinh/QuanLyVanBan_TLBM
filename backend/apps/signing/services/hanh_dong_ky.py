@@ -232,10 +232,14 @@ def thu_hoi(yeu_cau, nguoi, *, khoa_chong_trung, dia_chi_ip=None):
     if dong.vai_tro_ky == enums.VaiTroKy.KY_NHAY and dong.chan_ky_chinh:
         # Ký nháy chặn quay về chờ ký: khóa lại ký chính đã mở mà chưa ký (plan LUONG-08)
         for n in nguoi_cap:
-            if n.vai_tro_ky == enums.VaiTroKy.KY_CHINH and n.trang_thai == enums.TrangThaiNguoiKy.CHO_KY:
+            if (
+                n.vai_tro_ky == enums.VaiTroKy.KY_CHINH
+                and n.trang_thai == enums.TrangThaiNguoiKy.CHO_KY
+                and n.thoi_diem_mo is not None
+            ):
                 n.thoi_diem_mo = None
                 n.save(update_fields=["thoi_diem_mo"])
-    ghi_nhat_ky(nguoi, LOAI, dong.pk, "THU_HOI_CHU_KY", trinh_ky=luot.trinh_ky, luot_trinh=luot, buoc_ky=dong,
+    ghi_nhat_ky(nguoi, LOAI, dong.pk, "THU_HOI_CHU_KY", trinh_ky=yeu_cau, luot_trinh=luot, buoc_ky=dong,
                 trang_thai_truoc=enums.TrangThaiNguoiKy.DA_KY, trang_thai_sau=dong.trang_thai,
                 dia_chi_ip=dia_chi_ip, du_lieu_kem_theo={"chu_ky_thu_hoi": chu_ky_cu})
     return SigningRequest.objects.get(pk=yeu_cau.pk)

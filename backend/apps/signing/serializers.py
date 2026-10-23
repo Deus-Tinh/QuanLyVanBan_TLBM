@@ -145,14 +145,12 @@ class TrinhKyTaoSerializer(serializers.Serializer):
     document_type = serializers.ChoiceField(choices=enums.LoaiVanBan.choices)
     van_ban_id = serializers.IntegerField(min_value=1)
     quy_trinh = serializers.PrimaryKeyRelatedField(queryset=SigningProcess.objects.all())
-    muc_do = serializers.ChoiceField(choices=enums.MucDoTrinhKy.choices)
     han_chot = serializers.DateTimeField(required=False, allow_null=True)
     ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
     tep = serializers.FileField()
 
 
 class TrinhKySuaSerializer(serializers.Serializer):
-    muc_do = serializers.ChoiceField(choices=enums.MucDoTrinhKy.choices, required=False)
     han_chot = serializers.DateTimeField(required=False, allow_null=True)
     ghi_chu = serializers.CharField(required=False, allow_blank=True)
     tep = serializers.FileField(required=False)
@@ -282,7 +280,7 @@ class TrinhKySerializer(serializers.ModelSerializer):
     class Meta:
         model = SigningRequest
         fields = ["id", "document_type", "van_ban_id", "van_ban", "quy_trinh", "ma_quy_trinh", "ten_quy_trinh",
-                  "phien_ban_quy_trinh", "muc_do", "trang_thai", "han_chot", "ngay_gui", "ngay_hoan_thanh",
+                  "phien_ban_quy_trinh", "trang_thai", "han_chot", "ngay_gui", "ngay_hoan_thanh",
                   "ngay_tu_choi", "ly_do_tu_choi", "ngay_huy", "ly_do_huy", "ghi_chu", "ho_so_goc",
                   "phien_ban_van_ban", "ma_bam_tai_lieu", "create_by", "ten_nguoi_tao", "created_at", "update_at",
                   "dang_cho"]

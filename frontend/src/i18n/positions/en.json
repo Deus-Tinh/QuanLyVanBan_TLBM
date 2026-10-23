@@ -64,6 +64,7 @@
       "sttExists": "This priority number is already in use. Please choose another.",
       "notFound": "Position not found.",
       "inUse": "This position cannot be deleted because it is assigned to staff members.",
+      "inUseByModule": "This position cannot be deleted because it is used in a signing process.",
       "permissionDenied": "You do not have permission to perform this action.",
       "createSuccess": "Position added successfully.",
       "updateSuccess": "Position updated successfully.",
