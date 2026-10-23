@@ -42,6 +42,7 @@ urlpatterns = [
     path("trinh-ky/<int:pk>/ky/", views.HanhDongKyView.as_view(action="ky"), name="trinh-ky-ky"),
     path("trinh-ky/<int:pk>/tu-choi/", views.HanhDongKyView.as_view(action="tu-choi"), name="trinh-ky-tu-choi"),
     path("trinh-ky/<int:pk>/thu-hoi/", views.HanhDongKyView.as_view(action="thu-hoi"), name="trinh-ky-thu-hoi"),
+    path("trinh-ky/<int:pk>/uy-quyen/", views.UyQuyenView.as_view(), name="trinh-ky-uy-quyen"),
 
     # Trả lại để sửa (lõi Phase 9, #80)
     path("trinh-ky/<int:pk>/yeu-cau-sua/", views.YeuCauSuaView.as_view(), name="trinh-ky-yeu-cau-sua"),

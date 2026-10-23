@@ -142,7 +142,7 @@ def _kiem_tra_quy_trinh(quy_trinh, nguoi_tao):
 
 def trinh_ky_xem_duoc(nguoi):
     """
-    Người tạo, người ký của bất kỳ lượt trình nào (kể cả người được ủy quyền), và người có quyền
+    Người tạo, người ký của bất kỳ lượt trình nào (kể cả người nhận và người giao ủy quyền), người có quyền
     xem nhật ký trình ký (kiểm toán) xem được hồ sơ. Không mở quyền xem chỉ vì tên tab.
     """
     queryset = SigningRequest.objects.select_related("quy_trinh", "create_by")
@@ -150,6 +150,7 @@ def trinh_ky_xem_duoc(nguoi):
         return queryset
     return queryset.filter(
         Q(create_by=nguoi) | Q(luot_trinh_set__cap_ky_set__nguoi_ky_set__nguoi_ky=nguoi)
+        | Q(luot_trinh_set__cap_ky_set__nguoi_ky_set__uy_quyen_tu=nguoi)
     ).distinct()
 
 

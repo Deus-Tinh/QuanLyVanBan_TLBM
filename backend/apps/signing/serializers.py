@@ -201,6 +201,12 @@ class HuyTrinhKySerializer(serializers.Serializer):
     ly_do = serializers.CharField(required=False, allow_blank=True, default="")
 
 
+class UyQuyenSerializer(serializers.Serializer):
+    dong_nguoi_ky = serializers.IntegerField(min_value=1)
+    nguoi_nhan = serializers.IntegerField(min_value=1)
+    ly_do_uy_quyen = serializers.CharField()
+
+
 class TrinhLaiSerializer(serializers.Serializer):
     han_chot = serializers.DateTimeField(required=False, allow_null=True)
 
@@ -211,8 +217,14 @@ class NguoiKyLuotSerializer(serializers.ModelSerializer):
     class Meta:
         model = SigningRequestStepSigner
         fields = ["id", "nguoi_ky", "ten_nguoi_ky", "ten_chuc_vu", "vai_tro_ky", "chan_ky_chinh", "trang_thai",
-                  "thoi_diem_mo", "ngay_ky", "ngay_tu_choi", "ly_do_tu_choi", "uy_quyen_tu", "trang_ky", "toa_do_x",
-                  "toa_do_y", "chieu_rong_khung", "chieu_cao_khung", "chu_ky"]
+                  "thoi_diem_mo", "ngay_ky", "ngay_tu_choi", "ly_do_tu_choi", "uy_quyen_tu", "ten_nguoi_uy_quyen",
+                  "ly_do_uy_quyen", "ngay_uy_quyen", "trang_ky", "toa_do_x", "toa_do_y", "chieu_rong_khung",
+                  "chieu_cao_khung", "chu_ky"]
+
+    ten_nguoi_uy_quyen = serializers.SerializerMethodField()
+
+    def get_ten_nguoi_uy_quyen(self, obj):
+        return to_chuc.ten_hien_thi(obj.uy_quyen_tu) if obj.uy_quyen_tu_id else None
 
     def get_chu_ky(self, obj):
         """Chữ ký hiện hành (ghi chú, trễ hạn, kết quả xác minh, có ảnh snapshot); không trả nội dung chữ ký."""
@@ -264,10 +276,15 @@ class LuotTrinhSerializer(serializers.ModelSerializer):
 
 
 class NhatKyTrinhKySerializer(serializers.ModelSerializer):
+    ten_nguoi_thuc_hien = serializers.SerializerMethodField()
+
     class Meta:
         model = SigningAuditLog
-        fields = ["id", "hanh_dong", "nguoi_thuc_hien", "trang_thai_truoc", "trang_thai_sau", "chi_tiet",
-                  "luot_trinh", "created_at"]
+        fields = ["id", "hanh_dong", "nguoi_thuc_hien", "ten_nguoi_thuc_hien", "trang_thai_truoc", "trang_thai_sau",
+                  "chi_tiet", "luot_trinh", "created_at"]
+
+    def get_ten_nguoi_thuc_hien(self, obj):
+        return to_chuc.ten_hien_thi(obj.nguoi_thuc_hien)
 
 
 class TrinhKySerializer(serializers.ModelSerializer):
@@ -317,7 +334,8 @@ class TrinhKyChiTietSerializer(TrinhKySerializer):
         return LuotTrinhSerializer(luot, many=True).data
 
     def get_lich_su(self, obj):
-        return NhatKyTrinhKySerializer(SigningAuditLog.objects.filter(trinh_ky=obj).order_by("id"), many=True).data
+        return NhatKyTrinhKySerializer(SigningAuditLog.objects.filter(trinh_ky=obj).select_related("nguoi_thuc_hien")
+                                       .order_by("id"), many=True).data
 
 
 # ── Hành động người ký (Phase 8, #80) ────────────────────────────────────────

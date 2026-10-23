@@ -7,10 +7,13 @@ Thông báo người trong luồng trình ký (bảng `signing_notification`, ki
 - Email gửi sau commit (`transaction.on_commit`), lỗi thì ghi `THAT_BAI` + `loi_gui`; lệnh
   `gui_thong_bao_trinh_ky` gửi lại các bản ghi `CHO_GUI`/`THAT_BAI`. Sau này chuyển sang task Celery chỉ nhận id.
 - Sự kiện: người ký được mở (`CAN_KY`); hồ sơ hoàn tất (`HOAN_THANH`), không đồng ý (`TU_CHOI`), trả lại để
-  sửa (`YEU_CAU_SUA`), bị hủy (`HUY`). Người thực hiện thao tác không tự nhận thông báo của mình.
+  sửa (`YEU_CAU_SUA`), bị hủy (`HUY`: người ký đã được mở trên lượt hiện hành và người tạo khi quản trị hủy
+  thay); ủy quyền ký (`UY_QUYEN`); tin nhắn trao đổi khi trả sửa (`TIN_NHAN`); nhắc hạn (`NHAC_HAN`, `QUA_HAN`,
+  lệnh `nhac_han_trinh_ky`). Người thực hiện thao tác không tự nhận thông báo của mình.
 """
 
 import logging
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import get_connection, send_mail
@@ -31,6 +34,10 @@ TEN_LOAI = {
     "TU_CHOI": "Không đồng ý ban hành",
     "YEU_CAU_SUA": "Trả lại để sửa",
     "HUY": "Hồ sơ đã hủy",
+    "UY_QUYEN": "Ủy quyền ký",
+    "TIN_NHAN": "Tin nhắn trao đổi",
+    "NHAC_HAN": "Sắp đến hạn ký",
+    "QUA_HAN": "Quá hạn ký",
 }
 SO_LAN_GUI_TOI_DA = 5
 
@@ -69,8 +76,8 @@ def _nguoi_ky_cua_luot(luot, **loc):
 def su_kien(yeu_cau, luot, loai, nguoi_thuc_hien):
     """Thông báo kết quả cho người trong luồng: người tạo và người ký liên quan của lượt trình."""
     if loai == "HUY":
-        nguoi_nhan = _nguoi_ky_cua_luot(luot, trang_thai=enums.TrangThaiNguoiKy.CHO_KY,
-                                        thoi_diem_mo__isnull=False) if luot else []
+        # Người tạo (khi quản trị hủy thay) và mọi người ký đã được mở trên lượt hiện hành (đang chờ hoặc đã ký)
+        nguoi_nhan = [yeu_cau.create_by, *(_nguoi_ky_cua_luot(luot, thoi_diem_mo__isnull=False) if luot else [])]
     elif loai == "YEU_CAU_SUA":
         nguoi_nhan = [yeu_cau.create_by]
     else:  # HOAN_THANH, TU_CHOI: người tạo và những người đã ký
@@ -81,6 +88,52 @@ def su_kien(yeu_cau, luot, loai, nguoi_thuc_hien):
             continue
         da_gui.add(nguoi.pk)
         _tao(yeu_cau, nguoi, loai, f"{loai}:{yeu_cau.pk}:{luot.pk if luot else 0}:{nguoi.pk}")
+
+
+def uy_quyen(dong, nguoi_cu, nguoi_thuc_hien):
+    """Người nhận ủy quyền (được ký thay) và người được giao ban đầu."""
+    yeu_cau = dong.buoc_ky.luot_trinh.trinh_ky
+    moc = f"{dong.pk}:{dong.ngay_uy_quyen.timestamp():.6f}"
+    for nguoi in (dong.nguoi_ky, nguoi_cu):
+        if nguoi.pk != nguoi_thuc_hien.pk:
+            _tao(yeu_cau, nguoi, "UY_QUYEN", f"UY_QUYEN:{moc}:{nguoi.pk}", buoc_ky=dong)
+
+
+def tin_nhan(tin, nguoi_nhan):
+    """Tin nhắn mới trong trao đổi trả sửa: báo bên còn lại (người tạo hoặc người yêu cầu sửa)."""
+    if nguoi_nhan.pk != tin.nguoi_viet_id:
+        _tao(tin.yeu_cau_sua.luot_trinh.trinh_ky, nguoi_nhan, "TIN_NHAN", f"TIN_NHAN:{tin.pk}:{nguoi_nhan.pk}")
+
+
+NHAC_TRUOC_HAN = timedelta(hours=24)
+
+
+def nhac_han(bay_gio=None):
+    """
+    Nhắc người ký đang được mở trên lượt `CHO_KY` (plan mục 3.5, MVP chưa leo thang): `NHAC_HAN` một lần khi còn
+    dưới 24 giờ tới `han_xu_ly` của cấp; `QUA_HAN` mỗi ngày quá hạn cho người ký và người tạo. Khóa chống gửi
+    trùng theo dòng người ký, lần mở và ngày quá hạn nên chạy lặp không gửi trùng. Trả số thông báo tạo mới.
+    """
+    bay_gio = bay_gio or timezone.now()
+    truoc = SigningNotification.objects.count()
+    dong_mo = (SigningRequestStepSigner.objects.filter(
+        trang_thai=enums.TrangThaiNguoiKy.CHO_KY, thoi_diem_mo__isnull=False,
+        buoc_ky__trang_thai=enums.TrangThaiCapKy.DANG_KY, buoc_ky__han_xu_ly__isnull=False,
+        buoc_ky__han_xu_ly__lte=bay_gio + NHAC_TRUOC_HAN,
+        buoc_ky__luot_trinh__trang_thai=enums.TrangThaiLuotTrinh.CHO_KY,
+    ).select_related("buoc_ky__luot_trinh__trinh_ky__create_by", "nguoi_ky").order_by("pk"))
+    for dong in dong_mo:
+        han = dong.buoc_ky.han_xu_ly
+        yeu_cau = dong.buoc_ky.luot_trinh.trinh_ky
+        moc = f"{dong.pk}:{dong.thoi_diem_mo.timestamp():.6f}"
+        with transaction.atomic():
+            if han > bay_gio:
+                _tao(yeu_cau, dong.nguoi_ky, "NHAC_HAN", f"NHAC_HAN:{moc}", buoc_ky=dong)
+                continue
+            ngay = (bay_gio - han).days
+            for nguoi in {dong.nguoi_ky.pk: dong.nguoi_ky, yeu_cau.create_by.pk: yeu_cau.create_by}.values():
+                _tao(yeu_cau, nguoi, "QUA_HAN", f"QUA_HAN:{moc}:{ngay}:{nguoi.pk}", buoc_ky=dong)
+    return SigningNotification.objects.count() - truoc
 
 
 def noi_dung(tb):

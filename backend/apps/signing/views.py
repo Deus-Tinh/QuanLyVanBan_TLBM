@@ -18,16 +18,16 @@ from .models import (
     SigningAttempt, SigningKey, SigningNotification, SigningRequest, SigningRequestStep, SigningSignature,
 )
 from .permissions import (
-    GUI_TRINH_KY, HUY_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, XEM_NHAT_KY, XEM_TRINH_KY, co_quyen,
-    yeu_cau_quyen,
+    GUI_TRINH_KY, HUY_TRINH_KY, KY_TRINH_KY, QUAN_LY_QUY_TRINH, TAO_TRINH_KY, UY_QUYEN_TRINH_KY, XEM_NHAT_KY,
+    XEM_TRINH_KY, co_quyen, yeu_cau_quyen,
 )
 from .serializers import (
     DatPinSerializer, DoiPinSerializer, GiaiQuyetSerializer, GuiTrinhKySerializer, HuyTrinhKySerializer,
     KhoaDangKySerializer,
     KhoaSerializer, KySerializer, MoKhoaKySerializer, QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer,
     TrinhKyChiTietSerializer, TrinhKySerializer, TrinhKySuaSerializer, TrinhKyTaoSerializer, TrinhLaiSerializer,
-    TinNhanInputSerializer, TinNhanSerializer, TuChoiSerializer, XacMinhSoHuuSerializer, XoayVongSerializer,
-    YeuCauSuaSerializer, YeuCauSuaThreadSerializer,
+    TinNhanInputSerializer, TinNhanSerializer, TuChoiSerializer, UyQuyenSerializer, XacMinhSoHuuSerializer,
+    XoayVongSerializer, YeuCauSuaSerializer, YeuCauSuaThreadSerializer,
 )
 from .services import bang_chung as bang_chung_service
 from .services import hanh_dong_ky as hanh_dong_service
@@ -37,6 +37,7 @@ from .services import process as process_service
 from .services import thong_bao as thong_bao_service
 from .services import tep_hoan_tat as tep_hoan_tat_service
 from .services import trinh_ky as trinh_ky_service
+from .services import uy_quyen as uy_quyen_service
 from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
 from .tich_hop import to_chuc
@@ -448,6 +449,26 @@ class HanhDongKyView(SigningAPIView):
         return Response(TrinhKyChiTietSerializer(ket_qua).data)
 
 
+class UyQuyenView(SigningAPIView):
+    """
+    POST /trinh-ky/<pk>/uy-quyen/: ủy quyền khẩn cấp một người ký đang chờ ký sang người nhận (plan mục 3.5, 6.2).
+    Body: `dong_nguoi_ky` (id dòng người ký của lượt hiện hành), `nguoi_nhan`, `ly_do_uy_quyen`. Quyền
+    `delegate_trinhky` kèm vai trò cấp trên/quản trị (kiểm ở service); bắt buộc Idempotency-Key.
+    """
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        yeu_cau_quyen(request.user, UY_QUYEN_TRINH_KY)
+        khoa = _khoa_chong_trung(request)
+        data = UyQuyenSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        ket_qua = uy_quyen_service.uy_quyen(
+            ho_so, request.user, dong_nguoi_ky=data.validated_data["dong_nguoi_ky"],
+            nguoi_nhan=data.validated_data["nguoi_nhan"], ly_do=data.validated_data["ly_do_uy_quyen"],
+            khoa_chong_trung=khoa, dia_chi_ip=_ip(request))
+        return Response(TrinhKyChiTietSerializer(ket_qua).data)
+
+
 # ── Trả lại để sửa (lõi Phase 9, #80; plan mục 3.3 "Nhánh 2") ───────────────
 
 
@@ -692,6 +713,7 @@ class DonViView(SigningAPIView):
 class NguoiDungView(SigningAPIView):
     """
     GET /nguoi-dung/?q=: tìm tài khoản đang hoạt động để chọn người ký khi cấu hình quy trình (manage_signing_process).
+    `?muc_dich=uy_quyen`: tìm người nhận ủy quyền ký (delegate_trinhky), chỉ trả tài khoản có sign_trinhky.
     Tìm theo họ tên, tên đăng nhập, chức vụ, đơn vị; không phân biệt hoa thường và dấu tiếng Việt. Chỉ trả thông tin
     hiển thị; danh bạ đầy đủ do Nhóm 7 cung cấp.
     """
@@ -704,7 +726,8 @@ class NguoiDungView(SigningAPIView):
         return "".join(c for c in chuoi if unicodedata.category(c) != "Mn")
 
     def get(self, request):
-        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
+        uy_quyen = request.query_params.get("muc_dich") == "uy_quyen"
+        yeu_cau_quyen(request.user, UY_QUYEN_TRINH_KY if uy_quyen else QUAN_LY_QUY_TRINH)
         tu_khoa = self._bo_dau(request.query_params.get("q", "").strip())
         User = get_user_model()
         lien_quan = [f for f in ("chuc_vu", "don_vi") if any(x.name == f for x in User._meta.get_fields())]
@@ -712,6 +735,8 @@ class NguoiDungView(SigningAPIView):
         for u in User.objects.filter(is_active=True).select_related(*lien_quan).order_by("pk").iterator(chunk_size=500):
             ten, chuc_vu, don_vi = to_chuc.ten_hien_thi(u), to_chuc.ten_chuc_vu(u), to_chuc.ten_don_vi(u)
             if tu_khoa and tu_khoa not in self._bo_dau(" ".join((ten, u.get_username(), chuc_vu, don_vi))):
+                continue
+            if uy_quyen and not co_quyen(u, KY_TRINH_KY):
                 continue
             ket_qua.append({"id": u.pk, "ten": ten, "ten_dang_nhap": u.get_username(), "chuc_vu": chuc_vu or None,
                             "don_vi_id": to_chuc.don_vi_cua(u), "don_vi": don_vi or None})
@@ -729,7 +754,8 @@ class ToiView(SigningAPIView):
         return Response({
             "id": u.pk, "ten": to_chuc.ten_hien_thi(u), "don_vi_id": don_vi,
             "quyen": {ma: co_quyen(u, ma) for ma in (XEM_TRINH_KY, TAO_TRINH_KY, GUI_TRINH_KY, KY_TRINH_KY,
-                                                     HUY_TRINH_KY, XEM_NHAT_KY, QUAN_LY_QUY_TRINH)},
+                                                     HUY_TRINH_KY, XEM_NHAT_KY, QUAN_LY_QUY_TRINH,
+                                                     UY_QUYEN_TRINH_KY)},
             "la_quan_tri": to_chuc.la_quan_tri(u), "la_lanh_dao_don_vi": to_chuc.la_lanh_dao_don_vi(u, don_vi),
         })
 
