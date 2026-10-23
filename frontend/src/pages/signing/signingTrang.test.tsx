@@ -167,23 +167,30 @@ describe('KetQuaPanel', () => {
   });
 });
 
+/** Promise bị từ chối đã gắn sẵn catch rỗng: không thành "unhandled rejection" khi component gắn xử lý muộn. */
+function tuChoi(err: Error) {
+  const p = Promise.reject(err);
+  p.catch(() => undefined);
+  return p;
+}
+
 describe('XemPdf', () => {
   it('lần vẽ bị hủy (đổi kích thước) không báo lỗi; lỗi vẽ thật thì hiện thông báo', async () => {
     const huy = Object.assign(new Error('huy'), { name: 'RenderingCancelledException' });
-    pdf.veTrang.mockReturnValueOnce({ xong: Promise.reject(huy), huy: vi.fn() });
+    pdf.veTrang.mockImplementationOnce(() => ({ xong: tuChoi(huy), huy: vi.fn() }));
     const { unmount } = boc(<XemPdf duLieu={new ArrayBuffer(8)} />);
     await waitFor(() => expect(pdf.veTrang).toHaveBeenCalled());
     expect(screen.queryByText(/Không hiển thị được tệp PDF/)).not.toBeInTheDocument();
     unmount();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    pdf.veTrang.mockReturnValueOnce({ xong: Promise.reject(new Error('getOrInsertComputed is not a function')), huy: vi.fn() });
+    pdf.veTrang.mockImplementationOnce(() => ({ xong: tuChoi(new Error('getOrInsertComputed is not a function')), huy: vi.fn() }));
     boc(<XemPdf duLieu={new ArrayBuffer(8)} />);
     expect(await screen.findByText(/Không hiển thị được tệp PDF/)).toBeInTheDocument();
   });
 
   it('không mở được PDF: hiện thông báo thay vì vùng trắng', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    pdf.moPdf.mockRejectedValueOnce(new Error('hong'));
+    pdf.moPdf.mockImplementationOnce(() => tuChoi(new Error('hong')));
     boc(<XemPdf duLieu={new ArrayBuffer(8)} />);
     expect(await screen.findByText(/Không hiển thị được tệp PDF/)).toBeInTheDocument();
   });
