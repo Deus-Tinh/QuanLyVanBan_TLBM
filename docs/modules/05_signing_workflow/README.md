@@ -114,9 +114,20 @@ Thao tác đổi trạng thái bắt buộc header `Idempotency-Key`. Lỗi tr�
   đi, **hoặc** `trich_yeu_van_ban` (bắt buộc) và `so_hieu_van_ban` (tùy chọn) khi nhập văn bản khác; thiếu cả hai trả
   400 `thieu_van_ban_trinh_ky`. Tệp PDF trình ký (`tep`) luôn bắt buộc. Hồ sơ trả `van_ban` (`so_hieu`, `trich_yeu`) theo
   đúng nguồn; sửa nháp nhập tay được đổi số hiệu/trích yếu (hồ sơ gắn văn bản đi: 400 `van_ban_da_gan`).
+- Bộ lọc ngày `tu_ngay`/`den_ngay` (YYYY-MM-DD) của danh sách hồ sơ, `tai-lieu/` và `thong-ke/`: ngày không có trong
+  lịch (tháng 13, 30/02) hoặc `tu_ngay` > `den_ngay` trả 400 `tham_so_khong_hop_le`. Từ khóa `q` bỏ ký tự NUL, cắt
+  khoảng trắng, tối đa 100 ký tự.
+- Giới hạn nhập tay (serializer; giao diện đặt `maxLength` bằng đúng các số này): trích yếu văn bản 1000 ký tự; số hiệu
+  100; ghi chú (hồ sơ, ký, cấp ký), mô tả quy trình, lý do (hủy, từ chối, trả sửa, ủy quyền, thu hồi khóa), tin nhắn
+  trao đổi 2000; tên quy trình 255; mã quy trình 50 ký tự gồm chữ không dấu, số, `-`, `_`, `.` (không trùng khi khác
+  hoa thường); `so_gio_xu_ly` của cấp 0–8760 giờ. Một người (hoặc một chức vụ cùng phạm vi) chỉ xuất hiện một lần trong
+  một cấp ký (400 `nguoi_ky_trung_trong_cap`).
+- Lỗi validation (`fields`) bằng tiếng Việt (bảng ánh xạ ở `errors.py`); `trao-doi/` trả `ten_nguoi_viet` cho từng tin nhắn.
 - Bộ lọc trạng thái (`trinh-ky/?nhanh=`, `trinh-ky/thong-ke/`): `cho_ky` (lượt hiện hành chờ ký, chưa quá hạn),
   `qua_han` (lượt hiện hành chờ ký, qua hạn chót hoặc có cấp đang ký qua hạn xử lý), `hoan_thanh` (đã ký xong),
   `tra_lai` (đang trả lại để sửa). Giá trị khác trả 400. Hồ sơ nháp, không đồng ý, đã hủy chỉ hiện ở "Tất cả".
+  `thong-ke/` nhận thêm `q`, `quy_trinh`, `tu_ngay`, `den_ngay` (không nhận `nhanh`) để số trên các thẻ khớp với danh
+  sách đang xem.
 - `tai-lieu/` phân trang như danh sách hồ sơ (`page`, `page_size`; `{"count", "next", "previous", "results"}`).
 - Xóa quy trình (`DELETE quy-trinh/{id}/`): xóa được một phiên bản ở mọi trạng thái khi không có hồ sơ trình ký nào
   (kể cả đã hủy, hoàn thành) dùng phiên bản đó; còn hồ sơ trả 409 `quy_trinh_da_duoc_dung` kèm số hồ sơ
@@ -324,3 +335,47 @@ Báo cáo chi tiết các luồng nghiệp vụ (Happy path, Trả sửa lượt
   sung selector Python công khai (tìm cán bộ, cán bộ theo chức vụ/đơn vị, lãnh đạo đơn vị) để thay các truy vấn trực
   tiếp trong `tich_hop/to_chuc.py`. API `nguoi-dung/` giữ cho ủy quyền ký (lọc theo quyền `sign_trinhky` là quy tắc của
   Trình ký).
+
+## 12. Rà soát trước kiểm thử chéo (issue #286, PR #PR_SO)
+
+Rà từng màn hình và API theo cách người kiểm thử nhóm khác thao tác (nhập liệu sai, bàn phím, màn hình hẹp, đường dẫn
+sai, thiếu quyền, tham số lạ). Chỉ hai mức độ: High (chức năng chính hỏng, 500, mất/sai dữ liệu) và Medium (giao diện,
+chữ, i18n, kiểm tra nhập liệu, truy cập). Danh sách lỗi và bằng chứng nằm ở issue và mô tả PR; tóm tắt thay đổi:
+
+- **API không còn 500 với tham số lạ**: `tu_ngay`/`den_ngay` đúng dạng nhưng không có trong lịch; từ khóa chứa ký tự NUL;
+  `PUT quy-trinh/{id}/` với JSON không phải đối tượng; `so_gio_xu_ly` vượt cột integer.
+- **Email không bị từ chối vì xuống dòng**: trích yếu nhiều dòng làm tiêu đề email lỗi `BadHeaderError`, email kẹt
+  `THAT_BAI`; tên văn bản trong tiêu đề và nội dung được gộp thành một dòng.
+- **Giới hạn độ dài và định dạng** (mục 4): trích yếu, ghi chú, lý do, tin nhắn, mô tả quy trình, mã quy trình,
+  số giờ xử lý; người ký trùng trong cấp bị chặn ngay khi lưu quy trình thay vì đến lúc gửi hồ sơ.
+- **Thông báo lỗi tiếng Việt** trong `fields`; giao diện nêu trường và lý do đầu tiên thay cho "Dữ liệu không hợp lệ."
+  (bảng nhãn trường `truong.*`, bản dịch vi/en cho các mã lỗi nghiệp vụ còn thiếu).
+- **Hộp thoại**: tiêu điểm vào ô nhập đầu tiên, Tab quay vòng trong hộp, trả tiêu điểm khi đóng, Esc và bấm nền đóng
+  (hộp trên cùng), chặn đóng khi đang gửi; hộp xem tệp của "Văn bản công khai" dùng chung khung này.
+- **Đường dẫn**: `/approvals/<không phải số nguyên dương>` báo không tìm thấy mà không gọi API; đường dẫn con không có
+  trang hiện "Trang không tồn tại"; lỗi 404 có đường về danh sách (không có "Thử lại"); vào thẳng "Khóa ký & PIN",
+  "Tạo hồ sơ" khi thiếu quyền thì báo ngay.
+- **Nhập liệu**: chặn ở trình duyệt tệp rỗng, không phải PDF, quá 20 MB và hạn chót ở quá khứ (không gửi request);
+  `maxLength` khớp máy chủ; xóa thông báo lỗi cũ khi đổi dữ liệu; tìm văn bản đi chờ ngừng gõ; "Văn bản công khai" tự áp
+  dụng từ khóa như danh sách hồ sơ; Enter gửi tin nhắn trao đổi và Enter ở ô PIN ký.
+- **Quy trình**: xóa được cấp ký khi cấu hình; nhấn đúp "Tạo phiên bản mới" không sinh hai phiên bản; "Ngừng" cần xác
+  nhận; kiểm tra mã và số giờ ngay trên form. **Khóa ký**: thu hồi khóa cần xác nhận; ô nhập file khóa theo ngôn ngữ
+  giao diện.
+- **Hiển thị**: danh sách hồ sơ chuyển sang dạng thẻ dưới 1024px, "Văn bản công khai" dưới 1280px (bảng không còn cắt cột
+  Hạn chót ở 768px); chuỗi dài không có dấu cách xuống dòng, tiêu đề tối đa 3 dòng trong thẻ; trang Khóa ký không tràn
+  ngang ở 390px; số trên thẻ lọc khớp danh sách; số "Cần tôi ký duyệt" và thông báo mới tải lại ngay sau thao tác;
+  hạn xử lý của cấp hiện khi hồ sơ không đặt hạn chót; chi tiết hiện ghi chú; tin nhắn trao đổi hiện tên người viết;
+  thông báo ghi rõ chỉ hiển thị 50 mục gần nhất; nút "Xem trước và đặt vị trí ký" không còn là nút lồng trong liên kết.
+- **Kiểm thử không ổn định**: một số test đọc nhật ký bằng `values_list` không `order_by("id")`, thứ tự dòng phụ thuộc
+  cách PostgreSQL lưu (không đảm bảo); đã sắp xếp theo `id`. Test mới: `tests/test_ra_soat_kiem_thu_cheo.py` (backend),
+  `raSoatKiemThuCheo.test.tsx` (frontend).
+
+Ngoài phạm vi Nhóm 5 (không sửa, đã ghi ở mô tả PR): cảnh báo chunk lớn khi build (`index` thuộc bundle chung,
+`vite.config.js`); `/api/...` với tham số đường dẫn sai kiểu (ví dụ `trinh-ky/abc/`) trả trang 404 HTML của Django thay
+vì JSON (cấu hình URL chung `backend/config/urls.py`).
+
+
+Kết quả kiểm tra local (PostgreSQL 16): `manage.py check` và `makemigrations --check --dry-run` sạch; `manage.py test`
+toàn bộ 1160 test đạt (1 skip có sẵn); frontend lint, `tsc -b`, `check:i18n`, `check:tokens` sạch, 628 test đạt, build
+đạt (cảnh báo chunk lớn do bundle chung, không thuộc Nhóm 5). E2E Playwright Chromium: hộp thoại, đường dẫn sai, tệp và
+hạn chót sai, form quy trình, trao đổi, ký bằng file khóa + PIN (kể cả Enter), số đếm sau khi ký, 768px và 390px.
