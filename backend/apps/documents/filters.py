@@ -186,8 +186,17 @@ class BaseDocumentFilter(django_filters.FilterSet):
         q_cond = Q()
         if "noi_ban_hanh" in fields:
             q_cond |= Q(noi_ban_hanh__icontains=val)
-        if hasattr(queryset.model, "noibanhanh_links") and val.isdigit():
-            q_cond |= Q(noibanhanh_links__donvi_id=int(val))
+        if hasattr(queryset.model, "noibanhanh_links"):
+            if val.isdigit():
+                q_cond |= Q(noibanhanh_links__donvi_id=int(val))
+            else:
+                try:
+                    from organizations.models import DonVi
+                    dv_ids = list(DonVi.objects.filter(ten__icontains=val).values_list("pk", flat=True)[:100])
+                    if dv_ids:
+                        q_cond |= Q(noibanhanh_links__donvi_id__in=dv_ids)
+                except Exception:
+                    pass
         if q_cond:
             return queryset.filter(q_cond).distinct()
         return queryset
@@ -200,8 +209,17 @@ class BaseDocumentFilter(django_filters.FilterSet):
         q_cond = Q()
         if "don_vi_nhan" in fields:
             q_cond |= Q(don_vi_nhan__icontains=val)
-        if hasattr(queryset.model, "donvinhan") and val.isdigit():
-            q_cond |= Q(donvinhan__donvi_id=int(val))
+        if hasattr(queryset.model, "donvinhan"):
+            if val.isdigit():
+                q_cond |= Q(donvinhan__donvi_id=int(val))
+            else:
+                try:
+                    from organizations.models import DonVi
+                    dv_ids = list(DonVi.objects.filter(ten__icontains=val).values_list("pk", flat=True)[:100])
+                    if dv_ids:
+                        q_cond |= Q(donvinhan__donvi_id__in=dv_ids)
+                except Exception:
+                    pass
         if q_cond:
             return queryset.filter(q_cond).distinct()
         return queryset
@@ -223,8 +241,17 @@ class BaseDocumentFilter(django_filters.FilterSet):
         q_cond = Q()
         if "ten_loai_van_ban" in fields:
             q_cond |= Q(ten_loai_van_ban__icontains=val)
-        if hasattr(queryset.model, "danhmuc") and val.isdigit():
-            q_cond |= Q(danhmuc__loaivanban_id=int(val))
+        if hasattr(queryset.model, "danhmuc"):
+            if val.isdigit():
+                q_cond |= Q(danhmuc__loaivanban_id=int(val))
+            else:
+                try:
+                    from records.models import LoaiVanBan as RecordLoaiVanBan
+                    lvb_ids = list(RecordLoaiVanBan.objects.filter(ten_loai__icontains=val).values_list("pk", flat=True)[:100])
+                    if lvb_ids:
+                        q_cond |= Q(danhmuc__loaivanban_id__in=lvb_ids)
+                except Exception:
+                    pass
 
         type_abbr_map = {
             "QUYẾT ĐỊNH": ["QĐ", "QD", "QUYẾT ĐỊNH"],
@@ -256,10 +283,20 @@ class BaseDocumentFilter(django_filters.FilterSet):
         q_cond = Q()
         if "danh_muc_ho_so" in fields:
             q_cond |= Q(danh_muc_ho_so__icontains=val)
-        if hasattr(queryset.model, "hoso") and val.isdigit():
-            q_cond |= Q(hoso__hoso_id=int(val))
-        else:
-            q_cond |= Q(trich_yeu__icontains=val)
+        if hasattr(queryset.model, "hoso"):
+            if val.isdigit():
+                q_cond |= Q(hoso__hoso_id=int(val))
+            else:
+                try:
+                    from records.models import HoSo
+                    hs_ids = list(HoSo.objects.filter(
+                        Q(ten_ho_so__icontains=val) | Q(so_ky_hieu__icontains=val)
+                    ).values_list("pk", flat=True)[:100])
+                    if hs_ids:
+                        q_cond |= Q(hoso__hoso_id__in=hs_ids)
+                except Exception:
+                    pass
+        q_cond |= Q(trich_yeu__icontains=val)
         if q_cond:
             return queryset.filter(q_cond).distinct()
         return queryset
