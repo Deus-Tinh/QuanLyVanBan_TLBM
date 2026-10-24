@@ -111,7 +111,7 @@ class ThongBaoTests(KyBase):
         r = self.client_cua(User.objects.get(pk=self.ky1.pk)).get("/api/v1/signing/thong-bao/")
         self.assertEqual(r.status_code, 200)
         self.assertEqual((r.data[0]["loai_thong_bao"], r.data[0]["trinh_ky"]), ("CAN_KY", pk))
-        self.assertEqual(r.data[0]["van_ban"], "10/QD — Mua sắm")
+        self.assertEqual(r.data[0]["van_ban"], "20/QD — Văn bản thử")  # văn bản 10 thuộc hồ sơ tạo ở setUp
         self.assertTrue(r.data[0]["kenh_in_app"])
         self.assertFalse(r.data[0]["email_da_gui"])
         self.assertIsNone(r.data[0]["email_trang_thai"])
@@ -122,20 +122,22 @@ class BoLocTests(TrinhKyBase):
     def setUp(self):
         super().setUp()
         VanBanDi.objects.create(id=10, so_hieu="10/QD", trich_yeu="Mua sắm thiết bị", nguoi_tao=self.tao)
-        self.a = self.tao_nhap(muc_do="KHAN", ghi_chu="Gấp").data["id"]
+        VanBanDi.objects.create(id=20, so_hieu="20/QD", trich_yeu="Bảo trì phần mềm", nguoi_tao=self.tao)
+        self.a = self.tao_nhap(ghi_chu="Gấp").data["id"]
         self.qt2 = self.tao_quy_trinh("QT2")
         self.b = self.tao_nhap(quy_trinh=self.qt2.pk).data["id"]
 
     def ids(self, **tham_so):
         r = self.c.get(f"{BASE}/", {"hop": "toi_gui", **tham_so})
         self.assertEqual(r.status_code, 200, r.data)
-        return {h["id"] for h in r.data}
+        return {h["id"] for h in r.data["results"]}
 
     def test_filters(self):
         self.assertEqual(self.ids(), {self.a, self.b})
-        self.assertEqual(self.ids(muc_do="KHAN"), {self.a})
+        self.assertEqual(self.ids(trang_thai="NHAP"), {self.a, self.b})
         self.assertEqual(self.ids(quy_trinh=self.qt2.pk), {self.b})
-        self.assertEqual(self.ids(q="10/qd"), {self.a, self.b})  # số hiệu văn bản (Nhóm 2), không phân biệt hoa
+        self.assertEqual(self.ids(q="10/qd"), {self.a})  # số hiệu văn bản (Nhóm 2), không phân biệt hoa
+        self.assertEqual(self.ids(q="/QD"), {self.a, self.b})
         self.assertEqual(self.ids(q="Gấp"), {self.a})  # ghi chú
         self.assertEqual(self.ids(q=f"#{self.b}"), {self.b})  # mã hồ sơ
         self.assertEqual(self.ids(q="khong-co"), set())
@@ -217,7 +219,7 @@ class LocNhanhTests(KyBase):
         def ids(nhanh):
             r = self.c.get(f"{BASE}/", {"hop": "toi_gui", "nhanh": nhanh})
             self.assertEqual(r.status_code, 200, r.data)
-            return {h["id"] for h in r.data}
+            return {h["id"] for h in r.data["results"]}
         self.assertEqual(ids("nhap"), {nhap})
         self.assertEqual(ids("cho_ky"), {cho, tre})
         self.assertEqual(ids("tra_lai"), {tra})

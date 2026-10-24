@@ -1,4 +1,25 @@
 -- =====================================================================
+-- THAY ĐỔI NHÓM QUYỀN BỔ SUNG (Nhóm 7; issue #228; đánh dấu [NQBS] tại vị trí)
+-- Căn cứ: bảng nhóm quyền mặc định theo 25 chức vụ (nhóm trưởng chốt 21/10/2026, PR #211).
+--   Thêm 2 nhóm chuẩn chỉ chứa quyền cộng thêm, gán cùng nhóm CV:
+--   1) TLBGD (Trợ lý Ban Giám đốc): view_all_congviec, view_read_log_vanbanden, view_read_log_vanbandi, send_trinhky.
+--   2) KT (Kiểm toán): view_signing_audit, view_read_log_vanbanden, view_read_log_vanbandi.
+--   Migration authorization 0008_supplementary_groups_tlbgd_kt bổ sung cho DB dựng bằng migration.
+-- Quy mô sau [NQBS] (cộng sau [CVTK]): 7 nhóm quyền chuẩn; thêm 7 lượt phân quyền (198 -> 205).
+-- =====================================================================
+-- THAY ĐỔI QUYỀN GỬI TRÌNH KÝ CỦA CHUYÊN VIÊN (Nhóm 5; issue #226; đánh dấu [CVTK] tại vị trí)
+-- Căn cứ: signing-backend-plan.md mục 8 (nhân viên đã xác thực được tạo yêu cầu; gửi cần send_trinhky + người tạo).
+--   Nhóm CV có add_trinhky nhưng thiếu send_trinhky nên hồ sơ do Chuyên viên tạo dừng ở NHAP: người tạo
+--   không gửi được, người có send_trinhky cũng không gửi thay vì không phải người tạo. Cấp send_trinhky cho CV;
+--   migration authorization 0007_grant_cv_send_trinhky bổ sung cho DB đã seed từ trước.
+-- Quy mô sau [CVTK] (nạp sạch): nhóm CV 22 quyền; 198 lượt phân quyền (thêm 1 lượt).
+-- =====================================================================
+-- THAY ĐỔI BỎ MỨC ĐỘ KHẨN CỦA TRÌNH KÝ (Nhóm 5; issue #238)
+-- Căn cứ: spec Nhóm 5 bỏ mức độ khẩn/ưu tiên; migration signing 0014_bo_muc_do.
+--   signing_request bỏ cột muc_do (VARCHAR(20) NOT NULL; THUONG | KHAN | HOA_TOC kiểm ở tầng ứng dụng).
+--   Bằng chứng đã chốt (signing_manifest.noi_dung_chuan_hoa) xác minh bằng nội dung đã lưu nên manifest
+--   phiên bản 1 (có ho_so.muc_do) giữ nguyên; manifest phiên bản 2 trở đi không còn trường này.
+-- =====================================================================
 -- THAY ĐỔI PHASE 10 LÕI TRÌNH KÝ (Nhóm 5; issue #80; đánh dấu [P10] tại vị trí)
 -- Căn cứ: issue #80 mục D; signing-backend-plan.md mục 3.2 "Phẳng hóa"; migration signing 0007_tep_hoan_tat.
 --   signing_attempt thêm trang_thai_tep_hoan_tat (NULL khi lượt chưa hoàn thành; DANG_XU_LY | LOI | THANH_CONG)
@@ -11,14 +32,13 @@
 --      tạo hồ sơ mới trỏ về hồ sơ bị từ chối; hồ sơ TU_CHOI là trạng thái kết thúc.
 --   2) signing_process_step_signer thêm pham_vi_chuc_vu (NULL khi cấu hình theo tài khoản): chức vụ
 --      hiểu tương đối trong đơn vị người tạo, đơn vị cố định của cấp hoặc toàn cơ quan.
---   3) signing_request.muc_do giữ VARCHAR(20); giá trị THUONG | KHAN | HOA_TOC kiểm ở tầng ứng dụng.
---   4) signing_process thêm don_vi_ap_dung_id (FK organizations_donvi, RESTRICT) và index; CHECK phạm vi
+--   3) signing_process thêm don_vi_ap_dung_id (FK organizations_donvi, RESTRICT) và index; CHECK phạm vi
 --      PHONG_BAN bắt buộc có đơn vị, CONG_TY không gắn đơn vị (migration signing 0008_don_vi_ap_dung; dữ liệu
 --      cũ PHONG_BAN chưa có đơn vị được chuyển CONG_TY, đúng hành vi trước đó). Người tạo hồ sơ chỉ chọn
 --      quy trình CONG_TY hoặc PHONG_BAN của đơn vị mình.
---   5) Cấp manage_signing_process cho nhóm TP (plan mục 8): lãnh đạo đơn vị quản lý quy trình PHONG_BAN
+--   4) Cấp manage_signing_process cho nhóm TP (plan mục 8): lãnh đạo đơn vị quản lý quy trình PHONG_BAN
 --      của đơn vị mình; quy trình CONG_TY vẫn chỉ quản trị quản lý (kiểm ở tầng ứng dụng).
---   6) Cột của các bảng signing_* theo tên chuẩn hóa ở #96 (nguoi_tao_id, nguoi_cap_nhat_id, updated_at,
+--   5) Cột của các bảng signing_* theo tên chuẩn hóa ở #96 (nguoi_tao_id, nguoi_cap_nhat_id, updated_at,
 --      document_id); migration signing 0009_doi_ten_cot_theo_ddl_chuan_hoa đổi tên cột cho DB dựng bằng migration.
 -- Quy mô sau [P7] và [P10] (nạp sạch): 55 bảng vật lý | 20 kiểu ENUM | 77 quyền thao tác | 5 nhóm quyền chuẩn | 197 lượt phân quyền.
 -- =====================================================================
@@ -1140,7 +1160,6 @@ CREATE TABLE signing_request (
     ma_bam_tai_lieu VARCHAR(64), -- Cho phép NULL ở bản nháp ban đầu
     quy_trinh_id BIGINT NOT NULL REFERENCES signing_process (id) ON DELETE RESTRICT,
     phien_ban_quy_trinh SMALLINT NOT NULL CHECK (phien_ban_quy_trinh >= 0),
-    muc_do VARCHAR(20) NOT NULL,
     -- [6c] Bỏ kieu_ky: cấp ký luôn tuần tự (không còn cách thức ký áp dụng cho toàn yêu cầu).
     trang_thai VARCHAR(20) NOT NULL DEFAULT 'NHAP',
     han_chot TIMESTAMPTZ,
@@ -1994,7 +2013,7 @@ SET
     is_he_thong = TRUE;
 
 -- ---------------------------------------------------------------------
--- 4) Seed 5 Nhóm quyền chuẩn (auth_group)
+-- 4) Seed 7 Nhóm quyền chuẩn (auth_group): 5 nhóm chính và 2 nhóm bổ sung [NQBS]
 -- ---------------------------------------------------------------------
 INSERT INTO
     auth_group (name, ma_nhom_quyen)
@@ -2002,7 +2021,10 @@ VALUES ('Văn thư', 'VT'),
     ('Chuyên viên', 'CV'),
     ('Trưởng phòng', 'TP'),
     ('Ban Giám đốc', 'BGD'),
-    ('Quản trị hệ thống', 'ADMIN') ON CONFLICT (name) DO
+    ('Quản trị hệ thống', 'ADMIN'),
+    -- [NQBS] Nhóm bổ sung, gán cùng nhóm CV
+    ('Trợ lý Ban Giám đốc', 'TLBGD'),
+    ('Kiểm toán', 'KT') ON CONFLICT (name) DO
 UPDATE
 SET
     ma_nhom_quyen = EXCLUDED.ma_nhom_quyen;
@@ -2527,6 +2549,7 @@ WHERE
         'view_tailieu',
         'view_trinhky',
         'add_trinhky',
+        'send_trinhky', -- [CVTK] người tạo hồ sơ tự gửi trình ký
         'view_congviec',
         'view_dept_congviec',
         'add_congviec',
@@ -2590,7 +2613,31 @@ WHERE
         'send_wish_sinhnhat',
         'use_aiassistant'
     ) ON CONFLICT (group_id, permission_id) DO NOTHING;
-
+-- [NQBS] Nhóm TLBGD (Trợ lý Ban Giám đốc): chỉ chứa quyền cộng thêm, người dùng giữ nhóm CV
+INSERT INTO
+    auth_group_permissions (group_id, permission_id)
+SELECT g.id, p.id
+FROM auth_group g, auth_permission p
+WHERE
+    g.ma_nhom_quyen = 'TLBGD'
+    AND p.codename IN (
+        'view_all_congviec',
+        'view_read_log_vanbanden',
+        'view_read_log_vanbandi',
+        'send_trinhky'
+    ) ON CONFLICT (group_id, permission_id) DO NOTHING;
+-- [NQBS] Nhóm KT (Kiểm toán): chỉ chứa quyền cộng thêm, người dùng giữ nhóm CV
+INSERT INTO
+    auth_group_permissions (group_id, permission_id)
+SELECT g.id, p.id
+FROM auth_group g, auth_permission p
+WHERE
+    g.ma_nhom_quyen = 'KT'
+    AND p.codename IN (
+        'view_signing_audit',
+        'view_read_log_vanbanden',
+        'view_read_log_vanbandi'
+    ) ON CONFLICT (group_id, permission_id) DO NOTHING;
 COMMIT;
 
 -- =====================================================================

@@ -6,13 +6,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, HopThoai, LoiTai, ThongBao, TruongNhap } from '@components/signing/ChungUI';
+import { DangTai, HopThoai, LoiTai, OChonTep, ThongBao, TruongNhap } from '@components/signing/ChungUI';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
 import { docLoi, signingApi } from '@lib/signing/api';
 import { LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
-import type { HoSoChiTiet, MucDo, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
+import type { HoSoChiTiet, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
 import { khungTuDiemBam, soKhung } from '@lib/signing/viTri';
 
 interface UngVien { cau_hinh: number; ung_vien: Array<{ id: number; ten: string }> }
@@ -25,7 +25,6 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   const quyTrinh = useTai(() => signingApi.quyTrinh('HOAT_DONG'));
   const [chon, setChon] = useState<VanBanDi | null>(null);
   const [qtId, setQtId] = useState('');
-  const [mucDo, setMucDo] = useState<MucDo>('THUONG');
   const [hanChot, setHanChot] = useState('');
   const [ghiChu, setGhiChu] = useState('');
   const [tep, setTep] = useState<File | null>(null);
@@ -45,7 +44,6 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
       form.append('document_type', 'vanbandi');
       form.append('van_ban_id', String(chon.id));
       form.append('quy_trinh', qtId);
-      form.append('muc_do', mucDo);
       if (hanChot) form.append('han_chot', new Date(hanChot).toISOString());
       if (ghiChu) form.append('ghi_chu', ghiChu);
       form.append('tep', tep);
@@ -61,47 +59,48 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   return (
     <Card className="p-5 space-y-4">
       <h2 className="text-lg font-bold text-main">1. {t('tao.buoc1')}</h2>
-      <TruongNhap nhan={t('tao.vanBanDi')}>
-        <input className={LOP_O_NHAP} placeholder={t('tao.timVanBan')} value={q} onChange={(e) => setQ(e.target.value)} />
-      </TruongNhap>
-      {vanBan.dangTai ? <DangTai /> : vanBan.loi ? <LoiTai thongBao={loi(vanBan.loi)} onThuLai={vanBan.tai} /> : (
-        <div className="max-h-48 overflow-y-auto rounded-lg border border-border-subtle">
-          {vanBan.duLieu?.length === 0 && <div className="p-3 text-sm text-muted">{t('tao.khongCoVanBan')}</div>}
-          {vanBan.duLieu?.map((vb) => (
-            <button type="button" key={vb.id} onClick={() => setChon(vb)}
-              className={`block w-full px-3 py-2 text-left text-sm border-b border-border-subtle last:border-0 ${
-                chon?.id === vb.id ? 'bg-primary-subtle text-primary font-semibold' : 'hover:bg-surface-hover text-main'}`}>
-              {moTaVanBan(vb, vb.id)}
-            </button>
-          ))}
+      {/* Desktop: trái chọn văn bản, phải thông tin trình; tránh một cột ô nhập trải hết chiều rộng */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+        <div className="space-y-3 min-w-0">
+          <TruongNhap nhan={t('tao.vanBanDi')}>
+            <input className={LOP_O_NHAP} placeholder={t('tao.timVanBan')} value={q} onChange={(e) => setQ(e.target.value)} />
+          </TruongNhap>
+          {vanBan.dangTai ? <DangTai /> : vanBan.loi ? <LoiTai thongBao={loi(vanBan.loi)} onThuLai={vanBan.tai} /> : (
+            <div className="max-h-72 overflow-y-auto rounded-lg border border-border-subtle">
+              {vanBan.duLieu?.length === 0 && <div className="p-3 text-sm text-muted">{t('tao.khongCoVanBan')}</div>}
+              {vanBan.duLieu?.map((vb) => (
+                <button type="button" key={vb.id} onClick={() => setChon(vb)}
+                  className={`block w-full px-3 py-2 text-left text-sm border-b border-border-subtle last:border-0 ${
+                    chon?.id === vb.id ? 'bg-primary-subtle text-primary font-semibold' : 'hover:bg-surface-hover text-main'}`}>
+                  {moTaVanBan(vb, vb.id)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      <div className="grid gap-4 md:grid-cols-2">
-        <TruongNhap nhan={t('tao.quyTrinh')}>
-          <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
-            <option value="">{t('tao.chonQuyTrinh')}</option>
-            {dungDuoc.map((p) => (
-              <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
-            ))}
-          </select>
-        </TruongNhap>
-        <TruongNhap nhan={t('tao.mucDo')}>
-          <select className={LOP_O_NHAP} value={mucDo} onChange={(e) => setMucDo(e.target.value as MucDo)}>
-            {(['THUONG', 'KHAN', 'HOA_TOC'] as MucDo[]).map((m) => <option key={m} value={m}>{t(`mucDo.${m}`)}</option>)}
-          </select>
-        </TruongNhap>
-        <TruongNhap nhan={t('tao.hanChot')}>
-          <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
-        </TruongNhap>
-        <TruongNhap nhan={t('tao.tep')}>
-          <input type="file" accept="application/pdf" className={LOP_O_NHAP}
-            onChange={(e) => setTep(e.target.files?.[0] || null)} />
-        </TruongNhap>
+        <div className="space-y-4 min-w-0">
+          <TruongNhap nhan={t('tao.quyTrinh')}>
+            <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
+              <option value="">{t('tao.chonQuyTrinh')}</option>
+              {dungDuoc.map((p) => (
+                <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
+              ))}
+            </select>
+          </TruongNhap>
+          {quyTrinh.duLieu && dungDuoc.length === 0 && <ThongBao loai="canh_bao">{t('tao.khongCoQuyTrinh')}</ThongBao>}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TruongNhap nhan={t('tao.hanChot')}>
+              <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
+            </TruongNhap>
+            <TruongNhap nhan={t('tao.tep')}>
+              <OChonTep accept="application/pdf" onChon={(f) => setTep(f || null)} />
+            </TruongNhap>
+          </div>
+          <TruongNhap nhan={t('tao.ghiChu')}>
+            <textarea className={LOP_O_NHAP} rows={3} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
+          </TruongNhap>
+        </div>
       </div>
-      {quyTrinh.duLieu && dungDuoc.length === 0 && <ThongBao loai="canh_bao">{t('tao.khongCoQuyTrinh')}</ThongBao>}
-      <TruongNhap nhan={t('tao.ghiChu')}>
-        <textarea className={LOP_O_NHAP} rows={2} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
-      </TruongNhap>
       {thongBao && <ThongBao>{thongBao}</ThongBao>}
       <div className="flex justify-end">
         <Button icon="fa-floppy-disk" isLoading={dangGui} disabled={!chon || !qtId || !tep} onClick={luu}>
@@ -161,7 +160,6 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
           onKeo={(id, x, y) => setViTri((v) => ({ ...v, [id]: { ...v[id], toa_do_x: String(x), toa_do_y: String(y) } }))} />
       </Card>
       <Card className="p-4 space-y-3 self-start lg:sticky lg:top-4">
-        <div className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{hoSo.ma_bam_tai_lieu}</code></div>
         <h3 className="text-lg font-bold text-main">{t('tao.nguoiKyDuKien')}</h3>
         <ul className="space-y-2">
           {nguoiKy.map((n) => (
@@ -204,7 +202,6 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
           <Button icon="fa-paper-plane" isLoading={dangGui} onClick={gui}>{t('chung.xacNhan')}</Button>
         </>}>
         <p className="text-sm text-main">{t('tao.xacNhanGui')}</p>
-        <p className="text-xs text-secondary break-all">{t('tao.maBam')}: <code>{hoSo.ma_bam_tai_lieu}</code></p>
       </HopThoai>
     </div>
   );

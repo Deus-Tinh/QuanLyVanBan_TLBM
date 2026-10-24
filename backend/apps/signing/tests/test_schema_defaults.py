@@ -88,10 +88,10 @@ class SigningSchemaDefaultsTests(TestCase):
 
             cursor.execute(
                 "INSERT INTO signing_request "
-                "(document_type, document_id, quy_trinh_id, phien_ban_quy_trinh, muc_do, nguoi_tao_id) "
-                "VALUES (%s, %s, %s, %s, %s, %s) "
+                "(document_type, document_id, quy_trinh_id, phien_ban_quy_trinh, nguoi_tao_id) "
+                "VALUES (%s, %s, %s, %s, %s) "
                 "RETURNING trang_thai, ly_do_tu_choi, ly_do_huy, ghi_chu, created_at, updated_at",
-                ["vanbandi", 89001, process_id, 1, "THUONG", self.user.pk],
+                ["vanbandi", 89001, process_id, 1, self.user.pk],
             )
             request_state, rejected, cancelled, note, request_created, request_updated = cursor.fetchone()
             self.assertEqual((request_state, rejected, cancelled, note), ("NHAP", "", "", ""))
@@ -242,8 +242,8 @@ class SigningSchemaDefaultsTests(TestCase):
             process_id = cursor.fetchone()[0]
             cursor.execute(
                 "INSERT INTO signing_request "
-                "(document_type, document_id, quy_trinh_id, phien_ban_quy_trinh, muc_do, nguoi_tao_id) "
-                "VALUES ('vanbandi', %s, %s, 1, 'THUONG', %s) RETURNING id",
+                "(document_type, document_id, quy_trinh_id, phien_ban_quy_trinh, nguoi_tao_id) "
+                "VALUES ('vanbandi', %s, %s, 1, %s) RETURNING id",
                 [89003, process_id, self.user.pk],
             )
             request_id = cursor.fetchone()[0]
@@ -273,8 +273,8 @@ class SigningSchemaDefaultsTests(TestCase):
             process_id = cursor.fetchone()[0]
             cursor.execute(
                 "INSERT INTO signing_request "
-                "(document_type, document_id, quy_trinh_id, phien_ban_quy_trinh, muc_do, nguoi_tao_id) "
-                "VALUES ('vanbandi', %s, %s, 1, 'THUONG', %s) RETURNING id",
+                "(document_type, document_id, quy_trinh_id, phien_ban_quy_trinh, nguoi_tao_id) "
+                "VALUES ('vanbandi', %s, %s, 1, %s) RETURNING id",
                 [89002, process_id, self.user.pk],
             )
             request_id = cursor.fetchone()[0]

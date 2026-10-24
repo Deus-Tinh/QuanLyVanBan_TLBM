@@ -43,7 +43,7 @@ class Base(TestCase):
     def make_request(self, **kw):
         data = dict(
             document_type=enums.LoaiVanBan.VAN_BAN_DI, van_ban_id=1, quy_trinh=self.process, phien_ban_quy_trinh=1,
-            muc_do="THUONG", create_by=self.u1,
+            create_by=self.u1,
         )
         data.update(kw)
         return SigningRequest.objects.create(**data)
@@ -88,13 +88,13 @@ class RequestAttemptTests(Base):
         ])
         self.assertEqual(sorted(f.name for f in SigningRequest._meta.concrete_fields), [
             "create_by", "created_at", "document_type", "ghi_chu", "han_chot", "ho_so_goc", "id", "ly_do_huy",
-            "ly_do_tu_choi", "ma_bam_tai_lieu", "muc_do", "ngay_gui", "ngay_hoan_thanh", "ngay_huy",
+            "ly_do_tu_choi", "ma_bam_tai_lieu", "ngay_gui", "ngay_hoan_thanh", "ngay_huy",
             "ngay_tu_choi", "phien_ban_quy_trinh", "phien_ban_van_ban", "quy_trinh", "trang_thai",
             "update_at", "update_by", "van_ban_id", "vi_tri_luu_tep",
         ])
         for loai in ("vanbanden", "vanbanmat"):
             yeu_cau = SigningRequest(document_type=loai, van_ban_id=1, quy_trinh=self.process,
-                                     phien_ban_quy_trinh=1, muc_do="THUONG", create_by=self.u1)
+                                     phien_ban_quy_trinh=1, create_by=self.u1)
             with self.assertRaises(ValidationError) as ctx:
                 yeu_cau.full_clean()
             self.assertIn("document_type", ctx.exception.message_dict)

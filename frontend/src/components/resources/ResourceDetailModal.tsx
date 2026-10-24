@@ -215,7 +215,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                     <i className="fa-solid fa-arrow-up-right-from-square text-[10px]" />
                   </a>
                 ) : (
-                  <span className="italic">Chưa có liên kết văn bản thay thế</span>
+                  <span className="italic">{t('resourceManagement.noReplacementLink')}</span>
                 )}
               </div>
             </div>
@@ -238,7 +238,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           {/* KHỐI 3: Thông tin chung */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-1.5">
-              Thông tin chung
+              {t('resourceManagement.generalInfo')}
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-6 text-xs sm:text-sm">
@@ -293,21 +293,21 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
 
               {/* Phạm vi hiển thị */}
               <div>
-                <span className="text-xs text-muted block mb-0.5">Phạm vi hiển thị</span>
+                <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldDisplayScope')}</span>
                 <span className="text-main">
-                  {item.hien_thi === 'TAT_CA' ? 'Tất cả đơn vị' : 'Nội bộ phòng ban'}
+                  {item.hien_thi === 'TAT_CA' ? t('resourceManagement.scopeAll') : t('resourceManagement.scopeInternalOnly')}
                 </span>
               </div>
 
               {/* Đơn vị sở hữu */}
               <div>
-                <span className="text-xs text-muted block mb-0.5">Đơn vị sở hữu</span>
+                <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldScope')}</span>
                 <span className="text-main">{item.don_vi_id ? `Đơn vị #${item.don_vi_id}` : 'Tổng công ty'}</span>
               </div>
 
               {/* Người tạo */}
               <div>
-                <span className="text-xs text-muted block mb-0.5">Người tạo</span>
+                <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldAuthor')}</span>
                 <span className="text-main">{item.nguoi_tao_name || 'Hệ thống'}</span>
               </div>
             </div>
@@ -315,7 +315,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             {/* Ghi chú nếu có */}
             {item.ghi_chu && (
               <div className="pt-2">
-                <span className="text-xs text-muted block mb-0.5">Ghi chú</span>
+                <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldNotes')}</span>
                 <p className="text-xs text-secondary bg-surface-elevated p-2.5 rounded-lg border border-border-subtle/60 leading-relaxed">
                   {item.ghi_chu}
                 </p>
@@ -326,9 +326,9 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           {/* KHỐI 4: Tệp đính kèm */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle pb-1.5 flex items-center justify-between">
-              <span>Tệp đính kèm</span>
+              <span>{t('resourceManagement.fieldAttachments')}</span>
               <span className="text-[11px] text-secondary font-medium">
-                {filesList.length} tệp
+                {filesList.length} {t('resourceManagement.attachment')}
               </span>
             </h3>
 
@@ -371,18 +371,18 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                           onDownloadFile?.(item, file.name, file.path);
                         }}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-primary hover:border-primary/40 hover:bg-surface-elevated transition-colors cursor-pointer shrink-0"
-                        title="Tải tệp này về máy"
+                        title={t('resourceManagement.download')}
                         aria-label={`Tải về ${file.name}`}
                       >
                         <i className="fa-solid fa-download text-xs" />
-                        <span>Tải về</span>
+                        <span>{t('resourceManagement.download')}</span>
                       </button>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-xs text-muted italic">Không có tệp đính kèm</p>
+              <p className="text-xs text-muted italic">{t('resourceManagement.noAttachments')}</p>
             )}
           </div>
         </div>

@@ -10,7 +10,6 @@ import {
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
 import { authService } from '@lib/authService';
-import { apiClient } from '@lib/apiClient';
 import { ConfirmationModal } from './ConfirmationModal';
 
 export interface ResourceFormData {
@@ -42,6 +41,7 @@ export interface ResourceFormModalProps {
   categories?: ResourceCategory[];
   types?: ResourceType[];
   isLoading?: boolean;
+  defaultCategoryId?: number;
 }
 
 const MAX_FILE_SIZE_MB = 20;
@@ -122,31 +122,45 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   categories = [],
   types = [],
   isLoading = false,
+  defaultCategoryId,
 }) => {
   const { t } = useTranslation();
   const isEditMode = Boolean(initialData);
 
+  const currentSession = authService.getSession();
+  const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
   const defaultAuthor =
-    authService.getSession()?.fullName ||
-    authService.getSession()?.username ||
-    '';
+    currentSession?.fullName ||
+    currentSession?.username ||
+    'Quản trị hệ thống';
+
+  const prevIsOpenRef = useRef(false);
+  const prevInitialDataIdRef = useRef<number | undefined>(undefined);
 
   // Form State
-  const [formData, setFormData] = useState<ResourceFormData>({
-    dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
-    loai_tai_lieu: [],
-    ky_hieu: '',
-    tieu_de: '',
-    ngay_dang: new Date().toISOString().split('T')[0],
-    noi_ban_hanh: '',
-    nguoi_tao_name: defaultAuthor,
-    hieu_luc: 'CON_HIEU_LUC',
-    ngay_het_hieu_luc: '',
-    link_thay_the: '',
-    ghi_chu: '',
-    hien_thi: 'TAT_CA',
-    file: null,
-    files: [],
+  const [formData, setFormData] = useState<ResourceFormData>(() => {
+    const initialCatId =
+      defaultCategoryId && categories.some((c) => c.id === defaultCategoryId)
+        ? defaultCategoryId
+        : categories.length > 0
+        ? categories[0].id
+        : '';
+    return {
+      dm_tai_lieu: initialCatId,
+      loai_tai_lieu: [],
+      ky_hieu: '',
+      tieu_de: '',
+      ngay_dang: new Date().toISOString().split('T')[0],
+      noi_ban_hanh: '',
+      nguoi_tao_name: defaultAuthor,
+      hieu_luc: 'CON_HIEU_LUC',
+      ngay_het_hieu_luc: '',
+      link_thay_the: '',
+      ghi_chu: '',
+      hien_thi: 'TAT_CA',
+      file: null,
+      files: [],
+    };
   });
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -160,100 +174,105 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const [isDirty, setIsDirty] = useState(false);
   const [isConfirmDiscardOpen, setIsConfirmDiscardOpen] = useState(false);
 
-  const [staffSuggestions, setStaffSuggestions] = useState<
-    { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[]
-  >([]);
-
-  // Tải danh sách CBNV từ CSDL để gợi ý khi nhập người tạo
-  useEffect(() => {
-    if (isOpen) {
-      apiClient
-        .get<
-          | { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[]
-          | { results?: { id: number; ho_ten: string; chuc_vu_ten?: string; don_vi_ten?: string }[] }
-        >('/api/accounts/staffs/')
-        .then((res) => {
-          if (Array.isArray(res)) {
-            setStaffSuggestions(res);
-          } else if (res && Array.isArray(res.results)) {
-            setStaffSuggestions(res.results);
-          } else {
-            setStaffSuggestions([]);
-          }
-        })
-        .catch(() => setStaffSuggestions([]));
-    }
-  }, [isOpen]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Khởi tạo form khi mở modal
+  // Khởi tạo form khi mở modal - CHỈ chạy một lần khi modal vừa mở, KHÔNG ghi đè khi polling nạp lại categories
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (isOpen) {
-      if (initialData) {
-        setFormData({
-          dm_tai_lieu: initialData.dm_tai_lieu,
-          loai_tai_lieu: initialData.loai_tai_lieu || [],
-          ky_hieu: initialData.ky_hieu || '',
-          tieu_de: initialData.tieu_de || '',
-          ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
-          noi_ban_hanh: initialData.noi_ban_hanh || '',
-          nguoi_tao_name: initialData.nguoi_tao_name || defaultAuthor,
-          hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
-          ngay_het_hieu_luc: initialData.ngay_het_hieu_luc || '',
-          link_thay_the: initialData.link_thay_the || '',
-          ghi_chu: initialData.ghi_chu || '',
-          hien_thi: initialData.hien_thi || 'TAT_CA',
-          file: null,
-          files: [],
-        });
-        const activeAttachments = (initialData.attachments || []).filter((att) => !att.is_deleted);
-        if (activeAttachments.length > 0) {
-          setExistingFiles(
-            activeAttachments.map((att) => ({
-              id: att.id,
-              name: att.name,
-              size: att.file_size,
-              path: att.path,
-            }))
-          );
-        } else if (initialData.file_dinh_kem) {
-          const fallbackName =
-            initialData.file_dinh_kem.startsWith('blob:')
-              ? `${initialData.tieu_de || 'Tệp đính kèm'}.pdf`
-              : initialData.file_dinh_kem.split('?')[0].split('/').pop() || 'Tệp đính kèm';
-          setExistingFiles([{ name: fallbackName, path: initialData.file_dinh_kem }]);
+      const justOpened = !prevIsOpenRef.current || prevInitialDataIdRef.current !== initialData?.id;
+      prevIsOpenRef.current = true;
+      prevInitialDataIdRef.current = initialData?.id;
+
+      if (justOpened) {
+        if (initialData) {
+          setFormData({
+            dm_tai_lieu: initialData.dm_tai_lieu,
+            loai_tai_lieu: initialData.loai_tai_lieu || [],
+            ky_hieu: initialData.ky_hieu || '',
+            tieu_de: initialData.tieu_de || '',
+            ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
+            noi_ban_hanh: initialData.noi_ban_hanh || '',
+            nguoi_tao_name: initialData.nguoi_tao_name || defaultAuthor,
+            hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
+            ngay_het_hieu_luc: initialData.ngay_het_hieu_luc || '',
+            link_thay_the: initialData.link_thay_the || '',
+            ghi_chu: initialData.ghi_chu || '',
+            hien_thi: initialData.hien_thi || 'TAT_CA',
+            file: null,
+            files: [],
+          });
+          const activeAttachments = (initialData.attachments || []).filter((att) => !att.is_deleted);
+          if (activeAttachments.length > 0) {
+            setExistingFiles(
+              activeAttachments.map((att) => ({
+                id: att.id,
+                name: att.name,
+                size: att.file_size,
+                path: att.path,
+              }))
+            );
+          } else if (initialData.file_dinh_kem) {
+            const fallbackName =
+              initialData.file_dinh_kem.startsWith('blob:')
+                ? `${initialData.tieu_de || 'Tệp đính kèm'}.pdf`
+                : initialData.file_dinh_kem.split('?')[0].split('/').pop() || 'Tệp đính kèm';
+            setExistingFiles([{ name: fallbackName, path: initialData.file_dinh_kem }]);
+          } else {
+            setExistingFiles([]);
+          }
         } else {
+          const initialCatId =
+            defaultCategoryId && categories.some((c) => c.id === defaultCategoryId)
+              ? defaultCategoryId
+              : categories.length > 0
+              ? categories[0].id
+              : '';
+
+          setFormData({
+            dm_tai_lieu: initialCatId,
+            loai_tai_lieu: [],
+            ky_hieu: '',
+            tieu_de: '',
+            ngay_dang: new Date().toISOString().split('T')[0],
+            noi_ban_hanh: '',
+            nguoi_tao_name: defaultAuthor,
+            hieu_luc: 'CON_HIEU_LUC',
+            ngay_het_hieu_luc: '',
+            link_thay_the: '',
+            ghi_chu: '',
+            hien_thi: 'TAT_CA',
+            file: null,
+            files: [],
+          });
           setExistingFiles([]);
         }
+        setSelectedFiles([]);
+        setDeletedAttachmentIds([]);
+        setErrors({});
+        setFileError(null);
+        setIsDirty(false);
+        setIsConfirmDiscardOpen(false);
       } else {
-        setFormData({
-          dm_tai_lieu: categories.length > 0 ? categories[0].id : '',
-          loai_tai_lieu: [],
-          ky_hieu: '',
-          tieu_de: '',
-          ngay_dang: new Date().toISOString().split('T')[0],
-          noi_ban_hanh: '',
-          nguoi_tao_name: defaultAuthor,
-          hieu_luc: 'CON_HIEU_LUC',
-          ngay_het_hieu_luc: '',
-          link_thay_the: '',
-          ghi_chu: '',
-          hien_thi: 'TAT_CA',
-          file: null,
-          files: [],
+        // Modal đã mở sẵn: nếu ban đầu chưa có danh mục nào (rỗng) mà nay categories mới nạp xong
+        setFormData((prev) => {
+          if (!prev.dm_tai_lieu && categories.length > 0) {
+            const initialCatId =
+              defaultCategoryId && categories.some((c) => c.id === defaultCategoryId)
+                ? defaultCategoryId
+                : categories[0].id;
+            return { ...prev, dm_tai_lieu: initialCatId };
+          }
+          return prev;
         });
-        setExistingFiles([]);
       }
-      setSelectedFiles([]);
-      setDeletedAttachmentIds([]);
-      setErrors({});
-      setFileError(null);
-      setIsDirty(false);
-      setIsConfirmDiscardOpen(false);
+    } else {
+      prevIsOpenRef.current = false;
+      prevInitialDataIdRef.current = undefined;
     }
-  }, [isOpen, initialData, categories, defaultAuthor]);
+  }, [isOpen, initialData, categories, defaultAuthor, defaultCategoryId]);
+
 
   // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
   const handleSafeClose = useCallback(() => {
@@ -325,12 +344,12 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       const isAllowedExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
 
       if (!isAllowedExt) {
-        errMessages.push(`Tệp "${file.name}" không đúng định dạng cho phép.`);
+        errMessages.push(t('resourceManagement.fileInvalidFormat', { name: file.name }));
         continue;
       }
 
       if (file.size > MAX_FILE_SIZE_BYTES) {
-        errMessages.push(`Tệp "${file.name}" vượt quá ${MAX_FILE_SIZE_MB}MB.`);
+        errMessages.push(t('resourceManagement.fileExceedSize', { name: file.name, max: MAX_FILE_SIZE_MB }));
         continue;
       }
 
@@ -399,35 +418,35 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.dm_tai_lieu) {
-      newErrors.dm_tai_lieu = 'Vui lòng chọn Thư mục';
+      newErrors.dm_tai_lieu = t('resourceManagement.valSelectCategory');
     }
 
     if (formData.loai_tai_lieu.length === 0) {
-      newErrors.loai_tai_lieu = 'Vui lòng chọn ít nhất một Loại tài liệu';
+      newErrors.loai_tai_lieu = t('resourceManagement.valSelectType');
     }
 
     if (!formData.tieu_de.trim()) {
-      newErrors.tieu_de = 'Vui lòng nhập Tiêu đề tài liệu';
+      newErrors.tieu_de = t('resourceManagement.valEnterTitle');
     }
 
     if (!formData.ngay_dang) {
-      newErrors.ngay_dang = 'Vui lòng chọn Ngày đăng';
+      newErrors.ngay_dang = t('resourceManagement.valSelectDate');
     }
 
     // Ràng buộc nghiêm ngặt khi Hết và thay thế
     if (formData.hieu_luc === 'HET_VA_THAY_THE') {
       if (!formData.ngay_het_hieu_luc) {
-        newErrors.ngay_het_hieu_luc = 'Vui lòng nhập Ngày hết hiệu lực khi thay thế văn bản';
+        newErrors.ngay_het_hieu_luc = t('resourceManagement.valEnterExpDate');
       }
       if (!formData.link_thay_the.trim()) {
-        newErrors.link_thay_the = 'Vui lòng nhập Link tài liệu thay thế mới';
+        newErrors.link_thay_the = t('resourceManagement.valEnterReplLink');
       }
     }
 
     // Bắt buộc có tệp khi tạo mới
     const totalFilesCount = selectedFiles.length + existingFiles.length;
     if (!isEditMode && totalFilesCount === 0) {
-      newErrors.file = 'Vui lòng đính kèm ít nhất một tệp tài liệu';
+      newErrors.file = t('resourceManagement.valAttachFile');
     }
 
     setErrors(newErrors);
@@ -641,7 +660,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 <input
                   id="field-ky_hieu"
                   type="text"
-                  placeholder="VD: 01/QĐ-BL-2026"
+                  placeholder={t('resourceManagement.placeholderCode')}
                   value={formData.ky_hieu}
                   onChange={(e) => {
                     setIsDirty(true);
@@ -687,7 +706,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               <textarea
                 id="field-tieu_de"
                 rows={2}
-                placeholder="Nhập trích yếu hoặc tiêu đề văn bản..."
+                placeholder={t('resourceManagement.placeholderTitle')}
                 value={formData.tieu_de}
                 onChange={(e) => {
                   setIsDirty(true);
@@ -714,7 +733,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 <input
                   id="field-noi_ban_hanh"
                   type="text"
-                  placeholder="VD: Ban Giám Đốc, Khối Nghiệp Vụ..."
+                  placeholder={t('resourceManagement.placeholderAuthority')}
                   value={formData.noi_ban_hanh}
                   onChange={(e) => {
                     setIsDirty(true);
@@ -724,34 +743,27 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 />
               </div>
 
-              {/* Người tạo tài liệu (Tự do set theo Cán bộ hoặc Nhân viên) */}
+              {/* Người tạo tài liệu (Cố định theo tài khoản đăng nhập) */}
               <div>
                 <label
                   htmlFor="field-nguoi_tao_name"
                   className="text-xs font-semibold text-main block mb-1"
                 >
-                  Người tạo tài liệu <span className="text-muted font-normal text-xs">(nhập tự do hoặc chọn theo CBNV)</span>
+                  {t('resourceManagement.fieldAuthorFixed')}
                 </label>
                 <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <i className="fa-solid fa-lock text-xs" />
+                  </div>
                   <input
                     id="field-nguoi_tao_name"
                     type="text"
-                    list="cbnv-staff-list"
-                    placeholder="Nhập họ tên người tạo hoặc chọn cán bộ..."
-                    value={formData.nguoi_tao_name || ''}
-                    onChange={(e) => {
-                      setIsDirty(true);
-                      setFormData((prev) => ({ ...prev, nguoi_tao_name: e.target.value }));
-                    }}
-                    className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
+                    readOnly
+                    disabled
+                    value={formData.nguoi_tao_name || defaultAuthor}
+                    title={t('resourceManagement.authorFixedTooltip')}
+                    className="w-full pl-8 pr-3 py-2 bg-surface-elevated/70 border border-border-subtle rounded-lg text-sm text-secondary cursor-not-allowed select-none font-medium opacity-90"
                   />
-                  <datalist id="cbnv-staff-list">
-                    {staffSuggestions.map((s) => (
-                      <option key={s.id} value={s.ho_ten}>
-                        {s.ho_ten}{s.chuc_vu_ten ? ` — ${s.chuc_vu_ten}` : ''}{s.don_vi_ten ? ` (${s.don_vi_ten})` : ''}
-                      </option>
-                    ))}
-                  </datalist>
                 </div>
               </div>
             </div>
@@ -771,14 +783,14 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             {/* 4 lựa chọn Hiệu lực */}
             <div>
               <label className="text-xs font-semibold text-main block mb-2">
-                Trạng thái hiệu lực <span className="text-danger">*</span>
+                {t('resourceManagement.fieldStatus')} <span className="text-danger">*</span>
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { value: 'CON_HIEU_LUC', label: 'Còn hiệu lực', color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30' },
-                  { value: 'CON_HIEU_LUC_1_PHAN', label: 'Còn HL 1 phần', color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
-                  { value: 'HET_HIEU_LUC', label: 'Hết hiệu lực', color: 'text-rose-600 bg-rose-500/10 border-rose-500/30' },
-                  { value: 'HET_VA_THAY_THE', label: 'Hết & thay thế', color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
+                  { value: 'CON_HIEU_LUC', label: t('resourceManagement.statusActive'), color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30' },
+                  { value: 'CON_HIEU_LUC_1_PHAN', label: t('resourceManagement.statusPartial'), color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
+                  { value: 'HET_HIEU_LUC', label: t('resourceManagement.statusExpired'), color: 'text-rose-600 bg-rose-500/10 border-rose-500/30' },
+                  { value: 'HET_VA_THAY_THE', label: t('resourceManagement.statusReplaced'), color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
                 ].map((st) => {
                   const isSelected = formData.hieu_luc === st.value;
                   return (
@@ -808,7 +820,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             {/* Phạm vi áp dụng */}
             <div>
               <label className="text-xs font-semibold text-main block mb-1">
-                Phạm vi áp dụng
+                {t('resourceManagement.fieldScope')}
               </label>
               <div className="flex items-center gap-4 text-xs">
                 <label className="inline-flex items-center gap-2 cursor-pointer text-main">
@@ -823,7 +835,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     }}
                     className="text-primary focus:ring-0 cursor-pointer"
                   />
-                  <span>Tất cả phòng ban</span>
+                  <span>{t('resourceManagement.scopeAllDepts')}</span>
                 </label>
                 <label className="inline-flex items-center gap-2 cursor-pointer text-main">
                   <input
@@ -837,7 +849,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     }}
                     className="text-primary focus:ring-0 cursor-pointer"
                   />
-                  <span>Nội bộ phòng ban</span>
+                  <span>{t('resourceManagement.scopeInternalDept')}</span>
                 </label>
               </div>
             </div>
@@ -852,7 +864,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     htmlFor="field-ngay_het_hieu_luc"
                     className="text-xs font-semibold text-main block mb-1"
                   >
-                    Ngày hết hiệu lực{' '}
+                    {t('resourceManagement.fieldExpirationDate')}{' '}
                     {formData.hieu_luc === 'HET_VA_THAY_THE' && (
                       <span className="text-danger">*</span>
                     )}
@@ -887,12 +899,12 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                       htmlFor="field-link_thay_the"
                       className="text-xs font-semibold text-main block mb-1"
                     >
-                      Link tài liệu thay thế mới <span className="text-danger">*</span>
+                      {t('resourceManagement.fieldReplacementLink')} <span className="text-danger">*</span>
                     </label>
                     <input
                       id="field-link_thay_the"
                       type="url"
-                      placeholder="https://example.com/files/van-ban-moi.pdf"
+                      placeholder={t('resourceManagement.placeholderReplacementLink')}
                       value={formData.link_thay_the}
                       onChange={(e) => {
                         setIsDirty(true);
@@ -1030,7 +1042,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                             {file.name}
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold border border-primary/20 shrink-0">
-                            Mới thêm
+                            {t('resourceManagement.newlyAdded')}
                           </span>
                           <span className="text-[11px] text-muted shrink-0">
                             ({formatSize(file.size)})
@@ -1041,8 +1053,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                           type="button"
                           onClick={() => handleRemoveSelectedFile(idx)}
                           className="p-1 text-muted hover:text-danger rounded transition-colors"
-                          title="Xóa tệp này"
-                          aria-label="Xóa tệp"
+                          title={t('resourceManagement.deleteThisFile')}
+                          aria-label={t('resourceManagement.deleteThisFile')}
                         >
                           <i className="fa-solid fa-trash-can text-xs" />
                         </button>
@@ -1063,12 +1075,12 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               htmlFor="field-ghi_chu"
               className="text-xs font-semibold text-main block mb-1"
             >
-              Ghi chú bổ sung
+              {t('resourceManagement.fieldNotesExtra')}
             </label>
             <input
               id="field-ghi_chu"
               type="text"
-              placeholder="Nhập ghi chú (nếu có)..."
+              placeholder={t('resourceManagement.placeholderNotes')}
               value={formData.ghi_chu}
               onChange={(e) => {
                 setIsDirty(true);
@@ -1097,7 +1109,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             icon={isLoading ? 'fa-spinner fa-spin' : 'fa-check'}
             onClick={handleSubmit}
             isLoading={isLoading}
-            disabled={isLoading || categories.length === 0}
+            disabled={isLoading || categories.length === 0 || (!isAdmin && !isEditMode)}
+            title={!isAdmin && !isEditMode ? t('resourceManagement.adminOnlyAddDocument') : undefined}
             className="text-xs shadow-sm"
           >
             {isEditMode ? t('resourceManagement.saveChanges') : t('resourceManagement.save')}
