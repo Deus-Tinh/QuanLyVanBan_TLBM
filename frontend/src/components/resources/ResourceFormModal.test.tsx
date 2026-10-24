@@ -27,10 +27,14 @@ describe('ResourceFormModal Component', () => {
     expect(screen.queryByRole('button', { name: /^Còn hiệu lực$/i })).not.toBeInTheDocument();
     // Hiển thị badge Còn hiệu lực mặc định
     expect(screen.getByText(/Còn hiệu lực \(Mặc định khi tạo mới\)/i)).toBeInTheDocument();
-    // Hiển thị nhãn Ngày hết hiệu lực (Tùy chọn)
-    expect(screen.getByText(/Ngày hết hiệu lực \(Tùy chọn\)/i)).toBeInTheDocument();
+    // Hiển thị nhãn Hẹn ngày tự động hết hiệu lực (Tùy chọn)
+    expect(screen.getByText(/Hẹn ngày tự động hết hiệu lực \(Tùy chọn\)/i)).toBeInTheDocument();
     // Hiển thị gợi ý tự động hết hiệu lực
-    expect(screen.getByText(/hệ thống sẽ tự động chuyển sang Hết hiệu lực khi tới ngày/i)).toBeInTheDocument();
+    expect(screen.getByText(/tự động chuyển sang Hết hiệu lực khi tới ngày/i)).toBeInTheDocument();
+    // Ô chọn ngày hết hiệu lực có min attribute để không cho chọn ngày trước ngày tạo
+    const expDateInput = document.getElementById('field-ngay_het_hieu_luc') as HTMLInputElement;
+    expect(expDateInput).toBeInTheDocument();
+    expect(expDateInput.min).toBeTruthy();
   });
 
   it('renders status selector buttons in Edit Mode', () => {

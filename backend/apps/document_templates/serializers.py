@@ -157,6 +157,13 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        ngay_dang = attrs.get('ngay_dang') or (self.instance.ngay_dang if self.instance else None)
+        ngay_het_hieu_luc = attrs.get('ngay_het_hieu_luc') if 'ngay_het_hieu_luc' in attrs else (self.instance.ngay_het_hieu_luc if self.instance else None)
+        if ngay_het_hieu_luc and ngay_dang and ngay_het_hieu_luc < ngay_dang:
+            raise serializers.ValidationError({
+                'ngay_het_hieu_luc': 'Ngày hết hiệu lực không thể trước ngày đăng / ngày ban hành.'
+            })
+
         hieu_luc = attrs.get('hieu_luc') or (self.instance.hieu_luc if self.instance else 'CON_HIEU_LUC')
         link_thay_the = attrs.get('link_thay_the') if 'link_thay_the' in attrs else (self.instance.link_thay_the if self.instance else '')
         if hieu_luc == 'HET_VA_THAY_THE' and not (link_thay_the and link_thay_the.strip()):

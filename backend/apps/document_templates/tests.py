@@ -561,6 +561,24 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         self.assertIn(past_doc.id, expired_ids)
         self.assertNotIn(future_doc.id, expired_ids)
 
+    def test_expiration_date_cannot_be_before_posted_date(self):
+        self.client.force_authenticate(user=self.admin)
+        from django.utils import timezone
+        import datetime
+        today = timezone.localdate()
+        yesterday = today - datetime.timedelta(days=1)
+        response = self.client.post('/api/resources/documents/', {
+            'dm_tai_lieu': self.cat1.id,
+            'loai_tai_lieu': [self.type1.id],
+            'tieu_de': 'Tài liệu test ngày hết hạn không hợp lệ',
+            'ngay_dang': today.strftime('%Y-%m-%d'),
+            'ngay_het_hieu_luc': yesterday.strftime('%Y-%m-%d'),
+            'hieu_luc': 'HET_HIEU_LUC',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('ngay_het_hieu_luc', response.data)
+
+
 
 
 

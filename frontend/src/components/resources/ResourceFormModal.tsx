@@ -499,6 +499,13 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     }
 
 
+    // Ràng buộc ngày hết hiệu lực không thể trước ngày đăng / ngày tạo
+    if (formData.ngay_het_hieu_luc && formData.ngay_dang && formData.ngay_het_hieu_luc < formData.ngay_dang) {
+      newErrors.ngay_het_hieu_luc = t('resourceManagement.valExpDateBeforePostDate', {
+        date: formatDate(formData.ngay_dang),
+      });
+    }
+
     // Ràng buộc nghiêm ngặt khi Hết và thay thế
     if (formData.hieu_luc === 'HET_VA_THAY_THE') {
       if (!formData.ngay_het_hieu_luc) {
@@ -970,11 +977,12 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     htmlFor="field-ngay_het_hieu_luc"
                     className="text-xs font-semibold text-main block mb-1"
                   >
-                    {t('resourceManagement.fieldExpirationDateOptional')}
+                    {t('resourceManagement.fieldScheduledExpiryDate')}
                   </label>
                   <input
                     id="field-ngay_het_hieu_luc"
                     type="date"
+                    min={formData.ngay_dang || getTodayLocalDateString()}
                     value={formData.ngay_het_hieu_luc}
                     onChange={(e) => {
                       setIsDirty(true);
@@ -988,8 +996,13 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     }}
                     className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
                   />
+                  {errors.ngay_het_hieu_luc && (
+                    <p className="text-danger text-xs mt-1 font-medium">
+                      {errors.ngay_het_hieu_luc}
+                    </p>
+                  )}
                   <p className="text-[11px] text-muted mt-1 leading-relaxed">
-                    {t('resourceManagement.autoExpireHint')}
+                    {t('resourceManagement.scheduledExpiryHint')}
                   </p>
                   {formData.ngay_het_hieu_luc && (
                     <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] flex items-center gap-1.5">
@@ -1050,7 +1063,11 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     >
                       {formData.hieu_luc === 'HET_VA_THAY_THE'
                         ? t('resourceManagement.fieldExpirationDate')
-                        : t('resourceManagement.fieldExpirationDateOptional')}{' '}
+                        : formData.hieu_luc === 'CON_HIEU_LUC'
+                        ? t('resourceManagement.fieldScheduledExpiryDate')
+                        : formData.hieu_luc === 'HET_HIEU_LUC'
+                        ? t('resourceManagement.fieldTerminationDate')
+                        : t('resourceManagement.fieldPartialExpiryDate')}{' '}
                       {formData.hieu_luc === 'HET_VA_THAY_THE' && (
                         <span className="text-danger">*</span>
                       )}
@@ -1058,6 +1075,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     <input
                       id="field-ngay_het_hieu_luc"
                       type="date"
+                      min={formData.ngay_dang || getTodayLocalDateString()}
                       value={formData.ngay_het_hieu_luc}
                       onChange={(e) => {
                         setIsDirty(true);
@@ -1076,6 +1094,15 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                         {errors.ngay_het_hieu_luc}
                       </p>
                     )}
+                    <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                      {formData.hieu_luc === 'CON_HIEU_LUC'
+                        ? t('resourceManagement.scheduledExpiryHint')
+                        : formData.hieu_luc === 'HET_HIEU_LUC'
+                        ? t('resourceManagement.terminationDateHint')
+                        : formData.hieu_luc === 'HET_VA_THAY_THE'
+                        ? ''
+                        : t('resourceManagement.autoExpireHint')}
+                    </p>
                     {formData.ngay_het_hieu_luc && formData.ngay_het_hieu_luc > getTodayLocalDateString() && (
                       <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] flex items-center gap-1.5">
                         <i className="fa-solid fa-calendar-check text-blue-500 shrink-0" />
