@@ -116,6 +116,14 @@ const formatSize = (bytes?: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 };
 
+const getTodayLocalDateString = (): string => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   isOpen,
   onClose,
@@ -199,7 +207,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             loai_tai_lieu: initialData.loai_tai_lieu || [],
             ky_hieu: initialData.ky_hieu || '',
             tieu_de: initialData.tieu_de || '',
-            ngay_dang: initialData.ngay_dang || new Date().toISOString().split('T')[0],
+            ngay_dang: initialData.ngay_dang || getTodayLocalDateString(),
             noi_ban_hanh: initialData.noi_ban_hanh || '',
             nguoi_tao_name: initialData.nguoi_tao_name || defaultAuthor,
             hieu_luc: initialData.hieu_luc || 'CON_HIEU_LUC',
@@ -242,7 +250,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             loai_tai_lieu: [],
             ky_hieu: '',
             tieu_de: '',
-            ngay_dang: new Date().toISOString().split('T')[0],
+            ngay_dang: getTodayLocalDateString(),
             noi_ban_hanh: '',
             nguoi_tao_name: defaultAuthor,
             hieu_luc: 'CON_HIEU_LUC',
@@ -489,9 +497,6 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       newErrors.tieu_de = t('resourceManagement.valEnterTitle');
     }
 
-    if (!formData.ngay_dang) {
-      newErrors.ngay_dang = t('resourceManagement.valSelectDate');
-    }
 
     // Ràng buộc nghiêm ngặt khi Hết và thay thế
     if (formData.hieu_luc === 'HET_VA_THAY_THE') {
@@ -531,6 +536,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
 
     if (!validateForm()) return;
 
+    const effectiveDate = formData.ngay_dang || getTodayLocalDateString();
+
     const data = new FormData();
     data.append('dm_tai_lieu', String(formData.dm_tai_lieu));
     formData.loai_tai_lieu.forEach((tId) => {
@@ -538,7 +545,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     });
     data.append('ky_hieu', formData.ky_hieu.trim());
     data.append('tieu_de', formData.tieu_de.trim());
-    data.append('ngay_dang', formData.ngay_dang);
+    data.append('ngay_dang', effectiveDate);
     data.append('noi_ban_hanh', formData.noi_ban_hanh.trim());
     data.append('hieu_luc', formData.hieu_luc);
     data.append('hien_thi', formData.hien_thi);
@@ -566,6 +573,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       formData: data,
       payload: {
         ...formData,
+        ngay_dang: effectiveDate,
         files: selectedFiles,
         deleted_attachment_ids: deletedAttachmentIds,
       },
@@ -822,28 +830,28 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 />
               </div>
 
-              {/* Ngày đăng (*) */}
+              {/* Ngày đăng (Cố định theo ngày tạo) */}
               <div>
                 <label
                   htmlFor="field-ngay_dang"
                   className="text-xs font-semibold text-main block mb-1"
                 >
-                  {t('resourceManagement.fieldPostedDate')} <span className="text-danger">*</span>
+                  {t('resourceManagement.fieldPostedDateFixed')}
                 </label>
-                <input
-                  id="field-ngay_dang"
-                  type="date"
-                  value={formData.ngay_dang}
-                  onChange={(e) => {
-                    setIsDirty(true);
-                    setFormData((prev) => ({ ...prev, ngay_dang: e.target.value }));
-                    if (errors.ngay_dang) setErrors((prev) => ({ ...prev, ngay_dang: '' }));
-                  }}
-                  className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
-                />
-                {errors.ngay_dang && (
-                  <p className="text-danger text-xs mt-1 font-medium">{errors.ngay_dang}</p>
-                )}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                    <i className="fa-solid fa-lock text-xs" />
+                  </div>
+                  <input
+                    id="field-ngay_dang"
+                    type="date"
+                    readOnly
+                    disabled
+                    value={formData.ngay_dang}
+                    title={t('resourceManagement.postedDateFixedTooltip')}
+                    className="w-full pl-8 pr-3 py-2 bg-surface-elevated/70 border border-border-subtle rounded-lg text-sm text-secondary cursor-not-allowed select-none font-medium opacity-90"
+                  />
+                </div>
               </div>
             </div>
 

@@ -43,6 +43,11 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   // Format ngày dd/mm/yyyy
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr);
+    if (match) {
+      const [, y, m, d] = match;
+      return `${d}/${m}/${y}`;
+    }
     try {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;

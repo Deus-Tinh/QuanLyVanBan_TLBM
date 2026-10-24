@@ -147,6 +147,8 @@
     "fieldAuthor": "Document Creator",
     "fieldAuthorFixed": "Document Creator (Fixed by account)",
     "authorFixedTooltip": "Fixed according to the current logged-in account",
+    "fieldPostedDateFixed": "Posted Date (Fixed by creation date)",
+    "postedDateFixedTooltip": "Fixed by the document creation date",
     "fixedByAccount": "Fixed by account",
     "newlyAdded": "Newly added",
     "clickToViewDetail": "Click to view document details",

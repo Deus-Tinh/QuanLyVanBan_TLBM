@@ -147,6 +147,8 @@
     "fieldAuthor": "Người tạo tài liệu",
     "fieldAuthorFixed": "Người tạo tài liệu (Cố định theo tài khoản)",
     "authorFixedTooltip": "Cố định theo tài khoản đăng nhập hiện tại",
+    "fieldPostedDateFixed": "Ngày đăng (Cố định theo ngày tạo)",
+    "postedDateFixedTooltip": "Cố định theo ngày tạo của tài liệu",
     "fixedByAccount": "Cố định theo tài khoản",
     "newlyAdded": "Mới thêm",
     "clickToViewDetail": "Bấm để xem chi tiết tài liệu",

@@ -160,6 +160,9 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         loai_tai_lieu = validated_data.pop('loai_tai_lieu', [])
         file_dinh_kem = validated_data.pop('file_dinh_kem', None)
+        if not validated_data.get('ngay_dang'):
+            from django.utils import timezone
+            validated_data['ngay_dang'] = timezone.localdate()
         instance = TaiLieuChiTiet.objects.create(**validated_data)
         if loai_tai_lieu:
             instance.loai_tai_lieu.set(loai_tai_lieu)
@@ -189,6 +192,7 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
         loai_tai_lieu = validated_data.pop('loai_tai_lieu', None)
         file_dinh_kem = validated_data.pop('file_dinh_kem', None)
         validated_data.pop('nguoi_tao', None)
+        validated_data.pop('ngay_dang', None)  # Ngày đăng cố định theo ngày tạo, không cho phép chỉnh sửa
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
