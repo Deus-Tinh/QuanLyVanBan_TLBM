@@ -2,7 +2,7 @@
  * Danh sách hồ sơ: "Cần tôi ký duyệt", "Tôi đã gửi trình", "Hồ sơ theo quyền" (#80 mục E) kèm bộ lọc:
  * thẻ lọc nhanh có số lượng (đang chờ ký, bị trả lại, quá hạn, hoàn tất…), ô tìm kiếm tự áp dụng và
  * phần "Lọc thêm" thu gọn (mức độ, quy trình, khoảng ngày). Hộp rỗng và chưa lọc thì không hiện khối lọc.
- * Danh sách phân trang phía server (10 hồ sơ mỗi trang); đổi bộ lọc hoặc hộp thì về trang 1.
+ * Danh sách phân trang phía server (10 hồ sơ mỗi trang); đổi bộ lọc thì về trang 1 (mỗi hộp là một route riêng).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -129,11 +129,6 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
   const { t, loi, lang } = useSigningT();
   const [loc, setLoc] = useState<BoLocHoSo>({});
   const [trang, setTrang] = useState(1);
-  const [hopDangXem, setHopDangXem] = useState(hop);
-  if (hopDangXem !== hop) {  // đổi hộp: về trang 1
-    setHopDangXem(hop);
-    setTrang(1);
-  }
   const dem = useTai(() => signingApi.thongKe(hop), [hop]);
   const ds = useTai(() => signingApi.danhSach(hop, loc, trang), [hop, loc, trang]);
   const hoSo = ds.duLieu?.results;
