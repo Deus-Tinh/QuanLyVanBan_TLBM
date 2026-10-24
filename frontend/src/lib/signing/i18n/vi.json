@@ -85,6 +85,7 @@
     "tatCa": "Tất cả",
     "tuNgay": "Từ ngày",
     "denNgay": "Đến ngày",
+    "loiKhoangNgay": "Từ ngày không được lớn hơn Đến ngày. Vui lòng chọn lại khoảng ngày.",
     "loc": "Lọc",
     "locThem": "Lọc thêm",
     "xoaLoc": "Xóa lọc",

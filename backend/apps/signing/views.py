@@ -300,6 +300,21 @@ def _ho_so_theo_hop(request):
                        fields={"hop": ["Giá trị không hợp lệ."]})
 
 
+def _doc_khoang_ngay(tham_so):
+    """Đọc khoảng ngày lọc `tu_ngay`/`den_ngay` (YYYY-MM-DD); sai định dạng hoặc `tu_ngay` > `den_ngay` thì trả 400."""
+    khoang = {}
+    for ten in ("tu_ngay", "den_ngay"):
+        if tham_so.get(ten):
+            khoang[ten] = parse_date(tham_so[ten])
+            if khoang[ten] is None:
+                raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
+                                   fields={ten: ["Ngày không hợp lệ."]})
+    if khoang.get("tu_ngay") and khoang.get("den_ngay") and khoang["tu_ngay"] > khoang["den_ngay"]:
+        raise SigningError(code="tham_so_khong_hop_le", detail="Từ ngày không được lớn hơn Đến ngày.",
+                           fields={"tu_ngay": ["Từ ngày không được lớn hơn Đến ngày."]})
+    return khoang
+
+
 def _loc_ho_so(queryset, tham_so):
     """Bộ lọc danh sách: trạng thái, quy trình (id), từ khóa (số hiệu, trích yếu văn bản trình ký — văn bản đi hoặc
     nhập tay, mã/tên quy trình, ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
@@ -323,13 +338,11 @@ def _loc_ho_so(queryset, tham_so):
         if tu_khoa.lstrip("#").isdigit():
             dieu_kien |= Q(pk=int(tu_khoa.lstrip("#")))
         queryset = tim_kiem.chu_thich(queryset, *cot).filter(dieu_kien)
-    for ten, phep in (("tu_ngay", "gte"), ("den_ngay", "lte")):
-        if tham_so.get(ten):
-            ngay = parse_date(tham_so[ten])
-            if ngay is None:
-                raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
-                                   fields={ten: ["Ngày không hợp lệ."]})
-            queryset = queryset.filter(**{f"created_at__date__{phep}": ngay})
+    khoang = _doc_khoang_ngay(tham_so)
+    if khoang.get("tu_ngay"):
+        queryset = queryset.filter(created_at__date__gte=khoang["tu_ngay"])
+    if khoang.get("den_ngay"):
+        queryset = queryset.filter(created_at__date__lte=khoang["den_ngay"])
     return queryset
 
 
@@ -636,13 +649,7 @@ class TaiLieuView(SigningAPIView):
         if loai and loai not in self.LOAI:
             raise SigningError(code="tham_so_khong_hop_le", detail="loai phải là DU_THAO, LUOT hoặc HOAN_TAT.",
                                fields={"loai": ["Giá trị không hợp lệ."]})
-        khoang = {}
-        for ten in ("tu_ngay", "den_ngay"):
-            if ts.get(ten):
-                khoang[ten] = parse_date(ts[ten])
-                if khoang[ten] is None:
-                    raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
-                                       fields={ten: ["Ngày không hợp lệ."]})
+        khoang = _doc_khoang_ngay(ts)
         xem_duoc = _loc_ho_so(trinh_ky_service.trinh_ky_xem_duoc(request.user), {"q": ts.get("q", "")})
         ho_so = list(SigningRequest.objects.filter(pk__in=xem_duoc.values("pk")).select_related("quy_trinh")
                      .prefetch_related("luot_trinh_set").order_by("-created_at")[:500])
