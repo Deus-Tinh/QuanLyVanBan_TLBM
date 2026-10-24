@@ -531,7 +531,7 @@ describe('TaiLieuPage khoảng ngày và tải trong hộp xem', () => {
     expect(screen.getByLabelText('Từ ngày')).toHaveValue('');
   });
 
-  it('hộp xem PDF có nút Tải về: tải đúng tệp, đúng tên; lỗi thì báo trong hộp', async () => {
+  it('hộp xem PDF có nút Tải xuống: tải đúng tệp, đúng tên; lỗi thì báo trong hộp', async () => {
     api.taiLieu.mockResolvedValue(trang([tep]));
     api.tepCuaLuot.mockResolvedValue(new Blob(['%PDF-']));
     URL.createObjectURL = vi.fn(() => 'blob:tep');
@@ -541,12 +541,12 @@ describe('TaiLieuPage khoảng ngày và tải trong hộp xem', () => {
     fireEvent.click((await screen.findAllByText('trinh-ky-12-luot-1.pdf'))[0]);
     const hop = within(await screen.findByRole('dialog'));
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledTimes(1));
-    fireEvent.click(hop.getByRole('button', { name: 'Tải về' }));
+    fireEvent.click(hop.getByRole('button', { name: 'Tải xuống' }));
     await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
     expect(api.tepCuaLuot).toHaveBeenLastCalledWith(12, 5);
     expect(URL.createObjectURL).toHaveBeenCalled();
     api.tepCuaLuot.mockRejectedValueOnce(new Error('Mất kết nối'));
-    fireEvent.click(hop.getByRole('button', { name: 'Tải về' }));
+    fireEvent.click(hop.getByRole('button', { name: 'Tải xuống' }));
     expect(await hop.findByRole('alert')).toBeInTheDocument();
     expect(click).toHaveBeenCalledTimes(1);
     click.mockRestore();
@@ -660,7 +660,7 @@ describe('TaiLieuPanel', () => {
     URL.revokeObjectURL = vi.fn();
     boc(<TaiLieuPanel hoSo={hoSo()} />);
     expect(screen.getByText('Bản trình ký')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Tải về/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Tải xuống/ }));
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
   });
 });
