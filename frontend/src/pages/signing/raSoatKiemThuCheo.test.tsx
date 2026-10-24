@@ -293,6 +293,25 @@ describe('KhoaPage: thu hồi khóa cần xác nhận', () => {
   });
 });
 
+describe('Vào thẳng đường dẫn khi thiếu quyền', () => {
+  const CHUYEN_VIEN: NguoiDungHienTai = { ...TOI, id: 9, la_quan_tri: false,
+    quyen: { view_trinhky: true, add_trinhky: false, send_trinhky: true, sign_trinhky: false } };
+
+  it('Khóa ký & PIN: không có quyền ký thì báo ngay, không hiện ô nhập PIN', async () => {
+    api.khoa.mockResolvedValue([]);
+    boc(<KhoaPage />, CHUYEN_VIEN);
+    expect(await screen.findByText(/chưa được cấp quyền ký nên không cần khóa ký/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('PIN mới (8 chữ số)')).not.toBeInTheDocument();
+  });
+
+  it('Tạo hồ sơ: không có quyền tạo thì báo ngay, không hiện form', async () => {
+    api.timVanBanDi.mockResolvedValue([]);
+    boc(<TaoHoSoPage />, CHUYEN_VIEN);
+    expect(await screen.findByText('Tài khoản của bạn chưa được cấp quyền tạo hồ sơ trình ký.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Lưu nháp và xem trước/ })).not.toBeInTheDocument();
+  });
+});
+
 describe('QuyTrinhPage: thao tác an toàn', () => {
   const QT = (sua: Partial<QuyTrinh> = {}) => ({
     id: 1, ma_quy_trinh: 'QT1', ten_quy_trinh: 'Duyệt hai cấp', mo_ta: '', phien_ban: 1, trang_thai: 'HOAT_DONG',

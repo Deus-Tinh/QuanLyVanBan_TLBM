@@ -11,7 +11,7 @@ import { DangTai, HopThoai, LoiTai, OChonTep, ThongBao, TruongNhap } from '@comp
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
 import { docLoi, signingApi } from '@lib/signing/api';
 import { GIOI_HAN, hanChotDaQua, kiemTraTepPdf, LOP_O_NHAP, moTaVanBan, tenNguoiKyCauHinh } from '@lib/signing/dinhDang';
-import { useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
+import { coQuyen, useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { HoSoChiTiet, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
 import { khungTuDiemBam, soKhung } from '@lib/signing/viTri';
@@ -269,7 +269,8 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
 }
 
 export default function TaoHoSoPage() {
-  const { loi } = useSigningT();
+  const { t, loi } = useSigningT();
+  const { toi } = useToi();
   const [params] = useSearchParams();
   const nhapId = Number(params.get('ho_so')) || null;
   const [hoSo, setHoSo] = useState<HoSoChiTiet | null>(null);
@@ -304,6 +305,8 @@ export default function TaoHoSoPage() {
     }).catch(setLoiTai);
   }, [hoSo]);
 
+  // Vào thẳng đường dẫn khi chưa có quyền tạo: báo ngay thay vì để điền form rồi mới bị từ chối
+  if (!coQuyen(toi, 'add_trinhky')) return <ThongBao loai="canh_bao">{t('tao.khongCoQuyen')}</ThongBao>;
   if (loiTai) {
     return <LoiTai thongBao={loi(loiTai)} onThuLai={nhapId ? () => { setLoiTai(null); setLanThu((n) => n + 1); } : undefined} />;
   }

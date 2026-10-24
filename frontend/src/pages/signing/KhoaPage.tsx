@@ -9,7 +9,7 @@ import type { KhoaKy } from '@lib/signing/types';
 import { DangTai, HopThoai, LoiTai, OChonTep, ThongBao, TrangThaiBadge, TruongNhap } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { GIOI_HAN, LOP_O_NHAP } from '@lib/signing/dinhDang';
-import { useTai, useToi } from '@lib/signing/hooks';
+import { coQuyen, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import { docFileKhoaTuTep, DUOI_FILE_KHOA, taiXuongFileKhoa } from '@lib/signing/fileKhoa';
 import { hoTroEd25519, kiemTraPin, layBanBoc } from '@lib/signing/khoaKy';
@@ -77,6 +77,8 @@ export default function KhoaPage() {
   if (ds.dangTai && !ds.duLieu) return <DangTai />;
   if (ds.loi) return <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />;
   if (hoTro === false) return <ThongBao>{t('khoa.khongHoTro')}</ThongBao>;
+  // Vào thẳng đường dẫn khi chưa có quyền ký: không cho nhập PIN rồi mới báo 403
+  if (!coQuyen(toi, 'sign_trinhky')) return <ThongBao loai="thong_tin">{t('khoa.khongCoQuyen')}</ThongBao>;
 
   const sanSang = hoatDong && coBanBoc;
   const taiFile = () => lam(async () => {

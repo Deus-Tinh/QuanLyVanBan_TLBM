@@ -148,7 +148,8 @@
     "boChon": "Bỏ chọn",
     "loiTepDinhDang": "Chỉ nhận tệp PDF (.pdf).",
     "loiTepRong": "Tệp rỗng, hãy chọn tệp khác.",
-    "loiHanChot": "Hạn chót phải sau thời điểm hiện tại."
+    "loiHanChot": "Hạn chót phải sau thời điểm hiện tại.",
+    "khongCoQuyen": "Tài khoản của bạn chưa được cấp quyền tạo hồ sơ trình ký."
   },
   "chiTiet": {
     "tienTrinh": "Tiến trình ký duyệt",
@@ -300,7 +301,8 @@
     "daNhapFile": "Đã nhập file khóa vào thiết bị này.",
     "daTaoVaTaiFile": "Đã tạo khóa và tải file khóa về máy.",
     "daDoiPinTaiFile": "Đã đổi PIN và tải file khóa mới; file cũ không còn dùng được.",
-    "xacNhanThuHoi": "Thu hồi khóa ký “{ma}”? Khóa bị thu hồi không ký được nữa; bạn cần tạo khóa mới để tiếp tục ký."
+    "xacNhanThuHoi": "Thu hồi khóa ký “{ma}”? Khóa bị thu hồi không ký được nữa; bạn cần tạo khóa mới để tiếp tục ký.",
+    "khongCoQuyen": "Tài khoản của bạn chưa được cấp quyền ký nên không cần khóa ký. Liên hệ quản trị nếu cần ký duyệt."
   },
   "loi": {
     "pin_8_chu_so": "PIN phải gồm đúng 8 chữ số.",

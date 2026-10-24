@@ -148,7 +148,8 @@
     "boChon": "Clear",
     "loiTepDinhDang": "Only PDF files (.pdf) are accepted.",
     "loiTepRong": "The file is empty; choose another file.",
-    "loiHanChot": "The deadline must be later than now."
+    "loiHanChot": "The deadline must be later than now.",
+    "khongCoQuyen": "Your account has no permission to create signing requests."
   },
   "chiTiet": {
     "tienTrinh": "Signing progress",
@@ -300,7 +301,8 @@
     "daNhapFile": "Key file imported to this device.",
     "daTaoVaTaiFile": "Key created and key file downloaded.",
     "daDoiPinTaiFile": "PIN changed and a new key file downloaded; the old file no longer works.",
-    "xacNhanThuHoi": "Revoke signing key “{ma}”? A revoked key can no longer sign; create a new key to keep signing."
+    "xacNhanThuHoi": "Revoke signing key “{ma}”? A revoked key can no longer sign; create a new key to keep signing.",
+    "khongCoQuyen": "Your account has no signing permission, so it does not need a signing key. Contact the administrator if you must sign."
   },
   "loi": {
     "pin_8_chu_so": "The PIN must be exactly 8 digits.",
