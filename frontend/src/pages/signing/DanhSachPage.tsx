@@ -170,16 +170,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                   <dt>{t('danhSach.dangCho')}</dt>
                   <dd className="text-main break-words">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</dd>
                   <dt>{t('danhSach.nguoiTao')}</dt><dd className="text-main break-words">{h.ten_nguoi_tao}</dd>
-                  <dt>{t('danhSach.hanChot')}</dt>
-                  <dd className="text-main">
-                    <div>{dinhDangNgay(h.han_chot, lang)}</div>
-                    {h.qua_han_cap && h.han_xu_ly_cap && (
-                      <div className="mt-0.5 flex items-center gap-1 text-xs text-warning-text" title={t('danhSach.hanCap')}>
-                        <i className="fa-regular fa-clock" aria-hidden="true" />
-                        <span>{t('danhSach.hanCap')}: {dinhDangNgay(h.han_xu_ly_cap, lang)}</span>
-                      </div>
-                    )}
-                  </dd>
+                  <dt>{t('danhSach.hanChot')}</dt><dd className="text-main">{dinhDangNgay(h.han_chot, lang)}</dd>
                 </dl>
               </li>
             ))}
@@ -218,12 +209,6 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                         <i className="fa-regular fa-calendar text-muted text-xs shrink-0" aria-hidden="true" />
                         <span>{dinhDangNgay(h.han_chot, lang)}</span>
                       </div>
-                      {h.qua_han_cap && h.han_xu_ly_cap && (
-                        <div className="mt-0.5 flex items-center gap-1 text-xs text-warning-text" title={t('danhSach.hanCap')}>
-                          <i className="fa-regular fa-clock" aria-hidden="true" />
-                          <span>{t('danhSach.hanCap')}: {dinhDangNgay(h.han_xu_ly_cap, lang)}</span>
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))}
