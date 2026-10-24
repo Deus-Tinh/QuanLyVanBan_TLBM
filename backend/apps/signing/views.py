@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -41,7 +41,7 @@ from .services import uy_quyen as uy_quyen_service
 from .services import yeu_cau_sua as yeu_cau_sua_service
 from .storage import StorageError, get_storage
 from .tich_hop import to_chuc
-from .tich_hop.van_ban import id_van_ban_khop, mo_ta_nhieu, tim_van_ban_di
+from .tich_hop.van_ban import id_van_ban_khop, mo_ta_nhieu_ho_so, tim_van_ban_di
 
 
 @api_view(["GET"])
@@ -87,7 +87,8 @@ class QuyTrinhListCreateView(SigningAPIView):
 
 
 class QuyTrinhDetailView(SigningAPIView):
-    """GET chi tiết; PUT sửa quy trình nháp (thay toàn bộ cấp ký); DELETE xóa quy trình nháp chưa có hồ sơ dùng."""
+    """GET chi tiết; PUT sửa quy trình nháp (thay toàn bộ cấp ký); DELETE xóa phiên bản chưa có hồ sơ nào dùng
+    (409 kèm số hồ sơ khi còn hồ sơ)."""
 
     def get(self, request, pk):
         process = get_object_or_404(_quy_trinh_xem_duoc(request.user), pk=pk)
@@ -259,22 +260,26 @@ def _ho_so_xem_duoc(request, pk):
     return get_object_or_404(trinh_ky_service.trinh_ky_xem_duoc(request.user), pk=pk)
 
 
-NHANH = ("nhap", "cho_ky", "tra_lai", "qua_han", "hoan_thanh", "tu_choi", "huy")
+# Bộ lọc trạng thái của danh sách (#275 mục 5): bốn nhóm loại trừ nhau. Hồ sơ nháp, không đồng ý, đã hủy không có
+# thẻ riêng, vẫn hiện ở "Tất cả".
+NHANH = ("cho_ky", "qua_han", "hoan_thanh", "tra_lai")
 
 
 def _dieu_kien_nhanh():
-    """Điều kiện của từng thẻ lọc nhanh; cần queryset đã gắn `trang_thai_luot_cuoi` (`_gan_luot_cuoi`)."""
+    """Điều kiện của từng thẻ lọc nhanh; cần queryset đã gắn `trang_thai_luot_cuoi` (`_gan_luot_cuoi`).
+    Đang chờ ký: lượt hiện hành chờ ký, chưa quá hạn. Quá hạn: lượt hiện hành chờ ký, đã qua hạn chót hoặc có cấp
+    đang ký đã qua hạn xử lý. Đã ký xong: hoàn tất. Trả lại để sửa: lượt hiện hành đang trả sửa."""
     tt, luot = enums.TrangThaiYeuCau, enums.TrangThaiLuotTrinh
+    bay_gio = timezone.now()
     qua_han_cap = Exists(SigningRequestStep.objects.filter(
-        luot_trinh__trinh_ky=OuterRef("pk"), trang_thai=enums.TrangThaiCapKy.DANG_KY, han_xu_ly__lt=timezone.now()))
+        luot_trinh__trinh_ky=OuterRef("pk"), trang_thai=enums.TrangThaiCapKy.DANG_KY, han_xu_ly__lt=bay_gio))
+    dang_cho = Q(trang_thai=tt.CHO_KY, trang_thai_luot_cuoi=luot.CHO_KY)
+    qua_han = Q(han_chot__lt=bay_gio) | qua_han_cap
     return {
-        "nhap": Q(trang_thai=tt.NHAP),
-        "cho_ky": Q(trang_thai=tt.CHO_KY, trang_thai_luot_cuoi=luot.CHO_KY),
-        "tra_lai": Q(trang_thai=tt.CHO_KY, trang_thai_luot_cuoi=luot.YEU_CAU_SUA),
-        "qua_han": Q(trang_thai=tt.CHO_KY) & (Q(han_chot__lt=timezone.now()) | qua_han_cap),
+        "cho_ky": dang_cho & ~qua_han,
+        "qua_han": dang_cho & qua_han,
         "hoan_thanh": Q(trang_thai=tt.HOAN_THANH),
-        "tu_choi": Q(trang_thai=tt.TU_CHOI),
-        "huy": Q(trang_thai=tt.HUY),
+        "tra_lai": Q(trang_thai=tt.CHO_KY, trang_thai_luot_cuoi=luot.YEU_CAU_SUA),
     }
 
 
@@ -296,8 +301,8 @@ def _ho_so_theo_hop(request):
 
 
 def _loc_ho_so(queryset, tham_so):
-    """Bộ lọc danh sách: trạng thái, quy trình (id), từ khóa (số hiệu, trích yếu văn bản, mã/tên quy trình,
-    ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
+    """Bộ lọc danh sách: trạng thái, quy trình (id), từ khóa (số hiệu, trích yếu văn bản trình ký — văn bản đi hoặc
+    nhập tay, mã/tên quy trình, ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
     if tham_so.get("trang_thai"):
         queryset = queryset.filter(trang_thai=tham_so["trang_thai"])
     if tham_so.get("nhanh"):
@@ -313,7 +318,7 @@ def _loc_ho_so(queryset, tham_so):
         queryset = queryset.filter(quy_trinh_id=int(tham_so["quy_trinh"]))
     tu_khoa = (tham_so.get("q") or "").strip()[:100]
     if tu_khoa:
-        cot = ("quy_trinh__ten_quy_trinh", "quy_trinh__ma_quy_trinh", "ghi_chu")
+        cot = ("quy_trinh__ten_quy_trinh", "quy_trinh__ma_quy_trinh", "ghi_chu", "so_hieu_van_ban", "trich_yeu_van_ban")
         dieu_kien = Q(van_ban_id__in=id_van_ban_khop(tu_khoa)) | tim_kiem.khop_khong_dau(tu_khoa, *cot)
         if tu_khoa.lstrip("#").isdigit():
             dieu_kien |= Q(pk=int(tu_khoa.lstrip("#")))
@@ -619,11 +624,11 @@ class TaiLieuView(SigningAPIView):
     """
     GET /tai-lieu/: trang tài liệu — mọi tệp của các hồ sơ người dùng được xem: bản dự thảo (hồ sơ chưa gửi), tệp của
     từng lượt trình, tệp hoàn tất. Lọc `q` (như danh sách hồ sơ), `loai` (DU_THAO | LUOT | HOAN_TAT), `tu_ngay`,
-    `den_ngay`; mới nhất trước. Tải tệp qua `tep/`, `tep/?luot=`, `tep-hoan-tat/` (kiểm quyền từng hồ sơ).
+    `den_ngay`; mới nhất trước. Phân trang như danh sách hồ sơ (`page`, `page_size`; trả {count, next, previous,
+    results}). Tải tệp qua `tep/`, `tep/?luot=`, `tep-hoan-tat/` (kiểm quyền từng hồ sơ).
     """
 
     LOAI = ("DU_THAO", "LUOT", "HOAN_TAT")
-    TOI_DA = 300
 
     def get(self, request):
         ts = request.query_params
@@ -641,11 +646,11 @@ class TaiLieuView(SigningAPIView):
         xem_duoc = _loc_ho_so(trinh_ky_service.trinh_ky_xem_duoc(request.user), {"q": ts.get("q", "")})
         ho_so = list(SigningRequest.objects.filter(pk__in=xem_duoc.values("pk")).select_related("quy_trinh")
                      .prefetch_related("luot_trinh_set").order_by("-created_at")[:500])
-        mo_ta = mo_ta_nhieu(h.van_ban_id for h in ho_so)
+        mo_ta = mo_ta_nhieu_ho_so(ho_so)
         tep = []
         for h in ho_so:
             chung = {"trinh_ky": h.pk, "trang_thai_ho_so": h.trang_thai, "ten_quy_trinh": h.quy_trinh.ten_quy_trinh,
-                     "van_ban": mo_ta.get(h.van_ban_id, {})}
+                     "van_ban": mo_ta.get(h.pk, {})}
             cac_luot = sorted(h.luot_trinh_set.all(), key=lambda x: x.so_luot)
             if not cac_luot and h.vi_tri_luu_tep:
                 tep.append({**chung, "loai": "DU_THAO", "luot": None, "so_luot": None, "phien_ban": h.phien_ban_van_ban,
@@ -668,7 +673,13 @@ class TaiLieuView(SigningAPIView):
         if khoang.get("den_ngay"):
             tep = [x for x in tep if timezone.localdate(x["thoi_diem"]) <= khoang["den_ngay"]]
         tep.sort(key=lambda x: x["thoi_diem"], reverse=True)
-        return Response(tep[: self.TOI_DA])
+        trang = TrangHoSo()
+        return trang.get_paginated_response(trang.paginate_queryset(tep, request, view=self))
+
+
+def gio_dia_phuong(gia_tri):
+    """Cùng định dạng giờ địa phương (+07:00) như các API khác; DRF để nguyên UTC với datetime trong dict thuần."""
+    return serializers.DateTimeField().to_representation(gia_tri) if gia_tri else None
 
 
 class ThongBaoView(SigningAPIView):
@@ -706,14 +717,14 @@ class ThongBaoView(SigningAPIView):
                 "van_ban": ten_van_ban,
                 "trang_thai_ho_so": tb.trinh_ky.trang_thai,
                 "ten_quy_trinh": tb.trinh_ky.quy_trinh.ten_quy_trinh,
-                "created_at": tb.created_at,
+                "created_at": gio_dia_phuong(tb.created_at),
                 "kenh_in_app": True,
                 "email_da_gui": email_nb.trang_thai == enums.TrangThaiThongBao.DA_GUI if email_nb else False,
                 "email_trang_thai": email_nb.trang_thai if email_nb else None,
                 "email_nguoi_nhan": tb.nguoi_nhan.email or None,
                 "nguoi_thao_tac": nguoi_thao_tac or None,
                 "ly_do": ly_do or None,
-                "han_xu_ly": thong_bao_service.han_xu_ly(tb),
+                "han_xu_ly": gio_dia_phuong(thong_bao_service.han_xu_ly(tb)),
             })
         return Response(ket_qua)
 
@@ -755,6 +766,36 @@ class NguoiDungView(SigningAPIView):
             if len(ket_qua) >= self.TOI_DA:
                 break
         return Response(ket_qua)
+
+
+class CanBoTheoChucVuView(SigningAPIView):
+    """
+    GET /can-bo-theo-chuc-vu/?chuc_vu=<id>[&don_vi=<id>]: cán bộ đang làm việc giữ chức vụ (trong đơn vị nếu có) để
+    form và trang chi tiết quy trình hiện tên những người khớp người ký cấu hình theo chức vụ (#275 mục 8). Dữ liệu
+    nhân sự của phân hệ CBNV, cùng phạm vi danh bạ `/api/accounts/staffs/`; cần quyền xem hoặc quản lý quy trình.
+    Trả {"count", "results": [{id, ten, chuc_vu, don_vi_id, don_vi}]} (tối đa 50 dòng, sắp theo đơn vị, họ tên).
+    """
+
+    TOI_DA = 50
+
+    def get(self, request):
+        if not co_quyen(request.user, QUAN_LY_QUY_TRINH):
+            yeu_cau_quyen(request.user, XEM_TRINH_KY)
+        tham_so = {}
+        for ten, bat_buoc in (("chuc_vu", True), ("don_vi", False)):
+            gia_tri = request.query_params.get(ten, "").strip()
+            if not gia_tri and not bat_buoc:
+                continue
+            if not gia_tri.isdigit():
+                raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải là số.",
+                                   fields={ten: ["Giá trị không hợp lệ."]})
+            tham_so[ten] = int(gia_tri)
+        queryset = to_chuc.can_bo_giu_chuc_vu(tham_so["chuc_vu"], tham_so.get("don_vi"))
+        can_bo = list(queryset.select_related("chuc_vu", "don_vi")
+                      .order_by("don_vi__stt_uu_tien", "ho_ten", "pk")[: self.TOI_DA])
+        return Response({"count": queryset.count(), "results": [
+            {"id": u.pk, "ten": to_chuc.ten_hien_thi(u), "chuc_vu": to_chuc.ten_chuc_vu(u) or None,
+             "don_vi_id": to_chuc.don_vi_cua(u), "don_vi": to_chuc.ten_don_vi(u) or None} for u in can_bo]})
 
 
 class DashboardView(SigningAPIView):

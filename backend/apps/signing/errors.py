@@ -1,6 +1,6 @@
 from django.http import Http404
 from rest_framework import status
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, NotFound
 from rest_framework.views import APIView
 from rest_framework.views import exception_handler as drf_exception_handler
 
@@ -48,10 +48,10 @@ def exception_handler(exc, context):
             "fields": exc.fields,
         }
     elif response.status_code == status.HTTP_400_BAD_REQUEST and isinstance(response.data, dict):
-        response.data = {"code": "du_lieu_khong_hop_le", "detail": "", "fields": response.data}
+        response.data = {"code": "du_lieu_khong_hop_le", "detail": "Dữ liệu không hợp lệ.", "fields": response.data}
     elif isinstance(response.data, dict) and "detail" in response.data:
         response.data = {
-            "code": "khong_tim_thay" if isinstance(exc, Http404) else getattr(exc, "default_code", "loi"),
+            "code": "khong_tim_thay" if isinstance(exc, (Http404, NotFound)) else getattr(exc, "default_code", "loi"),
             "detail": CHI_TIET_CHUAN.get(response.status_code, str(response.data["detail"])),
             "fields": {},
         }

@@ -27,7 +27,9 @@
     "batBuoc": "Bắt buộc",
     "khongCoQuyen": "Bạn không có quyền thực hiện thao tác này.",
     "loiMang": "Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại.",
-    "chon": "— Chọn —"
+    "chon": "— Chọn —",
+    "chonTep": "Chọn tệp",
+    "chuaChonTep": "Chưa chọn tệp"
   },
   "trangThai": {
     "NHAP": "Nháp",
@@ -69,7 +71,7 @@
     "maHoSo": "Hồ sơ",
     "soHieu": "Số hiệu",
     "trichYeu": "Trích yếu",
-    "vanBan": "Văn bản",
+    "vanBan": "Văn bản trình ký",
     "quyTrinh": "Quy trình",
     "trangThai": "Trạng thái",
     "dangCho": "Đang chờ",
@@ -92,12 +94,9 @@
     "nhanh": {
       "tat_ca": "Tất cả",
       "cho_ky": "Đang chờ ký",
-      "tra_lai": "Bị trả lại để sửa",
       "qua_han": "Quá hạn",
-      "nhap": "Nháp",
-      "hoan_thanh": "Hoàn tất",
-      "tu_choi": "Không đồng ý",
-      "huy": "Đã hủy"
+      "hoan_thanh": "Đã ký xong",
+      "tra_lai": "Trả lại để sửa"
     },
     "quaHan": "Quá hạn",
     "treHanCap": "Trễ hạn cấp",
@@ -108,12 +107,13 @@
     "truoc": "Trước",
     "sau": "Sau",
     "trang": "Trang {trang}/{tong}",
-    "tomTat": "Hiển thị {dau}–{cuoi} trên {tong} hồ sơ"
+    "tomTat": "Hiển thị {dau}–{cuoi} trên {tong} hồ sơ",
+    "tomTatTep": "Hiển thị {dau}–{cuoi} trên {tong} tệp"
   },
   "tao": {
     "buoc1": "Thông tin hồ sơ",
     "buoc2": "Xem trước và đặt vị trí ký",
-    "vanBanDi": "Văn bản",
+    "vanBanDi": "Văn bản trình ký",
     "timVanBan": "Tìm theo số hiệu hoặc trích yếu…",
     "khongCoVanBan": "Không tìm thấy văn bản bạn được xem (văn bản hạn chế không đi qua trình ký).",
     "quyTrinh": "Quy trình ký",
@@ -121,7 +121,7 @@
     "khongCoQuyTrinh": "Chưa có quy trình nào đang hoạt động mà bạn được dùng.",
     "hanChot": "Hạn chót (tùy chọn)",
     "ghiChu": "Ghi chú (tùy chọn)",
-    "tep": "Tệp PDF dự thảo (tối đa 20 MB)",
+    "tep": "Tệp PDF trình ký (tối đa 20 MB)",
     "taoNhap": "Lưu nháp và xem trước",
     "nguoiKyDuKien": "Người ký theo quy trình",
     "theoChucVu": "Theo chức vụ — xác định khi gửi",
@@ -133,7 +133,15 @@
     "chonNguoiKy": "Chức vụ có nhiều người phù hợp — chọn người ký",
     "gui": "Gửi trình ký",
     "xacNhanGui": "Sau khi gửi, tệp và mã băm được khóa; mọi người ký sẽ ký trên đúng tệp này.",
-    "maBam": "SHA-256 tệp"
+    "maBam": "SHA-256 tệp",
+    "chonVanBanDi": "Chọn văn bản đi",
+    "nhapVanBanKhac": "Nhập văn bản khác",
+    "goiYChonVanBanDi": "Chọn văn bản đi là tùy chọn; số hiệu, trích yếu lấy theo văn bản đi.",
+    "goiYNhapKhac": "Nhập số hiệu, trích yếu; tải tệp PDF trình ký ở ô bên dưới.",
+    "soHieu": "Số hiệu (tùy chọn)",
+    "trichYeu": "Trích yếu",
+    "daChonVanBan": "Đã chọn",
+    "boChon": "Bỏ chọn"
   },
   "chiTiet": {
     "tienTrinh": "Tiến trình ký duyệt",
@@ -236,11 +244,21 @@
     "moTa": "Mô tả",
     "nguoiKy": "Người ký",
     "soGioNhan": "Số giờ xử lý",
-    "xacNhanXoa": "Xóa quy trình nháp “{ten}”? Thao tác này không hoàn tác được.",
+    "xacNhanXoa": "Xóa quy trình “{ten}” (phiên bản {phienBan})? Thao tác này không hoàn tác được.",
     "khongThayNguoiDung": "Không tìm thấy tài khoản phù hợp.",
     "chuaCoChucVu": "Chưa có chức vụ",
     "goiYTim": "Mã, tên quy trình, đơn vị…",
-    "khongKhopLoc": "Không có quy trình nào khớp bộ lọc."
+    "khongKhopLoc": "Không có quy trình nào khớp bộ lọc.",
+    "xoaKhongDuoc": "Đang có {so} hồ sơ trình ký dùng phiên bản này nên không xóa được; hãy ngừng quy trình nếu không dùng nữa.",
+    "themTheoChucVu": "Thêm theo chức vụ",
+    "chonChucVu": "— Chọn chức vụ (Danh mục chức vụ) —",
+    "phamViChucVu": "Phạm vi chức vụ",
+    "theoChucVu": "Chức vụ: {ten}",
+    "ungVien": "Cán bộ đang giữ chức vụ",
+    "khongCoUngVien": "Chưa có cán bộ nào ở chức vụ/đơn vị này; cấp ký sẽ không có người ký.",
+    "theoDonViNguoiTrinh": "Khi gửi, người ký là người giữ chức vụ này trong đơn vị của người trình.",
+    "conNguoiKhac": "và {so} người khác",
+    "conDung": "Đang dùng và nháp"
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo trên trình duyệt, bảo vệ bằng PIN 8 chữ số (Argon2id). Khóa bí mật đã mã hóa được xuất ra file khóa; khi ký, tải file khóa lên và nhập PIN. Máy chủ không nhận PIN, file khóa hay khóa bí mật.",
@@ -304,7 +322,10 @@
     "nguoi_nhan_khong_hop_le": "Người nhận không hoạt động hoặc không có quyền ký.",
     "nguoi_nhan_da_co_trong_cap": "Người nhận đã có mặt trong cùng cấp ký.",
     "khong_hien_thi_duoc_pdf": "Không hiển thị được tệp PDF trên trình duyệt này. Tải tệp về để xem; nếu vẫn lỗi, báo quản trị.",
-    "van_ban_da_co_ho_so_dang_mo": "Văn bản đã có hồ sơ trình ký đang mở (nháp hoặc đang chờ ký). Hoàn tất hoặc hủy hồ sơ đó trước khi trình hồ sơ mới."
+    "van_ban_da_co_ho_so_dang_mo": "Văn bản đã có hồ sơ trình ký đang mở (nháp hoặc đang chờ ký). Hoàn tất hoặc hủy hồ sơ đó trước khi trình hồ sơ mới.",
+    "thieu_van_ban_trinh_ky": "Chọn văn bản đi hoặc nhập trích yếu văn bản trình ký.",
+    "van_ban_da_gan": "Hồ sơ gắn văn bản đi; số hiệu, trích yếu lấy theo văn bản đi.",
+    "pin_khong_dung_con_lai": "PIN không đúng. Còn {so} lần thử trước khi bị khóa."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Tạo hồ sơ",
@@ -346,7 +367,9 @@
     },
     "nguoiThaoTac": "Người thực hiện",
     "lyDo": "Lý do",
-    "hanXuLy": "Hạn xử lý"
+    "hanXuLy": "Hạn xử lý",
+    "hoSoHien": "Hồ sơ",
+    "noiDung": "Nội dung"
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
@@ -364,5 +387,10 @@
       "LUOT": "Bản trình ký",
       "HOAN_TAT": "Bản hoàn tất"
     }
+  },
+  "phamViChucVu": {
+    "DON_VI_NGUOI_TAO": "Trong đơn vị người trình",
+    "TOAN_CO_QUAN": "Toàn cơ quan",
+    "DON_VI_CO_DINH": "Trong đơn vị cố định của cấp"
   }
 }

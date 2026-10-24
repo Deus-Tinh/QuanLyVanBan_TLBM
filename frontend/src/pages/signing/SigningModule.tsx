@@ -30,7 +30,8 @@ export default function SigningModule() {
 
   const { pathname } = useLocation();
   const canKy = useTai(() => signingApi.thongKe('can_toi_ky'), [pathname]);
-  const soCanKy = canKy.duLieu?.cho_ky;
+  // Hồ sơ chờ tôi ký gồm cả hồ sơ đã quá hạn (bộ lọc tách hai nhóm)
+  const soCanKy = canKy.duLieu ? canKy.duLieu.cho_ky + canKy.duLieu.qua_han : undefined;
   const thongBao = useTai(() => signingApi.thongBao(), [pathname]);
   // lanXem đổi khi trang Thông báo đánh dấu đã xem: tính lại số mới
   const soMoi = lanXem >= 0 ? soThongBaoMoi(thongBao.duLieu, toi.duLieu?.id) : 0;
