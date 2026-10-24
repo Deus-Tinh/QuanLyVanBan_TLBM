@@ -1,5 +1,4 @@
 import base64
-import unicodedata
 
 from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef, Q, Subquery
@@ -9,10 +8,11 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from . import crypto, enums, selectors
+from . import crypto, enums, selectors, tim_kiem
 from .errors import ConflictError, SigningAPIView, SigningError
 from .models import (
     SigningAttempt, SigningKey, SigningNotification, SigningRequest, SigningRequestStep, SigningSignature,
@@ -313,11 +313,11 @@ def _loc_ho_so(queryset, tham_so):
         queryset = queryset.filter(quy_trinh_id=int(tham_so["quy_trinh"]))
     tu_khoa = (tham_so.get("q") or "").strip()[:100]
     if tu_khoa:
-        dieu_kien = (Q(van_ban_id__in=id_van_ban_khop(tu_khoa)) | Q(quy_trinh__ten_quy_trinh__icontains=tu_khoa)
-                     | Q(quy_trinh__ma_quy_trinh__icontains=tu_khoa) | Q(ghi_chu__icontains=tu_khoa))
+        cot = ("quy_trinh__ten_quy_trinh", "quy_trinh__ma_quy_trinh", "ghi_chu")
+        dieu_kien = Q(van_ban_id__in=id_van_ban_khop(tu_khoa)) | tim_kiem.khop_khong_dau(tu_khoa, *cot)
         if tu_khoa.lstrip("#").isdigit():
             dieu_kien |= Q(pk=int(tu_khoa.lstrip("#")))
-        queryset = queryset.filter(dieu_kien)
+        queryset = tim_kiem.chu_thich(queryset, *cot).filter(dieu_kien)
     for ten, phep in (("tu_ngay", "gte"), ("den_ngay", "lte")):
         if tham_so.get(ten):
             ngay = parse_date(tham_so[ten])
@@ -328,13 +328,24 @@ def _loc_ho_so(queryset, tham_so):
     return queryset
 
 
+class TrangHoSo(PageNumberPagination):
+    """Phân trang danh sách hồ sơ theo cách các module khác đang dùng: `page`, `page_size` (mặc định 10, tối đa 100);
+    trả {count, next, previous, results}."""
+
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 class TrinhKyListCreateView(SigningAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         queryset = _loc_ho_so(_ho_so_theo_hop(request), request.query_params)
-        queryset = queryset.select_related("quy_trinh").order_by("-created_at")
-        return Response(TrinhKySerializer(queryset, many=True).data)
+        queryset = queryset.select_related("quy_trinh").order_by("-created_at", "-pk")
+        trang = TrangHoSo()
+        ho_so = trang.paginate_queryset(queryset, request, view=self)
+        return trang.get_paginated_response(TrinhKySerializer(ho_so, many=True).data)
 
     def post(self, request):
         yeu_cau_quyen(request.user, TAO_TRINH_KY)
@@ -661,7 +672,8 @@ class TaiLieuView(SigningAPIView):
 
 
 class ThongBaoView(SigningAPIView):
-    """GET /thong-bao/: thông báo trong ứng dụng của người dùng hiện tại (mới nhất trước, tối đa 50)."""
+    """GET /thong-bao/: thông báo trong ứng dụng của người dùng hiện tại (mới nhất trước, tối đa 50). `han_xu_ly`: hạn của
+    cấp ký với thông báo cần ký, nhắc hạn, quá hạn."""
 
     def get(self, request):
         ket_qua = []
@@ -701,6 +713,7 @@ class ThongBaoView(SigningAPIView):
                 "email_nguoi_nhan": tb.nguoi_nhan.email or None,
                 "nguoi_thao_tac": nguoi_thao_tac or None,
                 "ly_do": ly_do or None,
+                "han_xu_ly": thong_bao_service.han_xu_ly(tb),
             })
         return Response(ket_qua)
 
@@ -723,21 +736,16 @@ class NguoiDungView(SigningAPIView):
 
     TOI_DA = 20
 
-    @staticmethod
-    def _bo_dau(chuoi):
-        chuoi = unicodedata.normalize("NFD", chuoi.lower()).replace("đ", "d")
-        return "".join(c for c in chuoi if unicodedata.category(c) != "Mn")
-
     def get(self, request):
         uy_quyen = request.query_params.get("muc_dich") == "uy_quyen"
         yeu_cau_quyen(request.user, UY_QUYEN_TRINH_KY if uy_quyen else QUAN_LY_QUY_TRINH)
-        tu_khoa = self._bo_dau(request.query_params.get("q", "").strip())
+        tu_khoa = tim_kiem.bo_dau(request.query_params.get("q", "").strip())
         User = get_user_model()
         lien_quan = [f for f in ("chuc_vu", "don_vi") if any(x.name == f for x in User._meta.get_fields())]
         ket_qua = []
         for u in User.objects.filter(is_active=True).select_related(*lien_quan).order_by("pk").iterator(chunk_size=500):
             ten, chuc_vu, don_vi = to_chuc.ten_hien_thi(u), to_chuc.ten_chuc_vu(u), to_chuc.ten_don_vi(u)
-            if tu_khoa and tu_khoa not in self._bo_dau(" ".join((ten, u.get_username(), chuc_vu, don_vi))):
+            if tu_khoa and tu_khoa not in tim_kiem.bo_dau(" ".join((ten, u.get_username(), chuc_vu, don_vi))):
                 continue
             if uy_quyen and not co_quyen(u, KY_TRINH_KY):
                 continue
