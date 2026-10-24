@@ -14,7 +14,7 @@ import TaiLieuPanel from '@components/signing/TaiLieuPanel';
 import TienTrinh from '@components/signing/TienTrinh';
 import TraoDoiPanel from '@components/signing/TraoDoiPanel';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
-import { signingApi } from '@lib/signing/api';
+import { docLoi, signingApi } from '@lib/signing/api';
 import { dinhDangNgay, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -94,7 +94,10 @@ export default function ChiTietPage() {
   }, [id, khoaAnh]);
 
   if (ct.dangTai && !hoSo) return <DangTai />;
-  if (ct.loi) return <LoiTai thongBao={loi(ct.loi)} onThuLai={ct.tai} />;
+  if (ct.loi) {
+    const la404 = docLoi(ct.loi).status === 404;
+    return <LoiTai thongBao={loi(ct.loi)} onThuLai={la404 ? undefined : ct.tai} />;
+  }
   if (!hoSo) return null;
 
   const khung: KhungHienThi[] = (luot?.cap_ky || []).flatMap((c) => c.nguoi_ky).flatMap((n) => {
@@ -115,8 +118,7 @@ export default function ChiTietPage() {
         <Card className="p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
-            <TrangThaiBadge trangThai={hoSo.trang_thai} />
-            {luot && luot.trang_thai !== hoSo.trang_thai && <TrangThaiBadge trangThai={luot.trang_thai} />}
+            <TrangThaiBadge trangThai={luot?.trang_thai === 'YEU_CAU_SUA' ? 'YEU_CAU_SUA' : hoSo.trang_thai} />
           </div>
           <div className="text-base font-semibold text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
           {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
