@@ -101,19 +101,46 @@ Lịch sử và thông báo (`CAN_KY`, `HOAN_THANH`, `TU_CHOI`, `YEU_CAU_SUA`, `
   chỉ được đặt mật khẩu khi còn mật khẩu không dùng được (sentinel của DDL, DB vừa `migrate`); admin đã khởi tạo bằng
   `seed_db`/`ADMIN_PASSWORD` thì giữ nguyên.
 - `--reset`: làm mới bộ hồ sơ mẫu. Lượt trình, chữ ký, nhật ký, bằng chứng tổng hợp bất biến theo trigger của DDL nên
-  không xóa được: hồ sơ mẫu cũ còn mở được hủy (có nhật ký), ghi chú đổi sang "Dữ liệu mẫu cũ", sau đó tạo bộ mới.
+  không xóa được: hồ sơ mẫu cũ còn mở được hủy (có nhật ký), ghi chú đổi sang "Dữ liệu mẫu cũ", ngày tạo và ngày trình
+  lùi 30 ngày (không chen vào 5 phiếu gần nhất của Dashboard và đầu danh sách), sau đó tạo bộ mới.
 - Ngày trình của các hồ sơ cách nhau 24 giờ để danh sách và Dashboard có ngày khác nhau.
 - Chữ ký mẫu dùng khóa Ed25519 tạm sinh trong bộ nhớ, thu hồi ngay sau khi ký; khóa bí mật không lưu. Khi lệnh cần
   ký (lần chạy đầu), khóa đang hoạt động của `truongphong`, `giamdoc`, `admin` được xoay vòng sang khóa tạm rồi thu
   hồi. Sau đó mỗi người tự tạo khóa ký ở trang **Khóa ký & PIN** để ký tiếp các hồ sơ đang chờ.
-- `--email-domain <miền>`: gán email `<username>@<miền>` cho tài khoản mẫu chưa có email để thử gửi mail thật.
+- `--email-domain <miền>`: gán email `<username>@<miền>` cho tài khoản mẫu chưa có email. Cần tùy chọn này thì tài
+  khoản mẫu mới có email và thông báo mới có kênh email; không có thì chỉ có thông báo trong ứng dụng.
 
-### 5.3. Chạy local
+### 5.3. Mật khẩu chung của tài khoản demo
+
+- Cả 5 tài khoản demo (`admin`, `vanthu`, `chuyenvien`, `truongphong`, `giamdoc`) dùng chung **mật khẩu demo của
+  lớp**: đặt `ADMIN_PASSWORD` và `DEMO_PASSWORD` cùng một giá trị trong `.env`. Không ghi giá trị mật khẩu vào repo.
+- `admin` đã tồn tại với mật khẩu khác: `python manage.py changepassword admin` (hoặc `pnpm manage changepassword
+  admin`). Bốn tài khoản còn lại: `python manage.py seed_signing_demo --dat-lai-mat-khau`.
+- Windows: không dùng được cú pháp `DEMO_PASSWORD='...' python ...`; ghi vào `backend/.env`:
+
+  ```dotenv
+  ADMIN_PASSWORD=<mật khẩu demo của lớp>
+  DEMO_PASSWORD=<mật khẩu demo của lớp>
+  ```
+
+  rồi chạy `pnpm manage seed_signing_demo --email-domain <miền email>`.
+
+### 5.4. Thử gửi mail thật
+
+- Ghi vào `backend/.env`: `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`,
+  `EMAIL_HOST_PASSWORD=<mật khẩu SMTP>`, `DEFAULT_FROM_EMAIL="Hệ thống QLVB <qlvb@baohiembaolong.vn>"`;
+  `SIGNING_EMAIL_BACKEND` để trống. `DEFAULT_FROM_EMAIL` trống thì mọi thư SMTP lỗi `Invalid address ''`
+  (`manage.py check` báo `signing.W003`).
+- Kiểm tra: `pnpm manage check`, rồi `pnpm manage sendtestemail <email nhận>`.
+- Chạy `seed_signing_demo --email-domain <miền>` để tài khoản mẫu có email. Email lỗi ghi `THAT_BAI`; sửa cấu hình
+  rồi chạy `gui_thong_bao_trinh_ky` để gửi lại.
+
+### 5.5. Chạy local
 
 ```bash
 pnpm db:setup                                   # hoặc: python scripts/build_db.py --seed
 cd backend
-DEMO_PASSWORD='<mật khẩu demo>' python manage.py seed_signing_demo
+DEMO_PASSWORD='<mật khẩu demo của lớp>' python manage.py seed_signing_demo --email-domain <miền email>
 python manage.py seed_signing_demo        # chạy lại: không tạo thêm bản ghi
 python manage.py nhac_han_trinh_ky               # nhắc hạn/quá hạn (chạy định kỳ)
 python manage.py gui_thong_bao_trinh_ky          # gửi lại email lỗi (chạy định kỳ)
@@ -121,7 +148,7 @@ python manage.py gui_thong_bao_trinh_ky          # gửi lại email lỗi (ch�
 
 Cần `SIGNING_DOCUMENT_ROOT` (thư mục lưu tệp PDF) như khi chạy ứng dụng.
 
-### 5.4. Chạy trên máy chủ staging
+### 5.6. Chạy trên máy chủ staging
 
 Deploy staging (`deploy/deploy.sh`, CI) chỉ nâng cấp DB bằng migration, không có bước chạy lệnh dữ liệu mẫu, và
 `deploy/` thuộc phần vận hành chung nên PR tính năng không sửa. Sau khi PR vào `staging` được merge và job deploy
@@ -130,7 +157,8 @@ xong, người có quyền SSH chạy một lần:
 ```bash
 cd /srv/qlvb/current/backend
 set -a; . /etc/qlvb/backend.env; set +a          # cấu hình DB, SIGNING_DOCUMENT_ROOT của staging
-DEMO_PASSWORD='<mật khẩu demo của lớp>' /srv/qlvb/current/venv/bin/python manage.py seed_signing_demo
+DEMO_PASSWORD='<mật khẩu demo của lớp>' /srv/qlvb/current/venv/bin/python manage.py seed_signing_demo \
+  --email-domain <miền email>
 ```
 
 Nếu `backend.env` đã có `DEMO_PASSWORD` thì bỏ phần gán biến trước lệnh. Lệnh chạy lại an toàn. Nên đặt lịch

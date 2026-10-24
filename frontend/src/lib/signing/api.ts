@@ -6,10 +6,12 @@
 import apiClient, { ApiError } from '@lib/apiClient';
 import type {
   BangChung, BoLocHoSo, BoLocTaiLieu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
-  ThamSoKdf, ThongBaoTrinhKy, TinNhan, TraoDoi, VanBanDi, ViTriKy,
+  ThamSoKdf, ThongBaoTrinhKy, TinNhan, TrangKetQua, TraoDoi, VanBanDi, ViTriKy,
 } from './types';
 
 export const SIGNING_BASE = '/api/v1/signing';
+/** Số hồ sơ mỗi trang danh sách (server mặc định 10, tối đa 100). */
+export const SO_HO_SO_MOI_TRANG = 10;
 
 export function taoKhoaChongTrung(): string {
   return crypto.randomUUID();
@@ -57,10 +59,10 @@ export const signingApi = {
   toi: () => apiClient.get<NguoiDungHienTai>(`${SIGNING_BASE}/toi/`),
 
   // ── Hồ sơ ────────────────────────────────────────────────────────────────
-  danhSach: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', loc: BoLocHoSo = {}) => {
-    const tham_so = new URLSearchParams({ hop });
+  danhSach: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', loc: BoLocHoSo = {}, trang = 1) => {
+    const tham_so = new URLSearchParams({ hop, page: String(trang), page_size: String(SO_HO_SO_MOI_TRANG) });
     Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
-    return apiClient.get<HoSo[]>(`${SIGNING_BASE}/trinh-ky/?${tham_so}`);
+    return apiClient.get<TrangKetQua<HoSo>>(`${SIGNING_BASE}/trinh-ky/?${tham_so}`);
   },
   thongKe: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca') =>
     apiClient.get<ThongKeHoSo>(`${SIGNING_BASE}/trinh-ky/thong-ke/?hop=${hop}`),

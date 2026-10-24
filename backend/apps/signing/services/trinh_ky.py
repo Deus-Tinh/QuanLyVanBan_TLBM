@@ -9,7 +9,7 @@ Cấp ký mở tuần tự theo `thu_tu`; người trong cùng cấp ký song so
 import io
 from datetime import timedelta
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
@@ -166,6 +166,31 @@ def dang_cho_toi_ky(nguoi):
     ).distinct()
 
 
+# ── Một văn bản một hồ sơ đang mở ───────────────────────────────────────────
+
+TRANG_THAI_DANG_MO = (enums.TrangThaiYeuCau.NHAP, enums.TrangThaiYeuCau.CHO_KY)
+
+
+def _kiem_tra_khong_co_ho_so_mo(document_type, van_ban_id, tru=None):
+    """
+    Mỗi văn bản chỉ có một hồ sơ đang mở (nháp hoặc đang chờ ký). Hồ sơ đã kết thúc (hoàn thành, từ chối, hủy) không
+    chặn việc trình lại. Khóa advisory theo văn bản (giữ đến hết transaction) để hai yêu cầu đồng thời không cùng qua.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s), %s)", [f"signing:{document_type}", van_ban_id])
+    dang_mo = SigningRequest.objects.filter(document_type=document_type, van_ban_id=van_ban_id,
+                                            trang_thai__in=TRANG_THAI_DANG_MO)
+    if tru is not None:
+        dang_mo = dang_mo.exclude(pk=tru)
+    ho_so = dang_mo.order_by("pk").first()
+    if ho_so is not None:
+        raise ConflictError(
+            code="van_ban_da_co_ho_so_dang_mo",
+            detail=f"Văn bản đã có hồ sơ trình ký #{ho_so.pk} đang mở. Hoàn tất hoặc hủy hồ sơ đó trước khi trình hồ sơ mới.",
+            fields={"van_ban_id": [f"Đang có hồ sơ #{ho_so.pk}."]},
+        )
+
+
 # ── Chống trùng thao tác (header Idempotency-Key, plan mục 7.5) ─────────────
 
 
@@ -187,6 +212,7 @@ def _thao_tac_da_xu_ly(hanh_dong, khoa_chong_trung, yeu_cau):
 def tao_nhap(nguoi_tao, *, document_type, van_ban_id, quy_trinh, tep, han_chot=None, ghi_chu="",
              dia_chi_ip=None):
     kiem_tra_van_ban_trinh_ky(nguoi_tao, document_type, van_ban_id)
+    _kiem_tra_khong_co_ho_so_mo(document_type, van_ban_id)
     quy_trinh = SigningProcess.objects.get(pk=quy_trinh.pk)
     _kiem_tra_quy_trinh(quy_trinh, nguoi_tao)
     _kiem_tra_han_chot(han_chot)
@@ -390,6 +416,7 @@ def gui(yeu_cau, nguoi, *, khoa_chong_trung, chon_nguoi_ky=None, vi_tri_ky=None,
     if yeu_cau.trang_thai != enums.TrangThaiYeuCau.NHAP:
         raise ConflictError(code="ho_so_khong_o_trang_thai_nhap", detail="Chỉ gửi được hồ sơ nháp.")
     kiem_tra_van_ban_trinh_ky(nguoi, yeu_cau.document_type, yeu_cau.van_ban_id)
+    _kiem_tra_khong_co_ho_so_mo(yeu_cau.document_type, yeu_cau.van_ban_id, tru=yeu_cau.pk)
     _kiem_tra_quy_trinh(yeu_cau.quy_trinh, nguoi)
     _kiem_tra_han_chot(yeu_cau.han_chot)
     luot, cap_dau = tao_luot_trinh(yeu_cau, nguoi, chon_nguoi_ky=chon_nguoi_ky or {},
@@ -461,6 +488,7 @@ def trinh_lai(yeu_cau, nguoi, *, khoa_chong_trung, han_chot=None, dia_chi_ip=Non
     if yeu_cau.trang_thai != enums.TrangThaiYeuCau.TU_CHOI:
         raise ConflictError(code="chi_trinh_lai_ho_so_bi_tu_choi", detail="Chỉ trình lại hồ sơ bị từ chối.")
     kiem_tra_van_ban_trinh_ky(nguoi, yeu_cau.document_type, yeu_cau.van_ban_id)
+    _kiem_tra_khong_co_ho_so_mo(yeu_cau.document_type, yeu_cau.van_ban_id)
     quy_trinh = SigningProcess.objects.filter(
         ma_quy_trinh=yeu_cau.quy_trinh.ma_quy_trinh, trang_thai=enums.TrangThaiQuyTrinh.HOAT_DONG,
     ).first()
