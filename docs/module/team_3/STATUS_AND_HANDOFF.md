@@ -10,14 +10,14 @@ Không có danh sách/API metadata Văn bản riêng trong Records. Tạo mới 
 
 ## Source và issue lịch sử
 
-- **#62:** guard model/trigger Hồ sơ chung, trim và test ngoại lệ PostgreSQL đã có trên nền tích hợp. Source có test save/queryset hạ cờ và `DatabaseError`; API thật đã kiểm chặn xóa 409 và validation. Issue còn mở; đề xuất cập nhật bằng chứng, đóng riêng sau duyệt.
-- **#149:** #150 đã merge vào nhánh nhóm trước đây, chức năng CRUD hiện có trên staging qua chuỗi #131/#184. UI thật kiểm thêm/sửa/cập nhật danh sách; xóa thực kiểm qua API, xác nhận và Hủy kiểm trên UI. Issue còn mở; cập nhật bằng chứng theo workflow hiện hành, không dùng base nhánh nhóm cũ cho việc mới.
-- **#160:** bản sửa #161 được thay thế bởi nền #184. Records hiện có migrations 0001–0003, không phục hồi chain cũ. Gate schema trên head #224 đạt 0 drift/baseline 0. Issue còn mở; đề xuất đóng phần đã được thay thế sau duyệt.
-- **#164:** đã tích hợp qua #185; source có debounce và reload sau CRUD, không còn lời gọi `beginReload`. Full frontend trên #224 đạt; UI thật kiểm tìm theo ký hiệu, đặt lại, dữ liệu sau ghi. Issue còn mở; đề xuất cập nhật kết quả rồi đóng sau duyệt.
+- **#62:** guard model/trigger Hồ sơ chung, trim và test ngoại lệ PostgreSQL đã có trên nền tích hợp. Source có test save/queryset hạ cờ và `DatabaseError`; API thật đã kiểm chặn xóa 409 và validation. Đã đăng bằng chứng và đóng completed ngày 24/10 sau khi người phụ trách duyệt.
+- **#149:** #150 đã merge vào nhánh nhóm trước đây, chức năng CRUD hiện có trên staging qua chuỗi #131/#184. UI thật kiểm thêm/sửa/cập nhật danh sách; xóa thực kiểm qua API, xác nhận và Hủy kiểm trên UI. Đã đăng bằng chứng và đóng completed ngày 24/10 sau duyệt; không dùng base nhánh nhóm cũ cho việc mới.
+- **#160:** bản sửa #161 được thay thế bởi nền #184. Records hiện có migrations 0001–0003, không phục hồi chain cũ. Gate schema trên head #224 đạt 0 drift/baseline 0. Đã đóng completed ngày 24/10 sau duyệt, theo bản tích hợp thay thế #184.
+- **#164:** đã tích hợp qua #185; source có debounce và reload sau CRUD, không còn lời gọi `beginReload`. Full frontend trên #224 đạt; UI thật kiểm tìm theo ký hiệu, đặt lại, dữ liệu sau ghi. Đã đăng kết quả và đóng completed ngày 24/10 sau duyệt.
 - **#223/#224:** phần Records ở `a5b45064a31ada9c7c1288fe7cdf5c8e43e80bd0`, PR Draft, chưa merge. Đã kiểm riêng, còn phụ thuộc #229/#230 và nghiệm thu tích hợp cuối.
-- **#83/#93:** chỉ cập nhật phần Nhóm 3, không đóng issue hoặc sửa trạng thái duyệt nhóm khác. #93 đã có bình luận Nhóm 3; cập nhật chính bình luận đó sau duyệt, không tạo báo cáo trùng.
+- **#83/#93:** chỉ cập nhật phần Nhóm 3, không đóng issue hoặc sửa trạng thái duyệt nhóm khác. Đã đăng tiến độ Nhóm 3 ở #83 và cập nhật chính bình luận Nhóm 3 ở #93 sau duyệt, không tạo báo cáo trùng.
 
-Merge #184 `2afecb5` và #185 `19f949d` là tổ tiên của staging đối chiếu. Source đã tích hợp không tự đóng issue khi còn thiếu bước duyệt/liên kết hoàn tất; tài liệu này không thay đổi trạng thái GitHub.
+Merge #184 `2afecb5` và #185 `19f949d` là tổ tiên của staging đối chiếu. Ngày 24/10, người phụ trách đã duyệt tám nội dung phản hồi và việc đóng bốn issue riêng nêu trên. Đã đăng bảy bình luận mới, cập nhật chính bình luận Nhóm 3 tại #93, xác minh nội dung và trạng thái sau thao tác. #83/#93/#223/#229 vẫn mở; không sửa bảng duyệt hoặc phần nhóm khác.
 
 ## CI trên commit popup đã công bố
 
@@ -59,8 +59,8 @@ Log/ảnh/manifest/kết quả chi tiết giữ trong bộ QA local bị Git b�
 - [x] Nghiệm thu riêng Records bằng HTTP/trình duyệt/backend PostgreSQL 16 thật.
 - [ ] Nhận bản sửa #230 đồng bộ staging/CI đạt; nghiệm thu lại danh sách/count/chi tiết theo quyền.
 - [ ] Đồng bộ #224 với staging cuối và chạy gate trên head mới; không dùng CI head cũ cho head mới.
-- [ ] Duyệt phản hồi issue lịch sử và bình luận Nhóm 3 #83/#93 trước khi đăng.
-- [ ] Người phụ trách tự merge, theo dõi deploy/nghiệm thu staging; không đóng issue chung.
+- [x] Duyệt và đăng phản hồi issue lịch sử, cập nhật đúng bình luận Nhóm 3 #93; đóng riêng #62/#149/#160/#164, giữ issue chung mở.
+- [ ] Người phụ trách rà soát PR tài liệu #256 và CI cuối; tự thao tác merge, theo dõi deploy/nghiệm thu staging, không đóng issue chung.
 
 Không ghi ngày chốt tích hợp cố định khi phụ thuộc chưa bàn giao. ETA lịch sử đã qua không được dùng làm trạng thái hiện hành.
 
