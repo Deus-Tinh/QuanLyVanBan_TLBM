@@ -158,7 +158,8 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
           <ul className="space-y-2 lg:hidden" aria-label={t('danhSach.vanBan')}>
             {hoSo.map((h) => (
               <li key={h.id} className="rounded-lg border border-border-subtle p-3">
-                <Link to={`/approvals/${h.id}`} className="block font-semibold text-main hover:text-primary break-words">
+                <Link to={`/approvals/${h.id}`} title={moTaVanBan(h.van_ban, h.van_ban_id)}
+                  className="block font-semibold text-main hover:text-primary break-words line-clamp-3">
                   {moTaVanBan(h.van_ban, h.van_ban_id)}
                 </Link>
                 <div className="mt-1 text-xs text-muted break-words">#{h.id} · {h.ten_quy_trinh}</div>

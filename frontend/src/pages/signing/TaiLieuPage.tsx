@@ -144,7 +144,8 @@ export default function TaiLieuPage() {
               <li key={`the-${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="space-y-1 py-3">
                 <div className="flex items-start justify-between gap-2">
                   <button type="button" onClick={() => xemChiTiet(tep)}
-                    className="min-w-0 break-words text-left font-semibold text-main hover:text-primary hover:underline">
+                    className="min-w-0 break-words text-left font-semibold text-main hover:text-primary hover:underline line-clamp-3"
+                    title={moTaVanBan(tep.van_ban, tep.trinh_ky)}>
                     {moTaVanBan(tep.van_ban, tep.trinh_ky)}
                   </button>
                   <Badge variant="info" size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge>
