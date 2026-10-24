@@ -828,7 +828,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             <i className="fa-solid fa-folder" />
             <span>{t('resourceManagement.tabFolders')}</span>
             <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+              className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold inline-flex items-center justify-center leading-none shrink-0 ${
                 activeTab === 'category'
                   ? 'bg-primary-subtle text-primary'
                   : 'bg-surface-elevated text-secondary'
@@ -854,7 +854,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
             <i className="fa-solid fa-tags" />
             <span>{t('resourceManagement.tabTypes')}</span>
             <span
-              className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+              className={`min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold inline-flex items-center justify-center leading-none shrink-0 ${
                 activeTab === 'type'
                   ? 'bg-primary-subtle text-primary'
                   : 'bg-surface-elevated text-secondary'

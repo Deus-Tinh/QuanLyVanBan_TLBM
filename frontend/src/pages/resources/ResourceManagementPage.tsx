@@ -1452,7 +1452,7 @@ export default function ResourceManagementPage() {
                       <i className={`fa-solid fa-layer-group text-xs ${isAll ? 'text-primary' : 'text-muted'}`} />
                       <span>{t('resourceManagement.all')}</span>
                       <span
-                        className={`px-1.5 py-0.5 text-[10px] sm:text-[11px] rounded-full font-bold ${
+                        className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                           isAll
                             ? 'bg-primary text-white'
                             : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1491,7 +1491,7 @@ export default function ResourceManagementPage() {
                       <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
                       <span>{cat.ten_tai_lieu}</span>
                       <span
-                        className={`px-1.5 py-0.5 text-[10px] sm:text-[11px] rounded-full font-bold ${
+                        className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                           isSelected
                             ? 'bg-primary text-white'
                             : 'bg-surface-elevated text-muted border border-border-subtle'
@@ -1584,7 +1584,7 @@ export default function ResourceManagementPage() {
                         <span className="truncate">{t('resourceManagement.allFolders')}</span>
                       </span>
                       <span
-                        className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                        className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                           selectedCategory === 'all'
                             ? 'bg-white/20 text-white'
                             : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1646,7 +1646,7 @@ export default function ResourceManagementPage() {
                               <span className="truncate">{cat.ten_tai_lieu}</span>
                             </button>
                             <span
-                              className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
+                              className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                                 isSelected
                                   ? 'bg-primary text-white'
                                   : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1711,7 +1711,7 @@ export default function ResourceManagementPage() {
                 >
                   <i className={`fa-solid fa-tags text-xs ${selectedType === 'all' ? 'text-primary' : 'text-muted'}`} />
                   <span>Loại</span>
-                  <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${
+                  <span className={`min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center text-[10px] rounded-full font-bold leading-none shrink-0 ${
                     selectedType === 'all'
                       ? 'bg-primary text-white'
                       : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1860,7 +1860,7 @@ export default function ResourceManagementPage() {
                         <i className="fa-solid fa-layer-group text-xs" />
                         <span className="truncate">Tất cả loại tài liệu</span>
                       </span>
-                      <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                      <span className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                         selectedType === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
                       }`}>
                         {categoryDocCount}
@@ -1930,7 +1930,7 @@ export default function ResourceManagementPage() {
                               <span className="truncate">{typeItem.ten_loai}</span>
                             </button>
 
-                            <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
+                            <span className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                               isSelected ? 'bg-primary text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
                             }`}>
                               {docCount}
