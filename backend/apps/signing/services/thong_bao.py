@@ -16,7 +16,7 @@ import logging
 from datetime import timedelta
 
 from django.conf import settings
-from django.core.mail import get_connection, send_mail
+from django.core import mail
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.module_loading import import_string
@@ -163,14 +163,32 @@ def thao_tac(tb):
     return (ten_hien_thi(log.nguoi_thuc_hien) if log else ""), (ly_do or "")
 
 
+LOAI_CO_HAN = ("CAN_KY", "NHAC_HAN", "QUA_HAN")
+SMTP_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+
+def han_xu_ly(tb):
+    """Hạn xử lý của cấp ký gắn với thông báo cần ký/nhắc hạn/quá hạn; None với loại khác hoặc cấp không đặt hạn."""
+    if tb.loai_thong_bao not in LOAI_CO_HAN or tb.buoc_ky_id is None:
+        return None
+    return tb.buoc_ky.buoc_ky.han_xu_ly
+
+
+def dinh_dang_ngay(thoi_diem):
+    """Ngày giờ kiểu Việt Nam theo múi giờ hệ thống: 25/10/2026 14:30."""
+    return f"{timezone.localtime(thoi_diem):%d/%m/%Y %H:%M}"
+
+
 def noi_dung(tb):
     van_ban = mo_ta_van_ban(tb.trinh_ky.document_type, tb.trinh_ky.van_ban_id)
     ten_van_ban = " — ".join(x for x in (van_ban.get("so_hieu"), van_ban.get("trich_yeu")) if x) or f"#{tb.trinh_ky_id}"
     duong_dan = f"{settings.SIGNING_FRONTEND_URL.rstrip('/')}/approvals/{tb.trinh_ky_id}"
     tieu_de = f"[Trình ký] {TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)}: {ten_van_ban}"
     nguoi_thao_tac, ly_do = thao_tac(tb)
+    han = han_xu_ly(tb)
     chi_tiet = (f"Người thực hiện: {nguoi_thao_tac}.\n" if nguoi_thao_tac else "") + \
-        (f"Lý do: {ly_do}\n" if ly_do else "")
+        (f"Lý do: {ly_do}\n" if ly_do else "") + \
+        (f"Hạn xử lý: {dinh_dang_ngay(han)}.\n" if han else "")
     than = (f"Xin chào {ten_hien_thi(tb.nguoi_nhan)},\n\n"
             f"{TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)} — hồ sơ trình ký #{tb.trinh_ky_id}: {ten_van_ban}.\n"
             f"{chi_tiet}"
@@ -180,21 +198,35 @@ def noi_dung(tb):
     return tieu_de, than, ten_van_ban
 
 
+def ket_noi_email():
+    """
+    Kết nối gửi thông báo, chạy trên Django 5.2 (EMAIL_BACKEND) và 6.1 (MAILERS).
+    - `SIGNING_EMAIL_BACKEND` trống hoặc là SMTP: mailer mặc định của dự án (SMTP lấy cấu hình EMAIL_* trong settings).
+      Django 6.1 không cho tạo SMTP backend trực tiếp khi đã khai báo MAILERS (đọc EMAIL_HOST bị chặn).
+    - Giá trị khác (console, locmem, backend kiểm thử): khởi tạo trực tiếp backend đó, không cần cấu hình máy chủ.
+    """
+    duong_dan = settings.SIGNING_EMAIL_BACKEND
+    if duong_dan and duong_dan != SMTP_BACKEND:
+        return import_string(duong_dan)(fail_silently=False)
+    mailers = getattr(mail, "mailers", None)  # Django 6.1+
+    if mailers is not None and hasattr(settings, "MAILERS"):
+        return mailers.default
+    return mail.get_connection(fail_silently=False)
+
+
 def gui_email(tb_id):
     """Gửi một thông báo email; trả True khi gửi được. Gọi lại an toàn (chỉ gửi bản ghi chưa gửi)."""
     with transaction.atomic():
-        tb = (SigningNotification.objects.select_for_update(skip_locked=True)
-              .select_related("trinh_ky__quy_trinh", "trinh_ky__create_by", "nguoi_nhan")
+        tb = (SigningNotification.objects.select_for_update(skip_locked=True, of=("self",))
+              .select_related("trinh_ky__quy_trinh", "trinh_ky__create_by", "nguoi_nhan", "buoc_ky__buoc_ky")
               .filter(pk=tb_id, kenh=enums.KenhThongBao.EMAIL)
               .exclude(trang_thai=enums.TrangThaiThongBao.DA_GUI).first())
         if tb is None:
             return False
         tieu_de, than, _ = noi_dung(tb)
         try:
-            # Django 6.1 (MAILERS) không nhận tên backend ở get_connection: backend riêng thì khởi tạo trực tiếp
-            ket_noi = (import_string(settings.SIGNING_EMAIL_BACKEND)(fail_silently=False)
-                       if settings.SIGNING_EMAIL_BACKEND else get_connection(fail_silently=False))
-            send_mail(tieu_de, than, None, [tb.nguoi_nhan.email], connection=ket_noi)
+            thu = mail.EmailMessage(tieu_de, than, None, [tb.nguoi_nhan.email])  # người gửi: DEFAULT_FROM_EMAIL
+            ket_noi_email().send_messages([thu])
         except Exception as exc:  # SMTP/cấu hình: ghi lỗi để gửi lại, không làm hỏng nghiệp vụ
             logger.warning("Gửi email thông báo %s thất bại: %s", tb.pk, exc)
             tb.trang_thai, tb.loi_gui = enums.TrangThaiThongBao.THAT_BAI, str(exc)[:1000]
@@ -218,5 +250,6 @@ def gui_lai_email_ton():
 
 def cua_toi(nguoi, gioi_han=50):
     return (SigningNotification.objects.filter(nguoi_nhan=nguoi, kenh=enums.KenhThongBao.IN_APP)
-            .select_related("trinh_ky__quy_trinh", "trinh_ky__create_by", "nguoi_nhan").order_by("-created_at", "-pk")
+            .select_related("trinh_ky__quy_trinh", "trinh_ky__create_by", "nguoi_nhan", "buoc_ky__buoc_ky")
+            .order_by("-created_at", "-pk")
             [:gioi_han])

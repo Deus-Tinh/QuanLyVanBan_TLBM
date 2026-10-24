@@ -8,7 +8,7 @@
     "quyTrinh": "Workflows",
     "khoaCuaToi": "Signing key & PIN",
     "thongBao": "Notifications",
-    "taiLieu": "Signing files",
+    "taiLieu": "Public documents",
     "moi": "new"
   },
   "chung": {
@@ -100,6 +100,13 @@
       "huy": "Cancelled"
     },
     "quaHan": "Overdue"
+  },
+  "phanTrang": {
+    "nhan": "Pagination",
+    "truoc": "Previous",
+    "sau": "Next",
+    "trang": "Page {trang}/{tong}",
+    "tomTat": "Showing {dau}–{cuoi} of {tong} requests"
   },
   "tao": {
     "buoc1": "Request details",
@@ -203,6 +210,7 @@
     "tao": "Create workflow",
     "ma": "Workflow code",
     "ten": "Workflow name",
+    "tenCap": "Signing level name",
     "phamVi": "Scope",
     "donVi": "Department",
     "chonDonVi": "Select a department",
@@ -293,7 +301,8 @@
     "nguoi_ky_khong_cho_ky": "Only signers awaiting signature can be delegated.",
     "nguoi_nhan_khong_hop_le": "The delegate is inactive or lacks signing permission.",
     "nguoi_nhan_da_co_trong_cap": "The delegate is already in the same level.",
-    "khong_hien_thi_duoc_pdf": "This PDF cannot be displayed in this browser. Download the file to view it; if the problem persists, contact the administrator."
+    "khong_hien_thi_duoc_pdf": "This PDF cannot be displayed in this browser. Download the file to view it; if the problem persists, contact the administrator.",
+    "van_ban_da_co_ho_so_dang_mo": "This document already has an open signing request (draft or awaiting signature). Complete or cancel it before submitting a new one."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Request created",
@@ -334,7 +343,8 @@
       "emailNguoiNhan": "Recipient"
     },
     "nguoiThaoTac": "By",
-    "lyDo": "Reason"
+    "lyDo": "Reason",
+    "hanXuLy": "Due"
   },
   "taiLieu": {
     "goiYTim": "Number, summary, request ID, process…",
