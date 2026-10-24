@@ -1,6 +1,7 @@
 /**
  * Trang tài liệu: mọi tệp của các hồ sơ người dùng được xem — bản dự thảo, tệp từng lượt trình, tệp hoàn tất — kèm tìm
- * kiếm, lọc loại tệp và khoảng ngày, tải về (kiểm quyền ở máy chủ). Tệp lưu ở máy chủ theo trinh_ky/ và hoan_tat/<năm>/<tháng>/.
+ * kiếm, lọc loại tệp và khoảng ngày, tải về (kiểm quyền ở máy chủ). Phân trang phía server như danh sách hồ sơ
+ * (10 tệp mỗi trang; đổi bộ lọc thì về trang 1). Tệp lưu ở máy chủ theo trinh_ky/ và hoan_tat/<năm>/<tháng>/.
  */
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -8,8 +9,9 @@ import { Link } from 'react-router-dom';
 import { Badge, Button, Card } from '@components/common';
 import type { BadgeProps } from '@components/common/Badge';
 import { DangTai, LoiTai, Rong } from '@components/signing/ChungUI';
+import { PhanTrang } from '@components/signing/PhanTrang';
 import XemPdf from '@components/signing/XemPdf';
-import { signingApi } from '@lib/signing/api';
+import { SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -41,8 +43,13 @@ export default function TaiLieuPage() {
   const [tuKhoa, setTuKhoa] = useState('');
   const [tepXem, setTepXem] = useState<TepTaiLieu | null>(null);
   const [duLieuXem, setDuLieuXem] = useState<{ buf: ArrayBuffer | null; dangTai: boolean; loi: unknown } | null>(null);
-  const ds = useTai(() => signingApi.taiLieu(loc), [loc]);
-  const dat = (thay_doi: BoLocTaiLieu) => setLoc((cu) => ({ ...cu, ...thay_doi }));
+  const [trang, setTrang] = useState(1);
+  const ds = useTai(() => signingApi.taiLieu(loc, trang), [loc, trang]);
+  const dsTep = ds.duLieu?.results;
+  const dat = (thay_doi: BoLocTaiLieu) => {
+    setLoc((cu) => ({ ...cu, ...thay_doi }));
+    setTrang(1);
+  };
   const coLoc = Object.values(loc).some(Boolean);
 
 
@@ -101,7 +108,7 @@ export default function TaiLieuPage() {
           <div className="flex gap-2 lg:col-span-2">
             <Button type="submit" size="sm" icon="fa-filter">{t('danhSach.loc')}</Button>
             {coLoc && (
-              <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left" onClick={() => { setTuKhoa(''); setLoc({}); }}>
+              <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left" onClick={() => { setTuKhoa(''); setLoc({}); setTrang(1); }}>
                 {t('danhSach.xoaLoc')}
               </Button>
             )}
@@ -111,14 +118,14 @@ export default function TaiLieuPage() {
       <Card className="p-4 space-y-3">
         {ds.dangTai && <DangTai />}
         {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
-        {!ds.dangTai && !ds.loi && ds.duLieu?.length === 0 && (
+        {!ds.dangTai && !ds.loi && dsTep?.length === 0 && (
           <Rong icon="fa-folder-open">{t(coLoc ? 'taiLieu.khongKhopLoc' : 'taiLieu.rong')}</Rong>
         )}
-        {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
+        {!ds.dangTai && !ds.loi && !!dsTep?.length && (
           <>
           {/* Màn hẹp: dạng thẻ (bảng 7 cột không đọc được ở 390px) */}
           <ul className="divide-y divide-border-subtle md:hidden">
-            {ds.duLieu.map((tep) => (
+            {dsTep.map((tep) => (
               <li key={`the-${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="space-y-1 py-3">
                 <div className="flex items-start justify-between gap-2">
                   <button type="button" onClick={() => xemChiTiet(tep)}
@@ -151,7 +158,7 @@ export default function TaiLieuPage() {
                 </tr>
               </thead>
               <tbody className="divide-y border-border-subtle">
-                {ds.duLieu.map((tep) => (
+                {dsTep.map((tep) => (
                   <tr key={`${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="hover:bg-surface-hover/80 transition-colors">
                     <td className="px-3 py-3 text-left whitespace-nowrap" title={tep.van_ban.so_hieu}>
                       {tep.van_ban.so_hieu ? (
@@ -198,6 +205,8 @@ export default function TaiLieuPage() {
               </tbody>
             </table>
           </div>
+          <PhanTrang trang={trang} soMoiTrang={SO_HO_SO_MOI_TRANG} tong={ds.duLieu?.count ?? 0} onDoi={setTrang}
+            khoaTomTat="phanTrang.tomTatTep" />
           </>
         )}
       </Card>
