@@ -1,4 +1,11 @@
 -- =====================================================================
+-- THAY ĐỔI QUYỀN GỬI TRÌNH KÝ CỦA CHUYÊN VIÊN (Nhóm 5; issue #226; đánh dấu [CVTK] tại vị trí)
+-- Căn cứ: signing-backend-plan.md mục 8 (nhân viên đã xác thực được tạo yêu cầu; gửi cần send_trinhky + người tạo).
+--   Nhóm CV có add_trinhky nhưng thiếu send_trinhky nên hồ sơ do Chuyên viên tạo dừng ở NHAP: người tạo
+--   không gửi được, người có send_trinhky cũng không gửi thay vì không phải người tạo. Cấp send_trinhky cho CV;
+--   migration authorization 0007_grant_cv_send_trinhky bổ sung cho DB đã seed từ trước.
+-- Quy mô sau [CVTK] (nạp sạch): nhóm CV 22 quyền; 198 lượt phân quyền (thêm 1 lượt).
+-- =====================================================================
 -- THAY ĐỔI BỎ MỨC ĐỘ KHẨN CỦA TRÌNH KÝ (Nhóm 5; issue #238)
 -- Căn cứ: spec Nhóm 5 bỏ mức độ khẩn/ưu tiên; migration signing 0014_bo_muc_do.
 --   signing_request bỏ cột muc_do (VARCHAR(20) NOT NULL; THUONG | KHAN | HOA_TOC kiểm ở tầng ứng dụng).
@@ -2531,6 +2538,7 @@ WHERE
         'view_tailieu',
         'view_trinhky',
         'add_trinhky',
+        'send_trinhky', -- [CVTK] người tạo hồ sơ tự gửi trình ký
         'view_congviec',
         'view_dept_congviec',
         'add_congviec',
