@@ -1,6 +1,5 @@
 {
   "tieuDe": "Trình ký",
-  "moTa": "Trình ký và ký duyệt nội bộ văn bản đi theo quy trình nhiều cấp.",
   "nav": {
     "canToiKy": "Cần tôi ký duyệt",
     "toiGui": "Tôi đã gửi trình",
@@ -102,8 +101,7 @@
       "tu_choi": "Không đồng ý",
       "huy": "Đã hủy"
     },
-    "quaHan": "Quá hạn",
-    "hanCap": "hạn cấp"
+    "quaHan": "Quá hạn"
   },
   "phanTrang": {
     "nhan": "Phân trang",
@@ -170,8 +168,7 @@
     "maBam": "Mã băm",
     "bangChungJson": "Tải bằng chứng (JSON)",
     "xemChiTiet": "Xem chi tiết",
-    "uyQuyenTu": "Ký thay {ten}",
-    "veDanhSach": "Về danh sách hồ sơ"
+    "uyQuyenTu": "Ký thay {ten}"
   },
   "hanhDong": {
     "kyDuyet": "Ký duyệt",
@@ -271,9 +268,7 @@
     "daTaiFile": "Đã tải file khóa.",
     "daNhapFile": "Đã nhập file khóa vào thiết bị này.",
     "daTaoVaTaiFile": "Đã tạo khóa và tải file khóa về máy.",
-    "daDoiPinTaiFile": "Đã đổi PIN và tải file khóa mới; file cũ không còn dùng được.",
-    "khoaKy": "Khóa ký",
-    "hieuLuc": "hiệu lực từ"
+    "daDoiPinTaiFile": "Đã đổi PIN và tải file khóa mới; file cũ không còn dùng được."
   },
   "loi": {
     "pin_8_chu_so": "PIN phải gồm đúng 8 chữ số.",

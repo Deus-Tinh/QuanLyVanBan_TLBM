@@ -95,16 +95,8 @@ export default function ChiTietPage() {
 
   if (ct.dangTai && !hoSo) return <DangTai />;
   if (ct.loi) {
-    // Không tìm thấy / không được xem: thử lại vô ích, cho đường quay về danh sách
-    if (docLoi(ct.loi).status === 404) {
-      return (
-        <Card className="p-4">
-          <LoiTai thongBao={loi(ct.loi)} />
-          <Link to="/approvals/tat-ca" className="text-sm font-medium text-primary hover:underline">{t('chiTiet.veDanhSach')}</Link>
-        </Card>
-      );
-    }
-    return <LoiTai thongBao={loi(ct.loi)} onThuLai={ct.tai} />;
+    const la404 = docLoi(ct.loi).status === 404;
+    return <LoiTai thongBao={loi(ct.loi)} onThuLai={la404 ? undefined : ct.tai} />;
   }
   if (!hoSo) return null;
 
@@ -126,8 +118,7 @@ export default function ChiTietPage() {
         <Card className="p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
-            {/* Lượt đang trả sửa thì chỉ hiện trạng thái lượt, tránh "Đang chờ ký" cạnh "Đang trả lại để sửa" */}
-            <TrangThaiBadge trangThai={luot?.trang_thai === 'YEU_CAU_SUA' ? 'YEU_CAU_SUA' : hoSo.trang_thai} size="md" />
+            <TrangThaiBadge trangThai={luot?.trang_thai === 'YEU_CAU_SUA' ? 'YEU_CAU_SUA' : hoSo.trang_thai} />
           </div>
           <div className="text-base font-semibold text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
           {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
@@ -152,10 +143,7 @@ export default function ChiTietPage() {
           <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
           <DongThongTin nhan={t('danhSach.ngayGui')}>{dinhDangNgay(hoSo.ngay_gui, lang)}</DongThongTin>
-          <DongThongTin nhan={t('danhSach.hanChot')}>
-            {hoSo.han_chot || !hoSo.han_xu_ly_hien_tai ? dinhDangNgay(hoSo.han_chot, lang)
-              : `${dinhDangNgay(hoSo.han_xu_ly_hien_tai, lang)} (${t('danhSach.hanCap')})`}
-          </DongThongTin>
+          <DongThongTin nhan={t('danhSach.hanChot')}>{dinhDangNgay(hoSo.han_chot, lang)}</DongThongTin>
           <DongThongTin nhan={t('chiTiet.nguoiDangCho')}>
             {hoSo.dang_cho.length ? hoSo.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') : t('chiTiet.khongAiCho')}
           </DongThongTin>

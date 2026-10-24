@@ -120,9 +120,9 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
   );
 }
 
-export function TruongNhap({ nhan, children, ghiChu }: { nhan: string; children: React.ReactNode; ghiChu?: string }) {
+export function TruongNhap({ nhan, children, ghiChu, className = '' }: { nhan: string; children: React.ReactNode; ghiChu?: string; className?: string }) {
   return (
-    <label className="block space-y-1.5">
+    <label className={`block space-y-1.5 ${className}`}>
       <span className="block text-sm font-medium text-main">{nhan}</span>
       {children}
       {ghiChu && <span className="block text-xs text-muted">{ghiChu}</span>}

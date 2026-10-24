@@ -23,7 +23,11 @@ from django.utils.module_loading import import_string
 
 from .. import enums
 from ..models import (
-    SigningAuditLog, SigningChangeMessage, SigningChangeThread, SigningNotification, SigningRequestStepSigner,
+    SigningAuditLog,
+    SigningChangeMessage,
+    SigningChangeThread,
+    SigningNotification,
+    SigningRequestStepSigner,
 )
 from ..tich_hop.to_chuc import ten_hien_thi
 from ..tich_hop.van_ban import mo_ta_van_ban
@@ -143,20 +147,20 @@ HANH_DONG_CUA_LOAI = {"TU_CHOI": "TU_CHOI", "HUY": "HUY_TRINH_KY", "YEU_CAU_SUA"
                       "UY_QUYEN": "UY_QUYEN_KY"}
 
 
-def _tin_nhan_cua(tb):
-    """Tin nhắn sinh ra thông báo TIN_NHAN; khóa chống gửi trùng có dạng `TIN_NHAN:<id tin>:<người nhận>:<kênh>`."""
-    phan = tb.khoa_chong_gui_trung.split(":")
-    if len(phan) < 2 or not phan[1].isdigit():
-        return None
-    return SigningChangeMessage.objects.filter(pk=int(phan[1])).select_related("nguoi_viet").first()
-
-
 def thao_tac(tb):
-    """(tên người thao tác, lý do) của sự kiện sinh ra thông báo; ("", "") với loại không có thao tác người dùng.
-    Với TIN_NHAN: (người viết, nội dung tin nhắn rút gọn)."""
+    """(tên người thao tác, lý do) của sự kiện sinh ra thông báo; ("", "") với loại không có thao tác người dùng."""
     if tb.loai_thong_bao == "TIN_NHAN":
-        tin = _tin_nhan_cua(tb)
-        return (ten_hien_thi(tin.nguoi_viet), tin.noi_dung[:300]) if tin else ("", "")
+        tin = None
+        if tb.khoa_chong_gui_trung and tb.khoa_chong_gui_trung.startswith("TIN_NHAN:"):
+            parts = tb.khoa_chong_gui_trung.split(":")
+            if len(parts) >= 2 and parts[1].isdigit():
+                tin = SigningChangeMessage.objects.filter(pk=int(parts[1])).select_related("nguoi_viet").first()
+        if not tin:
+            tin = (SigningChangeMessage.objects.filter(yeu_cau_sua__luot_trinh__trinh_ky=tb.trinh_ky,
+                                                        created_at__lte=tb.created_at)
+                   .select_related("nguoi_viet").order_by("-created_at", "-pk").first())
+        return (ten_hien_thi(tin.nguoi_viet) if tin else ""), (tin.noi_dung if tin else "")
+
     hanh_dong = HANH_DONG_CUA_LOAI.get(tb.loai_thong_bao)
     if not hanh_dong:
         return "", ""
@@ -200,8 +204,10 @@ def noi_dung(tb):
     tieu_de = f"[Trình ký] {TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)}: {ten_van_ban}"
     nguoi_thao_tac, ly_do = thao_tac(tb)
     han = han_xu_ly(tb)
-    chi_tiet = (f"Người thực hiện: {nguoi_thao_tac}.\n" if nguoi_thao_tac else "") + \
-        (f"{'Nội dung' if tb.loai_thong_bao == 'TIN_NHAN' else 'Lý do'}: {ly_do}\n" if ly_do else "") + \
+    nhan_nguoi = "Người gửi" if tb.loai_thong_bao == "TIN_NHAN" else "Người thực hiện"
+    nhan_ly_do = "Nội dung" if tb.loai_thong_bao == "TIN_NHAN" else "Lý do"
+    chi_tiet = (f"{nhan_nguoi}: {nguoi_thao_tac}.\n" if nguoi_thao_tac else "") + \
+        (f"{nhan_ly_do}: {ly_do}\n" if ly_do else "") + \
         (f"Hạn xử lý: {dinh_dang_ngay(han)}.\n" if han else "")
     than = (f"Xin chào {ten_hien_thi(tb.nguoi_nhan)},\n\n"
             f"{TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)} — hồ sơ trình ký #{tb.trinh_ky_id}: {ten_van_ban}.\n"

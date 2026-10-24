@@ -125,15 +125,8 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
   );
 }
 
-/** Hạn chót của hồ sơ; không đặt hạn chót thì hiện hạn xử lý của cấp đang ký (ghi chú "hạn cấp"). */
-function HanChot({ h }: { h: { han_chot: string | null; han_xu_ly_hien_tai?: string | null } }) {
-  const { t, lang } = useSigningT();
-  if (h.han_chot || !h.han_xu_ly_hien_tai) return <span>{dinhDangNgay(h.han_chot, lang)}</span>;
-  return <span>{dinhDangNgay(h.han_xu_ly_hien_tai, lang)} <span className="text-xs text-muted">({t('danhSach.hanCap')})</span></span>;
-}
-
 export default function DanhSachPage({ hop }: { hop: Hop }) {
-  const { t, loi } = useSigningT();
+  const { t, loi, lang } = useSigningT();
   const [loc, setLoc] = useState<BoLocHoSo>({});
   const [trang, setTrang] = useState(1);
   const dem = useTai(() => signingApi.thongKe(hop), [hop]);
@@ -177,7 +170,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                   <dt>{t('danhSach.dangCho')}</dt>
                   <dd className="text-main break-words">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</dd>
                   <dt>{t('danhSach.nguoiTao')}</dt><dd className="text-main break-words">{h.ten_nguoi_tao}</dd>
-                  <dt>{t('danhSach.hanChot')}</dt><dd className="text-main"><HanChot h={h} /></dd>
+                  <dt>{t('danhSach.hanChot')}</dt><dd className="text-main">{dinhDangNgay(h.han_chot, lang)}</dd>
                 </dl>
               </li>
             ))}
@@ -186,11 +179,11 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
             <table className="w-full text-sm text-left table-fixed min-w-[48rem]">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3.5 py-2 text-left w-[46%]">{t('danhSach.vanBan')}</th>
+                  <th className="px-3.5 py-2 text-left w-[50%]">{t('danhSach.vanBan')}</th>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-[14%]">{t('danhSach.trangThai')}</th>
                   <th className="px-2.5 py-2 text-left whitespace-nowrap w-[14%]">{t('danhSach.dangCho')}</th>
                   <th className="px-2.5 py-2 text-left whitespace-nowrap w-[12%]">{t('danhSach.nguoiTao')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[14%]">{t('danhSach.hanChot')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[10%]">{t('danhSach.hanChot')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -214,7 +207,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                     <td className="px-2.5 py-2 text-secondary whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <i className="fa-regular fa-calendar text-muted text-xs shrink-0" aria-hidden="true" />
-                        <HanChot h={h} />
+                        <span>{dinhDangNgay(h.han_chot, lang)}</span>
                       </div>
                     </td>
                   </tr>

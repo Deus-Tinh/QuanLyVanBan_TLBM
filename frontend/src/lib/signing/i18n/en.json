@@ -1,6 +1,5 @@
 {
   "tieuDe": "Signing",
-  "moTa": "Route outgoing documents through multi-level internal approval and signing.",
   "nav": {
     "canToiKy": "Awaiting my signature",
     "toiGui": "Submitted by me",
@@ -102,8 +101,7 @@
       "tu_choi": "Rejected",
       "huy": "Cancelled"
     },
-    "quaHan": "Overdue",
-    "hanCap": "step deadline"
+    "quaHan": "Overdue"
   },
   "phanTrang": {
     "nhan": "Pagination",
@@ -170,8 +168,7 @@
     "maBam": "Hash",
     "bangChungJson": "Download evidence (JSON)",
     "xemChiTiet": "View details",
-    "uyQuyenTu": "On behalf of {ten}",
-    "veDanhSach": "Back to request list"
+    "uyQuyenTu": "On behalf of {ten}"
   },
   "hanhDong": {
     "kyDuyet": "Sign and approve",
@@ -271,9 +268,7 @@
     "daTaiFile": "Key file downloaded.",
     "daNhapFile": "Key file imported to this device.",
     "daTaoVaTaiFile": "Key created and key file downloaded.",
-    "daDoiPinTaiFile": "PIN changed and a new key file downloaded; the old file no longer works.",
-    "khoaKy": "Signing key",
-    "hieuLuc": "valid from"
+    "daDoiPinTaiFile": "PIN changed and a new key file downloaded; the old file no longer works."
   },
   "loi": {
     "pin_8_chu_so": "The PIN must be exactly 8 digits.",

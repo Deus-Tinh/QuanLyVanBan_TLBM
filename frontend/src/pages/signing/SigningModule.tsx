@@ -53,20 +53,16 @@ export default function SigningModule() {
       {/* pb-24: chừa chỗ cho nút trợ lý AI nổi ở góc dưới để không che nút hành động cuối trang */}
       <div className="signing-scope space-y-5 pb-24 animate-in fade-in duration-150">
         <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
-          <div className="min-w-0">
-            <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
-            <p className="m-0 mt-1 text-sm text-secondary">{t('moTa')}</p>
-          </div>
+          <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
             <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
           )}
         </header>
-        {/* Màn hẹp: một hàng tab cuộn ngang thay vì xuống nhiều dòng */}
-        <nav className="flex flex-nowrap items-end gap-x-1 overflow-x-auto overflow-y-hidden border-b border-border-subtle" aria-label={t('tieuDe')}>
-          <div className="flex shrink-0 gap-1">
+        <nav className="flex items-end gap-x-1 border-b border-border-subtle overflow-x-auto flex-nowrap whitespace-nowrap" aria-label={t('tieuDe')}>
+          <div className="flex flex-nowrap items-center gap-1 shrink-0">
             {tabChinh.map((m) => (
               <NavLink key={m.den} to={m.den} end={m.end}
-                className={({ isActive }) => `-mb-px flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold transition-colors duration-fast ${
+                className={({ isActive }) => `-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors duration-fast whitespace-nowrap shrink-0 ${
                   isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
                 <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
                 <span>{m.nhan}</span>
@@ -74,11 +70,11 @@ export default function SigningModule() {
               </NavLink>
             ))}
           </div>
-          <div className="mx-1.5 mb-2.5 h-4 w-px shrink-0 bg-border-subtle" aria-hidden="true" />
-          <div className="flex shrink-0 gap-1">
+          <div className="mx-1.5 mb-2.5 h-4 w-px bg-border-subtle shrink-0" aria-hidden="true" />
+          <div className="flex flex-nowrap items-center gap-1 shrink-0">
             {tabPhu.map((m) => (
               <NavLink key={m.den} to={m.den}
-                className={({ isActive }) => `-mb-px flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors duration-fast ${
+                className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors duration-fast whitespace-nowrap shrink-0 ${
                   isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
                 <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
                 <span>{m.nhan}</span>

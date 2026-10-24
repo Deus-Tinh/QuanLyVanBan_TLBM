@@ -197,15 +197,6 @@ class PhanTrangVaTimKiemTests(TrinhKyBase):
 class RaSoatGiaoDienTests(TrinhKyBase):
     """Bổ sung sau rà soát giao diện: hạn cấp hiện hành, thông điệp lỗi, email tin nhắn trao đổi."""
 
-    def test_list_exposes_current_step_deadline_when_request_has_no_deadline(self):
-        pk = self.ho_so_da_gui()["id"]
-        cap = SigningRequestStep.objects.get(luot_trinh__trinh_ky_id=pk, trang_thai=enums.TrangThaiCapKy.DANG_KY)
-        han = timezone.now() + timedelta(hours=5)
-        SigningRequestStep.objects.filter(pk=cap.pk).update(han_xu_ly=han)
-        r = self.c.get(f"{BASE}/{pk}/")
-        self.assertIsNone(r.data["han_chot"])
-        self.assertEqual(parse_datetime(r.data["han_xu_ly_hien_tai"]), han)
-
     def test_validation_error_has_detail_and_pagination_404_has_stable_code(self):
         r = self.c.post(f"{BASE}/", {"document_type": "vanbandi"}, format="multipart")
         self.assertEqual((r.status_code, r.data["code"]), (400, "du_lieu_khong_hop_le"))

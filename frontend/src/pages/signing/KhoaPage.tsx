@@ -5,9 +5,9 @@
  */
 import { useEffect, useState } from 'react';
 import { Button, Card } from '@components/common';
-import { DangTai, LoiTai, OChonTep, ThongBao, TrangThaiBadge, TruongNhap } from '@components/signing/ChungUI';
+import { DangTai, LoiTai, ThongBao, TrangThaiBadge, TruongNhap } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
-import { dinhDangNgay, LOP_O_NHAP } from '@lib/signing/dinhDang';
+import { LOP_O_NHAP } from '@lib/signing/dinhDang';
 import { useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import { docFileKhoaTuTep, DUOI_FILE_KHOA, taiXuongFileKhoa } from '@lib/signing/fileKhoa';
@@ -24,7 +24,7 @@ function OPin({ nhan, gia_tri, onDoi }: { nhan: string; gia_tri: string; onDoi: 
 }
 
 export default function KhoaPage() {
-  const { t, loi, lang } = useSigningT();
+  const { t, loi } = useSigningT();
   const { toi } = useToi();
   const ds = useTai(() => signingApi.khoa());
   const [hoTro, setHoTro] = useState<boolean | null>(null);
@@ -105,7 +105,8 @@ export default function KhoaPage() {
               }, t('khoa.daTaoVaTaiFile'))}>{t('khoa.taoKhoa')}</Button>
             {hoatDong && (
               <TruongNhap nhan={t('khoa.nhapFile')} ghiChu={t('khoa.nhapFileGhiChu')}>
-                <OChonTep accept={`${DUOI_FILE_KHOA},application/json`} nhan={t('khoa.nhapFile')} onChon={nhapFile} />
+                <input className={LOP_O_NHAP} type="file" accept={`${DUOI_FILE_KHOA},application/json`}
+                  aria-label={t('khoa.nhapFile')} onChange={(e) => nhapFile(e.target.files?.[0])} />
               </TruongNhap>
             )}
           </div>
@@ -137,10 +138,7 @@ export default function KhoaPage() {
         {(ds.duLieu || []).map((k) => (
           <div key={k.id} className="space-y-1 rounded-lg border border-border-subtle p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
-              {/* Không ghi "MÃ PIN" (dễ hiểu nhầm là mã PIN); mã khóa đầy đủ giữ ở title */}
-              <span className="text-base font-bold text-main" title={k.ma_khoa}>
-                {t('khoa.khoaKy')} · {t('khoa.hieuLuc')} {dinhDangNgay(k.ngay_hieu_luc, lang)}
-              </span>
+              <span className="text-base font-bold text-main truncate" title={k.ma_khoa}>{k.ma_khoa || `#${k.id}`}</span>
               <TrangThaiBadge trangThai={k.trang_thai} />
             </div>
             <div className="text-xs text-secondary">

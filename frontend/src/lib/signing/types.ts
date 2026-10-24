@@ -181,8 +181,6 @@ export interface HoSo {
   /** Trạng thái lượt trình hiện hành (YEU_CAU_SUA: đang trả lại để sửa) */
   trang_thai_luot: TrangThaiLuot | null;
   qua_han: boolean;
-  /** Hạn xử lý của cấp đang ký; dùng khi hồ sơ không đặt hạn chót. */
-  han_xu_ly_hien_tai?: string | null;
 }
 
 /** Một trang danh sách (phân trang DRF: `page`, `page_size`). */
