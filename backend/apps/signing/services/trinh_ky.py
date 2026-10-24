@@ -209,8 +209,21 @@ def _thao_tac_da_xu_ly(hanh_dong, khoa_chong_trung, yeu_cau):
 
 
 @transaction.atomic
-def tao_nhap(nguoi_tao, *, document_type, van_ban_id, quy_trinh, tep, han_chot=None, ghi_chu="",
-             dia_chi_ip=None):
+def tao_nhap(nguoi_tao, *, document_type=None, van_ban_id=None, so_hieu=None, trich_yeu=None,
+             quy_trinh, tep, han_chot=None, ghi_chu="", dia_chi_ip=None):
+    if not van_ban_id and so_hieu and trich_yeu:
+        from documents.models import PhamVi, VanBanDi
+        document_type = enums.LoaiVanBan.VAN_BAN_DI
+        van_ban = VanBanDi.objects.create(
+            so_hieu=so_hieu.strip(),
+            trich_yeu=trich_yeu.strip(),
+            nguoi_tao=nguoi_tao,
+            pham_vi=PhamVi.NOI_BO,
+        )
+        van_ban_id = van_ban.pk
+    elif not document_type:
+        document_type = enums.LoaiVanBan.VAN_BAN_DI
+
     kiem_tra_van_ban_trinh_ky(nguoi_tao, document_type, van_ban_id)
     _kiem_tra_khong_co_ho_so_mo(document_type, van_ban_id)
     quy_trinh = SigningProcess.objects.get(pk=quy_trinh.pk)

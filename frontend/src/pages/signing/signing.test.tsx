@@ -263,11 +263,14 @@ function luotCo(nguoi: NguoiKyLuot[]): LuotTrinh {
 }
 
 describe('Danh sách: trạng thái trả lại, quá hạn', () => {
-  it('hồ sơ chờ ký mà lượt đang trả sửa hiện "Đang trả lại để sửa" và dấu quá hạn (cả bảng và thẻ mobile)', async () => {
-    api.danhSach.mockResolvedValue(trang([hoSo({ trang_thai_luot: 'YEU_CAU_SUA', qua_han: true })]));
+  it('hồ sơ chỉ hiển thị duy nhất một trạng thái: trả sửa hiện "Đang trả lại để sửa", quá hạn hiện "Quá hạn"', async () => {
+    api.danhSach.mockResolvedValue(trang([
+      hoSo({ id: 1, trang_thai_luot: 'YEU_CAU_SUA', qua_han: false }),
+      hoSo({ id: 2, trang_thai_luot: 'CHO_KY', qua_han: true }),
+    ]));
     boc(<DanhSachPage hop="tat_ca" />);
     expect((await screen.findAllByText('Đang trả lại để sửa')).length).toBe(2);
-    expect(screen.getAllByText('Quá hạn').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Quá hạn').length).toBe(3);
   });
 });
 
@@ -468,7 +471,7 @@ describe('TaiLieuPage', () => {
     URL.revokeObjectURL = vi.fn();
     boc(<TaiLieuPage />);
     expect(await screen.findByText('trinh-ky-12-luot-1.pdf')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '#12' })).toHaveAttribute('href', '/approvals/12');
+    expect(screen.getAllByRole('link', { name: '#12' })[0]).toHaveAttribute('href', '/approvals/12');
     fireEvent.change(screen.getByRole('combobox', { name: /Loại tệp/ }), { target: { value: 'HOAN_TAT' } });
     await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'HOAN_TAT' }));
     fireEvent.click(screen.getByText('trinh-ky-12-luot-1.pdf'));

@@ -726,6 +726,16 @@ class DonViView(SigningAPIView):
         return Response([{"id": d.pk, "ten": d.ten} for d in to_chuc.don_vi_quan_ly_duoc(request.user)])
 
 
+class ChucVuView(SigningAPIView):
+    """GET /chuc-vu/: danh sách chức vụ công khai từ phân hệ Cán bộ Nhân viên (accounts.Position) để cấu hình người ký (QUAN_LY_QUY_TRINH)."""
+
+    def get(self, request):
+        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
+        from accounts.models import Position
+        positions = Position.objects.filter(is_public=True).order_by("display_order", "name", "id")
+        return Response([{"id": p.pk, "ten": p.name, "stt": p.display_order} for p in positions])
+
+
 class NguoiDungView(SigningAPIView):
     """
     GET /nguoi-dung/?q=: tìm tài khoản đang hoạt động để chọn người ký khi cấu hình quy trình (manage_signing_process).

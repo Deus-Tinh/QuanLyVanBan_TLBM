@@ -273,13 +273,10 @@ def sua_quy_trinh(process, nguoi_thuc_hien, *, ten_quy_trinh, pham_vi, don_vi_ap
 
 @transaction.atomic
 def xoa_quy_trinh(process, nguoi_thuc_hien):
-    """Xóa quy trình nháp chưa có hồ sơ nào dùng; quy trình đã dùng thì chỉ ngừng (giữ lịch sử)."""
+    """Xóa quy trình chưa có hồ sơ nào dùng; quy trình đã có hồ sơ phụ thuộc thì không xóa được."""
     process = _khoa(process.pk)
-    if process.trang_thai != enums.TrangThaiQuyTrinh.NHAP:
-        raise ConflictError(code="quy_trinh_khong_the_xoa",
-                            detail="Chỉ xóa được quy trình nháp; quy trình đã kích hoạt hãy ngừng sử dụng.")
     if SigningRequest.objects.filter(quy_trinh=process).exists():
-        raise ConflictError(code="quy_trinh_da_duoc_dung", detail="Quy trình đã có hồ sơ dùng, không xóa được.")
+        raise ConflictError(code="quy_trinh_da_duoc_dung", detail="Quy trình đã có hồ sơ trình ký phụ thuộc, không xóa được.")
     ghi_nhat_ky(nguoi_thuc_hien, LOAI, process.pk, "XOA_QUY_TRINH", trang_thai_truoc=process.trang_thai,
                 du_lieu_kem_theo={"ma_quy_trinh": process.ma_quy_trinh, "phien_ban": process.phien_ban})
     process.delete()

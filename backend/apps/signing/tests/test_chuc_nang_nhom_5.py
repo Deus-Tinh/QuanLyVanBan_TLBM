@@ -15,7 +15,7 @@ from signing.models import SigningNotification, SigningProcess, SigningRequest
 
 from .helpers import cap_quyen
 from .test_hanh_dong_ky_phase8 import KyBase
-from .test_trinh_ky_phase7 import BASE, TrinhKyBase
+from .test_trinh_ky_phase7 import BASE, TrinhKyBase, tep_pdf
 
 User = get_user_model()
 QT = "/api/v1/signing/quy-trinh"
@@ -173,12 +173,44 @@ class SuaXoaQuyTrinhTests(TrinhKyBase):
         self.assertEqual([c["ten_cap_ky"] for c in r.data["cap_ky"]], ["Kiểm tra", "Duyệt"])
         self.assertEqual(r.data["cap_ky"][0]["nguoi_ky"][0]["nguoi_ky"], self.ky2.pk)
 
-    def test_active_process_cannot_be_edited_or_deleted(self):
+    def test_active_process_cannot_be_edited_or_deleted_when_has_dependent_request(self):
         r = self.cql.put(f"{QT}/{self.process.pk}/", {"ten_quy_trinh": "x", "pham_vi": "CONG_TY", "cap_ky": []},
                          format="json")
         self.assertEqual((r.status_code, r.data["code"]), (409, "quy_trinh_khong_the_sua"))
+        # Khi có hồ sơ trình ký phụ thuộc -> chặn xóa
+        self.tao_nhap()
         r = self.cql.delete(f"{QT}/{self.process.pk}/")
-        self.assertEqual((r.status_code, r.data["code"]), (409, "quy_trinh_khong_the_xoa"))
+        self.assertEqual((r.status_code, r.data["code"]), (409, "quy_trinh_da_duoc_dung"))
+
+    def test_active_process_without_dependent_request_can_be_deleted(self):
+        # Kích hoạt quy trình nháp chưa có hồ sơ phụ thuộc
+        self.cql.post(f"{QT}/{self.nhap}/kich-hoat/")
+        # Quy trình đã kích hoạt nhưng chưa có hồ sơ phụ thuộc -> xóa thành công
+        r = self.cql.delete(f"{QT}/{self.nhap}/")
+        self.assertEqual(r.status_code, 204)
+        self.assertFalse(SigningProcess.objects.filter(pk=self.nhap).exists())
+
+    def test_api_chuc_vu(self):
+        from accounts.models import Position
+        p = Position.objects.create(display_order=987, name="Kiểm thử Chức vụ", is_public=True)
+        r = self.cql.get(f"{QT[:-10]}/chuc-vu/")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(any(item["id"] == p.id and item["ten"] == p.name for item in r.data))
+
+    def test_tao_nhap_nhap_van_ban_khac(self):
+        from documents.models import VanBanDi
+        from .test_trinh_ky_phase7 import VAN_BAN
+        with mock.patch("signing.tich_hop.van_ban._doc_van_ban_di",
+                        side_effect=lambda pk: VanBanDi.objects.filter(pk=pk).first() or VAN_BAN.get(pk)):
+            r = self.c.post(f"{BASE}/", {
+                "so_hieu": "99/BC-TEST",
+                "trich_yeu": "Văn bản thử nghiệm nhập trực tiếp",
+                "quy_trinh": self.process.pk,
+                "tep": tep_pdf(),
+            }, format="multipart")
+            self.assertEqual(r.status_code, 201, r.data)
+            self.assertEqual(r.data["van_ban"]["so_hieu"], "99/BC-TEST")
+            self.assertEqual(r.data["van_ban"]["trich_yeu"], "Văn bản thử nghiệm nhập trực tiếp")
 
     def test_delete_draft_and_permissions(self):
         self.assertEqual(self.client_cua(self.la).delete(f"{QT}/{self.nhap}/").status_code, 403)

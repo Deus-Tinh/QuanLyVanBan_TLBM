@@ -51,15 +51,19 @@ class QuyTrinhInputSerializer(serializers.Serializer):
 
 class NguoiKyCauHinhSerializer(serializers.ModelSerializer):
     ten_nguoi_ky = serializers.SerializerMethodField()
+    ten_chuc_vu = serializers.SerializerMethodField()
 
     class Meta:
         model = SigningProcessStepSigner
-        fields = ["id", "nguoi_ky", "ten_nguoi_ky", "chuc_vu_id", "pham_vi_chuc_vu", "vai_tro_ky", "chan_ky_chinh",
+        fields = ["id", "nguoi_ky", "ten_nguoi_ky", "chuc_vu_id", "ten_chuc_vu", "pham_vi_chuc_vu", "vai_tro_ky", "chan_ky_chinh",
                   "thu_tu"]
 
     def get_ten_nguoi_ky(self, obj):
         """Tên để xem trước người ký trước khi gửi (UI); người ký theo chức vụ được xác định lúc gửi."""
         return to_chuc.ten_hien_thi(obj.nguoi_ky) if obj.nguoi_ky_id else None
+
+    def get_ten_chuc_vu(self, obj):
+        return obj.chuc_vu.name if obj.chuc_vu_id and obj.chuc_vu else None
 
 
 class CapKyQuyTrinhSerializer(serializers.ModelSerializer):
@@ -143,12 +147,24 @@ class DoiPinSerializer(serializers.Serializer):
 
 
 class TrinhKyTaoSerializer(serializers.Serializer):
-    document_type = serializers.ChoiceField(choices=enums.LoaiVanBan.choices)
-    van_ban_id = serializers.IntegerField(min_value=1)
+    document_type = serializers.ChoiceField(choices=enums.LoaiVanBan.choices, required=False, default=enums.LoaiVanBan.VAN_BAN_DI)
+    van_ban_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    so_hieu = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    trich_yeu = serializers.CharField(max_length=2000, required=False, allow_blank=True)
     quy_trinh = serializers.PrimaryKeyRelatedField(queryset=SigningProcess.objects.all())
     han_chot = serializers.DateTimeField(required=False, allow_null=True)
     ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
     tep = serializers.FileField()
+
+    def validate(self, attrs):
+        van_ban_id = attrs.get("van_ban_id")
+        so_hieu = attrs.get("so_hieu", "").strip()
+        trich_yeu = attrs.get("trich_yeu", "").strip()
+        if not van_ban_id and not (so_hieu and trich_yeu):
+            raise serializers.ValidationError(
+                "Cần chọn văn bản đi có sẵn hoặc nhập số hiệu và trích yếu văn bản trình ký."
+            )
+        return attrs
 
 
 class TrinhKySuaSerializer(serializers.Serializer):

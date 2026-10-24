@@ -98,10 +98,12 @@ export default function TaiLieuPage() {
             <span className={LOP_NHAN}>{t('danhSach.denNgay')}</span>
             <input className={LOP_O_NHAP} type="date" value={loc.den_ngay ?? ''} onChange={(e) => dat({ den_ngay: e.target.value })} />
           </label>
-          <div className="flex gap-2 lg:col-span-2">
-            <Button type="submit" size="sm" icon="fa-filter">{t('danhSach.loc')}</Button>
+          <div className="flex gap-2 w-full lg:col-span-2">
+            <Button type="submit" size="sm" icon="fa-filter" className="flex-1 sm:flex-initial justify-center">{t('danhSach.loc')}</Button>
             {coLoc && (
-              <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left" onClick={() => { setTuKhoa(''); setLoc({}); }}>
+              <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left"
+                className="flex-1 sm:flex-initial justify-center"
+                onClick={() => { setTuKhoa(''); setLoc({}); }}>
                 {t('danhSach.xoaLoc')}
               </Button>
             )}
@@ -115,67 +117,119 @@ export default function TaiLieuPage() {
           <Rong icon="fa-folder-open">{t(coLoc ? 'taiLieu.khongKhopLoc' : 'taiLieu.rong')}</Rong>
         )}
         {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm table-fixed min-w-[850px]">
-              <thead>
-                <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[14%]">{t('taiLieu.soHieu')}</th>
-                  <th className="px-3.5 py-2.5 text-left w-[28%]">{t('taiLieu.trichYeu')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[18%]">{t('taiLieu.tep')}</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap w-[10%]">{t('taiLieu.loaiTep')}</th>
-                  <th className="px-3 py-2.5 text-center whitespace-nowrap w-[8%]">{t('danhSach.maHoSo')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[12%]">{t('danhSach.quyTrinh')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[10%]">{t('taiLieu.ngay')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y border-border-subtle">
-                {ds.duLieu.map((tep) => (
-                  <tr key={`${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="hover:bg-surface-hover/80 transition-colors">
-                    <td className="px-3 py-3 text-left whitespace-nowrap" title={tep.van_ban.so_hieu}>
-                      {tep.van_ban.so_hieu ? (
+          <>
+            {/* Màn hình hẹp: dạng thẻ di động tiện lợi, không cần cuộn ngang bảng 850px */}
+            <ul className="space-y-2.5 md:hidden" aria-label={t('chiTiet.danhSachTep')}>
+              {ds.duLieu.map((tep) => (
+                <li
+                  key={`${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`}
+                  className="rounded-lg border border-border-subtle bg-surface p-3.5 space-y-2 shadow-2xs hover:bg-surface-hover/60 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => xemChiTiet(tep)}
+                      className="text-left font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 break-words min-w-0"
+                    >
+                      <i className={`fa-solid ${BIEU_TUONG[tep.loai]} text-sm shrink-0`} aria-hidden="true" />
+                      <span className="break-words">{tep.van_ban.so_hieu || tep.ten_tep}</span>
+                    </button>
+                    <Badge variant={MAU_LOAI_TEP[tep.loai]} size="sm">
+                      {t(`taiLieu.loai.${tep.loai}`)}
+                    </Badge>
+                  </div>
+                  {tep.van_ban.trich_yeu && (
+                    <p className="text-xs text-secondary line-clamp-2 break-words m-0">
+                      {tep.van_ban.trich_yeu}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-muted pt-1 border-t border-border-subtle">
+                    <span>
+                      <Link to={`/approvals/${tep.trinh_ky}`} className="hover:text-primary font-medium text-secondary">
+                        #{tep.trinh_ky}
+                      </Link>
+                      {tep.ten_quy_trinh ? ` · ${tep.ten_quy_trinh}` : ''}
+                    </span>
+                    <span>{dinhDangNgay(tep.thoi_diem, lang)}</span>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      icon="fa-eye"
+                      className="w-full sm:w-auto justify-center"
+                      onClick={() => xemChiTiet(tep)}
+                    >
+                      {t('chiTiet.xemChiTiet')}
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Màn hình máy tính: dạng bảng đầy đủ */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm table-fixed min-w-[850px]">
+                <thead>
+                  <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
+                    <th className="px-3 py-2.5 text-left whitespace-nowrap w-[14%]">{t('taiLieu.soHieu')}</th>
+                    <th className="px-3.5 py-2.5 text-left w-[28%]">{t('taiLieu.trichYeu')}</th>
+                    <th className="px-3 py-2.5 text-left whitespace-nowrap w-[18%]">{t('taiLieu.tep')}</th>
+                    <th className="px-2.5 py-2.5 text-center whitespace-nowrap w-[10%]">{t('taiLieu.loaiTep')}</th>
+                    <th className="px-3 py-2.5 text-center whitespace-nowrap w-[8%]">{t('danhSach.maHoSo')}</th>
+                    <th className="px-3 py-2.5 text-left whitespace-nowrap w-[12%]">{t('danhSach.quyTrinh')}</th>
+                    <th className="px-3 py-2.5 text-left whitespace-nowrap w-[10%]">{t('taiLieu.ngay')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y border-border-subtle">
+                  {ds.duLieu.map((tep) => (
+                    <tr key={`${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="hover:bg-surface-hover/80 transition-colors">
+                      <td className="px-3 py-3 text-left whitespace-nowrap" title={tep.van_ban.so_hieu}>
+                        {tep.van_ban.so_hieu ? (
+                          <button
+                            type="button"
+                            onClick={() => xemChiTiet(tep)}
+                            className="font-semibold text-main hover:text-primary hover:underline cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded max-w-full truncate inline-block"
+                            title={t('chiTiet.xemChiTiet')}
+                          >
+                            <span className="truncate">{tep.van_ban.so_hieu}</span>
+                          </button>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="px-3.5 py-3 text-left text-main" title={tep.van_ban.trich_yeu}>
+                        <div className="line-clamp-2 break-words" title={tep.van_ban.trich_yeu}>
+                          {tep.van_ban.trich_yeu || '—'}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-left">
                         <button
                           type="button"
                           onClick={() => xemChiTiet(tep)}
-                          className="font-semibold text-main hover:text-primary hover:underline cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded max-w-full truncate inline-block"
+                          className="group inline-flex items-center gap-1.5 max-w-full text-left text-secondary hover:text-primary transition-colors cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary text-xs"
                           title={t('chiTiet.xemChiTiet')}
                         >
-                          <span className="truncate">{tep.van_ban.so_hieu}</span>
+                          <i className={`fa-solid ${BIEU_TUONG[tep.loai]} text-xs shrink-0 opacity-70 group-hover:opacity-100 transition-opacity`} aria-hidden="true" />
+                          <span className="truncate group-hover:underline underline-offset-2">{tep.ten_tep}</span>
                         </button>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-                    <td className="px-3.5 py-3 text-left text-main" title={tep.van_ban.trich_yeu}>
-                      <div className="line-clamp-2 break-words" title={tep.van_ban.trich_yeu}>
-                        {tep.van_ban.trich_yeu || '—'}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-left">
-                      <button
-                        type="button"
-                        onClick={() => xemChiTiet(tep)}
-                        className="group inline-flex items-center gap-1.5 max-w-full text-left text-secondary hover:text-primary transition-colors cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary text-xs"
-                        title={t('chiTiet.xemChiTiet')}
-                      >
-                        <i className={`fa-solid ${BIEU_TUONG[tep.loai]} text-xs shrink-0 opacity-70 group-hover:opacity-100 transition-opacity`} aria-hidden="true" />
-                        <span className="truncate group-hover:underline underline-offset-2">{tep.ten_tep}</span>
-                      </button>
-                    </td>
-                    <td className="px-2.5 py-3 text-center whitespace-nowrap"><Badge variant={MAU_LOAI_TEP[tep.loai]} size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
-                    <td className="px-3 py-3 text-center whitespace-nowrap font-medium text-secondary">
-                      <Link to={`/approvals/${tep.trinh_ky}`} className="hover:text-primary hover:underline">#{tep.trinh_ky}</Link>
-                    </td>
-                    <td className="px-3 py-3 text-left text-secondary" title={tep.ten_quy_trinh}>
-                      <div className="line-clamp-2 break-words">{tep.ten_quy_trinh}</div>
-                    </td>
-                    <td className="px-3 py-3 text-left text-muted whitespace-nowrap text-xs">
-                      <span>{dinhDangNgay(tep.thoi_diem, lang)}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="px-2.5 py-3 text-center whitespace-nowrap"><Badge variant={MAU_LOAI_TEP[tep.loai]} size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
+                      <td className="px-3 py-3 text-center whitespace-nowrap font-medium text-secondary">
+                        <Link to={`/approvals/${tep.trinh_ky}`} className="hover:text-primary hover:underline">#{tep.trinh_ky}</Link>
+                      </td>
+                      <td className="px-3 py-3 text-left text-secondary" title={tep.ten_quy_trinh}>
+                        <div className="line-clamp-2 break-words">{tep.ten_quy_trinh}</div>
+                      </td>
+                      <td className="px-3 py-3 text-left text-muted whitespace-nowrap text-xs">
+                        <span>{dinhDangNgay(tep.thoi_diem, lang)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
       {tepXem && createPortal(
