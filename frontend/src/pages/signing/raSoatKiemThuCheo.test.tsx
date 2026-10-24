@@ -222,6 +222,18 @@ describe('Kiểm tra tệp và hạn chót phía trình duyệt', () => {
     await waitFor(() => expect(api.taoNhap).toHaveBeenCalledTimes(1));
   });
 
+  it('tìm văn bản đi: gõ nhiều phím liền nhau chỉ gửi một request sau khi dừng gõ', async () => {
+    api.timVanBanDi.mockResolvedValue([]);
+    api.quyTrinh.mockResolvedValue([]);
+    boc(<TaoHoSoPage />);
+    const o = await screen.findByLabelText('Tìm theo số hiệu hoặc trích yếu…');
+    await waitFor(() => expect(api.timVanBanDi).toHaveBeenCalledWith(''));
+    const truoc = api.timVanBanDi.mock.calls.length;
+    for (const v of ['m', 'mu', 'mua', 'mua ']) fireEvent.change(o, { target: { value: v } });
+    await waitFor(() => expect(api.timVanBanDi).toHaveBeenLastCalledWith('mua'), { timeout: 2000 });
+    expect(api.timVanBanDi.mock.calls.length).toBe(truoc + 1);
+  });
+
   it('trích yếu và ghi chú có giới hạn độ dài khớp máy chủ', async () => {
     await moFormNhapKhac();
     expect(screen.getByLabelText('Trích yếu')).toHaveAttribute('maxlength', '1000');

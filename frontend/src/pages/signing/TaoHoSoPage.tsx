@@ -24,7 +24,13 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   const { toi } = useToi();
   const [nguon, setNguon] = useState<NguonVanBan>('van_ban_di');
   const [q, setQ] = useState('');
-  const vanBan = useTai(() => (nguon === 'van_ban_di' ? signingApi.timVanBanDi(q) : Promise.resolve([])), [q, nguon]);
+  const [qTim, setQTim] = useState('');
+  // Gõ xong mới tìm (không gửi một request cho mỗi phím)
+  useEffect(() => {
+    const hen = setTimeout(() => setQTim(q.trim()), 300);
+    return () => clearTimeout(hen);
+  }, [q]);
+  const vanBan = useTai(() => (nguon === 'van_ban_di' ? signingApi.timVanBanDi(qTim) : Promise.resolve([])), [qTim, nguon]);
   const quyTrinh = useTai(() => signingApi.quyTrinh('HOAT_DONG'));
   const [chon, setChon] = useState<VanBanDi | null>(null);
   const [soHieu, setSoHieu] = useState('');
