@@ -15,8 +15,8 @@ Tài liệu liên quan (không chép lại ở đây):
 
 | Flow | Tình trạng |
 |---|---|
-| Quy trình mẫu: tạo nháp, sửa, kích hoạt, ngừng, nhân bản phiên bản; phạm vi công ty/phòng ban | Xong |
-| Tạo hồ sơ nháp (văn bản đi, quy trình, PDF, hạn chót), sửa nháp | Xong |
+| Quy trình mẫu: tạo nháp, sửa, kích hoạt, ngừng, nhân bản phiên bản, xóa phiên bản chưa có hồ sơ; phạm vi công ty/phòng ban; người ký theo tài khoản (danh bạ CBNV) hoặc chức vụ (Danh mục chức vụ) | Xong |
+| Tạo hồ sơ nháp (văn bản trình ký: chọn văn bản đi hoặc nhập văn bản khác; quy trình, PDF, hạn chót), sửa nháp | Xong |
 | Trình ký: khóa tệp và mã băm, chọn người ký theo chức vụ, đặt vị trí ký | Xong |
 | Ký tuần tự theo cấp, song song trong cấp, ký nháy chặn ký chính | Xong |
 | Khóa ký Ed25519 + PIN 8 số (Argon2id + salt, `k_srv`); xuất file khóa; ký bằng file khóa + PIN | Xong |
@@ -107,8 +107,20 @@ Thao tác đổi trạng thái bắt buộc header `Idempotency-Key`. Lỗi tr�
   10, tối đa 100); trả `{"count", "next", "previous", "results"}`. Trang vượt quá số trang trả 404.
 - Tìm kiếm (`q` của danh sách hồ sơ, `tai-lieu/`, `van-ban-di/`) không phân biệt hoa thường và dấu tiếng Việt: "mua sam"
   khớp "Mua sắm", "10/qd" khớp "10/QĐ".
-- Mỗi văn bản chỉ có một hồ sơ đang mở (nháp hoặc đang chờ ký). Tạo nháp, gửi trình hoặc trình lại khi văn bản đang có
+- Mỗi văn bản đi chỉ có một hồ sơ đang mở (nháp hoặc đang chờ ký). Tạo nháp, gửi trình hoặc trình lại khi văn bản đang có
   hồ sơ mở khác trả 409 `van_ban_da_co_ho_so_dang_mo`. Hồ sơ đã hoàn thành, từ chối hoặc hủy không chặn việc trình mới.
+  Văn bản nhập tay không áp quy tắc này.
+- Văn bản trình ký khi tạo hồ sơ (`POST trinh-ky/`, multipart): `van_ban_id` (+ `document_type=vanbandi`) để gắn văn bản
+  đi, **hoặc** `trich_yeu_van_ban` (bắt buộc) và `so_hieu_van_ban` (tùy chọn) khi nhập văn bản khác; thiếu cả hai trả
+  400 `thieu_van_ban_trinh_ky`. Tệp PDF trình ký (`tep`) luôn bắt buộc. Hồ sơ trả `van_ban` (`so_hieu`, `trich_yeu`) theo
+  đúng nguồn; sửa nháp nhập tay được đổi số hiệu/trích yếu (hồ sơ gắn văn bản đi: 400 `van_ban_da_gan`).
+- Bộ lọc trạng thái (`trinh-ky/?nhanh=`, `trinh-ky/thong-ke/`): `cho_ky` (lượt hiện hành chờ ký, chưa quá hạn),
+  `qua_han` (lượt hiện hành chờ ký, qua hạn chót hoặc có cấp đang ký qua hạn xử lý), `hoan_thanh` (đã ký xong),
+  `tra_lai` (đang trả lại để sửa). Giá trị khác trả 400. Hồ sơ nháp, không đồng ý, đã hủy chỉ hiện ở "Tất cả".
+- `tai-lieu/` phân trang như danh sách hồ sơ (`page`, `page_size`; `{"count", "next", "previous", "results"}`).
+- Xóa quy trình (`DELETE quy-trinh/{id}/`): xóa được một phiên bản ở mọi trạng thái khi không có hồ sơ trình ký nào
+  (kể cả đã hủy, hoàn thành) dùng phiên bản đó; còn hồ sơ trả 409 `quy_trinh_da_duoc_dung` kèm số hồ sơ
+  (`fields.so_ho_so`). API quy trình trả `so_ho_so` để giao diện khóa nút Xóa. Sửa vẫn chỉ áp dụng cho bản nháp.
 
 ### `GET /api/v1/signing/dashboard/` (Nhóm 1)
 
@@ -284,3 +296,29 @@ desktop và mobile 390px, thông báo có người thực hiện và lý do.
   - tab tài liệu "Văn bản công khai": đổi thành "Tệp trình ký";
   - nút trợ lý AI nổi che nút hành động: chừa khoảng dưới trong trang Trình ký;
   - bổ sung test frontend cho TaoHoSoPage, KhoaPage, TraoDoiPanel, KetQuaPanel, XemPdf.
+
+## 11. Chỉnh nghiệp vụ trình ký (issue #275, schema #274)
+
+- Xóa quy trình theo số hồ sơ phụ thuộc thay cho quy tắc "chỉ xóa nháp" (mục 4).
+- Chọn người ký khi cấu hình quy trình: theo tài khoản lấy từ danh bạ cán bộ của phân hệ CBNV
+  (`GET /api/accounts/staffs/`), theo chức vụ lấy từ Danh mục chức vụ (`GET /api/positions/?all=true`, cần quyền
+  `view_chucvu`; nhóm ADMIN, TP có sẵn). Phạm vi chức vụ chọn trên form: trong đơn vị người trình hoặc toàn cơ quan.
+  Người cụ thể giữ chức vụ được xác định lúc gửi (như trước).
+- Văn bản trình ký: chọn văn bản đi không bắt buộc; nhập văn bản khác (số hiệu, trích yếu, tệp PDF). Schema đổi ở PR
+  riêng (#274): `signing_request.document_type`, `document_id` cho phép NULL; thêm `so_hieu_van_ban`,
+  `trich_yeu_van_ban`; CHECK `chk_signing_request_van_ban`; migration `signing/0015_van_ban_trinh_ky_khac`.
+- Nhãn "Văn bản" đổi thành "Văn bản trình ký": cột danh sách, form tạo, khối thông tin trang chi tiết, email thông báo,
+  trang phê duyệt của tệp PDF hoàn tất.
+- Bộ lọc trạng thái còn 4 lựa chọn (mục 4); badge tab "Cần tôi ký duyệt" đếm cả hồ sơ quá hạn.
+- Tab "Văn bản công khai" phân trang (10 tệp mỗi trang, dùng chung thanh `PhanTrang`).
+- Chọn chức vụ (và đơn vị) là hiện ngay tên cán bộ đang giữ chức vụ (họ tên, đơn vị), ở ô thêm theo chức vụ, ở từng
+  người ký theo chức vụ trong form và ở trang chi tiết quy trình; không có ai thì cảnh báo "Chưa có cán bộ nào ở chức
+  vụ/đơn vị này". API chỉ đọc `GET can-bo-theo-chuc-vu/?chuc_vu=&don_vi=` (quyền xem hoặc quản lý quy trình; chỉ cán bộ
+  `is_active`, trạng thái đang làm việc; tối đa 50 dòng kèm `count`). Đơn vị tìm: đơn vị cố định của cấp; "đơn vị người
+  trình" của quy trình phòng ban là đơn vị áp dụng; quy trình công ty theo đơn vị người trình hiện mọi đơn vị kèm ghi
+  chú người ký thực tế xác định lúc gửi.
+- Dữ liệu cán bộ: Trình ký đọc qua lớp `tich_hop/to_chuc.py` (model của Nhóm 7) và API công khai của CBNV ở giao diện;
+  bản chụp tên người ký/chức vụ trên lượt trình là bằng chứng bất biến, không phải danh bạ riêng. Đề xuất Nhóm 7 bổ
+  sung selector Python công khai (tìm cán bộ, cán bộ theo chức vụ/đơn vị, lãnh đạo đơn vị) để thay các truy vấn trực
+  tiếp trong `tich_hop/to_chuc.py`. API `nguoi-dung/` giữ cho ủy quyền ký (lọc theo quyền `sign_trinhky` là quy tắc của
+  Trình ký).
