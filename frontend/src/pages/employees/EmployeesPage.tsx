@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import './EmployeesPage.mobile.css';
 import { useTranslation } from '@i18n/translate';
 import { apiClient, downloadBlob } from '@lib/apiClient';
 import { usePermissions } from '@lib/permissions';
@@ -212,9 +213,9 @@ export default function EmployeesPage() {
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
   return (
-    <div className="space-y-6">
+    <div className="employees-page space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="employees-page__header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-main flex items-center gap-2.5">
             <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center text-base">
@@ -228,7 +229,7 @@ export default function EmployeesPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="employees-page__actions flex items-center gap-2.5 flex-wrap">
           {can('export_cbnv') && (
             <Button
               type="button"
@@ -236,6 +237,7 @@ export default function EmployeesPage() {
               onClick={handleExportExcel}
               isLoading={isExporting}
               icon="fa-file-excel"
+              className="employees-page__action employees-page__action--export"
             >
               {t('employees.actions.exportExcel')}
             </Button>
@@ -247,6 +249,7 @@ export default function EmployeesPage() {
               variant="secondary"
               onClick={() => setIsImportModalOpen(true)}
               icon="fa-file-import"
+              className="employees-page__action employees-page__action--import"
             >
               {t('employees.actions.importExcel')}
             </Button>
@@ -261,6 +264,7 @@ export default function EmployeesPage() {
                 setIsEmployeeModalOpen(true);
               }}
               icon="fa-user-plus"
+              className="employees-page__action employees-page__action--add"
             >
               {t('employees.actions.addEmployee')}
             </Button>
@@ -269,8 +273,8 @@ export default function EmployeesPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="p-4 bg-surface border border-border rounded-xl shadow-sm space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="employees-page__filters p-4 bg-surface border border-border rounded-xl shadow-sm space-y-3">
+        <div className="employees-page__filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Ô tìm kiếm đa năng */}
           <div className="relative">
             <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-sm" />
@@ -373,10 +377,10 @@ export default function EmployeesPage() {
       </div>
 
       {/* Main Table Card */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-surface-elevated text-secondary font-semibold border-b border-border text-xs uppercase tracking-wider">
+      <div className="employees-page__table-card bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+        <div className="employees-page__table-scroll overflow-x-auto">
+          <table className="employees-page__table w-full text-left text-sm">
+            <thead className="employees-page__table-head bg-surface-elevated text-secondary font-semibold border-b border-border text-xs uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-4 w-12 text-center">#</th>
                 <th className="py-3 px-4">{t('employees.table.employee')}</th>
@@ -388,9 +392,9 @@ export default function EmployeesPage() {
                 <th className="py-3 px-4 text-right">{t('employees.table.actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="employees-page__table-body divide-y divide-border">
               {isLoading ? (
-                <tr>
+                <tr className="employees-page__empty-row">
                   <td colSpan={8} className="py-12 text-center text-muted">
                     <div className="inline-flex items-center gap-2">
                       <i className="fa-solid fa-spinner fa-spin text-primary text-lg" />
@@ -399,7 +403,7 @@ export default function EmployeesPage() {
                   </td>
                 </tr>
               ) : employees.length === 0 ? (
-                <tr>
+                <tr className="employees-page__empty-row">
                   <td colSpan={8} className="py-12 text-center text-muted">
                     <div className="space-y-2">
                       <div className="w-12 h-12 rounded-full bg-surface-elevated text-muted flex items-center justify-center mx-auto text-xl">
@@ -423,14 +427,14 @@ export default function EmployeesPage() {
                   const rowNumber = (currentPage - 1) * pageSize + idx + 1;
 
                   return (
-                    <tr key={emp.id} className="hover:bg-surface-hover transition-colors">
+                    <tr key={emp.id} className="employees-page__employee-row hover:bg-surface-hover transition-colors">
                       {/* STT */}
-                      <td className="py-3.5 px-4 text-center text-xs text-muted font-mono">
+                      <td className="employees-page__cell employees-page__cell--ordinal py-3.5 px-4 text-center text-xs text-muted font-mono">
                         {rowNumber}
                       </td>
 
                       {/* Họ tên & Avatar */}
-                      <td className="py-3.5 px-4">
+                      <td className="employees-page__cell employees-page__cell--identity py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary to-primary-hover text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
                             {initials}
@@ -453,7 +457,7 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Đơn vị */}
-                      <td className="py-3.5 px-4">
+                      <td className="employees-page__cell employees-page__cell--unit py-3.5 px-4" data-label={t('employees.table.unit')}>
                         <span className="font-medium text-main block">
                           {emp.don_vi_ten || '—'}
                         </span>
@@ -483,7 +487,7 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Chức vụ & Chức danh */}
-                      <td className="py-3.5 px-4">
+                      <td className="employees-page__cell employees-page__cell--position py-3.5 px-4" data-label={t('employees.table.position')}>
                         <span className="font-medium text-main block">
                           {emp.chuc_vu_ten || '—'}
                         </span>
@@ -495,7 +499,7 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Ngày sinh */}
-                      <td className="py-3.5 px-4">
+                      <td className="employees-page__cell employees-page__cell--birthday py-3.5 px-4" data-label={t('employees.table.birthday')}>
                         <div className="flex items-center gap-1.5">
                           <span className="font-medium text-main">{emp.ngay_sinh || '—'}</span>
                           {emp.is_birthday_masked && (
@@ -510,7 +514,7 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* SĐT */}
-                      <td className="py-3.5 px-4">
+                      <td className="employees-page__cell employees-page__cell--phone py-3.5 px-4" data-label={t('employees.table.phone')}>
                         {emp.sdt ? (
                           <a
                             href={`tel:${emp.sdt}`}
@@ -525,14 +529,14 @@ export default function EmployeesPage() {
                       </td>
 
                       {/* Trạng thái */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="employees-page__cell employees-page__cell--status py-3.5 px-4 text-center">
                         <Badge variant={isWorking ? 'success' : 'danger'}>
                           {isWorking ? t('employees.status.working') : t('employees.status.resigned')}
                         </Badge>
                       </td>
 
                       {/* Thao tác */}
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="employees-page__cell employees-page__cell--actions py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {/* Xem chi tiết */}
                           <button
@@ -587,7 +591,7 @@ export default function EmployeesPage() {
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-t border-border bg-surface-elevated text-xs text-secondary">
+        <div className="employees-page__pagination flex items-center justify-between px-6 py-3.5 border-t border-border bg-surface-elevated text-xs text-secondary">
           <span>
             {t('employees.pagination.showing', {
               from: employees.length > 0 ? (currentPage - 1) * pageSize + 1 : 0,
