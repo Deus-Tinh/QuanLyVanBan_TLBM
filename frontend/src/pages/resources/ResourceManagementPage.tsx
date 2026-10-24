@@ -1004,6 +1004,7 @@ export default function ResourceManagementPage() {
         setDocuments((prev) =>
           prev.map((d) => (d.id === formInitialData.id ? savedDoc : d))
         );
+        setDetailItem((prev) => (prev && prev.id === savedDoc.id ? savedDoc : prev));
         setIsFormOpen(false);
         showToast(`Đã cập nhật thành công tài liệu: "${savedDoc.tieu_de}"`, 'success', 'Cập nhật tài liệu');
       } else {

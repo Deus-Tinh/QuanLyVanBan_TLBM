@@ -551,12 +551,13 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     data.append('hien_thi', formData.hien_thi);
     data.append('ghi_chu', formData.ghi_chu.trim());
 
-    if (formData.ngay_het_hieu_luc) {
-      data.append('ngay_het_hieu_luc', formData.ngay_het_hieu_luc);
-    }
-    if (formData.link_thay_the) {
-      data.append('link_thay_the', formData.link_thay_the.trim());
-    }
+    const isStillActive = formData.hieu_luc === 'CON_HIEU_LUC';
+    const isReplaced = formData.hieu_luc === 'HET_VA_THAY_THE';
+    const effectiveExpDate = isStillActive ? '' : (formData.ngay_het_hieu_luc || '');
+    const effectiveReplLink = isReplaced ? (formData.link_thay_the?.trim() || '') : '';
+
+    data.append('ngay_het_hieu_luc', effectiveExpDate);
+    data.append('link_thay_the', effectiveReplLink);
 
     // Gửi toàn bộ các tệp mới đính kèm
     selectedFiles.forEach((file) => {
@@ -574,6 +575,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       payload: {
         ...formData,
         ngay_dang: effectiveDate,
+        ngay_het_hieu_luc: effectiveExpDate,
+        link_thay_the: effectiveReplLink,
         files: selectedFiles,
         deleted_attachment_ids: deletedAttachmentIds,
       },
@@ -962,6 +965,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                         setFormData((prev) => ({
                           ...prev,
                           hieu_luc: st.value as HieuLucType,
+                          ngay_het_hieu_luc: st.value === 'CON_HIEU_LUC' ? '' : prev.ngay_het_hieu_luc,
+                          link_thay_the: st.value === 'HET_VA_THAY_THE' ? prev.link_thay_the : '',
                         }));
                       }}
                       className={`px-2.5 py-2 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${

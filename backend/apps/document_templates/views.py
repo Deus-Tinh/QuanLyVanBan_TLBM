@@ -189,10 +189,14 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
             else:
                 obj.hieu_luc = 'CON_HIEU_LUC'
 
-        if link_thay_the is not None:
-            obj.link_thay_the = link_thay_the
-        if ngay_het_hieu_luc is not None:
-            obj.ngay_het_hieu_luc = ngay_het_hieu_luc
+        if obj.hieu_luc == 'CON_HIEU_LUC':
+            obj.ngay_het_hieu_luc = None
+            obj.link_thay_the = ''
+        else:
+            if link_thay_the is not None:
+                obj.link_thay_the = link_thay_the
+            if ngay_het_hieu_luc is not None:
+                obj.ngay_het_hieu_luc = ngay_het_hieu_luc
 
         try:
             obj.full_clean()

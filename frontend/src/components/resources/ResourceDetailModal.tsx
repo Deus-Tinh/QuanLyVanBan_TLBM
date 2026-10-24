@@ -289,8 +289,8 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                 <span className="text-main font-medium">{formatDate(item.ngay_dang)}</span>
               </div>
 
-              {/* Ngày hết hiệu lực (nếu có) */}
-              {item.ngay_het_hieu_luc && (
+              {/* Ngày hết hiệu lực (chỉ hiển thị khi có ngày và trạng thái không phải Còn hiệu lực) */}
+              {item.ngay_het_hieu_luc && item.hieu_luc !== 'CON_HIEU_LUC' && (
                 <div>
                   <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldExpirationDate')}</span>
                   <span className="text-danger font-medium">
