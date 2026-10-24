@@ -196,6 +196,8 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
         nguoi_trinh: 'Lê Thanh Hậu',
         ngay_gui: '23/10/2026',
         trang_thai: 'CHO_KY',
+        nhan_trang_thai: 'Chờ ký',
+        can_toi_ky: true,
       },
     ];
 
@@ -214,8 +216,11 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     expect(screen.getByText('Lê Thanh Hậu')).toBeInTheDocument();
     expect(screen.getByText('Chờ ký')).toBeInTheDocument();
 
-    const signBtn = screen.getByText('Xem / Ký ngay');
+    const signBtn = screen.getByText('Ký ngay');
     fireEvent.click(signBtn);
+
+    const viewAllBtn = screen.getByText('Xem tất cả hồ sơ trình ký');
+    fireEvent.click(viewAllBtn);
     expect(mockNavigate).toHaveBeenCalledWith('approvals');
   });
 });

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '@app-types/navigation';
 import { useTranslation } from '@i18n/translate';
 import { Badge } from '@components/common';
@@ -72,7 +73,9 @@ export interface SigningRequestItem {
   status?: string;
   trang_thai?: string;
   statusLabel?: string;
+  nhan_trang_thai?: string;
   trang_thai_display?: string;
+  can_toi_ky?: boolean;
   variant?: 'success' | 'warning' | 'info' | 'danger';
 }
 
@@ -104,6 +107,7 @@ export default function ModernDashboardView({
   birthdays,
 }: ModernDashboardViewProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [taskFilter, setTaskFilter] = useState<'processing' | 'completed' | 'overdue' | 'pending'>('processing');
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
@@ -769,13 +773,14 @@ export default function ModernDashboardView({
                     const isPending = status === 'CHO_KY' || status === 'pending';
                     const isSigned = status === 'DA_KY' || status === 'completed';
                     const isRejected = status === 'TU_CHOI' || status === 'rejected';
-                    const statusVariant = row.variant || (isSigned ? 'success' : isRejected ? 'danger' : 'warning');
-                    const statusLabel = row.trang_thai_display || row.statusLabel || (isPending ? 'Chờ ký' : isSigned ? 'Đã ký' : isRejected ? 'Từ chối' : status);
+                    const statusVariant = row.variant || (isSigned ? 'success' : isRejected ? 'danger' : isPending ? 'warning' : 'secondary');
+                    const statusLabel = row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || (isPending ? 'Chờ ký' : isSigned ? 'Đã ký' : isRejected ? 'Từ chối' : status);
+                    const canSign = !!row.can_toi_ky;
 
                     return (
                       <tr
                         key={row.id}
-                        onClick={() => onNavigate('approvals')}
+                        onClick={() => navigate(`/approvals/${row.id}`)}
                         className="border-b border-border-subtle hover:bg-warning-subtle/20 transition-colors cursor-pointer group"
                         title={title}
                       >
@@ -807,12 +812,17 @@ export default function ModernDashboardView({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onNavigate('approvals');
+                              navigate(`/approvals/${row.id}`);
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-primary hover:bg-primary-hover text-white text-xs font-semibold inline-flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-all shadow-2xs cursor-pointer ${
+                              canSign
+                                ? 'bg-primary hover:bg-primary-hover text-white'
+                                : 'bg-surface-elevated hover:bg-surface-hover text-secondary border border-border-subtle'
+                            }`}
+                            title={canSign ? (t('dashboardDetails.signNowBtn') || 'Ký ngay') : (t('dashboardDetails.viewDetailBtn') || 'Xem chi tiết')}
                           >
-                            <i className="fa-solid fa-pen-nib text-[10px]" />
-                            <span>{t('dashboardDetails.signNowBtn') || 'Xem / Ký ngay'}</span>
+                            <i className={`fa-solid ${canSign ? 'fa-pen-nib text-[10px]' : 'fa-eye text-[10px]'}`} />
+                            <span>{canSign ? (t('dashboardDetails.signNowBtn') || 'Ký ngay') : (t('dashboardDetails.viewDetailBtn') || 'Xem chi tiết')}</span>
                           </button>
                         </td>
                       </tr>

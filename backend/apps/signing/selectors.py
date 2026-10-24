@@ -55,17 +55,3 @@ def tong_quan_dashboard(nguoi, gioi_han=GIOI_HAN_GAN_DAY):
             "can_toi_ky": h.pk in cho_toi,
         })
     return {"so_cho_ky": len(cho_toi), "gan_day": gan_day}
-
-
-def dem_ho_so_cho_ky(user):
-    """Đếm số lượng yêu cầu trình ký đang chờ người dùng ký (dùng cho badge & KPI)."""
-    if not user or not user.is_authenticated:
-        return 0
-    return tong_quan_dashboard(user)["so_cho_ky"]
-
-
-def danh_sach_trinh_ky_gan_nhat(user, limit=GIOI_HAN_GAN_DAY):
-    """Lấy danh sách các phiếu trình ký gần nhất liên quan tới người dùng."""
-    if not user or not user.is_authenticated:
-        return []
-    return tong_quan_dashboard(user, gioi_han=limit)["gan_day"]
