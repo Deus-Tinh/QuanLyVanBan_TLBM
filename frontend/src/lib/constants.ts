@@ -101,7 +101,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         id: 'approvals',
-        label: 'Quy Trình Ký Số',
+        label: 'Trình Ký',
         icon: 'fa-file-signature',
       },
     ],
@@ -251,7 +251,7 @@ export const MAIN_MODULES: MainModule[] = [
       },
       {
         id: 'approvals',
-        label: 'Quy Trình Trình Ký',
+        label: 'Trình Ký',
         icon: 'fa-file-signature',
         description: 'Sơ đồ ký số điện tử và phê duyệt văn bản',
       },

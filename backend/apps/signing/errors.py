@@ -25,6 +25,17 @@ class ConflictError(SigningError):
     default_detail = "Trạng thái hiện tại không cho phép thao tác."
 
 
+# Lỗi chuẩn của Django/DRF (404, 401, 403, 405, 429) mặc định trả chi tiết tiếng Anh: thay bằng tiếng Việt theo mã
+# trạng thái; giao diện dịch theo `code`.
+CHI_TIET_CHUAN = {
+    status.HTTP_401_UNAUTHORIZED: "Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
+    status.HTTP_403_FORBIDDEN: "Tài khoản không có quyền thực hiện thao tác này.",
+    status.HTTP_404_NOT_FOUND: "Không tìm thấy hoặc tài khoản không được xem dữ liệu này.",
+    status.HTTP_405_METHOD_NOT_ALLOWED: "Phương thức không được hỗ trợ.",
+    status.HTTP_429_TOO_MANY_REQUESTS: "Thao tác quá nhiều lần, thử lại sau.",
+}
+
+
 def exception_handler(exc, context):
     """Lỗi trả dạng {"code", "detail", "fields"}; lỗi validation DRF giữ chi tiết theo field."""
     response = drf_exception_handler(exc, context)
@@ -41,7 +52,7 @@ def exception_handler(exc, context):
     elif isinstance(response.data, dict) and "detail" in response.data:
         response.data = {
             "code": "khong_tim_thay" if isinstance(exc, Http404) else getattr(exc, "default_code", "loi"),
-            "detail": str(response.data["detail"]),
+            "detail": CHI_TIET_CHUAN.get(response.status_code, str(response.data["detail"])),
             "fields": {},
         }
     return response
