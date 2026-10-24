@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Badge, Button, Card } from '@components/common';
+import type { BadgeProps } from '@components/common/Badge';
 import { DangTai, LoiTai, Rong } from '@components/signing/ChungUI';
 import XemPdf from '@components/signing/XemPdf';
 import { signingApi } from '@lib/signing/api';
@@ -16,9 +17,14 @@ import type { BoLocTaiLieu, LoaiTepTaiLieu, TepTaiLieu } from '@lib/signing/type
 
 const LOAI: LoaiTepTaiLieu[] = ['DU_THAO', 'LUOT', 'HOAN_TAT'];
 const BIEU_TUONG: Record<LoaiTepTaiLieu, string> = {
-  DU_THAO: 'fa-file-pen text-secondary',
-  LUOT: 'fa-file-pdf text-secondary',
+  DU_THAO: 'fa-file-pen text-warning-text',
+  LUOT: 'fa-file-pdf text-primary',
   HOAN_TAT: 'fa-file-circle-check text-success',
+};
+const MAU_LOAI_TEP: Record<LoaiTepTaiLieu, BadgeProps['variant']> = {
+  DU_THAO: 'warning',
+  LUOT: 'primary',
+  HOAN_TAT: 'success',
 };
 const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-secondary';
 
@@ -110,27 +116,27 @@ export default function TaiLieuPage() {
         )}
         {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm table-fixed">
+            <table className="w-full text-sm table-fixed min-w-[850px]">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[13%]">{t('taiLieu.soHieu')}</th>
-                  <th className="px-3.5 py-2.5 text-left w-[32%]">{t('taiLieu.trichYeu')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[17%]">{t('taiLieu.tep')}</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap w-[9%]">{t('taiLieu.loaiTep')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[7%]">{t('danhSach.maHoSo')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[14%]">{t('danhSach.quyTrinh')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[8%]">{t('taiLieu.ngay')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[14%]">{t('taiLieu.soHieu')}</th>
+                  <th className="px-3.5 py-2.5 text-left w-[28%]">{t('taiLieu.trichYeu')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[18%]">{t('taiLieu.tep')}</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap w-[10%]">{t('taiLieu.loaiTep')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[8%]">{t('danhSach.maHoSo')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[12%]">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[10%]">{t('taiLieu.ngay')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-subtle">
+              <tbody className="divide-y border-border-subtle">
                 {ds.duLieu.map((tep) => (
                   <tr key={`${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="hover:bg-surface-hover/80 transition-colors">
-                    <td className="px-3 py-3 text-left whitespace-nowrap truncate" title={tep.van_ban.so_hieu}>
+                    <td className="px-3 py-3 text-left whitespace-nowrap" title={tep.van_ban.so_hieu}>
                       {tep.van_ban.so_hieu ? (
                         <button
                           type="button"
                           onClick={() => xemChiTiet(tep)}
-                          className="font-semibold text-main hover:text-primary hover:underline cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded max-w-full truncate"
+                          className="font-semibold text-main hover:text-primary hover:underline cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded max-w-full truncate inline-block"
                           title={t('chiTiet.xemChiTiet')}
                         >
                           <span className="truncate">{tep.van_ban.so_hieu}</span>
@@ -139,28 +145,28 @@ export default function TaiLieuPage() {
                         <span className="text-muted">—</span>
                       )}
                     </td>
-                    <td className="px-3.5 py-3 text-left text-main truncate" title={tep.van_ban.trich_yeu}>
-                      <div className="truncate text-left">
+                    <td className="px-3.5 py-3 text-left text-main" title={tep.van_ban.trich_yeu}>
+                      <div className="line-clamp-2 break-words" title={tep.van_ban.trich_yeu}>
                         {tep.van_ban.trich_yeu || '—'}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-left whitespace-nowrap truncate">
+                    <td className="px-3 py-3 text-left">
                       <button
                         type="button"
                         onClick={() => xemChiTiet(tep)}
-                        className="group inline-flex items-center gap-1.5 max-w-full text-left text-secondary hover:text-primary transition-colors cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary truncate text-xs"
+                        className="group inline-flex items-center gap-1.5 max-w-full text-left text-secondary hover:text-primary transition-colors cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary text-xs"
                         title={t('chiTiet.xemChiTiet')}
                       >
                         <i className={`fa-solid ${BIEU_TUONG[tep.loai]} text-xs shrink-0 opacity-70 group-hover:opacity-100 transition-opacity`} aria-hidden="true" />
                         <span className="truncate group-hover:underline underline-offset-2">{tep.ten_tep}</span>
                       </button>
                     </td>
-                    <td className="px-2.5 py-3 text-center whitespace-nowrap"><Badge variant="info" size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
+                    <td className="px-2.5 py-3 text-center whitespace-nowrap"><Badge variant={MAU_LOAI_TEP[tep.loai]} size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
                     <td className="px-3 py-3 text-left whitespace-nowrap font-medium text-secondary">
                       <Link to={`/approvals/${tep.trinh_ky}`} className="hover:text-primary hover:underline">#{tep.trinh_ky}</Link>
                     </td>
-                    <td className="px-3 py-3 text-left text-secondary whitespace-nowrap truncate" title={tep.ten_quy_trinh}>
-                      {tep.ten_quy_trinh}
+                    <td className="px-3 py-3 text-left text-secondary" title={tep.ten_quy_trinh}>
+                      <div className="line-clamp-2 break-words">{tep.ten_quy_trinh}</div>
                     </td>
                     <td className="px-3 py-3 text-left text-muted whitespace-nowrap text-xs">
                       <span>{dinhDangNgay(tep.thoi_diem, lang)}</span>
@@ -185,7 +191,7 @@ export default function TaiLieuPage() {
                 <div className="flex items-center gap-2">
                   <i className={`fa-solid ${BIEU_TUONG[tepXem.loai]} text-lg shrink-0`} aria-hidden="true" />
                   <h2 className="text-base sm:text-lg font-bold text-main truncate">{tepXem.ten_tep}</h2>
-                  <Badge variant="info" size="sm">{t(`taiLieu.loai.${tepXem.loai}`)}</Badge>
+                  <Badge variant={MAU_LOAI_TEP[tepXem.loai]} size="sm">{t(`taiLieu.loai.${tepXem.loai}`)}</Badge>
                 </div>
                 <div className="text-xs text-secondary truncate mt-0.5">
                   <Link to={`/approvals/${tepXem.trinh_ky}`} className="font-bold text-primary hover:underline mr-2">
