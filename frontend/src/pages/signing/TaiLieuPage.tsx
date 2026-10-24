@@ -123,7 +123,7 @@ export default function TaiLieuPage() {
                   <th className="px-3.5 py-2.5 text-left w-[28%]">{t('taiLieu.trichYeu')}</th>
                   <th className="px-3 py-2.5 text-left whitespace-nowrap w-[18%]">{t('taiLieu.tep')}</th>
                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap w-[10%]">{t('taiLieu.loaiTep')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[8%]">{t('danhSach.maHoSo')}</th>
+                  <th className="px-3 py-2.5 text-center whitespace-nowrap w-[8%]">{t('danhSach.maHoSo')}</th>
                   <th className="px-3 py-2.5 text-left whitespace-nowrap w-[12%]">{t('danhSach.quyTrinh')}</th>
                   <th className="px-3 py-2.5 text-left whitespace-nowrap w-[10%]">{t('taiLieu.ngay')}</th>
                 </tr>
@@ -162,7 +162,7 @@ export default function TaiLieuPage() {
                       </button>
                     </td>
                     <td className="px-2.5 py-3 text-center whitespace-nowrap"><Badge variant={MAU_LOAI_TEP[tep.loai]} size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
-                    <td className="px-3 py-3 text-left whitespace-nowrap font-medium text-secondary">
+                    <td className="px-3 py-3 text-center whitespace-nowrap font-medium text-secondary">
                       <Link to={`/approvals/${tep.trinh_ky}`} className="hover:text-primary hover:underline">#{tep.trinh_ky}</Link>
                     </td>
                     <td className="px-3 py-3 text-left text-secondary" title={tep.ten_quy_trinh}>
