@@ -502,13 +502,15 @@ def cleanup_replacement_links_on_delete(instance):
                     doc.link_thay_the = new_str
                     updated_fields.append("link_thay_the")
 
-            if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.HET_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN):
-                doc.hieu_luc = HieuLuc.CON_HIEU_LUC
-                doc.ngay_het_hieu_luc = None
-                if "ngay_het_hieu_luc" not in updated_fields:
-                    updated_fields.append("ngay_het_hieu_luc")
-                if "hieu_luc" not in updated_fields:
-                    updated_fields.append("hieu_luc")
+                # Chỉ khôi phục trạng thái nếu không còn văn bản nào khác thay thế
+                if not remaining_links:
+                    now = timezone.now()
+                    is_date_expired = bool(doc.ngay_het_hieu_luc and doc.ngay_het_hieu_luc <= now)
+                    if not is_date_expired:
+                        if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.CON_HIEU_LUC_1_PHAN):
+                            doc.hieu_luc = HieuLuc.CON_HIEU_LUC
+                            if "hieu_luc" not in updated_fields:
+                                updated_fields.append("hieu_luc")
 
             if updated_fields:
                 doc.save(update_fields=updated_fields)

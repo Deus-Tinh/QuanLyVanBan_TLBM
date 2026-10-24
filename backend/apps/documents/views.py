@@ -605,6 +605,9 @@ class DocumentViewSet(viewsets.ViewSet):
         raw_pham_vi = request.data.get("pham_vi") or request.query_params.get("pham_vi")
         loai = str(raw_loai).strip().upper()
 
+        if not can_create_document(request.user, loai):
+            raise PermissionDenied("Bạn không có quyền import tạo văn bản mới. Vui lòng liên hệ Quản trị viên.")
+
         if not file_obj:
             return Response({"error": "Vui lòng chọn file Excel."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -743,7 +746,32 @@ class VanBanDenViewSet(viewsets.ModelViewSet):
         cleanup_replacement_links_on_delete(obj)
         return super().destroy(request, *args, **kwargs)
 
+    def update(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDen.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not can_edit_document(request.user, obj):
+            raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản này.")
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDen.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not can_edit_document(request.user, obj):
+            raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản này.")
+        return super().partial_update(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        if not can_create_document(request.user, "DEN"):
+            raise PermissionDenied("Bạn không có quyền tạo văn bản đến mới. Vui lòng liên hệ Quản trị viên.")
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
+        if not can_create_document(self.request.user, "DEN"):
+            raise PermissionDenied("Bạn không có quyền tạo văn bản đến mới. Vui lòng liên hệ Quản trị viên.")
         validate_attachment_files(self.request)
         nam = serializer.validated_data.get("nam", timezone.now().year)
         so_thu_tu = generate_so_thu_tu("DEN", nam)
@@ -797,7 +825,32 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
         cleanup_replacement_links_on_delete(obj)
         return super().destroy(request, *args, **kwargs)
 
+    def update(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDi.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not can_edit_document(request.user, obj):
+            raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản này.")
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        obj = VanBanDi.objects.filter(pk=pk).first()
+        if not obj:
+            raise NotFound(f"Không tìm thấy văn bản với ID {pk}.")
+        if not can_edit_document(request.user, obj):
+            raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản này.")
+        return super().partial_update(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        if not can_create_document(request.user, "DI"):
+            raise PermissionDenied("Bạn không có quyền tạo văn bản đi mới. Vui lòng liên hệ Quản trị viên.")
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
+        if not can_create_document(self.request.user, "DI"):
+            raise PermissionDenied("Bạn không có quyền tạo văn bản đi mới. Vui lòng liên hệ Quản trị viên.")
         validate_attachment_files(self.request)
         nam = serializer.validated_data.get("nam", timezone.now().year)
         so_thu_tu = generate_so_thu_tu("DI", nam)
@@ -940,7 +993,14 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Bạn không có quyền chỉnh sửa văn bản mật. Chỉ Quản trị viên (Admin) mới có quyền chỉnh sửa.")
         return super().partial_update(request, *args, **kwargs)
 
+    def create(self, request, *args, **kwargs):
+        if not can_create_document(request.user, "MAT"):
+            raise PermissionDenied("Bạn không có quyền tạo văn bản mật mới. Vui lòng liên hệ Quản trị viên.")
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
+        if not can_create_document(self.request.user, "MAT"):
+            raise PermissionDenied("Bạn không có quyền tạo văn bản mật mới. Vui lòng liên hệ Quản trị viên.")
         validate_attachment_files(self.request)
         ngay_den = serializer.validated_data.get("ngay_den") or serializer.validated_data.get("ngay_ban_hanh") or timezone.now()
         doc = serializer.save(nguoi_tao=self.request.user, ngay_den=ngay_den, pham_vi=PhamVi.HAN_CHE, gui_mail_toan_he_thong=False)
@@ -1060,7 +1120,7 @@ class FolderViewSet(viewsets.ModelViewSet):
     """
     queryset = Folder.objects.all().select_related("parent", "created_by").prefetch_related("children", "files")
     serializer_class = FolderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -1112,10 +1172,18 @@ class FolderViewSet(viewsets.ModelViewSet):
         serializer = FolderSerializer(children, many=True)
         return Response(serializer.data)
 
+    def destroy(self, request, *args, **kwargs):
+        folder = self.get_object()
+        if not is_admin_user(request.user) and folder.created_by and folder.created_by != request.user:
+            raise PermissionDenied("Chỉ Quản trị viên (Admin) hoặc người tạo mới có quyền xóa thư mục này.")
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=True, methods=["patch", "post"], url_path="move")
     def move(self, request, pk=None):
         """Di chuyển thư mục đến vị trí cha mới với kiểm tra vòng lặp."""
         folder = self.get_object()
+        if not is_admin_user(request.user) and folder.created_by and folder.created_by != request.user:
+            raise PermissionDenied("Chỉ Quản trị viên (Admin) hoặc người tạo mới có quyền di chuyển thư mục này.")
         serializer = FolderMoveSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -1153,14 +1221,25 @@ class FolderViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            file_size = uploaded_file.size if uploaded_file else int(request.data.get("file_size", 0))
-            file_path = request.data.get("file_path", "")
-            if uploaded_file and not file_path:
-                file_path = f"media/folder_files/{folder.id}/{uploaded_file.name}"
+            if not has_allowed_extension(file_name):
+                return Response(
+                    {"detail": f'Định dạng tệp "{file_name}" không được phép. Chỉ chấp nhận các tệp tài liệu và hình ảnh hợp lệ (PDF, DOC, DOCX, JPG, PNG).'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             ext = ""
             if "." in file_name:
                 ext = file_name.rsplit(".", 1)[-1].lower()
+
+            file_path = request.data.get("file_path", "")
+            file_size = int(request.data.get("file_size", 0))
+            if uploaded_file:
+                from django.core.files.storage import default_storage
+                import uuid
+                safe_name = f"{uuid.uuid4().hex[:8]}_{uploaded_file.name}"
+                saved_path = default_storage.save(f"folder_files/{folder.id}/{safe_name}", uploaded_file)
+                file_path = saved_path
+                file_size = uploaded_file.size
 
             user = request.user if request.user and request.user.is_authenticated else None
             item = FolderFile.objects.create(
@@ -1183,7 +1262,11 @@ class FolderViewSet(viewsets.ModelViewSet):
         """
         Quét thư mục máy tính (Local Directory) và đồng bộ cấu trúc Folder & FolderFile vào hệ thống
         mà không cần người dùng upload file lên server.
+        Chỉ Quản trị viên (Admin) mới có quyền thực hiện.
         """
+        if not is_admin_user(request.user):
+            raise PermissionDenied("Chỉ Quản trị viên (Admin) mới có quyền quét và đồng bộ thư mục hệ thống.")
+
         req_path = request.data.get("folder_path", "").strip()
         parent_id = request.data.get("parent_id")
 
@@ -1317,7 +1400,7 @@ class FolderFileViewSet(viewsets.ModelViewSet):
     """ViewSet quản lý file trong thư mục."""
     queryset = FolderFile.objects.all().select_related("folder", "uploaded_by")
     serializer_class = FolderFileSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -1336,23 +1419,42 @@ class FolderFileViewSet(viewsets.ModelViewSet):
         file_obj = self.get_object()
         path = file_obj.file_path
 
+        from pathlib import Path
+        clean_path = str(path).replace("\\", "/").strip()
+        if ".." in clean_path:
+            raise PermissionDenied("Đường dẫn file không hợp lệ (Phát hiện Path Traversal).")
+
+        safe_roots = []
+        if getattr(settings, "DOCUMENT_STORAGE_ROOT", None):
+            safe_roots.append(Path(settings.DOCUMENT_STORAGE_ROOT).resolve())
+        if getattr(settings, "MEDIA_ROOT", None):
+            safe_roots.append(Path(settings.MEDIA_ROOT).resolve())
+        safe_roots.append((Path(str(settings.BASE_DIR)) / "media").resolve())
+        safe_roots.append((Path(str(settings.BASE_DIR)) / "Folder").resolve())
+
         file_disk_path = None
-        if os.path.isabs(path) and os.path.exists(path):
-            file_disk_path = path
-        else:
-            candidates = [
-                os.path.join(str(settings.BASE_DIR), path),
-                os.path.join(os.path.dirname(str(settings.BASE_DIR)), path),
-                os.path.join(getattr(settings, "MEDIA_ROOT", ""), path),
-            ]
-            for cand in candidates:
-                if cand and os.path.exists(cand):
-                    file_disk_path = cand
+        for root in safe_roots:
+            cand = (root / clean_path.lstrip("/")).resolve()
+            try:
+                if cand.is_relative_to(root) and cand.exists() and cand.is_file():
+                    file_disk_path = str(cand)
                     break
+            except (ValueError, AttributeError):
+                pass
+
+        if not file_disk_path and os.path.isabs(clean_path):
+            cand = Path(clean_path).resolve()
+            for root in safe_roots:
+                try:
+                    if cand.is_relative_to(root) and cand.exists() and cand.is_file():
+                        file_disk_path = str(cand)
+                        break
+                except (ValueError, AttributeError):
+                    pass
 
         if not file_disk_path or not os.path.exists(file_disk_path):
             return Response(
-                {"detail": f"Không tìm thấy file vật lý trên ổ đĩa ({path})."},
+                {"detail": "Không tìm thấy file hợp lệ trên ổ đĩa."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

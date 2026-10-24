@@ -52,9 +52,21 @@ class TolerantPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
 class DocumentAttachmentSerializer(serializers.ModelSerializer):
     """Serializer dùng chung cho file đính kèm."""
 
+    file = serializers.SerializerMethodField()
     file_name = serializers.CharField(source="name", read_only=True)
     uploaded_at = serializers.DateTimeField(source="created_at", read_only=True)
     created_time = serializers.DateTimeField(source="created_at", read_only=True)
+
+    def get_file(self, obj):
+        doc_id = getattr(obj, "document_id", None) or getattr(obj, "vanbanden_id", None) or getattr(obj, "vanbandi_id", None) or getattr(obj, "vanbanmat_id", None)
+        if doc_id:
+            return f"/api/documents/{doc_id}/attachments/{obj.pk}/download/"
+        if obj.file:
+            try:
+                return obj.file.url
+            except Exception:
+                return None
+        return None
 
     class Meta:
         model = VanBanDenAttachment
@@ -63,7 +75,19 @@ class DocumentAttachmentSerializer(serializers.ModelSerializer):
 
 
 class VanBanDenAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
     created_time = serializers.DateTimeField(source="created_at", read_only=True)
+
+    def get_file(self, obj):
+        doc_id = getattr(obj, "document_id", None) or getattr(obj, "vanbanden_id", None)
+        if doc_id:
+            return f"/api/documents/{doc_id}/attachments/{obj.pk}/download/"
+        if obj.file:
+            try:
+                return obj.file.url
+            except Exception:
+                return None
+        return None
 
     class Meta:
         model = VanBanDenAttachment
@@ -72,7 +96,19 @@ class VanBanDenAttachmentSerializer(serializers.ModelSerializer):
 
 
 class VanBanDiAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
     created_time = serializers.DateTimeField(source="created_at", read_only=True)
+
+    def get_file(self, obj):
+        doc_id = getattr(obj, "document_id", None) or getattr(obj, "vanbandi_id", None)
+        if doc_id:
+            return f"/api/documents/{doc_id}/attachments/{obj.pk}/download/"
+        if obj.file:
+            try:
+                return obj.file.url
+            except Exception:
+                return None
+        return None
 
     class Meta:
         model = VanBanDiAttachment
@@ -81,7 +117,19 @@ class VanBanDiAttachmentSerializer(serializers.ModelSerializer):
 
 
 class VanBanMatAttachmentSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
     created_time = serializers.DateTimeField(source="created_at", read_only=True)
+
+    def get_file(self, obj):
+        doc_id = getattr(obj, "document_id", None) or getattr(obj, "vanbanmat_id", None)
+        if doc_id:
+            return f"/api/documents/{doc_id}/attachments/{obj.pk}/download/"
+        if obj.file:
+            try:
+                return obj.file.url
+            except Exception:
+                return None
+        return None
 
     class Meta:
         model = VanBanMatAttachment
@@ -110,7 +158,7 @@ class DocumentListSerializer(serializers.Serializer):
     ngay_ban_hanh = serializers.DateTimeField(read_only=True, default=None)
     ngay_van_ban = serializers.DateTimeField(read_only=True, default=None)
     trich_yeu = serializers.CharField(read_only=True)
-    noi_ban_hanh = serializers.CharField(read_only=True, default="")
+    noi_ban_hanh = serializers.SerializerMethodField()
     nguoi_ky = serializers.CharField(read_only=True, default="")
     hieu_luc = serializers.CharField(read_only=True)
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
@@ -120,8 +168,8 @@ class DocumentListSerializer(serializers.Serializer):
     bi_thay_boi = serializers.SerializerMethodField()
     pham_vi = serializers.CharField(read_only=True, default="NOI_BO")
     pham_vi_display = serializers.SerializerMethodField()
-    danh_muc_ho_so = serializers.CharField(read_only=True, default="")
-    ten_loai_van_ban = serializers.CharField(read_only=True, default="")
+    danh_muc_ho_so = serializers.SerializerMethodField()
+    ten_loai_van_ban = serializers.SerializerMethodField()
     hien_thi = serializers.BooleanField(read_only=True)
     nguoi_tao_name = serializers.SerializerMethodField()
     nguoi_tao_username = serializers.CharField(source="nguoi_tao.username", read_only=True, default=None)
@@ -130,6 +178,49 @@ class DocumentListSerializer(serializers.Serializer):
     attachment_count = serializers.SerializerMethodField()
     first_attachment_url = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
+
+    def get_noi_ban_hanh(self, obj):
+        if getattr(obj, "loai", None) == "DI" or getattr(obj, "document_kind", None) == "vanbandi":
+            if hasattr(obj, "noibanhanh_links"):
+                first_link = obj.noibanhanh_links.first()
+                if first_link:
+                    try:
+                        from organizations.models import DonVi
+                        dv = DonVi.objects.filter(pk=first_link.donvi_id).first()
+                        if dv:
+                            return dv.ten
+                    except Exception:
+                        pass
+            val = getattr(obj, "_noi_ban_hanh", None)
+            if val:
+                return val
+        return getattr(obj, "noi_ban_hanh", "") or ""
+
+    def get_danh_muc_ho_so(self, obj):
+        if hasattr(obj, "hoso"):
+            first_hs = obj.hoso.first()
+            if first_hs:
+                try:
+                    from records.models import HoSo
+                    hs = HoSo.objects.filter(pk=first_hs.hoso_id).first()
+                    if hs:
+                        return hs.ten_ho_so
+                except Exception:
+                    pass
+        return getattr(obj, "_danh_muc_ho_so", None) or getattr(obj, "danh_muc_ho_so", "") or ""
+
+    def get_ten_loai_van_ban(self, obj):
+        if hasattr(obj, "danhmuc"):
+            first_dm = obj.danhmuc.first()
+            if first_dm:
+                try:
+                    from records.models import LoaiVanBan as RecordLoaiVanBan
+                    lvb = RecordLoaiVanBan.objects.filter(pk=first_dm.loaivanban_id).first()
+                    if lvb:
+                        return lvb.ten_loai
+                except Exception:
+                    pass
+        return getattr(obj, "_ten_loai_van_ban", None) or getattr(obj, "ten_loai_van_ban", "") or ""
 
     def get_so_thu_tu(self, obj):
         # CHỈ áp dụng tính STT tự động reset theo năm riêng cho Văn bản Mật
@@ -209,11 +300,21 @@ class DocumentListSerializer(serializers.Serializer):
                 att = next((a for a in obj.attachments.all() if not getattr(a, "is_deleted", False)), None)
             else:
                 att = obj.attachments.filter(is_deleted=False).first()
-            if att and att.file:
-                try:
-                    return att.file.url
-                except Exception:
-                    return None
+            if att:
+                request = self.context.get("request")
+                doc_id = getattr(att, "vanbanden_id", None) or getattr(att, "vanbandi_id", None) or getattr(att, "vanbanmat_id", None) or getattr(obj, "pk", None)
+                if doc_id:
+                    rel_url = f"/api/documents/{doc_id}/attachments/{att.pk}/download/"
+                    if request:
+                        return request.build_absolute_uri(rel_url)
+                    return rel_url
+                if att.file:
+                    try:
+                        if request:
+                            return request.build_absolute_uri(att.file.url)
+                        return att.file.url
+                    except Exception:
+                        return None
         return None
 
 
@@ -233,7 +334,7 @@ class DocumentDetailSerializer(serializers.Serializer):
     ngay_ban_hanh = serializers.DateTimeField(read_only=True, default=None)
     ngay_van_ban = serializers.DateTimeField(read_only=True, default=None)
     trich_yeu = serializers.CharField(read_only=True)
-    noi_ban_hanh = serializers.CharField(read_only=True, default="")
+    noi_ban_hanh = serializers.SerializerMethodField()
     nguoi_ky = serializers.CharField(read_only=True, default="")
     chuc_vu = serializers.CharField(read_only=True, default="")
     hieu_luc = serializers.CharField(read_only=True)
@@ -245,8 +346,8 @@ class DocumentDetailSerializer(serializers.Serializer):
     bi_thay_boi = serializers.SerializerMethodField()
     pham_vi = serializers.CharField(read_only=True, default="NOI_BO")
     pham_vi_display = serializers.SerializerMethodField()
-    danh_muc_ho_so = serializers.CharField(read_only=True, default="")
-    ten_loai_van_ban = serializers.CharField(read_only=True, default="")
+    danh_muc_ho_so = serializers.SerializerMethodField()
+    ten_loai_van_ban = serializers.SerializerMethodField()
     ghi_chu = serializers.CharField(read_only=True, default="")
     hien_thi = serializers.BooleanField(read_only=True)
     gui_mail_toan_he_thong = serializers.BooleanField(read_only=True)
@@ -259,6 +360,49 @@ class DocumentDetailSerializer(serializers.Serializer):
     don_vi_nhan = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
+
+    def get_noi_ban_hanh(self, obj):
+        if getattr(obj, "loai", None) == "DI" or getattr(obj, "document_kind", None) == "vanbandi":
+            if hasattr(obj, "noibanhanh_links"):
+                first_link = obj.noibanhanh_links.first()
+                if first_link:
+                    try:
+                        from organizations.models import DonVi
+                        dv = DonVi.objects.filter(pk=first_link.donvi_id).first()
+                        if dv:
+                            return dv.ten
+                    except Exception:
+                        pass
+            val = getattr(obj, "_noi_ban_hanh", None)
+            if val:
+                return val
+        return getattr(obj, "noi_ban_hanh", "") or ""
+
+    def get_danh_muc_ho_so(self, obj):
+        if hasattr(obj, "hoso"):
+            first_hs = obj.hoso.first()
+            if first_hs:
+                try:
+                    from records.models import HoSo
+                    hs = HoSo.objects.filter(pk=first_hs.hoso_id).first()
+                    if hs:
+                        return hs.ten_ho_so
+                except Exception:
+                    pass
+        return getattr(obj, "_danh_muc_ho_so", None) or getattr(obj, "danh_muc_ho_so", "") or ""
+
+    def get_ten_loai_van_ban(self, obj):
+        if hasattr(obj, "danhmuc"):
+            first_dm = obj.danhmuc.first()
+            if first_dm:
+                try:
+                    from records.models import LoaiVanBan as RecordLoaiVanBan
+                    lvb = RecordLoaiVanBan.objects.filter(pk=first_dm.loaivanban_id).first()
+                    if lvb:
+                        return lvb.ten_loai
+                except Exception:
+                    pass
+        return getattr(obj, "_ten_loai_van_ban", None) or getattr(obj, "ten_loai_van_ban", "") or ""
 
     def get_don_vi_nhan(self, obj):
         try:
@@ -423,6 +567,17 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                         second=now.second,
                         microsecond=now.microsecond,
                     )
+
+        # Ràng buộc nghiệp vụ: Ngày hết hiệu lực không được nhỏ hơn ngày ban hành / ngày đến
+        ngay_het_hieu_luc = attrs.get("ngay_het_hieu_luc")
+        if ngay_het_hieu_luc is not None:
+            compare_date = attrs.get("ngay_ban_hanh") or attrs.get("ngay_den") or attrs.get("ngay_van_ban")
+            if not compare_date and self.instance:
+                compare_date = getattr(self.instance, "ngay_ban_hanh", None) or getattr(self.instance, "ngay_den", None) or getattr(self.instance, "ngay_van_ban", None)
+            if compare_date and ngay_het_hieu_luc < compare_date:
+                raise serializers.ValidationError(
+                    {"ngay_het_hieu_luc": "Ngày hết hiệu lực không được nhỏ hơn ngày ban hành / ngày đến của văn bản."}
+                )
 
         if loai == LoaiVanBan.MAT:
             attrs["pham_vi"] = PhamVi.HAN_CHE
@@ -603,13 +758,96 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         except Exception:
             pass
 
+    def _save_hoso_and_danhmuc(self, instance, ho_so_val, loai_vb_val):
+        try:
+            from records.models import HoSo, LoaiVanBan as RecordLoaiVanBan
+            from .models import (
+                VanBanDenHoSo, VanBanDenDanhmuc,
+                VanBanDiHoSo, VanBanDiDanhmuc,
+            )
+
+            kind = getattr(instance, "document_kind", "")
+            is_di = (kind == "vanbandi")
+            hoso_model = VanBanDiHoSo if is_di else VanBanDenHoSo
+            danhmuc_model = VanBanDiDanhmuc if is_di else VanBanDenDanhmuc
+
+            if ho_so_val is not None:
+                clean_hs = str(ho_so_val).strip()
+                if clean_hs:
+                    hs = None
+                    if clean_hs.isdigit():
+                        hs = HoSo.objects.filter(pk=int(clean_hs)).first()
+                    if not hs:
+                        hs = HoSo.objects.filter(ten_ho_so__iexact=clean_hs).first() or HoSo.objects.filter(so_ky_hieu__iexact=clean_hs).first()
+                    if hs:
+                        if is_di:
+                            hoso_model.objects.filter(vanbandi=instance).delete()
+                            hoso_model.objects.create(vanbandi=instance, hoso_id=hs.pk)
+                        else:
+                            hoso_model.objects.filter(vanbanden=instance).delete()
+                            hoso_model.objects.create(vanbanden=instance, hoso_id=hs.pk)
+                else:
+                    if is_di:
+                        hoso_model.objects.filter(vanbandi=instance).delete()
+                    else:
+                        hoso_model.objects.filter(vanbanden=instance).delete()
+
+            if loai_vb_val is not None:
+                clean_lvb = str(loai_vb_val).strip()
+                if clean_lvb:
+                    lvb = None
+                    if clean_lvb.isdigit():
+                        lvb = RecordLoaiVanBan.objects.filter(pk=int(clean_lvb)).first()
+                    if not lvb:
+                        lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb).first()
+                    if lvb:
+                        if is_di:
+                            danhmuc_model.objects.filter(vanbandi=instance).delete()
+                            danhmuc_model.objects.create(vanbandi=instance, loaivanban_id=lvb.pk)
+                        else:
+                            danhmuc_model.objects.filter(vanbanden=instance).delete()
+                            danhmuc_model.objects.create(vanbanden=instance, loaivanban_id=lvb.pk)
+                else:
+                    if is_di:
+                        danhmuc_model.objects.filter(vanbandi=instance).delete()
+                    else:
+                        danhmuc_model.objects.filter(vanbanden=instance).delete()
+        except Exception:
+            pass
+
+    def _save_noi_ban_hanh(self, instance, nbh_val):
+        try:
+            from organizations.models import DonVi
+            from .models import VanBanDiNoiBanHanh
+
+            kind = getattr(instance, "document_kind", "")
+            if kind == "vanbandi":
+                VanBanDiNoiBanHanh.objects.filter(vanbandi=instance).delete()
+                if nbh_val and str(nbh_val).strip():
+                    clean_nbh = str(nbh_val).strip()
+                    dv = None
+                    if clean_nbh.isdigit():
+                        dv = DonVi.objects.filter(pk=int(clean_nbh)).first()
+                    if not dv:
+                        dv = DonVi.objects.filter(ten__iexact=clean_nbh).first() or DonVi.objects.filter(ma_dinh_danh__iexact=clean_nbh).first()
+                    if dv:
+                        VanBanDiNoiBanHanh.objects.create(vanbandi=instance, donvi_id=dv.pk)
+                    else:
+                        instance._noi_ban_hanh = clean_nbh
+            else:
+                if nbh_val is not None:
+                    instance.noi_ban_hanh = str(nbh_val)
+                    instance.save(update_fields=["noi_ban_hanh"])
+        except Exception:
+            pass
+
     def create(self, validated_data):
         from .selectors import log_access
 
         don_vi_nhan = validated_data.pop("don_vi_nhan", None)
         nguoi_nhan = validated_data.pop("nguoi_nhan", [])
-        validated_data.pop("danh_muc_ho_so", None)
-        validated_data.pop("ten_loai_van_ban", None)
+        danh_muc_ho_so = validated_data.pop("danh_muc_ho_so", None)
+        ten_loai_van_ban = validated_data.pop("ten_loai_van_ban", None)
         loai = validated_data.pop("loai", LoaiVanBan.DEN)
         model = get_document_model(loai)
 
@@ -627,6 +865,7 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
             validated_data["so_thu_tu"] = generate_so_thu_tu(loai, year) or 1
 
         # Xử lý tương thích trường ngày giữa các model Đến và Đi
+        noi_ban_hanh = None
         if model == VanBanDen:
             ngay_ban_hanh = validated_data.pop("ngay_ban_hanh", None)
             if ngay_ban_hanh and not validated_data.get("ngay_den"):
@@ -639,7 +878,7 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                 validated_data["ngay_ban_hanh"] = ngay_den
             if ngay_den and not validated_data.get("ngay_van_ban"):
                 validated_data["ngay_van_ban"] = ngay_den
-            validated_data.pop("noi_ban_hanh", None)
+            noi_ban_hanh = validated_data.pop("noi_ban_hanh", None)
 
         model_field_names = {f.name for f in model._meta.get_fields()}
         create_kwargs = {k: v for k, v in validated_data.items() if k in model_field_names}
@@ -647,6 +886,19 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         instance = model.objects.create(**create_kwargs)
         if don_vi_nhan is not None:
             self._save_don_vi_nhan(instance, don_vi_nhan)
+
+        if model == VanBanDi and noi_ban_hanh is not None:
+            self._save_noi_ban_hanh(instance, noi_ban_hanh)
+
+        if danh_muc_ho_so is not None or ten_loai_van_ban is not None:
+            self._save_hoso_and_danhmuc(instance, danh_muc_ho_so, ten_loai_van_ban)
+
+        if danh_muc_ho_so is not None:
+            instance._danh_muc_ho_so = danh_muc_ho_so
+        if ten_loai_van_ban is not None:
+            instance._ten_loai_van_ban = ten_loai_van_ban
+        if noi_ban_hanh is not None and model == VanBanDi:
+            instance._noi_ban_hanh = noi_ban_hanh
 
         if nguoi_nhan:
             instance.nguoi_nhan.set(nguoi_nhan)
@@ -674,8 +926,9 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
 
         don_vi_nhan = validated_data.pop("don_vi_nhan", None)
         nguoi_nhan = validated_data.pop("nguoi_nhan", None)
-        validated_data.pop("danh_muc_ho_so", None)
-        validated_data.pop("ten_loai_van_ban", None)
+        danh_muc_ho_so = validated_data.pop("danh_muc_ho_so", None)
+        ten_loai_van_ban = validated_data.pop("ten_loai_van_ban", None)
+        noi_ban_hanh = validated_data.pop("noi_ban_hanh", None) if getattr(instance, "document_kind", "") == "vanbandi" else None
         validated_data.pop("loai", None)
         validated_data.pop("so_thu_tu", None)  # Read-only! Khóa cứng Số đi / Số đến
         validated_data.pop("nam", None)        # Read-only! Khóa cứng Năm khi cập nhật văn bản
@@ -707,6 +960,19 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
 
         if don_vi_nhan is not None:
             self._save_don_vi_nhan(instance, don_vi_nhan)
+
+        if noi_ban_hanh is not None:
+            self._save_noi_ban_hanh(instance, noi_ban_hanh)
+
+        if danh_muc_ho_so is not None or ten_loai_van_ban is not None:
+            self._save_hoso_and_danhmuc(instance, danh_muc_ho_so, ten_loai_van_ban)
+
+        if danh_muc_ho_so is not None:
+            instance._danh_muc_ho_so = danh_muc_ho_so
+        if ten_loai_van_ban is not None:
+            instance._ten_loai_van_ban = ten_loai_van_ban
+        if noi_ban_hanh is not None and getattr(instance, "document_kind", "") == "vanbandi":
+            instance._noi_ban_hanh = noi_ban_hanh
 
         if nguoi_nhan is not None:
             if getattr(instance, "pham_vi", None) == PhamVi.HAN_CHE or getattr(instance, "loai", None) == "MAT":
@@ -758,6 +1024,15 @@ def _validate_replacement_link(attrs, instance=None):
         if not link_thay_the or not str(link_thay_the).strip():
             raise serializers.ValidationError(
                 {"link_thay_the": "Văn bản hết hiệu lực và được thay thế bắt buộc phải có liên kết văn bản thay thế (link_thay_the)."}
+            )
+    ngay_het_hieu_luc = attrs.get("ngay_het_hieu_luc")
+    if ngay_het_hieu_luc is not None:
+        compare_date = attrs.get("ngay_ban_hanh") or attrs.get("ngay_den") or attrs.get("ngay_van_ban")
+        if not compare_date and instance:
+            compare_date = getattr(instance, "ngay_ban_hanh", None) or getattr(instance, "ngay_den", None) or getattr(instance, "ngay_van_ban", None)
+        if compare_date and ngay_het_hieu_luc < compare_date:
+            raise serializers.ValidationError(
+                {"ngay_het_hieu_luc": "Ngày hết hiệu lực không được nhỏ hơn ngày ban hành / ngày đến của văn bản."}
             )
 
 
