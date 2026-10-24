@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card } from '@components/common';
 import { DangTai, LoiTai, Rong, TrangThaiHoSo } from '@components/signing/ChungUI';
+import LocKhoangNgay from '@components/signing/LocKhoangNgay';
 import { PhanTrang } from '@components/signing/PhanTrang';
 import { SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
@@ -108,14 +109,7 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
               {quyTrinh.duLieu?.map((q) => <option key={q.id} value={String(q.id)}>{q.ten_quy_trinh} (v{q.phien_ban})</option>)}
             </select>
           </label>
-          <label className="block">
-            <span className={LOP_NHAN}>{t('danhSach.tuNgay')}</span>
-            <input className={LOP_O_NHAP} type="date" value={loc.tu_ngay ?? ''} onChange={(e) => capNhat({ tu_ngay: e.target.value })} />
-          </label>
-          <label className="block">
-            <span className={LOP_NHAN}>{t('danhSach.denNgay')}</span>
-            <input className={LOP_O_NHAP} type="date" value={loc.den_ngay ?? ''} onChange={(e) => capNhat({ den_ngay: e.target.value })} />
-          </label>
+          <LocKhoangNgay tuNgay={loc.tu_ngay} denNgay={loc.den_ngay} onDoi={capNhat} />
         </div>
       )}
     </div>

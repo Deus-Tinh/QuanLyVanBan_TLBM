@@ -8,11 +8,12 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Badge, Button, Card } from '@components/common';
 import type { BadgeProps } from '@components/common/Badge';
-import { DangTai, LoiTai, Rong } from '@components/signing/ChungUI';
+import { DangTai, LoiTai, Rong, ThongBao } from '@components/signing/ChungUI';
+import LocKhoangNgay from '@components/signing/LocKhoangNgay';
 import { PhanTrang } from '@components/signing/PhanTrang';
 import XemPdf from '@components/signing/XemPdf';
 import { SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
-import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
+import { dinhDangNgay, LOP_O_NHAP, moTaVanBan, taiXuong } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { BoLocTaiLieu, LoaiTepTaiLieu, TepTaiLieu } from '@lib/signing/types';
@@ -43,6 +44,7 @@ export default function TaiLieuPage() {
   const [tuKhoa, setTuKhoa] = useState('');
   const [tepXem, setTepXem] = useState<TepTaiLieu | null>(null);
   const [duLieuXem, setDuLieuXem] = useState<{ buf: ArrayBuffer | null; dangTai: boolean; loi: unknown } | null>(null);
+  const [taiVe, setTaiVe] = useState<{ dang: boolean; loi: unknown }>({ dang: false, loi: null });
   const [trang, setTrang] = useState(1);
   const ds = useTai(() => signingApi.taiLieu(loc, trang), [loc, trang]);
   const dsTep = ds.duLieu?.results;
@@ -68,6 +70,19 @@ export default function TaiLieuPage() {
   const dongXem = () => {
     setTepXem(null);
     setDuLieuXem(null);
+    setTaiVe({ dang: false, loi: null });
+  };
+
+  // Cùng nguồn với lúc xem (kiểm quyền ở máy chủ) và cùng tên tệp với cột "Tệp"
+  const taiTepXem = async () => {
+    if (!tepXem || taiVe.dang) return;
+    setTaiVe({ dang: true, loi: null });
+    try {
+      taiXuong(await layTep(tepXem), tepXem.ten_tep);
+      setTaiVe({ dang: false, loi: null });
+    } catch (err) {
+      setTaiVe({ dang: false, loi: err });
+    }
   };
 
   useEffect(() => {
@@ -97,14 +112,7 @@ export default function TaiLieuPage() {
               {LOAI.map((l) => <option key={l} value={l}>{t(`taiLieu.loai.${l}`)}</option>)}
             </select>
           </label>
-          <label className="block lg:col-span-2">
-            <span className={LOP_NHAN}>{t('danhSach.tuNgay')}</span>
-            <input className={LOP_O_NHAP} type="date" value={loc.tu_ngay ?? ''} onChange={(e) => dat({ tu_ngay: e.target.value })} />
-          </label>
-          <label className="block lg:col-span-2">
-            <span className={LOP_NHAN}>{t('danhSach.denNgay')}</span>
-            <input className={LOP_O_NHAP} type="date" value={loc.den_ngay ?? ''} onChange={(e) => dat({ den_ngay: e.target.value })} />
-          </label>
+          <LocKhoangNgay tuNgay={loc.tu_ngay} denNgay={loc.den_ngay} onDoi={dat} lopO="lg:col-span-2" />
           <div className="flex gap-2 lg:col-span-2">
             <Button type="submit" size="sm" icon="fa-filter">{t('danhSach.loc')}</Button>
             {coLoc && (
@@ -256,7 +264,11 @@ export default function TaiLieuPage() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end border-t border-border-subtle px-5 py-2.5 bg-surface text-xs text-muted shrink-0">
+            <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-5 py-2.5 bg-surface text-xs text-muted shrink-0">
+              {taiVe.loi != null && <div className="mr-auto min-w-0"><ThongBao>{loi(taiVe.loi)}</ThongBao></div>}
+              <Button size="sm" variant="secondary" icon="fa-download" isLoading={taiVe.dang} onClick={taiTepXem}>
+                {t('chung.taiVe')}
+              </Button>
               <Button size="sm" variant="ghost" onClick={dongXem}>
                 {t('chung.dong')}
               </Button>

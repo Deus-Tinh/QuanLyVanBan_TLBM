@@ -85,6 +85,7 @@
     "tatCa": "All",
     "tuNgay": "From",
     "denNgay": "To",
+    "loiKhoangNgay": "\"From\" date must not be later than \"To\" date. Please choose the range again.",
     "loc": "Filter",
     "locThem": "More filters",
     "xoaLoc": "Clear filters",

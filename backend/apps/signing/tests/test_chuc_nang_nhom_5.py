@@ -150,6 +150,17 @@ class BoLocTests(TrinhKyBase):
             r = self.c.get(f"{BASE}/", {"hop": "toi_gui", **tham_so})
             self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"))
 
+    def test_khoang_ngay_sai_thu_tu_tra_400(self):
+        """Từ ngày > Đến ngày: 400 kèm thông báo tiếng Việt (không trả danh sách rỗng); cùng ngày vẫn hợp lệ."""
+        sai = {"tu_ngay": "2026-10-10", "den_ngay": "2026-10-01"}
+        for duong_dan, tham_so in ((f"{BASE}/", {"hop": "toi_gui"}), ("/api/v1/signing/tai-lieu/", {})):
+            r = self.c.get(duong_dan, {**tham_so, **sai})
+            self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"), duong_dan)
+            self.assertEqual(r.data["detail"], "Từ ngày không được lớn hơn Đến ngày.")
+            self.assertIn("tu_ngay", r.data["fields"])
+            r = self.c.get(duong_dan, {**tham_so, "tu_ngay": "2026-10-10", "den_ngay": "2026-10-10"})
+            self.assertEqual(r.status_code, 200, duong_dan)
+
 
 class SuaXoaQuyTrinhTests(TrinhKyBase):
     def setUp(self):
