@@ -48,7 +48,15 @@ interface PersistedResourceState {
   q?: string;
   page?: number;
   pageSize?: number;
+  startDate?: string;
+  endDate?: string;
 }
+
+const formatDayMonthYear = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+};
 
 const getInitialFilterState = (searchParams: URLSearchParams): PersistedResourceState => {
   // Kiểm tra xem lần tải trang này có phải là Reload (F5 / Refresh) của trình duyệt hay không
@@ -75,6 +83,8 @@ const getInitialFilterState = (searchParams: URLSearchParams): PersistedResource
       q: searchParams.get('q') || undefined,
       page: searchParams.get('page') ? Number(searchParams.get('page')) : undefined,
       pageSize: searchParams.get('pageSize') ? Number(searchParams.get('pageSize')) : undefined,
+      startDate: searchParams.get('startDate') || undefined,
+      endDate: searchParams.get('endDate') || undefined,
     };
   }
 
@@ -444,6 +454,8 @@ export default function ResourceManagementPage() {
   const [selectedType, setSelectedType] = useState<string>(initialFilterState.type || 'all');
   const [selectedYear, setSelectedYear] = useState<string>(initialFilterState.year || 'all');
   const [statusFilter, setStatusFilter] = useState<string>(initialFilterState.status || 'all');
+  const [startDate, setStartDate] = useState<string>(initialFilterState.startDate || '');
+  const [endDate, setEndDate] = useState<string>(initialFilterState.endDate || '');
 
   // Cascading Loại tài liệu thuộc Thư mục đang chọn
   const availableTypesForFilter = useMemo(() => {
@@ -563,6 +575,8 @@ export default function ResourceManagementPage() {
       q: searchTerm || undefined,
       page: currentPage > 1 ? currentPage : undefined,
       pageSize: pageSize !== 5 ? pageSize : undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
     };
 
     try {
@@ -576,6 +590,8 @@ export default function ResourceManagementPage() {
     if (selectedType !== 'all') newParams.set('type', selectedType);
     if (selectedYear !== 'all') newParams.set('year', selectedYear);
     if (statusFilter !== 'all') newParams.set('status', statusFilter);
+    if (startDate) newParams.set('startDate', startDate);
+    if (endDate) newParams.set('endDate', endDate);
     if (searchTerm.trim()) newParams.set('q', searchTerm.trim());
     if (currentPage > 1) newParams.set('page', String(currentPage));
     if (pageSize !== 5) newParams.set('pageSize', String(pageSize));
@@ -586,6 +602,8 @@ export default function ResourceManagementPage() {
     selectedType,
     selectedYear,
     statusFilter,
+    startDate,
+    endDate,
     searchTerm,
     currentPage,
     pageSize,
@@ -834,6 +852,8 @@ export default function ResourceManagementPage() {
     setSelectedType('all');
     setSelectedYear('all');
     setStatusFilter('all');
+    setStartDate('');
+    setEndDate('');
     setCurrentPage(1);
     setIsCategoryDropdownOpen(false);
     setIsTypeDropdownOpen(false);
@@ -845,7 +865,9 @@ export default function ResourceManagementPage() {
     searchTerm.trim() ||
     selectedType !== 'all' ||
     selectedYear !== 'all' ||
-    statusFilter !== 'all'
+    statusFilter !== 'all' ||
+    startDate ||
+    endDate
   );
 
   // ============================================================================
@@ -880,6 +902,15 @@ export default function ResourceManagementPage() {
         if (docYear !== selectedYear) return false;
       }
 
+      // 4b. Lọc theo khoảng ngày đăng (Từ ngày - Đến ngày)
+      const docDate = doc.ngay_dang ? doc.ngay_dang.substring(0, 10) : '';
+      if (startDate) {
+        if (!docDate || docDate < startDate) return false;
+      }
+      if (endDate) {
+        if (!docDate || docDate > endDate) return false;
+      }
+
       // 5. Lọc Trạng thái hiệu lực
       if (statusFilter !== 'all') {
         if (doc.hieu_luc !== statusFilter) return false;
@@ -887,7 +918,7 @@ export default function ResourceManagementPage() {
 
       return true;
     });
-  }, [documents, searchTerm, selectedCategory, selectedType, selectedYear, statusFilter]);
+  }, [documents, searchTerm, selectedCategory, selectedType, selectedYear, statusFilter, startDate, endDate]);
 
   // Phân trang danh sách
   const totalCount = filteredDocuments.length;
@@ -1949,8 +1980,8 @@ export default function ResourceManagementPage() {
       {/* 2. THANH BỘ LỌC TÌM KIẾM (MỤC 3) */}
       <div className="bg-surface p-3 sm:p-3.5 rounded-xl border border-border-subtle shadow-xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5 items-center">
-          {/* Ô Tìm kiếm rộng rãi: chiếm 12 cols trên mobile, 6 cols trên tablet, 8 cols trên màn lớn */}
-          <div className="sm:col-span-2 md:col-span-6 lg:col-span-7 xl:col-span-8 relative">
+          {/* Ô Tìm kiếm: chiếm 12 cols trên mobile & tablet, 4 cols trên màn lớn xl */}
+          <div className="sm:col-span-2 md:col-span-12 lg:col-span-12 xl:col-span-4 relative">
             <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
             <input
               type="text"
@@ -1977,8 +2008,80 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Custom Dropdown Năm ban hành - chiếm 1 col trên sm, 3 cols trên tablet (đủ chỗ không bị cắt chữ 'Tất cả năm'), 2 cols trên xl */}
-          <div className="sm:col-span-1 md:col-span-3 lg:col-span-2.5 xl:col-span-2 relative" ref={yearDropdownRef}>
+          {/* Ô Từ ngày */}
+          <div className="sm:col-span-1 md:col-span-3 lg:col-span-3 xl:col-span-2 relative">
+            <div className="flex items-center h-10 px-2.5 rounded-lg bg-surface-elevated border border-border-subtle hover:border-primary/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors">
+              <span className="text-xs font-medium text-secondary whitespace-nowrap mr-1.5 flex items-center gap-1 shrink-0 select-none pointer-events-none">
+                <i className="fa-regular fa-calendar text-xs text-muted" />
+                <span>{t('resourceManagement.dateFrom')}:</span>
+              </span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                max={endDate || undefined}
+                className="w-full bg-transparent text-xs text-main border-none focus:outline-hidden p-0 cursor-pointer min-w-0"
+                aria-label={t('resourceManagement.dateFrom')}
+                title={t('resourceManagement.dateFrom')}
+              />
+              {startDate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStartDate('');
+                    setCurrentPage(1);
+                  }}
+                  className="text-muted hover:text-danger text-xs p-1 ml-0.5 cursor-pointer shrink-0"
+                  title="Xóa ngày bắt đầu"
+                  aria-label="Xóa ngày bắt đầu"
+                >
+                  <i className="fa-solid fa-xmark text-[11px]" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Ô Đến ngày */}
+          <div className="sm:col-span-1 md:col-span-3 lg:col-span-3 xl:col-span-2 relative">
+            <div className="flex items-center h-10 px-2.5 rounded-lg bg-surface-elevated border border-border-subtle hover:border-primary/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-colors">
+              <span className="text-xs font-medium text-secondary whitespace-nowrap mr-1.5 flex items-center gap-1 shrink-0 select-none pointer-events-none">
+                <i className="fa-regular fa-calendar-check text-xs text-muted" />
+                <span>{t('resourceManagement.dateTo')}:</span>
+              </span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                min={startDate || undefined}
+                className="w-full bg-transparent text-xs text-main border-none focus:outline-hidden p-0 cursor-pointer min-w-0"
+                aria-label={t('resourceManagement.dateTo')}
+                title={t('resourceManagement.dateTo')}
+              />
+              {endDate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEndDate('');
+                    setCurrentPage(1);
+                  }}
+                  className="text-muted hover:text-danger text-xs p-1 ml-0.5 cursor-pointer shrink-0"
+                  title="Xóa ngày kết thúc"
+                  aria-label="Xóa ngày kết thúc"
+                >
+                  <i className="fa-solid fa-xmark text-[11px]" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Custom Dropdown Năm ban hành */}
+          <div className="sm:col-span-1 md:col-span-3 lg:col-span-3 xl:col-span-2 relative" ref={yearDropdownRef}>
             <button
               type="button"
               onClick={() => {
@@ -2061,8 +2164,8 @@ export default function ResourceManagementPage() {
             )}
           </div>
 
-          {/* Custom Dropdown Hiệu lực - chiếm 1 col trên sm, 3 cols trên tablet (đủ chỗ không bị cắt chữ 'Tất cả hiệu lực'), 2 cols trên xl */}
-          <div className="sm:col-span-1 md:col-span-3 lg:col-span-2.5 xl:col-span-2 relative" ref={statusDropdownRef}>
+          {/* Custom Dropdown Hiệu lực */}
+          <div className="sm:col-span-1 md:col-span-3 lg:col-span-3 xl:col-span-2 relative" ref={statusDropdownRef}>
             <button
               type="button"
               onClick={() => {
@@ -2218,6 +2321,31 @@ export default function ResourceManagementPage() {
                     onClick={() => setSelectedYear('all')}
                     className="text-muted hover:text-danger cursor-pointer"
                     aria-label="Xóa bộ lọc năm"
+                  >
+                    <i className="fa-solid fa-xmark text-[11px]" />
+                  </button>
+                </span>
+              )}
+              {(startDate || endDate) && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
+                  <i className="fa-regular fa-calendar-days text-[11px] text-primary" />
+                  <span>
+                    {startDate && endDate
+                      ? `${t('resourceManagement.dateRange')}: ${formatDayMonthYear(startDate)} – ${formatDayMonthYear(endDate)}`
+                      : startDate
+                        ? `${t('resourceManagement.dateFrom')}: ${formatDayMonthYear(startDate)}`
+                        : `${t('resourceManagement.dateTo')}: ${formatDayMonthYear(endDate)}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartDate('');
+                      setEndDate('');
+                      setCurrentPage(1);
+                    }}
+                    className="text-muted hover:text-danger cursor-pointer"
+                    aria-label="Xóa bộ lọc khoảng ngày"
+                    title="Xóa bộ lọc khoảng ngày"
                   >
                     <i className="fa-solid fa-xmark text-[11px]" />
                   </button>
