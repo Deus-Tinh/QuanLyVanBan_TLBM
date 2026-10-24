@@ -99,7 +99,9 @@
       "tu_choi": "Rejected",
       "huy": "Cancelled"
     },
-    "quaHan": "Overdue"
+    "quaHan": "Overdue",
+    "treHanCap": "Step overdue",
+    "hanCap": "Step deadline"
   },
   "phanTrang": {
     "nhan": "Pagination",

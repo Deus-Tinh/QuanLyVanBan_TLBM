@@ -99,7 +99,9 @@
       "tu_choi": "Không đồng ý",
       "huy": "Đã hủy"
     },
-    "quaHan": "Quá hạn"
+    "quaHan": "Quá hạn",
+    "treHanCap": "Trễ hạn cấp",
+    "hanCap": "Hạn cấp"
   },
   "phanTrang": {
     "nhan": "Phân trang",
