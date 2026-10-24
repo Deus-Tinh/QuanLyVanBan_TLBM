@@ -65,6 +65,9 @@ class PositionBaseTestCase(TestCase):
             self.client_for[user.username] = client
         self.anon = APIClient()
 
+        # DB test dựng bằng migration có 25 chức vụ chuẩn (accounts/0009); các ca kiểm danh sách, phân trang,
+        # import chỉ cần chức vụ đang được tài khoản dùng ("Quản trị viên" của admin), bỏ các chức vụ còn lại.
+        Position.objects.exclude(pk__in=Employee.objects.values("chuc_vu_id")).delete()
         self.baseline_position_ids = list(Position.objects.values_list("pk", flat=True))
         self.baseline_position_count = len(self.baseline_position_ids)
         self.baseline_public_count = Position.objects.filter(is_public=True).count()

@@ -42,7 +42,7 @@ def add_supplementary_groups(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("authorization", "0006_align_permission_defaults_and_labels"),
+        ("authorization", "0007_grant_cv_send_trinhky"),
     ]
 
     operations = [

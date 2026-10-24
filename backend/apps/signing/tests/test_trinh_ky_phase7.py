@@ -108,7 +108,7 @@ class TrinhKyBase(TestCase):
         return process_service.kich_hoat(quy_trinh, self.tao)
 
     def tao_nhap(self, client=None, **kw):
-        data = {"document_type": "vanbandi", "van_ban_id": 10, "quy_trinh": self.process.pk, "muc_do": "THUONG",
+        data = {"document_type": "vanbandi", "van_ban_id": 10, "quy_trinh": self.process.pk,
                 "tep": tep_pdf()}
         data.update(kw)
         return (client or self.c).post(f"{BASE}/", data, format="multipart")
@@ -141,7 +141,6 @@ class TaoNhapTests(TrinhKyBase):
             ({"van_ban_id": 11}, 400, "van_ban_han_che_khong_trinh_ky"),
             ({"van_ban_id": 99}, 404, "khong_tim_thay_van_ban"),
             ({"document_type": "vanbanden"}, 400, "du_lieu_khong_hop_le"),
-            ({"muc_do": "SIEU_GAP"}, 400, "du_lieu_khong_hop_le"),
             ({"han_chot": (timezone.now() - timedelta(hours=1)).isoformat()}, 400, "han_chot_khong_hop_le"),
         ]
         for kw, ma_http, code in cases:
@@ -167,12 +166,17 @@ class TaoNhapTests(TrinhKyBase):
         r = self.tao_nhap(client=self.client_cua(la), van_ban_id=12)
         self.assertEqual((r.status_code, r.data["code"]), (404, "khong_tim_thay_van_ban"))
 
+    def test_create_without_muc_do_returns_201_and_no_muc_do_in_response(self):
+        r = self.tao_nhap()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertNotIn("muc_do", r.data)
+
     def test_edit_draft_replaces_file_and_bumps_version(self):
         pk = self.tao_nhap().data["id"]
         moi = PDF + b"% ban sua\n"
-        r = self.c.patch(f"{BASE}/{pk}/", {"muc_do": "KHAN", "tep": tep_pdf(moi)}, format="multipart")
+        r = self.c.patch(f"{BASE}/{pk}/", {"ghi_chu": "Bản sửa", "tep": tep_pdf(moi)}, format="multipart")
         self.assertEqual(r.status_code, 200, r.data)
-        self.assertEqual((r.data["muc_do"], r.data["phien_ban_van_ban"]), ("KHAN", "2"))
+        self.assertEqual((r.data["ghi_chu"], r.data["phien_ban_van_ban"]), ("Bản sửa", "2"))
         self.assertEqual(r.data["ma_bam_tai_lieu"], hashlib.sha256(moi).hexdigest())
         self.gui(pk)
         r = self.c.patch(f"{BASE}/{pk}/", {"ghi_chu": "x"}, format="multipart")

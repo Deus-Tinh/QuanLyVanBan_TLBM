@@ -7,7 +7,6 @@ export type TrangThaiLuot = 'CHO_KY' | 'YEU_CAU_SUA' | 'HOAN_THANH' | 'TU_CHOI' 
 export type TrangThaiCap = 'CHUA_MO' | 'DANG_KY' | 'TAM_DUNG' | 'HOAN_THANH';
 export type TrangThaiNguoiKy = 'CHO_KY' | 'DA_KY' | 'TU_CHOI' | 'YEU_CAU_SUA';
 export type TrangThaiTepHoanTat = 'DANG_XU_LY' | 'LOI' | 'THANH_CONG' | null;
-export type MucDo = 'THUONG' | 'KHAN' | 'HOA_TOC';
 export type VaiTroKy = 'KY_NHAY' | 'KY_CHINH';
 export type PhamViQuyTrinh = 'CONG_TY' | 'PHONG_BAN';
 
@@ -85,6 +84,10 @@ export interface NguoiKyLuot {
   ngay_ky: string | null;
   ngay_tu_choi: string | null;
   ly_do_tu_choi: string;
+  uy_quyen_tu: number | null;
+  ten_nguoi_uy_quyen: string | null;
+  ly_do_uy_quyen: string;
+  ngay_uy_quyen: string | null;
   trang_ky: number | null;
   toa_do_x: string | null;
   toa_do_y: string | null;
@@ -137,6 +140,7 @@ export interface NhatKy {
   id: number;
   hanh_dong: string;
   nguoi_thuc_hien: number;
+  ten_nguoi_thuc_hien: string;
   trang_thai_truoc: string;
   trang_thai_sau: string;
   chi_tiet: string;
@@ -160,7 +164,6 @@ export interface HoSo {
   ma_quy_trinh: string;
   ten_quy_trinh: string;
   phien_ban_quy_trinh: number;
-  muc_do: MucDo;
   trang_thai: TrangThaiHoSo;
   han_chot: string | null;
   ngay_gui: string | null;
@@ -175,6 +178,9 @@ export interface HoSo {
   ten_nguoi_tao: string;
   created_at: string;
   dang_cho: DangCho[];
+  /** Trạng thái lượt trình hiện hành (YEU_CAU_SUA: đang trả lại để sửa) */
+  trang_thai_luot: TrangThaiLuot | null;
+  qua_han: boolean;
 }
 
 export interface HoSoChiTiet extends HoSo {
@@ -246,7 +252,6 @@ export type ThongKeHoSo = Record<LocNhanh | 'tat_ca', number>;
 export interface BoLocHoSo {
   nhanh?: LocNhanh | '';
   trang_thai?: string;
-  muc_do?: string;
   quy_trinh?: string;
   q?: string;
   tu_ngay?: string;
@@ -277,7 +282,8 @@ export interface BoLocTaiLieu {
   den_ngay?: string;
 }
 
-export type LoaiThongBao = 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY';
+export type LoaiThongBao =
+  | 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY' | 'UY_QUYEN' | 'TIN_NHAN' | 'NHAC_HAN' | 'QUA_HAN';
 
 /** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP và trạng thái EMAIL). */
 export interface ThongBaoTrinhKy {
@@ -292,6 +298,8 @@ export interface ThongBaoTrinhKy {
   email_da_gui?: boolean;
   email_trang_thai?: string | null;
   email_nguoi_nhan?: string | null;
+  nguoi_thao_tac?: string | null;
+  ly_do?: string | null;
 }
 
 /** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */

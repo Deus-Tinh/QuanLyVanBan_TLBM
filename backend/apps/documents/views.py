@@ -364,7 +364,7 @@ class DocumentViewSet(viewsets.ViewSet):
             action_type=DocumentAccessLog.HanhDong.XEM,
         )
         if (
-            instance.hieu_luc == HieuLuc.CON_HIEU_LUC
+            instance.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN)
             and instance.ngay_het_hieu_luc
             and instance.ngay_het_hieu_luc <= timezone.now()
         ):
@@ -408,7 +408,7 @@ class DocumentViewSet(viewsets.ViewSet):
         handle_attachments(instance, request)
 
         if (
-            instance.hieu_luc == HieuLuc.CON_HIEU_LUC
+            instance.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN)
             and instance.ngay_het_hieu_luc
             and instance.ngay_het_hieu_luc <= timezone.now()
         ):
@@ -468,7 +468,7 @@ class DocumentViewSet(viewsets.ViewSet):
         handle_attachments(doc, request)
 
         if (
-            doc.hieu_luc == HieuLuc.CON_HIEU_LUC
+            doc.hieu_luc in (HieuLuc.CON_HIEU_LUC, HieuLuc.CON_HIEU_LUC_1_PHAN)
             and doc.ngay_het_hieu_luc
             and doc.ngay_het_hieu_luc <= timezone.now()
         ):
@@ -477,7 +477,7 @@ class DocumentViewSet(viewsets.ViewSet):
 
         new_link = (doc.link_thay_the or "").strip()
         if old_link and old_link.lower() != new_link.lower():
-            cleanup_old_replacement_link(old_link, old_so_hieu)
+            cleanup_old_replacement_link(old_link, old_so_hieu, new_link)
 
         auto_update = request.data.get("auto_update_replaced_doc", "true")
         if str(auto_update).lower() in ("true", "1") and doc.link_thay_the:
@@ -575,12 +575,15 @@ class DocumentViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"], url_path="template")
     def template(self, request):
-        """GET /api/documents/template/?loai=DEN"""
+        """GET /api/documents/template/?loai=DEN&pham_vi=NOI_BO"""
         raw_loai = request.query_params.get("loai") or request.query_params.get("type", "DEN")
+        raw_pham_vi = request.query_params.get("pham_vi", "NOI_BO")
         loai = str(raw_loai).strip().upper()
+        pham_vi = str(raw_pham_vi).strip().upper()
 
-        excel_file = generate_excel_template(loai)
-        filename = f"Mau_VanBan_{loai}_{timezone.now().strftime('%Y%m%d')}.xlsx"
+        excel_file = generate_excel_template(loai, pham_vi=pham_vi)
+        scope_suffix = "HanChe" if pham_vi in ("HAN_CHE", "HẠN CHẾ") else "NoiBo"
+        filename = f"Mau_VanBan_{loai}_{scope_suffix}_{timezone.now().strftime('%Y%m%d')}.xlsx"
 
         response = HttpResponse(
             excel_file.read(),
@@ -609,13 +612,24 @@ class DocumentViewSet(viewsets.ViewSet):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
 
         result = import_from_excel(file_obj, loai, request.user, pham_vi=raw_pham_vi)
+        if result["created"] > 0:
+            return Response(
+                {
+                    "message": f"Import thành công {result['created']} văn bản.",
+                    "created": result["created"],
+                    "errors": result["errors"],
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        first_err = result["errors"][0]["message"] if result.get("errors") else "Không có dữ liệu hợp lệ để import."
         return Response(
             {
-                "message": f"Import thành công {result['created']} văn bản.",
-                "created": result["created"],
+                "error": first_err,
+                "message": first_err,
+                "created": 0,
                 "errors": result["errors"],
             },
-            status=status.HTTP_201_CREATED if result["created"] > 0 else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     @action(
@@ -816,8 +830,11 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="template")
     def template(self, request):
-        excel_file = generate_excel_template("DI")
-        filename = f"Mau_VanBan_DI_{timezone.now().strftime('%Y%m%d')}.xlsx"
+        raw_pham_vi = request.query_params.get("pham_vi", "NOI_BO")
+        pham_vi = str(raw_pham_vi).strip().upper()
+        excel_file = generate_excel_template("DI", pham_vi=pham_vi)
+        scope_suffix = "HanChe" if pham_vi in ("HAN_CHE", "HẠN CHẾ") else "NoiBo"
+        filename = f"Mau_VanBan_DI_{scope_suffix}_{timezone.now().strftime('%Y%m%d')}.xlsx"
         response = HttpResponse(
             excel_file.read(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -841,18 +858,30 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["post"], url_path="import", parser_classes=[MultiPartParser])
     def import_excel(self, request):
         file_obj = request.FILES.get("file")
+        raw_pham_vi = request.data.get("pham_vi") or request.query_params.get("pham_vi")
         if not file_obj:
             return Response({"error": "Vui lòng chọn file Excel."}, status=status.HTTP_400_BAD_REQUEST)
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
-        result = import_from_excel(file_obj, "DI", request.user)
+        result = import_from_excel(file_obj, "DI", request.user, pham_vi=raw_pham_vi)
+        if result["created"] > 0:
+            return Response(
+                {
+                    "message": f"Import thành công {result['created']} văn bản.",
+                    "created": result["created"],
+                    "errors": result["errors"],
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        first_err = result["errors"][0]["message"] if result.get("errors") else "Không có dữ liệu hợp lệ để import."
         return Response(
             {
-                "message": f"Import thành công {result['created']} văn bản.",
-                "created": result["created"],
+                "error": first_err,
+                "message": first_err,
+                "created": 0,
                 "errors": result["errors"],
             },
-            status=status.HTTP_201_CREATED if result["created"] > 0 else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -986,13 +1015,24 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
         result = import_from_excel(file_obj, "MAT", request.user)
+        if result["created"] > 0:
+            return Response(
+                {
+                    "message": f"Import thành công {result['created']} văn bản.",
+                    "created": result["created"],
+                    "errors": result["errors"],
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        first_err = result["errors"][0]["message"] if result.get("errors") else "Không có dữ liệu hợp lệ để import."
         return Response(
             {
-                "message": f"Import thành công {result['created']} văn bản.",
-                "created": result["created"],
+                "error": first_err,
+                "message": first_err,
+                "created": 0,
                 "errors": result["errors"],
             },
-            status=status.HTTP_201_CREATED if result["created"] > 0 else status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 # ═══════════════════════════════════════════════════════════════════

@@ -14,7 +14,7 @@ from rest_framework.test import APIClient
 from authorization.models import GroupInfo
 from authorization.rbac_seed import SUPPLEMENTARY_GROUP_PERMISSIONS, SUPPLEMENTARY_GROUPS
 
-migration = import_module("authorization.migrations.0007_supplementary_groups_tlbgd_kt")
+migration = import_module("authorization.migrations.0008_supplementary_groups_tlbgd_kt")
 
 
 class SchemaEditorStub:

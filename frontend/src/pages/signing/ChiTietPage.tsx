@@ -6,7 +6,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, LoiTai, MucDoBadge, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
+import { DangTai, LoiTai, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
 import HanhDong from '@components/signing/HanhDong';
 import KetQuaPanel from '@components/signing/KetQuaPanel';
 import SuaNhapDialog from '@components/signing/SuaNhapDialog';
@@ -117,7 +117,6 @@ export default function ChiTietPage() {
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
             <TrangThaiBadge trangThai={hoSo.trang_thai} />
             {luot && luot.trang_thai !== hoSo.trang_thai && <TrangThaiBadge trangThai={luot.trang_thai} />}
-            <MucDoBadge mucDo={hoSo.muc_do} />
           </div>
           <div className="text-base font-semibold text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
           {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
@@ -136,7 +135,7 @@ export default function ChiTietPage() {
       </div>
       <div className="space-y-4">
         <Card className="p-4 space-y-2">
-          <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh} v{hoSo.phien_ban_quy_trinh})</DongThongTin>
+          <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
           <DongThongTin nhan={t('danhSach.ngayGui')}>{dinhDangNgay(hoSo.ngay_gui, lang)}</DongThongTin>
           <DongThongTin nhan={t('danhSach.hanChot')}>{dinhDangNgay(hoSo.han_chot, lang)}</DongThongTin>
@@ -154,7 +153,7 @@ export default function ChiTietPage() {
         {coTraoDoi && luot?.trang_thai === 'YEU_CAU_SUA' && <TraoDoiPanel hoSo={hoSo} onXong={capNhat} />}
         {luot && (
           <Card className="p-4 space-y-2">
-            <h3 className="text-xl font-bold text-main">{t('chiTiet.tienTrinh')} · {t('chiTiet.luot', { so: luot.so_luot })}</h3>
+            <h3 className="text-xl font-bold text-main">{t('chiTiet.tienTrinh')}</h3>
             <TienTrinh luot={luot} toiId={toi?.id} />
           </Card>
         )}
@@ -171,8 +170,9 @@ export default function ChiTietPage() {
           <ol className="space-y-1.5 text-sm">
             {hoSo.lich_su.map((e) => (
               <li key={e.id} className="flex justify-between gap-2">
-                <span className="text-main">
+                <span className="text-main min-w-0 break-words">
                   {t(`nhatKy.${e.hanh_dong}`)}{e.chi_tiet && e.hanh_dong !== 'MO_CAP_KY' ? ` · ${e.chi_tiet}` : ''}
+                  {e.ten_nguoi_thuc_hien && <span className="block text-xs text-secondary">{e.ten_nguoi_thuc_hien}</span>}
                 </span>
                 <span className="text-muted shrink-0">{dinhDangNgay(e.created_at, lang)}</span>
               </li>
