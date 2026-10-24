@@ -11,6 +11,7 @@ import ConfirmModal from '@components/common/ConfirmModal';
 import AlertModal from '@components/common/AlertModal';
 import { Button } from '@components/common/Button';
 import apiClient from '@lib/apiClient';
+import { useTranslation } from '@i18n/translate';
 
 const extractDocType = (doc: DocumentItem): string | null => {
   const soHieu = (doc.so_hieu || '').toUpperCase();
@@ -30,6 +31,7 @@ const extractDocType = (doc: DocumentItem): string | null => {
 };
 
 export const InboundDocumentPage: React.FC = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -547,10 +549,10 @@ export const InboundDocumentPage: React.FC = () => {
             <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold text-sm">
               <i className="fa-solid fa-inbox text-base" />
             </span>
-            <h1 className="text-xl md:text-2xl font-bold text-main m-0">Quản Lý Văn Bản Đến</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-main m-0">{t('pages.documents_incoming.title') || 'Quản Lý Văn Bản Đến'}</h1>
           </div>
           <p className="text-xs md:text-sm text-secondary m-0">
-            Theo dõi, tra cứu, quản lý và ghi nhận lịch sử xử lý công văn, văn bản đến từ cơ quan bên ngoài.
+            {t('pages.documents_incoming.desc') || 'Theo dõi, tra cứu, quản lý và ghi nhận lịch sử xử lý công văn, văn bản đến từ cơ quan bên ngoài.'}
           </p>
         </div>
 
@@ -562,9 +564,9 @@ export const InboundDocumentPage: React.FC = () => {
             size="sm"
             icon="fa-plus"
             onClick={handleOpenCreate}
-            title="Thêm văn bản đến mới"
+            title={t('documents_incoming_page.addBtn') || 'Thêm mới'}
           >
-            Thêm mới
+            {t('documents_incoming_page.addBtn') || 'Thêm mới'}
           </Button>
 
           {/* Dropdown Import Excel */}
