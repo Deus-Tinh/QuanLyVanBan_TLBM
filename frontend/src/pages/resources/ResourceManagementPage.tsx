@@ -610,37 +610,6 @@ export default function ResourceManagementPage() {
   const currentSession = authService.getSession();
   const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
 
-  // Set theo dõi các item mới được tạo
-  const [newDocumentIds, setNewDocumentIds] = useState<Set<number>>(new Set());
-  const [newCategoryIds, setNewCategoryIds] = useState<Set<number>>(new Set());
-  const [newTypeIds, setNewTypeIds] = useState<Set<number>>(new Set());
-  const [currentTime] = useState(() => Date.now());
-
-  const isCatNew = (cat: ResourceCategory) => {
-    if (newCategoryIds.has(cat.id)) return true;
-    const rawDate = (cat as unknown as { created_at?: string }).created_at || cat.ngay_lap;
-    if (rawDate) {
-      const createdTime = new Date(rawDate).getTime();
-      if (!isNaN(createdTime)) {
-        const diffMs = currentTime - createdTime;
-        if (diffMs >= -60000 && diffMs <= 24 * 60 * 60 * 1000) return true;
-      }
-    }
-    return false;
-  };
-
-  const isTypeNew = (typeItem: ResourceType) => {
-    if (newTypeIds.has(typeItem.id)) return true;
-    const rawDate = (typeItem as unknown as { created_at?: string }).created_at || typeItem.ngay_lap;
-    if (rawDate) {
-      const createdTime = new Date(rawDate).getTime();
-      if (!isNaN(createdTime)) {
-        const diffMs = currentTime - createdTime;
-        if (diffMs >= -60000 && diffMs <= 24 * 60 * 60 * 1000) return true;
-      }
-    }
-    return false;
-  };
 
   // Toast thông báo nổi trên cùng (z-[999999] trên tất cả modal và màn đen)
   const [toast, setToast] = useState<ToastNotification | null>(null);
@@ -1055,7 +1024,6 @@ export default function ResourceManagementPage() {
 
         // Cập nhật local state ngay lập tức (instant UI feedback)
         setDocuments((prev) => [savedDoc, ...prev]);
-        setNewDocumentIds((prev) => new Set([...prev, savedDoc.id]));
         setIsFormOpen(false);
         showToast(`Đã thêm mới thành công tài liệu: "${savedDoc.tieu_de}"`, 'success', 'Thêm mới tài liệu');
       }
@@ -1106,7 +1074,6 @@ export default function ResourceManagementPage() {
         const savedCat = await apiClient.post<ResourceCategory>('/api/resources/categories/', payload);
         // Cập nhật local state ngay lập tức (instant UI feedback)
         setCategories((prev) => [...prev.filter((c) => c.id !== savedCat.id), savedCat]);
-        setNewCategoryIds((prev) => new Set([...prev, savedCat.id]));
         setVisibleCategoryIds((prev) => (prev.includes(savedCat.id) ? prev : [...prev, savedCat.id]));
 
         // Nếu có danh sách loại con khởi tạo kèm theo:
@@ -1211,7 +1178,6 @@ export default function ResourceManagementPage() {
         const saved = await apiClient.post<ResourceType>('/api/resources/types/', payload);
         // Cập nhật local state ngay lập tức (instant UI feedback)
         setTypes((prev) => [...prev.filter((t) => t.id !== saved.id), saved]);
-        setNewTypeIds((prev) => new Set([...prev, saved.id]));
         setVisibleTypeIds((prev) => (prev.includes(saved.id) ? prev : [...prev, saved.id]));
         if (!silent) {
           showToast(`Đã thêm mới thành công loại tài liệu: "${saved.ten_loai}"`, 'success', 'Thêm mới Loại tài liệu');
@@ -1477,7 +1443,6 @@ export default function ResourceManagementPage() {
                 {orderedVisibleCategories.map((cat) => {
                   const isSelected = selectedCategory === String(cat.id);
                   const count = documents.filter((d) => d.dm_tai_lieu === cat.id).length;
-                  const isNew = isCatNew(cat);
 
                   return (
                     <button
@@ -1492,11 +1457,6 @@ export default function ResourceManagementPage() {
                       aria-current={isSelected ? 'page' : undefined}
                       title={cat.ghi_chu || cat.ten_tai_lieu}
                     >
-                      {isNew && (
-                        <span className="absolute top-0.5 left-1 sm:left-1.5 text-[9px] sm:text-[10px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
-                          {t('resourceManagement.badgeNew')}
-                        </span>
-                      )}
                       <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
                       <span>{cat.ten_tai_lieu}</span>
                       <span
@@ -1756,7 +1716,6 @@ export default function ResourceManagementPage() {
 
                 {orderedVisibleTypes.map((typeItem) => {
                   const isActive = selectedType === String(typeItem.id);
-                  const isNew = isTypeNew(typeItem);
                   const docCount = documents.filter(
                     (d) =>
                       d.dm_tai_lieu === Number(selectedCategory) &&
@@ -1775,11 +1734,6 @@ export default function ResourceManagementPage() {
                       }`}
                       title={typeItem.ghi_chu || typeItem.ten_loai}
                     >
-                      {isNew && (
-                        <span className="absolute -top-1.5 left-1 text-[9px] sm:text-[10px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
-                          {t('resourceManagement.badgeNew')}
-                        </span>
-                      )}
                       {!typeItem.is_public && (
                         <i className="fa-solid fa-lock text-[10px] opacity-70" />
                       )}
@@ -1908,11 +1862,6 @@ export default function ResourceManagementPage() {
                                 : 'text-main hover:bg-surface-elevated'
                             }`}
                           >
-                            {isTypeNew(typeItem) && (
-                              <span className="absolute -top-1 left-1.5 text-[9px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
-                                {t('resourceManagement.badgeNew')}
-                              </span>
-                            )}
                             {/* Checkbox: Chỉ hiện trên sm:flex, ẨN trên mobile (hidden sm:flex) */}
                             <label
                               className="hidden sm:flex items-center gap-1.5 cursor-pointer shrink-0 select-none"
@@ -2361,7 +2310,6 @@ export default function ResourceManagementPage() {
           setSelectedType(typeId ? String(typeId) : 'all');
           setCurrentPage(1);
         }}
-        newDocumentIds={newDocumentIds}
       />
 
       {/* MODAL XEM CHI TIẾT TÀI LIỆU (MỤC 6) */}

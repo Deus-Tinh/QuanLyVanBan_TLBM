@@ -301,15 +301,6 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   onDeleteType,
 }) => {
   const { t } = useTranslation();
-  const [currentTime] = useState(() => Date.now());
-
-  const isWithin24Hours = (dateStr?: string) => {
-    if (!dateStr) return false;
-    const time = new Date(dateStr).getTime();
-    if (isNaN(time)) return false;
-    const diff = currentTime - time;
-    return diff >= -60000 && diff <= 24 * 60 * 60 * 1000;
-  };
 
   // 2 tab chính quản lý: "category" (Thư mục) | "type" (Loại tài liệu)
   const [activeTab, setActiveTab] = useState<'category' | 'type'>('category');
@@ -989,12 +980,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                 <div className="mt-0.5 shrink-0 text-primary/75">
                                   <i className="fa-solid fa-folder text-sm" />
                                 </div>
-                                <div className="min-w-0 flex-1 relative">
-                                  {isWithin24Hours((cat as unknown as { created_at?: string }).created_at || cat.ngay_lap) && (
-                                    <span className="absolute -top-1.5 left-0 text-[9px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
-                                      {t('resourceManagement.badgeNew')}
-                                    </span>
-                                  )}
+                                <div className="min-w-0 flex-1">
                                   <span className="font-semibold text-main text-xs sm:text-sm block leading-snug">
                                     {cat.ten_tai_lieu}
                                   </span>
@@ -1179,12 +1165,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                     } text-xs`}
                                   />
                                 </div>
-                                <div className="min-w-0 flex-1 relative">
-                                  {isWithin24Hours((typeItem as unknown as { created_at?: string }).created_at || typeItem.ngay_lap) && (
-                                    <span className="absolute -top-1.5 left-0 text-[9px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
-                                      {t('resourceManagement.badgeNew')}
-                                    </span>
-                                  )}
+                                <div className="min-w-0 flex-1">
                                   <span className="text-xs sm:text-sm font-semibold text-main block leading-snug">
                                     {typeItem.ten_loai}
                                   </span>

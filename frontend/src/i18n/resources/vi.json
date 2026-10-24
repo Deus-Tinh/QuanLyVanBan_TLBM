@@ -148,7 +148,6 @@
     "fieldAuthorFixed": "Người tạo tài liệu (Cố định theo tài khoản)",
     "authorFixedTooltip": "Cố định theo tài khoản đăng nhập hiện tại",
     "fixedByAccount": "Cố định theo tài khoản",
-    "badgeNew": "Mới",
     "newlyAdded": "Mới thêm",
     "clickToViewDetail": "Bấm để xem chi tiết tài liệu",
     "errorLoadDocs": "Đã có lỗi xảy ra khi tải danh sách tài liệu. Vui lòng thử lại.",
