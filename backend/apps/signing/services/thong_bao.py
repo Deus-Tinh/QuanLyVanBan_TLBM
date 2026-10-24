@@ -22,7 +22,9 @@ from django.utils import timezone
 from django.utils.module_loading import import_string
 
 from .. import enums
-from ..models import SigningAuditLog, SigningChangeThread, SigningNotification, SigningRequestStepSigner
+from ..models import (
+    SigningAuditLog, SigningChangeMessage, SigningChangeThread, SigningNotification, SigningRequestStepSigner,
+)
 from ..tich_hop.to_chuc import ten_hien_thi
 from ..tich_hop.van_ban import mo_ta_van_ban
 
@@ -141,8 +143,20 @@ HANH_DONG_CUA_LOAI = {"TU_CHOI": "TU_CHOI", "HUY": "HUY_TRINH_KY", "YEU_CAU_SUA"
                       "UY_QUYEN": "UY_QUYEN_KY"}
 
 
+def _tin_nhan_cua(tb):
+    """Tin nhắn sinh ra thông báo TIN_NHAN; khóa chống gửi trùng có dạng `TIN_NHAN:<id tin>:<người nhận>:<kênh>`."""
+    phan = tb.khoa_chong_gui_trung.split(":")
+    if len(phan) < 2 or not phan[1].isdigit():
+        return None
+    return SigningChangeMessage.objects.filter(pk=int(phan[1])).select_related("nguoi_viet").first()
+
+
 def thao_tac(tb):
-    """(tên người thao tác, lý do) của sự kiện sinh ra thông báo; ("", "") với loại không có thao tác người dùng."""
+    """(tên người thao tác, lý do) của sự kiện sinh ra thông báo; ("", "") với loại không có thao tác người dùng.
+    Với TIN_NHAN: (người viết, nội dung tin nhắn rút gọn)."""
+    if tb.loai_thong_bao == "TIN_NHAN":
+        tin = _tin_nhan_cua(tb)
+        return (ten_hien_thi(tin.nguoi_viet), tin.noi_dung[:300]) if tin else ("", "")
     hanh_dong = HANH_DONG_CUA_LOAI.get(tb.loai_thong_bao)
     if not hanh_dong:
         return "", ""
@@ -187,7 +201,7 @@ def noi_dung(tb):
     nguoi_thao_tac, ly_do = thao_tac(tb)
     han = han_xu_ly(tb)
     chi_tiet = (f"Người thực hiện: {nguoi_thao_tac}.\n" if nguoi_thao_tac else "") + \
-        (f"Lý do: {ly_do}\n" if ly_do else "") + \
+        (f"{'Nội dung' if tb.loai_thong_bao == 'TIN_NHAN' else 'Lý do'}: {ly_do}\n" if ly_do else "") + \
         (f"Hạn xử lý: {dinh_dang_ngay(han)}.\n" if han else "")
     than = (f"Xin chào {ten_hien_thi(tb.nguoi_nhan)},\n\n"
             f"{TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)} — hồ sơ trình ký #{tb.trinh_ky_id}: {ten_van_ban}.\n"

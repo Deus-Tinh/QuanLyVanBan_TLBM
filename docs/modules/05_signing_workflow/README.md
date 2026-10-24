@@ -60,7 +60,7 @@ DDL/RBAC (Nhóm 7):
 | Nhóm | Trình ký |
 |---|---|
 | Văn thư (VT) | xem, tạo, gửi trình ký |
-| Chuyên viên (CV) | xem, tạo nháp (không có `send_trinhky`) |
+| Chuyên viên (CV) | xem, tạo, gửi trình hồ sơ do mình tạo (không ký, không hủy thay) |
 | Trưởng phòng (TP) | xem, tạo, gửi, ký, ủy quyền (người ký cùng đơn vị), hủy thay, quản lý quy trình phòng ban |
 | Ban Giám đốc (BGD) | xem, tạo, gửi, ký, ủy quyền, hủy thay, xem nhật ký mọi hồ sơ |
 | Quản trị (ADMIN) | toàn quyền, quản lý quy trình công ty |
@@ -238,8 +238,6 @@ desktop và mobile 390px, thông báo có người thực hiện và lý do.
 - Ủy quyền theo thời gian (`signing_delegation`) và thể thức `hinh_thuc_ky` (KT./TL./TUQ.): DDL chưa có bảng/cột, cần
   PR đổi schema riêng (DDL + migration + `DDL_CHANGELOG.md`).
 - Leo thang quá hạn cho cấp trên trực tiếp: chưa có dữ liệu cấp trên trực tiếp từ Nhóm 7.
-- Nhóm Chuyên viên chưa có `send_trinhky` nên chỉ tạo nháp, văn thư hoặc người có quyền gửi trình. Cấp thêm quyền phải
-  sửa RBAC seed của Nhóm 7 và DDL ở PR riêng (AGENTS.md mục 6).
 - Đánh dấu đã đọc thông báo lưu ở trình duyệt; bảng `signing_notification` chưa có cột đã đọc.
 - Tìm không dấu dùng `LOWER(TRANSLATE(...))` sẵn có của PostgreSQL, quét tuần tự (đủ cho quy mô hiện tại). Muốn dùng
   extension `unaccent` và index theo biểu thức thì phải đổi `release_DDL.sql` (`CREATE EXTENSION`, function

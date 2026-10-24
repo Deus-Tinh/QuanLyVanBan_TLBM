@@ -149,6 +149,9 @@ class ThongBaoHoanThienTests(KyBase):
         self.assertTrue(thong_bao_cua(self.tao, "TIN_NHAN").exists())
         r = self.client_cua(self.tao).get("/api/v1/signing/thong-bao/")
         self.assertEqual(r.data[0]["loai_thong_bao"], "TIN_NHAN")
+        # Thông báo/email tin nhắn ghi người viết và nội dung
+        self.assertEqual(r.data[0]["ly_do"], "Đồng ý")
+        self.assertTrue(r.data[0]["nguoi_thao_tac"])
 
     def test_deadline_reminders_are_idempotent(self):
         cap = SigningRequestStep.objects.get(luot_trinh__trinh_ky=self.pk, trang_thai=enums.TrangThaiCapKy.DANG_KY)

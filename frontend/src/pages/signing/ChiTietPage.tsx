@@ -14,7 +14,7 @@ import TaiLieuPanel from '@components/signing/TaiLieuPanel';
 import TienTrinh from '@components/signing/TienTrinh';
 import TraoDoiPanel from '@components/signing/TraoDoiPanel';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
-import { signingApi } from '@lib/signing/api';
+import { docLoi, signingApi } from '@lib/signing/api';
 import { dinhDangNgay, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -94,7 +94,18 @@ export default function ChiTietPage() {
   }, [id, khoaAnh]);
 
   if (ct.dangTai && !hoSo) return <DangTai />;
-  if (ct.loi) return <LoiTai thongBao={loi(ct.loi)} onThuLai={ct.tai} />;
+  if (ct.loi) {
+    // Không tìm thấy / không được xem: thử lại vô ích, cho đường quay về danh sách
+    if (docLoi(ct.loi).status === 404) {
+      return (
+        <Card className="p-4">
+          <LoiTai thongBao={loi(ct.loi)} />
+          <Link to="/approvals/tat-ca" className="text-sm font-medium text-primary hover:underline">{t('chiTiet.veDanhSach')}</Link>
+        </Card>
+      );
+    }
+    return <LoiTai thongBao={loi(ct.loi)} onThuLai={ct.tai} />;
+  }
   if (!hoSo) return null;
 
   const khung: KhungHienThi[] = (luot?.cap_ky || []).flatMap((c) => c.nguoi_ky).flatMap((n) => {
@@ -115,8 +126,8 @@ export default function ChiTietPage() {
         <Card className="p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
-            <TrangThaiBadge trangThai={hoSo.trang_thai} />
-            {luot && luot.trang_thai !== hoSo.trang_thai && <TrangThaiBadge trangThai={luot.trang_thai} />}
+            {/* Lượt đang trả sửa thì chỉ hiện trạng thái lượt, tránh "Đang chờ ký" cạnh "Đang trả lại để sửa" */}
+            <TrangThaiBadge trangThai={luot?.trang_thai === 'YEU_CAU_SUA' ? 'YEU_CAU_SUA' : hoSo.trang_thai} size="md" />
           </div>
           <div className="text-base font-semibold text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
           {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
@@ -130,15 +141,21 @@ export default function ChiTietPage() {
         </Card>
         <Card className="p-4 space-y-2">
           <h3 className="text-xl font-bold text-main">{t('chiTiet.taiLieu')}</h3>
-          {loiTep ? <LoiTai thongBao={loi(loiTep)} /> : tep ? <XemPdf duLieu={tep} khung={khung} /> : <DangTai />}
+          {/* PDF cuộn trong khung riêng để trang không dài theo số trang tài liệu */}
+          <div className="max-h-[calc(100vh-12rem)] overflow-y-auto rounded-lg bg-surface-subtle p-3">
+            {loiTep ? <LoiTai thongBao={loi(loiTep)} /> : tep ? <XemPdf duLieu={tep} khung={khung} /> : <DangTai />}
+          </div>
         </Card>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
         <Card className="p-4 space-y-2">
           <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
           <DongThongTin nhan={t('danhSach.ngayGui')}>{dinhDangNgay(hoSo.ngay_gui, lang)}</DongThongTin>
-          <DongThongTin nhan={t('danhSach.hanChot')}>{dinhDangNgay(hoSo.han_chot, lang)}</DongThongTin>
+          <DongThongTin nhan={t('danhSach.hanChot')}>
+            {hoSo.han_chot || !hoSo.han_xu_ly_hien_tai ? dinhDangNgay(hoSo.han_chot, lang)
+              : `${dinhDangNgay(hoSo.han_xu_ly_hien_tai, lang)} (${t('danhSach.hanCap')})`}
+          </DongThongTin>
           <DongThongTin nhan={t('chiTiet.nguoiDangCho')}>
             {hoSo.dang_cho.length ? hoSo.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') : t('chiTiet.khongAiCho')}
           </DongThongTin>

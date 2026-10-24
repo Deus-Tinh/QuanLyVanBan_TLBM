@@ -30,7 +30,7 @@ Cập nhật 23/10/2026, nhánh `feat/5-hoan-thien-nghiep-vu`. Đối chiếu v�
 | Nhóm | Trình ký |
 |---|---|
 | Văn thư (VT) | xem, tạo, gửi trình ký |
-| Chuyên viên (CV) | xem, tạo nháp (không gửi, không ký) |
+| Chuyên viên (CV) | xem, tạo, gửi trình hồ sơ do mình tạo (không ký) |
 | Trưởng phòng (TP) | xem, tạo, gửi, ký, ủy quyền (người ký cùng đơn vị), hủy thay, quản lý quy trình phòng ban |
 | Ban Giám đốc (BGD) | xem, tạo, gửi, ký, ủy quyền, hủy thay, xem nhật ký mọi hồ sơ |
 | Quản trị (ADMIN) | toàn quyền, quản lý quy trình công ty |

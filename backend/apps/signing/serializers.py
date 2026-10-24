@@ -301,11 +301,22 @@ class TrinhKySerializer(serializers.ModelSerializer):
                   "phien_ban_quy_trinh", "trang_thai", "han_chot", "ngay_gui", "ngay_hoan_thanh",
                   "ngay_tu_choi", "ly_do_tu_choi", "ngay_huy", "ly_do_huy", "ghi_chu", "ho_so_goc",
                   "phien_ban_van_ban", "ma_bam_tai_lieu", "create_by", "ten_nguoi_tao", "created_at", "update_at",
-                  "dang_cho", "trang_thai_luot", "qua_han"]
+                  "dang_cho", "trang_thai_luot", "qua_han", "han_xu_ly_hien_tai"]
         read_only_fields = fields
 
     trang_thai_luot = serializers.SerializerMethodField()
     qua_han = serializers.SerializerMethodField()
+    han_xu_ly_hien_tai = serializers.SerializerMethodField()
+
+    def get_han_xu_ly_hien_tai(self, obj):
+        """Hạn xử lý sớm nhất của cấp đang ký trên lượt chờ ký; giao diện dùng khi hồ sơ không đặt hạn chót."""
+        if obj.trang_thai != enums.TrangThaiYeuCau.CHO_KY:
+            return None
+        han = SigningRequestStep.objects.filter(
+            luot_trinh__trinh_ky=obj, luot_trinh__trang_thai=enums.TrangThaiLuotTrinh.CHO_KY,
+            trang_thai=enums.TrangThaiCapKy.DANG_KY, han_xu_ly__isnull=False,
+        ).order_by("han_xu_ly").values_list("han_xu_ly", flat=True).first()
+        return serializers.DateTimeField().to_representation(han) if han else None
 
     def get_trang_thai_luot(self, obj):
         """Trạng thái lượt trình hiện hành (YEU_CAU_SUA: hồ sơ đang trả lại để sửa dù hồ sơ vẫn CHO_KY)."""
