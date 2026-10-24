@@ -1,7 +1,7 @@
 /** Sửa hồ sơ nháp (người tạo, trước khi gửi): hạn chót, ghi chú, số hiệu/trích yếu khi văn bản nhập tay, thay tệp PDF. */
 import { useState } from 'react';
 import { Button } from '@components/common';
-import { HopThoai, ThongBao, TruongNhap } from '@components/signing/ChungUI';
+import { HopThoai, OChonTep, ThongBao, TruongNhap } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { LOP_O_NHAP } from '@lib/signing/dinhDang';
 import { useSigningT } from '@lib/signing/i18n';
@@ -71,7 +71,7 @@ export default function SuaNhapDialog({ hoSo, onDong, onXong }: {
         <textarea className={LOP_O_NHAP} rows={3} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
       </TruongNhap>
       <TruongNhap nhan={t('chiTiet.thayTep')} ghiChu={t('chiTiet.goiYThayTep')}>
-        <input className={LOP_O_NHAP} type="file" accept="application/pdf,.pdf" onChange={(e) => setTep(e.target.files?.[0] ?? null)} />
+        <OChonTep accept="application/pdf,.pdf" onChon={(f) => setTep(f ?? null)} />
       </TruongNhap>
       {thongBao && <ThongBao>{thongBao}</ThongBao>}
     </HopThoai>

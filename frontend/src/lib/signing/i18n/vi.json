@@ -27,7 +27,9 @@
     "batBuoc": "Bắt buộc",
     "khongCoQuyen": "Bạn không có quyền thực hiện thao tác này.",
     "loiMang": "Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại.",
-    "chon": "— Chọn —"
+    "chon": "— Chọn —",
+    "chonTep": "Chọn tệp",
+    "chuaChonTep": "Chưa chọn tệp"
   },
   "trangThai": {
     "NHAP": "Nháp",
@@ -253,7 +255,8 @@
     "ungVien": "Cán bộ đang giữ chức vụ",
     "khongCoUngVien": "Chưa có cán bộ nào ở chức vụ/đơn vị này; cấp ký sẽ không có người ký.",
     "theoDonViNguoiTrinh": "Khi gửi, người ký là người giữ chức vụ này trong đơn vị của người trình.",
-    "conNguoiKhac": "và {so} người khác"
+    "conNguoiKhac": "và {so} người khác",
+    "conDung": "Đang dùng và nháp"
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo trên trình duyệt, bảo vệ bằng PIN 8 chữ số (Argon2id). Khóa bí mật đã mã hóa được xuất ra file khóa; khi ký, tải file khóa lên và nhập PIN. Máy chủ không nhận PIN, file khóa hay khóa bí mật.",
@@ -319,7 +322,8 @@
     "khong_hien_thi_duoc_pdf": "Không hiển thị được tệp PDF trên trình duyệt này. Tải tệp về để xem; nếu vẫn lỗi, báo quản trị.",
     "van_ban_da_co_ho_so_dang_mo": "Văn bản đã có hồ sơ trình ký đang mở (nháp hoặc đang chờ ký). Hoàn tất hoặc hủy hồ sơ đó trước khi trình hồ sơ mới.",
     "thieu_van_ban_trinh_ky": "Chọn văn bản đi hoặc nhập trích yếu văn bản trình ký.",
-    "van_ban_da_gan": "Hồ sơ gắn văn bản đi; số hiệu, trích yếu lấy theo văn bản đi."
+    "van_ban_da_gan": "Hồ sơ gắn văn bản đi; số hiệu, trích yếu lấy theo văn bản đi.",
+    "pin_khong_dung_con_lai": "PIN không đúng. Còn {so} lần thử trước khi bị khóa."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Tạo hồ sơ",
@@ -361,7 +365,9 @@
     },
     "nguoiThaoTac": "Người thực hiện",
     "lyDo": "Lý do",
-    "hanXuLy": "Hạn xử lý"
+    "hanXuLy": "Hạn xử lý",
+    "hoSoHien": "Hồ sơ",
+    "noiDung": "Nội dung"
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",

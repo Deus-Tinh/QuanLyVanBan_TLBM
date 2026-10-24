@@ -27,7 +27,9 @@
     "batBuoc": "Required",
     "khongCoQuyen": "You do not have permission to perform this action.",
     "loiMang": "Cannot reach the server. Check your connection and try again.",
-    "chon": "— Select —"
+    "chon": "— Select —",
+    "chonTep": "Choose file",
+    "chuaChonTep": "No file chosen"
   },
   "trangThai": {
     "NHAP": "Draft",
@@ -253,7 +255,8 @@
     "ungVien": "Staff currently holding this position",
     "khongCoUngVien": "No staff hold this position in this unit; the level would have no signer.",
     "theoDonViNguoiTrinh": "On submission, the signer is whoever holds this position in the submitter's unit.",
-    "conNguoiKhac": "and {so} more"
+    "conNguoiKhac": "and {so} more",
+    "conDung": "Active and draft"
   },
   "khoa": {
     "gioiThieu": "Your signing key is created in the browser and protected by an 8-digit PIN (Argon2id). The encrypted private key is exported to a key file; to sign, upload the key file and enter your PIN. The server never receives your PIN, key file or private key.",
@@ -319,7 +322,8 @@
     "khong_hien_thi_duoc_pdf": "This PDF cannot be displayed in this browser. Download the file to view it; if the problem persists, contact the administrator.",
     "van_ban_da_co_ho_so_dang_mo": "This document already has an open signing request (draft or awaiting signature). Complete or cancel it before submitting a new one.",
     "thieu_van_ban_trinh_ky": "Pick an outgoing document or enter the summary of the document for signing.",
-    "van_ban_da_gan": "This request is linked to an outgoing document; its number and summary come from that document."
+    "van_ban_da_gan": "This request is linked to an outgoing document; its number and summary come from that document.",
+    "pin_khong_dung_con_lai": "Incorrect PIN. {so} attempts left before the key is locked."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Request created",
@@ -361,7 +365,9 @@
     },
     "nguoiThaoTac": "By",
     "lyDo": "Reason",
-    "hanXuLy": "Due"
+    "hanXuLy": "Due",
+    "hoSoHien": "Request",
+    "noiDung": "Message"
   },
   "taiLieu": {
     "goiYTim": "Number, summary, request ID, process…",

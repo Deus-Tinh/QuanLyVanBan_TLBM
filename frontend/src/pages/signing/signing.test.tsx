@@ -480,11 +480,12 @@ describe('TaiLieuPage', () => {
     URL.createObjectURL = vi.fn(() => 'blob:tep');
     URL.revokeObjectURL = vi.fn();
     boc(<TaiLieuPage />);
-    expect(await screen.findByText('trinh-ky-12-luot-1.pdf')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '#12' })).toHaveAttribute('href', '/approvals/12');
+    // Trang render cả thẻ (màn hẹp) lẫn bảng (md trở lên) nên mỗi phần tử xuất hiện hai lần
+    expect((await screen.findAllByText('trinh-ky-12-luot-1.pdf')).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: '#12' })[0]).toHaveAttribute('href', '/approvals/12');
     fireEvent.change(screen.getByRole('combobox', { name: /Loại tệp/ }), { target: { value: 'HOAN_TAT' } });
     await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'HOAN_TAT' }, 1));
-    fireEvent.click(screen.getByText('trinh-ky-12-luot-1.pdf'));
+    fireEvent.click(screen.getAllByText('trinh-ky-12-luot-1.pdf')[0]);
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
   });
 });

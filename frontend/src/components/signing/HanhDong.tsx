@@ -14,7 +14,7 @@ import { docFileKhoaTuTep, DUOI_FILE_KHOA } from '@lib/signing/fileKhoa';
 import type { BanBocKhoa } from '@lib/signing/khoaKy';
 import { khoaHoatDong, kyBangPin } from '@lib/signing/luongKhoa';
 import type { HoSoChiTiet, LuotTrinh, NguoiDungTim } from '@lib/signing/types';
-import { HopThoai, ThongBao, TruongNhap } from './ChungUI';
+import { HopThoai, OChonTep, ThongBao, TruongNhap } from './ChungUI';
 
 type LoaiHopThoai = 'ky' | 'sua' | 'tu_choi' | 'thu_hoi' | 'huy' | 'trinh_lai' | 'uy_quyen' | null;
 
@@ -144,10 +144,8 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
           <input className={LOP_O_NHAP} value={o1} onChange={(e) => setO1(e.target.value)} />
         </TruongNhap>
         <TruongNhap nhan={t('hanhDong.fileKhoa')} ghiChu={t('hanhDong.fileKhoaGhiChu')}>
-          <input className={LOP_O_NHAP} type="file" accept={`${DUOI_FILE_KHOA},application/json`}
-            aria-label={t('hanhDong.fileKhoa')}
-            onChange={(e) => {
-              const tep = e.target.files?.[0];
+          <OChonTep accept={`${DUOI_FILE_KHOA},application/json`} nhan={t('hanhDong.fileKhoa')}
+            onChon={(tep) => {
               setFileKhoa(null);
               setThongBao('');
               if (tep) docFileKhoaTuTep(tep).then(setFileKhoa, (err) => setThongBao(loi(err)));

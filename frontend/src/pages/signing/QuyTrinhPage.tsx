@@ -349,10 +349,12 @@ export default function QuyTrinhPage() {
   const { toi } = useToi();
   const ds = useTai(() => signingApi.quyTrinh());
   const [tim, setTim] = useState('');
-  const [locTrangThai, setLocTrangThai] = useState('');
+  // Mặc định ẩn phiên bản đã ngừng để không xen giữa bản đang dùng cùng tên
+  const [locTrangThai, setLocTrangThai] = useState('CON_DUNG');
   const [locPhamVi, setLocPhamVi] = useState('');
   const tuKhoa = boDau(tim.trim());
-  const hienThi = (ds.duLieu ?? []).filter((q) => (!locTrangThai || q.trang_thai === locTrangThai)
+  const hienThi = (ds.duLieu ?? []).filter((q) => (!locTrangThai || q.trang_thai === locTrangThai
+      || (locTrangThai === 'CON_DUNG' && q.trang_thai !== 'NGUNG'))
     && (!locPhamVi || q.pham_vi === locPhamVi)
     && (!tuKhoa || [q.ma_quy_trinh, q.ten_quy_trinh, q.ten_don_vi_ap_dung ?? ''].some((x) => boDau(x).includes(tuKhoa))));
   const [taoMo, setTaoMo] = useState(false);
@@ -397,6 +399,7 @@ export default function QuyTrinhPage() {
           <label className="flex flex-col gap-1.5 text-xs font-semibold text-secondary">
             <span><i className="fa-solid fa-filter text-primary text-xs mr-1" aria-hidden="true" />{t('danhSach.trangThai')}</span>
             <select className={`${LOP_O_NHAP} w-auto`} value={locTrangThai} onChange={(e) => setLocTrangThai(e.target.value)}>
+              <option value="CON_DUNG">{t('quyTrinh.conDung')}</option>
               <option value="">{t('danhSach.tatCa')}</option>
               {['NHAP', 'HOAT_DONG', 'NGUNG'].map((s) => <option key={s} value={s}>{t(`trangThai.${s}`)}</option>)}
             </select>
@@ -419,11 +422,11 @@ export default function QuyTrinhPage() {
       {ds.duLieu && hienThi.length === 0 && (
         <Rong icon="fa-diagram-project">{t(ds.duLieu.length ? 'quyTrinh.khongKhopLoc' : 'quyTrinh.rong')}</Rong>
       )}
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))]">
         {hienThi.map((q) => (
-          <Card key={q.id} className="p-4 sm:p-5 space-y-3">
+          <Card key={q.id} className="flex flex-col gap-3 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xl font-bold text-main">{q.ten_quy_trinh}</span>
+              <span className="text-lg font-bold text-main">{q.ten_quy_trinh}</span>
               <div className="flex items-center gap-1.5">
                 <TrangThaiBadge trangThai={q.trang_thai} />
                 <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
@@ -440,7 +443,8 @@ export default function QuyTrinhPage() {
                 </li>
               ))}
             </ol>
-            <div className="flex flex-wrap gap-2">
+            {/* mt-auto: hàng nút nằm cùng đáy giữa các thẻ cao khác nhau */}
+            <div className="mt-auto flex flex-wrap gap-2 pt-1">
               <Button size="sm" variant="ghost" icon="fa-eye" onClick={() => setXemId(q.id)}>{t('quyTrinh.xemChiTiet')}</Button>
               {quanLy && q.trang_thai === 'NHAP' && (
                 <>
