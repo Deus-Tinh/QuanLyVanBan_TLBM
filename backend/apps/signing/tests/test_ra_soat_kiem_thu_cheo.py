@@ -132,6 +132,18 @@ class DoDaiNoiDungTests(KyBase):
         self.assertEqual(r.status_code, 201, r.data)
 
 
+class TenNguoiVietTinNhanTests(KyBase):
+    def test_messages_carry_writer_name(self):
+        self.assertEqual(self.hanh_dong(self.ky1, "yeu-cau-sua", tieu_de="Sửa", ly_do="Sai số liệu").status_code, 200)
+        self.assertEqual(self.c.post(f"{BASE}/{self.pk}/trao-doi/", {"noi_dung": "Đã nhận"}, format="json")
+                         .data["ten_nguoi_viet"], "chuyen_vien")
+        r = self.client_cua(self.ky1).post(f"{BASE}/{self.pk}/trao-doi/", {"noi_dung": "Cần số liệu"}, format="json")
+        self.assertEqual((r.status_code, r.data["ten_nguoi_viet"]), (201, "ke_toan"))
+        r = self.c.get(f"{BASE}/{self.pk}/trao-doi/")
+        self.assertEqual([(m["nguoi_viet"], m["ten_nguoi_viet"]) for m in r.data["tin_nhan"]],
+                         [(self.tao.pk, "chuyen_vien"), (self.ky1.pk, "ke_toan")])
+
+
 class ThongBaoLoiTiengVietTests(TrinhKyBase):
     """`fields` của lỗi validation cũng phải bằng tiếng Việt (giao diện và người kiểm thử đọc cả hai)."""
 

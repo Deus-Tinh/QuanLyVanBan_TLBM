@@ -295,10 +295,15 @@ class YeuCauSuaThreadSerializer(serializers.ModelSerializer):
 
 
 class TinNhanSerializer(serializers.ModelSerializer):
+    ten_nguoi_viet = serializers.SerializerMethodField()
+
     class Meta:
         model = SigningChangeMessage
-        fields = ["id", "nguoi_viet", "noi_dung", "created_at"]
-        read_only_fields = ["id", "nguoi_viet", "created_at"]
+        fields = ["id", "nguoi_viet", "ten_nguoi_viet", "noi_dung", "created_at"]
+        read_only_fields = ["id", "nguoi_viet", "ten_nguoi_viet", "created_at"]
+
+    def get_ten_nguoi_viet(self, obj):
+        return to_chuc.ten_hien_thi(obj.nguoi_viet)
 
 
 class LuotTrinhSerializer(serializers.ModelSerializer):

@@ -543,7 +543,7 @@ class TraoDoiView(SigningAPIView):
         if not (yeu_cau_sua_service.duoc_trao_doi(thread, request.user) or co_quyen(request.user, XEM_NHAT_KY)):
             raise SigningError(code="khong_co_quyen", detail="Chỉ người tạo hồ sơ và người yêu cầu sửa xem trao đổi.",
                                status_code=status.HTTP_403_FORBIDDEN)
-        tin_nhan = thread.tin_nhan_set.order_by("id")
+        tin_nhan = thread.tin_nhan_set.select_related("nguoi_viet").order_by("id")
         return Response({"thread": YeuCauSuaThreadSerializer(thread).data,
                          "tin_nhan": TinNhanSerializer(tin_nhan, many=True).data})
 
