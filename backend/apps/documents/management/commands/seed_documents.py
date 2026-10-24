@@ -188,6 +188,7 @@ class Command(BaseCommand):
                     "position": "Nhóm 2 - Quản lý VB",
                     "att_name": "05_TB_TTr_BGD_ThanhTra.png",
                     "att_data": img_confidential[1],
+                    "scope": PhamVi.HAN_CHE,
                 },
                 {
                     "stt": 6,
@@ -281,7 +282,7 @@ class Command(BaseCommand):
                         "chuc_vu": item["position"],
                         "ngay_den": aware_dt,
                         "ngay_van_ban": aware_dt,
-                        "pham_vi": PhamVi.NOI_BO,
+                        "pham_vi": item.get("scope", PhamVi.NOI_BO),
                         "hieu_luc": HieuLuc.CON_HIEU_LUC,
                         "hien_thi": True,
                         "nguoi_tao": author,
@@ -360,6 +361,7 @@ class Command(BaseCommand):
                     "position": "Trưởng phòng Đào tạo",
                     "att_name": "11_TB_ITC_ThiChuanDauRa.pdf",
                     "att_data": pdf_chieu_sinh[1],
+                    "scope": PhamVi.HAN_CHE,
                 },
                 {
                     "stt": 6,
@@ -430,7 +432,7 @@ class Command(BaseCommand):
                         "chuc_vu": item["position"],
                         "ngay_ban_hanh": aware_dt,
                         "ngay_van_ban": aware_dt,
-                        "pham_vi": PhamVi.NOI_BO,
+                        "pham_vi": item.get("scope", PhamVi.NOI_BO),
                         "hieu_luc": HieuLuc.CON_HIEU_LUC,
                         "hien_thi": True,
                         "nguoi_tao": author,
@@ -450,11 +452,13 @@ class Command(BaseCommand):
                 self.stdout.write(f"  [VB Đi #{item['stt']:02d}] {status_label}: {item['code']} - Tệp: {item['att_name']} ({len(item['att_data'])} bytes)")
 
         # Thống kê kết quả
-        total_in = VanBanDen.objects.filter(ngay_den__year=2026, pham_vi=PhamVi.NOI_BO).count()
-        total_out = VanBanDi.objects.filter(ngay_ban_hanh__year=2026, pham_vi=PhamVi.NOI_BO).count()
+        total_in = VanBanDen.objects.filter(ngay_den__year=2026).count()
+        total_out = VanBanDi.objects.filter(ngay_ban_hanh__year=2026).count()
+        in_han_che = VanBanDen.objects.filter(ngay_den__year=2026, pham_vi=PhamVi.HAN_CHE).count()
+        out_han_che = VanBanDi.objects.filter(ngay_ban_hanh__year=2026, pham_vi=PhamVi.HAN_CHE).count()
 
         self.stdout.write(self.style.SUCCESS(f"\n=== HOÀN TẤT SEED DỮ LIỆU THÀNH CÔNG ==="))
-        self.stdout.write(f"  * KPI Văn bản Đến (2026): {total_in} văn bản")
-        self.stdout.write(f"  * KPI Văn bản Đi (2026):   {total_out} văn bản")
+        self.stdout.write(f"  * KPI Văn bản Đến (2026): {total_in} văn bản ({in_han_che} Hạn chế, {total_in - in_han_che} Nội bộ)")
+        self.stdout.write(f"  * KPI Văn bản Đi (2026):   {total_out} văn bản ({out_han_che} Hạn chế, {total_out - out_han_che} Nội bộ)")
         self.stdout.write(f"  * Tổng số tệp đính kèm thật: {len(inbound_specs) + len(outbound_specs)} tệp (PDF, PNG, DOCX)")
         self.stdout.write("Hệ thống đã sẵn sàng 100% phục vụ Dashboard và buổi Demo Staging!")
