@@ -111,6 +111,8 @@ def tao_quy_trinh(nguoi_tao, *, ma_quy_trinh, ten_quy_trinh, pham_vi, don_vi_ap_
     _kiem_tra_tham_chieu(
         DonVi, don_vi_ap_dung_id, field="don_vi_ap_dung_id", code="don_vi_khong_ton_tai", ten="Đơn vị"
     )
+    if SigningProcess.objects.filter(ma_quy_trinh__iexact=ma_quy_trinh).exists():  # "qt-1" và "QT-1" là một mã
+        raise ConflictError(code="quy_trinh_trung_ma", detail="Mã quy trình đã tồn tại.")
     try:
         with transaction.atomic():
             process = SigningProcess.objects.create(

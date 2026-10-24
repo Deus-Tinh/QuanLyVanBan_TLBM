@@ -1,4 +1,5 @@
 import base64
+from collections.abc import Mapping
 
 from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef, Q, Subquery
@@ -70,7 +71,7 @@ def _quy_trinh_xem_duoc(user):
 class QuyTrinhListCreateView(SigningAPIView):
     def get(self, request):
         queryset = _quy_trinh_xem_duoc(request.user).order_by("ma_quy_trinh", "-phien_ban")
-        trang_thai = request.query_params.get("trang_thai")
+        trang_thai = request.query_params.get("trang_thai", "").replace("\x00", "")
         if trang_thai:
             queryset = queryset.filter(trang_thai=trang_thai)
         return Response(QuyTrinhSerializer(queryset, many=True).data)
@@ -102,7 +103,10 @@ class QuyTrinhDetailView(SigningAPIView):
 
     def put(self, request, pk):
         process = self._quan_ly(request, pk)
-        data = QuyTrinhInputSerializer(data={**request.data, "ma_quy_trinh": process.ma_quy_trinh})
+        if not isinstance(request.data, Mapping):
+            raise serializers.ValidationError({"non_field_errors": ["Invalid data. Expected a dictionary."]})
+        data = QuyTrinhInputSerializer(data={**request.data, "ma_quy_trinh": process.ma_quy_trinh},
+                                       context={"giu_ma_cu": True})
         data.is_valid(raise_exception=True)
         process_service.yeu_cau_quan_ly(request.user, data.validated_data["pham_vi"],
                                         data.validated_data.get("don_vi_ap_dung_id"))
@@ -305,7 +309,10 @@ def _doc_khoang_ngay(tham_so):
     khoang = {}
     for ten in ("tu_ngay", "den_ngay"):
         if tham_so.get(ten):
-            khoang[ten] = parse_date(tham_so[ten])
+            try:
+                khoang[ten] = parse_date(tham_so[ten])
+            except ValueError:  # đúng dạng nhưng không có trong lịch (tháng 13, 30/02)
+                khoang[ten] = None
             if khoang[ten] is None:
                 raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
                                    fields={ten: ["Ngày không hợp lệ."]})
@@ -315,11 +322,16 @@ def _doc_khoang_ngay(tham_so):
     return khoang
 
 
+def tu_khoa_tim_kiem(gia_tri):
+    """Từ khóa tìm kiếm: bỏ ký tự NUL (PostgreSQL không nhận trong văn bản), cắt khoảng trắng, tối đa 100 ký tự."""
+    return (gia_tri or "").replace("\x00", "").strip()[:100]
+
+
 def _loc_ho_so(queryset, tham_so):
     """Bộ lọc danh sách: trạng thái, quy trình (id), từ khóa (số hiệu, trích yếu văn bản trình ký — văn bản đi hoặc
     nhập tay, mã/tên quy trình, ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
     if tham_so.get("trang_thai"):
-        queryset = queryset.filter(trang_thai=tham_so["trang_thai"])
+        queryset = queryset.filter(trang_thai=tham_so["trang_thai"].replace("\x00", ""))
     if tham_so.get("nhanh"):
         if tham_so["nhanh"] not in NHANH:
             raise SigningError(code="tham_so_khong_hop_le", detail=f"nhanh phải là một trong {', '.join(NHANH)}.",
@@ -331,7 +343,7 @@ def _loc_ho_so(queryset, tham_so):
             raise SigningError(code="tham_so_khong_hop_le", detail="quy_trinh phải là số.",
                                fields={"quy_trinh": ["Giá trị không hợp lệ."]})
         queryset = queryset.filter(quy_trinh_id=int(tham_so["quy_trinh"]))
-    tu_khoa = (tham_so.get("q") or "").strip()[:100]
+    tu_khoa = tu_khoa_tim_kiem(tham_so.get("q"))
     if tu_khoa:
         cot = ("quy_trinh__ten_quy_trinh", "quy_trinh__ma_quy_trinh", "ghi_chu", "so_hieu_van_ban", "trich_yeu_van_ban")
         dieu_kien = Q(van_ban_id__in=id_van_ban_khop(tu_khoa)) | tim_kiem.khop_khong_dau(tu_khoa, *cot)
@@ -757,7 +769,7 @@ class NguoiDungView(SigningAPIView):
     def get(self, request):
         uy_quyen = request.query_params.get("muc_dich") == "uy_quyen"
         yeu_cau_quyen(request.user, UY_QUYEN_TRINH_KY if uy_quyen else QUAN_LY_QUY_TRINH)
-        tu_khoa = tim_kiem.bo_dau(request.query_params.get("q", "").strip())
+        tu_khoa = tim_kiem.bo_dau(tu_khoa_tim_kiem(request.query_params.get("q")))
         User = get_user_model()
         lien_quan = [f for f in ("chuc_vu", "don_vi") if any(x.name == f for x in User._meta.get_fields())]
         ket_qua = []
@@ -835,4 +847,4 @@ class VanBanDiView(SigningAPIView):
 
     def get(self, request):
         yeu_cau_quyen(request.user, TAO_TRINH_KY)
-        return Response(tim_van_ban_di(request.user, request.query_params.get("q", "").strip()[:100]))
+        return Response(tim_van_ban_di(request.user, tu_khoa_tim_kiem(request.query_params.get("q"))))
