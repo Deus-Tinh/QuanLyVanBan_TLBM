@@ -21,6 +21,8 @@ export interface CategoryManagementModalProps {
   onDeleteCategory: (id: number) => void | Promise<void>;
   onSaveType: (type: ResourceType, isEdit: boolean, silent?: boolean) => void | Promise<void>;
   onDeleteType: (id: number) => void | Promise<void>;
+  newCategoryIds?: Set<number> | number[];
+  newTypeIds?: Set<number> | number[];
 }
 
 // ============================================================================
@@ -47,6 +49,7 @@ const ModalPagination: React.FC<ModalPaginationProps> = ({
   itemLabel,
   pageSizeOptions = [5, 10, 20, 50],
 }) => {
+  const { t } = useTranslation();
   const [jumpPageInput, setJumpPageInput] = useState('');
 
   const handleJump = (e?: React.FormEvent) => {
@@ -128,7 +131,7 @@ const ModalPagination: React.FC<ModalPaginationProps> = ({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-t border-border-subtle text-xs text-secondary bg-surface select-none">
       {/* Bên trái: Chọn số dòng & Tóm tắt phạm vi */}
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
-        <span className="font-medium text-muted">Hiển thị</span>
+        <span className="font-medium text-muted">{t('resourceManagement.display')}</span>
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
@@ -137,18 +140,18 @@ const ModalPagination: React.FC<ModalPaginationProps> = ({
         >
           {pageSizeOptions.map((opt) => (
             <option key={opt} value={opt}>
-              {opt} dòng
+              {opt} {t('resourceManagement.rows')}
             </option>
           ))}
         </select>
-        <span className="font-medium text-muted">/ trang</span>
+        <span className="font-medium text-muted">/ {t('resourceManagement.rowsPerPage')}</span>
         <span className="text-muted">·</span>
         <span className="text-secondary font-medium">
           {totalItems === 0 ? (
             `0 ${itemLabel}`
           ) : (
             <>
-              Hiển thị <strong className="text-main font-semibold">{startRecord}–{endRecord}</strong> / <strong className="text-main font-semibold">{totalItems}</strong> {itemLabel}
+              {t('resourceManagement.display')} <strong className="text-main font-semibold">{startRecord}–{endRecord}</strong> / <strong className="text-main font-semibold">{totalItems}</strong> {itemLabel}
             </>
           )}
         </span>
@@ -163,8 +166,8 @@ const ModalPagination: React.FC<ModalPaginationProps> = ({
             disabled={currentPage <= 1}
             onClick={() => onPageChange(1)}
             className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-            title="Về trang đầu (Trang 1)"
-            aria-label="Về trang đầu"
+            title={t('resourceManagement.firstPage')}
+            aria-label={t('resourceManagement.firstPage')}
           >
             <i className="fa-solid fa-angles-left text-[10px]" />
           </button>
@@ -175,8 +178,8 @@ const ModalPagination: React.FC<ModalPaginationProps> = ({
             disabled={currentPage <= 1}
             onClick={() => onPageChange(currentPage - 1)}
             className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-            title="Trang trước"
-            aria-label="Trang trước"
+            title={t('resourceManagement.prevPage')}
+            aria-label={t('resourceManagement.prevPage')}
           >
             <i className="fa-solid fa-chevron-left text-[10px]" />
           </button>
@@ -232,8 +235,8 @@ const ModalPagination: React.FC<ModalPaginationProps> = ({
             disabled={currentPage >= totalPages}
             onClick={() => onPageChange(currentPage + 1)}
             className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-            title="Trang sau"
-            aria-label="Trang sau"
+            title={t('resourceManagement.nextPage')}
+            aria-label={t('resourceManagement.nextPage')}
           >
             <i className="fa-solid fa-chevron-right text-[10px]" />
           </button>
@@ -244,8 +247,8 @@ const ModalPagination: React.FC<ModalPaginationProps> = ({
             disabled={currentPage >= totalPages}
             onClick={() => onPageChange(totalPages)}
             className="min-w-[28px] sm:min-w-[30px] h-7 sm:h-7.5 px-1.5 text-xs font-medium rounded-lg border border-border-subtle bg-surface hover:bg-surface-elevated text-secondary hover:text-main disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center"
-            title={`Đến trang cuối (Trang ${totalPages})`}
-            aria-label="Đến trang cuối"
+            title={t('resourceManagement.lastPage')}
+            aria-label={t('resourceManagement.lastPage')}
           >
             <i className="fa-solid fa-angles-right text-[10px]" />
           </button>
@@ -298,8 +301,26 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   onDeleteCategory,
   onSaveType,
   onDeleteType,
+  newCategoryIds,
+  newTypeIds,
 }) => {
   const { t } = useTranslation();
+  const [currentTime] = useState(() => Date.now());
+
+  const isItemNew = (createdAt?: string, id?: number, newIds?: Set<number> | number[]) => {
+    if (id && newIds) {
+      if (newIds instanceof Set && newIds.has(id)) return true;
+      if (Array.isArray(newIds) && newIds.includes(id)) return true;
+    }
+    if (createdAt) {
+      const createdTime = new Date(createdAt).getTime();
+      if (!isNaN(createdTime)) {
+        const diffMs = currentTime - createdTime;
+        return diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000;
+      }
+    }
+    return false;
+  };
   // 2 tab chính quản lý: "category" (Thư mục) | "type" (Loại tài liệu)
   const [activeTab, setActiveTab] = useState<'category' | 'type'>('category');
 
@@ -565,6 +586,8 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     childTypeInput,
     typeForm.ten_loai,
     typeForm.ghi_chu,
+    setIsConfirmDiscardUnifiedOpen,
+    setIsUnifiedModalOpen,
   ]);
 
   // Người dùng bấm trực tiếp nút "Hủy" trên footer form -> Luôn bật xác nhận hủy
@@ -977,9 +1000,19 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                   <i className="fa-solid fa-folder text-sm" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <span className="font-semibold text-main text-xs sm:text-sm block leading-snug">
-                                    {cat.ten_tai_lieu}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {isItemNew((cat as unknown as { created_at?: string }).created_at, cat.id, newCategoryIds) && (
+                                      <span
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-danger text-white shadow-2xs shrink-0"
+                                        title={t('resourceManagement.badgeNew')}
+                                      >
+                                        {t('resourceManagement.badgeNew')}
+                                      </span>
+                                    )}
+                                    <span className="font-semibold text-main text-xs sm:text-sm block leading-snug">
+                                      {cat.ten_tai_lieu}
+                                    </span>
+                                  </div>
                                   <div className="flex items-center gap-1.5 flex-wrap sm:hidden mt-1 text-[11px]">
                                     {cat.ky_hieu && (
                                       <span className="text-[10px] font-medium text-muted bg-surface-elevated px-1.5 py-0.5 rounded border border-border-subtle shrink-0">
@@ -1145,11 +1178,11 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                         </td>
                       </tr>
                     ) : (
-                      paginatedTypes.map((t) => {
-                        const parentCat = categories.find((c) => c.id === t.dm_tai_lieu);
+                      paginatedTypes.map((typeItem) => {
+                        const parentCat = categories.find((c) => c.id === typeItem.dm_tai_lieu);
                         return (
                           <tr
-                            key={t.id}
+                            key={typeItem.id}
                             className="hover:bg-surface-elevated/70 transition-colors"
                           >
                             <td className="px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-main">
@@ -1157,22 +1190,32 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                 <div className="mt-0.5 shrink-0">
                                   <i
                                     className={`fa-solid ${
-                                      t.is_public ? 'fa-tag text-primary/75' : 'fa-lock text-amber-500'
+                                      typeItem.is_public ? 'fa-tag text-primary/75' : 'fa-lock text-amber-500'
                                     } text-xs`}
                                   />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <span className="text-xs sm:text-sm font-semibold text-main block leading-snug">
-                                    {t.ten_loai}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {isItemNew((typeItem as unknown as { created_at?: string }).created_at, typeItem.id, newTypeIds) && (
+                                      <span
+                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-danger text-white shadow-2xs shrink-0"
+                                        title={t('resourceManagement.badgeNew')}
+                                      >
+                                        {t('resourceManagement.badgeNew')}
+                                      </span>
+                                    )}
+                                    <span className="text-xs sm:text-sm font-semibold text-main block leading-snug">
+                                      {typeItem.ten_loai}
+                                    </span>
+                                  </div>
 
                                   {/* Sub-line tinh gọn trên Mobile: Thư mục cha + Badge phạm vi */}
                                   <div className="flex items-center gap-2 mt-1 sm:hidden flex-wrap text-[11px]">
                                     <span className="text-secondary inline-flex items-center gap-1 truncate max-w-[170px]">
                                       <i className="fa-solid fa-folder text-[10px] text-primary/60 shrink-0" />
-                                      <span className="truncate">{parentCat?.ten_tai_lieu || `Thư mục #${t.dm_tai_lieu}`}</span>
+                                      <span className="truncate">{parentCat?.ten_tai_lieu || `Thư mục #${typeItem.dm_tai_lieu}`}</span>
                                     </span>
-                                    {t.is_public ? (
+                                    {typeItem.is_public ? (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-full border border-emerald-500/20 shrink-0">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                         Công khai
@@ -1186,19 +1229,19 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                   </div>
 
                                   {/* Ghi chú trên mobile nếu có */}
-                                  {t.ghi_chu && (
+                                  {typeItem.ghi_chu && (
                                     <p className="sm:hidden text-[11px] text-muted line-clamp-1 mt-0.5 leading-tight font-normal">
-                                      {t.ghi_chu}
+                                      {typeItem.ghi_chu}
                                     </p>
                                   )}
                                 </div>
                               </div>
                             </td>
                             <td className="hidden sm:table-cell px-3 py-3 text-secondary font-medium">
-                              {parentCat?.ten_tai_lieu || `Thư mục #${t.dm_tai_lieu}`}
+                              {parentCat?.ten_tai_lieu || `Thư mục #${typeItem.dm_tai_lieu}`}
                             </td>
                             <td className="hidden sm:table-cell px-3 py-3 text-center">
-                              {t.is_public ? (
+                              {typeItem.is_public ? (
                                 <Badge variant="success" size="sm">
                                   Công khai
                                 </Badge>
@@ -1208,7 +1251,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                                 </Badge>
                               )}
                             </td>
-                            <td className="hidden md:table-cell px-3 py-3 text-muted">{t.ghi_chu || '-'}</td>
+                            <td className="hidden md:table-cell px-3 py-3 text-muted">{typeItem.ghi_chu || '-'}</td>
                             <td
                               className="px-2 sm:px-3 py-2.5 sm:py-3 text-center whitespace-nowrap align-middle"
                               onClick={(e) => e.stopPropagation()}
@@ -1216,14 +1259,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                               <button
                                 type="button"
                                 data-menu-trigger="true"
-                                onClick={(e) => handleOpenTypeMenu(e, t.id)}
+                                onClick={(e) => handleOpenTypeMenu(e, typeItem.id)}
                                 className={`w-7 h-7 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
-                                  activeMenuTypeId === t.id
+                                  activeMenuTypeId === typeItem.id
                                     ? 'bg-primary text-white shadow-xs'
                                     : 'text-muted hover:text-main hover:bg-surface-elevated'
                                 }`}
                                 title="Thao tác"
-                                aria-label={`Thao tác với loại ${t.ten_loai}`}
+                                aria-label={`Thao tác với loại ${typeItem.ten_loai}`}
                               >
                                 <i className="fa-solid fa-ellipsis text-xs" />
                               </button>
