@@ -332,6 +332,15 @@ export interface ChucVu {
   display_order: number;
 }
 
+/** Cán bộ đang giữ một chức vụ (`GET /can-bo-theo-chuc-vu/`), để hiện tên người khớp người ký theo chức vụ. */
+export interface CanBoChucVu {
+  id: number;
+  ten: string;
+  chuc_vu: string | null;
+  don_vi_id: number | null;
+  don_vi: string | null;
+}
+
 /** Cán bộ trong danh bạ của phân hệ CBNV (`GET /api/accounts/staffs/`). */
 export interface CanBo {
   id: number;

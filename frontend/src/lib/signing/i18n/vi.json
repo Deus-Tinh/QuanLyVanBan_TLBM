@@ -249,7 +249,11 @@
     "themTheoChucVu": "Thêm theo chức vụ",
     "chonChucVu": "— Chọn chức vụ (Danh mục chức vụ) —",
     "phamViChucVu": "Phạm vi chức vụ",
-    "theoChucVu": "Chức vụ: {ten}"
+    "theoChucVu": "Chức vụ: {ten}",
+    "ungVien": "Cán bộ đang giữ chức vụ",
+    "khongCoUngVien": "Chưa có cán bộ nào ở chức vụ/đơn vị này; cấp ký sẽ không có người ký.",
+    "theoDonViNguoiTrinh": "Khi gửi, người ký là người giữ chức vụ này trong đơn vị của người trình.",
+    "conNguoiKhac": "và {so} người khác"
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo trên trình duyệt, bảo vệ bằng PIN 8 chữ số (Argon2id). Khóa bí mật đã mã hóa được xuất ra file khóa; khi ký, tải file khóa lên và nhập PIN. Máy chủ không nhận PIN, file khóa hay khóa bí mật.",

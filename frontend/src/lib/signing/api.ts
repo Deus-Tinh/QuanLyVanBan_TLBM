@@ -5,7 +5,7 @@
  */
 import apiClient, { ApiError } from '@lib/apiClient';
 import type {
-  BangChung, BoLocHoSo, BoLocTaiLieu, CanBo, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
+  BangChung, BoLocHoSo, BoLocTaiLieu, CanBo, CanBoChucVu, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
   ThamSoKdf, ThongBaoTrinhKy, TinNhan, TrangKetQua, TraoDoi, VanBanDi, ViTriKy,
 } from './types';
 
@@ -124,6 +124,12 @@ export const signingApi = {
   danhBaCanBo: () => apiClient.get<CanBo[]>('/api/accounts/staffs/'),
   /** Danh mục chức vụ (thứ tự hiển thị của CBNV) để chọn người ký theo chức vụ. */
   chucVu: () => apiClient.get<ChucVu[]>('/api/positions/?all=true'),
+  /** Cán bộ đang làm việc giữ chức vụ (trong đơn vị nếu có): tên người khớp người ký cấu hình theo chức vụ. */
+  canBoTheoChucVu: (chuc_vu: number, don_vi?: number | null) => {
+    const tham_so = new URLSearchParams({ chuc_vu: String(chuc_vu) });
+    if (don_vi) tham_so.set('don_vi', String(don_vi));
+    return apiClient.get<{ count: number; results: CanBoChucVu[] }>(`${SIGNING_BASE}/can-bo-theo-chuc-vu/?${tham_so}`);
+  },
   /** Người nhận ủy quyền ký: tài khoản có quyền ký (cần delegate_trinhky). */
   timNguoiNhanUyQuyen: (q: string) =>
     apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?muc_dich=uy_quyen&q=${encodeURIComponent(q)}`),

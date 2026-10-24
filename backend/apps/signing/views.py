@@ -763,6 +763,36 @@ class NguoiDungView(SigningAPIView):
         return Response(ket_qua)
 
 
+class CanBoTheoChucVuView(SigningAPIView):
+    """
+    GET /can-bo-theo-chuc-vu/?chuc_vu=<id>[&don_vi=<id>]: cán bộ đang làm việc giữ chức vụ (trong đơn vị nếu có) để
+    form và trang chi tiết quy trình hiện tên những người khớp người ký cấu hình theo chức vụ (#275 mục 8). Dữ liệu
+    nhân sự của phân hệ CBNV, cùng phạm vi danh bạ `/api/accounts/staffs/`; cần quyền xem hoặc quản lý quy trình.
+    Trả {"count", "results": [{id, ten, chuc_vu, don_vi_id, don_vi}]} (tối đa 50 dòng, sắp theo đơn vị, họ tên).
+    """
+
+    TOI_DA = 50
+
+    def get(self, request):
+        if not co_quyen(request.user, QUAN_LY_QUY_TRINH):
+            yeu_cau_quyen(request.user, XEM_TRINH_KY)
+        tham_so = {}
+        for ten, bat_buoc in (("chuc_vu", True), ("don_vi", False)):
+            gia_tri = request.query_params.get(ten, "").strip()
+            if not gia_tri and not bat_buoc:
+                continue
+            if not gia_tri.isdigit():
+                raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải là số.",
+                                   fields={ten: ["Giá trị không hợp lệ."]})
+            tham_so[ten] = int(gia_tri)
+        queryset = to_chuc.can_bo_giu_chuc_vu(tham_so["chuc_vu"], tham_so.get("don_vi"))
+        can_bo = list(queryset.select_related("chuc_vu", "don_vi")
+                      .order_by("don_vi__stt_uu_tien", "ho_ten", "pk")[: self.TOI_DA])
+        return Response({"count": queryset.count(), "results": [
+            {"id": u.pk, "ten": to_chuc.ten_hien_thi(u), "chuc_vu": to_chuc.ten_chuc_vu(u) or None,
+             "don_vi_id": to_chuc.don_vi_cua(u), "don_vi": to_chuc.ten_don_vi(u) or None} for u in can_bo]})
+
+
 class DashboardView(SigningAPIView):
     """
     GET /dashboard/: số hồ sơ đang chờ người dùng hiện tại ký và 5 phiếu gần nhất liên quan tới người đó (tạo hoặc

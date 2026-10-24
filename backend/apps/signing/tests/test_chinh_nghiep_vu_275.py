@@ -107,3 +107,45 @@ class ChucVuCauHinhTests(TrinhKyBase):
         nguoi_ky = r.data["cap_ky"][0]["nguoi_ky"][0]
         self.assertEqual((nguoi_ky["chuc_vu_id"], nguoi_ky["ten_chuc_vu"], nguoi_ky["ten_nguoi_ky"]),
                          (self.position.pk, "Trưởng phòng", None))
+
+
+class CanBoTheoChucVuTests(TrinhKyBase):
+    """#275 mục 8: chọn chức vụ (và đơn vị) thì thấy tên cán bộ đang giữ chức vụ đó."""
+
+    URL = "/api/v1/signing/can-bo-theo-chuc-vu/"
+
+    def setUp(self):
+        super().setUp()
+        from .helpers import tao_chuc_vu, tao_don_vi
+        self.cv = tao_chuc_vu("Trưởng phòng thử")
+        self.a, self.b = tao_don_vi("Phòng A"), tao_don_vi("Phòng B")
+        tao = User.objects.create_user
+        self.u_a = tao("tp_a", ho_ten="Nguyễn Văn A", chuc_vu=self.cv, don_vi=self.a)
+        self.u_b = tao("tp_b", ho_ten="Trần Thị B", chuc_vu=self.cv, don_vi=self.b)
+        tao("tp_khoa", ho_ten="Đã khóa", chuc_vu=self.cv, don_vi=self.a, is_active=False)
+        tao("tp_nghi", ho_ten="Đã nghỉ", chuc_vu=self.cv, don_vi=self.a, trang_thai="NGHI_VIEC")
+        tao("khac", ho_ten="Chức vụ khác", don_vi=self.a)
+        self.xem = User.objects.create_user("xem_qt")
+        from .helpers import cap_quyen
+        cap_quyen(self.xem, "view_trinhky")
+
+    def test_lists_active_staff_holding_position_optionally_in_unit(self):
+        c = self.client_cua(User.objects.get(pk=self.xem.pk))
+        r = c.get(self.URL, {"chuc_vu": self.cv.pk})
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["count"], 2)
+        self.assertEqual({x["id"] for x in r.data["results"]}, {self.u_a.pk, self.u_b.pk})
+        dong = next(x for x in r.data["results"] if x["id"] == self.u_a.pk)
+        self.assertEqual((dong["ten"], dong["don_vi_id"]), ("Nguyễn Văn A", self.a.pk))
+        self.assertTrue(dong["chuc_vu"].startswith("Trưởng phòng thử"))
+        r = c.get(self.URL, {"chuc_vu": self.cv.pk, "don_vi": self.b.pk})
+        self.assertEqual([x["id"] for x in r.data["results"]], [self.u_b.pk])
+        r = c.get(self.URL, {"chuc_vu": self.position.pk, "don_vi": self.b.pk})
+        self.assertEqual((r.data["count"], r.data["results"]), (0, []))  # không có ai: giao diện cảnh báo
+
+    def test_requires_process_permission_and_valid_params(self):
+        self.assertEqual(self.client_cua(self.la).get(self.URL, {"chuc_vu": self.cv.pk}).status_code, 403)
+        c = self.client_cua(User.objects.get(pk=self.xem.pk))
+        for sai in ({}, {"chuc_vu": "x"}, {"chuc_vu": self.cv.pk, "don_vi": "y"}):
+            r = c.get(self.URL, sai)
+            self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"))

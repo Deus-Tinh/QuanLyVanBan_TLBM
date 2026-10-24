@@ -249,7 +249,11 @@
     "themTheoChucVu": "Add by position",
     "chonChucVu": "— Pick a position (position catalogue) —",
     "phamViChucVu": "Position scope",
-    "theoChucVu": "Position: {ten}"
+    "theoChucVu": "Position: {ten}",
+    "ungVien": "Staff currently holding this position",
+    "khongCoUngVien": "No staff hold this position in this unit; the level would have no signer.",
+    "theoDonViNguoiTrinh": "On submission, the signer is whoever holds this position in the submitter's unit.",
+    "conNguoiKhac": "and {so} more"
   },
   "khoa": {
     "gioiThieu": "Your signing key is created in the browser and protected by an 8-digit PIN (Argon2id). The encrypted private key is exported to a key file; to sign, upload the key file and enter your PIN. The server never receives your PIN, key file or private key.",

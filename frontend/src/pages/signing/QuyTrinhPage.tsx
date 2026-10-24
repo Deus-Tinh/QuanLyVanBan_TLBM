@@ -3,7 +3,8 @@
  * Người ký cấu hình theo tài khoản (danh bạ cán bộ của phân hệ CBNV) hoặc theo chức vụ (Danh mục chức vụ của CBNV,
  * #275 mục 2, 7). Đơn vị áp dụng chọn từ Đơn vị của Nhóm 7 (quản trị: mọi đơn vị, lãnh đạo đơn vị: đơn vị mình).
  * Sửa quy trình nháp (đã kích hoạt thì nhân bản thành phiên bản mới). Xóa được phiên bản chưa có hồ sơ trình ký nào
- * dùng (#275 mục 1); còn hồ sơ thì nút Xóa bị vô hiệu kèm lý do.
+ * dùng (#275 mục 1); còn hồ sơ thì nút Xóa bị vô hiệu kèm lý do. Người ký theo chức vụ hiện tên cán bộ đang giữ chức vụ
+ * trong phạm vi đã chọn, không có ai thì cảnh báo (#275 mục 8).
  */
 import { useMemo, useState } from 'react';
 import { Badge, Button, Card } from '@components/common';
@@ -79,8 +80,49 @@ function ChonNguoiDung({ onChon }: { onChon: (u: CanBo) => void }) {
   );
 }
 
+/**
+ * Đơn vị dùng để tìm cán bộ khớp người ký theo chức vụ: đơn vị cố định của cấp; "đơn vị người trình" của quy trình
+ * phòng ban là đơn vị áp dụng; còn lại (toàn cơ quan, hoặc quy trình công ty theo đơn vị người trình) là mọi đơn vị.
+ */
+function donViTimCanBo(pham_vi_chuc_vu: string | null, don_vi_cap: number | null, pham_vi: PhamViQuyTrinh,
+  don_vi_ap_dung: number | null): number | null {
+  if (pham_vi_chuc_vu === 'DON_VI_CO_DINH') return don_vi_cap;
+  if (pham_vi_chuc_vu === 'DON_VI_NGUOI_TAO' && pham_vi === 'PHONG_BAN') return don_vi_ap_dung;
+  return null;
+}
+
+/** Tên cán bộ đang giữ chức vụ (dữ liệu phân hệ CBNV); không có ai thì cảnh báo cấp ký sẽ không có người ký. */
+function CanBoChucVu({ chucVuId, donViId, theoNguoiTrinh }: {
+  chucVuId: number; donViId: number | null; theoNguoiTrinh: boolean;
+}) {
+  const { t, loi } = useSigningT();
+  const ds = useTai(() => signingApi.canBoTheoChucVu(chucVuId, donViId), [chucVuId, donViId]);
+  if (ds.dangTai && !ds.duLieu) return <p className="text-xs text-muted">{t('chung.dangTai')}</p>;
+  if (ds.loi) return <p className="text-xs text-danger">{loi(ds.loi)}</p>;
+  if (!ds.duLieu) return null;
+  if (ds.duLieu.count === 0) {
+    return <p className="text-xs font-semibold text-warning-text" role="alert">{t('quyTrinh.khongCoUngVien')}</p>;
+  }
+  const con = ds.duLieu.count - ds.duLieu.results.length;
+  return (
+    <div className="space-y-0.5 text-xs" aria-label={t('quyTrinh.ungVien')}>
+      <span className="font-semibold text-secondary">{t('quyTrinh.ungVien')} ({ds.duLieu.count}):</span>
+      <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-main">
+        {ds.duLieu.results.map((u) => (
+          <li key={u.id}>{u.ten}{u.don_vi && <span className="text-muted"> · {u.don_vi}</span>}</li>
+        ))}
+        {con > 0 && <li className="text-muted">{t('quyTrinh.conNguoiKhac', { so: con })}</li>}
+      </ul>
+      {theoNguoiTrinh && <p className="text-muted">{t('quyTrinh.theoDonViNguoiTrinh')}</p>}
+    </div>
+  );
+}
+
 /** Thêm người ký theo chức vụ (Danh mục chức vụ của phân hệ CBNV); người cụ thể được xác định lúc gửi. */
-function ChonChucVu({ onChon }: { onChon: (chuc_vu: { id: number; ten: string }, pham_vi: string) => void }) {
+function ChonChucVu({ onChon, donViTim }: {
+  onChon: (chuc_vu: { id: number; ten: string }, pham_vi: string) => void;
+  donViTim: (pham_vi_chuc_vu: string) => number | null;
+}) {
   const { t, loi } = useSigningT();
   const ds = useTai(() => signingApi.chucVu(), []);
   const [chucVu, setChucVu] = useState('');
@@ -102,6 +144,12 @@ function ChonChucVu({ onChon }: { onChon: (chuc_vu: { id: number; ten: string },
         {t('quyTrinh.themTheoChucVu')}
       </Button>
       {ds.loi && <p className="basis-full text-xs text-danger">{loi(ds.loi)}</p>}
+      {chon && (
+        <div className="basis-full">
+          <CanBoChucVu chucVuId={chon.id} donViId={donViTim(phamVi)}
+            theoNguoiTrinh={phamVi === 'DON_VI_NGUOI_TAO' && donViTim(phamVi) == null} />
+        </div>
+      )}
     </div>
   );
 }
@@ -119,6 +167,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
   const [dangLuu, setDangLuu] = useState(false);
   const [thongBao, setThongBao] = useState('');
 
+  const donViApDung = phamVi === 'PHONG_BAN' && donVi ? Number(donVi) : null;
   const sua = (i: number, gia_tri: Partial<CapNhap>) => setCap((c) => c.map((x, j) => (j === i ? { ...x, ...gia_tri } : x)));
   const hopLe = ma.trim() && ten.trim() && (phamVi === 'CONG_TY' || donVi)
     && cap.every((c) => c.ten_cap_ky.trim() && c.nguoi_ky.length);
@@ -206,6 +255,13 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
                   onClick={() => sua(i, { nguoi_ky: c.nguoi_ky.filter((_, k) => k !== j) })}>
                   <i className="fa-solid fa-trash" aria-hidden="true" />
                 </button>
+                {n.chuc_vu_id != null && (
+                  <div className="basis-full pl-1">
+                    <CanBoChucVu chucVuId={n.chuc_vu_id}
+                      donViId={donViTimCanBo(n.pham_vi_chuc_vu, c.don_vi_id, phamVi, donViApDung)}
+                      theoNguoiTrinh={n.pham_vi_chuc_vu === 'DON_VI_NGUOI_TAO' && phamVi !== 'PHONG_BAN'} />
+                  </div>
+                )}
               </div>
             ))}
             <ChonNguoiDung onChon={(u: CanBo) => !c.nguoi_ky.some((n) => n.nguoi_ky === u.id)
@@ -213,7 +269,8 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
                 khoa: `u${u.id}`, ten: u.ho_ten, chuc_danh: chucDanh(u, ''), nguoi_ky: u.id, chuc_vu_id: null, pham_vi_chuc_vu: null,
                 vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true,
               }] })} />
-            <ChonChucVu onChon={(cv, pham_vi) => !c.nguoi_ky.some((n) => n.chuc_vu_id === cv.id && n.pham_vi_chuc_vu === pham_vi)
+            <ChonChucVu donViTim={(pham_vi) => donViTimCanBo(pham_vi, c.don_vi_id, phamVi, donViApDung)}
+              onChon={(cv, pham_vi) => !c.nguoi_ky.some((n) => n.chuc_vu_id === cv.id && n.pham_vi_chuc_vu === pham_vi)
               && sua(i, { nguoi_ky: [...c.nguoi_ky, {
                 khoa: `p${cv.id}-${pham_vi}`, ten: t('quyTrinh.theoChucVu', { ten: cv.ten }), chuc_danh: t(`phamViChucVu.${pham_vi}`),
                 nguoi_ky: null, chuc_vu_id: cv.id, pham_vi_chuc_vu: pham_vi, vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true,
@@ -267,6 +324,11 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
                           {tenNguoiKyCauHinh(n, t)}
                           <span className="ml-1 text-secondary">({t(`vaiTro.${n.vai_tro_ky}`)}
                             {n.vai_tro_ky === 'KY_NHAY' && n.chan_ky_chinh ? ` · ${t('quyTrinh.chanKyChinh')}` : ''})</span>
+                          {n.chuc_vu_id != null && (
+                            <CanBoChucVu chucVuId={n.chuc_vu_id}
+                              donViId={donViTimCanBo(n.pham_vi_chuc_vu, c.don_vi_id, q.pham_vi, q.don_vi_ap_dung_id)}
+                              theoNguoiTrinh={n.pham_vi_chuc_vu === 'DON_VI_NGUOI_TAO' && q.pham_vi !== 'PHONG_BAN'} />
+                          )}
                         </li>
                       ))}
                     </ul>

@@ -311,6 +311,12 @@ desktop và mobile 390px, thông báo có người thực hiện và lý do.
   trang phê duyệt của tệp PDF hoàn tất.
 - Bộ lọc trạng thái còn 4 lựa chọn (mục 4); badge tab "Cần tôi ký duyệt" đếm cả hồ sơ quá hạn.
 - Tab "Văn bản công khai" phân trang (10 tệp mỗi trang, dùng chung thanh `PhanTrang`).
+- Chọn chức vụ (và đơn vị) là hiện ngay tên cán bộ đang giữ chức vụ (họ tên, đơn vị), ở ô thêm theo chức vụ, ở từng
+  người ký theo chức vụ trong form và ở trang chi tiết quy trình; không có ai thì cảnh báo "Chưa có cán bộ nào ở chức
+  vụ/đơn vị này". API chỉ đọc `GET can-bo-theo-chuc-vu/?chuc_vu=&don_vi=` (quyền xem hoặc quản lý quy trình; chỉ cán bộ
+  `is_active`, trạng thái đang làm việc; tối đa 50 dòng kèm `count`). Đơn vị tìm: đơn vị cố định của cấp; "đơn vị người
+  trình" của quy trình phòng ban là đơn vị áp dụng; quy trình công ty theo đơn vị người trình hiện mọi đơn vị kèm ghi
+  chú người ký thực tế xác định lúc gửi.
 - Dữ liệu cán bộ: Trình ký đọc qua lớp `tich_hop/to_chuc.py` (model của Nhóm 7) và API công khai của CBNV ở giao diện;
   bản chụp tên người ký/chức vụ trên lượt trình là bằng chứng bất biến, không phải danh bạ riêng. Đề xuất Nhóm 7 bổ
   sung selector Python công khai (tìm cán bộ, cán bộ theo chức vụ/đơn vị, lãnh đạo đơn vị) để thay các truy vấn trực
