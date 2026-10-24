@@ -299,6 +299,10 @@
     "errOrderMin": "Please enter a valid display order (minimum 1)",
     "errSaveCat": "An error occurred while saving the folder",
     "errTypeNameRequired": "Please enter document type name",
-    "errSaveType": "An error occurred while saving the document type"
+    "errSaveType": "An error occurred while saving the document type",
+    "filterByYearAria": "Filter by issue year",
+    "filterByStatusAria": "Filter by validity status",
+    "exportExcelSuccess": "Document list exported successfully to Excel file!",
+    "exportFileName": "Document_List"
   }
 }

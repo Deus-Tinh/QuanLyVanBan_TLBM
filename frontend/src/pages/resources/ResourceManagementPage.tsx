@@ -1237,6 +1237,7 @@ export default function ResourceManagementPage() {
       if (selectedType !== 'all') params.append('loai_tai_lieu', selectedType);
       if (selectedYear !== 'all') params.append('nam', selectedYear);
       if (statusFilter !== 'all') params.append('hieu_luc', statusFilter);
+      if (currentLang === 'en') params.append('lang', 'en');
 
       const baseUrl = import.meta.env.VITE_API_URL || '';
       const endpoint = `/api/resources/documents/export-excel/?${params.toString()}`;
@@ -1255,11 +1256,19 @@ export default function ResourceManagementPage() {
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = downloadUrl;
-        a.download = `Danh_sach_tai_lieu_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const filePrefix = currentLang === 'en' ? 'Document_List' : 'Danh_sach_tai_lieu';
+        a.download = `${filePrefix}_${new Date().toISOString().split('T')[0]}.xlsx`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         window.URL.revokeObjectURL(downloadUrl);
+        showToast(
+          currentLang === 'en'
+            ? 'Document list exported successfully to Excel file!'
+            : 'Đã xuất thành công danh sách tài liệu sang tệp Excel!',
+          'success',
+          currentLang === 'en' ? 'Export Excel' : 'Xuất dữ liệu Excel'
+        );
       } else {
         throw new Error(`Máy chủ phản hồi mã lỗi ${response.status}`);
       }
@@ -1270,17 +1279,9 @@ export default function ResourceManagementPage() {
       );
 
       // Fallback: Xuất dữ liệu bảng hiện tại sang file CSV/Excel UTF-8 có BOM để mở tiếng Việt không lỗi
-      const headers = [
-        'STT',
-        'Ký hiệu',
-        'Tiêu đề',
-        'Danh mục',
-        'Loại tài liệu',
-        'Nơi ban hành',
-        'Ngày đăng',
-        'Hiệu lực',
-        'Phạm vi',
-      ];
+      const headers = currentLang === 'en'
+        ? ['No.', 'Code', 'Title', 'Category', 'Document Type', 'Issuing Authority', 'Published Date', 'Status', 'Scope']
+        : ['STT', 'Ký hiệu', 'Tiêu đề', 'Danh mục', 'Loại tài liệu', 'Nơi ban hành', 'Ngày đăng', 'Hiệu lực', 'Phạm vi'];
       const rows = filteredDocuments.map((doc, idx) => [
         idx + 1,
         `"${doc.ky_hieu || ''}"`,
@@ -1290,13 +1291,15 @@ export default function ResourceManagementPage() {
         `"${doc.noi_ban_hanh || ''}"`,
         doc.ngay_dang,
         doc.hieu_luc === 'CON_HIEU_LUC'
-          ? 'Còn hiệu lực'
+          ? (currentLang === 'en' ? 'Active' : 'Còn hiệu lực')
           : doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
-            ? 'Còn hiệu lực một phần'
+            ? (currentLang === 'en' ? 'Partially Active' : 'Còn hiệu lực một phần')
             : doc.hieu_luc === 'HET_HIEU_LUC'
-              ? 'Hết hiệu lực'
-              : 'Hết và thay thế',
-        doc.hien_thi === 'TAT_CA' ? 'Tất cả' : 'Nội bộ phòng ban',
+              ? (currentLang === 'en' ? 'Expired' : 'Hết hiệu lực')
+              : (currentLang === 'en' ? 'Expired & Replaced' : 'Hết và thay thế'),
+        doc.hien_thi === 'TAT_CA'
+          ? (currentLang === 'en' ? 'Public / All' : 'Tất cả')
+          : (currentLang === 'en' ? 'Internal department' : 'Nội bộ phòng ban'),
       ]);
 
       const csvContent =
@@ -1305,12 +1308,19 @@ export default function ResourceManagementPage() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Danh_sach_tai_lieu_${new Date().toISOString().split('T')[0]}.csv`;
+      const filePrefix = currentLang === 'en' ? 'Document_List' : 'Danh_sach_tai_lieu';
+      a.download = `${filePrefix}_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      showToast('Đã xuất thành công file danh sách tài liệu!', 'success', 'Xuất dữ liệu Excel');
+      showToast(
+        currentLang === 'en'
+          ? 'Document list exported successfully!'
+          : 'Đã xuất thành công file danh sách tài liệu!',
+        'success',
+        currentLang === 'en' ? 'Export Excel' : 'Xuất dữ liệu Excel'
+      );
     } finally {
       setIsExporting(false);
     }
@@ -1965,7 +1975,7 @@ export default function ResourceManagementPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full h-10 pl-9 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary placeholder:text-muted transition-colors"
-              aria-label="Tìm theo tiêu đề, ký hiệu, nơi ban hành"
+              aria-label={t('resourceManagement.searchPlaceholder')}
             />
             {searchInput && (
               <button
@@ -1976,8 +1986,8 @@ export default function ResourceManagementPage() {
                   setCurrentPage(1);
                 }}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1 cursor-pointer"
-                title="Xóa từ khóa"
-                aria-label="Xóa từ khóa tìm kiếm"
+                title={t('resourceManagement.clearSearch')}
+                aria-label={t('resourceManagement.clearSearch')}
               >
                 <i className="fa-solid fa-xmark" />
               </button>
@@ -1997,7 +2007,7 @@ export default function ResourceManagementPage() {
               className={`w-full h-10 px-3 text-[13px] rounded-lg bg-surface-elevated text-main border transition-colors flex items-center justify-between gap-2 cursor-pointer font-medium ${
                 isYearDropdownOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border-subtle hover:border-primary/50'
               }`}
-              aria-label="Lọc theo năm ban hành"
+              aria-label={t('resourceManagement.filterByYearAria')}
               aria-haspopup="listbox"
               aria-expanded={isYearDropdownOpen}
             >
@@ -2081,7 +2091,7 @@ export default function ResourceManagementPage() {
               className={`w-full h-10 px-3 text-[13px] rounded-lg bg-surface-elevated text-main border transition-colors flex items-center justify-between gap-2 cursor-pointer font-medium ${
                 isStatusDropdownOpen ? 'border-primary ring-1 ring-primary/20' : 'border-border-subtle hover:border-primary/50'
               }`}
-              aria-label="Lọc theo tình trạng hiệu lực"
+              aria-label={t('resourceManagement.filterByStatusAria')}
               aria-haspopup="listbox"
               aria-expanded={isStatusDropdownOpen}
             >

@@ -299,6 +299,10 @@
     "errOrderMin": "Vui lòng nhập STT ưu tiên hợp lệ (tối thiểu là 1)",
     "errSaveCat": "Có lỗi xảy ra khi lưu thư mục lên hệ thống",
     "errTypeNameRequired": "Vui lòng nhập tên loại tài liệu",
-    "errSaveType": "Có lỗi xảy ra khi lưu loại tài liệu lên hệ thống"
+    "errSaveType": "Có lỗi xảy ra khi lưu loại tài liệu lên hệ thống",
+    "filterByYearAria": "Lọc theo năm ban hành",
+    "filterByStatusAria": "Lọc theo tình trạng hiệu lực",
+    "exportExcelSuccess": "Đã xuất thành công danh sách tài liệu sang tệp Excel!",
+    "exportFileName": "Danh_sach_tai_lieu"
   }
 }

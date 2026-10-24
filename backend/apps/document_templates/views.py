@@ -212,10 +212,12 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
         Xuất danh sách tài liệu chi tiết sang file Excel (.xlsx) theo đúng bộ lọc tìm kiếm hiện tại
         """
         filtered_qs = self.filter_queryset(self.get_queryset())
+        lang = request.query_params.get('lang', 'vi')
+        is_en = (lang == 'en')
 
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "DanhSachTaiLieu"
+        ws.title = "DocumentList" if is_en else "DanhSachTaiLieu"
 
         # Cấu hình phong cách bảng tính
         title_font = Font(name="Arial", size=14, bold=True, color="1E3A8A")
@@ -235,7 +237,11 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
         # Tiêu đề bảng
         ws.merge_cells("A1:L1")
         title_cell = ws["A1"]
-        title_cell.value = "DANH SÁCH TÀI LIỆU VÀ BIỂU MẪU CHUNG"
+        title_cell.value = (
+            "COMMON DOCUMENTS AND TEMPLATES DIRECTORY"
+            if is_en
+            else "DANH SÁCH TÀI LIỆU VÀ BIỂU MẪU CHUNG"
+        )
         title_cell.font = title_font
         title_cell.alignment = Alignment(horizontal="center", vertical="center")
         ws.row_dimensions[1].height = 35
@@ -243,26 +249,45 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
         # Dòng thời gian xuất
         ws.merge_cells("A2:L2")
         sub_cell = ws["A2"]
-        sub_cell.value = f"Ngày xuất báo cáo: {datetime.now().strftime('%d/%m/%Y %H:%M')} | Tổng số tài liệu: {filtered_qs.count()}"
+        if is_en:
+            sub_cell.value = f"Export date: {datetime.now().strftime('%d/%m/%Y %H:%M')} | Total documents: {filtered_qs.count()}"
+        else:
+            sub_cell.value = f"Ngày xuất báo cáo: {datetime.now().strftime('%d/%m/%Y %H:%M')} | Tổng số tài liệu: {filtered_qs.count()}"
         sub_cell.font = Font(name="Arial", size=10, italic=True, color="475569")
         sub_cell.alignment = Alignment(horizontal="center", vertical="center")
         ws.row_dimensions[2].height = 20
 
         # Header
-        headers = [
-            "STT",
-            "Số ký hiệu",
-            "Tiêu đề tài liệu",
-            "Danh mục Cấp 1",
-            "Loại tài liệu Cấp 2",
-            "Nơi ban hành",
-            "Ngày đăng",
-            "Hiệu lực",
-            "Ngày hết hiệu lực",
-            "Văn bản thay thế",
-            "Phạm vi hiển thị",
-            "Người tạo",
-        ]
+        if is_en:
+            headers = [
+                "No.",
+                "Document Code",
+                "Document Title",
+                "Category (Level 1)",
+                "Document Type (Level 2)",
+                "Issuing Authority",
+                "Published Date",
+                "Status",
+                "Expiration Date",
+                "Replacement Document",
+                "Visibility Scope",
+                "Created By",
+            ]
+        else:
+            headers = [
+                "STT",
+                "Số ký hiệu",
+                "Tiêu đề tài liệu",
+                "Danh mục Cấp 1",
+                "Loại tài liệu Cấp 2",
+                "Nơi ban hành",
+                "Ngày đăng",
+                "Hiệu lực",
+                "Ngày hết hiệu lực",
+                "Văn bản thay thế",
+                "Phạm vi hiển thị",
+                "Người tạo",
+            ]
         ws.append([])  # Dòng trống row 3
         ws.append(headers)  # Row 4
         ws.row_dimensions[4].height = 28
@@ -286,6 +311,23 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
 
             is_expired = doc.hieu_luc in ['HET_HIEU_LUC', 'HET_VA_THAY_THE']
 
+            if is_en:
+                hieu_luc_map = {
+                    'CON_HIEU_LUC': 'Active',
+                    'CON_HIEU_LUC_1_PHAN': 'Partially Active',
+                    'HET_HIEU_LUC': 'Expired',
+                    'HET_VA_THAY_THE': 'Expired & Replaced',
+                }
+                hieu_luc_display = hieu_luc_map.get(doc.hieu_luc, doc.get_hieu_luc_display())
+                hien_thi_map = {
+                    'TAT_CA': 'Public / All',
+                    'PHONG_BAN': 'Internal Department',
+                }
+                hien_thi_display = hien_thi_map.get(doc.hien_thi, doc.get_hien_thi_display())
+            else:
+                hieu_luc_display = doc.get_hieu_luc_display()
+                hien_thi_display = doc.get_hien_thi_display()
+
             row_data = [
                 idx,
                 doc.ky_hieu or "",
@@ -294,10 +336,10 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
                 loai_names,
                 doc.noi_ban_hanh or "",
                 ngay_dang_str,
-                doc.get_hieu_luc_display(),
+                hieu_luc_display,
                 ngay_het_str,
                 doc.link_thay_the or "",
-                doc.get_hien_thi_display(),
+                hien_thi_display,
                 nguoi_tao_str,
             ]
             ws.append(row_data)
@@ -340,7 +382,8 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        response["Content-Disposition"] = f'attachment; filename="Danh_sach_tai_lieu_{date_str}.xlsx"'
+        prefix = "Document_List" if is_en else "Danh_sach_tai_lieu"
+        response["Content-Disposition"] = f'attachment; filename="{prefix}_{date_str}.xlsx"'
         return response
 
 

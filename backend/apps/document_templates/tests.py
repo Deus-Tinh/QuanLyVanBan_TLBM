@@ -294,6 +294,21 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         # Ít nhất có 2 dòng dữ liệu
         self.assertGreaterEqual(ws.max_row, 5)
 
+    def test_api_export_excel_english(self):
+        """Xuất danh sách tài liệu ra file Excel (.xlsx) với ngôn ngữ tiếng Anh (?lang=en)"""
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.get('/api/resources/documents/export-excel/?lang=en')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('Document_List_', res['Content-Disposition'])
+
+        wb = openpyxl.load_workbook(io.BytesIO(res.content))
+        self.assertIn("DocumentList", wb.sheetnames)
+        ws = wb["DocumentList"]
+        self.assertEqual(ws["A1"].value, "COMMON DOCUMENTS AND TEMPLATES DIRECTORY")
+        self.assertEqual(ws.cell(row=4, column=1).value, "No.")
+        self.assertEqual(ws.cell(row=4, column=3).value, "Document Title")
+        self.assertGreaterEqual(ws.max_row, 5)
+
     def test_anonymous_user_cannot_create_or_modify_or_delete_document(self):
         """Khắc phục Lỗi 1 (P0): Người dùng ẩn danh không được phép POST, PATCH, DELETE"""
         self.client.force_authenticate(user=None)
