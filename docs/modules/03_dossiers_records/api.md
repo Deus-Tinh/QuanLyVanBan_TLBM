@@ -1,8 +1,8 @@
 # API Hồ sơ và Loại văn bản
 
-Cập nhật ngày 24/10/2026. Staging đối chiếu: `7084840b41c2ba8bb4fab240121f054ac9475fa1`. Tài khoản dùng `accounts.Employee`, backend quyền `authorization.backends.RbacBackend`.
+Cập nhật ngày 24/10/2026. Staging đối chiếu: `213758251fa407874e555d5ab575f60c629a2966`. Tài khoản dùng `accounts.Employee`, backend quyền `authorization.backends.RbacBackend`.
 
-Tài liệu mô tả API Records trên staging và tách riêng contract popup đang bàn giao ở #223/#224. Không coi phần chưa merge hoặc phụ thuộc #229/#230 là đã triển khai trên staging.
+Tài liệu mô tả API Records và contract popup #223/#224 đã tích hợp vào source staging. Trạng thái deploy được xác minh riêng qua pipeline; phụ thuộc #229/#230 chưa được coi là đã hoàn tất.
 
 ## Endpoint và quyền
 
@@ -38,7 +38,7 @@ Hồ sơ có ID, thứ tự ưu tiên, ký hiệu, tên, người lập, ngày l
 
 Route hiện có: `/records`, `/records/document-types`, `/records/{dossierId}/document-types`. Route danh sách văn bản riêng cũ chuyển về danh mục loại; API `/api/records/dossiers/{id}/documents/` đã gỡ. Không khôi phục trang hoặc API metadata Văn bản riêng.
 
-#223/#224 bổ sung ngữ cảnh cấp 1/cấp 2 trong popup. PR #224 đang Draft tại `a5b45064a31ada9c7c1288fe7cdf5c8e43e80bd0`; contract dưới đây chưa được coi là đã merge staging:
+#223/#224 bổ sung ngữ cảnh cấp 1/cấp 2 trong popup. PR #224 đã merge vào staging ngày 24/10/2026 tại `213758251fa407874e555d5ab575f60c629a2966`, từ head `3a9fe048d512988a65f4dab4670017ffad236dec`. Contract phần Records đã tích hợp; phần tiếp nhận/lọc Văn bản và nghiệm thu toàn luồng còn theo dõi tại #229/#230:
 
 - Cấp 2: `/records/{dossierId}/document-types?ten_ho_so={encodedName}`.
 - Đến: `/documents/incoming?ho_so={dossierId}&ten_ho_so={encodedName}&loai_van_ban={typeId}&pham_vi=NOI_BO`.

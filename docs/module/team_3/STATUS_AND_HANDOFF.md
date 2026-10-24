@@ -1,6 +1,6 @@
 # Trạng thái và bằng chứng bàn giao Nhóm 3
 
-Cập nhật 24/10/2026, staging đối chiếu `7084840b41c2ba8bb4fab240121f054ac9475fa1`. Đây là trạng thái kiểm chứng, không xác nhận #224 đã merge hoặc đã deploy staging.
+Cập nhật 24/10/2026, staging đối chiếu `213758251fa407874e555d5ab575f60c629a2966`. #224 đã merge theo ủy quyền người phụ trách; tại thời điểm cập nhật, CI/deploy trên commit merge được theo dõi riêng, chưa dùng trạng thái merge để xác nhận triển khai thành công.
 
 ## Phạm vi
 
@@ -14,12 +14,16 @@ Không có danh sách/API metadata Văn bản riêng trong Records. Tạo mới 
 - **#149:** #150 đã merge vào nhánh nhóm trước đây, chức năng CRUD hiện có trên staging qua chuỗi #131/#184. UI thật kiểm thêm/sửa/cập nhật danh sách; xóa thực kiểm qua API, xác nhận và Hủy kiểm trên UI. Đã đăng bằng chứng và đóng completed ngày 24/10 sau duyệt; không dùng base nhánh nhóm cũ cho việc mới.
 - **#160:** bản sửa #161 được thay thế bởi nền #184. Records hiện có migrations 0001–0003, không phục hồi chain cũ. Gate schema trên head #224 đạt 0 drift/baseline 0. Đã đóng completed ngày 24/10 sau duyệt, theo bản tích hợp thay thế #184.
 - **#164:** đã tích hợp qua #185; source có debounce và reload sau CRUD, không còn lời gọi `beginReload`. Full frontend trên #224 đạt; UI thật kiểm tìm theo ký hiệu, đặt lại, dữ liệu sau ghi. Đã đăng kết quả và đóng completed ngày 24/10 sau duyệt.
-- **#223/#224:** phần Records ở `a5b45064a31ada9c7c1288fe7cdf5c8e43e80bd0`, PR Draft, chưa merge. Đã kiểm riêng, còn phụ thuộc #229/#230 và nghiệm thu tích hợp cuối.
+- **#223/#224:** phần Records từ head `3a9fe048d512988a65f4dab4670017ffad236dec` đã merge vào staging tại `213758251fa407874e555d5ab575f60c629a2966`. #223 giữ mở vì còn nghiệm thu staging và giới hạn tích hợp #229/#230; không đóng với tuyên bố toàn luồng đã đạt.
 - **#83/#93:** chỉ cập nhật phần Nhóm 3, không đóng issue hoặc sửa trạng thái duyệt nhóm khác. Đã đăng tiến độ Nhóm 3 ở #83 và cập nhật chính bình luận Nhóm 3 ở #93 sau duyệt, không tạo báo cáo trùng.
 
 Merge #184 `2afecb5` và #185 `19f949d` là tổ tiên của staging đối chiếu. Ngày 24/10, người phụ trách đã duyệt tám nội dung phản hồi và việc đóng bốn issue riêng nêu trên. Đã đăng bảy bình luận mới, cập nhật chính bình luận Nhóm 3 tại #93, xác minh nội dung và trạng thái sau thao tác. #83/#93/#223/#229 vẫn mở; không sửa bảng duyệt hoặc phần nhóm khác.
 
-## CI trên commit popup đã công bố
+## CI trên commit popup bàn giao
+
+Head cuối trước merge của #224 là `3a9fe048d512988a65f4dab4670017ffad236dec`, đã đồng bộ staging `7084840`. [CI](https://github.com/QuanLyVanBanTLBM/QuanLyVanBan_TLBM/actions/runs/40053370646) và [DB Integration](https://github.com/QuanLyVanBanTLBM/QuanLyVanBan_TLBM/actions/runs/40053370659) success: frontend 557/557, backend 1076 test và PostgreSQL 16 1076 test, không skip; schema 0 drift/baseline 0. [Liên kết issue](https://github.com/QuanLyVanBanTLBM/QuanLyVanBan_TLBM/actions/runs/40055860399) success. CI/deploy trên merge commit `2137582` cần xác minh riêng, không dùng kết quả PR thay kết quả deploy.
+
+### Bằng chứng lịch sử trước đồng bộ
 
 Các số liệu sau thuộc #224 `a5b4506`, không phải số test của staging mới hoặc PR tài liệu:
 
@@ -58,9 +62,12 @@ Log/ảnh/manifest/kết quả chi tiết giữ trong bộ QA local bị Git b�
 - [x] Gửi yêu cầu phối hợp #230 sau duyệt.
 - [x] Nghiệm thu riêng Records bằng HTTP/trình duyệt/backend PostgreSQL 16 thật.
 - [ ] Nhận bản sửa #230 đồng bộ staging/CI đạt; nghiệm thu lại danh sách/count/chi tiết theo quyền.
-- [ ] Đồng bộ #224 với staging cuối và chạy gate trên head mới; không dùng CI head cũ cho head mới.
+- [x] Đồng bộ #224 với staging và chạy gate trên head cuối `3a9fe04` trước merge; đã tích hợp tại `2137582`.
 - [x] Duyệt và đăng phản hồi issue lịch sử, cập nhật đúng bình luận Nhóm 3 #93; đóng riêng #62/#149/#160/#164, giữ issue chung mở.
-- [ ] Người phụ trách rà soát PR tài liệu #256 và CI cuối; tự thao tác merge, theo dõi deploy/nghiệm thu staging, không đóng issue chung.
+- [ ] Xác minh CI/deploy trên commit merge #224; nghiệm thu Records trên staging.
+- [ ] Đồng bộ PR tài liệu #256 với staging sau #224, chờ CI trên head mới và merge khi đạt theo ủy quyền người phụ trách; xác minh deploy, không đóng issue chung.
+
+Phạm vi bàn giao riêng Nhóm 3 đã được chốt: Records và tài liệu. Nhóm 2 tự sửa và tích hợp #230; trưởng nhóm Nhóm 3 không nhận trách nhiệm merge thay module Văn bản. Khi phần tiếp nhận sẵn sàng, kiểm lại toàn luồng theo quyền. Nếu #224 đã merge và phát sinh lỗi Records, mở issue/nhánh mới từ staging, không tiếp tục commit lên nhánh đã kết thúc.
 
 Không ghi ngày chốt tích hợp cố định khi phụ thuộc chưa bàn giao. ETA lịch sử đã qua không được dùng làm trạng thái hiện hành.
 
@@ -68,4 +75,4 @@ Không ghi ngày chốt tích hợp cố định khi phụ thuộc chưa bàn gi
 
 [API](../../modules/03_dossiers_records/api.md), [hướng dẫn Git](../../modules/03_dossiers_records/GROUP3_DEVELOPMENT_GUIDE.md) là tài liệu hiện hành. Việc mới đi issue → nhánh từ staging → PR staging theo AGENTS.md.
 
-PR tài liệu chỉ thay markdown Nhóm 3; không sửa code, DDL/migration, dependency, CI hoặc dữ liệu. Không đổi nhánh của workspace gốc/#224, không merge/deploy staging.
+Diff PR tài liệu chỉ thay markdown Nhóm 3; không sửa code ứng dụng, DDL/migration, dependency, CI hoặc dữ liệu. Giữ nguyên workspace gốc và worktree #224. Merge theo ủy quyền người phụ trách, triển khai qua pipeline hiện hành; không thao tác DB/server staging bằng tay.
