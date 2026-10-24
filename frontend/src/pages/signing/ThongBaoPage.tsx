@@ -75,6 +75,12 @@ export default function ThongBaoPage() {
                     {tb.ly_do && <span>{t('thongBao.lyDo')}: {tb.ly_do}</span>}
                   </div>
                 )}
+                {tb.han_xu_ly && (
+                  <div className="text-xs text-secondary">
+                    <i className="fa-regular fa-clock mr-1" aria-hidden="true" />
+                    {t('thongBao.hanXuLy')}: <span className="font-semibold text-main">{dinhDangNgay(tb.han_xu_ly, lang)}</span>
+                  </div>
+                )}
                 <div className="text-xs text-secondary">{tb.ten_quy_trinh} · {dinhDangNgay(tb.created_at, lang)}</div>
               </div>
             </Link>

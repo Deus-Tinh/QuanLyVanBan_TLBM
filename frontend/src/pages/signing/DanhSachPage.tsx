@@ -2,12 +2,14 @@
  * Danh sách hồ sơ: "Cần tôi ký duyệt", "Tôi đã gửi trình", "Hồ sơ theo quyền" (#80 mục E) kèm bộ lọc:
  * thẻ lọc nhanh có số lượng (đang chờ ký, bị trả lại, quá hạn, hoàn tất…), ô tìm kiếm tự áp dụng và
  * phần "Lọc thêm" thu gọn (mức độ, quy trình, khoảng ngày). Hộp rỗng và chưa lọc thì không hiện khối lọc.
+ * Danh sách phân trang phía server (10 hồ sơ mỗi trang); đổi bộ lọc hoặc hộp thì về trang 1.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card } from '@components/common';
 import { DangTai, LoiTai, Rong, TrangThaiHoSo } from '@components/signing/ChungUI';
-import { signingApi } from '@lib/signing/api';
+import { PhanTrang } from '@components/signing/PhanTrang';
+import { SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -126,13 +128,26 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
 export default function DanhSachPage({ hop }: { hop: Hop }) {
   const { t, loi, lang } = useSigningT();
   const [loc, setLoc] = useState<BoLocHoSo>({});
+  const [trang, setTrang] = useState(1);
+  const [hopDangXem, setHopDangXem] = useState(hop);
+  if (hopDangXem !== hop) {  // đổi hộp: về trang 1
+    setHopDangXem(hop);
+    setTrang(1);
+  }
   const dem = useTai(() => signingApi.thongKe(hop), [hop]);
-  const ds = useTai(() => signingApi.danhSach(hop, loc), [hop, loc]);
+  const ds = useTai(() => signingApi.danhSach(hop, loc, trang), [hop, loc, trang]);
+  const hoSo = ds.duLieu?.results;
   const rong = { can_toi_ky: 'danhSach.rongCanToiKy', toi_gui: 'danhSach.rongToiGui', tat_ca: 'danhSach.rongTatCa' }[hop];
   const coLoc = Object.values(loc).some(Boolean);
   const hopRong = dem.duLieu?.tat_ca === 0 && !coLoc;
-  const capNhat = useCallback((thay_doi: BoLocHoSo) => setLoc((cu) => ({ ...cu, ...thay_doi })), []);
-  const xoaHet = useCallback(() => setLoc({}), []);
+  const capNhat = useCallback((thay_doi: BoLocHoSo) => {
+    setLoc((cu) => ({ ...cu, ...thay_doi }));
+    setTrang(1);
+  }, []);
+  const xoaHet = useCallback(() => {
+    setLoc({});
+    setTrang(1);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -144,12 +159,12 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
       <Card className="p-4 space-y-3">
         {ds.dangTai && <DangTai />}
         {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
-        {!ds.dangTai && !ds.loi && ds.duLieu?.length === 0 && <Rong>{t(coLoc ? 'danhSach.khongKhopLoc' : rong)}</Rong>}
-        {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
+        {!ds.dangTai && !ds.loi && hoSo?.length === 0 && <Rong>{t(coLoc ? 'danhSach.khongKhopLoc' : rong)}</Rong>}
+        {!ds.dangTai && !ds.loi && !!hoSo?.length && (
           <>
           {/* Màn hình hẹp: thẻ thay cho bảng để luôn thấy trạng thái, người đang chờ, hạn chót */}
           <ul className="space-y-2 md:hidden" aria-label={t('danhSach.vanBan')}>
-            {ds.duLieu.map((h) => (
+            {hoSo.map((h) => (
               <li key={h.id} className="rounded-lg border border-border-subtle p-3">
                 <Link to={`/approvals/${h.id}`} className="block font-semibold text-main hover:text-primary break-words">
                   {moTaVanBan(h.van_ban, h.van_ban_id)}
@@ -177,7 +192,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
-                {ds.duLieu.map((h) => (
+                {hoSo.map((h) => (
                   <tr key={h.id} className="hover:bg-surface-hover transition-colors">
                     <td className="px-3.5 py-2 truncate">
                       <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 text-base truncate" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
@@ -205,6 +220,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
               </tbody>
             </table>
           </div>
+          <PhanTrang trang={trang} soMoiTrang={SO_HO_SO_MOI_TRANG} tong={ds.duLieu?.count ?? 0} onDoi={setTrang} />
           </>
         )}
       </Card>

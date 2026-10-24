@@ -18,13 +18,13 @@ của tệp hoàn tất (Phase 10); không kiểm quyền, đọc lỗi thì tr�
 import logging
 
 from django.db import DatabaseError, transaction
-from django.db.models import Q
 from documents.models import PhamVi, VanBanDi
 from documents.selectors import la_nguoi_xem_duoc, van_ban_xem_duoc
 from rest_framework import status
 
 from .. import enums
 from ..errors import SigningError
+from ..tim_kiem import loc_khong_dau
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +72,8 @@ def mo_ta_van_ban(document_type, van_ban_id):
 
 
 def id_van_ban_khop(tu_khoa):
-    """Id văn bản đi có số hiệu hoặc trích yếu chứa từ khóa (dùng cho bộ lọc danh sách hồ sơ)."""
-    return VanBanDi.objects.filter(Q(so_hieu__icontains=tu_khoa) | Q(trich_yeu__icontains=tu_khoa)).values("id")
+    """Id văn bản đi có số hiệu hoặc trích yếu chứa từ khóa, không phân biệt hoa thường và dấu (bộ lọc hồ sơ)."""
+    return loc_khong_dau(VanBanDi.objects.all(), tu_khoa, "so_hieu", "trich_yeu").values("id")
 
 
 def mo_ta_nhieu(van_ban_ids):
@@ -88,10 +88,10 @@ TOI_DA_TIM = 20
 def tim_van_ban_di(nguoi_dung, tu_khoa=""):
     """
     Văn bản đi người dùng được chọn khi tạo hồ sơ (#80 mục E): văn bản xem được theo quy tắc của Nhóm 2, trừ
-    văn bản HAN_CHE; tìm theo số hiệu hoặc trích yếu.
+    văn bản HAN_CHE; tìm theo số hiệu hoặc trích yếu, không phân biệt hoa thường và dấu.
     """
     queryset = van_ban_xem_duoc(nguoi_dung, "DI").exclude(pham_vi=PhamVi.HAN_CHE)
     if tu_khoa:
-        queryset = queryset.filter(Q(so_hieu__icontains=tu_khoa) | Q(trich_yeu__icontains=tu_khoa))
+        queryset = loc_khong_dau(queryset, tu_khoa, "so_hieu", "trich_yeu")
     return [{"id": v["id"], "so_hieu": v["so_hieu"] or "", "trich_yeu": v["trich_yeu"] or ""}
             for v in queryset.order_by("-id").values("id", "so_hieu", "trich_yeu")[:TOI_DA_TIM]]
