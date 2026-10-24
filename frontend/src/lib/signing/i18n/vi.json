@@ -99,7 +99,9 @@
       "hoan_thanh": "Đã ký xong",
       "tra_lai": "Trả lại để sửa"
     },
-    "quaHan": "Quá hạn"
+    "quaHan": "Quá hạn",
+    "treHanCap": "Trễ hạn cấp",
+    "hanCap": "Hạn cấp"
   },
   "phanTrang": {
     "nhan": "Phân trang",

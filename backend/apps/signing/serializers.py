@@ -315,11 +315,13 @@ class TrinhKySerializer(serializers.ModelSerializer):
                   "phien_ban_quy_trinh", "trang_thai", "han_chot", "ngay_gui", "ngay_hoan_thanh",
                   "ngay_tu_choi", "ly_do_tu_choi", "ngay_huy", "ly_do_huy", "ghi_chu", "ho_so_goc",
                   "phien_ban_van_ban", "ma_bam_tai_lieu", "create_by", "ten_nguoi_tao", "created_at", "update_at",
-                  "dang_cho", "trang_thai_luot", "qua_han"]
+                  "dang_cho", "trang_thai_luot", "qua_han", "qua_han_cap", "han_xu_ly_cap"]
         read_only_fields = fields
 
     trang_thai_luot = serializers.SerializerMethodField()
     qua_han = serializers.SerializerMethodField()
+    qua_han_cap = serializers.SerializerMethodField()
+    han_xu_ly_cap = serializers.SerializerMethodField()
 
     def get_trang_thai_luot(self, obj):
         """Trạng thái lượt trình hiện hành (YEU_CAU_SUA: hồ sơ đang trả lại để sửa dù hồ sơ vẫn CHO_KY)."""
@@ -332,6 +334,24 @@ class TrinhKySerializer(serializers.ModelSerializer):
         bay_gio = timezone.now()
         return bool(obj.han_chot and obj.han_chot < bay_gio) or SigningRequestStep.objects.filter(
             luot_trinh__trinh_ky=obj, trang_thai=enums.TrangThaiCapKy.DANG_KY, han_xu_ly__lt=bay_gio).exists()
+
+    def get_qua_han_cap(self, obj):
+        """Chỉ trễ hạn ở cấp ký đang mở (hạn chót tổng thể của hồ sơ chưa qua hoặc không có)."""
+        if obj.trang_thai != enums.TrangThaiYeuCau.CHO_KY:
+            return False
+        bay_gio = timezone.now()
+        if obj.han_chot and obj.han_chot < bay_gio:
+            return False
+        return SigningRequestStep.objects.filter(
+            luot_trinh__trinh_ky=obj, trang_thai=enums.TrangThaiCapKy.DANG_KY, han_xu_ly__lt=bay_gio).exists()
+
+    def get_han_xu_ly_cap(self, obj):
+        """Hạn xử lý của cấp ký đang mở hiện hành (nếu có)."""
+        if obj.trang_thai != enums.TrangThaiYeuCau.CHO_KY:
+            return None
+        return SigningRequestStep.objects.filter(
+            luot_trinh__trinh_ky=obj, trang_thai=enums.TrangThaiCapKy.DANG_KY
+        ).values_list("han_xu_ly", flat=True).first()
 
     def get_ten_nguoi_tao(self, obj):
         return to_chuc.ten_hien_thi(obj.create_by)

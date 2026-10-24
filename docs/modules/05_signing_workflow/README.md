@@ -245,6 +245,8 @@ frontend lint, typecheck, i18n, tokens sạch, 525 test đạt, build đạt. E2
 khóa và tải file khóa, ký bằng file khóa + PIN, trả sửa, gửi bản sửa, không đồng ý ban hành, hủy, ủy quyền, xem PDF
 desktop và mobile 390px, thông báo có người thực hiện và lý do.
 
+Báo cáo chi tiết các luồng nghiệp vụ (Happy path, Trả sửa lượt 2, Từ chối, Ủy quyền), ca biên (Edge cases) và nhật ký bằng chứng kiểm thử: xem tại [`FLOW_TEST_EVIDENCE.md`](./FLOW_TEST_EVIDENCE.md). Danh mục 118 test case đối chiếu theo Issue #80 và #248: xem tại [`qa-test-cases-80.md`](./qa-test-cases-80.md).
+
 ## 8. Chưa làm và lý do
 
 - Ủy quyền theo thời gian (`signing_delegation`) và thể thức `hinh_thuc_ky` (KT./TL./TUQ.): DDL chưa có bảng/cột, cần

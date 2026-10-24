@@ -188,6 +188,8 @@ export interface HoSo {
   /** Trạng thái lượt trình hiện hành (YEU_CAU_SUA: đang trả lại để sửa) */
   trang_thai_luot: TrangThaiLuot | null;
   qua_han: boolean;
+  qua_han_cap?: boolean;
+  han_xu_ly_cap?: string | null;
 }
 
 /** Một trang danh sách (phân trang DRF: `page`, `page_size`). */
