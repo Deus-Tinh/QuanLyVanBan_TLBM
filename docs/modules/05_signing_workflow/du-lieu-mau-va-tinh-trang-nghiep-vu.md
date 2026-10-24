@@ -4,36 +4,36 @@ Cập nhật 23/10/2026, nhánh `feat/5-hoan-thien-nghiep-vu`. Đối chiếu v�
 
 ## 1. Tình trạng các flow nghiệp vụ
 
-| #   | Flow                                                                                                    | Trước                       | Sau        | Ghi chú                                                                         |
-| --- | ------------------------------------------------------------------------------------------------------- | --------------------------- | ---------- | ------------------------------------------------------------------------------- |
-| 1   | Quy trình mẫu: tạo nháp, sửa, xóa nháp, kích hoạt, ngừng, nhân bản phiên bản; phạm vi công ty/phòng ban | Xong                        | Xong       | `QuyTrinhPage`, `/quy-trinh/`                                                   |
-| 2   | Tạo hồ sơ nháp (văn bản đi, quy trình, PDF, hạn chót), sửa nháp                                         | Xong                        | Xong       |                                                                                 |
-| 3   | Trình ký: khóa tệp và mã băm, chọn người ký theo chức vụ, đặt vị trí ký                                 | Xong                        | Xong       |                                                                                 |
-| 4   | Ký tuần tự theo cấp, song song trong cấp, ký nháy chặn ký chính                                         | Xong                        | Xong       |                                                                                 |
-| 5   | Khóa ký Ed25519 + PIN 8 số (Argon2id + salt, `k_srv`), proof-of-possession, xoay vòng, thu hồi, đổi PIN | Xong                        | Xong       |                                                                                 |
-| 6   | Xuất private key đã mã hóa ra file khóa; ký bằng tải file khóa + nhập PIN                               | Chưa có (chỉ lưu IndexedDB) | Xong       | `lib/signing/fileKhoa.ts`, mục 3                                                |
-| 7   | Không đồng ý ban hành (từ chối, kết thúc hồ sơ)                                                         | Xong                        | Xong       |                                                                                 |
-| 8   | Trả lại để sửa → trao đổi → tải bản sửa → lượt trình mới, ký lại toàn bộ                                | Xong                        | Xong       | Thêm thông báo tin nhắn                                                         |
-| 9   | Trình lại sau từ chối (hồ sơ mới, `ho_so_goc`)                                                          | Xong                        | Xong       |                                                                                 |
-| 10  | Hủy hồ sơ (người tạo; quản trị hủy thay có lý do)                                                       | Dở                          | Xong       | Trước: người tạo không được báo khi bị hủy thay, người đã ký không được báo     |
-| 11  | Thu hồi chữ ký khi cấp còn mở                                                                           | Xong                        | Xong       |                                                                                 |
-| 12  | Hoàn tất: bằng chứng tổng hợp, PDF hoàn tất, xác minh lại                                               | Xong                        | Xong       |                                                                                 |
-| 13  | Lịch sử / nhật ký hồ sơ                                                                                 | Dở                          | Xong       | Thêm tên người thực hiện                                                        |
-| 14  | Thông báo trong ứng dụng + email (outbox, gửi lại khi lỗi: `gui_thong_bao_trinh_ky`)                    | Dở                          | Xong       | Thêm loại `UY_QUYEN`, `TIN_NHAN`, `NHAC_HAN`, `QUA_HAN`; số thông báo mới ở tab |
-| 15  | Ủy quyền ký khẩn cấp từng hồ sơ (`delegate_trinhky`)                                                    | Chưa có                     | Xong       | `POST /trinh-ky/{id}/uy-quyen/`, mục 4                                          |
-| 16  | Nhắc hạn, quá hạn                                                                                       | Chưa có                     | Xong (MVP) | Lệnh `nhac_han_trinh_ky`; chưa leo thang cấp trên                               |
-| 17  | Ủy quyền theo thời gian (`signing_delegation`), thể thức `hinh_thuc_ky` (KT./TL./TUQ.)                  | Chưa có                     | Chưa có    | DDL chưa có bảng/cột; cần PR đổi schema riêng                                   |
-| 18  | Leo thang quá hạn cho cấp trên trực tiếp                                                                | Chưa có                     | Chưa có    | Nhóm 7 chưa có dữ liệu cấp trên trực tiếp                                       |
+| # | Flow | Trước | Sau | Ghi chú |
+|---|---|---|---|---|
+| 1 | Quy trình mẫu: tạo nháp, sửa, xóa nháp, kích hoạt, ngừng, nhân bản phiên bản; phạm vi công ty/phòng ban | Xong | Xong | `QuyTrinhPage`, `/quy-trinh/` |
+| 2 | Tạo hồ sơ nháp (văn bản đi, quy trình, PDF, hạn chót), sửa nháp | Xong | Xong | |
+| 3 | Trình ký: khóa tệp và mã băm, chọn người ký theo chức vụ, đặt vị trí ký | Xong | Xong | |
+| 4 | Ký tuần tự theo cấp, song song trong cấp, ký nháy chặn ký chính | Xong | Xong | |
+| 5 | Khóa ký Ed25519 + PIN 8 số (Argon2id + salt, `k_srv`), proof-of-possession, xoay vòng, thu hồi, đổi PIN | Xong | Xong | |
+| 6 | Xuất private key đã mã hóa ra file khóa; ký bằng tải file khóa + nhập PIN | Chưa có (chỉ lưu IndexedDB) | Xong | `lib/signing/fileKhoa.ts`, mục 3 |
+| 7 | Không đồng ý ban hành (từ chối, kết thúc hồ sơ) | Xong | Xong | |
+| 8 | Trả lại để sửa → trao đổi → tải bản sửa → lượt trình mới, ký lại toàn bộ | Xong | Xong | Thêm thông báo tin nhắn |
+| 9 | Trình lại sau từ chối (hồ sơ mới, `ho_so_goc`) | Xong | Xong | |
+| 10 | Hủy hồ sơ (người tạo; quản trị hủy thay có lý do) | Dở | Xong | Trước: người tạo không được báo khi bị hủy thay, người đã ký không được báo |
+| 11 | Thu hồi chữ ký khi cấp còn mở | Xong | Xong | |
+| 12 | Hoàn tất: bằng chứng tổng hợp, PDF hoàn tất, xác minh lại | Xong | Xong | |
+| 13 | Lịch sử / nhật ký hồ sơ | Dở | Xong | Thêm tên người thực hiện |
+| 14 | Thông báo trong ứng dụng + email (outbox, gửi lại khi lỗi: `gui_thong_bao_trinh_ky`) | Dở | Xong | Thêm loại `UY_QUYEN`, `TIN_NHAN`, `NHAC_HAN`, `QUA_HAN`; số thông báo mới ở tab |
+| 15 | Ủy quyền ký khẩn cấp từng hồ sơ (`delegate_trinhky`) | Chưa có | Xong | `POST /trinh-ky/{id}/uy-quyen/`, mục 4 |
+| 16 | Nhắc hạn, quá hạn | Chưa có | Xong (MVP) | Lệnh `nhac_han_trinh_ky`; chưa leo thang cấp trên |
+| 17 | Ủy quyền theo thời gian (`signing_delegation`), thể thức `hinh_thuc_ky` (KT./TL./TUQ.) | Chưa có | Chưa có | DDL chưa có bảng/cột; cần PR đổi schema riêng |
+| 18 | Leo thang quá hạn cho cấp trên trực tiếp | Chưa có | Chưa có | Nhóm 7 chưa có dữ liệu cấp trên trực tiếp |
 
 ## 2. Phân quyền theo vai trò (nhóm quyền chuẩn của DDL)
 
-| Nhóm               | Trình ký                                                                                  |
-| ------------------ | ----------------------------------------------------------------------------------------- |
-| Văn thư (VT)       | xem, tạo, gửi trình ký                                                                    |
-| Chuyên viên (CV)   | xem, tạo nháp (không gửi, không ký)                                                       |
-| Trưởng phòng (TP)  | xem, tạo, gửi, ký, ủy quyền (người ký cùng đơn vị), hủy thay, quản lý quy trình phòng ban |
-| Ban Giám đốc (BGD) | xem, tạo, gửi, ký, ủy quyền, hủy thay, xem nhật ký mọi hồ sơ                              |
-| Quản trị (ADMIN)   | toàn quyền, quản lý quy trình công ty                                                     |
+| Nhóm | Trình ký |
+|---|---|
+| Văn thư (VT) | xem, tạo, gửi trình ký |
+| Chuyên viên (CV) | xem, tạo nháp (không gửi, không ký) |
+| Trưởng phòng (TP) | xem, tạo, gửi, ký, ủy quyền (người ký cùng đơn vị), hủy thay, quản lý quy trình phòng ban |
+| Ban Giám đốc (BGD) | xem, tạo, gửi, ký, ủy quyền, hủy thay, xem nhật ký mọi hồ sơ |
+| Quản trị (ADMIN) | toàn quyền, quản lý quy trình công ty |
 
 Server kiểm quyền ở từng API; giao diện chỉ ẩn/hiện thao tác.
 
@@ -78,18 +78,18 @@ Lệnh tự đủ trên DB vừa `migrate`: đơn vị, chức vụ, nhóm quy�
   (hai người ký song song rồi Giám đốc), `QT-TK-NHAP` (nháp).
 - **Hồ sơ** (ghi chú bắt đầu bằng "Dữ liệu mẫu M..:"):
 
-| Mã  | Trạng thái                                                  | Người cần thao tác  |
-| --- | ----------------------------------------------------------- | ------------------- |
-| M01 | Nháp                                                        | chuyenvien          |
-| M02 | Đang ký cấp 1                                               | truongphong         |
-| M03 | Đang ký cấp 2 (cấp 1 đã ký kèm ghi chú)                     | giamdoc             |
-| M04 | Hoàn thành, có bằng chứng và PDF hoàn tất                   | —                   |
-| M05 | Không đồng ý ban hành; có hồ sơ trình lại ở trạng thái nháp | vanthu              |
-| M06 | Trả lại để sửa, đang trao đổi                               | vanthu, truongphong |
-| M07 | Đã sửa, lượt 2 đang ký cấp 2                                | giamdoc             |
-| M08 | Đã hủy                                                      | —                   |
-| M09 | Quá hạn ở cấp 1                                             | truongphong         |
-| M10 | Ủy quyền: Giám đốc ký thay Trưởng phòng ở cấp lấy ý kiến    | giamdoc             |
+| Mã | Trạng thái | Người cần thao tác |
+|---|---|---|
+| M01 | Nháp | chuyenvien |
+| M02 | Đang ký cấp 1 | truongphong |
+| M03 | Đang ký cấp 2 (cấp 1 đã ký kèm ghi chú) | giamdoc |
+| M04 | Hoàn thành, có bằng chứng và PDF hoàn tất | — |
+| M05 | Không đồng ý ban hành; có hồ sơ trình lại ở trạng thái nháp | vanthu |
+| M06 | Trả lại để sửa, đang trao đổi | vanthu, truongphong |
+| M07 | Đã sửa, lượt 2 đang ký cấp 2 | giamdoc |
+| M08 | Đã hủy | — |
+| M09 | Quá hạn ở cấp 1 | truongphong |
+| M10 | Ủy quyền: Giám đốc ký thay Trưởng phòng ở cấp lấy ý kiến | giamdoc |
 
 Lịch sử và thông báo (`CAN_KY`, `HOAN_THANH`, `TU_CHOI`, `YEU_CAU_SUA`, `HUY`, `UY_QUYEN`, `TIN_NHAN`, `NHAC_HAN`,
 `QUA_HAN`) sinh từ chính các thao tác trên vì lệnh gọi service nghiệp vụ, không ghi bảng trực tiếp.
@@ -177,17 +177,17 @@ này, không truy vấn bảng `signing_*` trực tiếp (AGENTS.md mục 6).
 nhập trả 401. Chỉ dữ liệu của người đang đăng nhập (người tạo hoặc người có tên trong luồng ký, kể cả người
 nhận/giao ủy quyền); quyền kiểm toán không mở rộng danh sách này.
 
-| Trường                      | Ý nghĩa                                                                                                         |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `so_cho_ky`                 | Số hồ sơ đang chờ chính người dùng ký (cùng điều kiện tab "Cần tôi ký duyệt"); dùng cho KPI và thông báo Header |
-| `gan_day[]`                 | Tối đa 5 phiếu liên quan, mới nhất trước theo ngày trình                                                        |
-| `gan_day[].id`              | Mã hồ sơ; trang chi tiết `/approvals/<id>`                                                                      |
-| `gan_day[].tieu_de`         | "Số hiệu — trích yếu" của văn bản đi                                                                            |
-| `gan_day[].nguoi_trinh`     | Họ tên người trình                                                                                              |
-| `gan_day[].ngay_trinh`      | ISO 8601 giờ Việt Nam; ngày gửi, hồ sơ nháp dùng ngày tạo                                                       |
-| `gan_day[].trang_thai`      | `NHAP`, `CHO_KY`, `HOAN_THANH`, `TU_CHOI`, `HUY`                                                                |
-| `gan_day[].nhan_trang_thai` | Nháp, Chờ ký, Đã ký, Từ chối, Đã hủy                                                                            |
-| `gan_day[].can_toi_ky`      | `true` khi phiếu đang chờ chính người dùng ký                                                                   |
+| Trường | Ý nghĩa |
+|---|---|
+| `so_cho_ky` | Số hồ sơ đang chờ chính người dùng ký (cùng điều kiện tab "Cần tôi ký duyệt"); dùng cho KPI và thông báo Header |
+| `gan_day[]` | Tối đa 5 phiếu liên quan, mới nhất trước theo ngày trình |
+| `gan_day[].id` | Mã hồ sơ; trang chi tiết `/approvals/<id>` |
+| `gan_day[].tieu_de` | "Số hiệu — trích yếu" của văn bản đi |
+| `gan_day[].nguoi_trinh` | Họ tên người trình |
+| `gan_day[].ngay_trinh` | ISO 8601 giờ Việt Nam; ngày gửi, hồ sơ nháp dùng ngày tạo |
+| `gan_day[].trang_thai` | `NHAP`, `CHO_KY`, `HOAN_THANH`, `TU_CHOI`, `HUY` |
+| `gan_day[].nhan_trang_thai` | Nháp, Chờ ký, Đã ký, Từ chối, Đã hủy |
+| `gan_day[].can_toi_ky` | `true` khi phiếu đang chờ chính người dùng ký |
 
 Response thật của tài khoản `truongphong` sau khi chạy `seed_signing_demo` trên DB vừa `migrate`:
 
@@ -249,8 +249,8 @@ Tài khoản nên đăng nhập để thấy dữ liệu: `truongphong` (2 hồ 
 
 ## 7. Lệnh quản trị của phân hệ
 
-| Lệnh                     | Mục đích                                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `seed_signing_demo`      | Dữ liệu mẫu (mục 5)                                                                                      |
-| `nhac_han_trinh_ky`      | Thông báo `NHAC_HAN` khi còn dưới 24 giờ tới hạn cấp; `QUA_HAN` mỗi ngày quá hạn (người ký và người tạo) |
-| `gui_thong_bao_trinh_ky` | Gửi lại email `CHO_GUI`/`THAT_BAI` (tối đa 5 lần)                                                        |
+| Lệnh | Mục đích |
+|---|---|
+| `seed_signing_demo` | Dữ liệu mẫu (mục 5) |
+| `nhac_han_trinh_ky` | Thông báo `NHAC_HAN` khi còn dưới 24 giờ tới hạn cấp; `QUA_HAN` mỗi ngày quá hạn (người ký và người tạo) |
+| `gui_thong_bao_trinh_ky` | Gửi lại email `CHO_GUI`/`THAT_BAI` (tối đa 5 lần) |
