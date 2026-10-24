@@ -1,10 +1,14 @@
-/** Thông báo trình ký của tôi (kênh trong ứng dụng; email gửi song song khi tài khoản có email). */
+/**
+ * Thông báo trình ký của tôi (kênh trong ứng dụng; email gửi song song khi tài khoản có email). Mở trang thì đánh
+ * dấu đã xem trên trình duyệt này (số thông báo mới ở tab).
+ */
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@components/common';
 import { DangTai, LoiTai, Rong, TrangThaiBadge } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { dinhDangNgay } from '@lib/signing/dinhDang';
-import { useTai } from '@lib/signing/hooks';
+import { danhDauDaXemThongBao, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { LoaiThongBao } from '@lib/signing/types';
 
@@ -14,11 +18,23 @@ const BIEU_TUONG: Record<LoaiThongBao, string> = {
   TU_CHOI: 'fa-circle-xmark text-danger',
   YEU_CAU_SUA: 'fa-rotate-left text-warning',
   HUY: 'fa-ban text-secondary',
+  UY_QUYEN: 'fa-user-group text-primary',
+  TIN_NHAN: 'fa-comments text-primary',
+  NHAC_HAN: 'fa-clock text-warning',
+  QUA_HAN: 'fa-triangle-exclamation text-danger',
 };
 
 export default function ThongBaoPage() {
   const { t, loi, lang } = useSigningT();
+  const { toi, daXemThongBao } = useToi();
   const ds = useTai(() => signingApi.thongBao(), []);
+  const da_tai = Boolean(ds.duLieu);
+  useEffect(() => {
+    if (da_tai && toi) {
+      danhDauDaXemThongBao(toi.id);
+      daXemThongBao?.();
+    }
+  }, [da_tai, toi, daXemThongBao]);
   return (
     <Card className="p-4 space-y-3">
       {ds.dangTai && <DangTai />}
@@ -52,6 +68,19 @@ export default function ThongBaoPage() {
                   )}
                 </div>
                 <div className="truncate text-sm text-main" title={tb.van_ban}>#{tb.trinh_ky} · {tb.van_ban}</div>
+                {(tb.nguoi_thao_tac || tb.ly_do) && (
+                  <div className="text-xs text-secondary break-words">
+                    {tb.nguoi_thao_tac && <span>{t('thongBao.nguoiThaoTac')}: {tb.nguoi_thao_tac}</span>}
+                    {tb.nguoi_thao_tac && tb.ly_do && ' · '}
+                    {tb.ly_do && <span>{t('thongBao.lyDo')}: {tb.ly_do}</span>}
+                  </div>
+                )}
+                {tb.han_xu_ly && (
+                  <div className="text-xs text-secondary">
+                    <i className="fa-regular fa-clock mr-1" aria-hidden="true" />
+                    {t('thongBao.hanXuLy')}: <span className="font-semibold text-main">{dinhDangNgay(tb.han_xu_ly, lang)}</span>
+                  </div>
+                )}
                 <div className="text-xs text-secondary">{tb.ten_quy_trinh} · {dinhDangNgay(tb.created_at, lang)}</div>
               </div>
             </Link>

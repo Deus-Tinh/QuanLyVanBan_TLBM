@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Badge, Button, Card } from '@components/common';
 import { DangTai, HopThoai, LoiTai, Rong, ThongBao, TrangThaiBadge, TruongNhap } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
-import { LOP_O_NHAP } from '@lib/signing/dinhDang';
+import { boDau, LOP_O_NHAP } from '@lib/signing/dinhDang';
 import { coQuyen, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { NguoiDungTim, PhamViQuyTrinh, QuyTrinh, VaiTroKy } from '@lib/signing/types';
@@ -115,7 +115,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
       <div className="grid gap-3 sm:grid-cols-2">
         <TruongNhap nhan={t('quyTrinh.ma')}><input className={LOP_O_NHAP} maxLength={50} value={ma} disabled={!!banDau} onChange={(e) => setMa(e.target.value)} /></TruongNhap>
         <TruongNhap nhan={t('quyTrinh.ten')}><input className={LOP_O_NHAP} value={ten} onChange={(e) => setTen(e.target.value)} /></TruongNhap>
-        <TruongNhap nhan={t('quyTrinh.phamVi')}>
+        <TruongNhap nhan={t('quyTrinh.phamVi')} className={phamVi === 'CONG_TY' ? 'sm:col-span-2' : ''}>
           <select className={LOP_O_NHAP} value={phamVi} onChange={(e) => setPhamVi(e.target.value as PhamViQuyTrinh)}>
             <option value="CONG_TY">{t('phamVi.CONG_TY')}</option>
             <option value="PHONG_BAN">{t('phamVi.PHONG_BAN')}</option>
@@ -136,9 +136,10 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
           <div key={i} className="space-y-2 rounded-lg border border-border-subtle p-2">
             <div className="flex gap-2">
               <span className="pt-2 text-sm font-bold text-main">{i + 1}.</span>
-              <input className={LOP_O_NHAP} placeholder={t('quyTrinh.ten')} value={c.ten_cap_ky}
-                onChange={(e) => sua(i, { ten_cap_ky: e.target.value })} />
-              <input className={`${LOP_O_NHAP} w-32`} inputMode="numeric" placeholder={t('quyTrinh.soGio')} value={c.so_gio_xu_ly}
+              <input className={LOP_O_NHAP} placeholder={t('quyTrinh.tenCap')} aria-label={`${t('quyTrinh.tenCap')} ${i + 1}`}
+                value={c.ten_cap_ky} onChange={(e) => sua(i, { ten_cap_ky: e.target.value })} />
+              <input className={`${LOP_O_NHAP} w-32`} inputMode="numeric" placeholder={t('quyTrinh.soGio')}
+                aria-label={`${t('quyTrinh.soGio')} ${i + 1}`} value={c.so_gio_xu_ly}
                 onChange={(e) => sua(i, { so_gio_xu_ly: e.target.value.replace(/\D/g, '') })} />
             </div>
             {c.nguoi_ky.map((n, j) => (
@@ -241,10 +242,10 @@ export default function QuyTrinhPage() {
   const [tim, setTim] = useState('');
   const [locTrangThai, setLocTrangThai] = useState('');
   const [locPhamVi, setLocPhamVi] = useState('');
-  const tuKhoa = tim.trim().toLowerCase();
+  const tuKhoa = boDau(tim.trim());
   const hienThi = (ds.duLieu ?? []).filter((q) => (!locTrangThai || q.trang_thai === locTrangThai)
     && (!locPhamVi || q.pham_vi === locPhamVi)
-    && (!tuKhoa || [q.ma_quy_trinh, q.ten_quy_trinh, q.ten_don_vi_ap_dung ?? ''].some((x) => x.toLowerCase().includes(tuKhoa))));
+    && (!tuKhoa || [q.ma_quy_trinh, q.ten_quy_trinh, q.ten_don_vi_ap_dung ?? ''].some((x) => boDau(x).includes(tuKhoa))));
   const [taoMo, setTaoMo] = useState(false);
   const [dangSua, setDangSua] = useState<QuyTrinh | null>(null);
   const [xemId, setXemId] = useState<number | null>(null);

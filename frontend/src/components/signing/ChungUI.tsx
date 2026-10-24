@@ -12,7 +12,7 @@ const MAU_TRANG_THAI: Record<string, BadgeProps['variant']> = {
   NHAP: 'secondary', CHO_KY: 'warning', HOAN_THANH: 'success', TU_CHOI: 'danger', HUY: 'secondary',
   YEU_CAU_SUA: 'purple', CHUA_MO: 'secondary', DANG_KY: 'primary', TAM_DUNG: 'purple', DA_KY: 'success',
   HOAT_DONG: 'success', NGUNG: 'secondary', CHO_KICH_HOAT: 'info', DA_XOAY_VONG: 'secondary', THU_HOI: 'danger',
-  HET_HAN: 'secondary',
+  HET_HAN: 'secondary', KHONG_CAN_KY: 'secondary',
 };
 
 /** `nhom = 'trangThaiCap'` cho trạng thái cấp ký (HOAN_THANH của cấp là "Đã xong", khác hồ sơ hoàn tất). */
@@ -25,10 +25,20 @@ export function TrangThaiBadge({ trangThai, nhom = 'trangThai' }: { trangThai: s
   );
 }
 
-export function MucDoBadge({ mucDo }: { mucDo: string }) {
+/** Trạng thái hồ sơ trên danh sách: hồ sơ chờ ký mà lượt đang trả lại để sửa hiện "trả lại"; kèm dấu quá hạn. */
+export function TrangThaiHoSo({ hoSo }: { hoSo: { trang_thai: string; trang_thai_luot?: string | null; qua_han?: boolean } }) {
   const { t } = useSigningT();
-  const mau: BadgeProps['variant'] = mucDo === 'HOA_TOC' ? 'danger' : mucDo === 'KHAN' ? 'warning' : 'secondary';
-  return <Badge variant={mau} size="sm">{t(`mucDo.${mucDo}`)}</Badge>;
+  const tra_lai = hoSo.trang_thai === 'CHO_KY' && hoSo.trang_thai_luot === 'YEU_CAU_SUA';
+  return (
+    <span className="inline-flex flex-wrap items-center justify-center gap-1">
+      <TrangThaiBadge trangThai={tra_lai ? 'YEU_CAU_SUA' : hoSo.trang_thai} />
+      {hoSo.qua_han && (
+        <Badge variant="danger" size="sm">
+          <i className="fa-regular fa-clock mr-1" aria-hidden="true" />{t('danhSach.quaHan')}
+        </Badge>
+      )}
+    </span>
+  );
 }
 
 export function ThongBao({ loai = 'loi', children }: { loai?: 'loi' | 'thanh_cong' | 'thong_tin' | 'canh_bao';
@@ -108,9 +118,9 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi }: {
   );
 }
 
-export function TruongNhap({ nhan, children, ghiChu }: { nhan: string; children: React.ReactNode; ghiChu?: string }) {
+export function TruongNhap({ nhan, children, ghiChu, className = '' }: { nhan: string; children: React.ReactNode; ghiChu?: string; className?: string }) {
   return (
-    <label className="block space-y-1.5">
+    <label className={`block space-y-1.5 ${className}`}>
       <span className="block text-sm font-medium text-main">{nhan}</span>
       {children}
       {ghiChu && <span className="block text-xs text-muted">{ghiChu}</span>}
