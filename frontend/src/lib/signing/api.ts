@@ -12,6 +12,8 @@ import type {
 export const SIGNING_BASE = '/api/v1/signing';
 /** Số hồ sơ mỗi trang danh sách (server mặc định 10, tối đa 100). */
 export const SO_HO_SO_MOI_TRANG = 10;
+/** Số thông báo tối đa máy chủ trả (mới nhất trước), khớp `thong_bao.cua_toi`. */
+export const SO_THONG_BAO_TOI_DA = 50;
 
 export function taoKhoaChongTrung(): string {
   return crypto.randomUUID();

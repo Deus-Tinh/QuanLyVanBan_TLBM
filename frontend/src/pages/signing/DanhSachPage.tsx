@@ -11,7 +11,7 @@ import { Button, Card } from '@components/common';
 import { DangTai, LoiTai, Rong, TrangThaiHoSo } from '@components/signing/ChungUI';
 import LocKhoangNgay from '@components/signing/LocKhoangNgay';
 import { PhanTrang } from '@components/signing/PhanTrang';
-import { SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
+import { docLoi, SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -121,7 +121,11 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
   const [loc, setLoc] = useState<BoLocHoSo>({});
   const [trang, setTrang] = useState(1);
   const dem = useTai(() => signingApi.thongKe(hop), [hop]);
-  const ds = useTai(() => signingApi.danhSach(hop, loc, trang), [hop, loc, trang]);
+  // Trang đang xem không còn (dữ liệu giảm sau khi tải trang) thì về trang 1 thay vì báo lỗi
+  const ds = useTai(() => signingApi.danhSach(hop, loc, trang).catch((err) => {
+    if (trang > 1 && docLoi(err).status === 404) setTrang(1);
+    throw err;
+  }), [hop, loc, trang]);
   const hoSo = ds.duLieu?.results;
   const rong = { can_toi_ky: 'danhSach.rongCanToiKy', toi_gui: 'danhSach.rongToiGui', tat_ca: 'danhSach.rongTatCa' }[hop];
   const coLoc = Object.values(loc).some(Boolean);

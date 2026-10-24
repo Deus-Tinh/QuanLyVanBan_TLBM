@@ -10,7 +10,7 @@ import { Button, Card } from '@components/common';
 import { DangTai, HopThoai, LoiTai, OChonTep, ThongBao, TruongNhap } from '@components/signing/ChungUI';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
 import { docLoi, signingApi } from '@lib/signing/api';
-import { LOP_O_NHAP, moTaVanBan, tenNguoiKyCauHinh } from '@lib/signing/dinhDang';
+import { GIOI_HAN, hanChotDaQua, kiemTraTepPdf, LOP_O_NHAP, moTaVanBan, tenNguoiKyCauHinh } from '@lib/signing/dinhDang';
 import { useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { HoSoChiTiet, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
@@ -33,6 +33,8 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   const [hanChot, setHanChot] = useState('');
   const [ghiChu, setGhiChu] = useState('');
   const [tep, setTep] = useState<File | null>(null);
+  const [loiTep, setLoiTep] = useState('');
+  const [loiHanChot, setLoiHanChot] = useState('');
   const [dangGui, setDangGui] = useState(false);
   const [thongBao, setThongBao] = useState('');
 
@@ -42,7 +44,11 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
 
   const coVanBan = nguon === 'van_ban_di' ? Boolean(chon) : Boolean(trichYeu.trim());
   const luu = async () => {
-    if (!coVanBan || !qtId || !tep) return;
+    if (!coVanBan || !qtId || !tep || loiTep) return;
+    if (hanChotDaQua(hanChot)) {  // giờ có thể đã qua kể từ lúc nhập
+      setLoiHanChot(t('tao.loiHanChot'));
+      return;
+    }
     setDangGui(true);
     setThongBao('');
     try {
@@ -117,7 +123,7 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
                 <input className={LOP_O_NHAP} maxLength={100} value={soHieu} onChange={(e) => setSoHieu(e.target.value)} />
               </TruongNhap>
               <TruongNhap nhan={t('tao.trichYeu')}>
-                <input className={LOP_O_NHAP} value={trichYeu} onChange={(e) => setTrichYeu(e.target.value)} />
+                <input className={LOP_O_NHAP} maxLength={GIOI_HAN.trichYeu} value={trichYeu} onChange={(e) => { setThongBao(''); setTrichYeu(e.target.value); }} />
               </TruongNhap>
             </div>
           )}
@@ -125,7 +131,7 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
         </div>
         <div className="space-y-4 min-w-0">
           <TruongNhap nhan={t('tao.quyTrinh')}>
-            <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
+            <select className={LOP_O_NHAP} value={qtId} onChange={(e) => { setThongBao(''); setQtId(e.target.value); }}>
               <option value="">{t('tao.chonQuyTrinh')}</option>
               {dungDuoc.map((p) => (
                 <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
@@ -134,21 +140,31 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
           </TruongNhap>
           {quyTrinh.duLieu && dungDuoc.length === 0 && <ThongBao loai="canh_bao">{t('tao.khongCoQuyTrinh')}</ThongBao>}
           <div className="grid gap-4 sm:grid-cols-2">
-            <TruongNhap nhan={t('tao.hanChot')}>
-              <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
+            <TruongNhap nhan={t('tao.hanChot')} loi={loiHanChot}>
+              <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} aria-invalid={loiHanChot ? true : undefined}
+                onChange={(e) => {
+                  setThongBao('');
+                  setHanChot(e.target.value);
+                  setLoiHanChot(hanChotDaQua(e.target.value) ? t('tao.loiHanChot') : '');
+                }} />
             </TruongNhap>
-            <TruongNhap nhan={t('tao.tep')}>
-              <OChonTep accept="application/pdf" onChon={(f) => setTep(f || null)} />
+            <TruongNhap nhan={t('tao.tep')} loi={loiTep}>
+              <OChonTep accept="application/pdf" onChon={(f) => {
+                setThongBao('');
+                const khoaLoi = f ? kiemTraTepPdf(f) : null;
+                setLoiTep(khoaLoi ? t(khoaLoi) : '');
+                setTep(f && !khoaLoi ? f : null);
+              }} />
             </TruongNhap>
           </div>
-          <TruongNhap nhan={t('tao.ghiChu')}>
-            <textarea className={LOP_O_NHAP} rows={3} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
+          <TruongNhap nhan={t('tao.ghiChu')} ghiChu={t('chung.toiDaKyTu', { so: GIOI_HAN.ghiChu })}>
+            <textarea className={LOP_O_NHAP} rows={3} maxLength={GIOI_HAN.ghiChu} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
           </TruongNhap>
         </div>
       </div>
       {thongBao && <ThongBao>{thongBao}</ThongBao>}
       <div className="flex justify-end">
-        <Button icon="fa-floppy-disk" isLoading={dangGui} disabled={!coVanBan || !qtId || !tep} onClick={luu}>
+        <Button icon="fa-floppy-disk" isLoading={dangGui} disabled={!coVanBan || !qtId || !tep || Boolean(loiHanChot)} onClick={luu}>
           {t('tao.taoNhap')}
         </Button>
       </div>
@@ -241,7 +257,7 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
         {thongBao && <ThongBao>{thongBao}</ThongBao>}
         <Button className="w-full" icon="fa-paper-plane" onClick={() => setXacNhan(true)}>{t('tao.gui')}</Button>
       </Card>
-      <HopThoai moTieuDe={t('tao.gui')} mo={xacNhan} onDong={() => setXacNhan(false)}
+      <HopThoai moTieuDe={t('tao.gui')} mo={xacNhan} onDong={() => setXacNhan(false)} dangXuLy={dangGui}
         chanDuoi={<>
           <Button variant="secondary" onClick={() => setXacNhan(false)}>{t('chung.huyBo')}</Button>
           <Button icon="fa-paper-plane" isLoading={dangGui} onClick={gui}>{t('chung.xacNhan')}</Button>

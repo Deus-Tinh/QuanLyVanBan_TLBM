@@ -2,10 +2,10 @@
  * Phân hệ Trình ký duyệt nội bộ (Nhóm 5, #80 mục E) dưới đường dẫn /approvals/*.
  * Tab chỉ là bộ lọc hiển thị; quyền đọc/ghi do server kiểm ở từng API.
  */
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@components/common';
-import { DangTai, LoiTai } from '@components/signing/ChungUI';
+import { DangTai, KhongTimThay, LoiTai } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { coQuyen, SigningContext, soThongBaoMoi, useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -29,6 +29,11 @@ export default function SigningModule() {
     [toi.duLieu, toi.tai, daXemThongBao]);
 
   const { pathname } = useLocation();
+  // Màn hẹp: thanh tab cuộn ngang, đưa tab đang xem vào vùng nhìn thấy (vd. vào thẳng "Khóa ký & PIN")
+  const thanhTab = useRef<HTMLElement>(null);
+  useEffect(() => {
+    thanhTab.current?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [pathname, toi.duLieu]);
   const canKy = useTai(() => signingApi.thongKe('can_toi_ky'), [pathname]);
   // Hồ sơ chờ tôi ký gồm cả hồ sơ đã quá hạn (bộ lọc tách hai nhóm)
   const soCanKy = canKy.duLieu ? canKy.duLieu.cho_ky + canKy.duLieu.qua_han : undefined;
@@ -59,7 +64,7 @@ export default function SigningModule() {
             <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
           )}
         </header>
-        <nav className="flex items-end gap-x-1 border-b border-border-subtle overflow-x-auto flex-nowrap whitespace-nowrap" aria-label={t('tieuDe')}>
+        <nav ref={thanhTab} className="flex items-end gap-x-1 border-b border-border-subtle overflow-x-auto flex-nowrap whitespace-nowrap" aria-label={t('tieuDe')}>
           <div className="flex flex-nowrap items-center gap-1 shrink-0">
             {tabChinh.map((m) => (
               <NavLink key={m.den} to={m.den} end={m.end}
@@ -101,6 +106,7 @@ export default function SigningModule() {
               <Route path="thong-bao" element={<ThongBaoPage />} />
               <Route path="tai-lieu" element={<TaiLieuPage />} />
               <Route path=":id" element={<ChiTietPage />} />
+              <Route path="*" element={<KhongTimThay thongBao={t('chung.trangKhongTonTai')} />} />
             </Routes>
           </Suspense>
         )}

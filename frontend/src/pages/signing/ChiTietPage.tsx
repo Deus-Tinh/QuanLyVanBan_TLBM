@@ -6,7 +6,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, LoiTai, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
+import { DangTai, KhongTimThay, LoiTai, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
 import HanhDong from '@components/signing/HanhDong';
 import KetQuaPanel from '@components/signing/KetQuaPanel';
 import SuaNhapDialog from '@components/signing/SuaNhapDialog';
@@ -31,8 +31,15 @@ function DongThongTin({ nhan, children }: { nhan: string; children: ReactNode })
   );
 }
 
+/** Mã hồ sơ trên đường dẫn phải là số nguyên dương; sai dạng thì báo không tìm thấy, không gọi API. */
 export default function ChiTietPage() {
-  const id = Number(useParams().id);
+  const { t } = useSigningT();
+  const ma = useParams().id ?? '';
+  if (!/^[1-9]\d{0,9}$/.test(ma)) return <KhongTimThay thongBao={t('loi.khong_tim_thay')} />;
+  return <ChiTietHoSo id={Number(ma)} />;
+}
+
+function ChiTietHoSo({ id }: { id: number }) {
   const { t, loi, lang } = useSigningT();
   const { toi } = useToi();
   const ct = useTai(() => signingApi.chiTiet(id), [id]);
@@ -95,8 +102,9 @@ export default function ChiTietPage() {
 
   if (ct.dangTai && !hoSo) return <DangTai />;
   if (ct.loi) {
-    const la404 = docLoi(ct.loi).status === 404;
-    return <LoiTai thongBao={loi(ct.loi)} onThuLai={la404 ? undefined : ct.tai} />;
+    return docLoi(ct.loi).status === 404
+      ? <KhongTimThay thongBao={t('loi.khong_tim_thay')} />
+      : <LoiTai thongBao={loi(ct.loi)} onThuLai={ct.tai} />;
   }
   if (!hoSo) return null;
 
@@ -138,7 +146,8 @@ export default function ChiTietPage() {
           </div>
         </Card>
       </div>
-      <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+      {/* lg:pb-20: nút trợ lý AI nổi ở góc dưới không che khối cuối của cột khi cuộn hết */}
+      <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pb-20">
         <Card className="p-4 space-y-2">
           <DongThongTin nhan={t('danhSach.vanBan')}>{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</DongThongTin>
           <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>

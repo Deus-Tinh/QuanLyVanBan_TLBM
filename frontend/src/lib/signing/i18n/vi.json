@@ -29,7 +29,10 @@
     "loiMang": "Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại.",
     "chon": "— Chọn —",
     "chonTep": "Chọn tệp",
-    "chuaChonTep": "Chưa chọn tệp"
+    "chuaChonTep": "Chưa chọn tệp",
+    "trangKhongTonTai": "Trang không tồn tại.",
+    "veDanhSach": "Về danh sách hồ sơ",
+    "toiDaKyTu": "Tối đa {so} ký tự"
   },
   "trangThai": {
     "NHAP": "Nháp",
@@ -142,7 +145,10 @@
     "soHieu": "Số hiệu (tùy chọn)",
     "trichYeu": "Trích yếu",
     "daChonVanBan": "Đã chọn",
-    "boChon": "Bỏ chọn"
+    "boChon": "Bỏ chọn",
+    "loiTepDinhDang": "Chỉ nhận tệp PDF (.pdf).",
+    "loiTepRong": "Tệp rỗng, hãy chọn tệp khác.",
+    "loiHanChot": "Hạn chót phải sau thời điểm hiện tại."
   },
   "chiTiet": {
     "tienTrinh": "Tiến trình ký duyệt",
@@ -214,7 +220,9 @@
     "chiDoc": "Bạn chỉ xem trao đổi này.",
     "taiBanSua": "Tải bản đã sửa và gửi lại",
     "chonTep": "Chọn tệp PDF đã sửa",
-    "ghiChuGiaiQuyet": "Gửi bản sửa tạo lượt trình mới; tất cả các cấp ký lại. Vị trí ký giữ như lượt trước."
+    "ghiChuGiaiQuyet": "Gửi bản sửa tạo lượt trình mới; tất cả các cấp ký lại. Vị trí ký giữ như lượt trước.",
+    "ban": "Bạn",
+    "guiBangEnter": "Nhấn Enter để gửi"
   },
   "quyTrinh": {
     "rong": "Chưa có quy trình nào.",
@@ -259,7 +267,11 @@
     "khongCoUngVien": "Chưa có cán bộ nào ở chức vụ/đơn vị này; cấp ký sẽ không có người ký.",
     "theoDonViNguoiTrinh": "Khi gửi, người ký là người giữ chức vụ này trong đơn vị của người trình.",
     "conNguoiKhac": "và {so} người khác",
-    "conDung": "Đang dùng và nháp"
+    "conDung": "Đang dùng và nháp",
+    "xoaCap": "Xóa cấp ký",
+    "xacNhanNgung": "Ngừng quy trình “{ten}” (phiên bản {phienBan})? Hồ sơ mới không chọn được quy trình này nữa.",
+    "loiMa": "Mã chỉ gồm chữ không dấu, số, dấu gạch ngang, gạch dưới và dấu chấm.",
+    "loiSoGio": "Số giờ xử lý tối đa {so} (một năm)."
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo trên trình duyệt, bảo vệ bằng PIN 8 chữ số (Argon2id). Khóa bí mật đã mã hóa được xuất ra file khóa; khi ký, tải file khóa lên và nhập PIN. Máy chủ không nhận PIN, file khóa hay khóa bí mật.",
@@ -286,7 +298,8 @@
     "daTaiFile": "Đã tải file khóa.",
     "daNhapFile": "Đã nhập file khóa vào thiết bị này.",
     "daTaoVaTaiFile": "Đã tạo khóa và tải file khóa về máy.",
-    "daDoiPinTaiFile": "Đã đổi PIN và tải file khóa mới; file cũ không còn dùng được."
+    "daDoiPinTaiFile": "Đã đổi PIN và tải file khóa mới; file cũ không còn dùng được.",
+    "xacNhanThuHoi": "Thu hồi khóa ký “{ma}”? Khóa bị thu hồi không ký được nữa; bạn cần tạo khóa mới để tiếp tục ký."
   },
   "loi": {
     "pin_8_chu_so": "PIN phải gồm đúng 8 chữ số.",
@@ -326,7 +339,47 @@
     "van_ban_da_co_ho_so_dang_mo": "Văn bản đã có hồ sơ trình ký đang mở (nháp hoặc đang chờ ký). Hoàn tất hoặc hủy hồ sơ đó trước khi trình hồ sơ mới.",
     "thieu_van_ban_trinh_ky": "Chọn văn bản đi hoặc nhập trích yếu văn bản trình ký.",
     "van_ban_da_gan": "Hồ sơ gắn văn bản đi; số hiệu, trích yếu lấy theo văn bản đi.",
-    "pin_khong_dung_con_lai": "PIN không đúng. Còn {so} lần thử trước khi bị khóa."
+    "pin_khong_dung_con_lai": "PIN không đúng. Còn {so} lần thử trước khi bị khóa.",
+    "du_lieu_khong_hop_le": "Dữ liệu không hợp lệ.",
+    "tham_so_khong_hop_le": "Tham số không hợp lệ.",
+    "han_chot_khong_hop_le": "Hạn chót phải sau thời điểm hiện tại.",
+    "ho_so_khong_o_trang_thai_nhap": "Chỉ sửa được hồ sơ nháp.",
+    "ho_so_da_ket_thuc": "Hồ sơ đã kết thúc, không hủy được.",
+    "ho_so_chua_gui": "Hồ sơ chưa được gửi.",
+    "ho_so_chua_hoan_thanh": "Hồ sơ chưa hoàn tất duyệt.",
+    "cap_da_dong_khong_thu_hoi": "Cấp ký đã đóng và luồng đã sang cấp sau; muốn sửa hãy trả lại để sửa.",
+    "chua_ky_khong_thu_hoi": "Bạn chưa ký nên không có chữ ký để thu hồi.",
+    "ky_chinh_da_ky": "Ký chính cùng cấp đã ký trên cơ sở ký nháy này; không thu hồi được.",
+    "khong_co_trao_doi_dang_mo": "Hồ sơ không có yêu cầu sửa đang mở.",
+    "khong_co_yeu_cau_sua_dang_mo": "Hồ sơ không có yêu cầu sửa đang mở.",
+    "khong_doc_duoc_tep": "Không đọc được tệp của hồ sơ.",
+    "khong_tim_thay_van_ban": "Không tìm thấy văn bản.",
+    "thieu_tep": "Chưa chọn tệp PDF.",
+    "thieu_noi_dung": "Tin nhắn không được trống.",
+    "thieu_ly_do": "Cần nêu lý do.",
+    "thieu_ly_do_thu_hoi": "Cần nhập lý do thu hồi.",
+    "quy_trinh_trung_ma": "Mã quy trình đã tồn tại.",
+    "quy_trinh_khong_the_sua": "Chỉ được sửa quy trình ở trạng thái nháp; hãy tạo phiên bản mới.",
+    "quy_trinh_khong_o_trang_thai_nhap": "Chỉ kích hoạt được quy trình nháp.",
+    "quy_trinh_thieu_nguoi_ky": "Quy trình không có cấp ký hoặc có cấp chưa có người ký.",
+    "cap_ky_khong_co_nguoi_ky": "Có cấp ký chưa có người ký.",
+    "cap_ky_trung_thu_tu": "Thứ tự cấp ký đã tồn tại trong quy trình.",
+    "nguoi_ky_trung_trong_cap": "Người ký bị trùng trong cùng một cấp.",
+    "nguoi_ky_hoac_chuc_vu": "Mỗi người ký chỉ chọn một: tài khoản hoặc chức vụ.",
+    "quy_trinh_phong_ban_thieu_don_vi": "Quy trình phòng ban phải có đơn vị áp dụng.",
+    "da_co_khoa_hoat_dong": "Bạn đã có khóa đang hoạt động; hãy đổi thiết bị để thay khóa.",
+    "khoa_trung": "Mã khóa hoặc dấu vân tay khóa đã tồn tại.",
+    "khoa_khong_the_thu_hoi": "Khóa không ở trạng thái có thể thu hồi.",
+    "khoa_cong_khai_khong_hop_le": "Khóa công khai không hợp lệ.",
+    "chu_ky_khong_hop_le": "Chữ ký không hợp lệ với khóa và tài liệu.",
+    "pin_chua_dat": "Khóa ký chưa được đặt PIN.",
+    "pin_da_dat": "Khóa ký đã có PIN; dùng chức năng đổi PIN.",
+    "pin_moi_trung_pin_cu": "PIN mới phải khác PIN hiện tại.",
+    "chua_cau_hinh_bi_mat_pin": "Chức năng PIN chưa được cấu hình trên máy chủ. Liên hệ quản trị hệ thống.",
+    "tep_hoan_tat_chua_san_sang": "Tệp hoàn tất chưa sẵn sàng.",
+    "tep_hoan_tat_bi_thay_doi": "Tệp hoàn tất không khớp mã băm đã lưu.",
+    "anh_chu_ky_bi_thay_doi": "Ảnh chữ ký không khớp mã băm đã lưu.",
+    "chua_co_bang_chung": "Hồ sơ chưa hoàn tất duyệt, chưa có bằng chứng."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Tạo hồ sơ",
@@ -370,7 +423,8 @@
     "lyDo": "Lý do",
     "hanXuLy": "Hạn xử lý",
     "hoSoHien": "Hồ sơ",
-    "noiDung": "Nội dung"
+    "noiDung": "Nội dung",
+    "toiDa": "Hiển thị {so} thông báo gần nhất."
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
@@ -393,5 +447,25 @@
     "DON_VI_NGUOI_TAO": "Trong đơn vị người trình",
     "TOAN_CO_QUAN": "Toàn cơ quan",
     "DON_VI_CO_DINH": "Trong đơn vị cố định của cấp"
+  },
+  "truong": {
+    "tep": "Tệp",
+    "trich_yeu_van_ban": "Trích yếu",
+    "so_hieu_van_ban": "Số hiệu",
+    "han_chot": "Hạn chót",
+    "ghi_chu": "Ghi chú",
+    "quy_trinh": "Quy trình",
+    "van_ban_id": "Văn bản",
+    "ly_do": "Lý do",
+    "ly_do_tu_choi": "Lý do",
+    "ly_do_uy_quyen": "Lý do",
+    "noi_dung": "Nội dung",
+    "tieu_de": "Tiêu đề",
+    "ten_quy_trinh": "Tên quy trình",
+    "ma_quy_trinh": "Mã quy trình",
+    "mo_ta": "Mô tả",
+    "ten_cap_ky": "Tên cấp ký",
+    "so_gio_xu_ly": "Số giờ xử lý",
+    "ghi_chu_ky": "Ghi chú ký"
   }
 }
