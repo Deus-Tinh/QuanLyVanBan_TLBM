@@ -336,7 +336,7 @@ Báo cáo chi tiết các luồng nghiệp vụ (Happy path, Trả sửa lượt
   tiếp trong `tich_hop/to_chuc.py`. API `nguoi-dung/` giữ cho ủy quyền ký (lọc theo quyền `sign_trinhky` là quy tắc của
   Trình ký).
 
-## 12. Rà soát trước kiểm thử chéo (issue #286, PR #PR_SO)
+## 12. Rà soát trước kiểm thử chéo (issue #286, PR #287)
 
 Rà từng màn hình và API theo cách người kiểm thử nhóm khác thao tác (nhập liệu sai, bàn phím, màn hình hẹp, đường dẫn
 sai, thiếu quyền, tham số lạ). Chỉ hai mức độ: High (chức năng chính hỏng, 500, mất/sai dữ liệu) và Medium (giao diện,
