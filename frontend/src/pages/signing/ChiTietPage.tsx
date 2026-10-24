@@ -170,8 +170,9 @@ export default function ChiTietPage() {
           <ol className="space-y-1.5 text-sm">
             {hoSo.lich_su.map((e) => (
               <li key={e.id} className="flex justify-between gap-2">
-                <span className="text-main">
+                <span className="text-main min-w-0 break-words">
                   {t(`nhatKy.${e.hanh_dong}`)}{e.chi_tiet && e.hanh_dong !== 'MO_CAP_KY' ? ` · ${e.chi_tiet}` : ''}
+                  {e.ten_nguoi_thuc_hien && <span className="block text-xs text-secondary">{e.ten_nguoi_thuc_hien}</span>}
                 </span>
                 <span className="text-muted shrink-0">{dinhDangNgay(e.created_at, lang)}</span>
               </li>
