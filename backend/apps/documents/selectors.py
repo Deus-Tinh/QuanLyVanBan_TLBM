@@ -54,9 +54,6 @@ def van_ban_xem_duoc(user, loai="DEN"):
     if not user or not user.is_authenticated or not getattr(user, "is_active", True):
         return model.objects.none()
 
-    if is_admin_user(user):
-        return model.objects.all()
-
     model_name = getattr(model, "document_kind", "vanbanden")
 
     # Điều kiện xem HAN_CHE (Issue #82 & #83):
@@ -109,9 +106,6 @@ def la_nguoi_xem_duoc(user, van_ban):
     """
     if not user or not user.is_authenticated or not getattr(user, "is_active", True):
         return False
-
-    if is_admin_user(user):
-        return True
 
     pham_vi = getattr(van_ban, "pham_vi", PhamVi.NOI_BO)
     is_confidential = (getattr(van_ban, "loai", None) == "MAT") or (pham_vi == PhamVi.HAN_CHE)

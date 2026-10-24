@@ -967,8 +967,8 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
 
     def test_unauthorized_user_and_superuser_get_404_and_logs_bi_tu_choi(self):
         """
-        Tài khoản không thuộc danh sách nhận 404 như không tồn tại và bị ghi log BI_TU_CHOI.
-        Quản trị viên (Superuser) có toàn quyền xem để quản lý và thanh tra chống gian dối.
+        Tài khoản không thuộc danh sách, KỂ CẢ SUPERUSER, nhận 404 như không tồn tại,
+        và mỗi lần thử truy cập đều bị ghi log BI_TU_CHOI.
         """
         client = APIClient()
 
@@ -981,14 +981,14 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
         res_stranger_detail = client.get(f"/api/documents/{self.doc_han_che.id}/")
         self.assertEqual(res_stranger_detail.status_code, status.HTTP_404_NOT_FOUND)
 
-        # 2. Superuser (Quản trị viên có quyền xem để quản lý, thanh tra)
+        # 2. Superuser (Tuyệt đối KHÔNG có ngoại lệ)
         client.force_authenticate(user=self.superuser)
         res_super_list = client.get("/api/documents/?loai=DEN")
         super_ids = [doc["id"] for doc in res_super_list.data.get("results", res_super_list.data)]
-        self.assertIn(self.doc_han_che.id, super_ids)
+        self.assertNotIn(self.doc_han_che.id, super_ids)
 
         res_super_detail = client.get(f"/api/documents/{self.doc_han_che.id}/")
-        self.assertEqual(res_super_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_super_detail.status_code, status.HTTP_404_NOT_FOUND)
 
         # Kiểm tra nhật ký BI_TU_CHOI
         rejected_logs = DocumentAccessLog.objects.filter(
@@ -996,15 +996,7 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
             hanh_dong="BI_TU_CHOI",
         )
         self.assertTrue(rejected_logs.filter(user=self.stranger).exists())
-        self.assertFalse(rejected_logs.filter(user=self.superuser).exists())
-
-        # Kiểm tra nhật ký XEM của superuser được ghi lại
-        view_logs = DocumentAccessLog.objects.filter(
-            document_id=self.doc_han_che.id,
-            hanh_dong="XEM",
-            user=self.superuser,
-        )
-        self.assertTrue(view_logs.exists())
+        self.assertTrue(rejected_logs.filter(user=self.superuser).exists())
 
     def test_inactive_user_cannot_view_restricted_document(self):
         """Tài khoản bị khóa (is_active = False) mất hoàn toàn quyền xem, kể cả đã là người nhận."""
@@ -1030,8 +1022,8 @@ class RestrictedDocumentSecurityIssue82Tests(TestCase):
         # Thử xóa bằng superuser
         client.force_authenticate(user=self.superuser)
         res_del_super = client.delete(f"/api/documents/{self.doc_han_che.id}/")
-        self.assertEqual(res_del_super.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("không được phép xóa", str(res_del_super.data))
+        # Superuser nhận 404 (vì không xem được) hoặc 403
+        self.assertIn(res_del_super.status_code, [status.HTTP_404_NOT_FOUND, status.HTTP_403_FORBIDDEN])
 
         # Đảm bảo văn bản vẫn còn nguyên trong DB
         self.assertTrue(VanBanDen.objects.filter(id=self.doc_han_che.id).exists())
@@ -1474,8 +1466,8 @@ class VanBanMatTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["count"], 1)
 
-    def test_stranger_cannot_access_and_superuser_can_manage_confidential_document(self):
-        """Người ngoài không xem được (404); Quản trị viên (Superuser) xem được để quản lý."""
+    def test_stranger_and_superuser_cannot_access_confidential_document(self):
+        """Người ngoài và superuser không có trong người nhận đều không xem được (404/bảo mật tuyệt đối)."""
         client = APIClient()
 
         # Người ngoài
@@ -1487,14 +1479,13 @@ class VanBanMatTests(TestCase):
         res_detail = client.get(f"/api/documents/mat/{self.doc_mat.id}/")
         self.assertEqual(res_detail.status_code, status.HTTP_404_NOT_FOUND)
 
-        # Superuser có quyền quản trị tối cao
+        # Superuser không được gán quyền nhận
         client.force_authenticate(user=self.superuser)
         res_super = client.get("/api/documents/mat/")
-        self.assertEqual(res_super.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(res_super.data["count"], 1)
+        self.assertEqual(res_super.data["count"], 0)
 
         res_super_detail = client.get(f"/api/documents/mat/{self.doc_mat.id}/")
-        self.assertEqual(res_super_detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_super_detail.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_cannot_delete_via_api(self):
         """Cố gắng xóa văn bản mật qua API bị từ chối 403."""
