@@ -953,7 +953,7 @@ export default function ResourceManagementPage() {
 
       // 5. Lọc Trạng thái hiệu lực theo Hiệu lực thực tế (Dynamic Validity)
       if (statusFilter !== 'all') {
-        const effectiveStatus = computeEffectiveStatus(doc).effectiveStatus;
+        const effectiveStatus = computeEffectiveStatus(doc.hieu_luc, doc.ngay_het_hieu_luc, doc.link_thay_the).status;
         if (effectiveStatus !== statusFilter) return false;
       }
 

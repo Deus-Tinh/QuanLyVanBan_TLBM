@@ -68,8 +68,9 @@ describe('ResourceManagement Specific Search Logic', () => {
     nguoi_tao_name: 'Nguyễn Văn Quản Trị',
     ghi_chu: 'Áp dụng cho toàn bộ các sở ban ngành trực thuộc',
     file_dinh_kem: 'quy_che_van_thu_2026.pdf',
+    hien_thi: 'TAT_CA',
     attachments: [
-      { id: 1, name: 'phu_luc_01_bieu_mau.docx', path: '/media/phu_luc.docx', file_size: 1024, mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', created_at: '2026-03-10' },
+      { id: 1, name: 'phu_luc_01_bieu_mau.docx', path: '/media/phu_luc.docx', file_size: 1024, mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
     ],
   };
 
