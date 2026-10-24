@@ -132,8 +132,7 @@ def can_edit_document(user, instance):
 
     # Văn bản Mật / Hạn chế: CHỈ Quản trị viên (Admin) hoặc Người tạo mới có quyền chỉnh sửa. Cán bộ nhận chỉ có quyền Xem (Read-Only).
     if is_mat or getattr(instance, "pham_vi", None) == PhamVi.HAN_CHE:
-        profile = getattr(user, "profile", None)
-        is_real_admin = user.is_superuser or (profile and getattr(profile, "role", None) == "admin") or user.username in ("admin", "quantri")
+        is_real_admin = is_admin_user(user)
         is_creator = (getattr(instance, "nguoi_tao_id", None) == user.pk) or (getattr(instance, "nguoi_tao", None) == user)
         return bool(is_real_admin or is_creator)
 
@@ -191,9 +190,9 @@ def can_delete_document(user, instance):
 
     is_mat = getattr(instance, "loai", None) == "MAT" or (getattr(instance, "_meta", None) and instance._meta.model_name == "vanbanmat")
 
-    # Văn bản Hạn chế (HAN_CHE): Tuyệt đối không được phép xóa (bảo toàn theo DDL trigger trg_vanbanden_no_hard_delete_han_che).
-    if getattr(instance, "pham_vi", None) == PhamVi.HAN_CHE:
-        return False
+    # Văn bản Hạn chế (HAN_CHE) hoặc Văn bản Mật: CHỈ Quản trị viên (Admin) mới có quyền xóa. Cán bộ thường / Cán bộ chỉ định / Người tạo không được phép xóa.
+    if is_mat or getattr(instance, "pham_vi", None) == PhamVi.HAN_CHE:
+        return is_admin_user(user)
 
     # Văn bản Đến/Đi đã hết hiệu lực: CHỈ Admin mới có quyền xóa. Cán bộ chỉ định chỉ có quyền xem.
     is_expired = getattr(instance, "hieu_luc", None) in (HieuLuc.HET_HIEU_LUC, HieuLuc.HET_VA_THAY_THE)
@@ -1206,7 +1205,7 @@ class FolderViewSet(viewsets.ModelViewSet):
         """Lấy hoặc thêm files trong thư mục."""
         folder = self.get_object()
         if request.method == "POST":
-            uploaded_file = request.FILES.get("file")
+            uploaded_file = request.FILES.get("file") or request.FILES.get("files")
             file_name = request.data.get("file_name")
             if uploaded_file and not file_name:
                 file_name = uploaded_file.name

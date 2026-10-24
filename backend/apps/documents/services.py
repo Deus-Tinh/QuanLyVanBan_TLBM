@@ -470,10 +470,14 @@ def cleanup_old_replacement_link(old_target_so_hieu, current_so_hieu, new_target
                 doc.save(update_fields=updated_fields)
 
 
-def cleanup_replacement_links_on_delete(instance):
+def cleanup_replacement_links_on_delete(instance_or_so_hieu):
     """Dọn dẹp và khôi phục văn bản liên quan khi một văn bản bị xóa."""
-    so_hieu = (instance.so_hieu or "").strip()
-    link_target = (instance.link_thay_the or "").strip()
+    if isinstance(instance_or_so_hieu, str):
+        so_hieu = instance_or_so_hieu.strip()
+        link_target = ""
+    else:
+        so_hieu = (getattr(instance_or_so_hieu, "so_hieu", "") or "").strip()
+        link_target = (getattr(instance_or_so_hieu, "link_thay_the", "") or "").strip()
     if not so_hieu and not link_target:
         return
 
@@ -488,8 +492,12 @@ def cleanup_replacement_links_on_delete(instance):
             if p["base_so_hieu"]:
                 query |= Q(so_hieu__iexact=p["base_so_hieu"])
 
+    exclude_pk = getattr(instance_or_so_hieu, "pk", None)
     for model in (VanBanDen, VanBanDi, VanBanMat):
-        for doc in model.objects.filter(query).exclude(pk=instance.pk):
+        qs = model.objects.filter(query)
+        if exclude_pk:
+            qs = qs.exclude(pk=exclude_pk)
+        for doc in qs:
             updated_fields = []
             if so_hieu and doc.link_thay_the and so_hieu.lower() in doc.link_thay_the.lower():
                 links = [l.strip() for l in doc.link_thay_the.split(",") if l.strip()]
@@ -506,7 +514,12 @@ def cleanup_replacement_links_on_delete(instance):
                 if not remaining_links:
                     now = timezone.now()
                     is_date_expired = bool(doc.ngay_het_hieu_luc and doc.ngay_het_hieu_luc <= now)
-                    if not is_date_expired:
+                    if is_date_expired:
+                        if doc.hieu_luc == HieuLuc.HET_VA_THAY_THE:
+                            doc.hieu_luc = HieuLuc.HET_HIEU_LUC
+                            if "hieu_luc" not in updated_fields:
+                                updated_fields.append("hieu_luc")
+                    else:
                         if doc.hieu_luc in (HieuLuc.HET_VA_THAY_THE, HieuLuc.CON_HIEU_LUC_1_PHAN):
                             doc.hieu_luc = HieuLuc.CON_HIEU_LUC
                             if "hieu_luc" not in updated_fields:
