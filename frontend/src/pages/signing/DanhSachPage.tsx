@@ -190,7 +190,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
                   <th className="px-3.5 py-2 text-left w-[46%]">{t('danhSach.vanBan')}</th>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-[14%]">{t('danhSach.trangThai')}</th>
-                  <th className="pl-6 pr-2.5 py-2 text-left whitespace-nowrap w-[16%]">{t('danhSach.dangCho')}</th>
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-[16%]">{t('danhSach.dangCho')}</th>
                   <th className="px-2.5 py-2 text-left whitespace-nowrap w-[13%]">{t('danhSach.nguoiTao')}</th>
                   <th className="px-2.5 py-2 text-left whitespace-nowrap w-[11%]">{t('danhSach.hanChot')}</th>
                 </tr>
@@ -206,9 +206,9 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                       <div className="mt-0.5 truncate text-xs text-muted" title={h.ten_quy_trinh}>#{h.id} · {h.ten_quy_trinh}</div>
                     </td>
                     <td className="px-2 py-2 text-center"><TrangThaiHoSo hoSo={h} /></td>
-                    <td className="pl-6 pr-2.5 py-2 text-secondary whitespace-nowrap truncate">
+                    <td className="px-2 py-2 text-center whitespace-nowrap truncate">
                       {h.dang_cho.length > 0 ? (
-                        <div className="flex items-center gap-1.5 truncate">
+                        <div className="inline-flex items-center justify-center max-w-full truncate">
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated text-main border border-border-subtle px-2.5 py-0.5 text-xs font-medium max-w-full truncate shadow-2xs">
                             <i className="fa-regular fa-clock text-warning text-xs shrink-0" aria-hidden="true" />
                             <span className="truncate" title={h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ')}>
@@ -217,7 +217,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                           </span>
                         </div>
                       ) : (
-                        <span className="text-muted pl-1">—</span>
+                        <span className="text-muted">—</span>
                       )}
                     </td>
                     <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">
