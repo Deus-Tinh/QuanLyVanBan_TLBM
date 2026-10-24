@@ -27,7 +27,9 @@
     "batBuoc": "Required",
     "khongCoQuyen": "You do not have permission to perform this action.",
     "loiMang": "Cannot reach the server. Check your connection and try again.",
-    "chon": "— Select —"
+    "chon": "— Select —",
+    "chonTep": "Choose file",
+    "chuaChonTep": "No file chosen"
   },
   "trangThai": {
     "NHAP": "Draft",
@@ -240,7 +242,8 @@
     "khongThayNguoiDung": "No matching accounts.",
     "chuaCoChucVu": "No position",
     "goiYTim": "Code, process name, department…",
-    "khongKhopLoc": "No processes match the filters."
+    "khongKhopLoc": "No processes match the filters.",
+    "conDung": "Active and draft"
   },
   "khoa": {
     "gioiThieu": "Your signing key is created in the browser and protected by an 8-digit PIN (Argon2id). The encrypted private key is exported to a key file; to sign, upload the key file and enter your PIN. The server never receives your PIN, key file or private key.",
@@ -304,7 +307,8 @@
     "nguoi_nhan_khong_hop_le": "The delegate is inactive or lacks signing permission.",
     "nguoi_nhan_da_co_trong_cap": "The delegate is already in the same level.",
     "khong_hien_thi_duoc_pdf": "This PDF cannot be displayed in this browser. Download the file to view it; if the problem persists, contact the administrator.",
-    "van_ban_da_co_ho_so_dang_mo": "This document already has an open signing request (draft or awaiting signature). Complete or cancel it before submitting a new one."
+    "van_ban_da_co_ho_so_dang_mo": "This document already has an open signing request (draft or awaiting signature). Complete or cancel it before submitting a new one.",
+    "pin_khong_dung_con_lai": "Incorrect PIN. {so} attempts left before the key is locked."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Request created",
@@ -346,7 +350,9 @@
     },
     "nguoiThaoTac": "By",
     "lyDo": "Reason",
-    "hanXuLy": "Due"
+    "hanXuLy": "Due",
+    "hoSoHien": "Request",
+    "noiDung": "Message"
   },
   "taiLieu": {
     "goiYTim": "Number, summary, request ID, process…",

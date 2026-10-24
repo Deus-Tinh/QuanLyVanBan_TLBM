@@ -132,10 +132,13 @@ export default function ChiTietPage() {
         </Card>
         <Card className="p-4 space-y-2">
           <h3 className="text-xl font-bold text-main">{t('chiTiet.taiLieu')}</h3>
-          {loiTep ? <LoiTai thongBao={loi(loiTep)} /> : tep ? <XemPdf duLieu={tep} khung={khung} /> : <DangTai />}
+          {/* PDF cuộn trong khung riêng để trang không dài theo số trang tài liệu */}
+          <div className="max-h-[calc(100vh-12rem)] overflow-y-auto rounded-lg bg-surface-subtle p-3">
+            {loiTep ? <LoiTai thongBao={loi(loiTep)} /> : tep ? <XemPdf duLieu={tep} khung={khung} /> : <DangTai />}
+          </div>
         </Card>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
         <Card className="p-4 space-y-2">
           <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
