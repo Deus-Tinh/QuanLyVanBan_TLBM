@@ -183,6 +183,14 @@ export interface HoSo {
   qua_han: boolean;
 }
 
+/** Một trang danh sách (phân trang DRF: `page`, `page_size`). */
+export interface TrangKetQua<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 export interface HoSoChiTiet extends HoSo {
   luot_trinh: LuotTrinh[];
   lich_su: NhatKy[];
@@ -300,6 +308,8 @@ export interface ThongBaoTrinhKy {
   email_nguoi_nhan?: string | null;
   nguoi_thao_tac?: string | null;
   ly_do?: string | null;
+  /** Hạn xử lý của cấp ký (thông báo cần ký, nhắc hạn, quá hạn) */
+  han_xu_ly?: string | null;
 }
 
 /** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */
