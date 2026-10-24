@@ -550,14 +550,16 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         # Lọc theo hieu_luc=CON_HIEU_LUC phải chứa future_doc và không chứa past_doc
         res_active = self.client.get('/api/resources/documents/?hieu_luc=CON_HIEU_LUC')
         self.assertEqual(res_active.status_code, status.HTTP_200_OK)
-        active_ids = [d['id'] for d in res_active.data]
+        active_items = res_active.data['results'] if isinstance(res_active.data, dict) else res_active.data
+        active_ids = [d['id'] for d in active_items]
         self.assertIn(future_doc.id, active_ids)
         self.assertNotIn(past_doc.id, active_ids)
 
         # Lọc theo hieu_luc=HET_HIEU_LUC phải chứa past_doc và không chứa future_doc
         res_expired = self.client.get('/api/resources/documents/?hieu_luc=HET_HIEU_LUC')
         self.assertEqual(res_expired.status_code, status.HTTP_200_OK)
-        expired_ids = [d['id'] for d in res_expired.data]
+        expired_items = res_expired.data['results'] if isinstance(res_expired.data, dict) else res_expired.data
+        expired_ids = [d['id'] for d in expired_items]
         self.assertIn(past_doc.id, expired_ids)
         self.assertNotIn(future_doc.id, expired_ids)
 
@@ -592,14 +594,112 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         # Tìm theo search_field=code
         res = self.client.get('/api/resources/documents/?search=99/QD&search_field=code')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        ids = [d['id'] for d in res.data]
+        items = res.data['results'] if isinstance(res.data, dict) else res.data
+        ids = [d['id'] for d in items]
         self.assertIn(doc.id, ids)
 
         # Tìm theo search_field=title với từ khóa của code thì không thấy
         res_fail = self.client.get('/api/resources/documents/?search=99/QD&search_field=title')
         self.assertEqual(res_fail.status_code, status.HTTP_200_OK)
-        ids_fail = [d['id'] for d in res_fail.data]
+        items_fail = res_fail.data['results'] if isinstance(res_fail.data, dict) else res_fail.data
+        ids_fail = [d['id'] for d in items_fail]
         self.assertNotIn(doc.id, ids_fail)
+
+    def test_api_pagination_structure(self):
+        """Kiểm tra cả 3 ViewSet và AttachmentViewSet đều trả về cấu trúc phân trang chuẩn (count, next, previous, results)"""
+        self.client.force_authenticate(user=self.admin)
+
+        # 1. Documents endpoint
+        res_docs = self.client.get('/api/resources/documents/')
+        self.assertEqual(res_docs.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(res_docs.data, dict)
+        self.assertIn('count', res_docs.data)
+        self.assertIn('next', res_docs.data)
+        self.assertIn('previous', res_docs.data)
+        self.assertIn('results', res_docs.data)
+        self.assertIsInstance(res_docs.data['results'], list)
+
+        # 2. Categories endpoint
+        res_cats = self.client.get('/api/resources/categories/')
+        self.assertEqual(res_cats.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(res_cats.data, dict)
+        self.assertIn('count', res_cats.data)
+        self.assertIn('next', res_cats.data)
+        self.assertIn('previous', res_cats.data)
+        self.assertIn('results', res_cats.data)
+        self.assertIsInstance(res_cats.data['results'], list)
+
+        # 3. Types endpoint
+        res_types = self.client.get('/api/resources/types/')
+        self.assertEqual(res_types.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(res_types.data, dict)
+        self.assertIn('count', res_types.data)
+        self.assertIn('next', res_types.data)
+        self.assertIn('previous', res_types.data)
+        self.assertIn('results', res_types.data)
+        self.assertIsInstance(res_types.data['results'], list)
+
+    def test_attachment_idor_protection(self):
+        """Khách vãng lai và user khác không thể xem metadata, preview, view hoặc xóa tệp của tài liệu NOI_BO_PHONG_BAN (chống IDOR)"""
+        extra_other = {'ho_ten': 'Other User'} if hasattr(User, 'ho_ten') else {'first_name': 'Other', 'last_name': 'User'}
+        other_user = User.objects.create_user(
+            username='stranger_dept',
+            password='password123',
+            **extra_other
+        )
+
+        # Tạo file đính kèm trên tài liệu nội bộ self.doc2
+        secret_att = ChiTietTaiLieuAttachment.objects.create(
+            document=self.doc2,
+            name="bang_luong_mat.xlsx",
+            path="templates/bang_luong_mat.xlsx",
+            file_size=2048,
+            mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            nguoi_tao=self.user,
+        )
+
+        # 1. Khách vãng lai (ẩn danh)
+        self.client.logout()
+        res_list = self.client.get('/api/resources/attachments/')
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+        list_ids = [a['id'] for a in (res_list.data['results'] if isinstance(res_list.data, dict) else res_list.data)]
+        self.assertNotIn(secret_att.id, list_ids)
+
+        res_detail = self.client.get(f'/api/resources/attachments/{secret_att.id}/')
+        self.assertEqual(res_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+        res_view = self.client.get(f'/api/resources/attachments/{secret_att.id}/view/')
+        self.assertEqual(res_view.status_code, status.HTTP_404_NOT_FOUND)
+
+        res_preview = self.client.get(f'/api/resources/attachments/{secret_att.id}/preview/')
+        self.assertEqual(res_preview.status_code, status.HTTP_404_NOT_FOUND)
+
+        res_delete = self.client.delete(f'/api/resources/attachments/{secret_att.id}/')
+        self.assertIn(res_delete.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_404_NOT_FOUND])
+
+        # 2. Người dùng thuộc phòng ban/đơn vị khác
+        self.client.force_authenticate(user=other_user)
+        res_other_detail = self.client.get(f'/api/resources/attachments/{secret_att.id}/')
+        self.assertEqual(res_other_detail.status_code, status.HTTP_404_NOT_FOUND)
+
+        res_other_view = self.client.get(f'/api/resources/attachments/{secret_att.id}/view/')
+        self.assertEqual(res_other_view.status_code, status.HTTP_404_NOT_FOUND)
+
+        res_other_preview = self.client.get(f'/api/resources/attachments/{secret_att.id}/preview/')
+        self.assertEqual(res_other_preview.status_code, status.HTTP_404_NOT_FOUND)
+
+        res_other_del = self.client.delete(f'/api/resources/attachments/{secret_att.id}/')
+        self.assertEqual(res_other_del.status_code, status.HTTP_404_NOT_FOUND)
+
+        # 3. Người tạo hợp pháp (self.user) có quyền truy cập và xóa
+        self.client.force_authenticate(user=self.user)
+        res_owner_detail = self.client.get(f'/api/resources/attachments/{secret_att.id}/')
+        self.assertEqual(res_owner_detail.status_code, status.HTTP_200_OK)
+
+        res_owner_del = self.client.delete(f'/api/resources/attachments/{secret_att.id}/')
+        self.assertEqual(res_owner_del.status_code, status.HTTP_204_NO_CONTENT)
+        secret_att.refresh_from_db()
+        self.assertTrue(secret_att.is_deleted)
 
 
 

@@ -7,9 +7,20 @@ from openpyxl.utils import get_column_letter
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import exceptions, filters, permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+
+class StandardResourcePagination(PageNumberPagination):
+    """
+    Cấu trúc phân trang chuẩn REST framework: count, next, previous, results.
+    Mặc định 20 bản ghi/trang, hỗ trợ tham số page_size (tối đa 100 bản ghi/trang).
+    """
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 from .selectors import visible_resources
 from .filters import TaiLieuChiTietFilter
@@ -33,7 +44,7 @@ class DanhMucTaiLieuViewSet(viewsets.ModelViewSet):
     queryset = DanhMucTaiLieu.objects.select_related('nguoi_lap').all()
     serializer_class = DanhMucTaiLieuSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    pagination_class = None
+    pagination_class = StandardResourcePagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['ten_tai_lieu', 'ky_hieu', 'ghi_chu']
     ordering_fields = ['stt_uu_tien', 'id', 'created_at', 'ten_tai_lieu']
@@ -122,7 +133,7 @@ class LoaiTaiLieuViewSet(viewsets.ModelViewSet):
     queryset = LoaiTaiLieu.objects.select_related('dm_tai_lieu').all()
     serializer_class = LoaiTaiLieuSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    pagination_class = None
+    pagination_class = StandardResourcePagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['dm_tai_lieu', 'is_public']
     search_fields = ['ten_loai', 'ghi_chu']
@@ -142,7 +153,7 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
     """
     serializer_class = TaiLieuChiTietSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    pagination_class = None
+    pagination_class = StandardResourcePagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = TaiLieuChiTietFilter
     search_fields = ['tieu_de', 'ky_hieu', 'noi_ban_hanh', 'ghi_chu']
@@ -400,24 +411,55 @@ class ChiTietTaiLieuAttachmentViewSet(viewsets.ModelViewSet):
     """
     ViewSet cho Tệp đính kèm tài liệu (1-N Hướng A):
     - Quản lý danh sách, upload, xóa mềm tệp đính kèm theo DDL Base
-    - Chuẩn hóa tên cột nguoi_tao_id, created_at (PR #96 / PR #101)
+    - Chống lỗ hổng IDOR rò rỉ tệp nội bộ: lọc tệp theo visible_resources của tài liệu cha
+    - Kiểm soát chặt quyền xóa mềm và upload tệp
     """
-    queryset = ChiTietTaiLieuAttachment.objects.filter(is_deleted=False).select_related('document', 'nguoi_tao')
     serializer_class = ChiTietTaiLieuAttachmentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = StandardResourcePagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['document']
     search_fields = ['name']
     ordering_fields = ['id', 'created_at', 'name', 'file_size']
     ordering = ['id']
 
+    def get_queryset(self):
+        user = self.request.user
+        # Bảo vệ IDOR: Chỉ cho phép truy vấn tệp thuộc về các tài liệu mà người dùng có quyền xem
+        visible_docs = visible_resources(TaiLieuChiTiet.objects.all(), user)
+        return ChiTietTaiLieuAttachment.objects.filter(
+            is_deleted=False,
+            document__in=visible_docs
+        ).select_related('document', 'nguoi_tao')
+
     def perform_create(self, serializer):
-        kwargs = {}
-        if self.request.user and self.request.user.is_authenticated:
-            kwargs['nguoi_tao'] = self.request.user
-        serializer.save(**kwargs)
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            raise exceptions.PermissionDenied("Yêu cầu đăng nhập để tải lên tệp đính kèm.")
+        doc = serializer.validated_data.get('document')
+        can_add = (
+            user.is_superuser or
+            user.is_staff or
+            (doc and doc.nguoi_tao == user) or
+            (doc and hasattr(user, 'don_vi_id') and user.don_vi_id and doc.don_vi_id == user.don_vi_id)
+        )
+        if not can_add:
+            raise exceptions.PermissionDenied("Không có quyền tải lên tệp đính kèm cho tài liệu này.")
+        serializer.save(nguoi_tao=user)
 
     def perform_destroy(self, instance):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            raise exceptions.PermissionDenied("Yêu cầu đăng nhập để xóa tệp đính kèm.")
+        can_delete = (
+            user.is_superuser or
+            user.is_staff or
+            instance.nguoi_tao == user or
+            instance.document.nguoi_tao == user or
+            (hasattr(user, 'don_vi_id') and user.don_vi_id and instance.document.don_vi_id == user.don_vi_id)
+        )
+        if not can_delete:
+            raise exceptions.PermissionDenied("Không có quyền xóa tệp đính kèm này.")
         instance.is_deleted = True
         instance.save()
 

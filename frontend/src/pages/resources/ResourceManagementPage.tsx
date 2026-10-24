@@ -338,15 +338,15 @@ export default function ResourceManagementPage() {
         const seq = ++fetchSeqRef.current;
 
         const [catsRes, typesRes, docsRes] = await Promise.all([
-          apiClient<unknown>('/api/resources/categories/').catch((err) => {
+          apiClient<unknown>('/api/resources/categories/?page_size=100').catch((err) => {
             console.warn('Lỗi tải categories:', err);
             return null;
           }),
-          apiClient<unknown>('/api/resources/types/').catch((err) => {
+          apiClient<unknown>('/api/resources/types/?page_size=100').catch((err) => {
             console.warn('Lỗi tải types:', err);
             return null;
           }),
-          apiClient<unknown>('/api/resources/documents/').catch((err) => {
+          apiClient<unknown>('/api/resources/documents/?page_size=100').catch((err) => {
             console.warn('Lỗi tải documents:', err);
             return null;
           }),
