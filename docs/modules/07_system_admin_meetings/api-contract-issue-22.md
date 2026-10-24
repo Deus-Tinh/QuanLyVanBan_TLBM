@@ -165,9 +165,10 @@ Phân hệ phòng họp áp dụng nghiêm ngặt hợp đồng RBAC dự án (`
    - Các trường hợp trùng giờ (giao khoảng đầu, giao khoảng đuôi, bao trùm, nằm gọn bên trong, trùng khớp hoàn toàn) đều bị từ chối với `400 Bad Request` và mã lỗi `meetings.messages.roomTimeConflict`.
 2. **Cập nhật không tự xung đột (Self-conflict Exclusion)**:
    - Khi chỉnh sửa tiêu đề, mục đích họp, số lượng người tham gia mà không đổi khung giờ, hệ thống exclude chính ID của booking đang sửa khỏi kiểm tra trùng -> `200 OK`.
-3. **An toàn tương tranh (Concurrency & Database Locks)**:
-   - Tầng ứng dụng: Khóa dòng `MeetingRoom.objects.select_for_update()` trong khối `transaction.atomic()`. Khi 2 request đồng thời gửi tới cùng 1 phòng và khung giờ, request 1 được xử lý tạo booking thành công (`201 Created`); request 2 được tuần tự hóa, sau khi nhận khóa sẽ chạy truy vấn kiểm tra trùng (`conflicts.exists()`), phát hiện cuộc họp vừa tạo và trả về **`400 Bad Request`** kèm tham số cuộc họp xung đột (`meetings.messages.roomTimeConflict`).
-   - Tầng CSDL: Ràng buộc loại trừ PostgreSQL GiST `excl_room_time` đóng vai trò phòng vệ chiều sâu (defense-in-depth); khối `try...except IntegrityError` đảm bảo bắt lỗi cấp CSDL nếu có, **không bao giờ trả về lỗi 500**.
+3. **An toàn tương tranh (Concurrency & Database Constraints)**:
+   - Test `MeetingBookingConcurrencyTestCase` xác nhận kết quả chính xác khi hai request gửi đồng thời: đúng 1 request thành công (`201 Created`), đúng 1 request bị từ chối (`400 Bad Request`), và CSDL tạo duy nhất 1 bản ghi.
+   - Lớp chặn chính bảo đảm tính bất biến này là ràng buộc loại trừ PostgreSQL GiST `excl_room_time` ở cấp CSDL (khối `try...except IntegrityError` bắt lỗi và trả về `400 Bad Request`, không bao giờ trả về lỗi 500).
+   - Tầng ứng dụng kết hợp khóa `MeetingRoom.objects.select_for_update()` trong khối `transaction.atomic()` để tuần tự hóa giao dịch và trả về thông tin chi tiết của cuộc họp xung đột (`meetings.messages.roomTimeConflict` kèm host, time, title).
 4. **Phòng họp nội bộ (`is_public = False`)**:
    - Chỉ người dùng có quyền `change_phonghop` hoặc `is_superuser` mới được phép đặt hoặc sửa lịch vào phòng nội bộ.
    - CBNV bình thường cố tình đặt hoặc sửa lịch vào phòng nội bộ sẽ nhận **`400 Bad Request`** ở tầng serializer validation (`{"room": "meetings.messages.privateRoomForbidden"}`).
