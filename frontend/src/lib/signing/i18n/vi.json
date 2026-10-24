@@ -8,7 +8,7 @@
     "quyTrinh": "Quy trình",
     "khoaCuaToi": "Khóa ký & PIN",
     "thongBao": "Thông báo",
-    "taiLieu": "Tệp trình ký",
+    "taiLieu": "Văn bản công khai",
     "moi": "mới"
   },
   "chung": {
@@ -100,6 +100,13 @@
       "huy": "Đã hủy"
     },
     "quaHan": "Quá hạn"
+  },
+  "phanTrang": {
+    "nhan": "Phân trang",
+    "truoc": "Trước",
+    "sau": "Sau",
+    "trang": "Trang {trang}/{tong}",
+    "tomTat": "Hiển thị {dau}–{cuoi} trên {tong} hồ sơ"
   },
   "tao": {
     "buoc1": "Thông tin hồ sơ",
@@ -203,6 +210,7 @@
     "tao": "Tạo quy trình",
     "ma": "Mã quy trình",
     "ten": "Tên quy trình",
+    "tenCap": "Tên cấp ký",
     "phamVi": "Phạm vi",
     "donVi": "Đơn vị áp dụng",
     "chonDonVi": "Chọn đơn vị",
@@ -293,7 +301,8 @@
     "nguoi_ky_khong_cho_ky": "Chỉ ủy quyền người ký đang chờ ký.",
     "nguoi_nhan_khong_hop_le": "Người nhận không hoạt động hoặc không có quyền ký.",
     "nguoi_nhan_da_co_trong_cap": "Người nhận đã có mặt trong cùng cấp ký.",
-    "khong_hien_thi_duoc_pdf": "Không hiển thị được tệp PDF trên trình duyệt này. Tải tệp về để xem; nếu vẫn lỗi, báo quản trị."
+    "khong_hien_thi_duoc_pdf": "Không hiển thị được tệp PDF trên trình duyệt này. Tải tệp về để xem; nếu vẫn lỗi, báo quản trị.",
+    "van_ban_da_co_ho_so_dang_mo": "Văn bản đã có hồ sơ trình ký đang mở (nháp hoặc đang chờ ký). Hoàn tất hoặc hủy hồ sơ đó trước khi trình hồ sơ mới."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Tạo hồ sơ",
@@ -334,7 +343,8 @@
       "emailNguoiNhan": "Người nhận"
     },
     "nguoiThaoTac": "Người thực hiện",
-    "lyDo": "Lý do"
+    "lyDo": "Lý do",
+    "hanXuLy": "Hạn xử lý"
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, mã hồ sơ, quy trình…",
