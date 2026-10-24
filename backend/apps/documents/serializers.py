@@ -160,8 +160,10 @@ class DocumentListSerializer(serializers.Serializer):
     trich_yeu = serializers.CharField(read_only=True)
     noi_ban_hanh = serializers.SerializerMethodField()
     nguoi_ky = serializers.CharField(read_only=True, default="")
+    chuc_vu = serializers.CharField(read_only=True, default="")
     hieu_luc = serializers.CharField(read_only=True)
     hieu_luc_display = serializers.CharField(source="get_hieu_luc_display", read_only=True)
+    ngay_het_hieu_luc = serializers.DateTimeField(read_only=True, default=None)
     link_thay_the = serializers.SerializerMethodField()
     danh_sach_thay_the = serializers.SerializerMethodField()
     thay_the_cho = serializers.SerializerMethodField()
@@ -830,10 +832,16 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                         dv = DonVi.objects.filter(pk=int(clean_nbh)).first()
                     if not dv:
                         dv = DonVi.objects.filter(ten__iexact=clean_nbh).first() or DonVi.objects.filter(ma_dinh_danh__iexact=clean_nbh).first()
+                    if not dv:
+                        dv = DonVi.objects.filter(ten__icontains=clean_nbh).first() or DonVi.objects.filter(ma_dinh_danh__icontains=clean_nbh).first()
+                    if not dv:
+                        for candidate in DonVi.objects.all():
+                            if candidate.ten and (candidate.ten.lower() in clean_nbh.lower() or clean_nbh.lower() in candidate.ten.lower()):
+                                dv = candidate
+                                break
                     if dv:
                         VanBanDiNoiBanHanh.objects.create(vanbandi=instance, donvi_id=dv.pk)
-                    else:
-                        instance._noi_ban_hanh = clean_nbh
+                    instance._noi_ban_hanh = clean_nbh
             else:
                 if nbh_val is not None:
                     instance.noi_ban_hanh = str(nbh_val)
@@ -879,6 +887,9 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
             if ngay_den and not validated_data.get("ngay_van_ban"):
                 validated_data["ngay_van_ban"] = ngay_den
             noi_ban_hanh = validated_data.pop("noi_ban_hanh", None)
+
+        if validated_data.get("hieu_luc") == HieuLuc.CON_HIEU_LUC and not validated_data.get("ngay_het_hieu_luc"):
+            validated_data["ngay_het_hieu_luc"] = None
 
         model_field_names = {f.name for f in model._meta.get_fields()}
         create_kwargs = {k: v for k, v in validated_data.items() if k in model_field_names}
@@ -956,6 +967,11 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         for attr, value in validated_data.items():
             if attr in model_field_names:
                 setattr(instance, attr, value)
+
+        current_hieu_luc = validated_data.get("hieu_luc", getattr(instance, "hieu_luc", None))
+        if current_hieu_luc == HieuLuc.CON_HIEU_LUC and not validated_data.get("ngay_het_hieu_luc"):
+            instance.ngay_het_hieu_luc = None
+
         instance.save()
 
         if don_vi_nhan is not None:

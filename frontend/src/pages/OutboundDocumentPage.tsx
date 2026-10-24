@@ -11,8 +11,10 @@ import ConfirmModal from '@components/common/ConfirmModal';
 import AlertModal from '@components/common/AlertModal';
 import { Button } from '@components/common/Button';
 import apiClient from '@lib/apiClient';
+import { useTranslation } from '@i18n/translate';
 
 export const OutboundDocumentPage: React.FC = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const loaiVanBanParam = searchParams.get('loai_van_ban');
   const phamViParam = searchParams.get('pham_vi');
@@ -459,10 +461,10 @@ export const OutboundDocumentPage: React.FC = () => {
             <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold text-sm">
               <i className="fa-solid fa-paper-plane text-base" />
             </span>
-            <h1 className="text-xl md:text-2xl font-bold text-main m-0">Quản Lý Văn Bản Đi</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-main m-0">{t('pages.documents_outgoing.title') || 'Quản Lý Văn Bản Đi'}</h1>
           </div>
           <p className="text-xs md:text-sm text-secondary m-0">
-            Theo dõi, tra cứu, quản lý và số hóa toàn bộ hệ thống văn bản phát hành nội bộ và gửi cơ quan bên ngoài.
+            {t('pages.documents_outgoing.desc') || 'Theo dõi, tra cứu, quản lý và số hóa toàn bộ hệ thống văn bản phát hành nội bộ và gửi cơ quan bên ngoài.'}
           </p>
         </div>
 
@@ -474,9 +476,9 @@ export const OutboundDocumentPage: React.FC = () => {
             size="sm"
             icon="fa-plus"
             onClick={handleOpenCreate}
-            title="Thêm văn bản đi mới"
+            title={t('documents_incoming_page.addBtn') || 'Thêm mới'}
           >
-            Thêm mới
+            {t('documents_incoming_page.addBtn') || 'Thêm mới'}
           </Button>
 
           {/* Dropdown Import Excel */}
