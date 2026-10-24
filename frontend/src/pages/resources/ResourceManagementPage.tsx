@@ -610,7 +610,7 @@ export default function ResourceManagementPage() {
   const currentSession = authService.getSession();
   const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
 
-  // Set theo dõi các item mới được thêm vào
+  // Set theo dõi các item mới được tạo
   const [newDocumentIds, setNewDocumentIds] = useState<Set<number>>(new Set());
   const [newCategoryIds, setNewCategoryIds] = useState<Set<number>>(new Set());
   const [newTypeIds, setNewTypeIds] = useState<Set<number>>(new Set());
@@ -618,29 +618,30 @@ export default function ResourceManagementPage() {
 
   const isCatNew = (cat: ResourceCategory) => {
     if (newCategoryIds.has(cat.id)) return true;
-    const rawDate = (cat as unknown as { created_at?: string }).created_at;
+    const rawDate = (cat as unknown as { created_at?: string }).created_at || cat.ngay_lap;
     if (rawDate) {
       const createdTime = new Date(rawDate).getTime();
       if (!isNaN(createdTime)) {
         const diffMs = currentTime - createdTime;
-        if (diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000) return true;
+        if (diffMs >= -60000 && diffMs <= 24 * 60 * 60 * 1000) return true;
       }
     }
     return false;
   };
 
-  const isTypeNew = (t: ResourceType) => {
-    if (newTypeIds.has(t.id)) return true;
-    const rawDate = (t as unknown as { created_at?: string }).created_at;
+  const isTypeNew = (typeItem: ResourceType) => {
+    if (newTypeIds.has(typeItem.id)) return true;
+    const rawDate = (typeItem as unknown as { created_at?: string }).created_at || typeItem.ngay_lap;
     if (rawDate) {
       const createdTime = new Date(rawDate).getTime();
       if (!isNaN(createdTime)) {
         const diffMs = currentTime - createdTime;
-        if (diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000) return true;
+        if (diffMs >= -60000 && diffMs <= 24 * 60 * 60 * 1000) return true;
       }
     }
     return false;
   };
+
   // Toast thông báo nổi trên cùng (z-[999999] trên tất cả modal và màn đen)
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const lastToastRef = useRef<{ message: string; time: number } | null>(null);
@@ -1492,10 +1493,7 @@ export default function ResourceManagementPage() {
                       title={cat.ghi_chu || cat.ten_tai_lieu}
                     >
                       {isNew && (
-                        <span
-                          className="absolute top-0.5 left-1 px-1 py-0.2 rounded text-[8px] font-black uppercase bg-danger text-white shadow-2xs leading-none"
-                          title={t('resourceManagement.badgeNew')}
-                        >
+                        <span className="absolute top-0.5 left-1 sm:left-1.5 text-[9px] sm:text-[10px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
                           {t('resourceManagement.badgeNew')}
                         </span>
                       )}
@@ -1654,14 +1652,6 @@ export default function ResourceManagementPage() {
                               <i
                                 className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs shrink-0`}
                               />
-                              {isCatNew(cat) && (
-                                <span
-                                  className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-danger text-white shadow-2xs mr-1 shrink-0"
-                                  title={t('resourceManagement.badgeNew')}
-                                >
-                                  {t('resourceManagement.badgeNew')}
-                                </span>
-                              )}
                               <span className="truncate">{cat.ten_tai_lieu}</span>
                             </button>
                             <span
@@ -1786,10 +1776,7 @@ export default function ResourceManagementPage() {
                       title={typeItem.ghi_chu || typeItem.ten_loai}
                     >
                       {isNew && (
-                        <span
-                          className="absolute -top-1 -left-1 px-1 py-0.2 rounded text-[8px] font-black uppercase bg-danger text-white shadow-2xs leading-none"
-                          title={t('resourceManagement.badgeNew')}
-                        >
+                        <span className="absolute -top-1.5 left-1 text-[9px] sm:text-[10px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
                           {t('resourceManagement.badgeNew')}
                         </span>
                       )}
@@ -1915,12 +1902,17 @@ export default function ResourceManagementPage() {
                         return (
                           <div
                             key={typeItem.id}
-                            className={`w-full px-2 py-1.5 rounded-lg text-xs flex items-center justify-between gap-2 transition-colors ${
+                            className={`relative w-full px-2 py-1.5 rounded-lg text-xs flex items-center justify-between gap-2 transition-colors ${
                               isSelected
                                 ? 'bg-primary/10 border border-primary/20 text-primary font-bold'
                                 : 'text-main hover:bg-surface-elevated'
                             }`}
                           >
+                            {isTypeNew(typeItem) && (
+                              <span className="absolute -top-1 left-1.5 text-[9px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
+                                {t('resourceManagement.badgeNew')}
+                              </span>
+                            )}
                             {/* Checkbox: Chỉ hiện trên sm:flex, ẨN trên mobile (hidden sm:flex) */}
                             <label
                               className="hidden sm:flex items-center gap-1.5 cursor-pointer shrink-0 select-none"
@@ -1954,14 +1946,6 @@ export default function ResourceManagementPage() {
                                 <i className="fa-solid fa-lock text-[10px] opacity-70 shrink-0" />
                               ) : (
                                 <i className="fa-solid fa-tag text-xs opacity-70 shrink-0" />
-                              )}
-                              {isTypeNew(typeItem) && (
-                                <span
-                                  className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-danger text-white shadow-2xs mr-1 shrink-0"
-                                  title={t('resourceManagement.badgeNew')}
-                                >
-                                  {t('resourceManagement.badgeNew')}
-                                </span>
                               )}
                               <span className="truncate">{typeItem.ten_loai}</span>
                             </button>
@@ -2421,8 +2405,6 @@ export default function ResourceManagementPage() {
         onDeleteCategory={handleDeleteCategory}
         onSaveType={handleSaveType}
         onDeleteType={handleDeleteType}
-        newCategoryIds={newCategoryIds}
-        newTypeIds={newTypeIds}
       />
 
       {/* MODAL QUẢN LÝ MÔ HÌNH THƯ MỤC NHIỀU CẤP (NESTED / HIERARCHICAL FOLDERS) */}

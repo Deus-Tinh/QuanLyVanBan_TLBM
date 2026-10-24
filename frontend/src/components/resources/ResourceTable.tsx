@@ -21,7 +21,7 @@ export interface ResourceTableProps {
   onClearFilters?: () => void;
   // Khi bấm dòng: chuyển sang xem Thư mục/Loại tài liệu của mục đó
   onDrillDown?: (categoryId: number, typeId?: number) => void;
-  // Danh sách ID tài liệu mới được tạo
+  // Danh sách ID tài liệu mới được tạo trong phiên
   newDocumentIds?: Set<number> | number[];
 }
 
@@ -47,18 +47,15 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
   const isItemNew = (item: ResourceItem): boolean => {
     if (newDocumentIds) {
-      if (newDocumentIds instanceof Set) {
-        if (newDocumentIds.has(item.id)) return true;
-      } else if (Array.isArray(newDocumentIds)) {
-        if (newDocumentIds.includes(item.id)) return true;
-      }
+      if (newDocumentIds instanceof Set && newDocumentIds.has(item.id)) return true;
+      if (Array.isArray(newDocumentIds) && newDocumentIds.includes(item.id)) return true;
     }
-    const rawDate = (item as unknown as { created_at?: string }).created_at;
+    const rawDate = (item as unknown as { created_at?: string }).created_at || item.ngay_dang;
     if (rawDate) {
       const createdTime = new Date(rawDate).getTime();
       if (!isNaN(createdTime)) {
         const diffMs = currentTime - createdTime;
-        if (diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000) {
+        if (diffMs >= -60000 && diffMs <= 24 * 60 * 60 * 1000) {
           return true;
         }
       }
@@ -531,23 +528,25 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     title={t('resourceManagement.clickToViewDetail')}
                   >
                     {/* Cột 1: Ký hiệu (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
-                    <td className="hidden sm:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
+                    <td className="hidden sm:table-cell relative px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
+                      {isNew && (
+                        <span className="absolute top-0.5 left-2 sm:left-4 text-[10px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
+                          {t('resourceManagement.badgeNew')}
+                        </span>
+                      )}
                       <span className="text-xs font-semibold text-main tracking-tight">
                         {item.ky_hieu || '-'}
                       </span>
                     </td>
 
                     {/* Cột 2: Tiêu đề + Loại tài liệu + Link thay thế (Cùng hàng cân đối tuyệt đối) */}
-                    <td className="px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle">
+                    <td className="relative px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle">
+                      {isNew && (
+                        <span className="sm:hidden absolute top-0.5 left-2.5 text-[10px] font-bold text-red-600 dark:text-red-500 select-none pointer-events-none leading-none tracking-tight">
+                          {t('resourceManagement.badgeNew')}
+                        </span>
+                      )}
                       <div className="flex items-center gap-2 flex-wrap">
-                        {isNew && (
-                          <span
-                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase bg-danger text-white shadow-2xs mr-1 shrink-0"
-                            title={t('resourceManagement.badgeNew')}
-                          >
-                            {t('resourceManagement.badgeNew')}
-                          </span>
-                        )}
                         <span className="font-semibold text-sm text-main hover:text-primary transition-colors leading-snug">
                           {item.tieu_de}
                         </span>

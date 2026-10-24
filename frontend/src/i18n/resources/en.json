@@ -148,7 +148,7 @@
     "fieldAuthorFixed": "Document Creator (Fixed by account)",
     "authorFixedTooltip": "Fixed according to the current logged-in account",
     "fixedByAccount": "Fixed by account",
-    "badgeNew": "NEW",
+    "badgeNew": "New",
     "newlyAdded": "Newly added",
     "clickToViewDetail": "Click to view document details",
     "errorLoadDocs": "An error occurred while loading the document list. Please try again.",
