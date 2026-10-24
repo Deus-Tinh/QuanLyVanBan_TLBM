@@ -138,7 +138,7 @@ export default function KhoaPage() {
         {(ds.duLieu || []).map((k) => (
           <div key={k.id} className="space-y-1 rounded-lg border border-border-subtle p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-lg font-bold text-main" title={k.ma_khoa}>{t('khoa.maPin')}</span>
+              <span className="text-base font-bold text-main truncate" title={k.ma_khoa}>{k.ma_khoa || `#${k.id}`}</span>
               <TrangThaiBadge trangThai={k.trang_thai} />
             </div>
             <div className="text-xs text-secondary">
