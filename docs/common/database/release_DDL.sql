@@ -1,4 +1,12 @@
 -- =====================================================================
+-- THAY ĐỔI NHÓM QUYỀN BỔ SUNG (Nhóm 7; issue #228; đánh dấu [NQBS] tại vị trí)
+-- Căn cứ: bảng nhóm quyền mặc định theo 25 chức vụ (nhóm trưởng chốt 21/10/2026, PR #211).
+--   Thêm 2 nhóm chuẩn chỉ chứa quyền cộng thêm, gán cùng nhóm CV:
+--   1) TLBGD (Trợ lý Ban Giám đốc): view_all_congviec, view_read_log_vanbanden, view_read_log_vanbandi, send_trinhky.
+--   2) KT (Kiểm toán): view_signing_audit, view_read_log_vanbanden, view_read_log_vanbandi.
+--   Migration authorization 0008_supplementary_groups_tlbgd_kt bổ sung cho DB dựng bằng migration.
+-- Quy mô sau [NQBS] (cộng sau [CVTK]): 7 nhóm quyền chuẩn; thêm 7 lượt phân quyền (198 -> 205).
+-- =====================================================================
 -- THAY ĐỔI QUYỀN GỬI TRÌNH KÝ CỦA CHUYÊN VIÊN (Nhóm 5; issue #226; đánh dấu [CVTK] tại vị trí)
 -- Căn cứ: signing-backend-plan.md mục 8 (nhân viên đã xác thực được tạo yêu cầu; gửi cần send_trinhky + người tạo).
 --   Nhóm CV có add_trinhky nhưng thiếu send_trinhky nên hồ sơ do Chuyên viên tạo dừng ở NHAP: người tạo
@@ -2005,7 +2013,7 @@ SET
     is_he_thong = TRUE;
 
 -- ---------------------------------------------------------------------
--- 4) Seed 5 Nhóm quyền chuẩn (auth_group)
+-- 4) Seed 7 Nhóm quyền chuẩn (auth_group): 5 nhóm chính và 2 nhóm bổ sung [NQBS]
 -- ---------------------------------------------------------------------
 INSERT INTO
     auth_group (name, ma_nhom_quyen)
@@ -2013,7 +2021,10 @@ VALUES ('Văn thư', 'VT'),
     ('Chuyên viên', 'CV'),
     ('Trưởng phòng', 'TP'),
     ('Ban Giám đốc', 'BGD'),
-    ('Quản trị hệ thống', 'ADMIN') ON CONFLICT (name) DO
+    ('Quản trị hệ thống', 'ADMIN'),
+    -- [NQBS] Nhóm bổ sung, gán cùng nhóm CV
+    ('Trợ lý Ban Giám đốc', 'TLBGD'),
+    ('Kiểm toán', 'KT') ON CONFLICT (name) DO
 UPDATE
 SET
     ma_nhom_quyen = EXCLUDED.ma_nhom_quyen;
@@ -2602,7 +2613,31 @@ WHERE
         'send_wish_sinhnhat',
         'use_aiassistant'
     ) ON CONFLICT (group_id, permission_id) DO NOTHING;
-
+-- [NQBS] Nhóm TLBGD (Trợ lý Ban Giám đốc): chỉ chứa quyền cộng thêm, người dùng giữ nhóm CV
+INSERT INTO
+    auth_group_permissions (group_id, permission_id)
+SELECT g.id, p.id
+FROM auth_group g, auth_permission p
+WHERE
+    g.ma_nhom_quyen = 'TLBGD'
+    AND p.codename IN (
+        'view_all_congviec',
+        'view_read_log_vanbanden',
+        'view_read_log_vanbandi',
+        'send_trinhky'
+    ) ON CONFLICT (group_id, permission_id) DO NOTHING;
+-- [NQBS] Nhóm KT (Kiểm toán): chỉ chứa quyền cộng thêm, người dùng giữ nhóm CV
+INSERT INTO
+    auth_group_permissions (group_id, permission_id)
+SELECT g.id, p.id
+FROM auth_group g, auth_permission p
+WHERE
+    g.ma_nhom_quyen = 'KT'
+    AND p.codename IN (
+        'view_signing_audit',
+        'view_read_log_vanbanden',
+        'view_read_log_vanbandi'
+    ) ON CONFLICT (group_id, permission_id) DO NOTHING;
 COMMIT;
 
 -- =====================================================================

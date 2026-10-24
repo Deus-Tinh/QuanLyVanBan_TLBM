@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, HopThoai, LoiTai, ThongBao, TruongNhap } from '@components/signing/ChungUI';
+import { DangTai, HopThoai, LoiTai, OChonTep, ThongBao, TruongNhap } from '@components/signing/ChungUI';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
 import { docLoi, signingApi } from '@lib/signing/api';
 import { LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
@@ -59,23 +59,26 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   return (
     <Card className="p-5 space-y-4">
       <h2 className="text-lg font-bold text-main">1. {t('tao.buoc1')}</h2>
-      <TruongNhap nhan={t('tao.vanBanDi')}>
-        <input className={LOP_O_NHAP} placeholder={t('tao.timVanBan')} value={q} onChange={(e) => setQ(e.target.value)} />
-      </TruongNhap>
-      {vanBan.dangTai ? <DangTai /> : vanBan.loi ? <LoiTai thongBao={loi(vanBan.loi)} onThuLai={vanBan.tai} /> : (
-        <div className="max-h-48 overflow-y-auto rounded-lg border border-border-subtle">
-          {vanBan.duLieu?.length === 0 && <div className="p-3 text-sm text-muted">{t('tao.khongCoVanBan')}</div>}
-          {vanBan.duLieu?.map((vb) => (
-            <button type="button" key={vb.id} onClick={() => setChon(vb)}
-              className={`block w-full px-3 py-2 text-left text-sm border-b border-border-subtle last:border-0 ${
-                chon?.id === vb.id ? 'bg-primary-subtle text-primary font-semibold' : 'hover:bg-surface-hover text-main'}`}>
-              {moTaVanBan(vb, vb.id)}
-            </button>
-          ))}
+      {/* Desktop: trái chọn văn bản, phải thông tin trình; tránh một cột ô nhập trải hết chiều rộng */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+        <div className="space-y-3 min-w-0">
+          <TruongNhap nhan={t('tao.vanBanDi')}>
+            <input className={LOP_O_NHAP} placeholder={t('tao.timVanBan')} value={q} onChange={(e) => setQ(e.target.value)} />
+          </TruongNhap>
+          {vanBan.dangTai ? <DangTai /> : vanBan.loi ? <LoiTai thongBao={loi(vanBan.loi)} onThuLai={vanBan.tai} /> : (
+            <div className="max-h-72 overflow-y-auto rounded-lg border border-border-subtle">
+              {vanBan.duLieu?.length === 0 && <div className="p-3 text-sm text-muted">{t('tao.khongCoVanBan')}</div>}
+              {vanBan.duLieu?.map((vb) => (
+                <button type="button" key={vb.id} onClick={() => setChon(vb)}
+                  className={`block w-full px-3 py-2 text-left text-sm border-b border-border-subtle last:border-0 ${
+                    chon?.id === vb.id ? 'bg-primary-subtle text-primary font-semibold' : 'hover:bg-surface-hover text-main'}`}>
+                  {moTaVanBan(vb, vb.id)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="md:col-span-2">
+        <div className="space-y-4 min-w-0">
           <TruongNhap nhan={t('tao.quyTrinh')}>
             <select className={LOP_O_NHAP} value={qtId} onChange={(e) => setQtId(e.target.value)}>
               <option value="">{t('tao.chonQuyTrinh')}</option>
@@ -84,19 +87,20 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
               ))}
             </select>
           </TruongNhap>
+          {quyTrinh.duLieu && dungDuoc.length === 0 && <ThongBao loai="canh_bao">{t('tao.khongCoQuyTrinh')}</ThongBao>}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TruongNhap nhan={t('tao.hanChot')}>
+              <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
+            </TruongNhap>
+            <TruongNhap nhan={t('tao.tep')}>
+              <OChonTep accept="application/pdf" onChon={(f) => setTep(f || null)} />
+            </TruongNhap>
+          </div>
+          <TruongNhap nhan={t('tao.ghiChu')}>
+            <textarea className={LOP_O_NHAP} rows={3} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
+          </TruongNhap>
         </div>
-        <TruongNhap nhan={t('tao.hanChot')}>
-          <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
-        </TruongNhap>
-        <TruongNhap nhan={t('tao.tep')}>
-          <input type="file" accept="application/pdf" className={LOP_O_NHAP}
-            onChange={(e) => setTep(e.target.files?.[0] || null)} />
-        </TruongNhap>
       </div>
-      {quyTrinh.duLieu && dungDuoc.length === 0 && <ThongBao loai="canh_bao">{t('tao.khongCoQuyTrinh')}</ThongBao>}
-      <TruongNhap nhan={t('tao.ghiChu')}>
-        <textarea className={LOP_O_NHAP} rows={2} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
-      </TruongNhap>
       {thongBao && <ThongBao>{thongBao}</ThongBao>}
       <div className="flex justify-end">
         <Button icon="fa-floppy-disk" isLoading={dangGui} disabled={!chon || !qtId || !tep} onClick={luu}>

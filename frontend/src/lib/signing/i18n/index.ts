@@ -38,6 +38,9 @@ export function useSigningT() {
   const loi = (err: unknown): string => {
     const l = docLoi(err);
     const ma = l.code || (err instanceof Error ? err.message : '');
+    // PIN sai: server trả số lần thử còn lại trước khi khóa (fields.so_lan_con_lai)
+    const con_lai = ma === 'pin_khong_dung' ? (l.fields as Record<string, unknown[]> | undefined)?.so_lan_con_lai?.[0] : undefined;
+    if (typeof con_lai === 'number') return t('loi.pin_khong_dung_con_lai', { so: con_lai });
     const ban_dich = ma ? tra(TU_DIEN[currentLang], `loi.${ma}`) : undefined;
     if (ban_dich) return ban_dich;
     if (l.status === 0 && !l.code && err instanceof TypeError) return t('chung.loiMang');
