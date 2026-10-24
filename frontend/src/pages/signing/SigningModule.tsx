@@ -25,9 +25,6 @@ export default function SigningModule() {
   const dieuHuong = useNavigate();
   const [lanXem, setLanXem] = useState(0);
   const daXemThongBao = useCallback(() => setLanXem((n) => n + 1), []);
-  const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai, daXemThongBao }),
-    [toi.duLieu, toi.tai, daXemThongBao]);
-
   const { pathname } = useLocation();
   // Màn hẹp: thanh tab cuộn ngang, đưa tab đang xem vào vùng nhìn thấy (vd. vào thẳng "Khóa ký & PIN")
   const thanhTab = useRef<HTMLElement>(null);
@@ -38,6 +35,14 @@ export default function SigningModule() {
   // Hồ sơ chờ tôi ký gồm cả hồ sơ đã quá hạn (bộ lọc tách hai nhóm)
   const soCanKy = canKy.duLieu ? canKy.duLieu.cho_ky + canKy.duLieu.qua_han : undefined;
   const thongBao = useTai(() => signingApi.thongBao(), [pathname]);
+  const { tai: taiLaiCanKy } = canKy;
+  const { tai: taiLaiThongBao } = thongBao;
+  const lamMoiDem = useCallback(() => {
+    taiLaiCanKy();
+    taiLaiThongBao();
+  }, [taiLaiCanKy, taiLaiThongBao]);
+  const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai, daXemThongBao, lamMoiDem }),
+    [toi.duLieu, toi.tai, daXemThongBao, lamMoiDem]);
   // lanXem đổi khi trang Thông báo đánh dấu đã xem: tính lại số mới
   const soMoi = lanXem >= 0 ? soThongBaoMoi(thongBao.duLieu, toi.duLieu?.id) : 0;
 

@@ -636,11 +636,17 @@ class AnhChuKyView(SigningAPIView):
 
 
 class ThongKeHoSoView(SigningAPIView):
-    """GET /trinh-ky/thong-ke/?hop=: số hồ sơ theo từng thẻ lọc nhanh của hộp (bộ lọc danh sách)."""
+    """
+    GET /trinh-ky/thong-ke/?hop=: số hồ sơ theo từng thẻ lọc nhanh của hộp. Nhận cùng các bộ lọc khác của danh sách
+    (`q`, `quy_trinh`, `tu_ngay`, `den_ngay`) để số trên thẻ khớp với danh sách đang xem; `nhanh` không áp dụng vì
+    mỗi thẻ chính là một giá trị của `nhanh`.
+    """
 
     def get(self, request):
+        loc = {k: v for k, v in request.query_params.items() if k not in ("nhanh", "trang_thai")}
         # Hộp có thể là queryset distinct qua nhiều bảng: lấy tập id trước rồi đếm trên bảng hồ sơ
-        queryset = _gan_luot_cuoi(SigningRequest.objects.filter(pk__in=_ho_so_theo_hop(request).values("pk")))
+        queryset = _gan_luot_cuoi(SigningRequest.objects.filter(
+            pk__in=_loc_ho_so(_ho_so_theo_hop(request), loc).values("pk")))
         dem = {"tat_ca": queryset.count(), **{k: queryset.filter(v).count() for k, v in _dieu_kien_nhanh().items()}}
         return Response(dem)
 

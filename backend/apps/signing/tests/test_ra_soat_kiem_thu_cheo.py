@@ -44,6 +44,42 @@ class LocTimKiemKhongLoiMayChuTests(TrinhKyBase):
         self.assertEqual((r.status_code, r.data["count"]), (200, 1))
 
 
+class ThongKeTheoBoLocTests(TrinhKyBase):
+    """Số trên thẻ lọc nhanh khớp với danh sách đang xem: cùng từ khóa, quy trình, khoảng ngày."""
+
+    THONG_KE = f"{BASE}/thong-ke/"
+
+    def setUp(self):
+        super().setUp()
+        for trich_yeu in ("Mua sắm thiết bị mạng", "Đào tạo an toàn thông tin"):
+            r = self.tao_nhap(van_ban_id="", document_type="", trich_yeu_van_ban=trich_yeu)
+            self.assertEqual(r.status_code, 201, r.data)
+
+    def dem(self, **loc):
+        r = self.c.get(self.THONG_KE, {"hop": "toi_gui", **loc})
+        self.assertEqual(r.status_code, 200, r.data)
+        return r.data["tat_ca"]
+
+    def test_counts_follow_search_term_and_dates(self):
+        self.assertEqual(self.dem(), 2)
+        self.assertEqual(self.dem(q="mua sam"), 1)
+        self.assertEqual(self.dem(q="khong co"), 0)
+        self.assertEqual(self.dem(tu_ngay="2999-01-01"), 0)
+        self.assertEqual(self.dem(den_ngay="2000-01-01"), 0)
+        self.assertEqual(self.dem(tu_ngay="2000-01-01", den_ngay="2999-01-01"), 2)
+        self.assertEqual(self.dem(quy_trinh=self.process.pk), 2)
+        self.assertEqual(self.dem(quy_trinh=self.process.pk + 1000), 0)
+
+    def test_quick_filter_param_is_not_applied_to_its_own_counts(self):
+        self.assertEqual(self.dem(nhanh="hoan_thanh", trang_thai="HUY"), 2)
+
+    def test_invalid_filter_returns_400(self):
+        for loc in ({"tu_ngay": "2026-13-45"}, {"tu_ngay": "2026-10-30", "den_ngay": "2026-10-01"}, {"quy_trinh": "abc"}):
+            r = self.c.get(self.THONG_KE, {"hop": "toi_gui", **loc})
+            self.assertEqual((r.status_code, r.data["code"]), (400, "tham_so_khong_hop_le"), loc)
+        self.assertEqual(self.dem(q="a\x00b"), 0)
+
+
 class QuyTrinhDauVaoTests(TrinhKyBase):
     def setUp(self):
         super().setUp()

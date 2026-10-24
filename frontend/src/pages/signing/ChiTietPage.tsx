@@ -41,7 +41,7 @@ export default function ChiTietPage() {
 
 function ChiTietHoSo({ id }: { id: number }) {
   const { t, loi, lang } = useSigningT();
-  const { toi } = useToi();
+  const { toi, lamMoiDem } = useToi();
   const ct = useTai(() => signingApi.chiTiet(id), [id]);
   const hoSo = ct.duLieu;
   const luot = hoSo?.luot_trinh[0] || null;
@@ -53,7 +53,9 @@ function ChiTietHoSo({ id }: { id: number }) {
   const capNhat = useCallback((moi?: HoSoChiTiet) => {
     if (moi && moi.id === id) setDuLieu(moi);
     else tai();
-  }, [setDuLieu, tai, id]);
+    // Có kết quả thao tác (ký, từ chối, hủy…): số ở thanh tab đổi theo; lần tải lại định kỳ không có kết quả thì bỏ qua
+    if (moi) lamMoiDem?.();
+  }, [setDuLieu, tai, id, lamMoiDem]);
 
   // Tệp của lượt hiện hành; băm lại để người ký đối chiếu mã băm đã khóa. Kết quả gắn với khóa tệp nên đổi lượt
   // thì tệp cũ không còn được dùng để ký (mã băm chưa có cho đến khi tải xong tệp mới).

@@ -120,7 +120,9 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
   const { t, loi, lang } = useSigningT();
   const [loc, setLoc] = useState<BoLocHoSo>({});
   const [trang, setTrang] = useState(1);
-  const dem = useTai(() => signingApi.thongKe(hop), [hop]);
+  // Số trên các thẻ theo cùng từ khóa, quy trình, khoảng ngày với danh sách (không theo thẻ đang chọn)
+  const dem = useTai(() => signingApi.thongKe(hop, { q: loc.q, quy_trinh: loc.quy_trinh, tu_ngay: loc.tu_ngay, den_ngay: loc.den_ngay }),
+    [hop, loc.q, loc.quy_trinh, loc.tu_ngay, loc.den_ngay]);
   // Trang đang xem không còn (dữ liệu giảm sau khi tải trang) thì về trang 1 thay vì báo lỗi
   const ds = useTai(() => signingApi.danhSach(hop, loc, trang).catch((err) => {
     if (trang > 1 && docLoi(err).status === 404) setTrang(1);

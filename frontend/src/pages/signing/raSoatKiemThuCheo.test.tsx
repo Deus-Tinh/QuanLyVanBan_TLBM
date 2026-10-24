@@ -27,7 +27,7 @@ import ThongBaoPage from './ThongBaoPage';
 vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
-    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), thongBao: vi.fn(), chiTiet: vi.fn(), tepGoc: vi.fn(), taiLieu: vi.fn(),
+    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), thongBao: vi.fn(), chiTiet: vi.fn(), tepGoc: vi.fn(), taiLieu: vi.fn(), huy: vi.fn(),
     timVanBanDi: vi.fn(), quyTrinh: vi.fn(), taoNhap: vi.fn(), khoa: vi.fn(), thuHoiKhoa: vi.fn(), traoDoi: vi.fn(),
     guiTinNhan: vi.fn(), giaiQuyet: vi.fn(), thaoTacQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), xoaQuyTrinh: vi.fn(),
     donVi: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(),
@@ -360,6 +360,19 @@ describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
     expect((await screen.findAllByText(/Hạn cấp: \d{2}:\d{2} 24\/10\/2026/)).length).toBeGreaterThan(0);
   });
 
+  it('số trên thẻ lọc nhanh tính theo cùng từ khóa với danh sách (không theo thẻ đang chọn)', async () => {
+    api.danhSach.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    boc(<DanhSachPage hop="tat_ca" />);
+    await screen.findByRole('searchbox');
+    expect(api.thongKe).toHaveBeenLastCalledWith('tat_ca', { q: undefined, quy_trinh: undefined, tu_ngay: undefined, den_ngay: undefined });
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'mua sam' } });
+    await waitFor(() => expect(api.thongKe).toHaveBeenLastCalledWith('tat_ca', { q: 'mua sam', quy_trinh: undefined, tu_ngay: undefined, den_ngay: undefined }));
+    const soLan = api.thongKe.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: /Quá hạn/ }));
+    await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('tat_ca', { q: 'mua sam', nhanh: 'qua_han' }, 1));
+    expect(api.thongKe).toHaveBeenCalledTimes(soLan);
+  });
+
   it('hồ sơ có hạn chót: không thêm dòng hạn cấp', async () => {
     api.danhSach.mockResolvedValue({ count: 1, next: null, previous: null, results: [{
       id: 22, van_ban_id: null, van_ban: { so_hieu: '204/BC', trich_yeu: 'Báo cáo' }, ten_quy_trinh: 'QT', trang_thai: 'CHO_KY',
@@ -387,6 +400,32 @@ describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByText('Gấp, trình trước thứ Sáu')).toBeInTheDocument();
+  });
+
+  it('sau khi hủy hồ sơ: số ở thanh tab được tải lại ngay (không chờ đổi trang)', async () => {
+    const nhap = {
+      id: 5, document_type: null, van_ban_id: null, so_hieu_van_ban: '', trich_yeu_van_ban: 'Tờ trình', van_ban: { so_hieu: '', trich_yeu: 'Tờ trình' },
+      quy_trinh: 1, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt', phien_ban_quy_trinh: 1, trang_thai: 'NHAP', han_chot: null,
+      ngay_gui: null, ngay_hoan_thanh: null, ly_do_tu_choi: '', ly_do_huy: '', ghi_chu: '', ho_so_goc: null,
+      phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64), create_by: 3, ten_nguoi_tao: 'Văn thư', created_at: '2026-10-07T01:00:00Z',
+      dang_cho: [], luot_trinh: [], lich_su: [], trang_thai_luot: null, qua_han: false,
+    } as unknown as HoSoChiTiet;
+    api.chiTiet.mockResolvedValue(nhap);
+    api.tepGoc.mockRejectedValue(new ApiError(404, { code: 'khong_doc_duoc_tep', detail: 'x', fields: {} }));
+    api.huy.mockResolvedValue({ ...nhap, trang_thai: 'HUY' });
+    const lamMoiDem = vi.fn();
+    render(
+      <MemoryRouter initialEntries={['/approvals/5']}>
+        <SigningContext.Provider value={{ toi: TOI, taiLaiToi: () => undefined, lamMoiDem }}>
+          <Routes><Route path="/approvals/:id" element={<ChiTietPage />} /></Routes>
+        </SigningContext.Provider>
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Hủy hồ sơ' }));
+    const hop = await screen.findByRole('dialog', { name: 'Hủy hồ sơ' });
+    fireEvent.click(within(hop).getByRole('button', { name: 'Hủy hồ sơ' }));
+    await waitFor(() => expect(api.huy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(lamMoiDem).toHaveBeenCalledTimes(1));
   });
 
   it('trang Văn bản công khai: gõ từ khóa tự áp dụng sau một nhịp, không cần bấm Lọc; xóa chữ thì bỏ lọc', async () => {

@@ -4,7 +4,7 @@
  * bấm lại hoặc thử lại sau lỗi mạng không tạo thao tác trùng.
  */
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@components/common';
 import { signingApi } from '@lib/signing/api';
 import { GIOI_HAN, LOP_O_NHAP } from '@lib/signing/dinhDang';
@@ -121,9 +121,9 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
   return (
     <div className="flex flex-wrap gap-2">
       {hoSo.trang_thai === 'NHAP' && laNguoiTao && (
-        <Link to={`/approvals/tao-moi?ho_so=${hoSo.id}`}>
-          <Button size="sm" icon="fa-paper-plane">{t('tao.buoc2')}</Button>
-        </Link>
+        <Button size="sm" icon="fa-paper-plane" onClick={() => navigate(`/approvals/tao-moi?ho_so=${hoSo.id}`)}>
+          {t('tao.buoc2')}
+        </Button>
       )}
       {dangMoChoToi && luot?.trang_thai === 'CHO_KY' && <>
         {nut('ky', t('hanhDong.kyDuyet'), 'fa-signature', 'primary')}
