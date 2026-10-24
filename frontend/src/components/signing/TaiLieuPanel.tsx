@@ -49,15 +49,15 @@ export default function TaiLieuPanel({ hoSo }: { hoSo: HoSoChiTiet }) {
     <Card className="p-4 space-y-2">
       <h3 className="text-lg font-bold text-main">{t('chiTiet.danhSachTep')}</h3>
       <ul className="divide-y divide-border-subtle">
-        {hoSo.luot_trinh.length === 0 && dong('nhap', t('chiTiet.banDuThao', { so: hoSo.phien_ban_van_ban }),
-          `${t('chiTiet.maBam')}: ${hoSo.ma_bam_tai_lieu.slice(0, 16)}…`,
+        {hoSo.luot_trinh.length === 0 && dong('nhap', t('chiTiet.banDuThao'),
+          '',
           () => tai(() => signingApi.tepGoc(hoSo.id), `trinh-ky-${hoSo.id}-du-thao.pdf`))}
         {hoSo.luot_trinh.map((l) => dong(`luot-${l.id}`,
-          t('chiTiet.banLuot', { so: l.so_luot, ban: l.phien_ban_van_ban }),
-          `${dinhDangNgay(l.thoi_diem_gui, lang)} · ${t('chiTiet.maBam')}: ${l.ma_bam_tai_lieu.slice(0, 16)}…`,
+          t('chiTiet.banLuot'),
+          dinhDangNgay(l.thoi_diem_gui, lang),
           () => tai(() => signingApi.tepCuaLuot(hoSo.id, l.id), `trinh-ky-${hoSo.id}-luot-${l.so_luot}.pdf`)))}
         {hoSo.trang_thai === 'HOAN_THANH' && hoSo.luot_trinh[0]?.trang_thai_tep_hoan_tat === 'THANH_CONG' && dong('hoan-tat',
-          t('chiTiet.tepHoanTat'), `${t('chiTiet.maBam')}: ${hoSo.luot_trinh[0].ma_bam_tep_hoan_tat.slice(0, 16)}…`,
+          t('chiTiet.tepHoanTat'), '',
           () => tai(() => signingApi.tepHoanTat(hoSo.id), `trinh-ky-${hoSo.id}-ban-duyet-noi-bo.pdf`))}
       </ul>
       {hoSo.trang_thai === 'HOAN_THANH' && (

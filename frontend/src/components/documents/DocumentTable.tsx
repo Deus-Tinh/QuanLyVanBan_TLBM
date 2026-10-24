@@ -5,6 +5,7 @@ import { formatDate } from '@lib/dateUtils';
 import { authService } from '@lib/authService';
 import apiClient from '@lib/apiClient';
 import { getAbsoluteFileUrl } from '@lib/fileUtils';
+import { resolveDocumentApiUrl } from '@lib/routes';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -248,8 +249,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       return;
     }
     try {
-      const typeParam = (loai || doc.loai) ? `?loai=${loai || doc.loai}` : '';
-      const res = await apiClient.get<DocumentDetail>(`/api/documents/${doc.id}/${typeParam}`);
+      const apiUrl = resolveDocumentApiUrl(doc.id, loai || doc.loai);
+      const res = await apiClient.get<DocumentDetail>(apiUrl);
       if (res && res.attachments && res.attachments.length > 0 && res.attachments[0].file) {
         const fullUrl = getAbsoluteFileUrl(res.attachments[0].file);
         window.open(fullUrl, '_blank', 'noopener,noreferrer');
@@ -520,7 +521,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                     {/* 6. Trạng thái Hiệu lực (Badge nâng lên 14px) */}
                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
-                      {(doc.hieu_luc === 'CON_HIEU_LUC' || doc.hieu_luc === 'HET_VA_THAY_THE') && (
+                      {doc.hieu_luc === 'CON_HIEU_LUC' && (
                         <div>
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -537,7 +538,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <div>
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-purple-500/10 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30 shadow-2xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                            Hiệu lực 1 phần
+                            Còn hiệu lực 1 phần
                           </span>
                           {doc.ngay_het_hieu_luc && (
                             <div className="text-sm text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
@@ -546,7 +547,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                           )}
                         </div>
                       )}
-                      {doc.hieu_luc === 'HET_HIEU_LUC' && (
+                      {(doc.hieu_luc === 'HET_HIEU_LUC' || doc.hieu_luc === 'HET_VA_THAY_THE') && (
                         <div>
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 shadow-2xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />

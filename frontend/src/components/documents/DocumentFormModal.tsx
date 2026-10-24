@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- file này export kèm các helper tiện ích parse và format chuỗi thay thế dùng chung cho modal và test */
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import apiClient, { ApiError } from '@lib/apiClient';
@@ -33,8 +34,11 @@ interface ExistingAttachment {
 interface SuggestedDoc {
   id: number;
   so_hieu: string;
+  so_thu_tu?: number;
+  so_den?: number;
   trich_yeu: string;
   noi_ban_hanh?: string;
+  nguoi_ky?: string;
   loai_display?: string;
   nam?: number;
   ngay_ban_hanh?: string;
@@ -153,6 +157,65 @@ const MOCK_STAFF_BY_UNIT: Record<string, UserOption[]> = {
   ],
 };
 
+export interface ParsedReplacement {
+  raw: string;
+  baseSoHieu: string;
+  stt?: number;
+  extraInfo?: string;
+}
+
+export const parseReplacementString = (str: string): ParsedReplacement => {
+  const raw = (str || '').trim();
+  if (!raw) return { raw: '', baseSoHieu: '' };
+  const match = raw.match(/^(.+?)\s*(?:\[|\()([^\])]+)(?:\]|\))$/);
+  if (match) {
+    const baseSoHieu = match[1].trim();
+    const bracketContent = match[2].trim();
+    const sttMatch = bracketContent.match(/#(\d+)/) || bracketContent.match(/(?:Số đến|Số đi|STT)\s*[:#]?\s*(\d+)/i);
+    const stt = sttMatch ? parseInt(sttMatch[1], 10) : undefined;
+    let extra = bracketContent;
+    if (sttMatch) {
+      extra = extra.replace(/(?:Số đến|Số đi|STT)\s*[:#]?\s*\d+/gi, '');
+      extra = extra.replace(/#\d+/g, '');
+      extra = extra.replace(/Nơi ban hành\s*:\s*/gi, '');
+      extra = extra.replace(/Người ký\s*:\s*/gi, '');
+      extra = extra.replace(/^[\s-:;,]+|[\s-:;,]+$/g, '').trim();
+    }
+    return { raw, baseSoHieu, stt, extraInfo: extra };
+  }
+  return { raw, baseSoHieu: raw };
+};
+
+export const matchDocWithReplacement = (doc: SuggestedDoc, sh: string): boolean => {
+  const parsed = parseReplacementString(sh);
+  if (!doc.so_hieu) return false;
+  const docSoHieu = doc.so_hieu.trim().toLowerCase();
+  const baseSoHieu = parsed.baseSoHieu.trim().toLowerCase();
+  if (docSoHieu !== baseSoHieu) return false;
+
+  if (parsed.stt !== undefined && doc.so_thu_tu !== undefined) {
+    return doc.so_thu_tu === parsed.stt;
+  }
+  if (parsed.extraInfo && doc.noi_ban_hanh) {
+    return doc.noi_ban_hanh.toLowerCase().includes(parsed.extraInfo.toLowerCase());
+  }
+  return true;
+};
+
+export const formatDocReplacementString = (doc: SuggestedDoc, isDen: boolean): string => {
+  const soHieu = (doc.so_hieu || '').trim();
+  if (!doc.so_thu_tu) return soHieu;
+  if (isDen) {
+    return doc.noi_ban_hanh
+      ? `${soHieu} [Nơi ban hành: ${doc.noi_ban_hanh.trim()} - Số đến #${doc.so_thu_tu}]`
+      : `${soHieu} [Số đến #${doc.so_thu_tu}]`;
+  } else {
+    return doc.nguoi_ky
+      ? `${soHieu} [Người ký: ${doc.nguoi_ky.trim()} - Số đi #${doc.so_thu_tu}]`
+      : `${soHieu} [Số đi #${doc.so_thu_tu}]`;
+  }
+};
+
 function toLocalDateString(dateInput?: string | Date | null): string {
   if (!dateInput) return '';
   const d = new Date(dateInput);
@@ -250,7 +313,9 @@ function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | nu
     ten_loai_van_ban: (initDoc.ten_loai_van_ban || initDoc.loaiVanBan || 'Công văn') as string,
     nguoi_ky: (initDoc.nguoi_ky || initDoc.nguoiKy || '') as string,
     chuc_vu: (initDoc.chuc_vu || initDoc.chucVu || '') as string,
-    hieu_luc: ((initDoc.hieu_luc || initDoc.hieuLuc) as FormState['hieu_luc']) || 'CON_HIEU_LUC',
+    hieu_luc: ((initDoc.hieu_luc || initDoc.hieuLuc) === 'HET_VA_THAY_THE'
+      ? 'HET_HIEU_LUC'
+      : ((initDoc.hieu_luc || initDoc.hieuLuc) as FormState['hieu_luc'])) || 'CON_HIEU_LUC',
     ngay_het_hieu_luc: toLocalDateString((initDoc.ngay_het_hieu_luc || initDoc.ngayHetHieuLuc) as string),
     link_thay_the: (initDoc.link_thay_the || initDoc.linkThayThe || '') as string,
     ghi_chu: (initDoc.ghi_chu || initDoc.ghiChu || '') as string,
@@ -282,16 +347,18 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState('');
 
-  // Gợi ý và tìm kiếm văn bản thay thế (theo yêu cầu của Kiệt)
+  // Gợi ý và tìm kiếm văn bản thay thế (hỗ trợ chọn nhiều văn bản cùng hệ & cùng phạm vi)
   const [replacementSuggestions, setReplacementSuggestions] = useState<SuggestedDoc[]>([]);
   const [isSearchingReplacement, setIsSearchingReplacement] = useState(false);
   const [showReplacementDropdown, setShowReplacementDropdown] = useState(false);
-  const [selectedReplacementDoc, setSelectedReplacementDoc] = useState<SuggestedDoc | null>(null);
+  const [selectedReplacementDocs, setSelectedReplacementDocs] = useState<SuggestedDoc[]>([]);
+  const [replacementSearchText, setReplacementSearchText] = useState('');
   const [isReplacingOther, setIsReplacingOther] = useState(() => {
-    const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
-    return hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE';
+    return Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
   });
   const [autoUpdateReplaced, setAutoUpdateReplaced] = useState(true);
+  const [isReplacementListModalOpen, setIsReplacementListModalOpen] = useState(false);
+  const [replacementListPage, setReplacementListPage] = useState(1);
   const replacementDropdownRef = useRef<HTMLDivElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -319,10 +386,13 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       setIsDragging(false);
       setReplacementSuggestions([]);
       setShowReplacementDropdown(false);
-      setSelectedReplacementDoc(null);
+      setSelectedReplacementDocs([]);
+      setReplacementSearchText('');
       setAutoUpdateReplaced(true);
+      setIsReplacementListModalOpen(false);
+      setReplacementListPage(1);
       const hasReplacement = Boolean(initDoc?.link_thay_the || initDoc?.linkThayThe);
-      setIsReplacingOther(hasReplacement && initDoc?.hieu_luc !== 'HET_VA_THAY_THE');
+      setIsReplacingOther(hasReplacement);
       if (initDoc?.attachments && Array.isArray(initDoc.attachments)) {
         setExistingAttachments(initDoc.attachments as ExistingAttachment[]);
       } else {
@@ -398,14 +468,32 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     if (open) {
       const targetSoHieu = (initDoc?.link_thay_the || initDoc?.linkThayThe) as string | undefined;
       if (targetSoHieu) {
-        apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(`/api/documents/?q=${encodeURIComponent(targetSoHieu)}&page_size=3`)
-          .then(res => {
+        const targetLoai = form.loai || defaultLoai || (initDoc as { loai?: string })?.loai || 'DEN';
+        const targetPhamVi = form.loai === 'MAT' ? 'HAN_CHE' : (form.pham_vi || (initDoc as { pham_vi?: string })?.pham_vi || 'NOI_BO');
+        const codes = targetSoHieu.split(',').map(s => s.trim()).filter(Boolean);
+        if (codes.length > 0) {
+          Promise.all(
+            codes.map(code =>
+              apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(
+                `/api/documents/?loai=${encodeURIComponent(targetLoai)}&pham_vi=${encodeURIComponent(targetPhamVi)}&q=${encodeURIComponent(code)}&page_size=5`
+              ).then(res => {
+                const items = Array.isArray(res) ? res : res?.results || [];
+                return items.find(d => d.so_hieu && d.so_hieu.trim().toLowerCase() === code.toLowerCase()) || {
+                  id: Math.random(),
+                  so_hieu: code,
+                  trich_yeu: 'Văn bản thay thế trong hệ thống',
+                };
+              }).catch(() => ({
+                id: Math.random(),
+                so_hieu: code,
+                trich_yeu: 'Văn bản thay thế trong hệ thống',
+              }))
+            )
+          ).then(docs => {
             if (cancelled) return;
-            const items = Array.isArray(res) ? res : res?.results || [];
-            const found = items.find((document) => document.so_hieu === targetSoHieu);
-            if (found) setSelectedReplacementDoc(found);
-          })
-          .catch(() => undefined);
+            setSelectedReplacementDocs(docs);
+          });
+        }
       }
 
       const initialUnit = (initDoc?.don_vi_nhan as string) || '';
@@ -489,6 +577,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initDoc?.don_vi_nhan, initDoc?.linkThayThe, initDoc?.link_thay_the, initial?.id]);
 
   function handleUnitChange(unit: string) {
@@ -582,27 +671,103 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     };
   }, [open, initial?.id, form.loai, form.nam]);
 
+  const selectedSoHieus = useMemo(() => {
+    return (form.link_thay_the || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+  }, [form.link_thay_the]);
+
+  // Tự động tải trước siêu dữ liệu (Số đến/Số đi, Trích yếu, Nơi ban hành) cho các văn bản bị thay thế đã chọn
+  useEffect(() => {
+    let cancelled = false;
+    if (!open || selectedSoHieus.length === 0) return;
+
+    const missing = selectedSoHieus.filter(
+      sh => !selectedReplacementDocs.some(d => matchDocWithReplacement(d, sh))
+    );
+    if (missing.length === 0) return;
+
+    const targetLoai = form.loai || defaultLoai || 'DEN';
+    const targetPhamVi = form.loai === 'MAT' ? 'HAN_CHE' : (form.pham_vi || 'NOI_BO');
+
+    Promise.all(
+      missing.map(sh => {
+        const parsed = parseReplacementString(sh);
+        return apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(
+          `/api/documents/?loai=${encodeURIComponent(targetLoai)}&pham_vi=${encodeURIComponent(targetPhamVi)}&q=${encodeURIComponent(parsed.baseSoHieu)}&page_size=5`
+        ).catch(() => null);
+      })
+    ).then(results => {
+      if (cancelled) return;
+      const fetchedDocs: SuggestedDoc[] = [];
+      results.forEach(res => {
+        const items = Array.isArray(res) ? res : res?.results || [];
+        items.forEach(doc => {
+          if (doc && doc.so_hieu && selectedSoHieus.some(sh => matchDocWithReplacement(doc, sh))) {
+            if (!fetchedDocs.some(fd => fd.id === doc.id || (fd.so_hieu === doc.so_hieu && fd.so_thu_tu === doc.so_thu_tu))) {
+              fetchedDocs.push(doc);
+            }
+          }
+        });
+      });
+      if (fetchedDocs.length > 0) {
+        setSelectedReplacementDocs(prev => {
+          const map = new Map<string, SuggestedDoc>();
+          prev.forEach(d => {
+            const key = `${d.so_hieu?.trim().toLowerCase()}_#${d.so_thu_tu || ''}`;
+            map.set(key, d);
+          });
+          fetchedDocs.forEach(d => {
+            const key = `${d.so_hieu?.trim().toLowerCase()}_#${d.so_thu_tu || ''}`;
+            if (!map.has(key)) {
+              map.set(key, d);
+            }
+          });
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selectedSoHieus, form.loai, form.pham_vi]);
+
   const searchReplacementDocs = (query: string) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
 
-    const trimmed = query.trim();
+    const trimmed = (query || '').trim();
     setIsSearchingReplacement(true);
     setShowReplacementDropdown(true);
 
     searchTimeoutRef.current = setTimeout(async () => {
       try {
+        const targetLoai = form.loai || defaultLoai || 'DEN';
+        const targetPhamVi = form.loai === 'MAT' ? 'HAN_CHE' : (form.pham_vi || 'NOI_BO');
         const endpoint = trimmed
-          ? `/api/documents/?q=${encodeURIComponent(trimmed)}&page_size=8`
-          : `/api/documents/?page_size=6`;
+          ? `/api/documents/?loai=${encodeURIComponent(targetLoai)}&pham_vi=${encodeURIComponent(targetPhamVi)}&q=${encodeURIComponent(trimmed)}&page_size=10`
+          : `/api/documents/?loai=${encodeURIComponent(targetLoai)}&pham_vi=${encodeURIComponent(targetPhamVi)}&page_size=8`;
         const res = await apiClient.get<PaginatedResponse<SuggestedDoc> | SuggestedDoc[]>(endpoint);
         const items: SuggestedDoc[] = Array.isArray(res) ? res : res?.results || [];
         const currentSoHieu = (form.so_hieu || '').trim().toLowerCase();
         const filtered = items.filter(d => {
-          if (d.id === (initial?.id as number | undefined)) return false;
-          if (d.so_hieu && d.so_hieu.trim().toLowerCase() === currentSoHieu) return false;
-          // Chặn chọn văn bản đang trỏ ngược lại văn bản hiện tại
-          const otherLinks = (d.link_thay_the || '').toLowerCase().split(',').map(s => s.trim());
-          if (currentSoHieu && otherLinks.includes(currentSoHieu)) return false;
+          // 1. Chặn chọn chính bản ghi đang chỉnh sửa
+          if (initial?.id && d.id === initial.id) return false;
+          // 2. Chặn chọn văn bản đang trỏ ngược lại văn bản hiện tại (tránh vòng lặp)
+          if (initial?.id && currentSoHieu) {
+            const otherLinks = (d.link_thay_the || '').toLowerCase().split(',').map(s => s.trim());
+            const pointsToCurrent = otherLinks.some(link => {
+              const p = parseReplacementString(link);
+              if (p.baseSoHieu.toLowerCase() !== currentSoHieu) return false;
+              if (initial.so_thu_tu !== undefined && p.stt !== undefined) {
+                return p.stt === initial.so_thu_tu;
+              }
+              return true;
+            });
+            if (pointsToCurrent) return false;
+          }
           return true;
         });
         setReplacementSuggestions(filtered);
@@ -614,26 +779,69 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     }, 250);
   };
 
-  const handleReplacementInputChange = (val: string) => {
-    setForm(prev => ({ ...prev, link_thay_the: val }));
-    if (selectedReplacementDoc && selectedReplacementDoc.so_hieu !== val.trim()) {
-      setSelectedReplacementDoc(null);
-    }
+  const handleReplacementSearchChange = (val: string) => {
+    setReplacementSearchText(val);
     searchReplacementDocs(val);
   };
 
-  const handleSelectReplacementDoc = (doc: SuggestedDoc) => {
-    setForm(prev => ({ ...prev, link_thay_the: doc.so_hieu }));
-    setSelectedReplacementDoc(doc);
-    setShowReplacementDropdown(false);
+  const handleToggleReplacementDoc = (doc: SuggestedDoc) => {
+    const docSoHieu = (doc.so_hieu || '').trim();
+    if (!docSoHieu) return;
+
+    const isDen = (form.loai || defaultLoai || 'DEN') === 'DEN';
+    const docStr = formatDocReplacementString(doc, isDen);
+    const isAlreadySelected = selectedSoHieus.some(s => matchDocWithReplacement(doc, s));
+    let nextList: string[];
+    let nextDocs: SuggestedDoc[];
+
+    if (isAlreadySelected) {
+      nextList = selectedSoHieus.filter(s => !matchDocWithReplacement(doc, s));
+      nextDocs = selectedReplacementDocs.filter(d => !matchDocWithReplacement(d, docStr) && d.id !== doc.id);
+    } else {
+      nextList = [...selectedSoHieus, docStr];
+      nextDocs = [...selectedReplacementDocs.filter(d => !matchDocWithReplacement(d, docStr) && d.id !== doc.id), doc];
+    }
+
+    setForm(prev => ({ ...prev, link_thay_the: nextList.join(', ') }));
+    setSelectedReplacementDocs(nextDocs);
+    // Tự động xóa trắng ô tìm kiếm để người dùng gõ tìm tiếp văn bản khác
+    setReplacementSearchText('');
+    searchReplacementDocs('');
+  };
+
+  const handleRemoveReplacementDoc = (soHieuToRemove: string) => {
+    const trimmedToRemove = soHieuToRemove.trim().toLowerCase();
+    const nextList = selectedSoHieus.filter(s => s.trim().toLowerCase() !== trimmedToRemove);
+    const nextDocs = selectedReplacementDocs.filter(d => !matchDocWithReplacement(d, soHieuToRemove));
+    setForm(prev => ({ ...prev, link_thay_the: nextList.join(', ') }));
+    setSelectedReplacementDocs(nextDocs);
+  };
+
+  const handleClearAllReplacementDocs = () => {
+    setForm(prev => ({ ...prev, link_thay_the: '' }));
+    setSelectedReplacementDocs([]);
+    setReplacementSearchText('');
+    searchReplacementDocs('');
+  };
+
+  const handleReplacementKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const trimmed = replacementSearchText.trim().replace(/^,|,$/g, '').trim();
+      if (trimmed) {
+        if (!selectedSoHieus.some(s => parseReplacementString(s).baseSoHieu.toLowerCase() === trimmed.toLowerCase())) {
+          const nextList = [...selectedSoHieus, trimmed];
+          setForm(prev => ({ ...prev, link_thay_the: nextList.join(', ') }));
+        }
+        setReplacementSearchText('');
+        searchReplacementDocs('');
+      }
+    }
   };
 
   const handleReplacementInputFocus = () => {
-    if (replacementSuggestions.length > 0) {
-      setShowReplacementDropdown(true);
-    } else {
-      searchReplacementDocs(form.link_thay_the);
-    }
+    setShowReplacementDropdown(true);
+    searchReplacementDocs(replacementSearchText);
   };
 
   function pushFiles(list: File[]) {
@@ -724,40 +932,65 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       setAlertOpen(true);
       return;
     }
-    if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther)) {
-      if (!form.link_thay_the?.trim()) {
-        setAlertMsg('Vui lòng nhập hoặc chọn Số hiệu văn bản thay thế (*)');
+    if (isReplacingOther) {
+      let rawLink = (form.link_thay_the || '').trim();
+      if (replacementSearchText.trim()) {
+        const extra = replacementSearchText.trim().replace(/^,|,$/g, '').trim();
+        const curTargets = rawLink.split(',').map(s => s.trim()).filter(Boolean);
+        if (extra && !curTargets.some(t => t.toLowerCase() === extra.toLowerCase())) {
+          curTargets.push(extra);
+          rawLink = curTargets.join(', ');
+          setForm(prev => ({ ...prev, link_thay_the: rawLink }));
+        }
+      }
+      if (!rawLink) {
+        setAlertMsg('Vui lòng chọn hoặc nhập ít nhất một Số hiệu văn bản thay thế (*)');
         setAlertOpen(true);
         return;
       }
-      const targetSoHieu = form.link_thay_the.trim().toLowerCase();
+      const targets = rawLink.split(',').map(s => s.trim()).filter(Boolean);
+      if (targets.length === 0) {
+        setAlertMsg('Vui lòng chọn hoặc nhập ít nhất một Số hiệu văn bản thay thế (*)');
+        setAlertOpen(true);
+        return;
+      }
       const currentSoHieu = (form.so_hieu || '').trim().toLowerCase();
-      if (currentSoHieu && targetSoHieu === currentSoHieu) {
+      if (currentSoHieu && targets.some(t => parseReplacementString(t).baseSoHieu.toLowerCase() === currentSoHieu)) {
         setAlertMsg('Văn bản không thể tự thiết lập thay thế chính nó (*)');
         setAlertOpen(true);
         return;
       }
 
-      // Khóa nghiệp vụ: Bắt buộc văn bản thay thế phải tồn tại trong hệ thống
-      const matchedSuggestion = replacementSuggestions.find(
-        d => d.so_hieu && d.so_hieu.trim().toLowerCase() === targetSoHieu
-      );
-      if (!selectedReplacementDoc && !matchedSuggestion) {
-        try {
-          const checkRes = await apiClient.get<{ results?: SuggestedDoc[] } | SuggestedDoc[]>(
-            `/api/documents/?q=${encodeURIComponent(form.link_thay_the.trim())}&page_size=10`
-          );
-          const items: SuggestedDoc[] = Array.isArray(checkRes) ? checkRes : checkRes?.results || [];
-          const exists = items.some(
-            d => d.so_hieu && d.so_hieu.trim().toLowerCase() === targetSoHieu
-          );
-          if (!exists) {
-            setAlertMsg(`Văn bản mục tiêu "${form.link_thay_the.trim()}" không tồn tại trong hệ thống. Vui lòng chọn văn bản từ danh sách gợi ý (*).`);
-            setAlertOpen(true);
-            return;
+      // Khóa nghiệp vụ: Bắt buộc văn bản thay thế phải tồn tại trong đúng phân hệ và phạm vi
+      const targetLoai = form.loai || defaultLoai || 'DEN';
+      const targetPhamVi = form.loai === 'MAT' ? 'HAN_CHE' : (form.pham_vi || 'NOI_BO');
+      for (const target of targets) {
+        const parsed = parseReplacementString(target);
+        const inSelected = selectedReplacementDocs.some(
+          d => matchDocWithReplacement(d, target)
+        );
+        const inSuggestions = replacementSuggestions.some(
+          d => matchDocWithReplacement(d, target)
+        );
+        if (!inSelected && !inSuggestions) {
+          try {
+            const checkRes = await apiClient.get<{ results?: SuggestedDoc[] } | SuggestedDoc[]>(
+              `/api/documents/?loai=${encodeURIComponent(targetLoai)}&pham_vi=${encodeURIComponent(targetPhamVi)}&q=${encodeURIComponent(parsed.baseSoHieu)}&page_size=5`
+            );
+            const items: SuggestedDoc[] = Array.isArray(checkRes) ? checkRes : checkRes?.results || [];
+            const exists = items.some(
+              d => matchDocWithReplacement(d, target)
+            );
+            if (!exists) {
+              const loaiLabel = targetLoai === 'DI' ? 'Văn bản Đi' : targetLoai === 'MAT' ? 'Văn bản Mật' : 'Văn bản Đến';
+              const scopeLabel = targetPhamVi === 'HAN_CHE' ? 'Hạn chế' : 'Nội bộ';
+              setAlertMsg(`Văn bản mục tiêu "${parsed.baseSoHieu}" không tồn tại trong hệ thống (${loaiLabel} - ${scopeLabel}). Vui lòng chọn văn bản từ danh sách gợi ý (*).`);
+              setAlertOpen(true);
+              return;
+            }
+          } catch {
+            // Bỏ qua lỗi mạng cục bộ để backend serializer thực thi chốt chặn cuối cùng
           }
-        } catch {
-          // Bỏ qua lỗi mạng cục bộ để backend serializer thực thi chốt chặn cuối cùng
         }
       }
     }
@@ -820,7 +1053,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       if (form.ghi_chu?.trim()) {
         payload.append('ghi_chu', form.ghi_chu.trim());
       }
-      if ((form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && form.link_thay_the?.trim()) {
+      if (isReplacingOther && form.link_thay_the?.trim()) {
         payload.append('link_thay_the', form.link_thay_the.trim());
         payload.append('auto_update_replaced_doc', autoUpdateReplaced ? 'true' : 'false');
       } else {
@@ -1147,11 +1380,15 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                   <select
                     value={form.pham_vi}
                     disabled={Boolean(initial?.id) && !isAdmin}
-                    onChange={e => setForm({
-                      ...form,
-                      pham_vi: e.target.value as 'NOI_BO' | 'HAN_CHE',
-                      gui_mail_toan_he_thong: e.target.value === 'HAN_CHE' ? false : form.gui_mail_toan_he_thong,
-                    })}
+                    onChange={e => {
+                      const newScope = e.target.value as 'NOI_BO' | 'HAN_CHE';
+                      setForm(prev => ({
+                        ...prev,
+                        pham_vi: newScope,
+                        gui_mail_toan_he_thong: newScope === 'HAN_CHE' ? false : prev.gui_mail_toan_he_thong,
+                      }));
+                      setReplacementSuggestions([]);
+                    }}
                     className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-60 disabled:cursor-not-allowed"
                     title={
                       Boolean(initial?.id) && !isAdmin
@@ -1436,12 +1673,6 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                       Hết giá trị
                     </span>
                   )}
-                  {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      Đã bị thay thế
-                    </span>
-                  )}
                 </div>
 
                 <div className="relative">
@@ -1458,22 +1689,18 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500" />
                       </span>
                     )}
-                    {form.hieu_luc === 'HET_HIEU_LUC' && (
+                    {(form.hieu_luc === 'HET_HIEU_LUC' || form.hieu_luc === 'HET_VA_THAY_THE') && (
                       <span className="inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
-                    )}
-                    {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                      <span className="inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
                     )}
                   </div>
 
                   <select
-                    value={form.hieu_luc}
+                    value={form.hieu_luc === 'HET_VA_THAY_THE' ? 'HET_HIEU_LUC' : form.hieu_luc}
                     onChange={e => {
                       const newHieuLuc = e.target.value as FormState['hieu_luc'];
                       setForm({ ...form, hieu_luc: newHieuLuc });
-                      if (newHieuLuc !== 'HET_VA_THAY_THE' && !isReplacingOther) {
+                      if (newHieuLuc === 'CON_HIEU_LUC' && !isReplacingOther) {
                         setForm(prev => ({ ...prev, link_thay_the: '' }));
-                        setSelectedReplacementDoc(null);
                         setShowReplacementDropdown(false);
                       }
                     }}
@@ -1482,16 +1709,9 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-xs'
                         : form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
                         ? 'bg-purple-500/10 border-purple-500/40 text-purple-700 dark:text-purple-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-xs'
-                        : form.hieu_luc === 'HET_HIEU_LUC'
-                        ? 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-400 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 shadow-xs'
-                        : 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 shadow-xs'
+                        : 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-400 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 shadow-xs'
                     }`}
                   >
-                    {form.hieu_luc === 'HET_VA_THAY_THE' && (
-                      <option value="HET_VA_THAY_THE" disabled className="bg-surface text-main font-normal">
-                        Đã bị thay thế (Hệ thống tự động)
-                      </option>
-                    )}
                     <option value="CON_HIEU_LUC" className="bg-surface text-emerald-600 font-semibold">
                       Còn hiệu lực
                     </option>
@@ -1529,7 +1749,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         setIsReplacingOther(e.target.checked);
                         if (!e.target.checked) {
                           setForm(prev => ({ ...prev, link_thay_the: '' }));
-                          setSelectedReplacementDoc(null);
+                          setSelectedReplacementDocs([]);
                           setShowReplacementDropdown(false);
                         }
                       }}
@@ -1543,36 +1763,132 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                 </div>
               )}
 
-              {/* Link văn bản thay thế (Hiển thị linh hoạt kèm bộ gợi ý tìm kiếm văn bản tương ứng) */}
-              {(form.hieu_luc === 'HET_VA_THAY_THE' || isReplacingOther) && (
+              {/* Link văn bản thay thế (Hỗ trợ 1-nhiều văn bản, phân hệ & phạm vi riêng biệt) */}
+              {(isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN' || Boolean(form.link_thay_the)) && (
                 <div className="col-span-12 animate-in fade-in duration-150" ref={replacementDropdownRef}>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
                     <label className="block text-xs font-semibold text-warning-text m-0">
                       <i className="fa-solid fa-link mr-1.5" />
                       {isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
                         ? 'Văn bản bị thay thế (Số hiệu hoặc liên kết) *'
                         : 'Văn bản mới thay thế (Số hiệu hoặc liên kết) *'}
                     </label>
-                    <span className="text-xs text-muted">
-                      {isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
-                        ? 'Gõ số hiệu văn bản cũ để tìm nhanh'
-                        : 'Gõ số hiệu hoặc từ khóa để gợi ý'}
-                    </span>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="px-2 py-0.5 rounded-md bg-warning/15 text-warning-text font-medium text-[11px]">
+                        {form.loai === 'DI' ? 'Hệ VB Đi' : form.loai === 'MAT' ? 'Hệ VB Mật' : 'Hệ VB Đến'} • {form.pham_vi === 'HAN_CHE' ? 'Phạm vi Hạn chế' : 'Phạm vi Nội bộ'}
+                      </span>
+                      <span className="text-muted hidden sm:inline text-[11px]">
+                        (Chọn một hoặc nhiều văn bản)
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="relative">
+                  {/* Danh sách các văn bản đã chọn dạng Chip Tags (Giải pháp 2: 1 văn bản chính + Hộp thoại xem danh sách) */}
+                  {selectedSoHieus.length > 0 && (
+                    <div className="mb-2 p-2.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl transition-all duration-200">
+                      <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-emerald-500/20 text-xs">
+                        <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                          <i className="fa-solid fa-layer-group text-emerald-600" />
+                          <span>Đã chọn ({selectedSoHieus.length}):</span>
+                        </span>
+                        {selectedSoHieus.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={handleClearAllReplacementDocs}
+                            className="text-[11px] text-muted hover:text-danger hover:underline pl-1 cursor-pointer"
+                            title="Xóa tất cả các văn bản đã chọn"
+                          >
+                            Xóa tất cả
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5 p-0.5">
+                        {/* 1. Luôn hiển thị văn bản đầu tiên */}
+                        {(() => {
+                          const firstSh = selectedSoHieus[0];
+                          const parsedFirst = parseReplacementString(firstSh);
+                          const matchedDoc = selectedReplacementDocs.find(
+                            d => matchDocWithReplacement(d, firstSh)
+                          );
+                          const displayStt = matchedDoc?.so_thu_tu ?? matchedDoc?.so_den ?? parsedFirst.stt;
+                          const displayExtra = matchedDoc?.noi_ban_hanh || parsedFirst.extraInfo;
+                          const isDen = (form.loai || defaultLoai || 'DEN') === 'DEN';
+                          return (
+                            <span
+                              key={firstSh}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs font-medium shadow-xs animate-in fade-in max-w-full"
+                            >
+                              <i className="fa-solid fa-file-circle-check text-emerald-600 text-[11px] shrink-0" />
+                              <strong className="font-mono text-emerald-800 dark:text-emerald-200 shrink-0">{parsedFirst.baseSoHieu}</strong>
+                              {displayStt && (
+                                <span
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-bold font-mono"
+                                  title={`${isDen ? 'Số đến' : 'Số đi'}: #${displayStt}`}
+                                >
+                                  #{displayStt}
+                                </span>
+                              )}
+                              {displayExtra && (
+                                <span className="max-w-[150px] sm:max-w-[200px] truncate text-muted text-[11px]" title={displayExtra}>
+                                  ({displayExtra})
+                                </span>
+                              )}
+                              {matchedDoc?.trich_yeu && (
+                                <span className="max-w-[180px] sm:max-w-[240px] truncate text-muted/80 text-[11px]" title={matchedDoc.trich_yeu}>
+                                  - {matchedDoc.trich_yeu}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveReplacementDoc(firstSh)}
+                                className="text-muted hover:text-danger hover:bg-danger/10 rounded-full w-4 h-4 flex items-center justify-center transition-colors ml-0.5 cursor-pointer shrink-0"
+                                title={`Bỏ chọn ${parsedFirst.baseSoHieu}`}
+                              >
+                                <i className="fa-solid fa-xmark text-[10px]" />
+                              </button>
+                            </span>
+                          );
+                        })()}
+
+                        {/* 2. Nếu có nhiều hơn 1 văn bản: Nút mở Hộp thoại danh sách chi tiết (Giải pháp 2) */}
+                        {selectedSoHieus.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplacementListPage(1);
+                              setIsReplacementListModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 transition-all cursor-pointer shadow-2xs hover:-translate-y-[0.5px]"
+                            title="Bấm để mở hộp thoại xem và quản lý danh sách các văn bản đã chọn"
+                          >
+                            <i className="fa-solid fa-layer-group text-[11px]" />
+                            <span>+{selectedSoHieus.length - 1} văn bản khác</span>
+                            <i className="fa-solid fa-arrow-up-right-from-square text-[9px] text-emerald-700/70" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thanh tìm kiếm & chọn văn bản dạng Multi-Select Tag Input */}
+                  <div className="relative" ref={replacementDropdownRef}>
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none">
                       <i className="fa-solid fa-magnifying-glass" />
                     </div>
 
                     <input
                       type="text"
-                      value={form.link_thay_the}
-                      onChange={e => handleReplacementInputChange(e.target.value)}
+                      value={replacementSearchText}
+                      onChange={e => handleReplacementSearchChange(e.target.value)}
+                      onKeyDown={handleReplacementKeyDown}
                       onFocus={handleReplacementInputFocus}
-                      placeholder="Nhập số hiệu văn bản (VD: 88/QD-SNN), trích yếu hoặc liên kết..."
+                      placeholder={
+                        selectedSoHieus.length > 0
+                          ? "Gõ số hiệu hoặc trích yếu để chọn thêm văn bản khác..."
+                          : "Nhập số hiệu văn bản (VD: 88/QĐ-SNN), trích yếu để tìm kiếm..."
+                      }
                       className="w-full text-sm bg-surface border border-warning-border rounded-xl pl-9 pr-9 py-2 text-main placeholder:text-muted focus:outline-none focus:border-warning focus:ring-1 focus:ring-warning transition-fast"
-                      required
                       autoComplete="off"
                     />
 
@@ -1580,116 +1896,136 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                       {isSearchingReplacement && (
                         <i className="fa-solid fa-circle-notch fa-spin text-warning-text text-xs" />
                       )}
-                      {form.link_thay_the && !isSearchingReplacement && (
+                      {replacementSearchText && !isSearchingReplacement && (
                         <button
                           type="button"
-                          onClick={() => handleReplacementInputChange('')}
+                          onClick={() => {
+                            setReplacementSearchText('');
+                            searchReplacementDocs('');
+                          }}
                           className="text-muted hover:text-danger p-0.5 rounded transition-colors"
-                          title="Xóa nội dung"
+                          title="Xóa nội dung tìm kiếm"
                         >
                           <i className="fa-solid fa-xmark text-xs" />
                         </button>
                       )}
                     </div>
 
-                    {/* Dropdown danh sách văn bản gợi ý */}
+                    {/* Danh sách văn bản gợi ý dạng Panel mở rộng liền mạch (Inline Accordion) */}
                     {showReplacementDropdown && (
-                      <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-surface border border-border-subtle rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
-                        <div className="px-3 py-2 bg-canvas/80 border-b border-border-subtle/80 flex items-center justify-between text-xs font-semibold text-secondary sticky top-0 backdrop-blur-sm z-10">
+                      <div className="relative mt-2 bg-surface border border-border-subtle rounded-xl shadow-md overflow-hidden max-h-64 overflow-y-auto animate-in fade-in duration-150">
+                        <div className="px-3 py-2 bg-canvas/90 border-b border-border-subtle/80 flex items-center justify-between text-xs font-semibold text-secondary sticky top-0 backdrop-blur-sm z-10">
                           <span className="flex items-center gap-1.5">
                             <i className="fa-solid fa-list-check text-primary" />
-                            {form.link_thay_the.trim() ? (
+                            {replacementSearchText.trim() ? (
                               <>Kết quả tìm kiếm ({replacementSuggestions.length})</>
                             ) : (
-                              <>Văn bản trong hệ thống ({replacementSuggestions.length})</>
+                              <>Văn bản phù hợp trong hệ thống ({replacementSuggestions.length})</>
                             )}
                           </span>
-                          <span className="text-xs text-muted">Nhấp vào để chọn</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-muted hidden sm:inline">
+                              Hệ: <strong>{form.loai === 'DI' ? 'VB Đi' : 'VB Đến'}</strong> • Phạm vi: <strong>{form.pham_vi === 'HAN_CHE' ? 'Hạn chế' : 'Nội bộ'}</strong>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowReplacementDropdown(false);
+                              }}
+                              className="px-2 py-0.5 rounded text-[11px] text-muted hover:text-main hover:bg-canvas transition-colors border border-border-subtle flex items-center gap-1"
+                              title="Đóng danh sách gợi ý"
+                            >
+                              <i className="fa-solid fa-xmark text-[10px]" />
+                              <span>Đóng</span>
+                            </button>
+                          </div>
                         </div>
 
                         {replacementSuggestions.length > 0 ? (
                           <div className="divide-y divide-border-subtle/40">
-                            {replacementSuggestions.map(doc => (
-                              <div
-                                key={doc.id}
-                                onClick={() => handleSelectReplacementDoc(doc)}
-                                className="p-3 hover:bg-primary/5 cursor-pointer transition-colors group text-left"
-                              >
-                                <div className="flex items-center justify-between gap-2 mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-semibold text-xs text-primary font-mono group-hover:underline">
-                                      {doc.so_hieu}
-                                    </span>
-                                    {doc.loai_display && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-muted/20 text-secondary font-medium">
-                                        {doc.loai_display}
-                                      </span>
+                            {replacementSuggestions.map(doc => {
+                              const isSelected = selectedSoHieus.some(
+                                s => matchDocWithReplacement(doc, s)
+                              );
+                              return (
+                                <div
+                                  key={doc.id}
+                                  onClick={() => handleToggleReplacementDoc(doc)}
+                                  className={`p-3 cursor-pointer transition-colors group text-left flex items-start gap-2.5 ${
+                                    isSelected ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-primary/5'
+                                  }`}
+                                >
+                                  <div className="mt-0.5 shrink-0">
+                                    <div
+                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] transition-colors ${
+                                        isSelected
+                                          ? 'bg-emerald-600 text-white font-bold'
+                                          : 'border border-border-subtle group-hover:border-primary text-transparent'
+                                      }`}
+                                    >
+                                      <i className="fa-solid fa-check" />
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`font-semibold text-xs font-mono group-hover:underline ${isSelected ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-primary'}`}>
+                                          {doc.so_hieu}
+                                        </span>
+                                        {doc.so_thu_tu && (
+                                          <span
+                                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-bold font-mono"
+                                            title={`${form.loai === 'DI' ? 'Số đi' : 'Số đến'}: #${doc.so_thu_tu}`}
+                                          >
+                                            #{doc.so_thu_tu}
+                                          </span>
+                                        )}
+                                        {doc.loai_display && (
+                                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/20 text-secondary font-medium">
+                                            {doc.loai_display}
+                                          </span>
+                                        )}
+                                        {isSelected && (
+                                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold">
+                                            ✓ Đã chọn
+                                          </span>
+                                        )}
+                                      </div>
+                                      {(doc.ngay_ban_hanh || doc.ngay_den) && (
+                                        <span className="text-[11px] text-muted font-mono">
+                                          {new Date(doc.ngay_ban_hanh || doc.ngay_den!).toLocaleDateString('vi-VN')}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-main line-clamp-2 m-0 group-hover:text-primary transition-colors leading-relaxed">
+                                      {doc.trich_yeu}
+                                    </p>
+                                    {doc.noi_ban_hanh && (
+                                      <div className="text-[11px] text-muted mt-1 flex items-center gap-1.5">
+                                        <i className="fa-solid fa-building text-[10px]" />
+                                        <span className="truncate">{doc.noi_ban_hanh}</span>
+                                      </div>
                                     )}
                                   </div>
-                                  {(doc.ngay_ban_hanh || doc.ngay_den) && (
-                                    <span className="text-xs text-muted font-mono">
-                                      {new Date(doc.ngay_ban_hanh || doc.ngay_den!).toLocaleDateString('vi-VN')}
-                                    </span>
-                                  )}
                                 </div>
-                                <p className="text-xs text-main line-clamp-2 m-0 group-hover:text-primary transition-colors leading-relaxed">
-                                  {doc.trich_yeu}
-                                </p>
-                                {doc.noi_ban_hanh && (
-                                  <div className="text-xs text-muted mt-1 flex items-center gap-1.5">
-                                    <i className="fa-solid fa-building text-xs" />
-                                    <span className="truncate">{doc.noi_ban_hanh}</span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : !isSearchingReplacement ? (
-                          <div className="p-4 text-center text-xs text-muted">
-                            <i className="fa-solid fa-circle-info text-muted mr-1.5" />
-                            Không tìm thấy văn bản phù hợp trong hệ thống. Vui lòng chọn số hiệu văn bản có sẵn trong danh mục.
+                          <div className="p-4 text-center text-xs text-muted space-y-1">
+                            <i className="fa-solid fa-circle-info text-muted text-sm block" />
+                            <div>
+                              Không tìm thấy văn bản phù hợp trong hệ thống ({form.loai === 'DI' ? 'Văn bản Đi' : 'Văn bản Đến'} - {form.pham_vi === 'HAN_CHE' ? 'Hạn chế' : 'Nội bộ'}). Vui lòng chọn số hiệu văn bản có sẵn trong danh mục.
+                            </div>
+                            <div className="text-[11px] text-muted/70">
+                              Chỉ được phép liên kết thay thế văn bản cùng phân hệ và cùng phạm vi lưu hành.
+                            </div>
                           </div>
                         ) : null}
                       </div>
                     )}
                   </div>
-
-                  {/* Thẻ hiển thị văn bản đã liên kết thành công */}
-                  {selectedReplacementDoc && (
-                    <div className="mt-2.5 p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-start justify-between gap-2.5 animate-in fade-in duration-150">
-                      <div className="flex items-start gap-2.5 min-w-0">
-                        <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center text-xs shrink-0 mt-0.5">
-                          <i className="fa-solid fa-file-circle-check" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-emerald-700 font-mono">
-                              {selectedReplacementDoc.so_hieu}
-                            </span>
-                            {selectedReplacementDoc.noi_ban_hanh && (
-                              <span className="text-xs text-secondary truncate">
-                                • {selectedReplacementDoc.noi_ban_hanh}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-secondary line-clamp-1 m-0 mt-0.5">
-                            {selectedReplacementDoc.trich_yeu}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedReplacementDoc(null);
-                          setForm(prev => ({ ...prev, link_thay_the: '' }));
-                        }}
-                        className="text-xs text-secondary hover:text-danger p-1 rounded transition-colors shrink-0"
-                        title="Hủy liên kết"
-                      >
-                        <i className="fa-solid fa-xmark" />
-                      </button>
-                    </div>
-                  )}
 
                   {/* Phương án 2: Checkbox xác nhận tự động cập nhật văn bản liên quan */}
                   <div className="mt-2.5 p-2.5 bg-surface border border-border-subtle rounded-xl flex items-center justify-between gap-2 select-none">
@@ -1702,9 +2038,9 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                       />
                       <span>
                         {isReplacingOther || form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN' ? (
-                          <>Tự động cập nhật văn bản cũ sang trạng thái <strong className="text-warning-text">Đã thay thế</strong></>
+                          <>Tự động cập nhật {selectedSoHieus.length > 1 ? `tất cả ${selectedSoHieus.length} văn bản cũ` : 'văn bản cũ'} sang trạng thái <strong className="text-purple-600 dark:text-purple-400">Còn hiệu lực 1 phần</strong></>
                         ) : (
-                          <>Tự động đồng bộ liên kết 2 chiều giữa hai văn bản</>
+                          <>Tự động đồng bộ liên kết 2 chiều giữa các văn bản</>
                         )}
                       </span>
                     </label>
@@ -2166,6 +2502,198 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
         onClose={() => setAlertOpen(false)}
         message={alertMsg}
       />
+
+      {/* Hộp thoại xem và quản lý danh sách văn bản thay thế đã chọn (Giải pháp 2) */}
+      {isReplacementListModalOpen && (
+        <div
+          className="fixed inset-0 z-[10050] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setIsReplacementListModalOpen(false)}
+        >
+          <div
+            className="bg-surface border border-border-subtle rounded-2xl shadow-2xl w-[600px] max-w-full flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle bg-canvas/60 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center text-sm font-bold">
+                  <i className="fa-solid fa-layer-group" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-main m-0">
+                    Danh Sách Văn Bản Bị Thay Thế Đã Chọn ({selectedSoHieus.length})
+                  </h4>
+                  <p className="text-[11px] text-muted m-0">
+                    {form.loai === 'DI' ? 'Hệ Văn bản Đi' : 'Hệ Văn bản Đến'} • {form.pham_vi === 'HAN_CHE' ? 'Phạm vi Hạn chế' : 'Phạm vi Nội bộ'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReplacementListModalOpen(false)}
+                className="w-7 h-7 rounded-lg text-muted hover:text-main hover:bg-hover flex items-center justify-center transition-colors cursor-pointer"
+                title="Đóng cửa sổ"
+              >
+                <i className="fa-solid fa-xmark text-sm" />
+              </button>
+            </div>
+
+            {/* Body List with Pagination (5 items per page) */}
+            {(() => {
+              const REPLACEMENT_PAGE_SIZE = 5;
+              const totalReplacementPages = Math.max(1, Math.ceil(selectedSoHieus.length / REPLACEMENT_PAGE_SIZE));
+              const safeReplacementPage = Math.min(Math.max(1, replacementListPage), totalReplacementPages);
+              const replacementStartIdx = (safeReplacementPage - 1) * REPLACEMENT_PAGE_SIZE;
+              const paginatedReplacementSoHieus = selectedSoHieus.slice(
+                replacementStartIdx,
+                replacementStartIdx + REPLACEMENT_PAGE_SIZE
+              );
+
+              return (
+                <>
+                  <div className="flex-1 overflow-y-auto p-3 divide-y divide-border-subtle/40 custom-scrollbar">
+                    {selectedSoHieus.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-muted">
+                        <i className="fa-solid fa-inbox text-2xl text-muted/50 mb-2 block" />
+                        Chưa có văn bản nào được chọn
+                      </div>
+                    ) : (
+                      paginatedReplacementSoHieus.map((sh, pageRelativeIdx) => {
+                        const globalIdx = replacementStartIdx + pageRelativeIdx;
+                        const parsedSh = parseReplacementString(sh);
+                        const matchedDoc = selectedReplacementDocs.find(
+                          d => matchDocWithReplacement(d, sh)
+                        );
+                        const actualNumber = matchedDoc?.so_thu_tu ?? matchedDoc?.so_den ?? parsedSh.stt;
+                        const badgeLabel = actualNumber ? `#${actualNumber}` : `#${globalIdx + 1}`;
+                        const badgeTooltip = actualNumber
+                          ? (form.loai === 'DI' ? `Số đi: #${actualNumber}` : `Số đến: #${actualNumber}`)
+                          : (form.loai === 'DI' ? 'Số đi trong sổ' : 'Số đến trong sổ');
+                        const displayExtra = matchedDoc?.noi_ban_hanh || parsedSh.extraInfo;
+
+                        return (
+                          <div
+                            key={sh}
+                            className="py-2.5 px-2 hover:bg-surface-elevated rounded-xl flex items-start justify-between gap-3 transition-colors group"
+                          >
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <span
+                                className="mt-0.5 shrink-0 min-w-[28px] px-1.5 h-5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold flex items-center justify-center"
+                                title={badgeTooltip}
+                              >
+                                {badgeLabel}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-bold text-xs text-emerald-800 dark:text-emerald-300">
+                                    {parsedSh.baseSoHieu}
+                                  </span>
+                                </div>
+                                {matchedDoc?.trich_yeu && (
+                                  <p className="text-xs text-main leading-relaxed mt-1 m-0">
+                                    {matchedDoc.trich_yeu}
+                                  </p>
+                                )}
+                                {displayExtra && (
+                                  <div className="text-[11px] text-muted mt-1 flex items-center gap-1.5">
+                                    <i className="fa-solid fa-building text-[10px]" />
+                                    <span className="truncate">{displayExtra}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleRemoveReplacementDoc(sh);
+                                if (selectedSoHieus.length <= 1) {
+                                  setIsReplacementListModalOpen(false);
+                                } else {
+                                  const remainingCount = selectedSoHieus.length - 1;
+                                  const newTotal = Math.max(1, Math.ceil(remainingCount / REPLACEMENT_PAGE_SIZE));
+                                  if (safeReplacementPage > newTotal) {
+                                    setReplacementListPage(newTotal);
+                                  }
+                                }
+                              }}
+                              className="px-2 py-1 rounded-lg text-xs font-medium text-danger hover:bg-danger/10 border border-danger/20 hover:border-danger/40 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+                              title={`Xóa văn bản ${parsedSh.baseSoHieu}`}
+                            >
+                              <i className="fa-solid fa-trash-can text-[11px]" />
+                              <span>Xóa</span>
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-5 py-3 border-t border-border-subtle bg-canvas/60 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                    <span className="text-xs text-secondary">
+                      Tổng cộng: <strong className="text-main">{selectedSoHieus.length}</strong> văn bản
+                    </span>
+
+                    {/* Phân trang (5 văn bản / trang khi danh sách > 5) */}
+                    {totalReplacementPages > 1 && (
+                      <div className="flex items-center gap-1.5 text-xs text-secondary">
+                        <button
+                          type="button"
+                          disabled={safeReplacementPage <= 1}
+                          onClick={() => setReplacementListPage(p => Math.max(1, p - 1))}
+                          className="w-7 h-7 rounded-lg border border-border-subtle hover:bg-surface-elevated disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
+                          title="Trang trước"
+                          aria-label="Trang trước"
+                        >
+                          <i className="fa-solid fa-chevron-left text-[11px]" />
+                        </button>
+                        <span
+                          data-testid="replacement-pagination-page"
+                          className="font-medium px-2.5 py-1 rounded-md bg-surface border border-border-subtle/80 text-[11px]"
+                        >
+                          Trang <strong className="text-main">{safeReplacementPage}</strong> / {totalReplacementPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={safeReplacementPage >= totalReplacementPages}
+                          onClick={() => setReplacementListPage(p => Math.min(totalReplacementPages, p + 1))}
+                          className="w-7 h-7 rounded-lg border border-border-subtle hover:bg-surface-elevated disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer"
+                          title="Trang tiếp theo"
+                          aria-label="Trang tiếp theo"
+                        >
+                          <i className="fa-solid fa-chevron-right text-[11px]" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      {selectedSoHieus.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleClearAllReplacementDocs();
+                            setIsReplacementListModalOpen(false);
+                          }}
+                          className="px-3 py-1.5 rounded-xl text-xs font-semibold text-danger hover:bg-danger/10 border border-danger/30 transition-colors cursor-pointer"
+                        >
+                          Xóa tất cả
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsReplacementListModalOpen(false)}
+                        className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-surface-elevated hover:bg-surface-elevated/80 border border-border-subtle text-main transition-colors cursor-pointer"
+                      >
+                        Đóng
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

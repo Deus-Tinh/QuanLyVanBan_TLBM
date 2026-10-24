@@ -82,7 +82,7 @@ export const DocumentViewersModal: React.FC<DocumentViewersModalProps> = ({
     return () => {
       ignore = true;
     };
-  }, [isOpen, documentId, reloadKey]);
+  }, [isOpen, documentId, reloadKey, loai]);
 
   // Đóng bằng phím ESC
   useEffect(() => {
