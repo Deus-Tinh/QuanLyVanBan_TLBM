@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ResourceItem, HieuLucType } from '@app-types/resource';
+import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
+import { FilePreviewModal } from './FilePreviewModal';
 
 export interface ResourceDetailModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
   onDownloadFile,
 }) => {
   const { t } = useTranslation();
+  const [previewAttachment, setPreviewAttachment] = useState<ResourceAttachment | null>(null);
+
   // Lắng nghe phím ESC để đóng Modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -340,16 +343,22 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                     ? `/api/resources/attachments/${file.id}/view/`
                     : (file.path || item.file_dinh_kem);
 
+                  const handlePreview = () => {
+                    setPreviewAttachment({
+                      id: file.id,
+                      name: file.name,
+                      path: targetUrl,
+                      file_size: file.file_size,
+                      mime_type: file.mime_type,
+                    });
+                  };
+
                   return (
                     <div
                       key={idx}
-                      onClick={() => {
-                        if (targetUrl) {
-                          window.open(targetUrl, '_blank', 'noopener,noreferrer');
-                        }
-                      }}
+                      onClick={handlePreview}
                       className="p-3 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3 text-xs sm:text-sm hover:border-primary/50 hover:bg-primary-subtle/10 transition-all cursor-pointer group"
-                      title={t('resourceManagement.clickToOpenFileInNewTab')}
+                      title={t('resourceManagement.previewAttachment')}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <i className={`fa-solid ${getFileIcon(ext)} text-lg shrink-0 group-hover:scale-110 transition-transform`} />
@@ -364,19 +373,34 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDownloadFile?.(item, file.name, file.path);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-primary hover:border-primary/40 hover:bg-surface-elevated transition-colors cursor-pointer shrink-0"
-                        title={t('resourceManagement.download')}
-                        aria-label={`Tải về ${file.name}`}
-                      >
-                        <i className="fa-solid fa-download text-xs" />
-                        <span>{t('resourceManagement.download')}</span>
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePreview();
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-primary hover:border-primary/40 hover:bg-surface-elevated transition-colors cursor-pointer"
+                          title={t('resourceManagement.previewAttachment')}
+                          aria-label={t('resourceManagement.previewAttachment')}
+                        >
+                          <i className="fa-solid fa-eye text-xs" />
+                          <span className="hidden sm:inline">{t('resourceManagement.previewAttachment')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDownloadFile?.(item, file.name, file.path);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border-subtle text-secondary hover:text-primary hover:border-primary/40 hover:bg-surface-elevated transition-colors cursor-pointer"
+                          title={t('resourceManagement.download')}
+                          aria-label={`Tải về ${file.name}`}
+                        >
+                          <i className="fa-solid fa-download text-xs" />
+                          <span>{t('resourceManagement.download')}</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -445,6 +469,17 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal xem trước tệp đính kèm */}
+      {previewAttachment && (
+        <FilePreviewModal
+          isOpen={Boolean(previewAttachment)}
+          onClose={() => setPreviewAttachment(null)}
+          file={previewAttachment}
+          documentTitle={item.tieu_de}
+          onDownload={() => onDownloadFile?.(item, previewAttachment.name, previewAttachment.path)}
+        />
+      )}
     </div>,
     document.body
   );

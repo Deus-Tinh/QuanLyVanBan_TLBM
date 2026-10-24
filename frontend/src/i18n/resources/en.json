@@ -210,6 +210,7 @@
     "goToFolder": "Go to Folder",
     "unclassified": "Unclassified",
     "clickToOpenFileInNewTab": "Click to view file contents in a new tab",
+    "previewAttachment": "Preview attachment",
     "headquarters": "Headquarters",
     "systemUser": "System",
     "readOnlyAdminWarning": "Read-only mode: Only System Administrators (Admin) have permission to create, edit, or delete level 1 and level 2 categories.",

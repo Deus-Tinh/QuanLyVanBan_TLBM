@@ -4,6 +4,7 @@ import {
   ResourceItem,
   ResourceCategory,
   ResourceType,
+  ResourceAttachment,
   HieuLucType,
   HienThiType,
 } from '@app-types/resource';
@@ -11,6 +12,7 @@ import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
 import { authService } from '@lib/authService';
 import { ConfirmationModal } from './ConfirmationModal';
+import { FilePreviewModal } from './FilePreviewModal';
 
 export interface ResourceFormData {
   dm_tai_lieu: number | '';
@@ -177,6 +179,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isConfirmDiscardOpen, setIsConfirmDiscardOpen] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<ResourceAttachment | null>(null);
 
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -442,6 +445,31 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
         setDeletedAttachmentIds((dIds) => [...dIds, target.id!]);
       }
       return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  // Xem trước tệp hiện có
+  const handlePreviewExistingFile = (file: { id?: number; name: string; size?: number; path?: string }) => {
+    const targetUrl = file.id
+      ? `/api/resources/attachments/${file.id}/view/`
+      : (file.path || '');
+    setPreviewAttachment({
+      id: file.id,
+      name: file.name,
+      path: targetUrl,
+      file_size: file.size,
+    });
+  };
+
+  // Xem trước tệp mới tải lên
+  const handlePreviewSelectedFile = (file: File) => {
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewAttachment({
+      id: undefined,
+      name: file.name,
+      path: objectUrl,
+      file_size: file.size,
+      mime_type: file.type,
     });
   };
 
@@ -1123,11 +1151,23 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     return (
                       <div
                         key={`existing-${file.id || idx}`}
-                        className={`p-2.5 rounded-lg border ${display.bg} flex items-center justify-between gap-3 text-xs transition-colors`}
+                        className={`p-2.5 rounded-lg border ${display.bg} flex items-center justify-between gap-3 text-xs transition-colors hover:border-primary/40`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <i className={`${display.icon} ${display.color} text-sm shrink-0`} />
-                          <span className="truncate font-medium text-main" title={file.name}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handlePreviewExistingFile(file)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handlePreviewExistingFile(file);
+                            }
+                          }}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group/file text-left focus:outline-hidden"
+                          title={t('resourceManagement.previewAttachment')}
+                        >
+                          <i className={`${display.icon} ${display.color} text-sm shrink-0 group-hover/file:scale-110 transition-transform`} />
+                          <span className="truncate font-medium text-main group-hover/file:text-primary group-hover/file:underline transition-colors" title={file.name}>
                             {file.name}
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-muted shrink-0 font-medium">
@@ -1140,15 +1180,26 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                           )}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExistingFile(idx)}
-                          className="p-1 text-muted hover:text-danger rounded transition-colors"
-                          title={t('resourceManagement.deleteThisFile')}
-                          aria-label={t('resourceManagement.deleteThisFile')}
-                        >
-                          <i className="fa-solid fa-trash-can text-xs" />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handlePreviewExistingFile(file)}
+                            className="p-1 text-muted hover:text-primary rounded transition-colors cursor-pointer"
+                            title={t('resourceManagement.previewAttachment')}
+                            aria-label={t('resourceManagement.previewAttachment')}
+                          >
+                            <i className="fa-solid fa-eye text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExistingFile(idx)}
+                            className="p-1 text-muted hover:text-danger rounded transition-colors cursor-pointer"
+                            title={t('resourceManagement.deleteThisFile')}
+                            aria-label={t('resourceManagement.deleteThisFile')}
+                          >
+                            <i className="fa-solid fa-trash-can text-xs" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1159,11 +1210,23 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                     return (
                       <div
                         key={`selected-${file.name}-${idx}`}
-                        className={`p-2.5 rounded-lg border ${display.bg} flex items-center justify-between gap-3 text-xs transition-colors`}
+                        className={`p-2.5 rounded-lg border ${display.bg} flex items-center justify-between gap-3 text-xs transition-colors hover:border-primary/40`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <i className={`${display.icon} ${display.color} text-sm shrink-0`} />
-                          <span className="truncate font-medium text-main" title={file.name}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handlePreviewSelectedFile(file)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handlePreviewSelectedFile(file);
+                            }
+                          }}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group/file text-left focus:outline-hidden"
+                          title={t('resourceManagement.previewAttachment')}
+                        >
+                          <i className={`${display.icon} ${display.color} text-sm shrink-0 group-hover/file:scale-110 transition-transform`} />
+                          <span className="truncate font-medium text-main group-hover/file:text-primary group-hover/file:underline transition-colors" title={file.name}>
                             {file.name}
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold border border-primary/20 shrink-0">
@@ -1174,15 +1237,26 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                           </span>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSelectedFile(idx)}
-                          className="p-1 text-muted hover:text-danger rounded transition-colors"
-                          title={t('resourceManagement.deleteThisFile')}
-                          aria-label={t('resourceManagement.deleteThisFile')}
-                        >
-                          <i className="fa-solid fa-trash-can text-xs" />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handlePreviewSelectedFile(file)}
+                            className="p-1 text-muted hover:text-primary rounded transition-colors cursor-pointer"
+                            title={t('resourceManagement.previewAttachment')}
+                            aria-label={t('resourceManagement.previewAttachment')}
+                          >
+                            <i className="fa-solid fa-eye text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSelectedFile(idx)}
+                            className="p-1 text-muted hover:text-danger rounded transition-colors cursor-pointer"
+                            title={t('resourceManagement.deleteThisFile')}
+                            aria-label={t('resourceManagement.deleteThisFile')}
+                          >
+                            <i className="fa-solid fa-trash-can text-xs" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1260,6 +1334,21 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
           headerIcon="fa-triangle-exclamation"
           confirmIcon="fa-arrow-rotate-left"
         />
+
+        {/* Modal xem trước tệp đính kèm */}
+        {previewAttachment && (
+          <FilePreviewModal
+            isOpen={Boolean(previewAttachment)}
+            onClose={() => {
+              if (previewAttachment.path?.startsWith('blob:')) {
+                URL.revokeObjectURL(previewAttachment.path);
+              }
+              setPreviewAttachment(null);
+            }}
+            file={previewAttachment}
+            documentTitle={formData.tieu_de}
+          />
+        )}
       </div>
     </div>,
     document.body
