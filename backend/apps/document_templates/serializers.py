@@ -100,6 +100,8 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
     file_dinh_kem = serializers.FileField(required=False, allow_null=True)
     ngay_het_hieu_luc = serializers.DateField(required=False, allow_null=True)
     link_thay_the = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    effective_hieu_luc = serializers.CharField(read_only=True)
 
     class Meta:
         model = TaiLieuChiTiet
@@ -114,6 +116,8 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
             'ngay_dang',
             'noi_ban_hanh',
             'hieu_luc',
+            'effective_hieu_luc',
+            'is_expired',
             'ngay_het_hieu_luc',
             'link_thay_the',
             'ghi_chu',
@@ -126,7 +130,7 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'nguoi_tao', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'nguoi_tao', 'created_at', 'updated_at', 'is_expired', 'effective_hieu_luc']
 
     def to_internal_value(self, data):
         if hasattr(data, '_mutable') and not data._mutable:
@@ -160,8 +164,9 @@ class TaiLieuChiTietSerializer(serializers.ModelSerializer):
                 'link_thay_the': 'Vui lòng cung cấp link văn bản thay thế khi chọn trạng thái Hết hiệu lực và thay thế.'
             })
         if hieu_luc == 'CON_HIEU_LUC':
-            attrs['ngay_het_hieu_luc'] = None
             attrs['link_thay_the'] = ''
+            if 'ngay_het_hieu_luc' not in attrs:
+                attrs['ngay_het_hieu_luc'] = None
         elif hieu_luc in ('CON_HIEU_LUC_1_PHAN', 'HET_HIEU_LUC'):
             attrs['link_thay_the'] = ''
         return attrs

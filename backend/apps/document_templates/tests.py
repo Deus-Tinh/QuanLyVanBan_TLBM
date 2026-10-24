@@ -513,5 +513,54 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data['tieu_de'], 'Tiêu đề cập nhật qua JSON')
 
+    def test_dynamic_validity_and_filtering(self):
+        """Kiểm tra tính toán hiệu lực động theo thời gian thực và lọc theo hiệu lực"""
+        from datetime import timedelta
+        from django.utils import timezone
+        today = timezone.localdate()
+
+        # Tạo văn bản có ngày hết hạn trong tương lai (+10 ngày)
+        future_doc = TaiLieuChiTiet.objects.create(
+            dm_tai_lieu=self.cat1,
+            tieu_de='Văn bản hết hạn tương lai',
+            ngay_dang=today,
+            hieu_luc='HET_HIEU_LUC',
+            ngay_het_hieu_luc=today + timedelta(days=10),
+            hien_thi='TAT_CA',
+            nguoi_tao=self.user
+        )
+        self.assertFalse(future_doc.is_expired)
+        self.assertEqual(future_doc.effective_hieu_luc, 'CON_HIEU_LUC')
+
+        # Tạo văn bản có ngày hết hạn trong quá khứ (-5 ngày)
+        past_doc = TaiLieuChiTiet.objects.create(
+            dm_tai_lieu=self.cat1,
+            tieu_de='Văn bản hết hạn quá khứ',
+            ngay_dang=today - timedelta(days=30),
+            hieu_luc='CON_HIEU_LUC',
+            ngay_het_hieu_luc=today - timedelta(days=5),
+            hien_thi='TAT_CA',
+            nguoi_tao=self.user
+        )
+        self.assertTrue(past_doc.is_expired)
+        self.assertEqual(past_doc.effective_hieu_luc, 'HET_HIEU_LUC')
+
+        self.client.force_authenticate(user=self.user)
+
+        # Lọc theo hieu_luc=CON_HIEU_LUC phải chứa future_doc và không chứa past_doc
+        res_active = self.client.get('/api/resources/documents/?hieu_luc=CON_HIEU_LUC')
+        self.assertEqual(res_active.status_code, status.HTTP_200_OK)
+        active_ids = [d['id'] for d in res_active.data]
+        self.assertIn(future_doc.id, active_ids)
+        self.assertNotIn(past_doc.id, active_ids)
+
+        # Lọc theo hieu_luc=HET_HIEU_LUC phải chứa past_doc và không chứa future_doc
+        res_expired = self.client.get('/api/resources/documents/?hieu_luc=HET_HIEU_LUC')
+        self.assertEqual(res_expired.status_code, status.HTTP_200_OK)
+        expired_ids = [d['id'] for d in res_expired.data]
+        self.assertIn(past_doc.id, expired_ids)
+        self.assertNotIn(future_doc.id, expired_ids)
+
+
 
 

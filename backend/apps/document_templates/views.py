@@ -190,13 +190,16 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
                 obj.hieu_luc = 'CON_HIEU_LUC'
 
         if obj.hieu_luc == 'CON_HIEU_LUC':
-            obj.ngay_het_hieu_luc = None
             obj.link_thay_the = ''
+            if ngay_het_hieu_luc is not None:
+                obj.ngay_het_hieu_luc = ngay_het_hieu_luc if ngay_het_hieu_luc != '' else None
+            else:
+                obj.ngay_het_hieu_luc = None
         else:
             if link_thay_the is not None:
                 obj.link_thay_the = link_thay_the
             if ngay_het_hieu_luc is not None:
-                obj.ngay_het_hieu_luc = ngay_het_hieu_luc
+                obj.ngay_het_hieu_luc = ngay_het_hieu_luc if ngay_het_hieu_luc != '' else None
 
         try:
             obj.full_clean()
@@ -313,7 +316,8 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
                 if doc.nguoi_tao else ""
             )
 
-            is_expired = doc.hieu_luc in ['HET_HIEU_LUC', 'HET_VA_THAY_THE']
+            is_expired = doc.is_expired
+            effective_status = doc.effective_hieu_luc
 
             if is_en:
                 hieu_luc_map = {
@@ -322,14 +326,15 @@ class TaiLieuChiTietViewSet(viewsets.ModelViewSet):
                     'HET_HIEU_LUC': 'Expired',
                     'HET_VA_THAY_THE': 'Expired & Replaced',
                 }
-                hieu_luc_display = hieu_luc_map.get(doc.hieu_luc, doc.get_hieu_luc_display())
+                hieu_luc_display = hieu_luc_map.get(effective_status, effective_status)
                 hien_thi_map = {
                     'TAT_CA': 'Public / All',
                     'PHONG_BAN': 'Internal Department',
                 }
                 hien_thi_display = hien_thi_map.get(doc.hien_thi, doc.get_hien_thi_display())
             else:
-                hieu_luc_display = doc.get_hieu_luc_display()
+                hieu_luc_vn_map = dict(TaiLieuChiTiet.HIEU_LUC_CHOICES)
+                hieu_luc_display = hieu_luc_vn_map.get(effective_status, effective_status)
                 hien_thi_display = doc.get_hien_thi_display()
 
             row_data = [

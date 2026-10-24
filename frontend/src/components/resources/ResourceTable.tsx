@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ResourceItem, HieuLucType } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { useTranslation } from '@i18n/translate';
+import { computeEffectiveStatus } from '@lib/resourceValidity';
 
 export interface ResourceTableProps {
   items: ResourceItem[];
@@ -257,8 +258,41 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
   };
 
 
-  const renderStatusBadge = (hieuLuc: HieuLucType) => {
-    switch (hieuLuc) {
+  const renderStatusBadge = (itemOrStatus: ResourceItem | HieuLucType) => {
+    let effectiveStatus: HieuLucType;
+    let isScheduled = false;
+    let expDate: string | null = null;
+
+    if (typeof itemOrStatus === 'string') {
+      effectiveStatus = itemOrStatus;
+    } else {
+      const validity = computeEffectiveStatus(
+        itemOrStatus.hieu_luc,
+        itemOrStatus.ngay_het_hieu_luc,
+        itemOrStatus.link_thay_the
+      );
+      effectiveStatus = validity.status;
+      isScheduled = validity.isScheduled;
+      expDate = validity.expirationDate || null;
+    }
+
+    if (isScheduled && expDate) {
+      return (
+        <div className="inline-flex flex-col items-center gap-0.5">
+          <Badge variant="success" size="sm" withDot>
+            {t('resourceManagement.statusActive')}
+          </Badge>
+          <span
+            className="text-[10px] text-muted font-medium"
+            title={t('resourceManagement.scheduledExpiryNotice', { date: formatDate(expDate) })}
+          >
+            {t('resourceManagement.expiresOnDate', { date: formatDate(expDate) })}
+          </span>
+        </div>
+      );
+    }
+
+    switch (effectiveStatus) {
       case 'CON_HIEU_LUC':
         return (
           <Badge variant="success" size="sm" withDot>
@@ -286,7 +320,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
       default:
         return (
           <Badge variant="secondary" size="sm">
-            {hieuLuc}
+            {effectiveStatus}
           </Badge>
         );
     }
@@ -490,9 +524,13 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
             ) : (
               // Danh sách dòng tài liệu
               items.map((item) => {
-                // RÀNG BUỘC ĐẶC BIỆT: HẾT HIỆU LỰC / HẾT VÀ THAY THẾ LÀM MỜ TOÀN BỘ DÒNG
-                const isExpired =
-                  item.hieu_luc === 'HET_HIEU_LUC' || item.hieu_luc === 'HET_VA_THAY_THE';
+                // TÍNH TOÁN HIỆU LỰC THỰC TẾ THEO THỜI GIAN
+                const validity = computeEffectiveStatus(
+                  item.hieu_luc,
+                  item.ngay_het_hieu_luc,
+                  item.link_thay_the
+                );
+                const isExpired = validity.isExpired;
 
                 const rowClass = isExpired
                   ? 'bg-slate-100/70 dark:bg-slate-800/60 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800/80'
@@ -538,7 +576,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       </div>
 
                       {/* Dòng Link thay thế dưới tiêu đề nếu Hết và thay thế */}
-                      {item.hieu_luc === 'HET_VA_THAY_THE' && item.link_thay_the && (
+                      {(item.hieu_luc === 'HET_VA_THAY_THE' || validity.status === 'HET_VA_THAY_THE') && item.link_thay_the && (
                         <div className="mt-1 opacity-100">
                           <a
                             href={item.link_thay_the}
@@ -567,7 +605,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
 
                     {/* Cột 5: Hiệu lực (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
                     <td className="hidden sm:table-cell px-2 sm:px-3.5 py-3 sm:py-3.5 text-center align-middle whitespace-nowrap opacity-100">
-                      {renderStatusBadge(item.hieu_luc)}
+                      {renderStatusBadge(item)}
                     </td>
 
                     {/* Cột 6: Tệp đính kèm (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}

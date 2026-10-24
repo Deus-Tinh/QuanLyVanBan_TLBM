@@ -11,6 +11,7 @@ import {
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
 import { authService } from '@lib/authService';
+import { formatDate } from '@lib/dateUtils';
 import { ConfirmationModal } from './ConfirmationModal';
 import { FilePreviewModal } from './FilePreviewModal';
 
@@ -551,9 +552,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     data.append('hien_thi', formData.hien_thi);
     data.append('ghi_chu', formData.ghi_chu.trim());
 
-    const isStillActive = formData.hieu_luc === 'CON_HIEU_LUC';
     const isReplaced = formData.hieu_luc === 'HET_VA_THAY_THE';
-    const effectiveExpDate = isStillActive ? '' : (formData.ngay_het_hieu_luc || '');
+    const effectiveExpDate = formData.ngay_het_hieu_luc || '';
     const effectiveReplLink = isReplaced ? (formData.link_thay_the?.trim() || '') : '';
 
     data.append('ngay_het_hieu_luc', effectiveExpDate);
@@ -943,44 +943,187 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               </h3>
             </div>
 
-            {/* 4 lựa chọn Hiệu lực */}
-            <div>
-              <label className="text-xs font-semibold text-main block mb-2">
-                {t('resourceManagement.fieldStatus')} <span className="text-danger">*</span>
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { value: 'CON_HIEU_LUC', label: t('resourceManagement.statusActive'), color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30' },
-                  { value: 'CON_HIEU_LUC_1_PHAN', label: t('resourceManagement.statusPartial'), color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
-                  { value: 'HET_HIEU_LUC', label: t('resourceManagement.statusExpired'), color: 'text-rose-600 bg-rose-500/10 border-rose-500/30' },
-                  { value: 'HET_VA_THAY_THE', label: t('resourceManagement.statusReplaced'), color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
-                ].map((st) => {
-                  const isSelected = formData.hieu_luc === st.value;
-                  return (
-                    <button
-                      key={st.value}
-                      type="button"
-                      onClick={() => {
+            {/* Thuộc tính hiệu lực: Phân tách rõ ràng giữa Thêm mới và Chỉnh sửa */}
+            {!isEditMode ? (
+              <div className="space-y-3">
+                {/* Badge trạng thái mặc định Còn hiệu lực khi tạo mới */}
+                <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                        {t('resourceManagement.statusActiveDefaultBadge')}
+                      </p>
+                      <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
+                        {t('resourceManagement.statusActiveDefaultDesc')}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shrink-0">
+                    {t('resourceManagement.statusActive')}
+                  </span>
+                </div>
+
+                {/* Ô Ngày hết hiệu lực (Tùy chọn) khi tạo mới */}
+                <div>
+                  <label
+                    htmlFor="field-ngay_het_hieu_luc"
+                    className="text-xs font-semibold text-main block mb-1"
+                  >
+                    {t('resourceManagement.fieldExpirationDateOptional')}
+                  </label>
+                  <input
+                    id="field-ngay_het_hieu_luc"
+                    type="date"
+                    value={formData.ngay_het_hieu_luc}
+                    onChange={(e) => {
+                      setIsDirty(true);
+                      setFormData((prev) => ({
+                        ...prev,
+                        ngay_het_hieu_luc: e.target.value,
+                      }));
+                      if (errors.ngay_het_hieu_luc) {
+                        setErrors((prev) => ({ ...prev, ngay_het_hieu_luc: '' }));
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
+                  />
+                  <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                    {t('resourceManagement.autoExpireHint')}
+                  </p>
+                  {formData.ngay_het_hieu_luc && (
+                    <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] flex items-center gap-1.5">
+                      <i className="fa-solid fa-calendar-check text-blue-500 shrink-0" />
+                      <span>
+                        {t('resourceManagement.futureExpDateHint', {
+                          date: formatDate(formData.ngay_het_hieu_luc),
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Khi Chỉnh sửa (isEditMode) */
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-main block mb-1">
+                  {t('resourceManagement.fieldStatus')} <span className="text-danger">*</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { value: 'CON_HIEU_LUC', label: t('resourceManagement.statusActive'), color: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30' },
+                    { value: 'CON_HIEU_LUC_1_PHAN', label: t('resourceManagement.statusPartial'), color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
+                    { value: 'HET_HIEU_LUC', label: t('resourceManagement.statusExpired'), color: 'text-rose-600 bg-rose-500/10 border-rose-500/30' },
+                    { value: 'HET_VA_THAY_THE', label: t('resourceManagement.statusReplaced'), color: 'text-amber-600 bg-amber-500/10 border-amber-500/30' },
+                  ].map((st) => {
+                    const isSelected = formData.hieu_luc === st.value;
+                    return (
+                      <button
+                        key={st.value}
+                        type="button"
+                        onClick={() => {
+                          setIsDirty(true);
+                          setFormData((prev) => ({
+                            ...prev,
+                            hieu_luc: st.value as HieuLucType,
+                            link_thay_the: st.value === 'HET_VA_THAY_THE' ? prev.link_thay_the : '',
+                          }));
+                        }}
+                        className={`px-2.5 py-2 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? `${st.color} ring-2 ring-primary/40 font-bold shadow-2xs`
+                            : 'bg-surface border-border-subtle text-secondary hover:bg-surface-elevated'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Ngày hết hiệu lực khi chỉnh sửa */}
+                <div className="pt-2 border-t border-border-subtle/80 space-y-3">
+                  <div>
+                    <label
+                      htmlFor="field-ngay_het_hieu_luc"
+                      className="text-xs font-semibold text-main block mb-1"
+                    >
+                      {formData.hieu_luc === 'HET_VA_THAY_THE'
+                        ? t('resourceManagement.fieldExpirationDate')
+                        : t('resourceManagement.fieldExpirationDateOptional')}{' '}
+                      {formData.hieu_luc === 'HET_VA_THAY_THE' && (
+                        <span className="text-danger">*</span>
+                      )}
+                    </label>
+                    <input
+                      id="field-ngay_het_hieu_luc"
+                      type="date"
+                      value={formData.ngay_het_hieu_luc}
+                      onChange={(e) => {
                         setIsDirty(true);
                         setFormData((prev) => ({
                           ...prev,
-                          hieu_luc: st.value as HieuLucType,
-                          ngay_het_hieu_luc: st.value === 'CON_HIEU_LUC' ? '' : prev.ngay_het_hieu_luc,
-                          link_thay_the: st.value === 'HET_VA_THAY_THE' ? prev.link_thay_the : '',
+                          ngay_het_hieu_luc: e.target.value,
                         }));
+                        if (errors.ngay_het_hieu_luc) {
+                          setErrors((prev) => ({ ...prev, ngay_het_hieu_luc: '' }));
+                        }
                       }}
-                      className={`px-2.5 py-2 text-xs font-semibold rounded-lg border text-center transition-all cursor-pointer ${
-                        isSelected
-                          ? `${st.color} ring-2 ring-primary/40 font-bold shadow-2xs`
-                          : 'bg-surface border-border-subtle text-secondary hover:bg-surface-elevated'
-                      }`}
-                    >
-                      {st.label}
-                    </button>
-                  );
-                })}
+                      className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
+                    />
+                    {errors.ngay_het_hieu_luc && (
+                      <p className="text-danger text-xs mt-1 font-medium">
+                        {errors.ngay_het_hieu_luc}
+                      </p>
+                    )}
+                    {formData.ngay_het_hieu_luc && formData.ngay_het_hieu_luc > getTodayLocalDateString() && (
+                      <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] flex items-center gap-1.5">
+                        <i className="fa-solid fa-calendar-check text-blue-500 shrink-0" />
+                        <span>
+                          {t('resourceManagement.futureExpDateHint', {
+                            date: formatDate(formData.ngay_het_hieu_luc),
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Link thay thế (Chỉ bắt buộc khi Hết và thay thế) */}
+                  {formData.hieu_luc === 'HET_VA_THAY_THE' && (
+                    <div>
+                      <label
+                        htmlFor="field-link_thay_the"
+                        className="text-xs font-semibold text-main block mb-1"
+                      >
+                        {t('resourceManagement.fieldReplacementLink')} <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        id="field-link_thay_the"
+                        type="url"
+                        placeholder={t('resourceManagement.placeholderReplacementLink')}
+                        value={formData.link_thay_the}
+                        onChange={(e) => {
+                          setIsDirty(true);
+                          setFormData((prev) => ({
+                            ...prev,
+                            link_thay_the: e.target.value,
+                          }));
+                          if (errors.link_thay_the) {
+                            setErrors((prev) => ({ ...prev, link_thay_the: '' }));
+                          }
+                        }}
+                        className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
+                      />
+                      {errors.link_thay_the && (
+                        <p className="text-danger text-xs mt-1 font-medium">
+                          {errors.link_thay_the}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Phạm vi áp dụng */}
             <div>
@@ -1018,80 +1161,6 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 </label>
               </div>
             </div>
-
-            {/* Điều kiện động khi chọn Hết và thay thế hoặc Hết hiệu lực */}
-            {(formData.hieu_luc === 'HET_VA_THAY_THE' ||
-              formData.hieu_luc === 'HET_HIEU_LUC') && (
-              <div className="pt-2 border-t border-border-subtle/80 space-y-3">
-                {/* Ngày hết hiệu lực */}
-                <div>
-                  <label
-                    htmlFor="field-ngay_het_hieu_luc"
-                    className="text-xs font-semibold text-main block mb-1"
-                  >
-                    {t('resourceManagement.fieldExpirationDate')}{' '}
-                    {formData.hieu_luc === 'HET_VA_THAY_THE' && (
-                      <span className="text-danger">*</span>
-                    )}
-                  </label>
-                  <input
-                    id="field-ngay_het_hieu_luc"
-                    type="date"
-                    value={formData.ngay_het_hieu_luc}
-                    onChange={(e) => {
-                      setIsDirty(true);
-                      setFormData((prev) => ({
-                        ...prev,
-                        ngay_het_hieu_luc: e.target.value,
-                      }));
-                      if (errors.ngay_het_hieu_luc) {
-                        setErrors((prev) => ({ ...prev, ngay_het_hieu_luc: '' }));
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer"
-                  />
-                  {errors.ngay_het_hieu_luc && (
-                    <p className="text-danger text-xs mt-1 font-medium">
-                      {errors.ngay_het_hieu_luc}
-                    </p>
-                  )}
-                </div>
-
-                {/* Link thay thế (Chỉ bắt buộc khi Hết và thay thế) */}
-                {formData.hieu_luc === 'HET_VA_THAY_THE' && (
-                  <div>
-                    <label
-                      htmlFor="field-link_thay_the"
-                      className="text-xs font-semibold text-main block mb-1"
-                    >
-                      {t('resourceManagement.fieldReplacementLink')} <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      id="field-link_thay_the"
-                      type="url"
-                      placeholder={t('resourceManagement.placeholderReplacementLink')}
-                      value={formData.link_thay_the}
-                      onChange={(e) => {
-                        setIsDirty(true);
-                        setFormData((prev) => ({
-                          ...prev,
-                          link_thay_the: e.target.value,
-                        }));
-                        if (errors.link_thay_the) {
-                          setErrors((prev) => ({ ...prev, link_thay_the: '' }));
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors"
-                    />
-                    {errors.link_thay_the && (
-                      <p className="text-danger text-xs mt-1 font-medium">
-                        {errors.link_thay_the}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* KHỐI 4: Tệp đính kèm (*) */}

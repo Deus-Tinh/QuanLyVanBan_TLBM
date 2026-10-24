@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ResourceItem, ResourceAttachment, HieuLucType } from '@app-types/resource';
+import { ResourceItem, ResourceAttachment } from '@app-types/resource';
 import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { useTranslation } from '@i18n/translate';
+import { computeEffectiveStatus } from '@lib/resourceValidity';
 import { FilePreviewModal } from './FilePreviewModal';
 
 export interface ResourceDetailModalProps {
@@ -123,9 +124,18 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
     }
   };
 
+  const validity = computeEffectiveStatus(item.hieu_luc, item.ngay_het_hieu_luc, item.link_thay_the);
+
   // Render Badge trạng thái hiệu lực
-  const renderStatusBadge = (hieuLuc: HieuLucType) => {
-    switch (hieuLuc) {
+  const renderStatusBadge = () => {
+    if (validity.isScheduled && validity.expirationDate) {
+      return (
+        <Badge variant="success" size="md" withDot>
+          {t('resourceManagement.statusActive')} ({t('resourceManagement.expiresOnDate', { date: formatDate(validity.expirationDate) })})
+        </Badge>
+      );
+    }
+    switch (validity.status) {
       case 'CON_HIEU_LUC':
         return (
           <Badge variant="success" size="md" withDot>
@@ -151,7 +161,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
           </Badge>
         );
       default:
-        return <Badge variant="secondary" size="md">{hieuLuc}</Badge>;
+        return <Badge variant="secondary" size="md">{validity.status}</Badge>;
     }
   };
 
@@ -187,7 +197,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                   {item.ky_hieu}
                 </span>
               )}
-              {renderStatusBadge(item.hieu_luc)}
+              {renderStatusBadge()}
             </div>
             <h2 className="text-base sm:text-lg font-bold text-main leading-snug">
               {item.tieu_de}
@@ -207,7 +217,18 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         {/* Nội dung cuộn dọc */}
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-5 min-h-0">
           {/* KHỐI 2: Banner theo hiệu lực ngay đầu nội dung */}
-          {item.hieu_luc === 'HET_VA_THAY_THE' && (
+          {validity.isScheduled && (
+            <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs sm:text-sm flex items-center gap-2.5">
+              <i className="fa-solid fa-calendar-check text-base shrink-0" />
+              <span>
+                {t('resourceManagement.scheduledExpiryNotice', {
+                  date: formatDate(validity.expirationDate),
+                })}
+              </span>
+            </div>
+          )}
+
+          {validity.status === 'HET_VA_THAY_THE' && (
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm flex items-start gap-2.5">
               <i className="fa-solid fa-triangle-exclamation text-base shrink-0 mt-0.5" />
               <div className="space-y-1">
@@ -229,14 +250,14 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             </div>
           )}
 
-          {item.hieu_luc === 'HET_HIEU_LUC' && (
+          {validity.status === 'HET_HIEU_LUC' && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs sm:text-sm flex items-center gap-2.5">
               <i className="fa-solid fa-circle-xmark text-base shrink-0" />
               <span>{t('resourceManagement.expiredBannerNormal')}</span>
             </div>
           )}
 
-          {item.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
+          {validity.status === 'CON_HIEU_LUC_1_PHAN' && (
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm flex items-center gap-2.5">
               <i className="fa-solid fa-circle-info text-base shrink-0" />
               <span>{t('resourceManagement.partialBanner')}</span>
@@ -289,11 +310,11 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                 <span className="text-main font-medium">{formatDate(item.ngay_dang)}</span>
               </div>
 
-              {/* Ngày hết hiệu lực (chỉ hiển thị khi có ngày và trạng thái không phải Còn hiệu lực) */}
-              {item.ngay_het_hieu_luc && item.hieu_luc !== 'CON_HIEU_LUC' && (
+              {/* Ngày hết hiệu lực */}
+              {item.ngay_het_hieu_luc && (
                 <div>
                   <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldExpirationDate')}</span>
-                  <span className="text-danger font-medium">
+                  <span className={`font-medium ${validity.isExpired ? 'text-danger' : 'text-blue-600 dark:text-blue-400'}`}>
                     {formatDate(item.ngay_het_hieu_luc)}
                   </span>
                 </div>
