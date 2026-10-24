@@ -142,7 +142,7 @@ def _kiem_tra_quy_trinh(quy_trinh, nguoi_tao):
 
 def trinh_ky_xem_duoc(nguoi):
     """
-    Người tạo, người ký của bất kỳ lượt trình nào (kể cả người được ủy quyền), và người có quyền
+    Người tạo, người ký của bất kỳ lượt trình nào (kể cả người nhận và người giao ủy quyền), người có quyền
     xem nhật ký trình ký (kiểm toán) xem được hồ sơ. Không mở quyền xem chỉ vì tên tab.
     """
     queryset = SigningRequest.objects.select_related("quy_trinh", "create_by")
@@ -150,6 +150,7 @@ def trinh_ky_xem_duoc(nguoi):
         return queryset
     return queryset.filter(
         Q(create_by=nguoi) | Q(luot_trinh_set__cap_ky_set__nguoi_ky_set__nguoi_ky=nguoi)
+        | Q(luot_trinh_set__cap_ky_set__nguoi_ky_set__uy_quyen_tu=nguoi)
     ).distinct()
 
 
@@ -288,6 +289,13 @@ def mo_nguoi_ky_trong_cap(cap, thoi_diem):
     return vua_mo
 
 
+def dung_cap_dang_mo(luot):
+    """Lượt kết thúc (từ chối, hủy): cấp đang ký chuyển TAM_DUNG để không còn hiện "đang ký"; người ký chưa ký giữ
+    CHO_KY làm lịch sử (giao diện hiển thị theo trạng thái lượt). Trả số cấp đã dừng."""
+    return SigningRequestStep.objects.filter(luot_trinh=luot, trang_thai=enums.TrangThaiCapKy.DANG_KY).update(
+        trang_thai=enums.TrangThaiCapKy.TAM_DUNG)
+
+
 def mo_cap(luot, cap, thoi_diem, nguoi_thuc_hien):
     so_cap_chua_mo = luot.cap_ky_set.filter(trang_thai=enums.TrangThaiCapKy.CHUA_MO).count()
     cap.trang_thai = enums.TrangThaiCapKy.DANG_KY
@@ -303,7 +311,8 @@ def mo_cap(luot, cap, thoi_diem, nguoi_thuc_hien):
 
 def tao_luot_trinh(yeu_cau, nguoi, *, chon_nguoi_ky, khoa_chong_trung, vi_tri_ky=None, luot_truoc=None):
     """
-    Khóa tệp/mã băm hiện tại của hồ sơ, snapshot cấp, người ký và vị trí ký, mở cấp đầu.
+    Khóa tệp/mã băm hiện tại của hồ sơ, snapshot cấp, người ký và vị trí ký. Trả (lượt, cấp đầu); người gọi mở cấp
+    đầu bằng `mo_cap` sau khi ghi nhật ký gửi để lịch sử đúng thứ tự (gửi rồi mới mở cấp).
     `vi_tri_ky`: {id người ký cấu hình: {trang_ky, toa_do_x, toa_do_y, chieu_rong_khung, chieu_cao_khung}}.
     """
     cau_hinh_cap = list(
@@ -356,8 +365,7 @@ def tao_luot_trinh(yeu_cau, nguoi, *, chon_nguoi_ky, khoa_chong_trung, vi_tri_ky
                 vai_tro_ky=cau_hinh.vai_tro_ky, chan_ky_chinh=cau_hinh.chan_ky_chinh,
                 **vi_tri_ky.get(str(cau_hinh.pk), {}),
             )
-    mo_cap(luot, cap_dau, thoi_diem, nguoi)
-    return luot
+    return luot, cap_dau
 
 
 # ── Gửi, hủy, trình lại ─────────────────────────────────────────────────────
@@ -384,8 +392,8 @@ def gui(yeu_cau, nguoi, *, khoa_chong_trung, chon_nguoi_ky=None, vi_tri_ky=None,
     kiem_tra_van_ban_trinh_ky(nguoi, yeu_cau.document_type, yeu_cau.van_ban_id)
     _kiem_tra_quy_trinh(yeu_cau.quy_trinh, nguoi)
     _kiem_tra_han_chot(yeu_cau.han_chot)
-    luot = tao_luot_trinh(yeu_cau, nguoi, chon_nguoi_ky=chon_nguoi_ky or {}, khoa_chong_trung=khoa_chong_trung,
-                          vi_tri_ky=vi_tri_ky)
+    luot, cap_dau = tao_luot_trinh(yeu_cau, nguoi, chon_nguoi_ky=chon_nguoi_ky or {},
+                                   khoa_chong_trung=khoa_chong_trung, vi_tri_ky=vi_tri_ky)
     yeu_cau.trang_thai = enums.TrangThaiYeuCau.CHO_KY
     yeu_cau.ngay_gui = luot.thoi_diem_gui
     yeu_cau.update_by = nguoi
@@ -394,6 +402,7 @@ def gui(yeu_cau, nguoi, *, khoa_chong_trung, chon_nguoi_ky=None, vi_tri_ky=None,
                 trang_thai_truoc=enums.TrangThaiYeuCau.NHAP, trang_thai_sau=yeu_cau.trang_thai,
                 dia_chi_ip=dia_chi_ip, du_lieu_kem_theo={"khoa_chong_trung": khoa_chong_trung,
                                                        "ma_bam_tai_lieu": luot.ma_bam_tai_lieu})
+    mo_cap(luot, cap_dau, luot.thoi_diem_gui, nguoi)  # sau nhật ký gửi để dòng thời gian đúng thứ tự
     return yeu_cau
 
 
@@ -421,6 +430,7 @@ def huy(yeu_cau, nguoi, *, khoa_chong_trung, ly_do="", dia_chi_ip=None):
         luot.thoi_diem_huy = thoi_diem
         luot.update_by = nguoi
         luot.save(update_fields=["trang_thai", "thoi_diem_huy", "update_by", "update_at"])
+        dung_cap_dang_mo(luot)
     truoc = yeu_cau.trang_thai
     yeu_cau.trang_thai = enums.TrangThaiYeuCau.HUY
     yeu_cau.ngay_huy = thoi_diem
