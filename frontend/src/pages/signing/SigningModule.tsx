@@ -2,12 +2,12 @@
  * Phân hệ Trình ký duyệt nội bộ (Nhóm 5, #80 mục E) dưới đường dẫn /approvals/*.
  * Tab chỉ là bộ lọc hiển thị; quyền đọc/ghi do server kiểm ở từng API.
  */
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@components/common';
 import { DangTai, LoiTai } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
-import { coQuyen, SigningContext, useTai } from '@lib/signing/hooks';
+import { coQuyen, SigningContext, soThongBaoMoi, useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import './signing.css';
 
@@ -23,11 +23,17 @@ export default function SigningModule() {
   const { t, loi } = useSigningT();
   const toi = useTai(() => signingApi.toi());
   const dieuHuong = useNavigate();
-  const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai }), [toi.duLieu, toi.tai]);
+  const [lanXem, setLanXem] = useState(0);
+  const daXemThongBao = useCallback(() => setLanXem((n) => n + 1), []);
+  const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai, daXemThongBao }),
+    [toi.duLieu, toi.tai, daXemThongBao]);
 
   const { pathname } = useLocation();
   const canKy = useTai(() => signingApi.thongKe('can_toi_ky'), [pathname]);
   const soCanKy = canKy.duLieu?.cho_ky;
+  const thongBao = useTai(() => signingApi.thongBao(), [pathname]);
+  // lanXem đổi khi trang Thông báo đánh dấu đã xem: tính lại số mới
+  const soMoi = lanXem >= 0 ? soThongBaoMoi(thongBao.duLieu, toi.duLieu?.id) : 0;
 
   const tabChinh = [
     { den: '/approvals', nhan: t('nav.canToiKy'), icon: 'fa-pen-nib', end: true, so: soCanKy },
@@ -36,7 +42,7 @@ export default function SigningModule() {
   ];
   const tabPhu = [
     { den: '/approvals/tai-lieu', nhan: t('nav.taiLieu'), icon: 'fa-folder-tree' },
-    { den: '/approvals/thong-bao', nhan: t('nav.thongBao'), icon: 'fa-bell' },
+    { den: '/approvals/thong-bao', nhan: t('nav.thongBao'), icon: 'fa-bell', so: soMoi },
     ...(coQuyen(toi.duLieu, 'manage_signing_process') || coQuyen(toi.duLieu, 'view_trinhky')
       ? [{ den: '/approvals/quy-trinh', nhan: t('nav.quyTrinh'), icon: 'fa-diagram-project' }] : []),
     ...(coQuyen(toi.duLieu, 'sign_trinhky') ? [{ den: '/approvals/khoa', nhan: t('nav.khoaCuaToi'), icon: 'fa-key' }] : []),
@@ -44,14 +50,15 @@ export default function SigningModule() {
 
   return (
     <SigningContext.Provider value={ngu_canh}>
-      <div className="signing-scope space-y-5 animate-in fade-in duration-150">
+      {/* pb-24: chừa chỗ cho nút trợ lý AI nổi ở góc dưới để không che nút hành động cuối trang */}
+      <div className="signing-scope space-y-5 pb-24 animate-in fade-in duration-150">
         <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
             <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
           )}
         </header>
-        <nav className="flex flex-wrap items-end justify-between gap-x-4 border-b border-border-subtle" aria-label={t('tieuDe')}>
+        <nav className="flex flex-wrap items-end gap-x-1 border-b border-border-subtle" aria-label={t('tieuDe')}>
           <div className="flex flex-wrap gap-1">
             {tabChinh.map((m) => (
               <NavLink key={m.den} to={m.den} end={m.end}
@@ -63,13 +70,18 @@ export default function SigningModule() {
               </NavLink>
             ))}
           </div>
+          <div className="mx-1.5 mb-2.5 h-4 w-px bg-border-subtle" aria-hidden="true" />
           <div className="flex flex-wrap gap-1">
             {tabPhu.map((m) => (
               <NavLink key={m.den} to={m.den}
-                className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium transition-colors duration-fast ${
-                  isActive ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-main hover:border-border'}`}>
+                className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors duration-fast ${
+                  isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
                 <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
                 <span>{m.nhan}</span>
+                {!!m.so && (
+                  <span className="rounded-full bg-danger px-1.5 py-0.5 text-xs font-bold text-inverse"
+                    title={t('nav.moi')}>{m.so}</span>
+                )}
               </NavLink>
             ))}
           </div>
