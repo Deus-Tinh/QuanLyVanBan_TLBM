@@ -578,6 +578,30 @@ class DocumentTemplatesModelAndAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('ngay_het_hieu_luc', response.data)
 
+    def test_search_by_specific_field(self):
+        self.client.force_authenticate(user=self.admin)
+        doc = TaiLieuChiTiet.objects.create(
+            dm_tai_lieu=self.cat1,
+            tieu_de='Văn bản đặc biệt ABC',
+            ky_hieu='99/QD-SPECIAL',
+            noi_ban_hanh='Sở Kế hoạch Đầu tư',
+            ngay_dang='2026-05-01',
+            hieu_luc='CON_HIEU_LUC',
+            nguoi_tao=self.admin
+        )
+        # Tìm theo search_field=code
+        res = self.client.get('/api/resources/documents/?search=99/QD&search_field=code')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        ids = [d['id'] for d in res.data]
+        self.assertIn(doc.id, ids)
+
+        # Tìm theo search_field=title với từ khóa của code thì không thấy
+        res_fail = self.client.get('/api/resources/documents/?search=99/QD&search_field=title')
+        self.assertEqual(res_fail.status_code, status.HTTP_200_OK)
+        ids_fail = [d['id'] for d in res_fail.data]
+        self.assertNotIn(doc.id, ids_fail)
+
+
 
 
 

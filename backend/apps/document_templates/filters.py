@@ -21,10 +21,14 @@ class TaiLieuChiTietFilter(django_filters.FilterSet):
     hien_thi = django_filters.CharFilter(field_name='hien_thi')
     don_vi_id = django_filters.NumberFilter(field_name='don_vi_id')
     search = django_filters.CharFilter(method='filter_search')
+    search_field = django_filters.CharFilter(method='filter_search_field')
 
     class Meta:
         model = TaiLieuChiTiet
-        fields = ['dm_tai_lieu', 'loai_tai_lieu', 'nam', 'hieu_luc', 'hien_thi', 'don_vi_id', 'search']
+        fields = ['dm_tai_lieu', 'loai_tai_lieu', 'nam', 'hieu_luc', 'hien_thi', 'don_vi_id', 'search', 'search_field']
+
+    def filter_search_field(self, queryset, name, value):
+        return queryset
 
     def filter_hieu_luc(self, queryset, name, value):
         if not value:
@@ -59,9 +63,26 @@ class TaiLieuChiTietFilter(django_filters.FilterSet):
         if not value:
             return queryset
         val = value.strip()
+        search_field = self.data.get('search_field', 'all')
+        if search_field == 'title':
+            return queryset.filter(tieu_de__icontains=val)
+        elif search_field == 'code':
+            return queryset.filter(ky_hieu__icontains=val)
+        elif search_field == 'authority':
+            return queryset.filter(noi_ban_hanh__icontains=val)
+        elif search_field == 'author':
+            return queryset.filter(
+                Q(nguoi_tao__ho_ten__icontains=val) |
+                Q(nguoi_tao__username__icontains=val)
+            ).distinct()
+        elif search_field == 'attachment':
+            return queryset.filter(attachments__name__icontains=val, attachments__is_deleted=False).distinct()
         return queryset.filter(
             Q(tieu_de__icontains=val) |
             Q(ky_hieu__icontains=val) |
             Q(noi_ban_hanh__icontains=val) |
-            Q(ghi_chu__icontains=val)
+            Q(ghi_chu__icontains=val) |
+            Q(nguoi_tao__ho_ten__icontains=val) |
+            Q(nguoi_tao__username__icontains=val) |
+            Q(attachments__name__icontains=val, attachments__is_deleted=False)
         ).distinct()

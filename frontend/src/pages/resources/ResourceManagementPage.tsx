@@ -16,6 +16,7 @@ import { Toast, ToastNotification } from '@components/resources/Toast';
 import { useTranslation } from '@i18n/translate';
 import { apiClient } from '@lib/apiClient';
 import { authService } from '@lib/authService';
+import { computeEffectiveStatus } from '@lib/resourceValidity';
 
 const STORAGE_KEY = 'tlbm_resources_filter_state';
 const STORAGE_DOCS = 'tlbm_documents_v2';
@@ -40,15 +41,37 @@ const notifyMutation = () => {
   }
 };
 
+export type SearchScopeType = 'all' | 'title' | 'code' | 'authority' | 'author' | 'attachment';
+
 interface PersistedResourceState {
   category?: string;
   type?: string;
   year?: string;
   status?: string;
   q?: string;
+  searchField?: SearchScopeType;
   page?: number;
   pageSize?: number;
 }
+
+const normalizeSearchText = (str?: string | null): string => {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .trim();
+};
+
+const SEARCH_FIELD_OPTIONS: { value: SearchScopeType; labelKey: string; icon: string; placeholderKey: string }[] = [
+  { value: 'all', labelKey: 'searchScopeAll', icon: 'fa-solid fa-layer-group', placeholderKey: 'searchPlaceholderAll' },
+  { value: 'title', labelKey: 'searchScopeTitle', icon: 'fa-solid fa-heading', placeholderKey: 'searchPlaceholderTitle' },
+  { value: 'code', labelKey: 'searchScopeCode', icon: 'fa-solid fa-hashtag', placeholderKey: 'searchPlaceholderCode' },
+  { value: 'authority', labelKey: 'searchScopeAuthority', icon: 'fa-solid fa-building-columns', placeholderKey: 'searchPlaceholderAuthority' },
+  { value: 'author', labelKey: 'searchScopeAuthor', icon: 'fa-solid fa-user-pen', placeholderKey: 'searchPlaceholderAuthor' },
+  { value: 'attachment', labelKey: 'searchScopeAttachment', icon: 'fa-solid fa-paperclip', placeholderKey: 'searchPlaceholderAttachment' },
+];
 
 const getInitialFilterState = (searchParams: URLSearchParams): PersistedResourceState => {
   // Kiểm tra xem lần tải trang này có phải là Reload (F5 / Refresh) của trình duyệt hay không
@@ -73,6 +96,7 @@ const getInitialFilterState = (searchParams: URLSearchParams): PersistedResource
       year: searchParams.get('year') || undefined,
       status: searchParams.get('status') || undefined,
       q: searchParams.get('q') || undefined,
+      searchField: (searchParams.get('search_field') as SearchScopeType) || undefined,
       page: searchParams.get('page') ? Number(searchParams.get('page')) : undefined,
       pageSize: searchParams.get('pageSize') ? Number(searchParams.get('pageSize')) : undefined,
     };
@@ -512,9 +536,14 @@ export default function ResourceManagementPage() {
     initialFilterState.pageSize && initialFilterState.pageSize > 0 ? initialFilterState.pageSize : 5
   );
 
-  // Bộ lọc: Search debounced 300ms
+  // Bộ lọc: Search debounced 300ms & Scope
   const [searchInput, setSearchInput] = useState(initialFilterState.q || '');
   const [searchTerm, setSearchTerm] = useState(initialFilterState.q || '');
+  const [searchField, setSearchField] = useState<SearchScopeType>(
+    initialFilterState.searchField || 'all'
+  );
+  const [isSearchFieldDropdownOpen, setIsSearchFieldDropdownOpen] = useState(false);
+  const searchFieldDropdownRef = useRef<HTMLDivElement>(null);
   const isFirstMount = useRef(true);
 
   useEffect(() => {
@@ -561,6 +590,7 @@ export default function ResourceManagementPage() {
       year: selectedYear,
       status: statusFilter,
       q: searchTerm || undefined,
+      searchField: searchField !== 'all' ? searchField : undefined,
       page: currentPage > 1 ? currentPage : undefined,
       pageSize: pageSize !== 5 ? pageSize : undefined,
     };
@@ -577,6 +607,7 @@ export default function ResourceManagementPage() {
     if (selectedYear !== 'all') newParams.set('year', selectedYear);
     if (statusFilter !== 'all') newParams.set('status', statusFilter);
     if (searchTerm.trim()) newParams.set('q', searchTerm.trim());
+    if (searchField !== 'all') newParams.set('search_field', searchField);
     if (currentPage > 1) newParams.set('page', String(currentPage));
     if (pageSize !== 5) newParams.set('pageSize', String(pageSize));
 
@@ -587,6 +618,7 @@ export default function ResourceManagementPage() {
     selectedYear,
     statusFilter,
     searchTerm,
+    searchField,
     currentPage,
     pageSize,
     setSearchParams,
@@ -820,6 +852,12 @@ export default function ResourceManagementPage() {
       ) {
         setIsStatusDropdownOpen(false);
       }
+      if (
+        searchFieldDropdownRef.current &&
+        !searchFieldDropdownRef.current.contains(target)
+      ) {
+        setIsSearchFieldDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -831,6 +869,7 @@ export default function ResourceManagementPage() {
   const handleClearFilters = () => {
     setSearchInput('');
     setSearchTerm('');
+    setSearchField('all');
     setSelectedType('all');
     setSelectedYear('all');
     setStatusFilter('all');
@@ -839,27 +878,59 @@ export default function ResourceManagementPage() {
     setIsTypeDropdownOpen(false);
     setIsYearDropdownOpen(false);
     setIsStatusDropdownOpen(false);
+    setIsSearchFieldDropdownOpen(false);
   };
 
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
+    searchField !== 'all' ||
     selectedType !== 'all' ||
     selectedYear !== 'all' ||
     statusFilter !== 'all'
   );
 
   // ============================================================================
-  // LỌC DỮ LIỆU BẢNG TỔNG HỢP THEO TẤT CẢ TIÊU CHÍ
+  // LỌC DỮ LIỆU BẢNG TỔNG HỢP THEO TẤT CẢ TIÊU CHÍ (TÌM KIẾM CỤ THỂ & THÔNG MINH)
   // ============================================================================
   const filteredDocuments = useMemo(() => {
     return documents.filter((doc) => {
-      // 1. Tìm kiếm từ khóa (Tiêu đề, Ký hiệu, Nơi ban hành)
+      // 1. Tìm kiếm từ khóa theo tiêu chí cụ thể
       if (searchTerm.trim()) {
-        const term = searchTerm.toLowerCase();
-        const matchTitle = doc.tieu_de.toLowerCase().includes(term);
-        const matchSymbol = (doc.ky_hieu || '').toLowerCase().includes(term);
-        const matchPublisher = (doc.noi_ban_hanh || '').toLowerCase().includes(term);
-        if (!matchTitle && !matchSymbol && !matchPublisher) return false;
+        const rawTerm = searchTerm.toLowerCase().trim();
+        const normTerm = normalizeSearchText(searchTerm);
+
+        const checkMatch = (val?: string | null) => {
+          if (!val) return false;
+          const lower = val.toLowerCase();
+          if (lower.includes(rawTerm)) return true;
+          return normalizeSearchText(val).includes(normTerm);
+        };
+
+        if (searchField === 'title') {
+          if (!checkMatch(doc.tieu_de)) return false;
+        } else if (searchField === 'code') {
+          if (!checkMatch(doc.ky_hieu)) return false;
+        } else if (searchField === 'authority') {
+          if (!checkMatch(doc.noi_ban_hanh)) return false;
+        } else if (searchField === 'author') {
+          if (!checkMatch(doc.nguoi_tao_name)) return false;
+        } else if (searchField === 'attachment') {
+          const matchSingle = checkMatch(doc.file_dinh_kem);
+          const matchMultiple = (doc.attachments || []).some((att) => checkMatch(att.name));
+          if (!matchSingle && !matchMultiple) return false;
+        } else {
+          // 'all': Tìm trên mọi trường
+          const matchTitle = checkMatch(doc.tieu_de);
+          const matchCode = checkMatch(doc.ky_hieu);
+          const matchAuthority = checkMatch(doc.noi_ban_hanh);
+          const matchAuthor = checkMatch(doc.nguoi_tao_name);
+          const matchNote = checkMatch(doc.ghi_chu);
+          const matchSingle = checkMatch(doc.file_dinh_kem);
+          const matchMultiple = (doc.attachments || []).some((att) => checkMatch(att.name));
+          if (!matchTitle && !matchCode && !matchAuthority && !matchAuthor && !matchNote && !matchSingle && !matchMultiple) {
+            return false;
+          }
+        }
       }
 
       // 2. Lọc Danh mục Cấp 1
@@ -880,14 +951,15 @@ export default function ResourceManagementPage() {
         if (docYear !== selectedYear) return false;
       }
 
-      // 5. Lọc Trạng thái hiệu lực
+      // 5. Lọc Trạng thái hiệu lực theo Hiệu lực thực tế (Dynamic Validity)
       if (statusFilter !== 'all') {
-        if (doc.hieu_luc !== statusFilter) return false;
+        const effectiveStatus = computeEffectiveStatus(doc).effectiveStatus;
+        if (effectiveStatus !== statusFilter) return false;
       }
 
       return true;
     });
-  }, [documents, searchTerm, selectedCategory, selectedType, selectedYear, statusFilter]);
+  }, [documents, searchTerm, searchField, selectedCategory, selectedType, selectedYear, statusFilter]);
 
   // Phân trang danh sách
   const totalCount = filteredDocuments.length;
@@ -1967,32 +2039,98 @@ export default function ResourceManagementPage() {
       {/* 2. THANH BỘ LỌC TÌM KIẾM (MỤC 3) */}
       <div className="bg-surface p-3 sm:p-3.5 rounded-xl border border-border-subtle shadow-xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-2.5 items-center">
-          {/* Ô Tìm kiếm rộng rãi: chiếm 12 cols trên mobile, 6 cols trên tablet, 8 cols trên màn lớn */}
-          <div className="sm:col-span-2 md:col-span-6 lg:col-span-7 xl:col-span-8 relative">
-            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-muted text-xs pointer-events-none" />
-            <input
-              type="text"
-              placeholder={t('resourceManagement.searchPlaceholder')}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full h-10 pl-9 pr-8 text-[13px] rounded-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary placeholder:text-muted transition-colors"
-              aria-label={t('resourceManagement.searchPlaceholder')}
-            />
-            {searchInput && (
+          {/* Ô Tìm kiếm cụ thể & dễ hiểu: Dropdown tiêu chí + Ô nhập từ khóa */}
+          <div className="sm:col-span-2 md:col-span-6 lg:col-span-7 xl:col-span-8 flex items-stretch">
+            {/* Dropdown chọn tiêu chí tìm kiếm cụ thể (Tất cả, Tiêu đề, Ký hiệu, Nơi ban hành, Người tạo, Tệp đính kèm) */}
+            <div className="relative shrink-0" ref={searchFieldDropdownRef}>
               <button
                 type="button"
                 onClick={() => {
-                  setSearchInput('');
-                  setSearchTerm('');
-                  setCurrentPage(1);
+                  setIsSearchFieldDropdownOpen((prev) => !prev);
+                  setIsYearDropdownOpen(false);
+                  setIsStatusDropdownOpen(false);
+                  setIsCategoryDropdownOpen(false);
+                  setIsTypeDropdownOpen(false);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1 cursor-pointer"
-                title={t('resourceManagement.clearSearch')}
-                aria-label={t('resourceManagement.clearSearch')}
+                className={`h-10 px-2.5 sm:px-3 text-xs sm:text-[13px] font-semibold bg-surface-elevated hover:bg-surface border border-r-0 rounded-l-lg text-secondary hover:text-primary flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+                  isSearchFieldDropdownOpen
+                    ? 'border-primary ring-1 ring-primary/20 text-primary'
+                    : 'border-border-subtle'
+                }`}
+                title={t('resourceManagement.selectSearchScope')}
+                aria-label={t('resourceManagement.selectSearchScope')}
+                aria-haspopup="listbox"
+                aria-expanded={isSearchFieldDropdownOpen}
               >
-                <i className="fa-solid fa-xmark" />
+                <i className={`${SEARCH_FIELD_OPTIONS.find((o) => o.value === searchField)?.icon || 'fa-solid fa-layer-group'} text-xs text-primary`} />
+                <span className="hidden sm:inline font-medium text-main text-xs">
+                  {t(`resourceManagement.${SEARCH_FIELD_OPTIONS.find((o) => o.value === searchField)?.labelKey || 'searchScopeAll'}`)}
+                </span>
+                <i className={`fa-solid fa-chevron-down text-[10px] text-muted transition-transform duration-200 ${isSearchFieldDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
               </button>
-            )}
+
+              {isSearchFieldDropdownOpen && (
+                <div className="absolute left-0 top-full mt-1.5 w-56 bg-surface rounded-xl border border-border-subtle shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
+                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted">
+                    {t('resourceManagement.searchFieldLabel')}
+                  </div>
+                  {SEARCH_FIELD_OPTIONS.map((opt) => {
+                    const isSelected = searchField === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setSearchField(opt.value);
+                          setIsSearchFieldDropdownOpen(false);
+                          setCurrentPage(1);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary/10 text-primary font-bold'
+                            : 'text-main hover:bg-surface-elevated'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <i className={`${opt.icon} text-xs ${isSelected ? 'text-primary' : 'text-muted'}`} />
+                          <span className="truncate">{t(`resourceManagement.${opt.labelKey}`)}</span>
+                        </span>
+                        {isSelected && (
+                          <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Ô nhập từ khóa tìm kiếm theo ngữ cảnh */}
+            <div className="relative flex-1 min-w-0">
+              <input
+                type="text"
+                placeholder={t(`resourceManagement.${SEARCH_FIELD_OPTIONS.find((o) => o.value === searchField)?.placeholderKey || 'searchPlaceholderAll'}`)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full h-10 pl-3.5 pr-8 text-[13px] rounded-r-lg bg-surface-elevated text-main border border-border-subtle focus:outline-hidden focus:border-primary placeholder:text-muted transition-colors"
+                aria-label={t(`resourceManagement.${SEARCH_FIELD_OPTIONS.find((o) => o.value === searchField)?.placeholderKey || 'searchPlaceholderAll'}`)}
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchInput('');
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-main text-xs p-1 cursor-pointer"
+                  title={t('resourceManagement.clearSearch')}
+                  aria-label={t('resourceManagement.clearSearch')}
+                >
+                  <i className="fa-solid fa-xmark" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Custom Dropdown Năm ban hành - chiếm 1 col trên sm, 3 cols trên tablet (đủ chỗ không bị cắt chữ 'Tất cả năm'), 2 cols trên xl */}
@@ -2201,7 +2339,14 @@ export default function ResourceManagementPage() {
               <span className="text-muted font-medium mr-0.5">{t('resourceManagement.filteringBadge')}</span>
               {searchTerm && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
-                  <span>{t('resourceManagement.filterBadgeSearch', { query: searchTerm })}</span>
+                  <span>
+                    {searchField === 'all'
+                      ? t('resourceManagement.filterBadgeSearch', { query: searchTerm })
+                      : t('resourceManagement.filterBadgeSearchWithScope', {
+                          scope: t(`resourceManagement.${SEARCH_FIELD_OPTIONS.find((o) => o.value === searchField)?.labelKey || 'searchScopeAll'}`),
+                          query: searchTerm,
+                        })}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -2210,6 +2355,20 @@ export default function ResourceManagementPage() {
                     }}
                     className="text-muted hover:text-danger cursor-pointer"
                     aria-label={t('resourceManagement.clearSearchFilterAria')}
+                  >
+                    <i className="fa-solid fa-xmark text-[11px]" />
+                  </button>
+                </span>
+              )}
+              {searchField !== 'all' && !searchTerm && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
+                  <span>
+                    {t('resourceManagement.searchFieldLabel')}: {t(`resourceManagement.${SEARCH_FIELD_OPTIONS.find((o) => o.value === searchField)?.labelKey || 'searchScopeAll'}`)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSearchField('all')}
+                    className="text-muted hover:text-danger cursor-pointer"
                   >
                     <i className="fa-solid fa-xmark text-[11px]" />
                   </button>
@@ -2267,14 +2426,19 @@ export default function ResourceManagementPage() {
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={handleClearFilters}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-danger hover:bg-danger-subtle rounded-md transition-colors font-semibold cursor-pointer shrink-0"
-            >
-              <i className="fa-solid fa-rotate-left text-[11px]" />
-              <span>{t('resourceManagement.clearFilter')}</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20">
+                {t('resourceManagement.foundDocsCount', { count: filteredDocuments.length })}
+              </span>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-danger hover:bg-danger-subtle rounded-md transition-colors font-semibold cursor-pointer shrink-0"
+              >
+                <i className="fa-solid fa-rotate-left text-[11px]" />
+                <span>{t('resourceManagement.clearFilter')}</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
