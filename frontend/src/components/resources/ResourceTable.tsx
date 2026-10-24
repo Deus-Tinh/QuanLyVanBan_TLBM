@@ -178,13 +178,13 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
         .filter((att) => !att.is_deleted)
         .forEach((att) => {
           fileList.push({
-            name: att.name || 'Tệp đính kèm',
+            name: att.name || t('resourceManagement.attachment'),
             ext: getFileExt(att.name || att.path, att.mime_type),
           });
         });
     } else if (item.file_dinh_kem) {
       fileList.push({
-        name: item.file_dinh_kem.split('/').pop() || 'Tệp đính kèm',
+        name: item.file_dinh_kem.split('/').pop() || t('resourceManagement.attachment'),
         ext: getFileExt(item.file_dinh_kem),
       });
     }
@@ -437,7 +437,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                     <div className="max-w-sm space-y-1">
                       <h4 className="text-base font-semibold text-main">{error}</h4>
                       <p className="text-xs text-secondary">
-                        Đã có lỗi xảy ra khi tải danh sách tài liệu. Vui lòng thử lại.
+                        {t('resourceManagement.errorLoadDocs')}
                       </p>
                     </div>
                     {onRetry && (
@@ -447,7 +447,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                         className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors cursor-pointer"
                       >
                         <i className="fa-solid fa-rotate-right text-[11px]" />
-                        <span>Thử lại</span>
+                        <span>{t('resourceManagement.retry')}</span>
                       </button>
                     )}
                   </div>
@@ -501,7 +501,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                       onViewDetail?.(item);
                     }}
                     className={`transition-colors duration-fast cursor-pointer select-none ${rowClass}`}
-                    title="Bấm để xem chi tiết tài liệu"
+                    title={t('resourceManagement.clickToViewDetail')}
                   >
                     {/* Cột 1: Ký hiệu (Ẩn trên mobile, hiện từ sm: tablet/desktop) */}
                     <td className="hidden sm:table-cell px-2.5 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
@@ -587,7 +587,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                           type="button"
                           onClick={(e) => openActionMenu(e, item.id)}
                           className="w-8 h-7 rounded-lg inline-flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors cursor-pointer"
-                          title="Thao tác"
+                          title={t('resourceManagement.actionMenu')}
                           aria-label={`Thao tác với tài liệu ${item.ky_hieu || item.tieu_de}`}
                           aria-haspopup="true"
                           aria-expanded={activeMenuId === item.id}
