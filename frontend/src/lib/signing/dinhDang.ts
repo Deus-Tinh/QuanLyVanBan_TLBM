@@ -25,6 +25,24 @@ export function moTaVanBan(vb: { so_hieu?: string; trich_yeu?: string } | undefi
   return van_ban_id != null ? `#${van_ban_id}` : '—';
 }
 
+/** Giới hạn độ dài nhập tay, khớp serializer backend (`serializers.py`). */
+export const GIOI_HAN = { trichYeu: 1000, ghiChu: 2000, lyDo: 2000, tinNhan: 2000, tenQuyTrinh: 255, maQuyTrinh: 50, soGio: 24 * 365 } as const;
+export const TEP_TOI_DA_BYTE = 20 * 1024 * 1024;
+export const MA_QUY_TRINH_HOP_LE = /^[A-Za-z0-9_.-]+$/;
+
+/** Kiểm tệp PDF trước khi gửi: trả khóa i18n của lỗi (không gửi request khi sai), hoặc null khi hợp lệ. */
+export function kiemTraTepPdf(tep: { name: string; size: number; type: string }): string | null {
+  if (tep.size === 0) return 'tao.loiTepRong';
+  if (tep.type !== 'application/pdf' && !tep.name.toLowerCase().endsWith('.pdf')) return 'tao.loiTepDinhDang';
+  if (tep.size > TEP_TOI_DA_BYTE) return 'loi.tep_qua_lon';
+  return null;
+}
+
+/** Giá trị ô datetime-local đã qua (hoặc bằng) thời điểm hiện tại; ô trống thì không lỗi. */
+export function hanChotDaQua(gia_tri: string): boolean {
+  return Boolean(gia_tri) && new Date(gia_tri).getTime() <= Date.now();
+}
+
 export function taiXuong(blob: Blob, ten: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

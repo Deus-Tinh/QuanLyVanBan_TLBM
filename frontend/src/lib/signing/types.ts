@@ -208,6 +208,7 @@ export interface HoSoChiTiet extends HoSo {
 export interface TinNhan {
   id: number;
   nguoi_viet: number;
+  ten_nguoi_viet?: string;
   noi_dung: string;
   created_at: string;
 }

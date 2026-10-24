@@ -12,6 +12,8 @@ import type {
 export const SIGNING_BASE = '/api/v1/signing';
 /** Số hồ sơ mỗi trang danh sách (server mặc định 10, tối đa 100). */
 export const SO_HO_SO_MOI_TRANG = 10;
+/** Số thông báo tối đa máy chủ trả (mới nhất trước), khớp `thong_bao.cua_toi`. */
+export const SO_THONG_BAO_TOI_DA = 50;
 
 export function taoKhoaChongTrung(): string {
   return crypto.randomUUID();
@@ -64,8 +66,12 @@ export const signingApi = {
     Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
     return apiClient.get<TrangKetQua<HoSo>>(`${SIGNING_BASE}/trinh-ky/?${tham_so}`);
   },
-  thongKe: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca') =>
-    apiClient.get<ThongKeHoSo>(`${SIGNING_BASE}/trinh-ky/thong-ke/?hop=${hop}`),
+  /** Số hồ sơ theo thẻ lọc nhanh; `loc` (từ khóa, quy trình, khoảng ngày) làm số khớp với danh sách đang xem. */
+  thongKe: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', loc: BoLocHoSo = {}) => {
+    const tham_so = new URLSearchParams({ hop });
+    Object.entries(loc).forEach(([k, v]) => k !== 'nhanh' && v && tham_so.set(k, v));
+    return apiClient.get<ThongKeHoSo>(`${SIGNING_BASE}/trinh-ky/thong-ke/?${tham_so}`);
+  },
   chiTiet: (id: number) => apiClient.get<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`),
   taoNhap: (form: FormData) => postForm<HoSoChiTiet>('/trinh-ky/', form),
   /** Sửa hồ sơ nháp: hạn chót, ghi chú, số hiệu/trích yếu nhập tay, thay tệp (multipart). */

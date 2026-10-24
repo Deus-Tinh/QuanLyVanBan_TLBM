@@ -1,8 +1,11 @@
+import re
+
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from . import enums
+from .errors import SigningError
 from .models import (
     SigningAttempt, SigningAuditLog, SigningChangeMessage, SigningChangeThread, SigningKey, SigningKeyUnlock,
     SigningProcess, SigningProcessStep, SigningProcessStepSigner, SigningRequest, SigningRequestStep,
@@ -10,6 +13,15 @@ from .models import (
 )
 from .tich_hop import to_chuc
 from .tich_hop.van_ban import mo_ta_ho_so
+
+
+# Giới hạn độ dài văn bản nhập tay (cột TextField không giới hạn); giao diện đặt `maxLength` bằng các số này
+MAX_TRICH_YEU = 1000
+MAX_GHI_CHU = 2000
+MAX_LY_DO = 2000
+MAX_TIN_NHAN = 2000
+MA_QUY_TRINH = re.compile(r"[A-Za-z0-9_.\-]+")
+MAX_SO_GIO_XU_LY = 24 * 365  # một năm; lớn hơn thì tràn cột integer hoặc vượt phạm vi ngày giờ
 
 
 # ── Đầu vào: quy trình ───────────────────────────────────────────────────────
@@ -31,19 +43,35 @@ class CapKyInputSerializer(serializers.Serializer):
     ten_cap_ky = serializers.CharField(max_length=255)
     thu_tu = serializers.IntegerField(min_value=0)
     don_vi_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
-    so_gio_xu_ly = serializers.IntegerField(min_value=0, required=False, allow_null=True)
-    ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
+    so_gio_xu_ly = serializers.IntegerField(min_value=0, max_value=MAX_SO_GIO_XU_LY, required=False, allow_null=True)
+    ghi_chu = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True, default="")
     nguoi_ky = NguoiKyInputSerializer(many=True, required=False)
+
+    def validate_nguoi_ky(self, danh_sach):
+        """Một người (hoặc một chức vụ cùng phạm vi) chỉ xuất hiện một lần trong cấp: trùng thì hồ sơ không gửi được."""
+        da_co = set()
+        for n in danh_sach:
+            khoa = (("nguoi", n["nguoi_ky"].pk) if n.get("nguoi_ky") else ("chuc_vu", n.get("chuc_vu_id"), n.get("pham_vi_chuc_vu")))
+            if khoa in da_co:
+                raise SigningError(code="nguoi_ky_trung_trong_cap", detail="Người ký bị trùng trong cùng một cấp.")
+            da_co.add(khoa)
+        return danh_sach
 
 
 class QuyTrinhInputSerializer(serializers.Serializer):
     ma_quy_trinh = serializers.CharField(max_length=50)
     ten_quy_trinh = serializers.CharField(max_length=255)
-    mo_ta = serializers.CharField(required=False, allow_blank=True, default="")
+    mo_ta = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True, default="")
     pham_vi = serializers.ChoiceField(choices=enums.PhamViQuyTrinh.choices)
     don_vi_ap_dung_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     cau_hinh_nhac_han = serializers.JSONField(required=False, allow_null=True)
     cap_ky = CapKyInputSerializer(many=True, required=False)
+
+    def validate_ma_quy_trinh(self, ma):
+        """Mã gồm chữ không dấu, số, `-`, `_`, `.`; khi sửa nháp (mã không đổi được) giữ nguyên mã đã có."""
+        if not self.context.get("giu_ma_cu") and not MA_QUY_TRINH.fullmatch(ma):
+            raise serializers.ValidationError("Chỉ gồm chữ không dấu, số, dấu gạch ngang, gạch dưới, dấu chấm.")
+        return ma
 
 
 # ── Đầu ra: quy trình ────────────────────────────────────────────────────────
@@ -97,7 +125,7 @@ class KhoaDangKySerializer(serializers.Serializer):
     khoa_cong_khai = serializers.CharField()
     ngay_hieu_luc = serializers.DateTimeField()
     ngay_het_han = serializers.DateTimeField(required=False, allow_null=True)
-    ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
+    ghi_chu = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True, default="")
 
 
 class XacMinhSoHuuSerializer(serializers.Serializer):
@@ -105,7 +133,7 @@ class XacMinhSoHuuSerializer(serializers.Serializer):
 
 
 class ThuHoiKhoaSerializer(serializers.Serializer):
-    ly_do = serializers.CharField()
+    ly_do = serializers.CharField(max_length=MAX_LY_DO)
 
 
 class XoayVongSerializer(serializers.Serializer):
@@ -156,18 +184,18 @@ class TrinhKyTaoSerializer(serializers.Serializer):
     document_type = serializers.ChoiceField(choices=enums.LoaiVanBan.choices, required=False, allow_null=True)
     van_ban_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
     so_hieu_van_ban = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
-    trich_yeu_van_ban = serializers.CharField(required=False, allow_blank=True, default="")
+    trich_yeu_van_ban = serializers.CharField(max_length=MAX_TRICH_YEU, required=False, allow_blank=True, default="")
     quy_trinh = serializers.PrimaryKeyRelatedField(queryset=SigningProcess.objects.all())
     han_chot = serializers.DateTimeField(required=False, allow_null=True)
-    ghi_chu = serializers.CharField(required=False, allow_blank=True, default="")
+    ghi_chu = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True, default="")
     tep = serializers.FileField()
 
 
 class TrinhKySuaSerializer(serializers.Serializer):
     han_chot = serializers.DateTimeField(required=False, allow_null=True)
-    ghi_chu = serializers.CharField(required=False, allow_blank=True)
+    ghi_chu = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True)
     so_hieu_van_ban = serializers.CharField(max_length=100, required=False, allow_blank=True)
-    trich_yeu_van_ban = serializers.CharField(required=False, allow_blank=True)
+    trich_yeu_van_ban = serializers.CharField(max_length=MAX_TRICH_YEU, required=False, allow_blank=True)
     tep = serializers.FileField(required=False)
 
 
@@ -213,13 +241,13 @@ class GuiTrinhKySerializer(serializers.Serializer):
 
 
 class HuyTrinhKySerializer(serializers.Serializer):
-    ly_do = serializers.CharField(required=False, allow_blank=True, default="")
+    ly_do = serializers.CharField(max_length=MAX_LY_DO, required=False, allow_blank=True, default="")
 
 
 class UyQuyenSerializer(serializers.Serializer):
     dong_nguoi_ky = serializers.IntegerField(min_value=1)
     nguoi_nhan = serializers.IntegerField(min_value=1)
-    ly_do_uy_quyen = serializers.CharField()
+    ly_do_uy_quyen = serializers.CharField(max_length=MAX_LY_DO)
 
 
 class TrinhLaiSerializer(serializers.Serializer):
@@ -267,10 +295,15 @@ class YeuCauSuaThreadSerializer(serializers.ModelSerializer):
 
 
 class TinNhanSerializer(serializers.ModelSerializer):
+    ten_nguoi_viet = serializers.SerializerMethodField()
+
     class Meta:
         model = SigningChangeMessage
-        fields = ["id", "nguoi_viet", "noi_dung", "created_at"]
-        read_only_fields = ["id", "nguoi_viet", "created_at"]
+        fields = ["id", "nguoi_viet", "ten_nguoi_viet", "noi_dung", "created_at"]
+        read_only_fields = ["id", "nguoi_viet", "ten_nguoi_viet", "created_at"]
+
+    def get_ten_nguoi_viet(self, obj):
+        return to_chuc.ten_hien_thi(obj.nguoi_viet)
 
 
 class LuotTrinhSerializer(serializers.ModelSerializer):
@@ -396,20 +429,20 @@ class KySerializer(serializers.Serializer):
     khoa_ky = serializers.IntegerField(min_value=1)
     hash_tai_lieu = serializers.RegexField(r"^[0-9a-f]{64}$")
     chu_ky_so = serializers.CharField(max_length=200)  # Ed25519 Base64 là 88 ký tự
-    ghi_chu_ky = serializers.CharField(required=False, allow_blank=True, default="")
+    ghi_chu_ky = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True, default="")
 
 
 class TuChoiSerializer(serializers.Serializer):
-    ly_do_tu_choi = serializers.CharField()
+    ly_do_tu_choi = serializers.CharField(max_length=MAX_LY_DO)
 
 
 class YeuCauSuaSerializer(serializers.Serializer):
     tieu_de = serializers.CharField(max_length=255)
-    ly_do = serializers.CharField()
+    ly_do = serializers.CharField(max_length=MAX_LY_DO)
 
 
 class TinNhanInputSerializer(serializers.Serializer):
-    noi_dung = serializers.CharField()
+    noi_dung = serializers.CharField(max_length=MAX_TIN_NHAN)
 
 
 class GiaiQuyetSerializer(serializers.Serializer):
