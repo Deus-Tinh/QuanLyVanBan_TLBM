@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -671,6 +671,11 @@ class TaiLieuView(SigningAPIView):
         return Response(tep[: self.TOI_DA])
 
 
+def gio_dia_phuong(gia_tri):
+    """Cùng định dạng giờ địa phương (+07:00) như các API khác; DRF để nguyên UTC với datetime trong dict thuần."""
+    return serializers.DateTimeField().to_representation(gia_tri) if gia_tri else None
+
+
 class ThongBaoView(SigningAPIView):
     """GET /thong-bao/: thông báo trong ứng dụng của người dùng hiện tại (mới nhất trước, tối đa 50). `han_xu_ly`: hạn của
     cấp ký với thông báo cần ký, nhắc hạn, quá hạn."""
@@ -706,14 +711,14 @@ class ThongBaoView(SigningAPIView):
                 "van_ban": ten_van_ban,
                 "trang_thai_ho_so": tb.trinh_ky.trang_thai,
                 "ten_quy_trinh": tb.trinh_ky.quy_trinh.ten_quy_trinh,
-                "created_at": tb.created_at,
+                "created_at": gio_dia_phuong(tb.created_at),
                 "kenh_in_app": True,
                 "email_da_gui": email_nb.trang_thai == enums.TrangThaiThongBao.DA_GUI if email_nb else False,
                 "email_trang_thai": email_nb.trang_thai if email_nb else None,
                 "email_nguoi_nhan": tb.nguoi_nhan.email or None,
                 "nguoi_thao_tac": nguoi_thao_tac or None,
                 "ly_do": ly_do or None,
-                "han_xu_ly": thong_bao_service.han_xu_ly(tb),
+                "han_xu_ly": gio_dia_phuong(thong_bao_service.han_xu_ly(tb)),
             })
         return Response(ket_qua)
 
