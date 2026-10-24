@@ -91,7 +91,7 @@ frontend/src/
 | Đường dẫn | Mục đích |
 |---|---|
 | `quy-trinh/`, `quy-trinh/{id}/`, `quy-trinh/{id}/{kich-hoat,ngung,nhan-ban}/` | Quy trình mẫu |
-| `trinh-ky/` (GET `?hop=can_toi_ky\|toi_gui\|tat_ca`, POST multipart) | Danh sách, tạo nháp |
+| `trinh-ky/` (GET `?hop=can_toi_ky\|toi_gui\|tat_ca&page=&page_size=`, POST multipart) | Danh sách (phân trang), tạo nháp |
 | `trinh-ky/{id}/` (GET, PATCH) | Chi tiết (lượt, cấp, người ký, `lich_su`), sửa nháp |
 | `trinh-ky/{id}/{gui,huy,trinh-lai}/` | Gửi, hủy, trình lại |
 | `trinh-ky/{id}/{ky,tu-choi,thu-hoi,yeu-cau-sua,uy-quyen}/` | Hành động người ký, ủy quyền khẩn cấp |
@@ -102,6 +102,13 @@ frontend/src/
 | `dashboard/` | Dữ liệu Dashboard/Header cho Nhóm 1 |
 
 Thao tác đổi trạng thái bắt buộc header `Idempotency-Key`. Lỗi trả dạng `{"code", "detail", "fields"}` (tiếng Việt).
+
+- Danh sách hồ sơ phân trang như các module khác (`PageNumberPagination`): `page` (mặc định 1), `page_size` (mặc định
+  10, tối đa 100); trả `{"count", "next", "previous", "results"}`. Trang vượt quá số trang trả 404.
+- Tìm kiếm (`q` của danh sách hồ sơ, `tai-lieu/`, `van-ban-di/`) không phân biệt hoa thường và dấu tiếng Việt: "mua sam"
+  khớp "Mua sắm", "10/qd" khớp "10/QĐ".
+- Mỗi văn bản chỉ có một hồ sơ đang mở (nháp hoặc đang chờ ký). Tạo nháp, gửi trình hoặc trình lại khi văn bản đang có
+  hồ sơ mở khác trả 409 `van_ban_da_co_ho_so_dang_mo`. Hồ sơ đã hoàn thành, từ chối hoặc hủy không chặn việc trình mới.
 
 ### `GET /api/v1/signing/dashboard/` (Nhóm 1)
 
@@ -136,10 +143,61 @@ bản đầy đủ ở `du-lieu-mau-va-tinh-trang-nghiep-vu.md` mục 6.2):
 | `SIGNING_DOCUMENT_ROOT` | Thư mục lưu tệp PDF, ảnh chữ ký snapshot, tệp hoàn tất |
 | `SIGNING_PIN_SECRET` | Bí mật máy chủ cho PIN và `k_srv`; bắt buộc trên staging/production (`check --deploy` báo `signing.E001/E002`) |
 | `SIGNING_PDF_FONT`, `SIGNING_PDF_FONT_BOLD` | Phông có dấu cho PDF hoàn tất; trống thì tự dò phông hệ thống |
-| `SIGNING_EMAIL_BACKEND` | Trống: dùng cấu hình email chung; dev có thể đặt console backend |
+| `SIGNING_EMAIL_BACKEND` | Để trống trên staging/production. Chỉ dùng để chọn backend không cần máy chủ thư khi dev/test: `django.core.mail.backends.console.EmailBackend` hoặc `django.core.mail.backends.locmem.EmailBackend`. Đặt giá trị SMTP thì được coi như để trống (gửi qua cấu hình `EMAIL_*`); giá trị không nạp được báo `signing.E004` |
 | `SIGNING_FRONTEND_URL` | Địa chỉ giao diện dùng trong liên kết email |
-| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` | SMTP chung của dự án; `EMAIL_HOST` trống thì email in ra console |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | SMTP chung của dự án (Django 6.1 `MAILERS`); `EMAIL_HOST` trống thì email in ra console |
+| `DEFAULT_FROM_EMAIL` | Địa chỉ người gửi, bắt buộc khi gửi SMTP, ví dụ `Hệ thống QLVB <qlvb@baohiembaolong.vn>`. Để trống thì mọi thư lỗi `Invalid address ''`; `manage.py check` báo `signing.W003` |
+| `ADMIN_PASSWORD` | Mật khẩu `admin` khi khởi tạo bằng `seed_db` / `scripts/build_db.py --seed` |
 | `DEMO_PASSWORD` | Mật khẩu tài khoản mẫu của `seed_signing_demo` |
+
+System check của phân hệ (`python manage.py check`): `signing.W002` khi `SIGNING_EMAIL_BACKEND` đặt SMTP mà dự án chưa
+có `EMAIL_HOST`; `signing.W003` khi gửi SMTP mà `DEFAULT_FROM_EMAIL` trống; `signing.E004` khi `SIGNING_EMAIL_BACKEND`
+không nạp được.
+
+### 5.1. Tài khoản demo và mật khẩu
+
+- Năm tài khoản demo `admin`, `vanthu`, `chuyenvien`, `truongphong`, `giamdoc` dùng chung **mật khẩu demo của lớp**:
+  đặt `ADMIN_PASSWORD` và `DEMO_PASSWORD` cùng một giá trị (mật khẩu demo của lớp) trong `.env`. Không ghi giá trị này
+  vào repo, tài liệu hay issue.
+- `admin` do `seed_db` tạo theo `ADMIN_PASSWORD`; `seed_signing_demo` không đổi mật khẩu `admin` đã có. Nếu `admin` đã
+  tồn tại với mật khẩu khác, đổi bằng:
+
+  ```bash
+  cd backend
+  python manage.py changepassword admin     # hoặc: pnpm manage changepassword admin
+  ```
+
+- Bốn tài khoản còn lại đã có mà mật khẩu khác: `python manage.py seed_signing_demo --dat-lai-mat-khau`.
+- Windows (PowerShell, CMD) không dùng được cú pháp `BIEN=... lệnh`: ghi biến vào tệp `backend/.env` (settings tự nạp
+  `backend/.env`, sau đó `.env` ở thư mục gốc):
+
+  ```dotenv
+  ADMIN_PASSWORD=<mật khẩu demo của lớp>
+  DEMO_PASSWORD=<mật khẩu demo của lớp>
+  ```
+
+  rồi chạy `pnpm manage seed_signing_demo --email-domain <miền email>`.
+
+### 5.2. Thử gửi email thật
+
+1. Ghi vào `backend/.env`:
+
+   ```dotenv
+   EMAIL_HOST=<máy chủ SMTP>
+   EMAIL_PORT=587
+   EMAIL_USE_TLS=true
+   EMAIL_HOST_USER=<tài khoản SMTP>
+   EMAIL_HOST_PASSWORD=<mật khẩu SMTP>
+   DEFAULT_FROM_EMAIL="Hệ thống QLVB <qlvb@baohiembaolong.vn>"
+   ```
+
+   `SIGNING_EMAIL_BACKEND` để trống.
+2. Kiểm tra cấu hình: `pnpm manage check` (không có `signing.W002`, `signing.W003`), rồi gửi thư thử:
+   `pnpm manage sendtestemail <email nhận>`.
+3. Tài khoản mẫu cần có email thì thông báo mới có kênh email: chạy `seed_signing_demo --email-domain <miền>` (gán
+   `<username>@<miền>` cho tài khoản mẫu chưa có email). Không có email thì chỉ có thông báo trong ứng dụng.
+4. Email lỗi được ghi `THAT_BAI` kèm lý do trong `signing_notification`; sửa cấu hình xong chạy
+   `python manage.py gui_thong_bao_trinh_ky` để gửi lại.
 
 ## 6. Cách chạy
 
@@ -147,14 +205,14 @@ bản đầy đủ ở `du-lieu-mau-va-tinh-trang-nghiep-vu.md` mục 6.2):
 pnpm db:setup                                           # dựng DB local (scripts/build_db.py --seed)
 cd backend
 DEMO_PASSWORD='<mật khẩu demo>' python manage.py seed_signing_demo   # dữ liệu mẫu, chạy lại không nhân bản
-python manage.py seed_signing_demo --reset              # hủy bộ hồ sơ mẫu cũ (bằng chứng giữ nguyên) rồi tạo lại
+python manage.py seed_signing_demo --reset              # hủy bộ hồ sơ mẫu cũ (giữ bằng chứng, lùi 30 ngày) rồi tạo lại
 python manage.py nhac_han_trinh_ky                      # nhắc hạn/quá hạn, chạy định kỳ
 python manage.py gui_thong_bao_trinh_ky                 # gửi lại email lỗi, chạy định kỳ
 python manage.py runserver                              # cùng `pnpm dev` ở frontend
 ```
 
 Trên staging, deploy chỉ chạy migration; lệnh dữ liệu mẫu chạy tay một lần trên máy chủ (xem
-`du-lieu-mau-va-tinh-trang-nghiep-vu.md` mục 5.4).
+`du-lieu-mau-va-tinh-trang-nghiep-vu.md` mục 5.6).
 
 Tài khoản mẫu: `truongphong` (ký cấp 1, có hồ sơ chờ ký), `giamdoc` (ký cấp 2, ký thay theo ủy quyền), `vanthu`
 (người trình, đủ trạng thái), `chuyenvien` (soạn nháp), `admin` (quản trị, ủy quyền). Sau khi chạy lệnh mẫu, mỗi người
@@ -183,8 +241,31 @@ desktop và mobile 390px, thông báo có người thực hiện và lý do.
 - Nhóm Chuyên viên chưa có `send_trinhky` nên chỉ tạo nháp, văn thư hoặc người có quyền gửi trình. Cấp thêm quyền phải
   sửa RBAC seed của Nhóm 7 và DDL ở PR riêng (AGENTS.md mục 6).
 - Đánh dấu đã đọc thông báo lưu ở trình duyệt; bảng `signing_notification` chưa có cột đã đọc.
+- Tìm không dấu dùng `LOWER(TRANSLATE(...))` sẵn có của PostgreSQL, quét tuần tự (đủ cho quy mô hiện tại). Muốn dùng
+  extension `unaccent` và index theo biểu thức thì phải đổi `release_DDL.sql` (`CREATE EXTENSION`, function
+  `IMMUTABLE`, index), cần PR đổi schema riêng theo AGENTS.md mục 5–6. Dữ liệu lưu dạng tổ hợp (NFD) chưa được chuẩn
+  hóa khi tìm.
 
-## 9. Nhật ký thay đổi PR #251
+## 9. Sửa lỗi kiểm thử staging (sau PR #251)
+
+- `DEFAULT_FROM_EMAIL` trống làm mọi email SMTP lỗi `Invalid address ''`: thêm system check `signing.W003`, giá trị mẫu
+  trong `.env.example`, hướng dẫn mục 5.2.
+- Một văn bản có nhiều hồ sơ trình ký chạy song song: chặn ở service (tạo nháp, gửi trình, trình lại), trả 409
+  `van_ban_da_co_ho_so_dang_mo`; khóa advisory theo văn bản tránh hai yêu cầu đồng thời cùng qua.
+- `SIGNING_EMAIL_BACKEND` đặt SMTP lỗi trên Django 6.1 (`The EMAIL_HOST setting is not available when MAILERS is
+  defined`): giá trị SMTP dùng mailer mặc định của dự án; chạy được trên Django 5.2 và 6.1; check `signing.W002`,
+  `signing.E004`.
+- Danh sách hồ sơ phân trang (backend `page`/`page_size`, giao diện thanh phân trang, đổi bộ lọc về trang 1).
+- Tìm không dấu ở danh sách hồ sơ, trang tệp, chọn văn bản đi và lọc quy trình.
+- Form "Tạo quy trình": ô tên cấp ký có nhãn "Tên cấp ký" (trước đó dùng nhầm "Tên quy trình").
+- Email và thông báo "Cần ký", "Sắp đến hạn", "Quá hạn" ghi hạn xử lý của cấp (dd/mm/yyyy HH:MM); API `thong-bao/`
+  trả `han_xu_ly`.
+- `seed_signing_demo --reset`: bộ hồ sơ mẫu cũ lùi ngày tạo/ngày trình 30 ngày nên không chen vào 5 phiếu gần nhất
+  của Dashboard.
+- Tab "Tệp trình ký" đổi lại thành "Văn bản công khai" (en "Public documents") theo quyết định của nhóm, đảo ngược
+  thay đổi ở PR #251. Khối "Tài liệu" trong trang chi tiết hồ sơ giữ nguyên.
+
+## 10. Nhật ký thay đổi PR #251
 
 - Ủy quyền ký khẩn cấp `POST trinh-ky/{id}/uy-quyen/`; người giao ủy quyền vẫn xem được hồ sơ; giao diện "Ký thay".
 - File khóa `.tlbmkey` (bản bọc private key): xuất khi tạo khóa và đổi PIN, nhập vào thiết bị, ký bằng file + PIN.

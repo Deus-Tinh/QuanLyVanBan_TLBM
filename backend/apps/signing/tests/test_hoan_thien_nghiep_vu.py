@@ -182,7 +182,7 @@ class RaSoatStagingTests(KyBase):
         self.hanh_dong(self.tao, "huy", ly_do="Đổi phương án")
         self.assertFalse(self.cap_dang_mo().exists())
         r = self.client_cua(self.ky1).get(f"{BASE}/?hop=can_toi_ky")
-        self.assertEqual(r.data, [])
+        self.assertEqual(r.data["results"], [])
 
     def test_history_lists_submit_before_open_level(self):
         hanh_dong = [e["hanh_dong"] for e in self.client_cua(self.tao).get(f"{BASE}/{self.pk}/").data["lich_su"]]
@@ -211,11 +211,11 @@ class RaSoatStagingTests(KyBase):
         self.assertIn("Lý do: Sai số: Mục 2 thiếu tổng", than)
 
     def test_list_shows_returned_and_overdue(self):
-        d = self.client_cua(self.tao).get(f"{BASE}/?hop=toi_gui").data[0]
+        d = self.client_cua(self.tao).get(f"{BASE}/?hop=toi_gui").data["results"][0]
         self.assertEqual((d["trang_thai_luot"], d["qua_han"]), ("CHO_KY", False))
         SigningRequestStep.objects.filter(luot_trinh__trinh_ky=self.pk, trang_thai=enums.TrangThaiCapKy.DANG_KY) \
             .update(han_xu_ly=timezone.now() - timedelta(hours=1))
-        self.assertTrue(self.client_cua(self.tao).get(f"{BASE}/?hop=toi_gui").data[0]["qua_han"])
+        self.assertTrue(self.client_cua(self.tao).get(f"{BASE}/?hop=toi_gui").data["results"][0]["qua_han"])
         self.hanh_dong(self.ky1, "yeu-cau-sua", tieu_de="Sai số", ly_do="Mục 2")
-        d = self.client_cua(self.tao).get(f"{BASE}/?hop=toi_gui").data[0]
+        d = self.client_cua(self.tao).get(f"{BASE}/?hop=toi_gui").data["results"][0]
         self.assertEqual((d["trang_thai"], d["trang_thai_luot"]), ("CHO_KY", "YEU_CAU_SUA"))
