@@ -69,7 +69,7 @@
     "maHoSo": "Request",
     "soHieu": "Document No.",
     "trichYeu": "Summary",
-    "vanBan": "Document",
+    "vanBan": "Document for signing",
     "quyTrinh": "Workflow",
     "trangThai": "Status",
     "dangCho": "Waiting for",
@@ -92,12 +92,9 @@
     "nhanh": {
       "tat_ca": "All",
       "cho_ky": "Awaiting signature",
-      "tra_lai": "Returned for revision",
       "qua_han": "Overdue",
-      "nhap": "Draft",
-      "hoan_thanh": "Completed",
-      "tu_choi": "Rejected",
-      "huy": "Cancelled"
+      "hoan_thanh": "Fully signed",
+      "tra_lai": "Returned for revision"
     },
     "quaHan": "Overdue"
   },
@@ -106,12 +103,13 @@
     "truoc": "Previous",
     "sau": "Next",
     "trang": "Page {trang}/{tong}",
-    "tomTat": "Showing {dau}–{cuoi} of {tong} requests"
+    "tomTat": "Showing {dau}–{cuoi} of {tong} requests",
+    "tomTatTep": "Showing {dau}–{cuoi} of {tong} files"
   },
   "tao": {
     "buoc1": "Request details",
     "buoc2": "Preview and place signatures",
-    "vanBanDi": "Document",
+    "vanBanDi": "Document for signing",
     "timVanBan": "Search by number or summary…",
     "khongCoVanBan": "No document you can view was found (restricted documents do not go through signing).",
     "quyTrinh": "Signing workflow",
@@ -119,7 +117,7 @@
     "khongCoQuyTrinh": "There is no active workflow available to you.",
     "hanChot": "Deadline (optional)",
     "ghiChu": "Note (optional)",
-    "tep": "Draft PDF (max 20 MB)",
+    "tep": "PDF for signing (max 20 MB)",
     "taoNhap": "Save draft and preview",
     "nguoiKyDuKien": "Signers in the workflow",
     "theoChucVu": "By position — resolved on submit",
@@ -131,7 +129,15 @@
     "chonNguoiKy": "Several people hold this position — choose the signer",
     "gui": "Submit for signing",
     "xacNhanGui": "After submitting, the file and its hash are locked; every signer signs exactly this file.",
-    "maBam": "File SHA-256"
+    "maBam": "File SHA-256",
+    "chonVanBanDi": "Pick an outgoing document",
+    "nhapVanBanKhac": "Enter another document",
+    "goiYChonVanBanDi": "Picking an outgoing document is optional; number and summary follow that document.",
+    "goiYNhapKhac": "Enter the number and summary; upload the PDF for signing below.",
+    "soHieu": "Number (optional)",
+    "trichYeu": "Summary",
+    "daChonVanBan": "Selected",
+    "boChon": "Clear"
   },
   "chiTiet": {
     "tienTrinh": "Signing progress",
@@ -234,11 +240,16 @@
     "moTa": "Description",
     "nguoiKy": "Signers",
     "soGioNhan": "Processing hours",
-    "xacNhanXoa": "Delete draft process “{ten}”? This cannot be undone.",
+    "xacNhanXoa": "Delete workflow “{ten}” (version {phienBan})? This cannot be undone.",
     "khongThayNguoiDung": "No matching accounts.",
     "chuaCoChucVu": "No position",
     "goiYTim": "Code, process name, department…",
-    "khongKhopLoc": "No processes match the filters."
+    "khongKhopLoc": "No processes match the filters.",
+    "xoaKhongDuoc": "{so} signing request(s) use this version, so it cannot be deleted; deactivate the workflow instead.",
+    "themTheoChucVu": "Add by position",
+    "chonChucVu": "— Pick a position (position catalogue) —",
+    "phamViChucVu": "Position scope",
+    "theoChucVu": "Position: {ten}"
   },
   "khoa": {
     "gioiThieu": "Your signing key is created in the browser and protected by an 8-digit PIN (Argon2id). The encrypted private key is exported to a key file; to sign, upload the key file and enter your PIN. The server never receives your PIN, key file or private key.",
@@ -302,7 +313,9 @@
     "nguoi_nhan_khong_hop_le": "The delegate is inactive or lacks signing permission.",
     "nguoi_nhan_da_co_trong_cap": "The delegate is already in the same level.",
     "khong_hien_thi_duoc_pdf": "This PDF cannot be displayed in this browser. Download the file to view it; if the problem persists, contact the administrator.",
-    "van_ban_da_co_ho_so_dang_mo": "This document already has an open signing request (draft or awaiting signature). Complete or cancel it before submitting a new one."
+    "van_ban_da_co_ho_so_dang_mo": "This document already has an open signing request (draft or awaiting signature). Complete or cancel it before submitting a new one.",
+    "thieu_van_ban_trinh_ky": "Pick an outgoing document or enter the summary of the document for signing.",
+    "van_ban_da_gan": "This request is linked to an outgoing document; its number and summary come from that document."
   },
   "nhatKy": {
     "TAO_TRINH_KY": "Request created",
@@ -362,5 +375,10 @@
       "LUOT": "Submitted file",
       "HOAN_TAT": "Completed file"
     }
+  },
+  "phamViChucVu": {
+    "DON_VI_NGUOI_TAO": "Within the submitter's unit",
+    "TOAN_CO_QUAN": "Whole organisation",
+    "DON_VI_CO_DINH": "Within the level's fixed unit"
   }
 }

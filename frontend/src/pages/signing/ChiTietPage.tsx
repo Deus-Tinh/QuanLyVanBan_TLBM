@@ -137,6 +137,7 @@ export default function ChiTietPage() {
       </div>
       <div className="space-y-4">
         <Card className="p-4 space-y-2">
+          <DongThongTin nhan={t('danhSach.vanBan')}>{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</DongThongTin>
           <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
           <DongThongTin nhan={t('danhSach.ngayGui')}>{dinhDangNgay(hoSo.ngay_gui, lang)}</DongThongTin>

@@ -1,7 +1,8 @@
 /**
  * Danh sách hồ sơ: "Cần tôi ký duyệt", "Tôi đã gửi trình", "Văn bản theo quyền" (#80 mục E) kèm bộ lọc:
- * thẻ lọc nhanh có số lượng (đang chờ ký, bị trả lại, quá hạn, hoàn tất…), ô tìm kiếm tự áp dụng và
- * phần "Lọc thêm" thu gọn (mức độ, quy trình, khoảng ngày). Hộp rỗng và chưa lọc thì không hiện khối lọc.
+ * thẻ trạng thái có số lượng (#275 mục 5: đang chờ ký, quá hạn, đã ký xong, trả lại để sửa; hồ sơ nháp, không đồng ý,
+ * đã hủy chỉ hiện ở "Tất cả"), ô tìm kiếm tự áp dụng và phần "Lọc thêm" thu gọn (quy trình, khoảng ngày).
+ * Hộp rỗng và chưa lọc thì không hiện khối lọc.
  * Danh sách phân trang phía server (10 hồ sơ mỗi trang); đổi bộ lọc thì về trang 1 (mỗi hộp là một route riêng).
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -19,12 +20,9 @@ type Hop = 'can_toi_ky' | 'toi_gui' | 'tat_ca';
 const THE_NHANH: { khoa: LocNhanh | ''; icon: string }[] = [
   { khoa: '', icon: 'fa-layer-group' },
   { khoa: 'cho_ky', icon: 'fa-hourglass-half' },
-  { khoa: 'tra_lai', icon: 'fa-rotate-left' },
   { khoa: 'qua_han', icon: 'fa-triangle-exclamation' },
-  { khoa: 'nhap', icon: 'fa-file-pen' },
   { khoa: 'hoan_thanh', icon: 'fa-circle-check' },
-  { khoa: 'tu_choi', icon: 'fa-circle-xmark' },
-  { khoa: 'huy', icon: 'fa-ban' },
+  { khoa: 'tra_lai', icon: 'fa-rotate-left' },
 ];
 const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-secondary';
 const TRE_TIM_KIEM_MS = 300;
@@ -36,7 +34,6 @@ function TheNhanh({ thongKe, chon, onChon }: { thongKe: ThongKeHoSo | null; chon
       {THE_NHANH.map(({ khoa, icon }) => {
         const so = thongKe ? thongKe[khoa || 'tat_ca'] : undefined;
         const dangChon = chon === khoa;
-        if (khoa && !dangChon && so === 0) return null;  // ẩn thẻ rỗng cho gọn
         return (
           <button key={khoa || 'tat_ca'} type="button" aria-pressed={dangChon} onClick={() => onChon(khoa)}
             className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${

@@ -38,7 +38,7 @@ vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
     toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
-    xoaQuyTrinh: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
+    xoaQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
     uyQuyen: vi.fn(), timNguoiNhanUyQuyen: vi.fn(),
   } };
 });
@@ -57,7 +57,8 @@ const TOI: NguoiDungHienTai = {
 
 function hoSo(sua: Partial<HoSoChiTiet> = {}): HoSoChiTiet {
   return {
-    id: 12, document_type: 'vanbandi', van_ban_id: 3, van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
+    id: 12, document_type: 'vanbandi', van_ban_id: 3, so_hieu_van_ban: '', trich_yeu_van_ban: '',
+    van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
     quy_trinh: 1, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt mua sắm', phien_ban_quy_trinh: 1,
     trang_thai: 'CHO_KY', han_chot: null, ngay_gui: null, ngay_hoan_thanh: null, ly_do_tu_choi: '', ly_do_huy: '',
     ghi_chu: '', ho_so_goc: null, phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64), create_by: 3,
@@ -92,7 +93,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   api.quyTrinh.mockResolvedValue([]);
   api.thongBao.mockResolvedValue([]);
-  api.thongKe.mockResolvedValue({ tat_ca: 3, nhap: 0, cho_ky: 1, tra_lai: 1, qua_han: 1, hoan_thanh: 0, tu_choi: 0, huy: 0 });
+  api.chucVu.mockResolvedValue([]);
+  api.danhBaCanBo.mockResolvedValue([]);
+  api.thongKe.mockResolvedValue({ tat_ca: 3, cho_ky: 1, qua_han: 1, hoan_thanh: 0, tra_lai: 1 });
   localStorage.setItem('tlbm_lang', 'vi');
 });
 
@@ -108,12 +111,12 @@ describe('SigningModule', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Trình ký' })).toBeInTheDocument();
   });
 
-  it('tab "Cần tôi ký duyệt" hiện số hồ sơ đang chờ; tab phụ nằm trong nhóm riêng', async () => {
+  it('tab "Cần tôi ký duyệt" hiện số hồ sơ đang chờ (gồm cả quá hạn); tab phụ nằm trong nhóm riêng', async () => {
     api.toi.mockResolvedValue(TOI);
     api.danhSach.mockResolvedValue(trang([]));
     moModule();
     const tabKy = await screen.findByRole('link', { name: /Cần tôi ký duyệt/ });
-    await waitFor(() => expect(tabKy).toHaveTextContent('1'));
+    await waitFor(() => expect(tabKy).toHaveTextContent('2'));
     expect(api.thongKe).toHaveBeenCalledWith('can_toi_ky');
     const nav = within(screen.getByRole('navigation'));
     for (const ten of [/Tôi đã gửi trình/, /Văn bản theo quyền/, /Văn bản công khai/, /Thông báo/, /Khóa ký & PIN/]) {
@@ -170,7 +173,7 @@ describe('DanhSachPage', () => {
   });
 
   it('hộp rỗng và chưa lọc: không hiện khối lọc, chỉ hiện trạng thái rỗng; thống kê gọi một lần', async () => {
-    api.thongKe.mockResolvedValue({ tat_ca: 0, nhap: 0, cho_ky: 0, tra_lai: 0, qua_han: 0, hoan_thanh: 0, tu_choi: 0, huy: 0 });
+    api.thongKe.mockResolvedValue({ tat_ca: 0, cho_ky: 0, qua_han: 0, hoan_thanh: 0, tra_lai: 0 });
     api.danhSach.mockResolvedValue(trang([]));
     boc(<DanhSachPage hop="tat_ca" />);
     expect(await screen.findByText(/(Chưa có hồ sơ nào bạn được xem\.|Chưa có văn bản nào bạn được xem\.)/)).toBeInTheDocument();
@@ -179,12 +182,16 @@ describe('DanhSachPage', () => {
     expect(api.thongKe).toHaveBeenCalledTimes(1);
   });
 
-  it('thẻ lọc nhanh hiện số lượng, ẩn thẻ rỗng, bấm thẻ là lọc', async () => {
+  it('bộ lọc trạng thái chỉ có Tất cả + 4 trạng thái, hiện số lượng (kể cả 0), bấm thẻ là lọc', async () => {
     api.danhSach.mockResolvedValue(trang([]));
     boc(<DanhSachPage hop="toi_gui" />);
     const quaHan = await screen.findByRole('button', { name: /Quá hạn/ });
     expect(quaHan).toHaveTextContent('1');
-    expect(screen.queryByRole('button', { name: /Hoàn tất/ })).not.toBeInTheDocument();  // số lượng 0
+    const nhom = within(screen.getByRole('group', { name: 'Lọc nhanh' }));
+    expect(nhom.getAllByRole('button').map((b) => b.textContent?.replace(/\d+$/, ''))).toEqual(
+      ['Tất cả', 'Đang chờ ký', 'Quá hạn', 'Đã ký xong', 'Trả lại để sửa']);
+    expect(nhom.getByRole('button', { name: /Đã ký xong/ })).toHaveTextContent('0');
+    for (const bo of [/Nháp/, /Không đồng ý/, /Đã hủy/]) expect(nhom.queryByRole('button', { name: bo })).not.toBeInTheDocument();
     fireEvent.click(quaHan);
     await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { nhanh: 'qua_han' }, 1));
     expect(screen.getByRole('button', { name: /Quá hạn/ })).toHaveAttribute('aria-pressed', 'true');
@@ -324,7 +331,7 @@ describe('QuyTrinhPage', () => {
   const TP: NguoiDungHienTai = { ...TOI, don_vi_id: 4, la_lanh_dao_don_vi: true, quyen: { ...TOI.quyen, manage_signing_process: true } };
   const QT: QuyTrinh = {
     id: 1, ma_quy_trinh: 'QT-KH', ten_quy_trinh: 'Duyệt kế hoạch', mo_ta: '', phien_ban: 1, trang_thai: 'HOAT_DONG',
-    pham_vi: 'PHONG_BAN', don_vi_ap_dung_id: 4, ten_don_vi_ap_dung: 'Phòng Kế hoạch', cap_ky: [],
+    pham_vi: 'PHONG_BAN', don_vi_ap_dung_id: 4, ten_don_vi_ap_dung: 'Phòng Kế hoạch', cap_ky: [], so_ho_so: 3,
   };
 
   it('hiện tên đơn vị áp dụng và chọn đơn vị từ danh sách khi tạo quy trình phòng ban', async () => {
@@ -349,14 +356,15 @@ describe('QuyTrinhPage', () => {
     expect(screen.queryByPlaceholderText('Tên quy trình')).not.toBeInTheDocument();
   });
 
-  it('xem chi tiết quy trình; quy trình nháp có Sửa và Xóa, xóa phải xác nhận', async () => {
+  it('xem chi tiết quy trình; chỉ nháp có Sửa; chưa có hồ sơ thì Xóa được (phải xác nhận), có hồ sơ thì Xóa bị khóa', async () => {
     const nhap: QuyTrinh = {
       ...QT, id: 2, trang_thai: 'NHAP', ten_quy_trinh: 'Quy trình nháp', cap_ky: [{
         id: 9, cap_ky: 1, ten_cap_ky: 'Trưởng phòng', thu_tu: 1, don_vi_id: null, so_gio_xu_ly: 24, nguoi_ky: [{
-          id: 3, nguoi_ky: 7, ten_nguoi_ky: 'Trần Trưởng', chuc_vu_id: null, pham_vi_chuc_vu: null,
+          id: 3, nguoi_ky: 7, ten_nguoi_ky: 'Trần Trưởng', chuc_vu_id: null, ten_chuc_vu: null, pham_vi_chuc_vu: null,
           vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true, thu_tu: 1,
         }],
       }],
+      so_ho_so: 0,
     };
     api.quyTrinh.mockResolvedValue([QT, nhap]);
     api.chiTietQuyTrinh.mockResolvedValue(nhap);
@@ -369,8 +377,12 @@ describe('QuyTrinhPage', () => {
     expect(await screen.findByText('Trần Trưởng')).toBeInTheDocument();
     expect(api.chiTietQuyTrinh).toHaveBeenCalledWith(2);
     fireEvent.click(screen.getAllByRole('button', { name: /Đóng/ })[0]);
-    fireEvent.click(screen.getByRole('button', { name: /Xóa quy trình/ }));
-    expect(screen.getByText(/Xóa quy trình nháp “Quy trình nháp”/)).toBeInTheDocument();
+    const [xoaDangDung, xoaNhap] = screen.getAllByRole('button', { name: /Xóa quy trình/ });
+    expect(xoaDangDung).toBeDisabled();  // quy trình đang có 3 hồ sơ dùng
+    expect(xoaDangDung).toHaveAttribute('title', expect.stringContaining('3 hồ sơ'));
+    expect(screen.getByText(/Đang có 3 hồ sơ trình ký dùng phiên bản này/)).toBeInTheDocument();
+    fireEvent.click(xoaNhap);
+    expect(screen.getByText(/Xóa quy trình “Quy trình nháp” \(phiên bản 1\)/)).toBeInTheDocument();
     expect(api.xoaQuyTrinh).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Xác nhận/ }));
     await waitFor(() => expect(api.xoaQuyTrinh).toHaveBeenCalledWith(2));
@@ -381,7 +393,7 @@ describe('QuyTrinhPage bộ lọc', () => {
   it('lọc quy trình theo từ khóa, trạng thái và phạm vi', async () => {
     const mau = (id: number, ten: string, trang_thai: 'NHAP' | 'HOAT_DONG', pham_vi: 'CONG_TY' | 'PHONG_BAN'): QuyTrinh => ({
       id, ma_quy_trinh: `QT-${id}`, ten_quy_trinh: ten, mo_ta: '', phien_ban: 1, trang_thai, pham_vi,
-      don_vi_ap_dung_id: null, ten_don_vi_ap_dung: null, cap_ky: [],
+      don_vi_ap_dung_id: null, ten_don_vi_ap_dung: null, cap_ky: [], so_ho_so: 0,
     });
     api.quyTrinh.mockResolvedValue([mau(1, 'Duyệt tờ trình', 'HOAT_DONG', 'CONG_TY'), mau(2, 'Duyệt hợp đồng', 'NHAP', 'PHONG_BAN')]);
     boc(<QuyTrinhPage />);
@@ -458,11 +470,11 @@ describe('ThongBaoPage', () => {
 
 describe('TaiLieuPage', () => {
   it('liệt kê tệp mọi hồ sơ, lọc theo loại và tải đúng lượt', async () => {
-    api.taiLieu.mockResolvedValue([{
+    api.taiLieu.mockResolvedValue(trang([{
       trinh_ky: 12, trang_thai_ho_so: 'CHO_KY', ten_quy_trinh: 'Duyệt mua sắm', van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
       loai: 'LUOT', luot: 5, so_luot: 1, phien_ban: '1', ma_bam: 'a'.repeat(64), thoi_diem: '2026-10-07T01:00:00Z',
       ten_tep: 'trinh-ky-12-luot-1.pdf',
-    }]);
+    }]));
     api.tepCuaLuot.mockResolvedValue(new Blob(['%PDF-']));
     URL.createObjectURL = vi.fn(() => 'blob:tep');
     URL.revokeObjectURL = vi.fn();
@@ -470,9 +482,64 @@ describe('TaiLieuPage', () => {
     expect(await screen.findByText('trinh-ky-12-luot-1.pdf')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '#12' })).toHaveAttribute('href', '/approvals/12');
     fireEvent.change(screen.getByRole('combobox', { name: /Loại tệp/ }), { target: { value: 'HOAN_TAT' } });
-    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'HOAN_TAT' }));
+    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'HOAN_TAT' }, 1));
     fireEvent.click(screen.getByText('trinh-ky-12-luot-1.pdf'));
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
+  });
+});
+
+describe('TaiLieuPage phân trang', () => {
+  it('nhiều tệp thì phân trang như danh sách hồ sơ; sang trang 2, đổi bộ lọc về trang 1', async () => {
+    const tep = { trinh_ky: 12, trang_thai_ho_so: 'CHO_KY' as const, ten_quy_trinh: 'Duyệt', van_ban: { so_hieu: '15/TTr' },
+      loai: 'LUOT' as const, luot: 5, so_luot: 1, phien_ban: '1', ma_bam: 'a'.repeat(64), thoi_diem: '2026-10-07T01:00:00Z',
+      ten_tep: 'trinh-ky-12-luot-1.pdf' };
+    api.taiLieu.mockResolvedValue(trang([tep], 25));
+    boc(<TaiLieuPage />);
+    const thanh = await screen.findByRole('navigation', { name: 'Phân trang' });
+    expect(within(thanh).getByText('Hiển thị 1–10 trên 25 tệp')).toBeInTheDocument();
+    expect(within(thanh).getByText('Trang 1/3')).toBeInTheDocument();
+    fireEvent.click(within(thanh).getByRole('button', { name: /Sau/ }));
+    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({}, 2));
+    fireEvent.change(await screen.findByRole('combobox', { name: /Loại tệp/ }), { target: { value: 'LUOT' } });
+    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'LUOT' }, 1));
+  });
+});
+
+describe('QuyTrinhPage chọn người ký từ phân hệ CBNV', () => {
+  const QUAN_TRI: NguoiDungHienTai = { ...TOI, la_quan_tri: true, quyen: { ...TOI.quyen, manage_signing_process: true } };
+
+  it('chọn cán bộ từ danh bạ CBNV và chức vụ từ Danh mục chức vụ; lưu đúng payload', async () => {
+    api.quyTrinh.mockResolvedValue([]);
+    api.donVi.mockResolvedValue([]);
+    api.danhBaCanBo.mockResolvedValue([
+      { id: 31, username: 'tp_kh', ho_ten: 'Lê Văn Minh', don_vi_id: 4, don_vi_ten: 'Phòng Kế hoạch', chuc_vu_id: 5, chuc_vu_ten: 'Trưởng phòng' },
+      { id: 32, username: 'cv_kt', ho_ten: 'Phạm Thu Hà', don_vi_id: 2, don_vi_ten: 'Phòng Kế toán', chuc_vu_id: 9, chuc_vu_ten: 'Chuyên viên' },
+    ]);
+    api.chucVu.mockResolvedValue([{ id: 5, name: 'Trưởng phòng', display_order: 6 }, { id: 2, name: 'Giám đốc', display_order: 3 }]);
+    api.taoQuyTrinh.mockResolvedValue({} as QuyTrinh);
+    boc(<QuyTrinhPage />, QUAN_TRI);
+    fireEvent.click(await screen.findByRole('button', { name: /Tạo quy trình/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Mã quy trình' }), { target: { value: 'QT-CV' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Tên quy trình' }), { target: { value: 'Theo chức vụ' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Tên cấp ký 1' }), { target: { value: 'Duyệt' } });
+    const tim = screen.getByRole('textbox', { name: 'Thêm người ký' });
+    fireEvent.focus(tim);
+    fireEvent.change(tim, { target: { value: 'ke toan' } });  // tìm không dấu theo đơn vị
+    fireEvent.click(await screen.findByRole('button', { name: /Phạm Thu Hà/ }));
+    expect(api.danhBaCanBo).toHaveBeenCalledTimes(1);
+    const chonCv = screen.getByRole('combobox', { name: 'Thêm theo chức vụ' });
+    await waitFor(() => expect(within(chonCv).getByRole('option', { name: 'Giám đốc' })).toBeInTheDocument());
+    fireEvent.change(chonCv, { target: { value: '2' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Phạm vi chức vụ' }), { target: { value: 'TOAN_CO_QUAN' } });
+    fireEvent.click(screen.getByRole('button', { name: /Thêm theo chức vụ/ }));
+    expect(screen.getByText('Chức vụ: Giám đốc')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Lưu/ }));
+    await waitFor(() => expect(api.taoQuyTrinh).toHaveBeenCalledTimes(1));
+    const body = api.taoQuyTrinh.mock.calls[0][0] as { cap_ky: Array<{ nguoi_ky: unknown[] }> };
+    expect(body.cap_ky[0].nguoi_ky).toEqual([
+      expect.objectContaining({ nguoi_ky: 32, thu_tu: 1 }),
+      expect.objectContaining({ chuc_vu_id: 2, pham_vi_chuc_vu: 'TOAN_CO_QUAN', thu_tu: 2 }),
+    ]);
   });
 });
 
