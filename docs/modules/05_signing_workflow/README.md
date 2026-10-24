@@ -262,6 +262,8 @@ desktop và mobile 390px, thông báo có người thực hiện và lý do.
   trả `han_xu_ly`.
 - `seed_signing_demo --reset`: bộ hồ sơ mẫu cũ lùi ngày tạo/ngày trình 30 ngày nên không chen vào 5 phiếu gần nhất
   của Dashboard.
+- Tab "Tệp trình ký" đổi lại thành "Văn bản công khai" (en "Public documents") theo quyết định của nhóm, đảo ngược
+  thay đổi ở PR #251. Khối "Tài liệu" trong trang chi tiết hồ sơ giữ nguyên.
 
 ## 10. Nhật ký thay đổi PR #251
 
