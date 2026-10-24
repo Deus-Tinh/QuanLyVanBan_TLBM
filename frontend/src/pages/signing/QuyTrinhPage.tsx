@@ -115,7 +115,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
       <div className="grid gap-3 sm:grid-cols-2">
         <TruongNhap nhan={t('quyTrinh.ma')}><input className={LOP_O_NHAP} maxLength={50} value={ma} disabled={!!banDau} onChange={(e) => setMa(e.target.value)} /></TruongNhap>
         <TruongNhap nhan={t('quyTrinh.ten')}><input className={LOP_O_NHAP} value={ten} onChange={(e) => setTen(e.target.value)} /></TruongNhap>
-        <TruongNhap nhan={t('quyTrinh.phamVi')}>
+        <TruongNhap nhan={t('quyTrinh.phamVi')} className={phamVi === 'CONG_TY' ? 'sm:col-span-2' : ''}>
           <select className={LOP_O_NHAP} value={phamVi} onChange={(e) => setPhamVi(e.target.value as PhamViQuyTrinh)}>
             <option value="CONG_TY">{t('phamVi.CONG_TY')}</option>
             <option value="PHONG_BAN">{t('phamVi.PHONG_BAN')}</option>

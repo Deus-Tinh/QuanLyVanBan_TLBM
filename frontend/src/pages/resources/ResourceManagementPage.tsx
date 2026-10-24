@@ -15,6 +15,7 @@ import { Button } from '@components/common/Button';
 import { Toast, ToastNotification } from '@components/resources/Toast';
 import { useTranslation } from '@i18n/translate';
 import { apiClient } from '@lib/apiClient';
+import { authService } from '@lib/authService';
 
 const STORAGE_KEY = 'tlbm_resources_filter_state';
 const STORAGE_DOCS = 'tlbm_documents_v2';
@@ -604,6 +605,12 @@ export default function ResourceManagementPage() {
   const [deleteItem, setDeleteItem] = useState<ResourceItem | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Quyền hạn Admin
+  const currentSession = authService.getSession();
+  const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
+
+
   // Toast thông báo nổi trên cùng (z-[999999] trên tất cả modal và màn đen)
   const [toast, setToast] = useState<ToastNotification | null>(null);
   const lastToastRef = useRef<{ message: string; time: number } | null>(null);
@@ -898,6 +905,10 @@ export default function ResourceManagementPage() {
 
   // Hành động Mở Modal Thêm mới
   const handleAddNew = () => {
+    if (!isAdmin) {
+      showToast(t('resourceManagement.adminOnlyAddDocument'), 'warning');
+      return;
+    }
     if (categories.length === 0) {
       // Mở trực tiếp màn Quản lý thư mục để người dùng tạo thư mục trước, không hiện toast cảnh báo gây spam
       setToast(null);
@@ -1362,14 +1373,17 @@ export default function ResourceManagementPage() {
             {t('resourceManagement.categoriesBtn')}
           </Button>
 
-          {/* Nút Thêm mới tài liệu (Thao tác chính nổi bật) */}
+          {/* Nút Thêm mới tài liệu (Thao tác chính nổi bật - Chỉ Admin mới có quyền) */}
           <Button
-            variant="primary"
+            variant={isAdmin ? "primary" : "secondary"}
             size="md"
             icon="fa-plus"
-            onClick={handleAddNew}
-            className="h-9 sm:h-10 px-3.5 sm:px-4.5 rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:shadow-glow transition-all flex-1 sm:flex-initial justify-center"
-            title={t('resourceManagement.addDocumentBtn')}
+            onClick={isAdmin ? handleAddNew : undefined}
+            disabled={!isAdmin}
+            className={`h-9 sm:h-10 px-3.5 sm:px-4.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex-1 sm:flex-initial justify-center ${
+              !isAdmin ? 'opacity-60 cursor-not-allowed' : 'shadow-sm hover:shadow-glow'
+            }`}
+            title={isAdmin ? t('resourceManagement.addDocumentBtn') : t('resourceManagement.adminOnlyAddDocument')}
           >
             {t('resourceManagement.addDocumentBtn')}
           </Button>
@@ -1407,7 +1421,7 @@ export default function ResourceManagementPage() {
                       <i className={`fa-solid fa-layer-group text-xs ${isAll ? 'text-primary' : 'text-muted'}`} />
                       <span>{t('resourceManagement.all')}</span>
                       <span
-                        className={`px-1.5 py-0.5 text-[10px] sm:text-[11px] rounded-full font-bold ${
+                        className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                           isAll
                             ? 'bg-primary text-white'
                             : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1435,7 +1449,7 @@ export default function ResourceManagementPage() {
                       key={cat.id}
                       type="button"
                       onClick={() => handleCategorySelect(String(cat.id))}
-                      className={`flex items-center gap-1.5 px-3 sm:px-3.5 h-full text-xs sm:text-[13px] font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
+                      className={`relative flex items-center gap-1.5 px-3 sm:px-3.5 h-full text-xs sm:text-[13px] font-semibold whitespace-nowrap border-b-2 transition-all cursor-pointer shrink-0 ${
                         isSelected
                           ? 'border-primary text-primary bg-primary/5 font-bold'
                           : 'border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
@@ -1446,7 +1460,7 @@ export default function ResourceManagementPage() {
                       <i className={`fa-solid ${isSelected ? 'fa-folder-open text-primary' : 'fa-folder text-muted'} text-xs`} />
                       <span>{cat.ten_tai_lieu}</span>
                       <span
-                        className={`px-1.5 py-0.5 text-[10px] sm:text-[11px] rounded-full font-bold ${
+                        className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                           isSelected
                             ? 'bg-primary text-white'
                             : 'bg-surface-elevated text-muted border border-border-subtle'
@@ -1539,7 +1553,7 @@ export default function ResourceManagementPage() {
                         <span className="truncate">{t('resourceManagement.allFolders')}</span>
                       </span>
                       <span
-                        className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                        className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                           selectedCategory === 'all'
                             ? 'bg-white/20 text-white'
                             : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1601,7 +1615,7 @@ export default function ResourceManagementPage() {
                               <span className="truncate">{cat.ten_tai_lieu}</span>
                             </button>
                             <span
-                              className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
+                              className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                                 isSelected
                                   ? 'bg-primary text-white'
                                   : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1666,7 +1680,7 @@ export default function ResourceManagementPage() {
                 >
                   <i className={`fa-solid fa-tags text-xs ${selectedType === 'all' ? 'text-primary' : 'text-muted'}`} />
                   <span>Loại</span>
-                  <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-bold ${
+                  <span className={`min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center text-[10px] rounded-full font-bold leading-none shrink-0 ${
                     selectedType === 'all'
                       ? 'bg-primary text-white'
                       : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1700,30 +1714,30 @@ export default function ResourceManagementPage() {
                   </span>
                 </button>
 
-                {orderedVisibleTypes.map((t) => {
-                  const isActive = selectedType === String(t.id);
+                {orderedVisibleTypes.map((typeItem) => {
+                  const isActive = selectedType === String(typeItem.id);
                   const docCount = documents.filter(
                     (d) =>
                       d.dm_tai_lieu === Number(selectedCategory) &&
                       Array.isArray(d.loai_tai_lieu) &&
-                      d.loai_tai_lieu.includes(t.id)
+                      d.loai_tai_lieu.includes(typeItem.id)
                   ).length;
                   return (
                     <button
-                      key={t.id}
+                      key={typeItem.id}
                       type="button"
-                      onClick={() => { setSelectedType(String(t.id)); setCurrentPage(1); }}
-                      className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs sm:text-[13px] font-semibold transition-all cursor-pointer shrink-0 ${
+                      onClick={() => { setSelectedType(String(typeItem.id)); setCurrentPage(1); }}
+                      className={`relative inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs sm:text-[13px] font-semibold transition-all cursor-pointer shrink-0 ${
                         isActive
                           ? 'bg-primary text-white shadow-2xs font-bold'
                           : 'bg-surface text-secondary border border-border-subtle hover:border-primary/50 hover:text-primary hover:bg-surface'
                       }`}
-                      title={t.ghi_chu || t.ten_loai}
+                      title={typeItem.ghi_chu || typeItem.ten_loai}
                     >
-                      {!t.is_public && (
+                      {!typeItem.is_public && (
                         <i className="fa-solid fa-lock text-[10px] opacity-70" />
                       )}
-                      <span>{t.ten_loai}</span>
+                      <span>{typeItem.ten_loai}</span>
                       <span className={`text-[10px] sm:text-[11px] font-bold ${
                         isActive ? 'text-white/80' : 'text-muted'
                       }`}>
@@ -1815,7 +1829,7 @@ export default function ResourceManagementPage() {
                         <i className="fa-solid fa-layer-group text-xs" />
                         <span className="truncate">Tất cả loại tài liệu</span>
                       </span>
-                      <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
+                      <span className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                         selectedType === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
                       }`}>
                         {categoryDocCount}
@@ -1826,23 +1840,23 @@ export default function ResourceManagementPage() {
 
                     {/* Danh sách loại tài liệu kèm checkbox (ẩn checkbox trên mobile) */}
                     <div className="max-h-60 overflow-y-auto space-y-1 pr-0.5">
-                      {availableTypesForFilter.map((t) => {
-                        const isSelected = selectedType === String(t.id);
+                      {availableTypesForFilter.map((typeItem) => {
+                        const isSelected = selectedType === String(typeItem.id);
                         const currentScopeTypeIds = availableTypesForFilter.map((item) => item.id);
                         const activeInScope = visibleTypeIds.filter((id) => currentScopeTypeIds.includes(id));
-                        const tickIndex = activeInScope.indexOf(t.id);
+                        const tickIndex = activeInScope.indexOf(typeItem.id);
                         const isVisibleOnBar = tickIndex !== -1;
                         const docCount = documents.filter(
                           (d) =>
                             d.dm_tai_lieu === Number(selectedCategory) &&
                             Array.isArray(d.loai_tai_lieu) &&
-                            d.loai_tai_lieu.includes(t.id)
+                            d.loai_tai_lieu.includes(typeItem.id)
                         ).length;
 
                         return (
                           <div
-                            key={t.id}
-                            className={`w-full px-2 py-1.5 rounded-lg text-xs flex items-center justify-between gap-2 transition-colors ${
+                            key={typeItem.id}
+                            className={`relative w-full px-2 py-1.5 rounded-lg text-xs flex items-center justify-between gap-2 transition-colors ${
                               isSelected
                                 ? 'bg-primary/10 border border-primary/20 text-primary font-bold'
                                 : 'text-main hover:bg-surface-elevated'
@@ -1857,7 +1871,7 @@ export default function ResourceManagementPage() {
                               <input
                                 type="checkbox"
                                 checked={isVisibleOnBar}
-                                onChange={() => toggleTypeVisibility(t.id)}
+                                onChange={() => toggleTypeVisibility(typeItem.id)}
                                 className="w-4 h-4 rounded border-border-subtle text-primary focus:ring-primary/20 cursor-pointer accent-primary"
                               />
                               {isVisibleOnBar && (
@@ -1870,22 +1884,22 @@ export default function ResourceManagementPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setSelectedType(String(t.id));
+                                setSelectedType(String(typeItem.id));
                                 setCurrentPage(1);
                                 setIsTypeDropdownOpen(false);
                               }}
                               className="flex items-center gap-2 truncate flex-1 text-left cursor-pointer hover:text-primary transition-colors py-0.5"
-                              title={t.ghi_chu || t.ten_loai}
+                              title={typeItem.ghi_chu || typeItem.ten_loai}
                             >
-                              {!t.is_public ? (
+                              {!typeItem.is_public ? (
                                 <i className="fa-solid fa-lock text-[10px] opacity-70 shrink-0" />
                               ) : (
                                 <i className="fa-solid fa-tag text-xs opacity-70 shrink-0" />
                               )}
-                              <span className="truncate">{t.ten_loai}</span>
+                              <span className="truncate">{typeItem.ten_loai}</span>
                             </button>
 
-                            <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
+                            <span className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                               isSelected ? 'bg-primary text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
                             }`}>
                               {docCount}
@@ -2286,8 +2300,8 @@ export default function ResourceManagementPage() {
           setCurrentPage(1);
         }}
         onViewDetail={handleViewDetail}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        onEdit={isAdmin ? handleEdit : undefined}
+        onDelete={isAdmin ? handleDelete : undefined}
         onDownloadFile={handleDownloadFile}
         onClearFilters={hasActiveFilters ? handleClearFilters : undefined}
         onDrillDown={(categoryId, typeId) => {
@@ -2304,14 +2318,14 @@ export default function ResourceManagementPage() {
         onClose={() => setIsDetailOpen(false)}
         item={detailItem}
         onDownloadFile={handleDownloadFile}
-        onEdit={(item) => {
+        onEdit={isAdmin ? (item) => {
           setIsDetailOpen(false);
           handleEdit(item);
-        }}
-        onDelete={(item) => {
+        } : undefined}
+        onDelete={isAdmin ? (item) => {
           setIsDetailOpen(false);
           handleDelete(item);
-        }}
+        } : undefined}
       />
 
       {/* MODAL THÊM MỚI / SỬA TÀI LIỆU (MỤC 7) */}

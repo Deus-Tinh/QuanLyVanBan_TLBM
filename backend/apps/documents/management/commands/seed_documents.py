@@ -121,11 +121,11 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             if clean_mode:
-                self.stdout.write("  -> Đang dọn dẹp dữ liệu văn bản nội bộ cũ theo tùy chọn --clean...")
-                VanBanDenAttachment.objects.filter(document__pham_vi=PhamVi.NOI_BO).delete()
-                VanBanDiAttachment.objects.filter(document__pham_vi=PhamVi.NOI_BO).delete()
-                VanBanDen.objects.filter(pham_vi=PhamVi.NOI_BO).delete()
-                VanBanDi.objects.filter(pham_vi=PhamVi.NOI_BO).delete()
+                self.stdout.write("  -> Đang dọn dẹp dữ liệu văn bản cũ theo tùy chọn --clean...")
+                VanBanDenAttachment.objects.all().delete()
+                VanBanDiAttachment.objects.all().delete()
+                VanBanDen.objects.all().delete()
+                VanBanDi.objects.all().delete()
                 self.stdout.write(self.style.SUCCESS("  -> Đã làm sạch dữ liệu cũ thành công."))
 
             # -------------------------------------------------------------
@@ -188,6 +188,7 @@ class Command(BaseCommand):
                     "position": "Nhóm 2 - Quản lý VB",
                     "att_name": "05_TB_TTr_BGD_ThanhTra.png",
                     "att_data": img_confidential[1],
+                    "scope": PhamVi.HAN_CHE,
                 },
                 {
                     "stt": 6,
@@ -270,8 +271,6 @@ class Command(BaseCommand):
 
             for item in inbound_specs:
                 aware_dt = timezone.make_aware(item["date"]) if timezone.is_naive(item["date"]) else item["date"]
-                existing_in = VanBanDen.objects.filter(nam=2026, so_thu_tu=item["stt"]).first()
-                in_pham_vi = existing_in.pham_vi if existing_in else PhamVi.NOI_BO
                 doc, created = VanBanDen.objects.update_or_create(
                     nam=2026,
                     so_thu_tu=item["stt"],
@@ -283,7 +282,7 @@ class Command(BaseCommand):
                         "chuc_vu": item["position"],
                         "ngay_den": aware_dt,
                         "ngay_van_ban": aware_dt,
-                        "pham_vi": in_pham_vi,
+                        "pham_vi": item.get("scope", PhamVi.NOI_BO),
                         "hieu_luc": HieuLuc.CON_HIEU_LUC,
                         "hien_thi": True,
                         "nguoi_tao": author,
@@ -362,6 +361,7 @@ class Command(BaseCommand):
                     "position": "Trưởng phòng Đào tạo",
                     "att_name": "11_TB_ITC_ThiChuanDauRa.pdf",
                     "att_data": pdf_chieu_sinh[1],
+                    "scope": PhamVi.HAN_CHE,
                 },
                 {
                     "stt": 6,
@@ -422,8 +422,6 @@ class Command(BaseCommand):
 
             for item in outbound_specs:
                 aware_dt = timezone.make_aware(item["date"]) if timezone.is_naive(item["date"]) else item["date"]
-                existing_out = VanBanDi.objects.filter(nam=2026, so_thu_tu=item["stt"]).first()
-                out_pham_vi = existing_out.pham_vi if existing_out else PhamVi.NOI_BO
                 doc, created = VanBanDi.objects.update_or_create(
                     nam=2026,
                     so_thu_tu=item["stt"],
@@ -434,7 +432,7 @@ class Command(BaseCommand):
                         "chuc_vu": item["position"],
                         "ngay_ban_hanh": aware_dt,
                         "ngay_van_ban": aware_dt,
-                        "pham_vi": out_pham_vi,
+                        "pham_vi": item.get("scope", PhamVi.NOI_BO),
                         "hieu_luc": HieuLuc.CON_HIEU_LUC,
                         "hien_thi": True,
                         "nguoi_tao": author,
@@ -454,11 +452,13 @@ class Command(BaseCommand):
                 self.stdout.write(f"  [VB Đi #{item['stt']:02d}] {status_label}: {item['code']} - Tệp: {item['att_name']} ({len(item['att_data'])} bytes)")
 
         # Thống kê kết quả
-        total_in = VanBanDen.objects.filter(ngay_den__year=2026, pham_vi=PhamVi.NOI_BO).count()
-        total_out = VanBanDi.objects.filter(ngay_ban_hanh__year=2026, pham_vi=PhamVi.NOI_BO).count()
+        total_in = VanBanDen.objects.filter(ngay_den__year=2026).count()
+        total_out = VanBanDi.objects.filter(ngay_ban_hanh__year=2026).count()
+        in_han_che = VanBanDen.objects.filter(ngay_den__year=2026, pham_vi=PhamVi.HAN_CHE).count()
+        out_han_che = VanBanDi.objects.filter(ngay_ban_hanh__year=2026, pham_vi=PhamVi.HAN_CHE).count()
 
         self.stdout.write(self.style.SUCCESS(f"\n=== HOÀN TẤT SEED DỮ LIỆU THÀNH CÔNG ==="))
-        self.stdout.write(f"  * KPI Văn bản Đến (2026): {total_in} văn bản")
-        self.stdout.write(f"  * KPI Văn bản Đi (2026):   {total_out} văn bản")
+        self.stdout.write(f"  * KPI Văn bản Đến (2026): {total_in} văn bản ({in_han_che} Hạn chế, {total_in - in_han_che} Nội bộ)")
+        self.stdout.write(f"  * KPI Văn bản Đi (2026):   {total_out} văn bản ({out_han_che} Hạn chế, {total_out - out_han_che} Nội bộ)")
         self.stdout.write(f"  * Tổng số tệp đính kèm thật: {len(inbound_specs) + len(outbound_specs)} tệp (PDF, PNG, DOCX)")
         self.stdout.write("Hệ thống đã sẵn sàng 100% phục vụ Dashboard và buổi Demo Staging!")
