@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { DocumentItem, DocumentDetail } from '@app-types/document';
 import { Button } from '@components/common/Button';
 import { formatDate } from '@lib/dateUtils';
@@ -6,6 +6,8 @@ import { authService } from '@lib/authService';
 import apiClient from '@lib/apiClient';
 import { getAbsoluteFileUrl } from '@lib/fileUtils';
 import { resolveDocumentApiUrl } from '@lib/routes';
+import { useTranslation } from '@i18n/translate';
+import { useIsMobile } from '@hooks/useIsMobile';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -190,8 +192,54 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   isConfidential = false,
   loai = 'DEN',
 }) => {
+  const { t } = useTranslation();
+  const isMobile = useIsMobile();
+
   // Lấy thông tin phiên làm việc hiện tại để phân quyền hiển thị tác vụ
   const currentSession = useMemo(() => authService.getSession(), []);
+
+  // Helper tính quyền sửa và xóa trên từng văn bản
+  const getDocPermissions = useCallback((doc: DocumentItem) => {
+    const isExpired = doc.hieu_luc === 'HET_HIEU_LUC';
+    const isDocConfidential = isConfidential || doc.pham_vi === 'HAN_CHE' || doc.loai === 'MAT' || loai === 'MAT';
+    const isAdmin =
+      currentSession?.role === 'admin' ||
+      currentSession?.username === 'admin';
+    const isCreator = Boolean(
+      currentSession?.username &&
+      doc.nguoi_tao_username &&
+      currentSession.username === doc.nguoi_tao_username
+    );
+
+    let defaultCanEdit = false;
+    let defaultCanDelete = false;
+
+    if (!currentSession) {
+      if (!isDocConfidential && !isExpired) {
+        defaultCanEdit = true;
+        defaultCanDelete = true;
+      }
+    } else if (isAdmin) {
+      defaultCanEdit = true;
+      defaultCanDelete = true;
+    } else if (!isDocConfidential && isCreator && !isExpired) {
+      defaultCanEdit = true;
+      defaultCanDelete = true;
+    }
+
+    let userCanEdit = doc.can_edit !== undefined ? doc.can_edit : defaultCanEdit;
+    let userCanDelete = doc.can_delete !== undefined ? doc.can_delete : defaultCanDelete;
+
+    if (isDocConfidential && !isAdmin) {
+      userCanEdit = false;
+      userCanDelete = false;
+    }
+
+    return {
+      canEdit: Boolean(onEdit) && userCanEdit,
+      canDelete: Boolean(onDelete) && userCanDelete,
+    };
+  }, [currentSession, isConfidential, loai, onDelete, onEdit]);
 
   // Quản lý menu 3 chấm ⋮ mở trên dòng nào
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
@@ -264,18 +312,19 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
   return (
     <div className="bg-surface border border-border-subtle rounded-xl shadow-sm overflow-hidden transition-all duration-normal">
-      {/* Bảng Dữ Liệu */}
-      <div className="overflow-x-auto min-h-[380px] pb-24">
-        <table className="w-full text-left text-sm border-separate border-spacing-0 min-w-[950px]">
+      {!isMobile ? (
+        /* Bảng Dữ Liệu (Desktop & Tablet >= md) */
+        <div className="overflow-x-auto min-h-[380px] pb-24 touch-pan-x overscroll-x-contain">
+          <table className="w-full text-left text-sm border-separate border-spacing-0 min-w-[950px]">
           <thead>
             <tr className="bg-surface-elevated/70 text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
-              <th className="px-4 py-3 text-center w-16">{loai === 'MAT' ? 'STT' : loai === 'DI' ? 'Số đi' : 'Số đến'}</th>
-              <th className="px-4 py-3 w-40">Số, ký hiệu</th>
-              <th className="px-4 py-3 w-48">Mốc thời gian</th>
-              <th className="px-4 py-3 min-w-[280px]">Trích yếu nội dung</th>
-              <th className="px-4 py-3 w-48">{loai === 'DI' || loai === 'MAT' ? 'Người ký' : 'Nơi ban hành'}</th>
-              <th className="px-4 py-3 w-40 text-center">Hiệu lực</th>
-              <th className="px-4 py-3 w-20 text-center">Tác vụ</th>
+              <th className="px-4 py-3 text-center w-16">{loai === 'MAT' ? (t('documents_ui.table.colStt') || 'STT') : loai === 'DI' ? (t('documents_ui.table.colOutboundNum') || 'Số đi') : (t('documents_ui.table.colInboundNum') || 'Số đến')}</th>
+              <th className="px-4 py-3 w-40">{t('documents_ui.table.colCode') || 'Số, ký hiệu'}</th>
+              <th className="px-4 py-3 w-48">{t('documents_ui.table.colTimestamp') || 'Mốc thời gian'}</th>
+              <th className="px-4 py-3 min-w-[280px]">{t('documents_ui.table.colSummary') || 'Trích yếu nội dung'}</th>
+              <th className="px-4 py-3 w-48">{loai === 'DI' || loai === 'MAT' ? (t('documents_ui.table.colSigner') || 'Người ký') : (t('documents_ui.table.colIssuer') || 'Nơi ban hành')}</th>
+              <th className="px-4 py-3 w-40 text-center">{t('documents_ui.table.colStatus') || 'Hiệu lực'}</th>
+              <th className="px-4 py-3 w-20 text-center">{t('documents_ui.table.colActions') || 'Tác vụ'}</th>
             </tr>
           </thead>
 
@@ -318,10 +367,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       <i className="fa-solid fa-folder-open text-muted" />
                     </div>
                     <span className="text-sm font-semibold text-secondary">
-                      {loai === 'MAT' ? 'Không tìm thấy văn bản mật nào' : loai === 'DI' ? 'Không tìm thấy văn bản đi nào' : 'Không tìm thấy văn bản đến nào'}
+                      {loai === 'MAT' ? (t('documents_ui.table.emptyConfidentialTitle') || 'Không tìm thấy văn bản mật nào') : loai === 'DI' ? (t('documents_ui.table.emptyOutboundTitle') || 'Không tìm thấy văn bản đi nào') : (t('documents_ui.table.emptyInboundTitle') || 'Không tìm thấy văn bản đến nào')}
                     </span>
                     <span className="text-xs text-muted max-w-sm">
-                      Không có văn bản nào phù hợp với điều kiện tìm kiếm. Hãy thử chọn năm khác hoặc đặt lại bộ lọc.
+                      {t('documents_ui.table.emptyDesc') || 'Không có văn bản nào phù hợp với điều kiện tìm kiếm. Hãy thử chọn năm khác hoặc đặt lại bộ lọc.'}
                     </span>
                   </div>
                 </td>
@@ -332,51 +381,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 const isExpired = doc.hieu_luc === 'HET_HIEU_LUC';
                 const isActiveRow = activeMenuId === doc.id;
                 const isNearBottom = documents.length >= 5 && index >= documents.length - 2 && index >= 3;
-
-                // Phân quyền sửa & xóa văn bản:
-                // 1. Văn bản Mật (MAT): CHỈ Admin mới có quyền Sửa và Xóa. Mọi cán bộ khác (kể cả người tạo) chỉ có quyền Xem (Read-Only).
-                // 2. Văn bản Đến/Đi hết hiệu lực: CHỈ Admin mới có quyền Sửa và Xóa. Cán bộ chỉ định chỉ có quyền Xem.
-                // 3. Văn bản Đến/Đi còn hiệu lực: Admin và Cán bộ được chỉ định (người tạo) có cả quyền Sửa và Xóa. Cán bộ thường chỉ có quyền Xem.
-                const isDocConfidential = isConfidential || doc.pham_vi === 'HAN_CHE' || doc.loai === 'MAT' || loai === 'MAT';
-                const isAdmin =
-                  currentSession?.role === 'admin' ||
-                  currentSession?.username === 'admin';
-                const isCreator = Boolean(
-                  currentSession?.username &&
-                  doc.nguoi_tao_username &&
-                  currentSession.username === doc.nguoi_tao_username
-                );
-
-                let defaultCanEdit = false;
-                let defaultCanDelete = false;
-
-                if (!currentSession) {
-                  // Fallback khi không có session đăng nhập (ví dụ môi trường test component độc lập):
-                  // Cho phép tác vụ trên văn bản Đến/Đi còn hiệu lực
-                  if (!isDocConfidential && !isExpired) {
-                    defaultCanEdit = true;
-                    defaultCanDelete = true;
-                  }
-                } else if (isAdmin) {
-                  defaultCanEdit = true;
-                  defaultCanDelete = true;
-                } else if (!isDocConfidential && isCreator && !isExpired) {
-                  // Cán bộ được chỉ định trên văn bản Đến/Đi còn hiệu lực
-                  defaultCanEdit = true;
-                  defaultCanDelete = true;
-                }
-
-                let userCanEdit = doc.can_edit !== undefined ? doc.can_edit : defaultCanEdit;
-                let userCanDelete = doc.can_delete !== undefined ? doc.can_delete : defaultCanDelete;
-
-                // Văn bản Mật (Bảo mật nghiêm ngặt): Tuyệt đối CHỈ Admin mới có quyền Sửa và Xóa. Cán bộ chỉ có quyền Xem.
-                if (isDocConfidential && !isAdmin) {
-                  userCanEdit = false;
-                  userCanDelete = false;
-                }
-
-                const canEdit = Boolean(onEdit) && userCanEdit;
-                const canDelete = Boolean(onDelete) && userCanDelete;
+                const { canEdit, canDelete } = getDocPermissions(doc);
 
                 // Tông màu hàng theo yêu cầu:
                 // - Toàn bộ hàng trắng đồng nhất, di chuột vào sáng trắng/xám nhẹ
@@ -651,15 +656,234 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      ) : (
+        /* Mobile Card View (Hiển thị riêng cho thiết bị di động < md theo Giải pháp 1) */
+        <div className="p-3 space-y-3 pb-8">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="bg-surface-elevated/50 border border-border-subtle rounded-xl p-4 space-y-3 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="h-4 bg-muted/20 rounded w-24" />
+                <div className="h-5 bg-muted/20 rounded-full w-20" />
+              </div>
+              <div className="h-4 bg-muted/20 rounded w-full" />
+              <div className="h-3 bg-muted/15 rounded w-3/4" />
+              <div className="flex justify-between pt-2 border-t border-border-subtle/40">
+                <div className="h-3 bg-muted/15 rounded w-28" />
+                <div className="h-6 bg-muted/20 rounded w-16" />
+              </div>
+            </div>
+          ))
+        ) : documents.length === 0 ? (
+          <div className="py-10 text-center">
+            <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center text-muted text-xl mx-auto mb-2 border border-border-subtle">
+              <i className="fa-solid fa-folder-open text-muted" />
+            </div>
+            <p className="text-sm font-semibold text-secondary">
+              {loai === 'MAT'
+                ? (t('documents_ui.table.emptyConfidentialTitle') || 'Không tìm thấy văn bản mật nào')
+                : loai === 'DI'
+                ? (t('documents_ui.table.emptyOutboundTitle') || 'Không tìm thấy văn bản đi nào')
+                : (t('documents_ui.table.emptyInboundTitle') || 'Không tìm thấy văn bản đến nào')}
+            </p>
+            <p className="text-xs text-muted mt-1 px-4">
+              {t('documents_ui.table.emptyDesc') || 'Không có văn bản nào phù hợp với điều kiện tìm kiếm. Hãy thử chọn năm khác hoặc đặt lại bộ lọc.'}
+            </p>
+          </div>
+        ) : (
+          documents.map((doc, index) => {
+            const isExpired = doc.hieu_luc === 'HET_HIEU_LUC';
+            const { canEdit, canDelete } = getDocPermissions(doc);
+
+            return (
+              <div
+                key={`mobile-${doc.id}`}
+                onClick={() => onViewDetail(doc.id)}
+                className={`border rounded-xl p-3.5 shadow-sm transition-all cursor-pointer ${
+                  isExpired
+                    ? 'bg-slate-50/90 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60'
+                    : 'bg-white dark:bg-surface border-border-subtle hover:border-primary/50'
+                }`}
+                title={t('documents_ui.table.clickToView') || 'Bấm vào thẻ để xem chi tiết văn bản'}
+              >
+                {/* Header thẻ: STT + Số hiệu + Badge Hạn chế + Trạng thái */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                      #{doc.so_thu_tu ? doc.so_thu_tu : (page - 1) * pageSize + index + 1}
+                    </span>
+                    <span className="text-sm font-semibold text-main truncate hover:text-primary">
+                      {doc.so_hieu}
+                    </span>
+                    {doc.pham_vi === 'HAN_CHE' && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25">
+                        <i className="fa-solid fa-shield-halved text-[9px]" />
+                        {t('documents_ui.table.restrictedBadge') || 'Hạn chế'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Trạng thái hiệu lực */}
+                  <div className="shrink-0 text-right">
+                    {doc.hieu_luc === 'CON_HIEU_LUC' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        {t('documents_ui.table.statusActive') || 'Còn hiệu lực'}
+                      </span>
+                    )}
+                    {doc.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        {t('documents_ui.table.statusPartiallyActive') || 'Hiệu lực 1 phần'}
+                      </span>
+                    )}
+                    {(doc.hieu_luc === 'HET_HIEU_LUC' || doc.hieu_luc === 'HET_VA_THAY_THE') && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        {t('documents_ui.table.statusExpired') || 'Hết hiệu lực'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Trích yếu */}
+                <p className="text-xs text-main font-medium line-clamp-3 leading-relaxed mt-2" title={doc.trich_yeu}>
+                  {doc.trich_yeu}
+                </p>
+
+                {/* Tệp đính kèm và badge thay thế (nếu có) */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {doc.attachment_count > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenAttachment(e, doc)}
+                      className="inline-flex items-center gap-1 text-[11px] text-main bg-surface-elevated hover:bg-surface-elevated/90 px-2 py-0.5 rounded border border-border-subtle"
+                    >
+                      <i className="fa-solid fa-paperclip text-[10px] text-secondary" />
+                      <span>{t('documents_ui.table.attachmentsCount', { count: String(doc.attachment_count) }) || `${doc.attachment_count} tệp`}</span>
+                      <i className="fa-solid fa-arrow-up-right-from-square text-[9px] text-secondary" />
+                    </button>
+                  )}
+                  {(() => {
+                    const hasDirectionalData = Boolean(
+                      (doc.thay_the_cho && doc.thay_the_cho.length > 0) ||
+                      (doc.bi_thay_boi && doc.bi_thay_boi.length > 0)
+                    );
+                    if (hasDirectionalData) {
+                      return (
+                        <>
+                          {renderReplacementBadgeGroup(doc.thay_the_cho || [], 'thay_the', doc.hieu_luc)}
+                          {renderReplacementBadgeGroup(doc.bi_thay_boi || [], 'bi_thay')}
+                        </>
+                      );
+                    }
+                    const repList = (doc.danh_sach_thay_the && doc.danh_sach_thay_the.length > 0)
+                      ? doc.danh_sach_thay_the
+                      : (doc.link_thay_the ? doc.link_thay_the.split(',').map((s) => s.trim()).filter(Boolean) : []);
+                    if (repList.length === 0) return null;
+                    return renderReplacementBadgeGroup(repList, 'thay_the', doc.hieu_luc, true);
+                  })()}
+                </div>
+
+                {/* Thông tin phụ: Ngày & Nơi ban hành/Người ký */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-muted pt-2.5 mt-2.5 border-t border-border-subtle/60">
+                  <div className="flex items-center gap-1.5">
+                    <i className="fa-regular fa-clock text-primary text-[10px]" />
+                    <span>
+                      {loai === 'DI' ? (t('documents_ui.table.timeOutbound') || 'Đi: ') : loai === 'MAT' ? (t('documents_ui.table.timeSaved') || 'Lưu: ') : (t('documents_ui.table.timeInbound') || 'Đến: ')}
+                      {formatDocumentEventTime(doc.ngay_den || doc.ngay_ban_hanh, doc.created_at)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <i className="fa-regular fa-calendar text-muted text-[10px]" />
+                    <span>{t('documents_ui.table.signedDate') || 'Ký:'} {formatDate(doc.ngay_van_ban)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 truncate sm:col-span-2">
+                    {loai === 'DI' || loai === 'MAT' ? (
+                      <>
+                        <i className="fa-solid fa-pen-nib text-primary/70 text-[10px]" />
+                        <span className="truncate">{doc.nguoi_ky || '—'}{doc.chuc_vu ? ` (${doc.chuc_vu})` : ''}</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-building-columns text-muted text-[10px]" />
+                        <span className="truncate">{doc.noi_ban_hanh || '—'}</span>
+                      </>
+                    )}
+                  </div>
+                  {doc.ngay_het_hieu_luc && (
+                    <div className="text-[10px] text-muted sm:col-span-2">
+                      {isExpired ? (t('documents_ui.table.expiredSince') || 'Đã hết hạn:') : (t('documents_ui.table.expiresOn') || 'Hết hạn:')} {formatDate(doc.ngay_het_hieu_luc)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons footer */}
+                <div
+                  className="flex items-center justify-end gap-1.5 pt-2 mt-2 border-t border-border-subtle/50"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    icon="fa-eye"
+                    onClick={() => onViewDetail(doc.id)}
+                    className="!px-2.5 !py-1 text-xs"
+                  >
+                    {t('documents_ui.table.viewDetail') || 'Xem'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    icon="fa-clock-rotate-left"
+                    onClick={() => onViewHistory(doc.id)}
+                    className="!px-2 !py-1 text-xs"
+                    title={t('documents_ui.table.viewHistory') || 'Lịch sử xem'}
+                  />
+                  {canEdit && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      icon="fa-pen-to-square"
+                      onClick={() => onEdit!(doc)}
+                      className="!px-2 !py-1 text-xs text-warning-text hover:bg-warning-subtle"
+                      title={t('documents_ui.table.edit') || 'Chỉnh sửa'}
+                    />
+                  )}
+                  {canDelete && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      icon="fa-trash-can"
+                      onClick={() => onDelete!(doc.id, doc.so_hieu)}
+                      className="!px-2 !py-1 text-xs text-danger hover:bg-danger-subtle"
+                      title={t('documents_ui.table.delete') || 'Xóa'}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+        </div>
+      )}
 
       {/* Thanh Phân Trang (Pagination Footer) */}
       <div className="px-4 py-3 border-t border-border-subtle bg-surface-elevated/40 flex flex-wrap items-center justify-between gap-3 text-sm">
         <div className="text-muted flex items-center gap-2">
           <span>
-            Hiển thị <span className="font-semibold text-main">{startIdx}</span> -{' '}
-            <span className="font-semibold text-main">{endIdx}</span> trên tổng số{' '}
-            <span className="font-semibold text-main">{totalCount}</span> văn bản
+            {t('documents_ui.table.showing') || 'Hiển thị'}{' '}
+            <span className="font-semibold text-main">{startIdx}</span>{' '}
+            {t('documents_ui.table.to') || '-'}{' '}
+            <span className="font-semibold text-main">{endIdx}</span>{' '}
+            {t('documents_ui.table.of') || 'trên tổng số'}{' '}
+            <span className="font-semibold text-main">{totalCount}</span>{' '}
+            {t('documents_ui.table.documents') || 'văn bản'}
           </span>
         </div>
 
@@ -672,7 +896,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || isLoading}
             className="!px-2 !py-1"
-            title="Trang trước"
+            title={t('documents_ui.table.prevPage') || 'Trang trước'}
           >
             <i className="fa-solid fa-chevron-left text-[0.7rem]" />
           </Button>
@@ -705,7 +929,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || isLoading}
             className="!px-2 !py-1"
-            title="Trang kế tiếp"
+            title={t('documents_ui.table.nextPage') || 'Trang kế tiếp'}
           >
             <i className="fa-solid fa-chevron-right text-[0.7rem]" />
           </Button>
@@ -716,3 +940,4 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 };
 
 export default DocumentTable;
+
