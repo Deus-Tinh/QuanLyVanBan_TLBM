@@ -10,7 +10,7 @@ import type { BadgeProps } from '@components/common/Badge';
 import { DangTai, LoiTai, Rong } from '@components/signing/ChungUI';
 import XemPdf from '@components/signing/XemPdf';
 import { signingApi } from '@lib/signing/api';
-import { dinhDangNgay, LOP_O_NHAP } from '@lib/signing/dinhDang';
+import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { BoLocTaiLieu, LoaiTepTaiLieu, TepTaiLieu } from '@lib/signing/types';
@@ -115,17 +115,39 @@ export default function TaiLieuPage() {
           <Rong icon="fa-folder-open">{t(coLoc ? 'taiLieu.khongKhopLoc' : 'taiLieu.rong')}</Rong>
         )}
         {!ds.dangTai && !ds.loi && !!ds.duLieu?.length && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm table-fixed min-w-[850px]">
+          <>
+          {/* Màn hẹp: dạng thẻ (bảng 7 cột không đọc được ở 390px) */}
+          <ul className="divide-y divide-border-subtle md:hidden">
+            {ds.duLieu.map((tep) => (
+              <li key={`the-${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="space-y-1 py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <button type="button" onClick={() => xemChiTiet(tep)}
+                    className="min-w-0 text-left font-semibold text-main hover:text-primary hover:underline">
+                    {moTaVanBan(tep.van_ban, tep.trinh_ky)}
+                  </button>
+                  <Badge variant="info" size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge>
+                </div>
+                <button type="button" onClick={() => xemChiTiet(tep)} title={t('chiTiet.xemChiTiet')}
+                  className="block break-all text-left text-xs text-secondary hover:text-primary hover:underline">{tep.ten_tep}</button>
+                <div className="flex flex-wrap gap-x-2 text-xs text-muted">
+                  <Link to={`/approvals/${tep.trinh_ky}`} className="font-medium text-secondary hover:text-primary hover:underline">#{tep.trinh_ky}</Link>
+                  <span>{tep.ten_quy_trinh}</span>
+                  <span>{dinhDangNgay(tep.thoi_diem, lang)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[60rem] text-sm table-fixed">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[14%]">{t('taiLieu.soHieu')}</th>
-                  <th className="px-3.5 py-2.5 text-left w-[28%]">{t('taiLieu.trichYeu')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[18%]">{t('taiLieu.tep')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[12%]">{t('taiLieu.soHieu')}</th>
+                  <th className="px-3.5 py-2.5 text-left w-[29%]">{t('taiLieu.trichYeu')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[17%]">{t('taiLieu.tep')}</th>
                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap w-[10%]">{t('taiLieu.loaiTep')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[8%]">{t('danhSach.maHoSo')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[12%]">{t('danhSach.quyTrinh')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[10%]">{t('taiLieu.ngay')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[6%]">{t('danhSach.maHoSo')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[14%]">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[12%]">{t('taiLieu.ngay')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y border-border-subtle">
@@ -176,6 +198,7 @@ export default function TaiLieuPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
       {tepXem && createPortal(
