@@ -127,3 +127,16 @@ class DuLieuMauTests(TestCase):
                             SigningRequest.objects.filter(pk__in=cu).values_list("ghi_chu", flat=True)))
         self.assertEqual(SigningRequest.objects.filter(ghi_chu__startswith="Dữ liệu mẫu M", ho_so_goc__isnull=True)
                          .count(), 10)
+
+    def test_reset_keeps_recent_dashboard_items_from_new_sample(self):
+        """Sau --reset, 5 phiếu gần nhất của giám đốc chỉ lấy từ bộ mới: đủ Chờ ký, Đã ký, Từ chối, không trùng tiêu đề."""
+        chay(self, DEMO_PASSWORD=MAT_KHAU)
+        chay(self, "--reset", DEMO_PASSWORD=MAT_KHAU)
+        c = APIClient()
+        c.force_authenticate(User.objects.get(username="giamdoc"))
+        gan_day = c.get("/api/v1/signing/dashboard/").data["gan_day"]
+        self.assertEqual(len(gan_day), 5)
+        self.assertEqual(len({p["tieu_de"] for p in gan_day}), 5, gan_day)
+        self.assertTrue({"Chờ ký", "Đã ký", "Từ chối"} <= {p["nhan_trang_thai"] for p in gan_day}, gan_day)
+        cu = SigningRequest.objects.filter(ghi_chu__startswith="Dữ liệu mẫu cũ").values_list("pk", flat=True)
+        self.assertFalse({p["id"] for p in gan_day} & set(cu))

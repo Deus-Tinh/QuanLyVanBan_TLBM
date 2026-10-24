@@ -16,7 +16,10 @@ trình lại, ủy quyền) nên lịch sử, bằng chứng, tệp hoàn tất 
 - Thông báo trong ứng dụng sinh từ các thao tác trên và lệnh nhắc hạn. Ngày trình giãn theo nhiều ngày để
   Dashboard (Nhóm 1, `signing.selectors.tong_quan_dashboard`) có phiếu gần đây với ngày khác nhau.
 - `--reset`: làm mới bộ hồ sơ mẫu. Bằng chứng (lượt trình, chữ ký, nhật ký, bằng chứng tổng hợp) bất biến theo
-  trigger của DDL nên không xóa: hồ sơ mẫu cũ còn mở được hủy, ghi chú đổi sang "Dữ liệu mẫu cũ", rồi tạo bộ mới.
+  trigger của DDL nên không xóa: hồ sơ mẫu cũ còn mở được hủy, ghi chú đổi sang "Dữ liệu mẫu cũ", ngày tạo/ngày trình
+  lùi 30 ngày (không chen vào 5 phiếu gần nhất của Dashboard), rồi tạo bộ mới.
+- `--email-domain <miền>`: gán email <username>@<miền> cho tài khoản mẫu chưa có email; không có email thì chỉ có
+  thông báo trong ứng dụng, không có email.
 
 Ký mẫu dùng khóa Ed25519 tạm sinh trong bộ nhớ (khóa bí mật không lưu); xong thì thu hồi khóa tạm, người dùng tự tạo
 khóa ký của mình ở trang Khóa ký (file khóa + PIN). Hồ sơ nhận diện qua ghi chú "Dữ liệu mẫu <mã>:".
@@ -33,6 +36,7 @@ from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from accounts.models import Employee, Position
@@ -81,6 +85,9 @@ QUY_TRINH = {
 # Số giờ lùi ngày trình của từng hồ sơ (ngày trình khác nhau trên danh sách và Dashboard)
 LUI_GIO = {"M01": 1, "M10": 3, "M04": 27, "M02": 51, "M05": 75, "M03": 99, "M08": 123, "M06": 147, "M07": 171,
            "M09": 195}
+
+# --reset: bộ hồ sơ mẫu cũ lùi ngày tạo/ngày trình chừng này (không chen vào phiếu gần đây của bộ mới)
+LUI_NGAY_BO_CU = timedelta(days=30)
 
 # mã: (số hiệu, trích yếu)
 VAN_BAN = {
@@ -180,13 +187,18 @@ class Command(BaseCommand):
         return SigningRequest.objects.filter(ghi_chu__startswith=f"{TIEN_TO} M")
 
     def _reset(self, nguoi):
-        """Hủy hồ sơ mẫu còn mở (bằng chứng giữ nguyên) và đổi ghi chú để bộ mới được tạo lại."""
+        """
+        Hủy hồ sơ mẫu còn mở (bằng chứng giữ nguyên), đổi ghi chú để bộ mới được tạo lại, và lùi ngày tạo/ngày trình
+        của bộ cũ `LUI_NGAY_BO_CU` để bộ cũ không chen vào "phiếu gần nhất" của Dashboard và đầu danh sách.
+        """
         so = 0
         for h in self._mau().order_by("pk"):
             if h.trang_thai in (enums.TrangThaiYeuCau.NHAP, enums.TrangThaiYeuCau.CHO_KY):
                 trinh_ky.huy(h, h.create_by, ly_do=f"{TIEN_TO}: làm mới bộ dữ liệu mẫu",
                              khoa_chong_trung=self._khoa(h.pk, f"reset-{timezone.now().timestamp()}"))
-            SigningRequest.objects.filter(pk=h.pk).update(ghi_chu=TIEN_TO_CU + h.ghi_chu[len(TIEN_TO):])
+            SigningRequest.objects.filter(pk=h.pk).update(
+                ghi_chu=TIEN_TO_CU + h.ghi_chu[len(TIEN_TO):],
+                created_at=F("created_at") - LUI_NGAY_BO_CU, ngay_gui=F("ngay_gui") - LUI_NGAY_BO_CU)
             so += 1
         self.stdout.write(f" [OK] --reset: {so} hồ sơ mẫu cũ đã hủy/đánh dấu cũ")
 
