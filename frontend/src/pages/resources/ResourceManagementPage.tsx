@@ -1358,14 +1358,14 @@ export default function ResourceManagementPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto">
           {/* Nút Cây thư mục nhiều cấp (Hierarchical Folders) */}
           <Button
             variant="secondary"
             size="md"
             icon="fa-sitemap"
             onClick={() => setIsFolderManagerOpen(true)}
-            className="h-10 px-4 rounded-xl text-xs sm:text-sm font-bold border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 shadow-2xs hover:border-primary transition-all"
+            className="h-10 px-4 rounded-xl text-xs sm:text-sm font-bold border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 shadow-2xs hover:border-primary transition-all w-full sm:w-auto justify-center"
             title={t('folders.entry.openHint')}
           >
             {t('folders.entry.open')}
@@ -1524,7 +1524,7 @@ export default function ResourceManagementPage() {
                 </button>
 
                 {isCategoryDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-[calc(100vw-32px)] max-w-sm sm:w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="absolute right-0 top-full mt-1.5 w-[calc(100vw-24px)] max-w-[360px] sm:w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
                     <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                       <span>{t('resourceManagement.dropdownCategoriesTitle')}</span>
                       <span className="text-[10px] text-primary lowercase font-medium">{t('resourceManagement.level1')}</span>
@@ -1792,7 +1792,7 @@ export default function ResourceManagementPage() {
                 </button>
 
                 {isTypeDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-[calc(100vw-32px)] max-w-sm sm:w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="absolute right-0 top-full mt-1.5 w-[calc(100vw-24px)] max-w-[360px] sm:w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
                     <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
                       <span>{t('resourceManagement.dropdownTypesTitle')}</span>
                       <span className="text-[10px] text-primary lowercase font-medium">{t('resourceManagement.level2')}</span>
@@ -2023,7 +2023,7 @@ export default function ResourceManagementPage() {
             </button>
 
             {isYearDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-full min-w-[170px] bg-surface rounded-xl border border-border-subtle shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-0 right-0 sm:left-auto sm:right-0 top-full mt-1.5 w-full sm:w-56 max-w-full bg-surface rounded-xl border border-border-subtle shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => {
@@ -2127,7 +2127,7 @@ export default function ResourceManagementPage() {
             </button>
 
             {isStatusDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-full min-w-[220px] bg-surface rounded-xl border border-border-subtle shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute left-0 right-0 sm:left-auto sm:right-0 top-full mt-1.5 w-full sm:w-60 max-w-full bg-surface rounded-xl border border-border-subtle shadow-xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
                 {[
                   {
                     value: 'all',

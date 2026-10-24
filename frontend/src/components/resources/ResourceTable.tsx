@@ -93,7 +93,7 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
     const top = spaceBelow < 120 ? Math.max(10, rect.top - 116) : rect.bottom + 4;
     setMenuPos({
       top,
-      right: Math.max(10, window.innerWidth - rect.right),
+      right: Math.max(10, Math.min(window.innerWidth - 186, window.innerWidth - rect.right)),
     });
     setActiveMenuId(itemId);
   };

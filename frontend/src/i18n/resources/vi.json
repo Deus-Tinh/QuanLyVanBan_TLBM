@@ -278,6 +278,7 @@
     "switchToCreateFolder": "Chuyển sang tạo Thư mục",
     "parentFolderRequired": "Thư mục cha",
     "noFoldersAvailable": "-- Chưa có thư mục nào --",
+    "selectFolderOption": "-- Chọn Thư mục --",
     "publicSharedScope": "Công khai dùng chung",
     "placeholderTypeName": "VD: Biểu mẫu bảo hiểm, Tờ trình...",
     "placeholderTypeNotes": "Mô tả mục đích sử dụng...",

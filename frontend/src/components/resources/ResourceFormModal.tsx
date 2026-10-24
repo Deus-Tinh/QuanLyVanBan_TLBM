@@ -137,6 +137,10 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const prevIsOpenRef = useRef(false);
   const prevInitialDataIdRef = useRef<number | undefined>(undefined);
 
+  // Custom Dropdown State cho Thư mục
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
   // Form State
   const [formData, setFormData] = useState<ResourceFormData>(() => {
     const initialCatId =
@@ -276,6 +280,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
 
   // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
   const handleSafeClose = useCallback(() => {
+    setIsCategoryDropdownOpen(false);
     if (isDirty) {
       setIsConfirmDiscardOpen(true);
       return;
@@ -283,17 +288,43 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     onClose();
   }, [isDirty, onClose]);
 
+  // Đóng dropdown khi click ra ngoài hoặc khi ấn ESC
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(target)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    if (isCategoryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCategoryDropdownOpen]);
+
   // Lắng nghe phím ESC
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
+        if (isCategoryDropdownOpen) {
+          setIsCategoryDropdownOpen(false);
+          return;
+        }
         if (isConfirmDiscardOpen) return;
         handleSafeClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isConfirmDiscardOpen, handleSafeClose]);
+  }, [isOpen, isCategoryDropdownOpen, isConfirmDiscardOpen, handleSafeClose]);
+
+  // Đối tượng Thư mục đang được chọn
+  const selectedCategoryObj = useMemo(() => {
+    if (!formData.dm_tai_lieu) return null;
+    return categories.find((c) => c.id === Number(formData.dm_tai_lieu)) || null;
+  }, [categories, formData.dm_tai_lieu]);
 
   // Danh sách Loại tài liệu theo Thư mục đã chọn (Cascading)
   const availableTypes = useMemo(() => {
@@ -307,6 +338,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   // Xử lý thay đổi Thư mục (reset Loại tài liệu)
   const handleCategoryChange = (catId: number | '') => {
     setIsDirty(true);
+    setIsCategoryDropdownOpen(false);
     setFormData((prev) => ({
       ...prev,
       dm_tai_lieu: catId,
@@ -514,7 +546,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
       role="dialog"
       aria-modal="true"
     >
@@ -523,7 +555,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle bg-surface-elevated shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-border-subtle bg-surface-elevated shrink-0">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-main">
               {isEditMode ? t('resourceManagement.formTitleEdit') : t('resourceManagement.formTitleAdd')}
@@ -544,9 +576,9 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
         </div>
 
         {/* Nội dung Form cuộn dọc theo 4 khối đánh số */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-6 min-h-0">
           {/* KHỐI 1: Phân loại (Thư mục -> Loại tài liệu) */}
-          <div className="space-y-4 p-4 rounded-xl bg-surface-elevated/60 border border-border-subtle">
+          <div className="space-y-4 p-3.5 sm:p-4 rounded-xl bg-surface-elevated/60 border border-border-subtle">
             <div className="flex items-center gap-2 border-b border-border-subtle/80 pb-2">
               <span className="w-5 h-5 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center shrink-0">
                 1
@@ -556,14 +588,50 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               </h3>
             </div>
 
-            {/* Thư mục (*) */}
-            <div>
+            {/* Thư mục (*) - Custom Responsive Dropdown chống tràn trên mobile */}
+            <div className="relative" ref={categoryDropdownRef}>
               <label
-                htmlFor="field-dm_tai_lieu"
+                id="field-dm_tai_lieu-label"
                 className="text-xs font-semibold text-main block mb-1"
               >
                 {t('resourceManagement.fieldFolder')} <span className="text-danger">*</span>
               </label>
+
+              {/* Nút bấm Custom Dropdown */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (categories.length > 0) {
+                    setIsCategoryDropdownOpen((prev) => !prev);
+                  }
+                }}
+                disabled={categories.length === 0}
+                aria-labelledby="field-dm_tai_lieu-label"
+                aria-haspopup="listbox"
+                aria-expanded={isCategoryDropdownOpen}
+                className={`w-full px-3 py-2 bg-surface border rounded-xl text-xs sm:text-sm text-main flex items-center justify-between gap-2 shadow-2xs transition-colors cursor-pointer font-medium ${
+                  categories.length === 0
+                    ? 'opacity-60 cursor-not-allowed border-border-subtle'
+                    : isCategoryDropdownOpen
+                      ? 'border-primary ring-1 ring-primary/20'
+                      : errors.dm_tai_lieu
+                        ? 'border-danger'
+                        : 'border-border-subtle hover:border-primary/50'
+                }`}
+              >
+                <span className={`truncate text-left flex-1 ${!formData.dm_tai_lieu ? 'text-muted' : 'text-main'}`}>
+                  {categories.length === 0
+                    ? t('resourceManagement.noFoldersAvailable')
+                    : selectedCategoryObj?.ten_tai_lieu || t('resourceManagement.selectFolderOption')}
+                </span>
+                <i
+                  className={`fa-solid fa-chevron-down text-xs text-muted transition-transform duration-200 shrink-0 ${
+                    isCategoryDropdownOpen ? 'rotate-180 text-primary' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Native select ẩn để tương thích 100% submit form & kiểm thử */}
               <select
                 id="field-dm_tai_lieu"
                 value={formData.dm_tai_lieu}
@@ -571,15 +639,71 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                   handleCategoryChange(e.target.value ? Number(e.target.value) : '')
                 }
                 disabled={categories.length === 0}
-                className="w-full px-3 py-2 bg-surface border border-border-subtle rounded-lg text-sm text-main focus:outline-hidden focus:border-primary transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
               >
-                <option value="">{categories.length === 0 ? '-- Chưa có Thư mục nào --' : '-- Chọn Thư mục --'}</option>
+                <option value="">{categories.length === 0 ? t('resourceManagement.noFoldersAvailable') : t('resourceManagement.selectFolderOption')}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.ten_tai_lieu}
                   </option>
                 ))}
               </select>
+
+              {/* Popup danh sách Thư mục không bao giờ lòi ra ngoài container */}
+              {isCategoryDropdownOpen && (
+                <div
+                  role="listbox"
+                  className="absolute left-0 right-0 top-full mt-1.5 w-full max-w-full bg-surface-elevated rounded-xl border border-border-subtle shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCategoryChange('');
+                    }}
+                    className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                      !formData.dm_tai_lieu
+                        ? 'bg-primary/10 text-primary font-bold'
+                        : 'text-muted hover:bg-surface'
+                    }`}
+                  >
+                    <span className="truncate">{t('resourceManagement.selectFolderOption')}</span>
+                    {!formData.dm_tai_lieu && (
+                      <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                    )}
+                  </button>
+
+                  <div className="my-1 border-t border-border-subtle" />
+
+                  {categories.map((cat) => {
+                    const isSelected = formData.dm_tai_lieu === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          handleCategoryChange(cat.id);
+                        }}
+                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary/10 text-primary font-bold'
+                            : 'text-main hover:bg-surface'
+                        }`}
+                      >
+                        <span className="truncate flex items-center gap-2">
+                          <i className="fa-solid fa-folder text-primary/70 text-xs shrink-0" />
+                          <span className="truncate">{cat.ten_tai_lieu}</span>
+                        </span>
+                        {isSelected && (
+                          <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {categories.length === 0 && (
                 <div className="mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
                   <i className="fa-solid fa-triangle-exclamation text-amber-500 shrink-0" />
@@ -1093,7 +1217,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
         </form>
 
         {/* Footer cố định */}
-        <div className="px-6 py-4 border-t border-border-subtle bg-surface-elevated flex items-center justify-end gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-border-subtle bg-surface-elevated flex items-center justify-end flex-wrap sm:flex-nowrap gap-2 sm:gap-3 shrink-0">
           <Button
             variant="outline"
             size="md"

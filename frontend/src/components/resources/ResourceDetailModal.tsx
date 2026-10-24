@@ -162,7 +162,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in"
       role="dialog"
       aria-modal="true"
     >
@@ -171,7 +171,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* KHỐI 1: Đầu Popup (Tiêu đề, Ký hiệu, badge Hiệu lực, nút đóng) */}
-        <div className="flex items-start justify-between px-6 py-5 border-b border-border-subtle bg-surface-elevated shrink-0 gap-4">
+        <div className="flex items-start justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-border-subtle bg-surface-elevated shrink-0 gap-3 sm:gap-4">
           <div className="min-w-0 space-y-1.5 flex-1">
             <div className="flex items-center gap-2.5 flex-wrap">
               {item.ky_hieu && (
@@ -197,7 +197,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         </div>
 
         {/* Nội dung cuộn dọc */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 min-h-0">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-5 min-h-0">
           {/* KHỐI 2: Banner theo hiệu lực ngay đầu nội dung */}
           {item.hieu_luc === 'HET_VA_THAY_THE' && (
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm flex items-start gap-2.5">
@@ -388,7 +388,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
         </div>
 
         {/* KHỐI 5: Chân Popup ([Tải về] chính, [Sửa], [Xóa], [Đóng]) */}
-        <div className="px-6 py-4 border-t border-border-subtle bg-surface-elevated flex items-center justify-between gap-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-border-subtle bg-surface-elevated flex items-center justify-between flex-wrap sm:flex-nowrap gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2">
             {onEdit && (
               <Button

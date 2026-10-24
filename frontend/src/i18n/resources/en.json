@@ -278,6 +278,7 @@
     "switchToCreateFolder": "Switch to create Folder",
     "parentFolderRequired": "Parent Folder",
     "noFoldersAvailable": "-- No folders available --",
+    "selectFolderOption": "-- Select folder --",
     "publicSharedScope": "Publicly shared",
     "placeholderTypeName": "Ex: Insurance forms, Proposals...",
     "placeholderTypeNotes": "Describe intended usage purpose...",
