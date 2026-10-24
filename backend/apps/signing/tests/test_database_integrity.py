@@ -62,7 +62,6 @@ class SigningDatabaseIntegrityTests(TestCase):
             van_ban_id=1,
             quy_trinh=self.process,
             phien_ban_quy_trinh=1,
-            muc_do="THUONG",
             create_by=self.user,
         )
         self.attempt = SigningAttempt.objects.create(
@@ -101,6 +100,18 @@ class SigningDatabaseIntegrityTests(TestCase):
             stt_uu_tien=latest_priority + 1,
             ten="Integrity test unit",
         )
+
+    def test_request_van_ban_check_requires_linked_document_or_manual_summary(self):
+        chung = {"quy_trinh": self.process, "phien_ban_quy_trinh": 1, "create_by": self.user}
+        nhap_tay = SigningRequest.objects.create(so_hieu_van_ban="12/TTr", trich_yeu_van_ban="Tờ trình", **chung)
+        self.assertIsNone(nhap_tay.van_ban_id)
+        for sai in (
+            {},  # không gắn văn bản và không có trích yếu
+            {"document_type": enums.LoaiVanBan.VAN_BAN_DI},  # thiếu document_id
+            {"van_ban_id": 1, "trich_yeu_van_ban": "Tờ trình"},  # thiếu document_type
+        ):
+            with self.subTest(sai=sai), self.assertRaises(IntegrityError), transaction.atomic():
+                SigningRequest.objects.create(**sai, **chung)
 
     def test_all_signing_foreign_keys_match_ddl_targets_and_delete_actions(self):
         self.assertEqual(connection.vendor, "postgresql")
@@ -222,7 +233,6 @@ class SigningDatabaseIntegrityTests(TestCase):
             van_ban_id=2,
             quy_trinh=self.process,
             phien_ban_quy_trinh=1,
-            muc_do="THUONG",
             create_by=self.user,
         )
         SigningNotification.objects.create(

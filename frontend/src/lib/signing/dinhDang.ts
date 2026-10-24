@@ -1,8 +1,15 @@
 /** Tiện ích hiển thị dùng chung của phân hệ Trình ký. */
+import type { HamDich } from './i18n';
+import type { NguoiKyCauHinh } from './types';
 
 export const LOP_O_NHAP =
   'w-full rounded-xl border border-border-subtle bg-surface px-3.5 py-2 text-sm text-main placeholder:text-muted ' +
   'focus:outline-none focus:border-focus focus:ring-2 focus:ring-primary-subtle';
+
+/** Chữ thường, bỏ dấu tiếng Việt (đ -> d) để tìm không phân biệt hoa thường và dấu (như server). */
+export function boDau(chuoi: string): string {
+  return chuoi.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd');
+}
 
 export function dinhDangNgay(iso: string | null | undefined, lang: 'vi' | 'en'): string {
   if (!iso) return '—';
@@ -11,9 +18,11 @@ export function dinhDangNgay(iso: string | null | undefined, lang: 'vi' | 'en'):
   });
 }
 
-export function moTaVanBan(vb: { so_hieu?: string; trich_yeu?: string } | undefined, van_ban_id: number): string {
+/** Số hiệu — trích yếu của văn bản trình ký (văn bản đi hoặc nhập tay); thiếu cả hai thì mã văn bản đi hoặc "—". */
+export function moTaVanBan(vb: { so_hieu?: string; trich_yeu?: string } | undefined, van_ban_id: number | null): string {
   const phan = [vb?.so_hieu, vb?.trich_yeu].filter(Boolean);
-  return phan.length ? phan.join(' — ') : `#${van_ban_id}`;
+  if (phan.length) return phan.join(' — ');
+  return van_ban_id != null ? `#${van_ban_id}` : '—';
 }
 
 export function taiXuong(blob: Blob, ten: string) {
@@ -23,4 +32,18 @@ export function taiXuong(blob: Blob, ten: string) {
   a.download = ten;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Người ký chưa ký trên lượt đã kết thúc (từ chối, hủy) không còn phải ký; lượt đang trả sửa thì tạm dừng. */
+export function trangThaiNguoiKy(luot: string, nguoi: string, da_mo: boolean): string {
+  if (nguoi !== 'CHO_KY') return nguoi;
+  if (luot === 'TU_CHOI' || luot === 'HUY') return 'KHONG_CAN_KY';
+  if (luot === 'YEU_CAU_SUA') return 'TAM_DUNG';
+  return da_mo ? 'CHO_KY' : 'CHUA_MO';
+}
+
+/** Tên người ký cấu hình: tài khoản cụ thể, hoặc chức vụ (theo Danh mục chức vụ CBNV) xác định người lúc gửi. */
+export function tenNguoiKyCauHinh(n: Pick<NguoiKyCauHinh, 'ten_nguoi_ky' | 'ten_chuc_vu'>, t: HamDich): string {
+  if (n.ten_nguoi_ky) return n.ten_nguoi_ky;
+  return n.ten_chuc_vu ? t('quyTrinh.theoChucVu', { ten: n.ten_chuc_vu }) : t('tao.theoChucVu');
 }

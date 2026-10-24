@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DocumentDetail } from '@app-types/document';
-import { Badge } from '@components/common/Badge';
 import { Button } from '@components/common/Button';
 import { formatDateTime, formatDate, formatFileSize } from '@lib/dateUtils';
 import { getAbsoluteFileUrl } from '@lib/fileUtils';
 import apiClient from '@lib/apiClient';
+import { resolveDocumentApiUrl } from '@lib/routes';
 
 export interface DocumentDetailModalProps {
   isOpen: boolean;
@@ -36,8 +36,8 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
       setIsLoading(true);
       setError(null);
       try {
-        const queryParam = loai ? `?loai=${loai}` : '';
-        const data = await apiClient.get<DocumentDetail>(`/api/documents/${documentId}/${queryParam}`);
+        const apiUrl = resolveDocumentApiUrl(documentId, loai);
+        const data = await apiClient.get<DocumentDetail>(apiUrl);
         if (!ignore) {
           setDocument(data);
         }
@@ -57,7 +57,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
     return () => {
       ignore = true;
     };
-  }, [isOpen, documentId, reloadKey]);
+  }, [isOpen, documentId, reloadKey, loai]);
 
   // Đóng bằng phím ESC
   useEffect(() => {
@@ -184,39 +184,44 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                 </div>
               )}
 
-              {(document.hieu_luc === 'HET_VA_THAY_THE' || (document.bi_thay_boi && document.bi_thay_boi.length > 0)) && (
-                <div className="bg-warning/10 border border-warning/30 rounded-xl p-3.5 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-warning/20 text-warning-text flex items-center justify-center text-sm shrink-0 mt-0.5">
-                    <i className="fa-solid fa-triangle-exclamation" />
+              {document.hieu_luc === 'CON_HIEU_LUC_1_PHAN' && Boolean(document.bi_thay_boi && document.bi_thay_boi.length > 0) && (
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-3.5 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-700 dark:text-purple-300 flex items-center justify-center text-sm shrink-0 mt-0.5">
+                    <i className="fa-solid fa-circle-half-stroke" />
                   </div>
                   <div className="text-xs">
-                    <div className="font-bold text-warning-text mb-0.5">VĂN BẢN ĐÃ HẾT HIỆU LỰC (ĐÃ THAY THẾ)</div>
+                    <div className="font-bold text-purple-700 dark:text-purple-300 mb-0.5">VĂN BẢN CÒN HIỆU LỰC MỘT PHẦN</div>
                     <p className="text-main m-0 leading-relaxed">
-                      {(document.bi_thay_boi && document.bi_thay_boi.length > 0) || document.link_thay_the ? (
-                        <>Văn bản này không còn giá trị thi hành do đã được thay thế bởi văn bản:{' '}
-                          <strong className="font-mono text-warning-text">
-                            {(document.bi_thay_boi && document.bi_thay_boi.length > 0)
-                              ? document.bi_thay_boi.join(', ')
-                              : document.link_thay_the}
-                          </strong>.
-                        </>
-                      ) : (
-                        <>Văn bản này đã hết hiệu lực và được thay thế bởi văn bản khác.</>
-                      )}
+                      Văn bản này đã được sửa đổi / thay thế một phần bởi văn bản:{' '}
+                      <strong className="font-mono text-purple-700 dark:text-purple-300">
+                        {document.bi_thay_boi.join(', ')}
+                      </strong>. Các điều khoản còn lại vẫn có giá trị thi hành.
                     </p>
                   </div>
                 </div>
               )}
 
-              {document.hieu_luc === 'HET_HIEU_LUC' && (
+              {(document.hieu_luc === 'HET_HIEU_LUC' || document.hieu_luc === 'HET_VA_THAY_THE') && (
                 <div className="bg-danger/10 border border-danger/30 rounded-xl p-3.5 flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-danger/20 text-danger flex items-center justify-center text-sm shrink-0 mt-0.5">
                     <i className="fa-solid fa-calendar-xmark" />
                   </div>
                   <div className="text-xs">
-                    <div className="font-bold text-danger mb-0.5">VĂN BẢN ĐÃ HẾT HIỆU LỰC</div>
+                    <div className="font-bold text-danger mb-0.5">
+                      {(document.bi_thay_boi && document.bi_thay_boi.length > 0) || document.link_thay_the
+                        ? 'VĂN BẢN ĐÃ HẾT HIỆU LỰC (ĐÃ ĐƯỢC THAY THẾ)'
+                        : 'VĂN BẢN ĐÃ HẾT HIỆU LỰC'}
+                    </div>
                     <p className="text-main m-0 leading-relaxed">
-                      {document.ngay_het_hieu_luc ? (
+                      {(document.bi_thay_boi && document.bi_thay_boi.length > 0) || document.link_thay_the ? (
+                        <>Văn bản này không còn giá trị thi hành do đã được thay thế bởi văn bản:{' '}
+                          <strong className="font-mono text-danger">
+                            {(document.bi_thay_boi && document.bi_thay_boi.length > 0)
+                              ? document.bi_thay_boi.join(', ')
+                              : document.link_thay_the}
+                          </strong>.
+                        </>
+                      ) : document.ngay_het_hieu_luc ? (
                         <>Văn bản này đã hết hiệu lực thi hành từ ngày <strong className="font-mono text-danger">{formatDate(document.ngay_het_hieu_luc)}</strong>.</>
                       ) : (
                         <>Văn bản này đã hết hiệu lực thi hành.</>
@@ -311,7 +316,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
 
                   <div className="flex justify-between items-center text-xs py-1 border-b border-border-subtle/50">
                     <span className="text-secondary">Trạng thái hiệu lực:</span>
-                    {(document.hieu_luc === 'CON_HIEU_LUC' || document.hieu_luc === 'HET_VA_THAY_THE') ? (
+                    {document.hieu_luc === 'CON_HIEU_LUC' ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white dark:bg-surface-elevated text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Còn hiệu lực
@@ -319,16 +324,13 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                     ) : document.hieu_luc === 'CON_HIEU_LUC_1_PHAN' ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white dark:bg-surface-elevated text-purple-600 dark:text-purple-400 border border-purple-500/30 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        Hiệu lực 1 phần
+                        Còn hiệu lực 1 phần
                       </span>
-                    ) : document.hieu_luc === 'HET_HIEU_LUC' ? (
-                      <Badge variant="danger" size="sm" withDot>
-                        Hết hiệu lực
-                      </Badge>
                     ) : (
-                      <Badge variant="secondary" size="sm">
-                        {document.hieu_luc_display || document.hieu_luc}
-                      </Badge>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white dark:bg-surface-elevated text-rose-600 dark:text-rose-400 border border-rose-500/30 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                        Hết hiệu lực
+                      </span>
                     )}
                   </div>
 

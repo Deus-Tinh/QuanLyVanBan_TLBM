@@ -9,7 +9,7 @@ import { dinhDangNgay, LOP_O_NHAP } from '@lib/signing/dinhDang';
 import { coQuyen, useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { HoSoChiTiet } from '@lib/signing/types';
-import { DangTai, LoiTai, ThongBao } from './ChungUI';
+import { DangTai, LoiTai, OChonTep, ThongBao } from './ChungUI';
 
 export default function TraoDoiPanel({ hoSo, onXong }: { hoSo: HoSoChiTiet; onXong: (h?: HoSoChiTiet) => void }) {
   const { t, loi, lang } = useSigningT();
@@ -79,8 +79,9 @@ export default function TraoDoiPanel({ hoSo, onXong }: { hoSo: HoSoChiTiet; onXo
         <div className="space-y-2 border-t border-border-subtle pt-3">
           <div className="text-sm font-bold text-main">{t('traoDoi.taiBanSua')}</div>
           <p className="text-sm text-secondary">{t('traoDoi.ghiChuGiaiQuyet')}</p>
-          <input type="file" accept="application/pdf" aria-label={t('traoDoi.chonTep')} className={LOP_O_NHAP}
-            onChange={(e) => setTep(e.target.files?.[0] || null)} />
+          <label className="block">
+            <OChonTep accept="application/pdf" nhan={t('traoDoi.chonTep')} onChon={(f) => setTep(f || null)} />
+          </label>
           <Button size="sm" icon="fa-upload" isLoading={dangGui} disabled={!tep}
             onClick={async () => {
               let kq: HoSoChiTiet | null = null;

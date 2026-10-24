@@ -39,7 +39,7 @@ Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân ch
    - Phạm vi văn bản: chỉ trình ký **văn bản đi** (`vanbandi`). Văn bản đến không trình ký (bút phê/chỉ đạo thuộc Nhóm 2). Văn bản mật đã bỏ (GVHD chốt); văn bản hạn chế (`pham_vi = 'HAN_CHE'`) là văn bản gửi đi chọn người xem và lưu log xem, không ký và không đi qua trình ký; API tạo hồ sơ từ chối loại này (`signing-backend-plan.md` mục 3.3).
 4. **Danh sách hồ sơ trình ký:**
    - Tabs: *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Hồ sơ theo quyền* (tab chỉ là bộ lọc; quyền đọc do server kiểm).
-   - Bộ lọc: trạng thái, mức độ. Lọc phòng ban, khoảng thời gian, tìm kiếm và phân trang thuộc backlog.
+   - Bộ lọc: trạng thái. Lọc phòng ban, khoảng thời gian, tìm kiếm và phân trang thuộc backlog.
 5. **Chi tiết hồ sơ và sơ đồ luồng ký:**
    - Split view: cột trái là stepper tiến độ ký; cột phải là PDF viewer có lớp phủ khung ký.
 6. **Ký duyệt và xử lý phản hồi hai nhánh:**
@@ -116,8 +116,8 @@ API ảnh chữ ký cá nhân thuộc Nhóm 7, không nằm trong phân hệ nà
 Đã triển khai dưới `/approvals/*` (`frontend/src/pages/signing/`, #80 mục E):
 
 1. **Ảnh chữ ký trong hồ sơ cá nhân:** thuộc Nhóm 7.
-2. **Danh sách:** tab *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Hồ sơ theo quyền*; bảng gồm văn bản, quy trình, mức độ, trạng thái, người đang chờ, người trình, hạn chót; lọc trạng thái; trạng thái tải/rỗng/lỗi.
-3. **Tạo hồ sơ:** bước 1 chọn văn bản đi, quy trình được dùng (công ty hoặc phòng ban của đơn vị mình), mức độ, hạn chót, PDF → lưu nháp; bước 2 xem trước PDF, xem người ký theo quy trình, kéo-thả khung ký từng người, chọn người ký khi chức vụ nhiều ứng viên, xác nhận mã băm rồi gửi. Nháp mở lại được.
+2. **Danh sách:** tab *Cần tôi ký duyệt*, *Tôi đã gửi trình*, *Hồ sơ theo quyền*; bảng gồm văn bản, quy trình, trạng thái, người đang chờ, người trình, hạn chót; lọc trạng thái; trạng thái tải/rỗng/lỗi.
+3. **Tạo hồ sơ:** bước 1 chọn văn bản đi, quy trình được dùng (công ty hoặc phòng ban của đơn vị mình), hạn chót, PDF → lưu nháp; bước 2 xem trước PDF, xem người ký theo quy trình, kéo-thả khung ký từng người, chọn người ký khi chức vụ nhiều ứng viên, xác nhận mã băm rồi gửi. Nháp mở lại được.
 4. **Chi tiết:** PDF của lượt hiện hành kèm lớp phủ chữ ký (ảnh snapshot hoặc khối "đã ký"; người đang chờ nét đứt), tiến trình theo cấp (vai trò, hạn xử lý, ký trễ), người đang chờ, lịch sử, các lượt trước. Hành động theo quyền/trạng thái: *Ký duyệt* (PIN, hiện tên tệp và mã băm, chặn ký khi tệp đang xem khác mã băm đã khóa), *Trả lại để sửa*, *Không đồng ý ban hành*, *Thu hồi chữ ký*, *Hủy*, *Trình lại*. Trao đổi và tải bản sửa khi trả sửa.
 5. **Kết quả:** nhận diện "Hoàn tất duyệt nội bộ, chưa phát hành"; trạng thái tạo tệp đang xử lý/lỗi/thành công; chỉ cho tải khi tạo tệp thành công; thử lại khi lỗi; xác minh bằng chứng.
 6. **Quy trình và Khóa ký & PIN:** cấu hình quy trình theo phạm vi; tạo khóa trên thiết bị (Argon2id ở trình duyệt), đổi PIN, đổi thiết bị bằng xoay vòng khóa, thu hồi khóa.
