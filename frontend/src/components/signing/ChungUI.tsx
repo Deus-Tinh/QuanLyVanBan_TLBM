@@ -2,7 +2,7 @@
  * Thành phần giao diện dùng chung của phân hệ Trình ký: badge trạng thái, hộp thoại, thông báo, trạng thái tải.
  * CSS theo Design Tokens (class Tailwind ngữ nghĩa), không mã màu cứng.
  */
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Badge, Button } from '@components/common';
 import type { BadgeProps } from '@components/common/Badge';
@@ -15,11 +15,13 @@ const MAU_TRANG_THAI: Record<string, BadgeProps['variant']> = {
   HET_HAN: 'secondary', KHONG_CAN_KY: 'secondary',
 };
 
-/** `nhom = 'trangThaiCap'` cho trạng thái cấp ký (HOAN_THANH của cấp là "Đã xong", khác hồ sơ hoàn tất). */
-export function TrangThaiBadge({ trangThai, nhom = 'trangThai' }: { trangThai: string; nhom?: 'trangThai' | 'trangThaiCap' }) {
+/** `nhom = 'trangThaiCap'` cho trạng thái cấp ký (HOAN_THANH của cấp là "Đã xong", khác hồ sơ hoàn tất).
+ * `size = 'md'` cho cột trạng thái của bảng và tiêu đề hồ sơ (cỡ sm khó đọc cạnh chữ 14px). */
+export function TrangThaiBadge({ trangThai, nhom = 'trangThai', size = 'sm' }: {
+  trangThai: string; nhom?: 'trangThai' | 'trangThaiCap'; size?: 'sm' | 'md' }) {
   const { t } = useSigningT();
   return (
-    <Badge variant={MAU_TRANG_THAI[trangThai] || 'secondary'} size="sm" withDot>
+    <Badge variant={MAU_TRANG_THAI[trangThai] || 'secondary'} size={size} withDot>
       {t(`${nhom}.${trangThai}`)}
     </Badge>
   );
@@ -31,9 +33,9 @@ export function TrangThaiHoSo({ hoSo }: { hoSo: { trang_thai: string; trang_thai
   const tra_lai = hoSo.trang_thai === 'CHO_KY' && hoSo.trang_thai_luot === 'YEU_CAU_SUA';
   return (
     <span className="inline-flex flex-wrap items-center justify-center gap-1">
-      <TrangThaiBadge trangThai={tra_lai ? 'YEU_CAU_SUA' : hoSo.trang_thai} />
+      <TrangThaiBadge trangThai={tra_lai ? 'YEU_CAU_SUA' : hoSo.trang_thai} size="md" />
       {hoSo.qua_han && (
-        <Badge variant="danger" size="sm">
+        <Badge variant="danger" size="md">
           <i className="fa-regular fa-clock mr-1" aria-hidden="true" />{t('danhSach.quaHan')}
         </Badge>
       )}
@@ -125,5 +127,22 @@ export function TruongNhap({ nhan, children, ghiChu, className = '' }: { nhan: s
       {children}
       {ghiChu && <span className="block text-xs text-muted">{ghiChu}</span>}
     </label>
+  );
+}
+
+/** Ô chọn tệp có nhãn theo ngôn ngữ giao diện (ô file gốc hiện "Choose File" theo trình duyệt).
+ * Đặt trong `<label>` (TruongNhap) hoặc bọc `<label>` riêng để bấm cả khung mở hộp chọn tệp. */
+export function OChonTep({ accept, onChon, nhan }: { accept: string; onChon: (tep: File | undefined) => void; nhan?: string }) {
+  const { t } = useSigningT();
+  const [ten, setTen] = useState('');
+  return (
+    <span className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-subtle bg-surface px-2 py-1.5 text-sm focus-within:border-focus focus-within:ring-2 focus-within:ring-primary-subtle">
+      <input type="file" accept={accept} aria-label={nhan} className="sr-only"
+        onChange={(e) => { const tep = e.target.files?.[0]; setTen(tep?.name ?? ''); onChon(tep); }} />
+      <span className="shrink-0 rounded-lg border border-border-subtle bg-surface-subtle px-2.5 py-1 font-medium text-main">
+        {t('chung.chonTep')}
+      </span>
+      <span className={`min-w-0 truncate ${ten ? 'text-main' : 'text-muted'}`}>{ten || t('chung.chuaChonTep')}</span>
+    </span>
   );
 }

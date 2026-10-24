@@ -166,7 +166,8 @@
       "emailRequired": "Địa chỉ email không được để trống.",
       "birthdayRequired": "Vui lòng chọn ngày sinh cho nhân viên.",
       "phoneInvalid": "Số điện thoại không hợp lệ theo chuẩn Việt Nam.",
-      "roleRequired": "Vui lòng chọn ít nhất một nhóm quyền cho cán bộ nhân viên."
+      "roleRequired": "Vui lòng chọn ít nhất một nhóm quyền cho cán bộ nhân viên.",
+      "positionRequired": "Vui lòng chọn chức vụ cho cán bộ nhân viên."
     },
     "messages": {
       "fetchError": "Không thể tải danh sách cán bộ nhân viên.",

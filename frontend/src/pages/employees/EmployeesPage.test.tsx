@@ -117,8 +117,9 @@ describe('EmployeesPage Component (Issue #24)', () => {
       }
       if (endpoint.includes('/api/positions/')) {
         return [
-          { id: 1, name: 'Chuyên viên', display_order: 1, is_public: true, note: '' },
-          { id: 2, name: 'Trưởng phòng', display_order: 2, is_public: true, note: '' },
+          { id: 1, name: 'Quản trị viên', display_order: 1, is_public: true, note: '' },
+          { id: 2, name: 'Chuyên viên', display_order: 2, is_public: true, note: '' },
+          { id: 3, name: 'Trưởng phòng', display_order: 3, is_public: true, note: '' },
         ];
       }
       if (endpoint.includes('/accounts/groups/')) {
@@ -185,6 +186,36 @@ describe('EmployeesPage Component (Issue #24)', () => {
     await waitFor(() => {
       expect(screen.getByText('Thêm Mới Cán Bộ Nhân Viên')).toBeInTheDocument();
     });
+  });
+
+  it('requires an explicit position instead of defaulting a new employee to the first position', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Bình')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Thêm nhân viên/i }));
+    await screen.findByText('Thêm Mới Cán Bộ Nhân Viên');
+
+    expect(container.querySelector('input[name="chuc_vu_id"]')).toHaveValue('');
+
+    fireEvent.change(container.querySelector('input[name="ho_ten"]')!, {
+      target: { value: 'Nhân viên kiểm tra chức vụ' },
+    });
+    fireEvent.change(container.querySelector('input[name="email"]')!, {
+      target: { value: 'position-required@donvi.gov.vn' },
+    });
+    fireEvent.change(container.querySelector('input[name="ngay_sinh"]')!, {
+      target: { value: '01/01/1990' },
+    });
+    fireEvent.submit(container.querySelector('form')!);
+
+    expect(await screen.findByText('Vui lòng chọn chức vụ cho cán bộ nhân viên.')).toBeInTheDocument();
+    expect(mockedApiClient.post).not.toHaveBeenCalled();
   });
 
   it('opens import modal on clicking Import Excel button', async () => {

@@ -327,6 +327,7 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
         body = response.json()
         self.assertIn("don_vi_id", body)
         self.assertIn("chuc_vu_id", body)
+        self.assertFalse(User.objects.filter(email="thieu@donvi.gov.vn").exists())
 
     def test_status_is_stored_with_ddl_enum_values(self):
         """API nhận và trả đúng giá trị ENUM employee_work_status của DDL."""
@@ -1721,7 +1722,7 @@ class ExportCbnvMigrationTests(TestCase):
     def test_migration_add_export_cbnv_idempotent(self):
         from importlib import import_module
 
-        mig = import_module("authorization.migrations.0007_add_export_cbnv_permission")
+        mig = import_module("authorization.migrations.0009_add_export_cbnv_permission")
 
         add_export_cbnv_permission = mig.add_export_cbnv_permission
         CODENAME = mig.CODENAME

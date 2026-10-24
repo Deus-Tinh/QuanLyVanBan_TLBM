@@ -1,12 +1,20 @@
 -- =====================================================================
 -- THAY ĐỔI CÁN BỘ NHÂN VIÊN (Nhóm 7; issue #24; đánh dấu [CBNV] tại vị trí)
--- Căn cứ: issue #24; migration accounts 0010_employeeassignment; migration authorization 0008_add_export_cbnv_permission.
---   1) Thêm bảng accounts_employee_assignment lưu phân công kiêm nhiệm (employee_id CASCADE,
---      don_vi_id RESTRICT, chuc_vu_id RESTRICT, chuc_danh VARCHAR(150), created_at TIMESTAMPTZ,
---      UNIQUE (employee_id, don_vi_id, chuc_vu_id), 3 index trên 3 khóa ngoại).
---   2) Thêm quyền export_cbnv ('Xuất Excel danh sách CBNV', module_ten 'CBNV'),
---      phân quyền cho 3 nhóm TP, BGD, ADMIN.
--- Quy mô sau [CBNV] (nạp sạch): 56 bảng vật lý | 20 kiểu ENUM | 78 quyền thao tác | 5 nhóm quyền chuẩn | 201 lượt phân quyền.
+-- Căn cứ: issue #24; accounts 0010_employeeassignment/0011_employeeassignment_fk_cascade_ddl;
+--   authorization 0009_add_export_cbnv_permission.
+--   1) Thêm accounts_employee_assignment với các cột employee_id, don_vi_id, chuc_vu_id,
+--      chuc_danh và ràng buộc UNIQUE (employee_id, don_vi_id, chuc_vu_id).
+--   2) Thêm quyền export_cbnv cho các nhóm TP, BGD, ADMIN.
+-- Quy mô sau [CBNV] (nạp sạch): 58 bảng vật lý | 20 kiểu ENUM | 78 quyền thao tác | 7 nhóm quyền chuẩn | 208 lượt phân quyền.
+-- =====================================================================
+-- =====================================================================
+-- THAY ĐỔI NHÓM QUYỀN BỔ SUNG (Nhóm 7; issue #228; đánh dấu [NQBS] tại vị trí)
+-- Căn cứ: bảng nhóm quyền mặc định theo 25 chức vụ (nhóm trưởng chốt 21/10/2026, PR #211).
+--   Thêm 2 nhóm chuẩn chỉ chứa quyền cộng thêm, gán cùng nhóm CV:
+--   1) TLBGD (Trợ lý Ban Giám đốc): view_all_congviec, view_read_log_vanbanden, view_read_log_vanbandi, send_trinhky.
+--   2) KT (Kiểm toán): view_signing_audit, view_read_log_vanbanden, view_read_log_vanbandi.
+--   Migration authorization 0008_supplementary_groups_tlbgd_kt bổ sung cho DB dựng bằng migration.
+-- Quy mô sau [NQBS] (cộng sau [CVTK]): 7 nhóm quyền chuẩn; thêm 7 lượt phân quyền (198 -> 205).
 -- =====================================================================
 -- THAY ĐỔI QUYỀN GỬI TRÌNH KÝ CỦA CHUYÊN VIÊN (Nhóm 5; issue #226; đánh dấu [CVTK] tại vị trí)
 -- Căn cứ: signing-backend-plan.md mục 8 (nhân viên đã xác thực được tạo yêu cầu; gửi cần send_trinhky + người tạo).
@@ -133,7 +141,7 @@
 -- =====================================================================
 -- HỆ THỐNG QUẢN LÝ VĂN BẢN VÀ TÀI LIỆU (QLVB&TL) — PostgreSQL DDL
 -- Sinh tự động & đồng bộ từ đặc tả: CSDL QLVB&TL.md
--- Quy mô: 61 bảng vật lý | 21 kiểu ENUM | 81 quyền thao tác | 5 nhóm quyền chuẩn | 206 lượt phân quyền
+-- Quy mô: 58 bảng vật lý | 20 kiểu ENUM | 78 quyền thao tác | 7 nhóm quyền chuẩn | 208 lượt phân quyền
 -- =====================================================================
 -- GHI CHÚ VỀ CÁC QUYẾT ĐỊNH THIẾT KẾ & ĐỒNG BỘ KIẾN TRÚC:
 --
@@ -2031,7 +2039,7 @@ SET
     is_he_thong = TRUE;
 
 -- ---------------------------------------------------------------------
--- 4) Seed 5 Nhóm quyền chuẩn (auth_group)
+-- 4) Seed 7 Nhóm quyền chuẩn (auth_group): 5 nhóm chính và 2 nhóm bổ sung [NQBS]
 -- ---------------------------------------------------------------------
 INSERT INTO
     auth_group (name, ma_nhom_quyen)
@@ -2039,7 +2047,10 @@ VALUES ('Văn thư', 'VT'),
     ('Chuyên viên', 'CV'),
     ('Trưởng phòng', 'TP'),
     ('Ban Giám đốc', 'BGD'),
-    ('Quản trị hệ thống', 'ADMIN') ON CONFLICT (name) DO
+    ('Quản trị hệ thống', 'ADMIN'),
+    -- [NQBS] Nhóm bổ sung, gán cùng nhóm CV
+    ('Trợ lý Ban Giám đốc', 'TLBGD'),
+    ('Kiểm toán', 'KT') ON CONFLICT (name) DO
 UPDATE
 SET
     ma_nhom_quyen = EXCLUDED.ma_nhom_quyen;
@@ -2164,7 +2175,6 @@ VALUES
         'export_cbnv',
         'CBNV'
     ),
-
     -- Văn bản đến (Nhóm 2)
     (
         'Xem danh sách/chi tiết văn bản đến',
@@ -2487,6 +2497,7 @@ WHERE
         'view_loaitailieubieumau',
         'view_list_cbnv',
         'change_self_cbnv',
+        'export_cbnv',
         'view_vanbanden',
         'view_vanbandi',
         'view_read_log_vanbanden',
@@ -2510,8 +2521,7 @@ WHERE
         'change_own_datphonghop',
         'view_sinhnhat',
         'send_wish_sinhnhat',
-        'use_aiassistant',
-        'export_cbnv'
+        'use_aiassistant'
     ) ON CONFLICT (group_id, permission_id) DO NOTHING;
 
 -- Nhóm TP (Trưởng phòng): Quyền xem, ký duyệt phòng ban, giao việc, xem việc phòng ban, đặt phòng họp, AI
@@ -2527,6 +2537,7 @@ WHERE
         'view_loaitailieubieumau',
         'view_list_cbnv',
         'change_self_cbnv',
+        'export_cbnv',
         'view_vanbanden',
         'view_vanbandi',
         'view_read_log_vanbanden',
@@ -2549,8 +2560,7 @@ WHERE
         'change_own_datphonghop',
         'view_sinhnhat',
         'send_wish_sinhnhat',
-        'use_aiassistant',
-        'export_cbnv'
+        'use_aiassistant'
     ) ON CONFLICT (group_id, permission_id) DO NOTHING;
 
 -- Nhóm CV (Chuyên viên): Xử lý nghiệp vụ chuyên môn, xem việc phòng ban (view_dept_congviec). Quyền duyệt công việc phân quyền theo ngữ cảnh task_participant (Người tạo, Chủ trì, Chỉ đạo)
@@ -2636,7 +2646,31 @@ WHERE
         'send_wish_sinhnhat',
         'use_aiassistant'
     ) ON CONFLICT (group_id, permission_id) DO NOTHING;
-
+-- [NQBS] Nhóm TLBGD (Trợ lý Ban Giám đốc): chỉ chứa quyền cộng thêm, người dùng giữ nhóm CV
+INSERT INTO
+    auth_group_permissions (group_id, permission_id)
+SELECT g.id, p.id
+FROM auth_group g, auth_permission p
+WHERE
+    g.ma_nhom_quyen = 'TLBGD'
+    AND p.codename IN (
+        'view_all_congviec',
+        'view_read_log_vanbanden',
+        'view_read_log_vanbandi',
+        'send_trinhky'
+    ) ON CONFLICT (group_id, permission_id) DO NOTHING;
+-- [NQBS] Nhóm KT (Kiểm toán): chỉ chứa quyền cộng thêm, người dùng giữ nhóm CV
+INSERT INTO
+    auth_group_permissions (group_id, permission_id)
+SELECT g.id, p.id
+FROM auth_group g, auth_permission p
+WHERE
+    g.ma_nhom_quyen = 'KT'
+    AND p.codename IN (
+        'view_signing_audit',
+        'view_read_log_vanbanden',
+        'view_read_log_vanbandi'
+    ) ON CONFLICT (group_id, permission_id) DO NOTHING;
 COMMIT;
 
 -- =====================================================================

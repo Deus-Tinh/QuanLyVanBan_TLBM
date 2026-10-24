@@ -54,7 +54,7 @@ def remove_export_cbnv_permission(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("authorization", "0007_grant_cv_send_trinhky"),
+        ("authorization", "0008_supplementary_groups_tlbgd_kt"),
     ]
 
     operations = [

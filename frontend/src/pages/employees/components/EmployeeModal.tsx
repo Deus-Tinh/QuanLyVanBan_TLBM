@@ -100,7 +100,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
       password: '',
       ngay_sinh: '',
       don_vi_id: units.length > 0 ? String(units[0].id) : '',
-      chuc_vu_id: positions.length > 0 ? String(positions[0].id) : '',
+      chuc_vu_id: '',
       chuc_danh: '',
       sdt: '',
       nhom_quyen_ids: [] as number[],
@@ -124,7 +124,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
     const defaultUnitId = availableUnit
       ? String(availableUnit.id)
       : (units[0] ? String(units[0].id) : '');
-    const defaultPosId = positions[0] ? String(positions[0].id) : '';
+    const defaultPosId = '';
 
     setFormData((prev) => ({
       ...prev,
@@ -249,12 +249,25 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
           ngay_sinh: isoBirthday || formData.ngay_sinh,
         };
       } else {
+        if (!initialData && !formData.chuc_vu_id) {
+          const msg = t('employees.validation.positionRequired');
+          setErrorKey(msg);
+          formRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
         // Validate assignments kiêm nhiệm
         if (formData.assignments.length > 0) {
           const pUnit = formData.don_vi_id;
           for (const a of formData.assignments) {
-            if (!a.don_vi_id || !a.chuc_vu_id) {
+            if (!a.don_vi_id) {
               const msg = t('employees.fields.duplicateAssignmentUnit');
+              setErrorKey(msg);
+              formRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+              return;
+            }
+            if (!a.chuc_vu_id) {
+              const msg = t('employees.validation.positionRequired');
               setErrorKey(msg);
               formRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
               return;
@@ -628,6 +641,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
                   label={t('employees.fields.position')}
                   name="chuc_vu_id"
                   value={formData.chuc_vu_id}
+                  required={!isSelfEditOnly}
                   disabled={isSelfEditOnly}
                   onChange={(val) => {
                     setFormData((prev) => ({ ...prev, chuc_vu_id: val }));

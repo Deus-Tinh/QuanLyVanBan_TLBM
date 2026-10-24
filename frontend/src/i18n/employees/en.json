@@ -166,7 +166,8 @@
       "emailRequired": "Email address is required.",
       "birthdayRequired": "Birthday is required.",
       "phoneInvalid": "Phone number is not valid.",
-      "roleRequired": "Please select at least one role/group for the employee."
+      "roleRequired": "Please select at least one role/group for the employee.",
+      "positionRequired": "Please select a position for the employee."
     },
     "messages": {
       "fetchError": "Failed to load employee list.",
