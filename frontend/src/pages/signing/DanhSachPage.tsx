@@ -165,7 +165,16 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                 <div className="mt-2 flex flex-wrap items-center gap-2"><TrangThaiHoSo hoSo={h} /></div>
                 <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs text-secondary">
                   <dt>{t('danhSach.dangCho')}</dt>
-                  <dd className="text-main break-words">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</dd>
+                  <dd className="text-main break-words">
+                    {h.dang_cho.length > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated text-main border border-border-subtle px-2 py-0.5 text-xs font-medium">
+                        <i className="fa-regular fa-clock text-warning text-xs shrink-0" aria-hidden="true" />
+                        <span>{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ')}</span>
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </dd>
                   <dt>{t('danhSach.nguoiTao')}</dt><dd className="text-main break-words">{h.ten_nguoi_tao}</dd>
                   <dt>{t('danhSach.hanChot')}</dt><dd className="text-main">{dinhDangNgay(h.han_chot, lang)}</dd>
                 </dl>
@@ -176,11 +185,11 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
             <table className="w-full text-sm text-left table-fixed min-w-[48rem]">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3.5 py-2 text-left w-[50%]">{t('danhSach.vanBan')}</th>
+                  <th className="px-3.5 py-2 text-left w-[46%]">{t('danhSach.vanBan')}</th>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-[14%]">{t('danhSach.trangThai')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[14%]">{t('danhSach.dangCho')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[12%]">{t('danhSach.nguoiTao')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[10%]">{t('danhSach.hanChot')}</th>
+                  <th className="px-2 py-2 text-center whitespace-nowrap w-[16%]">{t('danhSach.dangCho')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[13%]">{t('danhSach.nguoiTao')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[11%]">{t('danhSach.hanChot')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -194,7 +203,20 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                       <div className="mt-0.5 truncate text-xs text-muted" title={h.ten_quy_trinh}>#{h.id} · {h.ten_quy_trinh}</div>
                     </td>
                     <td className="px-2 py-2 text-center"><TrangThaiHoSo hoSo={h} /></td>
-                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">{h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') || '—'}</td>
+                    <td className="px-2 py-2 text-center whitespace-nowrap truncate">
+                      {h.dang_cho.length > 0 ? (
+                        <div className="inline-flex items-center justify-center max-w-full truncate">
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated text-main border border-border-subtle px-2.5 py-0.5 text-xs font-medium max-w-full truncate shadow-2xs">
+                            <i className="fa-regular fa-clock text-warning text-xs shrink-0" aria-hidden="true" />
+                            <span className="truncate" title={h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ')}>
+                              {h.dang_cho.map((d) => d.ten_nguoi_ky).join(', ')}
+                            </span>
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
                     <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">
                       <div className="flex items-center gap-1.5 truncate">
                         <i className="fa-regular fa-user text-muted text-xs shrink-0" aria-hidden="true" />

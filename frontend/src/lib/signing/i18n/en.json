@@ -98,7 +98,9 @@
       "hoan_thanh": "Fully signed",
       "tra_lai": "Returned for revision"
     },
-    "quaHan": "Overdue"
+    "quaHan": "Overdue",
+    "treHanCap": "Step overdue",
+    "hanCap": "Step deadline"
   },
   "phanTrang": {
     "nhan": "Pagination",
