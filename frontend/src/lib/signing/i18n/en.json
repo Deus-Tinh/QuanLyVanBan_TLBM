@@ -271,7 +271,8 @@
     "xoaCap": "Remove approval level",
     "xacNhanNgung": "Deactivate process “{ten}” (version {phienBan})? New requests can no longer choose this process.",
     "loiMa": "The code may only contain unaccented letters, digits, hyphens, underscores and dots.",
-    "loiSoGio": "Processing time is at most {so} hours (one year)."
+    "loiSoGio": "Processing time is at most {so} hours (one year).",
+    "vaiTroKy": "Signing role"
   },
   "khoa": {
     "gioiThieu": "Your signing key is created in the browser and protected by an 8-digit PIN (Argon2id). The encrypted private key is exported to a key file; to sign, upload the key file and enter your PIN. The server never receives your PIN, key file or private key.",

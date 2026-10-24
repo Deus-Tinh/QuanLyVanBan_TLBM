@@ -20,13 +20,14 @@ import DanhSachPage from './DanhSachPage';
 import KhoaPage from './KhoaPage';
 import QuyTrinhPage from './QuyTrinhPage';
 import SigningModule from './SigningModule';
+import TaiLieuPage from './TaiLieuPage';
 import TaoHoSoPage from './TaoHoSoPage';
 import ThongBaoPage from './ThongBaoPage';
 
 vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
-    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), thongBao: vi.fn(), chiTiet: vi.fn(), tepGoc: vi.fn(),
+    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), thongBao: vi.fn(), chiTiet: vi.fn(), tepGoc: vi.fn(), taiLieu: vi.fn(),
     timVanBanDi: vi.fn(), quyTrinh: vi.fn(), taoNhap: vi.fn(), khoa: vi.fn(), thuHoiKhoa: vi.fn(), traoDoi: vi.fn(),
     guiTinNhan: vi.fn(), giaiQuyet: vi.fn(), thaoTacQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), xoaQuyTrinh: vi.fn(),
     donVi: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(),
@@ -346,6 +347,56 @@ describe('QuyTrinhPage: thao tác an toàn', () => {
     expect(within(hop).getAllByRole('button', { name: /Xóa cấp ký/ })).toHaveLength(2);
     fireEvent.click(within(hop).getByRole('button', { name: 'Xóa cấp ký 2' }));
     expect(within(hop).queryByRole('button', { name: /Xóa cấp ký/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
+  it('hồ sơ không đặt hạn chót vẫn hiện hạn xử lý của cấp đang ký', async () => {
+    api.danhSach.mockResolvedValue({ count: 1, next: null, previous: null, results: [{
+      id: 21, van_ban_id: null, van_ban: { so_hieu: '203/BC', trich_yeu: 'Báo cáo' }, ten_quy_trinh: 'QT', trang_thai: 'CHO_KY',
+      dang_cho: [], ten_nguoi_tao: 'A', han_chot: null, han_xu_ly_cap: '2026-10-24T06:39:00Z',
+    } as never] });
+    boc(<DanhSachPage hop="tat_ca" />);
+    expect((await screen.findAllByText(/Hạn cấp: \d{2}:\d{2} 24\/10\/2026/)).length).toBeGreaterThan(0);
+  });
+
+  it('hồ sơ có hạn chót: không thêm dòng hạn cấp', async () => {
+    api.danhSach.mockResolvedValue({ count: 1, next: null, previous: null, results: [{
+      id: 22, van_ban_id: null, van_ban: { so_hieu: '204/BC', trich_yeu: 'Báo cáo' }, ten_quy_trinh: 'QT', trang_thai: 'CHO_KY',
+      dang_cho: [], ten_nguoi_tao: 'A', han_chot: '2026-10-27T12:00:00Z', han_xu_ly_cap: '2026-10-24T06:39:00Z',
+    } as never] });
+    boc(<DanhSachPage hop="tat_ca" />);
+    await screen.findAllByText('204/BC — Báo cáo');
+    expect(screen.queryByText(/Hạn cấp:/)).not.toBeInTheDocument();
+  });
+
+  it('chi tiết hồ sơ hiện ghi chú của người trình', async () => {
+    api.chiTiet.mockResolvedValue({
+      id: 5, document_type: null, van_ban_id: null, so_hieu_van_ban: '', trich_yeu_van_ban: 'Tờ trình', van_ban: { so_hieu: '', trich_yeu: 'Tờ trình' },
+      quy_trinh: 1, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt', phien_ban_quy_trinh: 1, trang_thai: 'NHAP', han_chot: null,
+      ngay_gui: null, ngay_hoan_thanh: null, ly_do_tu_choi: '', ly_do_huy: '', ghi_chu: 'Gấp, trình trước thứ Sáu', ho_so_goc: null,
+      phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64), create_by: 99, ten_nguoi_tao: 'Văn thư', created_at: '2026-10-07T01:00:00Z',
+      dang_cho: [], luot_trinh: [], lich_su: [], trang_thai_luot: null, qua_han: false,
+    } as unknown as HoSoChiTiet);
+    api.tepGoc.mockRejectedValue(new ApiError(404, { code: 'khong_doc_duoc_tep', detail: 'x', fields: {} }));
+    render(
+      <MemoryRouter initialEntries={['/approvals/5']}>
+        <SigningContext.Provider value={{ toi: TOI, taiLaiToi: () => undefined }}>
+          <Routes><Route path="/approvals/:id" element={<ChiTietPage />} /></Routes>
+        </SigningContext.Provider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Gấp, trình trước thứ Sáu')).toBeInTheDocument();
+  });
+
+  it('trang Văn bản công khai: gõ từ khóa tự áp dụng sau một nhịp, không cần bấm Lọc; xóa chữ thì bỏ lọc', async () => {
+    api.taiLieu.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    boc(<TaiLieuPage />);
+    const o = await screen.findByRole('searchbox');
+    fireEvent.change(o, { target: { value: '  mua sam ' } });
+    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ q: 'mua sam' }, 1), { timeout: 2000 });
+    fireEvent.change(o, { target: { value: '' } });
+    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ q: '' }, 1), { timeout: 2000 });
   });
 });
 

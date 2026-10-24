@@ -3,7 +3,7 @@
  * kiếm, lọc loại tệp và khoảng ngày, tải về (kiểm quyền ở máy chủ). Phân trang phía server như danh sách hồ sơ
  * (10 tệp mỗi trang; đổi bộ lọc thì về trang 1). Tệp lưu ở máy chủ theo trinh_ky/ và hoan_tat/<năm>/<tháng>/.
  */
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, Button, Card } from '@components/common';
 import type { BadgeProps } from '@components/common/Badge';
@@ -28,6 +28,7 @@ const MAU_LOAI_TEP: Record<LoaiTepTaiLieu, BadgeProps['variant']> = {
   LUOT: 'primary',
   HOAN_TAT: 'success',
 };
+const TRE_TIM_KIEM_MS = 300;
 const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-secondary';
 
 
@@ -57,6 +58,16 @@ export default function TaiLieuPage() {
   };
   const coLoc = Object.values(loc).some(Boolean);
 
+  // Gõ xong thì tự áp dụng (như danh sách hồ sơ); nút Lọc hoặc Enter áp dụng ngay
+  useEffect(() => {
+    const q = tuKhoa.trim();
+    if (q === (loc.q ?? '')) return undefined;
+    const hen = setTimeout(() => {
+      setLoc((cu) => ({ ...cu, q }));
+      setTrang(1);
+    }, TRE_TIM_KIEM_MS);
+    return () => clearTimeout(hen);
+  }, [tuKhoa, loc.q]);
 
   const xemChiTiet = async (tep: TepTaiLieu) => {
     setTepXem(tep);
@@ -127,13 +138,13 @@ export default function TaiLieuPage() {
         )}
         {!ds.dangTai && !ds.loi && !!dsTep?.length && (
           <>
-          {/* Màn hẹp: dạng thẻ (bảng 7 cột không đọc được ở 390px) */}
-          <ul className="divide-y divide-border-subtle md:hidden">
+          {/* Dưới 1280px: dạng thẻ (bảng 7 cột cần bề rộng đủ để không cắt ngày và tên tệp) */}
+          <ul className="divide-y divide-border-subtle xl:hidden">
             {dsTep.map((tep) => (
               <li key={`the-${tep.loai}-${tep.trinh_ky}-${tep.luot ?? 0}`} className="space-y-1 py-3">
                 <div className="flex items-start justify-between gap-2">
                   <button type="button" onClick={() => xemChiTiet(tep)}
-                    className="min-w-0 text-left font-semibold text-main hover:text-primary hover:underline">
+                    className="min-w-0 break-words text-left font-semibold text-main hover:text-primary hover:underline">
                     {moTaVanBan(tep.van_ban, tep.trinh_ky)}
                   </button>
                   <Badge variant="info" size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge>
@@ -148,7 +159,7 @@ export default function TaiLieuPage() {
               </li>
             ))}
           </ul>
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden overflow-x-auto xl:block">
             <table className="w-full min-w-[60rem] text-sm table-fixed">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">

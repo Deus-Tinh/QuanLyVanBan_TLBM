@@ -57,8 +57,8 @@ export default function TraoDoiPanel({ hoSo, onXong }: { hoSo: HoSoChiTiet; onXo
     <Card className="p-4 space-y-3">
       <h3 className="text-lg font-bold text-main">{t('traoDoi.tieuDe')}</h3>
       <div className="rounded-lg border border-purple-border bg-purple-subtle p-3 text-sm">
-        <div className="font-bold text-purple">{thread.tieu_de}</div>
-        <div className="text-main whitespace-pre-wrap">{thread.ly_do}</div>
+        <div className="font-bold text-purple break-words">{thread.tieu_de}</div>
+        <div className="text-main whitespace-pre-wrap break-words">{thread.ly_do}</div>
       </div>
       <ul className="max-h-72 space-y-2 overflow-y-auto">
         {td.duLieu.tin_nhan.length === 0 && <li className="text-sm text-muted">{t('traoDoi.rong')}</li>}

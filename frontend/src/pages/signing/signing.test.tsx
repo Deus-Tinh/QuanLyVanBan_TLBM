@@ -658,9 +658,13 @@ describe('TaiLieuPanel', () => {
     api.tepCuaLuot.mockResolvedValue(new Blob(['%PDF-'], { type: 'application/pdf' }));
     URL.createObjectURL = vi.fn(() => 'blob:tep');
     URL.revokeObjectURL = vi.fn();
+    // Tải tệp bằng thẻ <a download>: jsdom chưa hỗ trợ điều hướng, chặn click để không in cảnh báo "Not implemented"
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     boc(<TaiLieuPanel hoSo={hoSo()} />);
     expect(screen.getByText('Bản trình ký')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Tải xuống/ }));
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    click.mockRestore();
   });
 });

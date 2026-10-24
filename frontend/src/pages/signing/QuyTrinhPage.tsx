@@ -256,7 +256,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
                   <span className="font-semibold">{n.ten}</span>
                   {n.chuc_danh && <span className="ml-1 text-xs text-secondary">({n.chuc_danh})</span>}
                 </span>
-                <select className={`${LOP_O_NHAP} w-auto`} value={n.vai_tro_ky}
+                <select className={`${LOP_O_NHAP} w-auto`} value={n.vai_tro_ky} aria-label={`${t('quyTrinh.vaiTroKy')}: ${n.ten}`}
                   onChange={(e) => sua(i, { nguoi_ky: c.nguoi_ky.map((x, k) => (k === j ? { ...x, vai_tro_ky: e.target.value as VaiTroKy } : x)) })}>
                   <option value="KY_CHINH">{t('vaiTro.KY_CHINH')}</option>
                   <option value="KY_NHAY">{t('vaiTro.KY_NHAY')}</option>
@@ -454,16 +454,16 @@ export default function QuyTrinhPage() {
         {hienThi.map((q) => (
           <Card key={q.id} className="flex flex-col gap-3 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-lg font-bold text-main">{q.ten_quy_trinh}</span>
+              <span className="min-w-0 break-words text-lg font-bold text-main">{q.ten_quy_trinh}</span>
               <div className="flex items-center gap-1.5">
                 <TrangThaiBadge trangThai={q.trang_thai} />
                 <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
               </div>
             </div>
-            <div className="text-xs text-muted font-mono">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
+            <div className="text-xs text-muted font-mono break-all">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
             <ol className="space-y-1 text-sm">
               {q.cap_ky.map((c) => (
-                <li key={c.id} className="text-main">
+                <li key={c.id} className="break-words text-main">
                   {c.cap_ky}. {c.ten_cap_ky}:{' '}
                   <span className="text-secondary">
                     {c.nguoi_ky.map((n) => `${tenNguoiKyCauHinh(n, t)} (${t(`vaiTro.${n.vai_tro_ky}`)})`).join(', ')}

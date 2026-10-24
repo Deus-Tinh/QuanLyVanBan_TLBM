@@ -89,7 +89,7 @@ export default function KhoaPage() {
   }, t('khoa.daNhapFile'));
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="p-4 space-y-3">
+      <Card className="min-w-0 p-4 space-y-3">
         <p className="text-sm text-secondary">{t('khoa.gioiThieu')}</p>
         {sanSang ? <ThongBao loai="thanh_cong">{t('khoa.sanSang')}</ThongBao>
           : hoatDong ? <ThongBao loai="canh_bao">{t('khoa.khacThietBi')}</ThongBao>
@@ -135,11 +135,11 @@ export default function KhoaPage() {
         )}
         {thongBao && <ThongBao loai={thongBao.loai}>{thongBao.noi_dung}</ThongBao>}
       </Card>
-      <Card className="p-4 space-y-3">
+      <Card className="min-w-0 p-4 space-y-3">
         {(ds.duLieu || []).map((k) => (
           <div key={k.id} className="space-y-1 rounded-lg border border-border-subtle p-3 text-sm">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-base font-bold text-main truncate" title={k.ma_khoa}>{k.ma_khoa || `#${k.id}`}</span>
+              <span className="min-w-0 text-base font-bold text-main truncate" title={k.ma_khoa}>{k.ma_khoa || `#${k.id}`}</span>
               <TrangThaiBadge trangThai={k.trang_thai} />
             </div>
             <div className="text-xs text-secondary">

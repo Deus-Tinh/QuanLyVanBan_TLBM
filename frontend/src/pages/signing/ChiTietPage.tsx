@@ -128,7 +128,7 @@ function ChiTietHoSo({ id }: { id: number }) {
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
             <TrangThaiBadge trangThai={luot?.trang_thai === 'YEU_CAU_SUA' ? 'YEU_CAU_SUA' : hoSo.trang_thai} />
           </div>
-          <div className="text-base font-semibold text-main">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
+          <div className="text-base font-semibold text-main break-words">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
           {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
             <Button size="sm" variant="secondary" icon="fa-pen" onClick={() => setDangSua(true)}>{t('chiTiet.suaHoSo')}</Button>
           )}
@@ -157,6 +157,7 @@ function ChiTietHoSo({ id }: { id: number }) {
           <DongThongTin nhan={t('chiTiet.nguoiDangCho')}>
             {hoSo.dang_cho.length ? hoSo.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') : t('chiTiet.khongAiCho')}
           </DongThongTin>
+          {hoSo.ghi_chu && <DongThongTin nhan={t('chiTiet.ghiChu')}><span className="whitespace-pre-wrap">{hoSo.ghi_chu}</span></DongThongTin>}
           {hoSo.ho_so_goc && (
             <Link to={`/approvals/${hoSo.ho_so_goc}`} className="text-sm font-medium text-primary hover:underline">
               {t('chiTiet.hoSoGoc', { so: hoSo.ho_so_goc })}
