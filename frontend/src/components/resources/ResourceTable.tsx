@@ -541,9 +541,9 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium hover:text-primary-hover"
-                            title="Mở văn bản thay thế mới"
+                            title={t('resourceManagement.viewReplacement')}
                           >
-                            <span>&rarr; Xem văn bản thay thế</span>
+                            <span>{t('resourceManagement.viewReplacement')}</span>
                             <i className="fa-solid fa-arrow-up-right-from-square text-[9px]" />
                           </a>
                         </div>
@@ -612,10 +612,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                               onViewDetail(item);
                             }}
                             className="w-full px-3 py-2 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 transition-colors cursor-pointer"
-                            aria-label="Xem chi tiết tài liệu"
+                            aria-label={t('resourceManagement.viewDetailDoc')}
                           >
                             <i className="fa-solid fa-eye text-muted text-xs" />
-                            <span>Xem chi tiết</span>
+                            <span>{t('resourceManagement.viewDetail')}</span>
                           </button>
 
                           {/* Mục 2: Truy cập Thư mục + Loại */}
@@ -629,10 +629,10 @@ export const ResourceTable: React.FC<ResourceTableProps> = ({
                                 onDrillDown(item.dm_tai_lieu, firstType);
                               }}
                               className="w-full px-3 py-2 text-xs text-left text-main hover:bg-surface-elevated flex items-center gap-2 transition-colors cursor-pointer"
-                              aria-label="Truy cập thư mục của tài liệu"
+                              aria-label={t('resourceManagement.goToFolder')}
                             >
                               <i className="fa-solid fa-folder-open text-primary text-xs" />
-                              <span className="text-primary font-medium">Vào Thư mục</span>
+                              <span className="text-primary font-medium">{t('resourceManagement.goToFolder')}</span>
                             </button>
                           )}
 

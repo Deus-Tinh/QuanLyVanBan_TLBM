@@ -1396,7 +1396,7 @@ export default function ResourceManagementPage() {
         {(() => {
           const hasBottomRow = Boolean(selectedCategory !== 'all' && availableTypesForFilter.length > 0);
           const selectedCatObj = categories.find((c) => String(c.id) === selectedCategory);
-          const selectedCatTitle = selectedCatObj ? selectedCatObj.ten_tai_lieu : 'Danh mục';
+          const selectedCatTitle = selectedCatObj ? selectedCatObj.ten_tai_lieu : t('resourceManagement.categoriesBtn');
 
           return (
             <div className={`relative z-20 flex items-stretch h-10 sm:h-11 ${hasBottomRow ? 'border-b border-border-subtle' : ''}`}>
@@ -1473,7 +1473,7 @@ export default function ResourceManagementPage() {
                 })}
                 {orderedVisibleCategories.length === 0 && (
                   <div className="flex items-center px-4 text-xs text-muted italic">
-                    Chưa có danh mục nào được tick hiển thị. Bấm "Danh mục" ở góc phải để chọn.
+                    {t('resourceManagement.noCategoriesVisibleHint')}
                   </div>
                 )}
               </div>
@@ -1498,13 +1498,13 @@ export default function ResourceManagementPage() {
                       ? 'border-b-2 border-primary text-primary bg-primary/5 font-bold sm:border-transparent sm:text-secondary sm:bg-transparent'
                       : 'text-secondary hover:text-primary hover:bg-surface-elevated/70'
                   }`}
-                  title="Mở danh sách tất cả Danh mục"
-                  aria-label="Danh sách tất cả Danh mục"
+                  title={t('resourceManagement.openAllCategoriesTooltip')}
+                  aria-label={t('resourceManagement.openAllCategoriesTooltip')}
                 >
                   <i className="fa-solid fa-folder-tree text-xs text-primary shrink-0" />
                   <span className="truncate max-w-[110px] sm:max-w-none">
                     <span className="sm:hidden">{selectedCatTitle}</span>
-                    <span className="hidden sm:inline">Danh mục</span>
+                    <span className="hidden sm:inline">{t('resourceManagement.categoriesBtn')}</span>
                   </span>
                   <i
                     className={`fa-solid fa-chevron-down text-[10px] sm:text-[11px] transition-transform duration-200 shrink-0 ${
@@ -1516,13 +1516,13 @@ export default function ResourceManagementPage() {
                 {isCategoryDropdownOpen && (
                   <div className="absolute right-0 top-full mt-1.5 w-[calc(100vw-32px)] max-w-sm sm:w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
-                      <span>Danh mục tài liệu</span>
-                      <span className="text-[10px] text-primary lowercase font-medium">Cấp 1</span>
+                      <span>{t('resourceManagement.dropdownCategoriesTitle')}</span>
+                      <span className="text-[10px] text-primary lowercase font-medium">{t('resourceManagement.level1')}</span>
                     </div>
 
                     {/* Dòng hướng dẫn tick chọn: chỉ hiện trên sm:flex, ẩn trên mobile (hidden sm:flex) */}
                     <div className="hidden sm:flex px-2 pb-1.5 text-[11px] text-secondary items-center justify-between border-b border-border-subtle mb-1.5">
-                      <span className="text-[10px] text-muted">Tick chọn để hiện ra thanh chính:</span>
+                      <span className="text-[10px] text-muted">{t('resourceManagement.tickToDisplayOnMainBar')}</span>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1531,7 +1531,7 @@ export default function ResourceManagementPage() {
                         }}
                         className="text-[10px] text-primary hover:underline font-semibold cursor-pointer"
                       >
-                        {visibleCategoryIds.length === categories.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                        {visibleCategoryIds.length === categories.length ? t('resourceManagement.deselectAll') : t('resourceManagement.selectAll')}
                       </button>
                     </div>
 
@@ -1585,7 +1585,7 @@ export default function ResourceManagementPage() {
                             {/* Checkbox: Chỉ hiện trên sm:flex, ẨN trên mobile (hidden sm:flex) */}
                             <label
                               className="hidden sm:flex items-center gap-1.5 cursor-pointer shrink-0 select-none"
-                              title={isVisibleOnBar ? `Đang hiển thị ở vị trí #${tickIndex + 1} trên thanh chính` : 'Tick chọn để hiển thị trên thanh chính'}
+                              title={isVisibleOnBar ? t('resourceManagement.displayedAtPosOnBar', { pos: tickIndex + 1 }) : t('resourceManagement.tickToDisplayTooltip')}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <input
@@ -1637,11 +1637,11 @@ export default function ResourceManagementPage() {
                         setIsCategoryDropdownOpen(false);
                       }}
                       className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-semibold text-primary hover:bg-primary/5 flex items-center justify-between transition-colors cursor-pointer border border-primary/20 hover:border-primary/40 bg-primary/2"
-                      title="Mở bảng cấu hình Quản lý Danh mục & Loại tài liệu"
+                      title={t('resourceManagement.openCategoryManagementTooltip')}
                     >
                       <span className="flex items-center gap-2 truncate">
                         <i className="fa-solid fa-folder-tree text-xs text-primary" />
-                        <span className="truncate">Cài đặt &amp; Quản lý danh mục</span>
+                        <span className="truncate">{t('resourceManagement.manageCategoriesSettings')}</span>
                       </span>
                       <i className="fa-solid fa-arrow-up-right-from-square text-[10px] text-primary/70 shrink-0" />
                     </button>
@@ -1655,7 +1655,7 @@ export default function ResourceManagementPage() {
         {/* Hàng Cấp 2 — Sub-chips & Dropdown Loại tài liệu */}
         {selectedCategory !== 'all' && availableTypesForFilter.length > 0 && (() => {
           const selectedTypeObj = availableTypesForFilter.find((t) => String(t.id) === selectedType);
-          const selectedTypeTitle = selectedTypeObj ? selectedTypeObj.ten_loai : 'Loại tài liệu';
+          const selectedTypeTitle = selectedTypeObj ? selectedTypeObj.ten_loai : t('resourceManagement.dropdownTypesTitle');
           const categoryDocCount = documents.filter((d) => d.dm_tai_lieu === Number(selectedCategory)).length;
 
           return (
@@ -1676,10 +1676,10 @@ export default function ResourceManagementPage() {
                       ? 'border-b-2 border-primary text-primary bg-primary/5 font-bold'
                       : 'border-b-2 border-transparent text-secondary hover:text-main hover:bg-surface-elevated/60'
                   }`}
-                  title="Tất cả loại tài liệu"
+                  title={t('resourceManagement.allTypesOption')}
                 >
                   <i className={`fa-solid fa-tags text-xs ${selectedType === 'all' ? 'text-primary' : 'text-muted'}`} />
-                  <span>Loại</span>
+                  <span>{t('resourceManagement.typeShort')}</span>
                   <span className={`min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center text-[10px] rounded-full font-bold leading-none shrink-0 ${
                     selectedType === 'all'
                       ? 'bg-primary text-white'
@@ -1748,7 +1748,7 @@ export default function ResourceManagementPage() {
                 })}
                 {orderedVisibleTypes.length === 0 && (
                   <div className="flex items-center px-2 text-xs text-muted italic">
-                    Chưa có loại tài liệu nào được tick hiển thị. Bấm "Loại tài liệu" ở góc phải để chọn.
+                    {t('resourceManagement.noTypesVisibleHint')}
                   </div>
                 )}
               </div>
@@ -1769,14 +1769,14 @@ export default function ResourceManagementPage() {
                       ? 'border-b-2 border-primary text-primary bg-primary/5 font-bold sm:border-transparent sm:text-secondary sm:bg-transparent'
                       : 'text-secondary hover:text-primary hover:bg-surface-elevated/70'
                   }`}
-                  title="Mở danh sách tất cả Loại tài liệu"
+                  title={t('resourceManagement.openAllTypesTooltip')}
                   aria-haspopup="listbox"
                   aria-expanded={isTypeDropdownOpen}
                 >
                   <i className="fa-solid fa-tags text-xs text-primary shrink-0" />
                   <span className="truncate max-w-[110px] sm:max-w-none">
                     <span className="sm:hidden">{selectedTypeTitle}</span>
-                    <span className="hidden sm:inline">Loại tài liệu</span>
+                    <span className="hidden sm:inline">{t('resourceManagement.dropdownTypesTitle')}</span>
                   </span>
                   <i className={`fa-solid fa-chevron-down text-[10px] sm:text-[11px] transition-transform duration-200 shrink-0 ${isTypeDropdownOpen ? 'rotate-180 text-primary' : ''}`} />
                 </button>
@@ -1784,8 +1784,8 @@ export default function ResourceManagementPage() {
                 {isTypeDropdownOpen && (
                   <div className="absolute right-0 top-full mt-1.5 w-[calc(100vw-32px)] max-w-sm sm:w-96 bg-surface rounded-xl border border-border-subtle shadow-2xl z-50 p-2.5 animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-muted flex items-center justify-between">
-                      <span>Loại tài liệu</span>
-                      <span className="text-[10px] text-primary lowercase font-medium">Cấp 2</span>
+                      <span>{t('resourceManagement.dropdownTypesTitle')}</span>
+                      <span className="text-[10px] text-primary lowercase font-medium">{t('resourceManagement.level2')}</span>
                     </div>
 
                     {/* Dòng hướng dẫn tick chọn: chỉ hiện trên sm:flex, ẩn trên mobile (hidden sm:flex) */}
@@ -1797,7 +1797,7 @@ export default function ResourceManagementPage() {
 
                       return (
                         <div className="hidden sm:flex px-2 pb-1.5 text-[11px] text-secondary items-center justify-between border-b border-border-subtle mb-1.5">
-                          <span className="text-[10px] text-muted">Tick chọn để hiện ra thanh:</span>
+                          <span className="text-[10px] text-muted">{t('resourceManagement.tickToDisplayOnBar')}</span>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1806,7 +1806,7 @@ export default function ResourceManagementPage() {
                             }}
                             className="text-[10px] text-primary hover:underline font-semibold cursor-pointer"
                           >
-                            {allCurrentSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                            {allCurrentSelected ? t('resourceManagement.deselectAll') : t('resourceManagement.selectAll')}
                           </button>
                         </div>
                       );
@@ -1827,7 +1827,7 @@ export default function ResourceManagementPage() {
                     >
                       <span className="flex items-center gap-2 truncate">
                         <i className="fa-solid fa-layer-group text-xs" />
-                        <span className="truncate">Tất cả loại tài liệu</span>
+                        <span className="truncate">{t('resourceManagement.allTypesOption')}</span>
                       </span>
                       <span className={`min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center text-[11px] rounded-full font-bold leading-none shrink-0 ${
                         selectedType === 'all' ? 'bg-white/20 text-white' : 'bg-surface-elevated text-secondary border border-border-subtle'
@@ -1865,7 +1865,7 @@ export default function ResourceManagementPage() {
                             {/* Checkbox: Chỉ hiện trên sm:flex, ẨN trên mobile (hidden sm:flex) */}
                             <label
                               className="hidden sm:flex items-center gap-1.5 cursor-pointer shrink-0 select-none"
-                              title={isVisibleOnBar ? `Đang hiển thị ở vị trí #${tickIndex + 1} trên thanh` : 'Tick chọn để hiển thị trên thanh'}
+                              title={isVisibleOnBar ? t('resourceManagement.displayedAtPosOnSubBar', { pos: tickIndex + 1 }) : t('resourceManagement.tickToDisplayOnBarTooltip')}
                               onClick={(e) => e.stopPropagation()}
                             >
                               <input
@@ -1918,11 +1918,11 @@ export default function ResourceManagementPage() {
                         setIsTypeDropdownOpen(false);
                       }}
                       className="w-full px-2.5 py-2 rounded-lg text-left text-xs font-semibold text-primary hover:bg-primary/5 flex items-center justify-between transition-colors cursor-pointer border border-primary/20 hover:border-primary/40 bg-primary/2"
-                      title="Mở bảng cấu hình Quản lý Danh mục & Loại tài liệu"
+                      title={t('resourceManagement.openCategoryManagementTooltip')}
                     >
                       <span className="flex items-center gap-2 truncate">
                         <i className="fa-solid fa-folder-tree text-xs text-primary" />
-                        <span className="truncate">Cài đặt &amp; Quản lý danh mục</span>
+                        <span className="truncate">{t('resourceManagement.manageCategoriesSettings')}</span>
                       </span>
                       <i className="fa-solid fa-arrow-up-right-from-square text-[10px] text-primary/70 shrink-0" />
                     </button>
@@ -1938,8 +1938,15 @@ export default function ResourceManagementPage() {
           <div className="px-4 py-2.5 flex items-center gap-2 bg-primary/3 rounded-b-xl border-t border-border-subtle">
             <i className="fa-solid fa-circle-info text-primary text-[11px] shrink-0" />
             <span className="text-[11px] text-secondary">
-              Đang xem toàn bộ <strong className="text-main font-bold">{documents.length} tài liệu</strong> trong kho.
-              Chọn một <strong className="text-primary">Thư mục</strong> ở trên để lọc theo phòng ban và xem các <strong className="text-primary">Loại tài liệu</strong> con.
+              {t('resourceManagement.bannerViewingPart1')}{' '}
+              <strong className="text-main font-bold">
+                {documents.length} {t('resourceManagement.bannerDocsUnit')}
+              </strong>{' '}
+              {t('resourceManagement.bannerViewingPart2')}{' '}
+              <strong className="text-primary">{t('resourceManagement.fieldFolder')}</strong>{' '}
+              {t('resourceManagement.bannerViewingPart3')}{' '}
+              <strong className="text-primary">{t('resourceManagement.dropdownTypesTitle')}</strong>
+              {t('resourceManagement.bannerViewingPart4') ? ` ${t('resourceManagement.bannerViewingPart4')}` : '.'}
             </span>
           </div>
         )}
@@ -2183,7 +2190,7 @@ export default function ResourceManagementPage() {
               <span className="text-muted font-medium mr-0.5">{t('resourceManagement.filteringBadge')}</span>
               {searchTerm && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
-                  <span>Tìm: "{searchTerm}"</span>
+                  <span>{t('resourceManagement.filterBadgeSearch', { query: searchTerm })}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -2191,7 +2198,7 @@ export default function ResourceManagementPage() {
                       setSearchTerm('');
                     }}
                     className="text-muted hover:text-danger cursor-pointer"
-                    aria-label="Xóa bộ lọc tìm kiếm"
+                    aria-label={t('resourceManagement.clearSearchFilterAria')}
                   >
                     <i className="fa-solid fa-xmark text-[11px]" />
                   </button>
@@ -2199,12 +2206,12 @@ export default function ResourceManagementPage() {
               )}
               {selectedType !== 'all' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
-                  <span>Loại: {types.find((t) => t.id === Number(selectedType))?.ten_loai}</span>
+                  <span>{t('resourceManagement.filterBadgeType', { type: types.find((t) => t.id === Number(selectedType))?.ten_loai || '' })}</span>
                   <button
                     type="button"
                     onClick={() => setSelectedType('all')}
                     className="text-muted hover:text-danger cursor-pointer"
-                    aria-label="Xóa bộ lọc loại tài liệu"
+                    aria-label={t('resourceManagement.clearTypeFilterAria')}
                   >
                     <i className="fa-solid fa-xmark text-[11px]" />
                   </button>
@@ -2212,12 +2219,12 @@ export default function ResourceManagementPage() {
               )}
               {selectedYear !== 'all' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
-                  <span>Năm: {selectedYear}</span>
+                  <span>{t('resourceManagement.filterBadgeYear', { year: selectedYear })}</span>
                   <button
                     type="button"
                     onClick={() => setSelectedYear('all')}
                     className="text-muted hover:text-danger cursor-pointer"
-                    aria-label="Xóa bộ lọc năm"
+                    aria-label={t('resourceManagement.clearYearFilterAria')}
                   >
                     <i className="fa-solid fa-xmark text-[11px]" />
                   </button>
@@ -2226,21 +2233,22 @@ export default function ResourceManagementPage() {
               {statusFilter !== 'all' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-elevated border border-border-subtle text-main font-medium">
                   <span>
-                    Hiệu lực: {
-                      statusFilter === 'CON_HIEU_LUC'
-                        ? t('resourceManagement.statusActive')
-                        : statusFilter === 'CON_HIEU_LUC_1_PHAN'
-                          ? t('resourceManagement.statusPartial')
-                          : statusFilter === 'HET_HIEU_LUC'
-                            ? t('resourceManagement.statusExpired')
-                            : t('resourceManagement.statusReplaced')
-                    }
+                    {t('resourceManagement.filterBadgeStatus', {
+                      status:
+                        statusFilter === 'CON_HIEU_LUC'
+                          ? t('resourceManagement.statusActive')
+                          : statusFilter === 'CON_HIEU_LUC_1_PHAN'
+                            ? t('resourceManagement.statusPartial')
+                            : statusFilter === 'HET_HIEU_LUC'
+                              ? t('resourceManagement.statusExpired')
+                              : t('resourceManagement.statusReplaced'),
+                    })}
                   </span>
                   <button
                     type="button"
                     onClick={() => setStatusFilter('all')}
                     className="text-muted hover:text-danger cursor-pointer"
-                    aria-label="Xóa bộ lọc hiệu lực"
+                    aria-label={t('resourceManagement.clearStatusFilterAria')}
                   >
                     <i className="fa-solid fa-xmark text-[11px]" />
                   </button>
@@ -2264,10 +2272,14 @@ export default function ResourceManagementPage() {
       <div className="flex items-center justify-between gap-2 text-xs text-secondary px-1">
         <div>
           {totalCount === 0 ? (
-            <span>Hiển thị <strong className="text-main font-bold">0 / 0</strong> tài liệu</span>
+            <span>{t('resourceManagement.displayRange', { start: 0, end: 0, total: 0 })}</span>
           ) : (
             <span>
-              Hiển thị <strong className="text-main font-bold">{(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, totalCount)}</strong> / <strong className="text-main font-bold">{totalCount}</strong> tài liệu
+              {t('resourceManagement.displayRange', {
+                start: (currentPage - 1) * pageSize + 1,
+                end: Math.min(currentPage * pageSize, totalCount),
+                total: totalCount,
+              })}
             </span>
           )}
         </div>

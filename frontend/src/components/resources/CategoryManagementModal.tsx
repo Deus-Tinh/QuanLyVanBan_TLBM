@@ -871,7 +871,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           {!isAdmin && (
             <div className="p-3 rounded-xl bg-amber-500/10 text-amber-800 dark:text-amber-200 border border-amber-500/30 text-xs flex items-center gap-2.5 animate-fade-in">
               <i className="fa-solid fa-lock text-amber-500 shrink-0" />
-              <span>Chế độ chỉ xem: Danh mục cấp 1 và cấp 2 chỉ có Quản trị hệ thống (Admin) mới có quyền tạo, chỉnh sửa hoặc xóa.</span>
+              <span>{t('resourceManagement.readOnlyAdminWarning')}</span>
             </div>
           )}
 

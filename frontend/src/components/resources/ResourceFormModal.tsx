@@ -583,7 +583,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               {categories.length === 0 && (
                 <div className="mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex items-center gap-2">
                   <i className="fa-solid fa-triangle-exclamation text-amber-500 shrink-0" />
-                  <span>Hệ thống chưa có Thư mục nào. Vui lòng đóng cửa sổ này và tạo Thư mục trong mục <b>Danh mục</b> trước.</span>
+                  <span>{t('resourceManagement.systemHasNoFolders')}</span>
                 </div>
               )}
               {errors.dm_tai_lieu && (
@@ -595,16 +595,16 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
             <div id="field-loai_tai_lieu">
               <label className="text-xs font-semibold text-main block mb-1">
                 {t('resourceManagement.fieldType')} <span className="text-danger">*</span>
-                <span className="text-muted font-normal text-xs ml-1">(chọn một hoặc nhiều loại)</span>
+                <span className="text-muted font-normal text-xs ml-1">{t('resourceManagement.selectOneOrMoreTypes')}</span>
               </label>
 
               {!formData.dm_tai_lieu ? (
                 <div className="p-3 rounded-lg bg-surface border border-dashed border-border-subtle text-xs text-muted italic">
-                  Vui lòng chọn Thư mục trước để hiển thị danh sách Loại tài liệu tương ứng.
+                  {t('resourceManagement.selectFolderFirstPrompt')}
                 </div>
               ) : availableTypes.length === 0 ? (
                 <div className="p-3 rounded-lg bg-surface border border-dashed border-border-subtle text-xs text-muted italic">
-                  Thư mục này chưa có Loại tài liệu nào.
+                  {t('resourceManagement.folderHasNoTypes')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-lg bg-surface border border-border-subtle max-h-36 overflow-y-auto">
@@ -970,10 +970,11 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 <i className="fa-solid fa-cloud-arrow-up" />
               </div>
               <p className="text-xs sm:text-sm font-semibold text-main mb-1">
-                Kéo thả các tệp vào đây hoặc <span className="text-primary underline">chọn tệp từ thiết bị</span>
+                {t('resourceManagement.dragDropFilesPrompt')}{' '}
+                <span className="text-primary underline">{t('resourceManagement.browseFromDevice')}</span>
               </p>
               <p className="text-[11px] text-muted">
-                Hỗ trợ PDF, Excel (XLSX, XLS), DOCX, Ảnh, ZIP · Tối đa 20MB/tệp · Cho phép chọn nhiều tệp
+                {t('resourceManagement.attachmentSupportedHint')}
               </p>
             </div>
 
@@ -982,11 +983,11 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-semibold text-main">
-                    Tệp đính kèm ({existingFiles.length + selectedFiles.length})
+                    {t('resourceManagement.attachedFilesCount', { count: existingFiles.length + selectedFiles.length })}
                   </span>
                   {selectedFiles.length > 0 && (
                     <span className="text-[11px] text-primary font-medium">
-                      +{selectedFiles.length} tệp mới
+                      {t('resourceManagement.newFilesAdded', { count: selectedFiles.length })}
                     </span>
                   )}
                 </div>
@@ -1006,7 +1007,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                             {file.name}
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface border border-border-subtle text-muted shrink-0 font-medium">
-                            Hiện có
+                            {t('resourceManagement.existingFileBadge')}
                           </span>
                           {file.size && (
                             <span className="text-[11px] text-muted shrink-0">
@@ -1019,8 +1020,8 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                           type="button"
                           onClick={() => handleRemoveExistingFile(idx)}
                           className="p-1 text-muted hover:text-danger rounded transition-colors"
-                          title="Xóa tệp này"
-                          aria-label="Xóa tệp"
+                          title={t('resourceManagement.deleteThisFile')}
+                          aria-label={t('resourceManagement.deleteThisFile')}
                         >
                           <i className="fa-solid fa-trash-can text-xs" />
                         </button>

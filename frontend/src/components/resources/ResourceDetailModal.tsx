@@ -190,7 +190,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
             type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface transition-colors cursor-pointer shrink-0"
-            aria-label="Đóng popup"
+            aria-label={t('resourceManagement.close')}
           >
             <i className="fa-solid fa-xmark text-sm" />
           </button>
@@ -264,7 +264,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                       </span>
                     ))
                   ) : (
-                    <span className="text-muted italic text-xs">Chưa phân loại</span>
+                    <span className="text-muted italic text-xs">{t('resourceManagement.unclassified')}</span>
                   )}
                 </div>
               </div>
@@ -302,13 +302,13 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
               {/* Đơn vị sở hữu */}
               <div>
                 <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldScope')}</span>
-                <span className="text-main">{item.don_vi_id ? `Đơn vị #${item.don_vi_id}` : 'Tổng công ty'}</span>
+                <span className="text-main">{item.don_vi_id ? `Đơn vị #${item.don_vi_id}` : t('resourceManagement.headquarters')}</span>
               </div>
 
               {/* Người tạo */}
               <div>
                 <span className="text-xs text-muted block mb-0.5">{t('resourceManagement.fieldAuthor')}</span>
-                <span className="text-main">{item.nguoi_tao_name || 'Hệ thống'}</span>
+                <span className="text-main">{item.nguoi_tao_name || t('resourceManagement.systemUser')}</span>
               </div>
             </div>
 
@@ -349,7 +349,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                         }
                       }}
                       className="p-3 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-3 text-xs sm:text-sm hover:border-primary/50 hover:bg-primary-subtle/10 transition-all cursor-pointer group"
-                      title="Bấm để mở xem nội dung tệp trong tab mới"
+                      title={t('resourceManagement.clickToOpenFileInNewTab')}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <i className={`fa-solid ${getFileIcon(ext)} text-lg shrink-0 group-hover:scale-110 transition-transform`} />
