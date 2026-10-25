@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@components/common';
 import { DangTai, LoiTai, Rong, TrangThaiBadge } from '@components/signing/ChungUI';
-import { signingApi } from '@lib/signing/api';
+import { SO_THONG_BAO_TOI_DA, signingApi } from '@lib/signing/api';
 import { dinhDangNgay } from '@lib/signing/dinhDang';
 import { danhDauDaXemThongBao, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -81,6 +81,11 @@ export default function ThongBaoPage() {
           </li>
         ))}
       </ul>
+      {(ds.duLieu?.length ?? 0) >= SO_THONG_BAO_TOI_DA && (
+        <p className="border-t border-border-subtle pt-3 text-center text-xs text-muted">
+          {t('thongBao.toiDa', { so: SO_THONG_BAO_TOI_DA })}
+        </p>
+      )}
     </Card>
   );
 }

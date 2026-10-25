@@ -1059,9 +1059,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       } else {
         payload.append('link_thay_the', '');
       }
-      if (form.ngay_het_hieu_luc) {
-        payload.append('ngay_het_hieu_luc', form.ngay_het_hieu_luc);
-      }
+      payload.append(
+        'ngay_het_hieu_luc',
+        form.hieu_luc === 'CON_HIEU_LUC' ? '' : (form.ngay_het_hieu_luc || '')
+      );
 
       if (Array.isArray(form.nguoi_nhan)) {
         form.nguoi_nhan.forEach(userId => {
@@ -1698,9 +1699,13 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                     value={form.hieu_luc === 'HET_VA_THAY_THE' ? 'HET_HIEU_LUC' : form.hieu_luc}
                     onChange={e => {
                       const newHieuLuc = e.target.value as FormState['hieu_luc'];
-                      setForm({ ...form, hieu_luc: newHieuLuc });
+                      setForm(prev => ({
+                        ...prev,
+                        hieu_luc: newHieuLuc,
+                        ngay_het_hieu_luc: newHieuLuc === 'CON_HIEU_LUC' ? '' : prev.ngay_het_hieu_luc,
+                        link_thay_the: (newHieuLuc === 'CON_HIEU_LUC' && !isReplacingOther) ? '' : prev.link_thay_the,
+                      }));
                       if (newHieuLuc === 'CON_HIEU_LUC' && !isReplacingOther) {
-                        setForm(prev => ({ ...prev, link_thay_the: '' }));
                         setShowReplacementDropdown(false);
                       }
                     }}
