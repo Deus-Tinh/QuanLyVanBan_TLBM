@@ -52,6 +52,42 @@
     "noData": "No data available"
   },
   "documents_ui": {
+    "topCard": {
+      "totalInbound": "Total incoming documents",
+      "totalOutbound": "Total outgoing documents",
+      "totalConfidential": "Total confidential documents",
+      "activeDocs": "active documents",
+      "activeConfidentialDocs": "active confidential documents",
+      "activeBtn": "Active",
+      "activeFilterTitle": "Filter by active documents (including partially active)",
+      "scopeInternal": "(Internal)",
+      "scopeRestricted": "(Restricted)",
+      "scopeAll": "(All)"
+    },
+    "scopeTabs": {
+      "internal": "Internal Documents",
+      "restricted": "Restricted Documents",
+      "all": "All",
+      "restrictedNotice": "Filtering by scope: Restricted Documents — Only displaying documents you are authorized to access.",
+      "clearFilter": "Clear",
+      "clearFilterTitle": "Clear scope filter",
+      "loaiVanBanFilterNotice": "Filtering list by Document Type (from Dossier module):",
+      "clearLoaiVanBanTitle": "Clear document type filter"
+    },
+    "actions": {
+      "add": "Add New",
+      "refresh": "Refresh",
+      "refreshTitle": "Refresh list",
+      "importExcel": "Import Excel",
+      "importExcelTitle": "Import list from Excel file",
+      "importInternal": "Import internal docs",
+      "importRestricted": "Import restricted docs",
+      "exportExcel": "Export Excel",
+      "exportExcelTitle": "Export data to Excel file",
+      "exportInternal": "Export internal docs",
+      "exportRestricted": "Export restricted docs",
+      "exportAll": "Export all docs"
+    },
     "filter": {
       "searchKeyword": "Search Keyword",
       "searchPlaceholder": "Doc number, summary, issuing agency...",
@@ -99,6 +135,8 @@
       "timeSaved": "Saved:",
       "signedDate": "Signed date:",
       "restrictedBadge": "Restricted",
+      "restrictedTooltip": "Restricted document (Confidential)",
+      "openAttachmentTitle": "Click to open attachment in a new tab",
       "replaces": "Replaces:",
       "replacedBy": "Replaced by:",
       "attachmentsCount": "{count} attachments",
@@ -121,7 +159,13 @@
       "documents": "documents",
       "prevPage": "Previous page",
       "nextPage": "Next page",
-      "clickToView": "Click row to view document details"
+      "clickToView": "Click row to view document details",
+      "clickDocToView": "Click to view document details",
+      "replacesSingleTitle": "This document replaces former document: {doc}",
+      "replacedBySingleTitle": "This document has been replaced by: {doc}",
+      "replacesMultiTitle": "This document replaces former documents: {docs}",
+      "replacedByMultiTitle": "This document has been replaced by: {docs}",
+      "replacesFallbackTitle": "Replaces document: {doc}"
     }
   }
 }

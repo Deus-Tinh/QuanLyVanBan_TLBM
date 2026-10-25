@@ -52,6 +52,42 @@
     "noData": "Không có dữ liệu"
   },
   "documents_ui": {
+    "topCard": {
+      "totalInbound": "Tổng số văn bản đến",
+      "totalOutbound": "Tổng số văn bản đi",
+      "totalConfidential": "Tổng số văn bản mật",
+      "activeDocs": "văn bản còn hiệu lực",
+      "activeConfidentialDocs": "văn bản mật còn hiệu lực",
+      "activeBtn": "Còn hiệu lực",
+      "activeFilterTitle": "Lọc danh sách theo văn bản còn hiệu lực (bao gồm cả hiệu lực 1 phần)",
+      "scopeInternal": "(Nội bộ)",
+      "scopeRestricted": "(Hạn chế)",
+      "scopeAll": "(Tất cả)"
+    },
+    "scopeTabs": {
+      "internal": "Văn bản Nội bộ",
+      "restricted": "Văn bản Hạn chế",
+      "all": "Tất cả",
+      "restrictedNotice": "Đang lọc danh sách theo phạm vi: Văn bản hạn chế (Mật) — Chỉ hiển thị văn bản bạn có thẩm quyền tiếp cận.",
+      "clearFilter": "Bỏ lọc",
+      "clearFilterTitle": "Xóa bộ lọc phạm vi",
+      "loaiVanBanFilterNotice": "Đang lọc danh sách theo Loại văn bản (từ phân hệ Hồ sơ):",
+      "clearLoaiVanBanTitle": "Xóa bộ lọc loại văn bản"
+    },
+    "actions": {
+      "add": "Thêm mới",
+      "refresh": "Làm mới",
+      "refreshTitle": "Làm mới danh sách",
+      "importExcel": "Import Excel",
+      "importExcelTitle": "Nhập danh sách từ tệp Excel",
+      "importInternal": "Nhập văn bản thường",
+      "importRestricted": "Nhập văn bản hạn chế",
+      "exportExcel": "Xuất Excel",
+      "exportExcelTitle": "Xuất dữ liệu ra file Excel",
+      "exportInternal": "Xuất văn bản thường",
+      "exportRestricted": "Xuất văn bản hạn chế",
+      "exportAll": "Xuất tất cả văn bản"
+    },
     "filter": {
       "searchKeyword": "Từ khóa tìm kiếm",
       "searchPlaceholder": "Số hiệu, trích yếu, nơi ban hành...",
@@ -99,6 +135,8 @@
       "timeSaved": "Lưu:",
       "signedDate": "Ký ngày:",
       "restrictedBadge": "Hạn chế",
+      "restrictedTooltip": "Văn bản hạn chế (Bảo mật)",
+      "openAttachmentTitle": "Bấm để mở xem tệp đính kèm trong tab mới",
       "replaces": "Thay thế cho:",
       "replacedBy": "Bị thay bởi:",
       "attachmentsCount": "{count} tệp đính kèm",
@@ -121,7 +159,13 @@
       "documents": "văn bản",
       "prevPage": "Trang trước",
       "nextPage": "Trang kế tiếp",
-      "clickToView": "Bấm vào hàng để xem chi tiết văn bản"
+      "clickToView": "Bấm vào hàng để xem chi tiết văn bản",
+      "clickDocToView": "Bấm để xem chi tiết văn bản",
+      "replacesSingleTitle": "Văn bản này thay thế cho văn bản cũ: {doc}",
+      "replacedBySingleTitle": "Văn bản này đã bị thay thế bởi: {doc}",
+      "replacesMultiTitle": "Văn bản này thay thế cho các văn bản: {docs}",
+      "replacedByMultiTitle": "Văn bản này đã bị thay thế bởi các văn bản: {docs}",
+      "replacesFallbackTitle": "Thay thế cho văn bản: {doc}"
     }
   }
 }
