@@ -7,7 +7,6 @@ import { getAbsoluteFileUrl } from '@lib/fileUtils';
 import apiClient from '@lib/apiClient';
 import { resolveDocumentApiUrl } from '@lib/routes';
 import { useTranslation } from '@i18n/translate';
-import { getDocumentDisplaySummary } from '@lib/documentTranslation';
 
 export interface DocumentDetailModalProps {
   isOpen: boolean;
@@ -244,7 +243,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   {t('documents_ui.detailModal.summaryLabel') || 'Trích yếu nội dung'}
                 </span>
                 <p className="text-sm md:text-base font-medium text-main leading-relaxed m-0 whitespace-pre-wrap">
-                  {getDocumentDisplaySummary(document, currentLang)}
+                  {document.trich_yeu}
                 </p>
               </div>
 
