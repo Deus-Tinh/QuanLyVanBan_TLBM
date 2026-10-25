@@ -1268,21 +1268,29 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                   )}
                 </label>
                 {form.loai === 'DEN' ? (
-                  <input
-                    type="text"
-                    value={form.danh_muc_ho_so}
-                    onChange={e => {
-                      const newFolder = e.target.value;
-                      setForm({
-                        ...form,
-                        danh_muc_ho_so: newFolder,
-                        ten_loai_van_ban: newFolder.trim() ? form.ten_loai_van_ban : '',
-                      });
-                    }}
-                    placeholder="Nhập danh mục hồ sơ (VD: Hồ sơ công văn đến)..."
-                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
-                    required
-                  />
+                  <>
+                    <input
+                      type="text"
+                      list="inbound-folder-options"
+                      value={form.danh_muc_ho_so}
+                      onChange={e => {
+                        const newFolder = e.target.value;
+                        setForm({
+                          ...form,
+                          danh_muc_ho_so: newFolder,
+                          ten_loai_van_ban: newFolder.trim() ? form.ten_loai_van_ban : '',
+                        });
+                      }}
+                      placeholder="Nhập hoặc chọn danh mục hồ sơ..."
+                      className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                      required
+                    />
+                    <datalist id="inbound-folder-options">
+                      {Object.keys(DEFAULT_INTERNAL_FOLDERS).map(f => (
+                        <option key={f} value={f} />
+                      ))}
+                    </datalist>
+                  </>
                 ) : (
                   <select
                     value={form.danh_muc_ho_so}
@@ -1319,19 +1327,35 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                   ) : (
                     form.loai !== 'DEN' ? (
                       <span className="text-[10px] text-primary font-medium">Theo hồ sơ đã chọn</span>
-                    ) : null
+                    ) : (
+                      <span className="text-[10px] text-muted italic">Gõ tay tự do / Gợi ý</span>
+                    )
                   )}
                 </label>
                 {form.loai === 'DEN' ? (
-                  <input
-                    type="text"
-                    disabled={!form.danh_muc_ho_so?.trim()}
-                    value={form.ten_loai_van_ban}
-                    onChange={e => setForm({ ...form, ten_loai_van_ban: e.target.value })}
-                    placeholder={!form.danh_muc_ho_so?.trim() ? "— Vui lòng nhập Danh mục hồ sơ trước —" : "Nhập loại văn bản (VD: Công văn, Quyết định...)"}
-                    className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-hover/60"
-                    required
-                  />
+                  <>
+                    <input
+                      type="text"
+                      list="inbound-doctype-options"
+                      disabled={!form.danh_muc_ho_so?.trim()}
+                      value={form.ten_loai_van_ban}
+                      onChange={e => setForm({ ...form, ten_loai_van_ban: e.target.value })}
+                      placeholder={!form.danh_muc_ho_so?.trim() ? "— Vui lòng nhập Danh mục hồ sơ trước —" : "Gõ loại văn bản (VD: Công văn, Quyết định, Thư mời...)"}
+                      className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-hover/60"
+                      required
+                    />
+                    <datalist id="inbound-doctype-options">
+                      {(DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] || DEFAULT_DOC_TYPES).map(t => (
+                        <option key={t} value={t} />
+                      ))}
+                      <option value="Thư mời" />
+                      <option value="Giấy giới thiệu" />
+                      <option value="Biên bản ghi nhớ" />
+                      <option value="Bản thỏa thuận" />
+                      <option value="Đơn khiếu nại" />
+                      <option value="Đơn đề nghị" />
+                    </datalist>
+                  </>
                 ) : (
                   <select
                     disabled={!form.danh_muc_ho_so?.trim()}

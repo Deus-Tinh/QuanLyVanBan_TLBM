@@ -561,9 +561,9 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         now = timezone.now()
         for date_field in ("ngay_den", "ngay_ban_hanh"):
             dt_val = attrs.get(date_field)
-            if dt_val and dt_val.hour == 0 and dt_val.minute == 0 and dt_val.second == 0 and dt_val.microsecond == 0:
+            if dt_val and hasattr(dt_val, "hour") and dt_val.hour == 0 and dt_val.minute == 0 and dt_val.second == 0 and dt_val.microsecond == 0:
                 old_dt = getattr(self.instance, date_field, None) if self.instance else None
-                if old_dt and (old_dt.hour != 0 or old_dt.minute != 0 or old_dt.second != 0):
+                if old_dt and hasattr(old_dt, "hour") and (old_dt.hour != 0 or old_dt.minute != 0 or old_dt.second != 0):
                     attrs[date_field] = dt_val.replace(
                         hour=old_dt.hour,
                         minute=old_dt.minute,
@@ -816,6 +816,17 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
             if loai_vb_val is not None:
                 clean_lvb = str(loai_vb_val).strip()
                 if clean_lvb and lvb:
+                    # Đảm bảo Loại văn bản phải thuộc đúng Hồ sơ hs để thỏa mãn Database Trigger PostgreSQL
+                    if hs and getattr(lvb, "ho_so_id", None) != hs.pk:
+                        lvb_under_hs = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
+                        if not lvb_under_hs:
+                            try:
+                                lvb_under_hs = RecordLoaiVanBan.objects.create(ho_so=hs, ten_loai=clean_lvb)
+                            except Exception:
+                                lvb_under_hs = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
+                        if lvb_under_hs:
+                            lvb = lvb_under_hs
+
                     if is_di:
                         danhmuc_model.objects.filter(vanbandi=instance).delete()
                         danhmuc_model.objects.create(vanbandi=instance, loaivanban_id=lvb.pk)
