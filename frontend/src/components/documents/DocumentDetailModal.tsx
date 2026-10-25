@@ -21,7 +21,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
   documentId,
   loai,
 }) => {
-  const { t, currentLang } = useTranslation();
+  const { t } = useTranslation();
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

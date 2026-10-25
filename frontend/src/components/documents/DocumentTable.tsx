@@ -196,7 +196,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   isConfidential = false,
   loai = 'DEN',
 }) => {
-  const { t, currentLang } = useTranslation();
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
 
   // Lấy thông tin phiên làm việc hiện tại để phân quyền hiển thị tác vụ
