@@ -128,8 +128,6 @@ export default function TaiLieuPage() {
               </Button>
             )}
           </div>
-            )}
-          </div>
         </form>
       </Card>
       <Card className="p-4 space-y-3">
