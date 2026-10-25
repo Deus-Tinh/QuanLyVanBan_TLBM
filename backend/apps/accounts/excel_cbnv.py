@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 
 from organizations.models import DonVi, KhoiKhuVuc
 from .models import Employee, EmployeeAssignment, Position, vietnam_phone_regex
+from .serializers import get_default_groups_for_position
 
 
 def generate_cbnv_template() -> BytesIO:
@@ -384,7 +385,7 @@ def import_cbnv_from_excel(file_obj) -> dict:
                 candidate = f"{local_part}{idx}"
                 idx += 1
 
-            UserModel.objects.create_user(
+            imported_user = UserModel.objects.create_user(
                 username=candidate,
                 password=f"ITC@{secrets.token_hex(4)}",
                 email=email,
@@ -398,6 +399,9 @@ def import_cbnv_from_excel(file_obj) -> dict:
                 is_active=(item["trang_thai"] != Employee.Status.NGHI_VIEC),
                 ghi_chu=item["ghi_chu"],
             )
+            default_groups = get_default_groups_for_position(item["chuc_vu"])
+            if default_groups:
+                imported_user.groups.set(default_groups)
             created_count += 1
 
     return {
@@ -469,11 +473,6 @@ def export_cbnv_to_excel(queryset, user) -> BytesIO:
     )
     if not can_view_full:
         active_employees = active_employees.filter(is_public=True)
-
-    if not can_view_internal_units:
-        active_employees = active_employees.filter(
-            don_vi__isnull=False, don_vi__is_public=True
-        )
 
     active_employees = (
         active_employees.select_related("don_vi__khoi", "chuc_vu")

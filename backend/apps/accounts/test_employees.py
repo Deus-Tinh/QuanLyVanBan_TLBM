@@ -880,6 +880,52 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
         self.assertTrue(any("Phòng Ban Nội Bộ Mật".lower() in t.lower() for t in all_text_dv))
         self.assertIn("Nhân Viên Ban Mật", all_text_dv)
 
+    def test_export_excel_includes_public_assignment_for_employee_with_internal_primary_unit(self):
+        """Xuất đơn vị công khai vẫn liệt kê người kiêm nhiệm có đơn vị chính nội bộ."""
+        internal_unit = DonVi.objects.create(
+            ten="Phòng Ban Nội Bộ Gốc",
+            khoi=self.khoi,
+            stt_uu_tien=10000,
+            is_public=False,
+        )
+        assigned_employee = User.objects.create_user(
+            username="public_assignment_employee",
+            email="public_assignment@donvi.gov.vn",
+            password="Password123",
+            ho_ten="Nhân Viên Có Kiêm Nhiệm Công Khai",
+            don_vi=internal_unit,
+            chuc_vu=self.cv_chuyen_vien,
+            is_public=True,
+        )
+        EmployeeAssignment.objects.create(
+            employee=assigned_employee,
+            don_vi=self.don_vi_2,
+            chuc_vu=self.cv_truong_phong,
+            chuc_danh="Trưởng phòng",
+        )
+
+        tp_user = User.objects.create_user(
+            username="tp_public_assignment_export",
+            email="tp_public_assignment@donvi.gov.vn",
+            password="Password123",
+            ho_ten="Trưởng Phòng Export",
+            don_vi=self.don_vi_1,
+            chuc_vu=self.cv_truong_phong,
+        )
+        tp_user.user_permissions.add(self.perm_export)
+        self.client.force_authenticate(user=tp_user)
+
+        response = self.client.get(self.export_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ws = openpyxl.load_workbook(BytesIO(response.content)).active
+        all_text = [
+            str(ws.cell(row=row, column=column).value or "")
+            for row in range(1, ws.max_row + 1)
+            for column in range(1, 7)
+        ]
+        self.assertIn("Nhân Viên Có Kiêm Nhiệm Công Khai", all_text)
+        self.assertNotIn("Phòng Ban Nội Bộ Gốc", all_text)
+
     def test_export_excel_excludes_system_admin_account(self):
         """
         Mục 6: Loại tài khoản superuser / hệ thống (admin@baolong.vn) khỏi danh bạ CBNV.
@@ -1795,6 +1841,45 @@ class EmployeeDefaultGroupAssignmentTests(EmployeeBaseTestCase):
         response = self.client.post(self.employee_list_url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         return User.objects.get(email=email)
+
+    def test_import_excel_assigns_default_groups_by_position(self):
+        """Import Excel dùng cùng bảng ánh xạ nhóm quyền mặc định như luồng tạo CBNV."""
+        from authorization.models import GroupInfo
+
+        supplementary_group, _ = Group.objects.get_or_create(name="Trợ lý Ban Giám đốc")
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE auth_group SET ma_nhom_quyen = %s WHERE id = %s",
+                ["TLBGD", supplementary_group.id],
+            )
+
+        position = self._create_position("Trợ lý TGĐ")
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.title = "Danh Sach CBNV"
+        worksheet.append([
+            "STT", "Họ và tên (*)", "Ngày sinh (*)", "Email (*)", "Số điện thoại",
+            "Tên Đơn vị / Phòng ban (*)", "Tên Chức vụ (*)", "Chức danh", "Trạng thái", "Ghi chú",
+        ])
+        worksheet.append(["(Ghi chú)", "", "", "", "", "", "", "", "", ""])
+        worksheet.append([
+            1, "Trần Import Kiêm Quyền", "1990-01-01", "import_default_groups@donvi.gov.vn",
+            "0912345679", "Văn phòng Viện", position.name, "", "Đang làm việc", "",
+        ])
+        file_obj = BytesIO()
+        workbook.save(file_obj)
+        file_obj.seek(0)
+        file_obj.name = "danh_sach_cbnv.xlsx"
+
+        response = self.client.post(self.import_url, {"file": file_obj}, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        imported_employee = User.objects.get(email="import_default_groups@donvi.gov.vn")
+        assigned_codes = set(
+            GroupInfo.objects.filter(
+                id__in=imported_employee.groups.values_list("id", flat=True)
+            ).values_list("ma_nhom_quyen", flat=True)
+        )
+        self.assertEqual(assigned_codes, {"CV", "TLBGD"})
 
     def test_single_group_positions_auto_assign(self):
         """Các chức vụ gán 1 nhóm quyền: Quản trị viên -> ADMIN, Tổng Giám đốc -> BGD, Trưởng phòng -> TP, Chuyên viên -> CV, Văn thư -> VT."""
