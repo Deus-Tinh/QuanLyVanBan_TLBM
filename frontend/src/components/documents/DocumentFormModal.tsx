@@ -1281,7 +1281,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                           ten_loai_van_ban: newFolder.trim() ? form.ten_loai_van_ban : '',
                         });
                       }}
-                      placeholder="Nhập hoặc chọn danh mục hồ sơ..."
+                      placeholder="Nhập danh mục hồ sơ (VD: Hồ sơ công văn đến)..."
                       className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
                       required
                     />
@@ -1340,7 +1340,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                       disabled={!form.danh_muc_ho_so?.trim()}
                       value={form.ten_loai_van_ban}
                       onChange={e => setForm({ ...form, ten_loai_van_ban: e.target.value })}
-                      placeholder={!form.danh_muc_ho_so?.trim() ? "— Vui lòng nhập Danh mục hồ sơ trước —" : "Gõ loại văn bản (VD: Công văn, Quyết định, Thư mời...)"}
+                      placeholder={!form.danh_muc_ho_so?.trim() ? "— Vui lòng nhập Danh mục hồ sơ trước —" : "Nhập loại văn bản (VD: Công văn, Quyết định...)"}
                       className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-hover/60"
                       required
                     />
