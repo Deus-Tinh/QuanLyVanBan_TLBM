@@ -165,11 +165,11 @@ export default function TaiLieuPage() {
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
                   <th className="px-3 py-2.5 text-center whitespace-nowrap w-[12%]">{t('taiLieu.soHieu')}</th>
-                  <th className="px-3.5 py-2.5 text-left w-[29%]">{t('taiLieu.trichYeu')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[17%]">{t('taiLieu.tep')}</th>
+                  <th className="px-3.5 py-2.5 text-center w-[29%]">{t('taiLieu.trichYeu')}</th>
+                  <th className="px-3 py-2.5 text-center whitespace-nowrap w-[17%]">{t('taiLieu.tep')}</th>
                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap w-[10%]">{t('taiLieu.loaiTep')}</th>
                   <th className="px-3 py-2.5 text-center whitespace-nowrap w-[6%]">{t('danhSach.maHoSo')}</th>
-                  <th className="px-3 py-2.5 text-left whitespace-nowrap w-[14%]">{t('danhSach.quyTrinh')}</th>
+                  <th className="px-3 py-2.5 text-center whitespace-nowrap w-[14%]">{t('danhSach.quyTrinh')}</th>
                   <th className="px-3 py-2.5 text-center whitespace-nowrap w-[12%]">{t('taiLieu.ngay')}</th>
                 </tr>
               </thead>
@@ -195,11 +195,11 @@ export default function TaiLieuPage() {
                         {tep.van_ban.trich_yeu || '—'}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-left">
+                    <td className="px-3 py-3 text-center">
                       <button
                         type="button"
                         onClick={() => xemChiTiet(tep)}
-                        className="group inline-flex items-center gap-1.5 max-w-full text-left text-secondary hover:text-primary transition-colors cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary text-xs"
+                        className="group inline-flex items-center justify-center gap-1.5 max-w-full text-secondary hover:text-primary transition-colors cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary text-xs"
                         title={t('chiTiet.xemChiTiet')}
                       >
                         <i className={`fa-solid ${BIEU_TUONG[tep.loai]} text-xs shrink-0 opacity-70 group-hover:opacity-100 transition-opacity`} aria-hidden="true" />
@@ -210,7 +210,7 @@ export default function TaiLieuPage() {
                     <td className="px-3 py-3 text-center whitespace-nowrap font-medium text-secondary">
                       <Link to={`/approvals/${tep.trinh_ky}`} className="hover:text-primary hover:underline">#{tep.trinh_ky}</Link>
                     </td>
-                    <td className="px-3 py-3 text-left text-secondary" title={tep.ten_quy_trinh}>
+                    <td className="px-3 py-3 text-center text-secondary" title={tep.ten_quy_trinh}>
                       <div className="line-clamp-2 break-words">{tep.ten_quy_trinh}</div>
                     </td>
                     <td className="px-3 py-3 text-center text-muted whitespace-nowrap text-xs">

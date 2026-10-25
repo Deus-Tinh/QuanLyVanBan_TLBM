@@ -325,14 +325,16 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border-subtle bg-surface-subtle text-xs font-bold uppercase tracking-wider text-muted">
-                <th className="px-3 py-2">#</th><th className="px-3 py-2">{t('quyTrinh.capKy')}</th>
-                <th className="px-3 py-2">{t('quyTrinh.nguoiKy')}</th><th className="px-3 py-2">{t('quyTrinh.soGioNhan')}</th>
+                <th className="px-3 py-2 text-center">#</th>
+                <th className="px-3 py-2 text-center">{t('quyTrinh.capKy')}</th>
+                <th className="px-3 py-2 text-center">{t('quyTrinh.nguoiKy')}</th>
+                <th className="px-3 py-2 text-center">{t('quyTrinh.soGioNhan')}</th>
               </tr>
             </thead>
             <tbody>
               {q.cap_ky.map((c) => (
                 <tr key={c.id} className="border-b border-border-subtle hover:bg-surface-hover align-top">
-                  <td className="px-3 py-2.5 font-bold text-main">{c.thu_tu}</td>
+                  <td className="px-3 py-2.5 font-bold text-main text-center">{c.thu_tu}</td>
                   <td className="px-3 py-2.5 text-main font-medium">{c.ten_cap_ky}</td>
                   <td className="px-3 py-2.5">
                     <ul className="space-y-0.5">
@@ -350,7 +352,7 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
                       ))}
                     </ul>
                   </td>
-                  <td className="px-3 py-2.5 text-secondary">{c.so_gio_xu_ly ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-secondary text-center">{c.so_gio_xu_ly ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
