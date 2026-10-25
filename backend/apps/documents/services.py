@@ -1581,6 +1581,14 @@ def ensure_hoso_and_doc_type(ho_so_name: str, loai_van_ban_name: str = "", creat
             lvb = RecordLoaiVanBan.objects.filter(pk=int(clean_lvb)).first()
         if not lvb and hs:
             lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
+            if not lvb:
+                try:
+                    lvb = RecordLoaiVanBan.objects.create(
+                        ho_so=hs,
+                        ten_loai=clean_lvb,
+                    )
+                except Exception:
+                    lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
         if not lvb:
             lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb).first()
         if not lvb:
