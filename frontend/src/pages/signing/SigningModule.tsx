@@ -2,10 +2,10 @@
  * Phân hệ Trình ký duyệt nội bộ (Nhóm 5, #80 mục E) dưới đường dẫn /approvals/*.
  * Tab chỉ là bộ lọc hiển thị; quyền đọc/ghi do server kiểm ở từng API.
  */
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@components/common';
-import { DangTai, LoiTai } from '@components/signing/ChungUI';
+import { DangTai, KhongTimThay, LoiTai } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
 import { coQuyen, SigningContext, soThongBaoMoi, useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -25,13 +25,24 @@ export default function SigningModule() {
   const dieuHuong = useNavigate();
   const [lanXem, setLanXem] = useState(0);
   const daXemThongBao = useCallback(() => setLanXem((n) => n + 1), []);
-  const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai, daXemThongBao }),
-    [toi.duLieu, toi.tai, daXemThongBao]);
-
   const { pathname } = useLocation();
+  // Màn hẹp: thanh tab cuộn ngang, đưa tab đang xem vào vùng nhìn thấy (vd. vào thẳng "Khóa ký & PIN")
+  const thanhTab = useRef<HTMLElement>(null);
+  useEffect(() => {
+    thanhTab.current?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [pathname, toi.duLieu]);
   const canKy = useTai(() => signingApi.thongKe('can_toi_ky'), [pathname]);
-  const soCanKy = canKy.duLieu?.cho_ky;
+  // Hồ sơ chờ tôi ký gồm cả hồ sơ đã quá hạn (bộ lọc tách hai nhóm)
+  const soCanKy = canKy.duLieu ? canKy.duLieu.cho_ky + canKy.duLieu.qua_han : undefined;
   const thongBao = useTai(() => signingApi.thongBao(), [pathname]);
+  const { tai: taiLaiCanKy } = canKy;
+  const { tai: taiLaiThongBao } = thongBao;
+  const lamMoiDem = useCallback(() => {
+    taiLaiCanKy();
+    taiLaiThongBao();
+  }, [taiLaiCanKy, taiLaiThongBao]);
+  const ngu_canh = useMemo(() => ({ toi: toi.duLieu, taiLaiToi: toi.tai, daXemThongBao, lamMoiDem }),
+    [toi.duLieu, toi.tai, daXemThongBao, lamMoiDem]);
   // lanXem đổi khi trang Thông báo đánh dấu đã xem: tính lại số mới
   const soMoi = lanXem >= 0 ? soThongBaoMoi(thongBao.duLieu, toi.duLieu?.id) : 0;
 
@@ -71,7 +82,8 @@ export default function SigningModule() {
           )}
         </header>
         <nav
-          className="signing-nav-scroll flex items-end gap-x-1 border-b border-border-subtle flex-nowrap whitespace-nowrap touch-pan-x scroll-smooth overscroll-x-contain pb-0.5 -mx-4 px-4 sm:mx-0 sm:px-0"
+          ref={thanhTab}
+          className="signing-nav-scroll flex items-end gap-x-1 border-b border-border-subtle overflow-x-auto flex-nowrap whitespace-nowrap touch-pan-x scroll-smooth overscroll-x-contain pb-0.5 -mx-4 px-4 sm:mx-0 sm:px-0"
           aria-label={t('tieuDe')}
         >
           <div className="flex flex-nowrap items-center gap-1 shrink-0">
@@ -140,6 +152,7 @@ export default function SigningModule() {
               <Route path="thong-bao" element={<ThongBaoPage />} />
               <Route path="tai-lieu" element={<TaiLieuPage />} />
               <Route path=":id" element={<ChiTietPage />} />
+              <Route path="*" element={<KhongTimThay thongBao={t('chung.trangKhongTonTai')} />} />
             </Routes>
           </Suspense>
         )}

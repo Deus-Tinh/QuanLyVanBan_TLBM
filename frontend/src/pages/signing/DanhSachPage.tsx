@@ -1,15 +1,17 @@
 /**
  * Danh sách hồ sơ: "Cần tôi ký duyệt", "Tôi đã gửi trình", "Văn bản theo quyền" (#80 mục E) kèm bộ lọc:
- * thẻ lọc nhanh có số lượng (đang chờ ký, bị trả lại, quá hạn, hoàn tất…), ô tìm kiếm tự áp dụng và
- * phần "Lọc thêm" thu gọn (mức độ, quy trình, khoảng ngày). Hộp rỗng và chưa lọc thì không hiện khối lọc.
+ * thẻ trạng thái có số lượng (#275 mục 5: đang chờ ký, quá hạn, đã ký xong, trả lại để sửa; hồ sơ nháp, không đồng ý,
+ * đã hủy chỉ hiện ở "Tất cả"), ô tìm kiếm tự áp dụng và phần "Lọc thêm" thu gọn (quy trình, khoảng ngày).
+ * Hộp rỗng và chưa lọc thì không hiện khối lọc.
  * Danh sách phân trang phía server (10 hồ sơ mỗi trang); đổi bộ lọc thì về trang 1 (mỗi hộp là một route riêng).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card } from '@components/common';
 import { DangTai, LoiTai, Rong, TrangThaiHoSo } from '@components/signing/ChungUI';
+import LocKhoangNgay from '@components/signing/LocKhoangNgay';
 import { PhanTrang } from '@components/signing/PhanTrang';
-import { SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
+import { docLoi, SO_HO_SO_MOI_TRANG, signingApi } from '@lib/signing/api';
 import { dinhDangNgay, LOP_O_NHAP, moTaVanBan } from '@lib/signing/dinhDang';
 import { useTai } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
@@ -19,12 +21,9 @@ type Hop = 'can_toi_ky' | 'toi_gui' | 'tat_ca';
 const THE_NHANH: { khoa: LocNhanh | ''; icon: string }[] = [
   { khoa: '', icon: 'fa-layer-group' },
   { khoa: 'cho_ky', icon: 'fa-hourglass-half' },
-  { khoa: 'tra_lai', icon: 'fa-rotate-left' },
   { khoa: 'qua_han', icon: 'fa-triangle-exclamation' },
-  { khoa: 'nhap', icon: 'fa-file-pen' },
   { khoa: 'hoan_thanh', icon: 'fa-circle-check' },
-  { khoa: 'tu_choi', icon: 'fa-circle-xmark' },
-  { khoa: 'huy', icon: 'fa-ban' },
+  { khoa: 'tra_lai', icon: 'fa-rotate-left' },
 ];
 const LOP_NHAN = 'mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-secondary';
 const TRE_TIM_KIEM_MS = 300;
@@ -36,7 +35,6 @@ function TheNhanh({ thongKe, chon, onChon }: { thongKe: ThongKeHoSo | null; chon
       {THE_NHANH.map(({ khoa, icon }) => {
         const so = thongKe ? thongKe[khoa || 'tat_ca'] : undefined;
         const dangChon = chon === khoa;
-        if (khoa && !dangChon && so === 0) return null;  // ẩn thẻ rỗng cho gọn
         return (
           <button key={khoa || 'tat_ca'} type="button" aria-pressed={dangChon} onClick={() => onChon(khoa)}
             className={`flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
@@ -116,14 +114,7 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
               {quyTrinh.duLieu?.map((q) => <option key={q.id} value={String(q.id)}>{q.ten_quy_trinh} (v{q.phien_ban})</option>)}
             </select>
           </label>
-          <label className="block">
-            <span className={LOP_NHAN}>{t('danhSach.tuNgay')}</span>
-            <input className={LOP_O_NHAP} type="date" value={loc.tu_ngay ?? ''} onChange={(e) => capNhat({ tu_ngay: e.target.value })} />
-          </label>
-          <label className="block">
-            <span className={LOP_NHAN}>{t('danhSach.denNgay')}</span>
-            <input className={LOP_O_NHAP} type="date" value={loc.den_ngay ?? ''} onChange={(e) => capNhat({ den_ngay: e.target.value })} />
-          </label>
+          <LocKhoangNgay tuNgay={loc.tu_ngay} denNgay={loc.den_ngay} onDoi={capNhat} />
         </div>
       )}
     </div>
@@ -134,8 +125,14 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
   const { t, loi, lang } = useSigningT();
   const [loc, setLoc] = useState<BoLocHoSo>({});
   const [trang, setTrang] = useState(1);
-  const dem = useTai(() => signingApi.thongKe(hop), [hop]);
-  const ds = useTai(() => signingApi.danhSach(hop, loc, trang), [hop, loc, trang]);
+  // Số trên các thẻ theo cùng từ khóa, quy trình, khoảng ngày với danh sách (không theo thẻ đang chọn)
+  const dem = useTai(() => signingApi.thongKe(hop, { q: loc.q, quy_trinh: loc.quy_trinh, tu_ngay: loc.tu_ngay, den_ngay: loc.den_ngay }),
+    [hop, loc.q, loc.quy_trinh, loc.tu_ngay, loc.den_ngay]);
+  // Trang đang xem không còn (dữ liệu giảm sau khi tải trang) thì về trang 1 thay vì báo lỗi
+  const ds = useTai(() => signingApi.danhSach(hop, loc, trang).catch((err) => {
+    if (trang > 1 && docLoi(err).status === 404) setTrang(1);
+    throw err;
+  }), [hop, loc, trang]);
   const hoSo = ds.duLieu?.results;
   const rong = { can_toi_ky: 'danhSach.rongCanToiKy', toi_gui: 'danhSach.rongToiGui', tat_ca: 'danhSach.rongTatCa' }[hop];
   const coLoc = Object.values(loc).some(Boolean);
@@ -162,11 +159,12 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
         {!ds.dangTai && !ds.loi && hoSo?.length === 0 && <Rong>{t(coLoc ? 'danhSach.khongKhopLoc' : rong)}</Rong>}
         {!ds.dangTai && !ds.loi && !!hoSo?.length && (
           <>
-          {/* Màn hình hẹp: thẻ thay cho bảng để luôn thấy trạng thái, người đang chờ, hạn chót */}
-          <ul className="space-y-2.5 md:hidden" aria-label={t('danhSach.vanBan')}>
+          {/* Dưới 1024px (điện thoại, máy tính bảng): thẻ thay cho bảng để luôn thấy trạng thái, người đang chờ, hạn chót */}
+          <ul className="space-y-2 lg:hidden" aria-label={t('danhSach.vanBan')}>
             {hoSo.map((h) => (
-              <li key={h.id} className="rounded-lg border border-border-subtle bg-surface p-3.5 space-y-2 shadow-2xs hover:bg-surface-hover/60 transition-colors">
-                <Link to={`/approvals/${h.id}`} className="block font-semibold text-main hover:text-primary break-words text-base">
+              <li key={h.id} className="rounded-lg border border-border-subtle p-3">
+                <Link to={`/approvals/${h.id}`} title={moTaVanBan(h.van_ban, h.van_ban_id)}
+                  className="block font-semibold text-main hover:text-primary break-words line-clamp-3">
                   {moTaVanBan(h.van_ban, h.van_ban_id)}
                 </Link>
                 <div className="text-xs text-muted break-words">#{h.id} · {h.ten_quy_trinh}</div>
@@ -184,20 +182,26 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                     )}
                   </dd>
                   <dt>{t('danhSach.nguoiTao')}</dt><dd className="text-main break-words">{h.ten_nguoi_tao}</dd>
-                  <dt>{t('danhSach.hanChot')}</dt><dd className="text-main">{dinhDangNgay(h.han_chot, lang)}</dd>
+                  <dt>{t('danhSach.hanChot')}</dt>
+                  <dd className="text-main">
+                    {dinhDangNgay(h.han_chot, lang)}
+                    {!h.han_chot && h.han_xu_ly_cap && (
+                      <span className="block text-xs text-secondary">{t('danhSach.hanCap')}: {dinhDangNgay(h.han_xu_ly_cap, lang)}</span>
+                    )}
+                  </dd>
                 </dl>
               </li>
             ))}
           </ul>
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full text-sm text-left table-fixed min-w-[48rem]">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3.5 py-2 text-left w-[46%]">{t('danhSach.vanBan')}</th>
+                  <th className="px-3.5 py-2 text-left w-[44%]">{t('danhSach.vanBan')}</th>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-[14%]">{t('danhSach.trangThai')}</th>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-[16%]">{t('danhSach.dangCho')}</th>
                   <th className="px-2.5 py-2 text-left whitespace-nowrap w-[13%]">{t('danhSach.nguoiTao')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[11%]">{t('danhSach.hanChot')}</th>
+                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[13%]">{t('danhSach.hanChot')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -236,6 +240,10 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                         <i className="fa-regular fa-calendar text-muted text-xs shrink-0" aria-hidden="true" />
                         <span>{dinhDangNgay(h.han_chot, lang)}</span>
                       </div>
+                      {/* Hồ sơ không đặt hạn chót: vẫn cho biết hạn xử lý của cấp đang ký */}
+                      {!h.han_chot && h.han_xu_ly_cap && (
+                        <div className="mt-0.5 text-xs text-muted">{t('danhSach.hanCap')}: {dinhDangNgay(h.han_xu_ly_cap, lang)}</div>
+                      )}
                     </td>
                   </tr>
                 ))}
