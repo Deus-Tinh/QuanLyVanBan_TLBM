@@ -207,7 +207,7 @@ export default function TaiLieuPage() {
                       </button>
                     </td>
                     <td className="px-2.5 py-3 text-center whitespace-nowrap"><Badge variant={MAU_LOAI_TEP[tep.loai]} size="sm">{t(`taiLieu.loai.${tep.loai}`)}</Badge></td>
-                    <td className="px-3 py-3 text-left whitespace-nowrap font-medium text-secondary">
+                    <td className="px-3 py-3 text-center whitespace-nowrap font-medium text-secondary">
                       <Link to={`/approvals/${tep.trinh_ky}`} className="hover:text-primary hover:underline">#{tep.trinh_ky}</Link>
                     </td>
                     <td className="px-3 py-3 text-left text-secondary" title={tep.ten_quy_trinh}>
