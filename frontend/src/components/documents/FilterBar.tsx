@@ -138,7 +138,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-xl p-4 shadow-sm transition-all duration-normal mb-5 space-y-3.5">
+    <div className="w-full max-w-full box-border bg-surface border border-border-subtle rounded-xl p-3.5 sm:p-4 shadow-sm transition-all duration-normal mb-5 space-y-3.5 overflow-hidden">
       {/* Hàng 1: Từ khóa + Danh mục Hồ sơ + Loại văn bản */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
         {/* 1. Ô tìm kiếm từ khóa (4 cột) */}
@@ -182,19 +182,24 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               {t('documents_ui.filter.dossierStep') || 'Phân cấp theo hồ sơ'}
             </span>
           </label>
-          <select
-            value={filters.ho_so || ''}
-            onChange={(e) => handleFolderChange(e.target.value)}
-            className="w-full max-w-full truncate bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
-            title="Chọn danh mục hồ sơ để lọc văn bản"
-          >
-            <option value="">{t('documents_ui.filter.allDossiers') || 'Tất cả danh mục hồ sơ'}</option>
-            {folderOptions.map((folder) => (
-              <option key={folder} value={folder}>
-                {folder}
-              </option>
-            ))}
-          </select>
+          <div className="relative w-full max-w-full min-w-0">
+            <select
+              value={filters.ho_so || ''}
+              onChange={(e) => handleFolderChange(e.target.value)}
+              className="w-full max-w-full truncate bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 pr-8 appearance-none border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
+              title="Chọn danh mục hồ sơ để lọc văn bản"
+            >
+              <option value="">{t('documents_ui.filter.allDossiers') || 'Tất cả danh mục hồ sơ'}</option>
+              {folderOptions.map((folder) => (
+                <option key={folder} value={folder}>
+                  {folder}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-secondary">
+              <i className="fa-solid fa-chevron-down text-[10px]" />
+            </div>
+          </div>
         </div>
 
         {/* 3. Dropdown Loại văn bản (4 cột - tương ứng theo Danh mục hồ sơ, Khóa khi chưa chọn hồ sơ) */}
@@ -217,20 +222,25 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               </span>
             )}
           </label>
-          <select
-            disabled={!filters.ho_so}
-            value={filters.loai_van_ban !== undefined ? String(filters.loai_van_ban) : ''}
-            onChange={(e) => handleInputChange('loai_van_ban', e.target.value)}
-            className="w-full max-w-full truncate text-sm bg-surface-elevated text-main rounded-lg px-3 py-2 border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-hover/60"
-            title={filters.ho_so ? "Chọn loại văn bản tương ứng" : "Khóa: Vui lòng chọn danh mục hồ sơ ở bước 1 trước"}
-          >
-            <option value="">{filters.ho_so ? (t('documents_ui.filter.allTypesInDossier') || 'Tất cả loại văn bản trong hồ sơ') : (t('documents_ui.filter.selectDossierPrompt') || '— Vui lòng chọn danh mục hồ sơ trước —')}</option>
-            {filteredDocTypeOptions.map((docType) => (
-              <option key={docType} value={docType}>
-                {docType}
-              </option>
-            ))}
-          </select>
+          <div className="relative w-full max-w-full min-w-0">
+            <select
+              disabled={!filters.ho_so}
+              value={filters.loai_van_ban !== undefined ? String(filters.loai_van_ban) : ''}
+              onChange={(e) => handleInputChange('loai_van_ban', e.target.value)}
+              className="w-full max-w-full truncate text-sm bg-surface-elevated text-main rounded-lg px-3 py-2 pr-8 appearance-none border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-hover/60"
+              title={filters.ho_so ? "Chọn loại văn bản tương ứng" : "Khóa: Vui lòng chọn danh mục hồ sơ ở bước 1 trước"}
+            >
+              <option value="">{filters.ho_so ? (t('documents_ui.filter.allTypesInDossier') || 'Tất cả loại văn bản trong hồ sơ') : (t('documents_ui.filter.selectDossierPrompt') || '— Vui lòng chọn danh mục hồ sơ trước —')}</option>
+              {filteredDocTypeOptions.map((docType) => (
+                <option key={docType} value={docType}>
+                  {docType}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-secondary">
+              <i className="fa-solid fa-chevron-down text-[10px]" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -242,18 +252,23 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <i className="fa-solid fa-calendar-days text-primary text-[0.75rem]" />
             {t('documents_ui.filter.releaseYear') || 'Năm phát hành'}
           </label>
-          <select
-            value={filters.nam || ''}
-            onChange={(e) => handleInputChange('nam', e.target.value ? Number(e.target.value) : '')}
-            className="w-full max-w-full truncate bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
-          >
-            <option value="">{t('documents_ui.filter.allYears') || 'Tất cả các năm'}</option>
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>
-                {t('documents_ui.filter.yearLabel', { year: String(year) }) || `Năm ${year}`}
-              </option>
-            ))}
-          </select>
+          <div className="relative w-full max-w-full min-w-0">
+            <select
+              value={filters.nam || ''}
+              onChange={(e) => handleInputChange('nam', e.target.value ? Number(e.target.value) : '')}
+              className="w-full max-w-full truncate bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 pr-8 appearance-none border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
+            >
+              <option value="">{t('documents_ui.filter.allYears') || 'Tất cả các năm'}</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {t('documents_ui.filter.yearLabel', { year: String(year) }) || `Năm ${year}`}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-secondary">
+              <i className="fa-solid fa-chevron-down text-[10px]" />
+            </div>
+          </div>
         </div>
 
         {/* 5. Khoảng ngày (Từ ngày -> Đến ngày) (5 cột - Responsive: 1 cột trên mobile xs, 2 cột từ sm trở lên) */}
@@ -316,16 +331,21 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             <i className="fa-solid fa-shield-halved text-primary text-[0.75rem]" />
             {t('documents_ui.filter.validityStatus') || 'Trạng thái hiệu lực'}
           </label>
-          <select
-            value={filters.hieu_luc || ''}
-            onChange={(e) => handleInputChange('hieu_luc', e.target.value as DocumentStatus | 'HIEU_LUC' | '')}
-            className="w-full max-w-full truncate bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
-          >
-            <option value="">{t('documents_ui.filter.allStatuses') || 'Tất cả trạng thái'}</option>
-            <option value="CON_HIEU_LUC">{t('documents_ui.filter.statusActive') || 'Còn hiệu lực'}</option>
-            <option value="CON_HIEU_LUC_1_PHAN">{t('documents_ui.filter.statusPartiallyActive') || 'Còn hiệu lực 1 phần'}</option>
-            <option value="HET_HIEU_LUC">{t('documents_ui.filter.statusExpired') || 'Hết hiệu lực'}</option>
-          </select>
+          <div className="relative w-full max-w-full min-w-0">
+            <select
+              value={filters.hieu_luc || ''}
+              onChange={(e) => handleInputChange('hieu_luc', e.target.value as DocumentStatus | 'HIEU_LUC' | '')}
+              className="w-full max-w-full truncate bg-surface-elevated text-main text-sm rounded-lg px-3 py-2 pr-8 appearance-none border border-border-subtle hover:border-primary/40 focus:border-primary focus:outline-none transition-all cursor-pointer"
+            >
+              <option value="">{t('documents_ui.filter.allStatuses') || 'Tất cả trạng thái'}</option>
+              <option value="CON_HIEU_LUC">{t('documents_ui.filter.statusActive') || 'Còn hiệu lực'}</option>
+              <option value="CON_HIEU_LUC_1_PHAN">{t('documents_ui.filter.statusPartiallyActive') || 'Còn hiệu lực 1 phần'}</option>
+              <option value="HET_HIEU_LUC">{t('documents_ui.filter.statusExpired') || 'Hết hiệu lực'}</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-secondary">
+              <i className="fa-solid fa-chevron-down text-[10px]" />
+            </div>
+          </div>
         </div>
       </div>
 
