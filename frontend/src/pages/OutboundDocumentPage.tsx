@@ -156,6 +156,9 @@ export const OutboundDocumentPage: React.FC = () => {
   const [alertMsg, setAlertMsg] = useState<string>('');
   const [isAlertOpen, setIsAlertOpen] = useState<boolean>(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [availableDocTypes, setAvailableDocTypes] = useState<string[]>([]);
+  const [availableFolders, setAvailableFolders] = useState<string[]>([]);
+  const [folderDocTypesMap, setFolderDocTypesMap] = useState<Record<string, string[]>>({});
   const [allStatsItems, setAllStatsItems] = useState<DocumentItem[]>([]);
 
   // Lấy danh sách các năm thực tế có văn bản đi trong CSDL
@@ -173,14 +176,77 @@ export const OutboundDocumentPage: React.FC = () => {
   // Lấy thống kê số lượng văn bản đi theo trạng thái
   const fetchStats = useCallback(async () => {
     try {
-      const extraQuery = filters.loai_van_ban ? `&loai_van_ban=${encodeURIComponent(String(filters.loai_van_ban))}` : '';
-      const res = await apiClient.get<PaginatedResponse<DocumentItem>>(`/api/documents/?loai=DI&page_size=1000${extraQuery}`);
+      const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DI&page_size=1000');
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       setAllStatsItems(items);
+
+      // Trích xuất các Loại văn bản và ánh xạ Danh mục hồ sơ -> Loại văn bản thực tế từ các văn bản trong hệ thống
+      const extractedTypes = new Set<string>();
+      const extractedFolders = new Set<string>();
+      const folderTypeMapping: Record<string, Set<string>> = {};
+
+      const typeMapping: Record<string, string> = {
+        'QĐ': 'Quyết định',
+        'QD': 'Quyết định',
+        'TB': 'Thông báo',
+        'CV': 'Công văn',
+        'HD': 'Hướng dẫn',
+        'KH': 'Kế hoạch',
+        'CT': 'Chỉ thị',
+        'BC': 'Báo cáo',
+        'TTR': 'Tờ trình',
+        'NQ': 'Nghị quyết',
+      };
+
+      items.forEach((d) => {
+        const rawItem = d as unknown as Record<string, unknown>;
+        const rawDocType = rawItem.ten_loai_van_ban || rawItem.loai_van_ban;
+        let detectedType = typeof rawDocType === 'string' && rawDocType.trim() ? rawDocType.trim() : '';
+
+        if (!detectedType) {
+          const match = d.so_hieu ? d.so_hieu.match(/\/([A-ZĐ]+)(?:-|$)/i) : null;
+          if (match && typeMapping[match[1].toUpperCase()]) {
+            detectedType = typeMapping[match[1].toUpperCase()];
+          } else if (d.trich_yeu) {
+            const trichYeuUpper = d.trich_yeu.trim().toUpperCase();
+            for (const name of Object.values(typeMapping)) {
+              if (trichYeuUpper.startsWith(name.toUpperCase())) {
+                detectedType = name;
+                break;
+              }
+            }
+          }
+        }
+
+        if (detectedType) {
+          extractedTypes.add(detectedType);
+        }
+
+        const rawFolder = rawItem.danh_muc_ho_so || rawItem.ho_so;
+        if (typeof rawFolder === 'string' && rawFolder.trim()) {
+          const folderName = rawFolder.trim();
+          extractedFolders.add(folderName);
+          if (!folderTypeMapping[folderName]) {
+            folderTypeMapping[folderName] = new Set<string>();
+          }
+          if (detectedType) {
+            folderTypeMapping[folderName].add(detectedType);
+          }
+        }
+      });
+
+      const serializableFolderMap: Record<string, string[]> = {};
+      Object.entries(folderTypeMapping).forEach(([folder, typeSet]) => {
+        serializableFolderMap[folder] = Array.from(typeSet).sort((a, b) => a.localeCompare(b, 'vi'));
+      });
+
+      setAvailableDocTypes(Array.from(extractedTypes).sort((a, b) => a.localeCompare(b, 'vi')));
+      setAvailableFolders(Array.from(extractedFolders).sort((a, b) => a.localeCompare(b, 'vi')));
+      setFolderDocTypesMap(serializableFolderMap);
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
     }
-  }, [filters.loai_van_ban]);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -211,6 +277,7 @@ export const OutboundDocumentPage: React.FC = () => {
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
       if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
+      if (filters.ho_so) params.append('ho_so', filters.ho_so.trim());
       const targetPhamVi = filters.pham_vi || 'NOI_BO';
       if (targetPhamVi !== 'ALL') params.append('pham_vi', targetPhamVi);
 
@@ -776,6 +843,9 @@ export const OutboundDocumentPage: React.FC = () => {
         onReset={handleResetFilters}
         isLoading={isLoading}
         availableYears={availableYears}
+        availableFolders={availableFolders}
+        availableDocTypes={availableDocTypes}
+        folderDocTypesMap={folderDocTypesMap}
         documentType="DI"
       />
 

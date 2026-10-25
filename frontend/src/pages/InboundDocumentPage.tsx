@@ -294,6 +294,7 @@ export const InboundDocumentPage: React.FC = () => {
       if (filters.den_ngay) params.append('den_ngay', filters.den_ngay);
       if (filters.hieu_luc) params.append('hieu_luc', filters.hieu_luc);
       if (filters.loai_van_ban) params.append('loai_van_ban', String(filters.loai_van_ban));
+      if (filters.ho_so) params.append('ho_so', filters.ho_so.trim());
       const targetPhamVi = filters.pham_vi || 'NOI_BO';
       if (targetPhamVi !== 'ALL') params.append('pham_vi', targetPhamVi);
 
