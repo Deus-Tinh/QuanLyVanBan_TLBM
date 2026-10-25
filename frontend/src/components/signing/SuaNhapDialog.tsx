@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button } from '@components/common';
 import { HopThoai, OChonTep, ThongBao, TruongNhap } from '@components/signing/ChungUI';
 import { signingApi } from '@lib/signing/api';
-import { LOP_O_NHAP } from '@lib/signing/dinhDang';
+import { GIOI_HAN, hanChotDaQua, kiemTraTepPdf, LOP_O_NHAP } from '@lib/signing/dinhDang';
 import { useSigningT } from '@lib/signing/i18n';
 import type { HoSoChiTiet } from '@lib/signing/types';
 
@@ -25,10 +25,18 @@ export default function SuaNhapDialog({ hoSo, onDong, onXong }: {
   const [soHieu, setSoHieu] = useState(hoSo.so_hieu_van_ban ?? '');
   const [trichYeu, setTrichYeu] = useState(hoSo.trich_yeu_van_ban ?? '');
   const [tep, setTep] = useState<File | null>(null);
+  const [loiTep, setLoiTep] = useState('');
+  const [loiHanChot, setLoiHanChot] = useState('');
   const [dangLuu, setDangLuu] = useState(false);
   const [thongBao, setThongBao] = useState('');
+  const hanChotGoc = sangGioDiaPhuong(hoSo.han_chot);
 
   const luu = async () => {
+    // Hạn chót chưa đổi mà đã qua thì để máy chủ quyết; chỉ chặn khi người dùng nhập hạn chót mới ở quá khứ
+    if (hanChot !== hanChotGoc && hanChotDaQua(hanChot)) {
+      setLoiHanChot(t('tao.loiHanChot'));
+      return;
+    }
     const form = new FormData();
     form.append('han_chot', hanChot ? new Date(hanChot).toISOString() : '');
     form.append('ghi_chu', ghiChu);
@@ -49,10 +57,11 @@ export default function SuaNhapDialog({ hoSo, onDong, onXong }: {
   };
 
   return (
-    <HopThoai moTieuDe={t('chiTiet.suaHoSo')} mo onDong={onDong}
+    <HopThoai moTieuDe={t('chiTiet.suaHoSo')} mo onDong={onDong} dangXuLy={dangLuu}
       chanDuoi={<>
         <Button variant="secondary" onClick={onDong}>{t('chung.huyBo')}</Button>
-        <Button icon="fa-floppy-disk" isLoading={dangLuu} disabled={nhapTay && !trichYeu.trim()} onClick={luu}>{t('chung.luu')}</Button>
+        <Button icon="fa-floppy-disk" isLoading={dangLuu}
+          disabled={(nhapTay && !trichYeu.trim()) || Boolean(loiTep) || Boolean(loiHanChot)} onClick={luu}>{t('chung.luu')}</Button>
       </>}>
       {nhapTay && (
         <>
@@ -60,18 +69,27 @@ export default function SuaNhapDialog({ hoSo, onDong, onXong }: {
             <input className={LOP_O_NHAP} maxLength={100} value={soHieu} onChange={(e) => setSoHieu(e.target.value)} />
           </TruongNhap>
           <TruongNhap nhan={t('tao.trichYeu')}>
-            <input className={LOP_O_NHAP} value={trichYeu} onChange={(e) => setTrichYeu(e.target.value)} />
+            <input className={LOP_O_NHAP} maxLength={GIOI_HAN.trichYeu} value={trichYeu} onChange={(e) => setTrichYeu(e.target.value)} />
           </TruongNhap>
         </>
       )}
-      <TruongNhap nhan={t('danhSach.hanChot')}>
-        <input className={LOP_O_NHAP} type="datetime-local" value={hanChot} onChange={(e) => setHanChot(e.target.value)} />
+      <TruongNhap nhan={t('danhSach.hanChot')} loi={loiHanChot}>
+        <input className={LOP_O_NHAP} type="datetime-local" value={hanChot} aria-invalid={loiHanChot ? true : undefined}
+          onChange={(e) => {
+            setHanChot(e.target.value);
+            setLoiHanChot(e.target.value !== hanChotGoc && hanChotDaQua(e.target.value) ? t('tao.loiHanChot') : '');
+          }} />
       </TruongNhap>
-      <TruongNhap nhan={t('chiTiet.ghiChu')}>
-        <textarea className={LOP_O_NHAP} rows={3} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
+      <TruongNhap nhan={t('chiTiet.ghiChu')} ghiChu={t('chung.toiDaKyTu', { so: GIOI_HAN.ghiChu })}>
+        <textarea className={LOP_O_NHAP} rows={3} maxLength={GIOI_HAN.ghiChu} value={ghiChu} onChange={(e) => setGhiChu(e.target.value)} />
       </TruongNhap>
-      <TruongNhap nhan={t('chiTiet.thayTep')} ghiChu={t('chiTiet.goiYThayTep')}>
-        <OChonTep accept="application/pdf,.pdf" onChon={(f) => setTep(f ?? null)} />
+      <TruongNhap nhan={t('chiTiet.thayTep')} ghiChu={t('chiTiet.goiYThayTep')} loi={loiTep}>
+        <OChonTep accept="application/pdf,.pdf" onChon={(f) => {
+          setThongBao('');
+          const khoaLoi = f ? kiemTraTepPdf(f) : null;
+          setLoiTep(khoaLoi ? t(khoaLoi) : '');
+          setTep(f && !khoaLoi ? f : null);
+        }} />
       </TruongNhap>
       {thongBao && <ThongBao>{thongBao}</ThongBao>}
     </HopThoai>
