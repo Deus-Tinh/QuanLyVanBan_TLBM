@@ -8,6 +8,7 @@ import { getAbsoluteFileUrl } from '@lib/fileUtils';
 import { resolveDocumentApiUrl } from '@lib/routes';
 import { useTranslation } from '@i18n/translate';
 import { useIsMobile } from '@hooks/useIsMobile';
+import { getDocumentDisplaySummary } from '@lib/documentTranslation';
 
 export interface DocumentTableProps {
   documents: DocumentItem[];
@@ -196,7 +197,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   isConfidential = false,
   loai = 'DEN',
 }) => {
-  const { t } = useTranslation();
+  const { t, currentLang } = useTranslation();
   const isMobile = useIsMobile();
 
   // Lấy thông tin phiên làm việc hiện tại để phân quyền hiển thị tác vụ
@@ -459,9 +460,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     <td className="px-4 py-3.5">
                       <div
                         className="line-clamp-2 text-main group-hover:text-primary dark:group-hover:text-blue-300 text-sm leading-relaxed transition-colors"
-                        title={doc.trich_yeu}
+                        title={getDocumentDisplaySummary(doc, currentLang)}
                       >
-                        {doc.trich_yeu}
+                        {getDocumentDisplaySummary(doc, currentLang)}
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         {doc.attachment_count > 0 && (
@@ -752,8 +753,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 </div>
 
                 {/* Trích yếu */}
-                <p className="text-xs text-main font-medium line-clamp-3 leading-relaxed mt-2" title={doc.trich_yeu}>
-                  {doc.trich_yeu}
+                <p className="text-xs text-main font-medium line-clamp-3 leading-relaxed mt-2" title={getDocumentDisplaySummary(doc, currentLang)}>
+                  {getDocumentDisplaySummary(doc, currentLang)}
                 </p>
 
                 {/* Tệp đính kèm và badge thay thế (nếu có) */}
