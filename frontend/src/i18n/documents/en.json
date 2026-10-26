@@ -121,8 +121,10 @@
     },
     "table": {
       "colStt": "No.",
-      "colInboundNum": "In. No.",
-      "colOutboundNum": "Out. No.",
+      "colInboundNum": "No. / In. No.",
+      "colOutboundNum": "No. / Out. No.",
+      "inboundNumSub": "In: #{num}",
+      "outboundNumSub": "Out: #{num}",
       "colCode": "Ref Code",
       "colTimestamp": "Timestamp",
       "colSummary": "Summary / Subject",
