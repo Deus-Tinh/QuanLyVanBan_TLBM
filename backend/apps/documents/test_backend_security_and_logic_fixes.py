@@ -258,3 +258,32 @@ class BackendSecurityAndLogicFixesTests(TestCase):
         # Đã xóa link thay thế, nhưng do past_date nên trở thành HET_HIEU_LUC
         self.assertEqual(doc_expired.link_thay_the, "")
         self.assertEqual(doc_expired.hieu_luc, HieuLuc.HET_HIEU_LUC)
+
+    def test_delete_document_with_hoso_and_danhmuc_success(self):
+        """Kiểm thử xóa văn bản có gắn Hồ sơ và Loại văn bản thành công, không bị lỗi trigger CSDL."""
+        from records.models import HoSo, LoaiVanBan
+        from documents.models import VanBanDenHoSo, VanBanDenDanhmuc
+
+        hs = HoSo.objects.create(so_ky_hieu="HS-TEST-DEL", ten_ho_so="Hồ sơ test xóa", nguoi_lap=self.admin_user)
+        lvb = LoaiVanBan.objects.create(ho_so=hs, ten_loai="Loại VB test xóa")
+
+        doc = VanBanDen.objects.create(
+            so_hieu="TEST-DEL-CROSS",
+            trich_yeu="Kiểm tra xóa văn bản có liên kết hồ sơ",
+            nam=2026,
+            so_thu_tu=8888,
+            pham_vi="NOI_BO",
+            nguoi_tao=self.admin_user,
+        )
+        VanBanDenHoSo.objects.create(vanbanden=doc, hoso_id=hs.id)
+        VanBanDenDanhmuc.objects.create(vanbanden=doc, loaivanban_id=lvb.id)
+
+        # Gọi API xóa bằng quyền Admin
+        client = APIClient()
+        client.force_authenticate(user=self.admin_user)
+        res = client.delete(f"/api/documents/{doc.id}/")
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(VanBanDen.objects.filter(pk=doc.id).exists())
+        self.assertFalse(VanBanDenHoSo.objects.filter(vanbanden_id=doc.id).exists())
+        self.assertFalse(VanBanDenDanhmuc.objects.filter(vanbanden_id=doc.id).exists())
+
