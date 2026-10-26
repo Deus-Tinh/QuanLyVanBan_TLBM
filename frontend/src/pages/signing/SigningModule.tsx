@@ -2,7 +2,7 @@
  * Phân hệ Trình ký duyệt nội bộ (Nhóm 5, #80 mục E) dưới đường dẫn /approvals/*.
  * Tab chỉ là bộ lọc hiển thị; quyền đọc/ghi do server kiểm ở từng API.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, type ErrorInfo, lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@components/common';
 import { DangTai, KhongTimThay, LoiTai } from '@components/signing/ChungUI';
@@ -18,6 +18,43 @@ const QuyTrinhPage = lazy(() => import('./QuyTrinhPage'));
 const KhoaPage = lazy(() => import('./KhoaPage'));
 const ThongBaoPage = lazy(() => import('./ThongBaoPage'));
 const TaiLieuPage = lazy(() => import('./TaiLieuPage'));
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallbackMessage: string;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class SigningErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('SigningErrorBoundary caught:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 my-4 rounded-xl border border-danger/20 bg-danger-subtle text-danger space-y-2">
+          <div className="flex items-center gap-2 font-bold">
+            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true" />
+            <span>{this.props.fallbackMessage}</span>
+          </div>
+          <p className="text-sm opacity-90">{this.state.error?.message || String(this.state.error)}</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function SigningModule() {
   const { t, loi } = useSigningT();
@@ -63,35 +100,76 @@ export default function SigningModule() {
     <SigningContext.Provider value={ngu_canh}>
       {/* pb-24: chừa chỗ cho nút trợ lý AI nổi ở góc dưới để không che nút hành động cuối trang */}
       <div className="signing-scope space-y-5 pb-24 animate-in fade-in duration-150">
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
-          <h1 className="m-0 text-2xl font-bold text-main">{t('tieuDe')}</h1>
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-2 mb-2 sm:mb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-lg bg-primary-subtle text-primary flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+              <i className="fa-solid fa-signature text-base" aria-hidden="true" />
+            </span>
+            <h1 className="m-0 text-xl sm:text-2xl font-bold text-main tracking-tight">{t('tieuDe')}</h1>
+          </div>
           {coQuyen(toi.duLieu, 'add_trinhky') && (
-            <Button size="md" icon="fa-plus" onClick={() => dieuHuong('/approvals/tao-moi')}>{t('nav.taoMoi')}</Button>
+            <Button
+              size="md"
+              icon="fa-plus"
+              className="w-full sm:w-auto justify-center shadow-xs self-stretch sm:self-auto"
+              onClick={() => dieuHuong('/approvals/tao-moi')}
+            >
+              {t('nav.taoMoi')}
+            </Button>
           )}
         </header>
-        <nav ref={thanhTab} className="flex items-end gap-x-1 border-b border-border-subtle overflow-x-auto flex-nowrap whitespace-nowrap" aria-label={t('tieuDe')}>
+        <nav
+          ref={thanhTab}
+          className="signing-nav-scroll flex items-end gap-x-1 border-b border-border-subtle overflow-x-auto flex-nowrap whitespace-nowrap touch-pan-x scroll-smooth overscroll-x-contain pb-0.5 -mx-4 px-4 sm:mx-0 sm:px-0"
+          aria-label={t('tieuDe')}
+        >
           <div className="flex flex-nowrap items-center gap-1 shrink-0">
             {tabChinh.map((m) => (
-              <NavLink key={m.den} to={m.den} end={m.end}
-                className={({ isActive }) => `-mb-px flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-semibold transition-colors duration-fast whitespace-nowrap shrink-0 ${
-                  isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
+              <NavLink
+                key={m.den}
+                to={m.den}
+                end={m.end}
+                className={({ isActive }) =>
+                  `-mb-px flex items-center gap-1.5 sm:gap-2 border-b-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors duration-fast whitespace-nowrap shrink-0 ${
+                    isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-secondary hover:text-main hover:border-border'
+                  }`
+                }
+              >
                 <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
                 <span>{m.nhan}</span>
-                {!!m.so && <span className="rounded-full bg-primary-subtle px-2 py-0.5 text-xs font-bold text-primary">{m.so}</span>}
+                {!!m.so && (
+                  <span className="rounded-full bg-primary-subtle px-2 py-0.5 text-xs font-bold text-primary">
+                    {m.so}
+                  </span>
+                )}
               </NavLink>
             ))}
           </div>
           <div className="mx-1.5 mb-2.5 h-4 w-px bg-border-subtle shrink-0" aria-hidden="true" />
           <div className="flex flex-nowrap items-center gap-1 shrink-0">
             {tabPhu.map((m) => (
-              <NavLink key={m.den} to={m.den}
-                className={({ isActive }) => `-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors duration-fast whitespace-nowrap shrink-0 ${
-                  isActive ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-main hover:border-border'}`}>
+              <NavLink
+                key={m.den}
+                to={m.den}
+                className={({ isActive }) =>
+                  `-mb-px flex items-center gap-1 sm:gap-1.5 border-b-2 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors duration-fast whitespace-nowrap shrink-0 ${
+                    isActive
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-secondary hover:text-main hover:border-border'
+                  }`
+                }
+              >
                 <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
                 <span>{m.nhan}</span>
                 {!!m.so && (
-                  <span className="rounded-full bg-danger px-1.5 py-0.5 text-xs font-bold text-inverse"
-                    title={t('nav.moi')}>{m.so}</span>
+                  <span
+                    className="rounded-full bg-danger px-1.5 py-0.5 text-xs font-bold text-inverse"
+                    title={t('nav.moi')}
+                  >
+                    {m.so}
+                  </span>
                 )}
               </NavLink>
             ))}
@@ -100,20 +178,22 @@ export default function SigningModule() {
         {toi.dangTai && !toi.duLieu && <DangTai />}
         {toi.loi && <LoiTai thongBao={loi(toi.loi)} onThuLai={toi.tai} />}
         {toi.duLieu && (
-          <Suspense fallback={<DangTai />}>
-            <Routes>
-              <Route index element={<DanhSachPage key="can_toi_ky" hop="can_toi_ky" />} />
-              <Route path="toi-gui" element={<DanhSachPage key="toi_gui" hop="toi_gui" />} />
-              <Route path="tat-ca" element={<DanhSachPage key="tat_ca" hop="tat_ca" />} />
-              <Route path="tao-moi" element={<TaoHoSoPage />} />
-              <Route path="quy-trinh" element={<QuyTrinhPage />} />
-              <Route path="khoa" element={<KhoaPage />} />
-              <Route path="thong-bao" element={<ThongBaoPage />} />
-              <Route path="tai-lieu" element={<TaiLieuPage />} />
-              <Route path=":id" element={<ChiTietPage />} />
-              <Route path="*" element={<KhongTimThay thongBao={t('chung.trangKhongTonTai')} />} />
-            </Routes>
-          </Suspense>
+          <SigningErrorBoundary fallbackMessage={t('chung.loiTai')}>
+            <Suspense fallback={<DangTai />}>
+              <Routes>
+                <Route index element={<DanhSachPage key="can_toi_ky" hop="can_toi_ky" />} />
+                <Route path="toi-gui" element={<DanhSachPage key="toi_gui" hop="toi_gui" />} />
+                <Route path="tat-ca" element={<DanhSachPage key="tat_ca" hop="tat_ca" />} />
+                <Route path="tao-moi" element={<TaoHoSoPage />} />
+                <Route path="quy-trinh" element={<QuyTrinhPage />} />
+                <Route path="khoa" element={<KhoaPage />} />
+                <Route path="thong-bao" element={<ThongBaoPage />} />
+                <Route path="tai-lieu" element={<TaiLieuPage />} />
+                <Route path=":id" element={<ChiTietPage />} />
+                <Route path="*" element={<KhongTimThay thongBao={t('chung.trangKhongTonTai')} />} />
+              </Routes>
+            </Suspense>
+          </SigningErrorBoundary>
         )}
       </div>
     </SigningContext.Provider>

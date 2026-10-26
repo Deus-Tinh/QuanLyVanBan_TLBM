@@ -31,13 +31,13 @@ const TRE_TIM_KIEM_MS = 300;
 function TheNhanh({ thongKe, chon, onChon }: { thongKe: ThongKeHoSo | null; chon: string; onChon: (khoa: LocNhanh | '') => void }) {
   const { t } = useSigningT();
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label={t('danhSach.locNhanh')}>
+    <div className="flex flex-wrap gap-1.5 sm:gap-2" role="group" aria-label={t('danhSach.locNhanh')}>
       {THE_NHANH.map(({ khoa, icon }) => {
         const so = thongKe ? thongKe[khoa || 'tat_ca'] : undefined;
         const dangChon = chon === khoa;
         return (
           <button key={khoa || 'tat_ca'} type="button" aria-pressed={dangChon} onClick={() => onChon(khoa)}
-            className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 sm:gap-2 rounded-full border px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
               dangChon
                 ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-border-subtle bg-surface text-secondary hover:border-primary/40 hover:text-main hover:bg-surface-hover'}`}>
@@ -90,15 +90,20 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
             </button>
           )}
         </span>
-        <Button type="button" size="sm" variant="secondary" icon="fa-sliders" aria-expanded={moLocThem}
-          onClick={() => setMoLocThem((m) => !m)}>
-          {t('danhSach.locThem')}{soLocThem > 0 && ` (${soLocThem})`}
-        </Button>
-        {coLoc && (
-          <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left" onClick={() => { setTuKhoa(''); xoaHet(); }}>
-            {t('danhSach.xoaLoc')}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button type="button" size="sm" variant="secondary" icon="fa-sliders" aria-expanded={moLocThem}
+            className="flex-1 sm:flex-initial justify-center"
+            onClick={() => setMoLocThem((m) => !m)}>
+            {t('danhSach.locThem')}{soLocThem > 0 && ` (${soLocThem})`}
           </Button>
-        )}
+          {coLoc && (
+            <Button type="button" size="sm" variant="secondary" icon="fa-rotate-left"
+              className="flex-1 sm:flex-initial justify-center"
+              onClick={() => { setTuKhoa(''); xoaHet(); }}>
+              {t('danhSach.xoaLoc')}
+            </Button>
+          )}
+        </div>
       </div>
       {moLocThem && (
         <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -162,9 +167,9 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                   className="block font-semibold text-main hover:text-primary break-words line-clamp-3">
                   {moTaVanBan(h.van_ban, h.van_ban_id)}
                 </Link>
-                <div className="mt-1 text-xs text-muted break-words">#{h.id} · {h.ten_quy_trinh}</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2"><TrangThaiHoSo hoSo={h} /></div>
-                <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs text-secondary">
+                <div className="text-xs text-muted break-words">#{h.id} · {h.ten_quy_trinh}</div>
+                <div className="flex flex-wrap items-center gap-2"><TrangThaiHoSo hoSo={h} /></div>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 text-xs text-secondary pt-1 border-t border-border-subtle">
                   <dt>{t('danhSach.dangCho')}</dt>
                   <dd className="text-main break-words">
                     {h.dang_cho.length > 0 ? (
@@ -192,11 +197,11 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
             <table className="w-full text-sm text-left table-fixed min-w-[48rem]">
               <thead>
                 <tr className="border-b border-border-subtle bg-surface-elevated/70 text-xs font-bold uppercase tracking-wider text-muted">
-                  <th className="px-3.5 py-2 text-left w-[44%]">{t('danhSach.vanBan')}</th>
+                  <th className="px-3.5 py-2 text-center w-[44%]">{t('danhSach.vanBan')}</th>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-[14%]">{t('danhSach.trangThai')}</th>
                   <th className="px-2 py-2 text-center whitespace-nowrap w-[16%]">{t('danhSach.dangCho')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[13%]">{t('danhSach.nguoiTao')}</th>
-                  <th className="px-2.5 py-2 text-left whitespace-nowrap w-[13%]">{t('danhSach.hanChot')}</th>
+                  <th className="px-2.5 py-2 text-center whitespace-nowrap w-[13%]">{t('danhSach.nguoiTao')}</th>
+                  <th className="px-2.5 py-2 text-center whitespace-nowrap w-[13%]">{t('danhSach.hanChot')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
@@ -224,20 +229,20 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                         <span className="text-muted">—</span>
                       )}
                     </td>
-                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate">
-                      <div className="flex items-center gap-1.5 truncate">
+                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap truncate text-center">
+                      <div className="flex items-center justify-center gap-1.5 truncate">
                         <i className="fa-regular fa-user text-muted text-xs shrink-0" aria-hidden="true" />
                         <span className="truncate">{h.ten_nguoi_tao}</span>
                       </div>
                     </td>
-                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
+                    <td className="px-2.5 py-2 text-secondary whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <i className="fa-regular fa-calendar text-muted text-xs shrink-0" aria-hidden="true" />
                         <span>{dinhDangNgay(h.han_chot, lang)}</span>
                       </div>
                       {/* Hồ sơ không đặt hạn chót: vẫn cho biết hạn xử lý của cấp đang ký */}
                       {!h.han_chot && h.han_xu_ly_cap && (
-                        <div className="mt-0.5 text-xs text-muted">{t('danhSach.hanCap')}: {dinhDangNgay(h.han_xu_ly_cap, lang)}</div>
+                        <div className="mt-0.5 text-xs text-muted text-center">{t('danhSach.hanCap')}: {dinhDangNgay(h.han_xu_ly_cap, lang)}</div>
                       )}
                     </td>
                   </tr>

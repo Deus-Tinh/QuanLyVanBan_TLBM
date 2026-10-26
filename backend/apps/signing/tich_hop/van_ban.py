@@ -52,7 +52,7 @@ def kiem_tra_van_ban_trinh_ky(nguoi_dung, document_type, van_ban_id):
         raise SigningError(code="van_ban_han_che_khong_trinh_ky",
                            detail="Văn bản hạn chế không đi qua trình ký.",
                            fields={"van_ban_id": ["Văn bản có phạm vi HAN_CHE."]})
-    if not _xem_duoc(nguoi_dung, van_ban):
+    if van_ban.nguoi_tao_id != nguoi_dung.pk and not _xem_duoc(nguoi_dung, van_ban):
         # Không tiết lộ sự tồn tại của văn bản người dùng không được xem
         raise SigningError(code="khong_tim_thay_van_ban", detail="Không tìm thấy văn bản.",
                            status_code=status.HTTP_404_NOT_FOUND, fields={"van_ban_id": ["Không tồn tại."]})

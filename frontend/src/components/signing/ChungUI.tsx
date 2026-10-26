@@ -29,8 +29,15 @@ export function TrangThaiBadge({ trangThai, nhom = 'trangThai', size = 'sm' }: {
   );
 }
 
-/** Trạng thái hồ sơ trên danh sách: hồ sơ chờ ký mà lượt đang trả lại để sửa hiện "trả lại"; phân biệt quá hạn tổng và trễ hạn cấp ký. */
-export function TrangThaiHoSo({ hoSo }: {
+/**
+ * Trạng thái hồ sơ trên danh sách và chi tiết: chỉ hiển thị duy nhất một badge trạng thái.
+ * Thứ tự ưu tiên:
+ * 1. Quá hạn tổng thể hồ sơ -> "Quá hạn"
+ * 2. Trễ hạn cấp ký hiện hành -> "Trễ hạn cấp"
+ * 3. Đang chờ ký mà lượt hiện hành bị trả lại để sửa -> "Đang trả lại để sửa"
+ * 4. Trạng thái cơ bản của hồ sơ (Đang chờ ký, Hoàn tất, Không đồng ý, Đã hủy, Nháp).
+ */
+export function TrangThaiHoSo({ hoSo, size = 'md' }: {
   hoSo: {
     trang_thai: string;
     trang_thai_luot?: string | null;
@@ -38,26 +45,40 @@ export function TrangThaiHoSo({ hoSo }: {
     qua_han_cap?: boolean;
     han_xu_ly_cap?: string | null;
   };
+  size?: 'sm' | 'md';
 }) {
   const { t, lang } = useSigningT();
   const tra_lai = hoSo.trang_thai === 'CHO_KY' && hoSo.trang_thai_luot === 'YEU_CAU_SUA';
   const tre_cap = Boolean(hoSo.qua_han && hoSo.qua_han_cap);
   const qua_han_tong = Boolean(hoSo.qua_han && !hoSo.qua_han_cap);
-  return (
-    <span className="inline-flex flex-wrap items-center justify-center gap-1">
-      <TrangThaiBadge trangThai={tra_lai ? 'YEU_CAU_SUA' : hoSo.trang_thai} size="md" />
-      {qua_han_tong && (
-        <Badge variant="danger" size="md">
-          <i className="fa-regular fa-clock mr-1" aria-hidden="true" />{t('danhSach.quaHan')}
-        </Badge>
-      )}
-      {tre_cap && (
-        <Badge variant="warning" size="md" title={hoSo.han_xu_ly_cap ? `${t('danhSach.hanCap')}: ${dinhDangNgay(hoSo.han_xu_ly_cap, lang)}` : undefined}>
-          <i className="fa-regular fa-clock mr-1" aria-hidden="true" />{t('danhSach.treHanCap')}
-        </Badge>
-      )}
-    </span>
-  );
+  if (qua_han_tong) {
+    return (
+      <Badge variant="danger" size={size} withDot>
+        <i className="fa-regular fa-clock mr-1" aria-hidden="true" />
+        {t('danhSach.quaHan')}
+      </Badge>
+    );
+  }
+
+  if (tre_cap) {
+    return (
+      <Badge
+        variant="warning"
+        size={size}
+        withDot
+        title={hoSo.han_xu_ly_cap ? `${t('danhSach.hanCap')}: ${dinhDangNgay(hoSo.han_xu_ly_cap, lang)}` : undefined}
+      >
+        <i className="fa-regular fa-clock mr-1" aria-hidden="true" />
+        {t('danhSach.treHanCap')}
+      </Badge>
+    );
+  }
+
+  if (tra_lai) {
+    return <TrangThaiBadge trangThai="YEU_CAU_SUA" size={size} />;
+  }
+
+  return <TrangThaiBadge trangThai={hoSo.trang_thai} size={size} />;
 }
 
 export function ThongBao({ loai = 'loi', children }: { loai?: 'loi' | 'thanh_cong' | 'thong_tin' | 'canh_bao';
