@@ -238,6 +238,8 @@
     "capKy": "Levels",
     "themCap": "Add level",
     "themNguoiKy": "Add signer",
+    "chonCanBoDichDanh": "Select staff from employee directory:",
+    "chonTheoChucVu": "Or configure by position:",
     "timNguoiDung": "Search by name, username, position, department…",
     "soGio": "Hours to process (optional)",
     "chanKyChinh": "Initials must complete before the main signature",
