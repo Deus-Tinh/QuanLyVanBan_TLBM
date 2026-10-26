@@ -495,6 +495,10 @@ class DocumentViewSet(viewsets.ViewSet):
             raise PermissionDenied("Bạn không có quyền xóa văn bản này. Quyền xóa chỉ dành cho Quản trị viên (Admin) hoặc Cán bộ được phân quyền.")
 
         cleanup_replacement_links_on_delete(instance)
+        if hasattr(instance, "danhmuc"):
+            instance.danhmuc.all().delete()
+        if hasattr(instance, "hoso"):
+            instance.hoso.all().delete()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
