@@ -1438,3 +1438,180 @@ def send_document_notification_mail(document, recipient_list=None, force_system_
         "recipients": emails,
     }
 
+
+# ═══════════════════════════════════════════════════════════════════
+# 7. QUẢN LÝ DANH MỤC HỒ SƠ & LOẠI VĂN BẢN ĐỒNG BỘ DDL (RECORDS)
+# ═══════════════════════════════════════════════════════════════════
+
+def infer_doc_type(so_hieu: str = "", trich_yeu: str = "") -> str:
+    """Suy luận loại văn bản từ số hiệu hoặc trích yếu (hỗ trợ hiển thị và lọc dự phòng)."""
+    type_mapping = {
+        "QĐ": "Quyết định", "QD": "Quyết định",
+        "TB": "Thông báo",
+        "CV": "Công văn",
+        "HD": "Hướng dẫn", "HĐ": "Hướng dẫn",
+        "KH": "Kế hoạch",
+        "CT": "Chỉ thị",
+        "BC": "Báo cáo",
+        "TTR": "Tờ trình",
+        "NQ": "Nghị quyết",
+    }
+    if so_hieu:
+        match = re.search(r"/([A-ZĐ]+)(?:-|$)", str(so_hieu), re.IGNORECASE)
+        if match and match.group(1).upper() in type_mapping:
+            return type_mapping[match.group(1).upper()]
+    if trich_yeu:
+        ty_upper = str(trich_yeu).strip().upper()
+        for prefix, name in [
+            ("QUYẾT ĐỊNH", "Quyết định"),
+            ("THÔNG BÁO", "Thông báo"),
+            ("HƯỚNG DẪN", "Hướng dẫn"),
+            ("KẾ HOẠCH", "Kế hoạch"),
+            ("CÔNG VĂN", "Công văn"),
+            ("CHỈ THỊ", "Chỉ thị"),
+            ("TỜ TRÌNH", "Tờ trình"),
+            ("BÁO CÁO", "Báo cáo"),
+            ("NGHỊ QUYẾT", "Nghị quyết"),
+        ]:
+            if ty_upper.startswith(prefix):
+                return name
+    return ""
+
+
+def ensure_standard_hoso_and_doc_types():
+    """Tự động đảm bảo 7 Danh mục hồ sơ nghiệp vụ chuẩn và Loại văn bản con luôn tồn tại."""
+    try:
+        from records.models import HoSo, LoaiVanBan as RecordLoaiVanBan
+        from django.contrib.auth import get_user_model
+    except Exception:
+        return
+
+    try:
+        HoSo.objects.exists()
+    except Exception:
+        try:
+            from django.core.management import call_command
+            call_command("migrate", "records", interactive=False)
+        except Exception:
+            return
+
+    User = get_user_model()
+    admin_u = User.objects.filter(is_superuser=True).first() or User.objects.first()
+    if not admin_u:
+        return
+
+    STANDARD_FOLDERS = {
+        "Hồ sơ Hành chính - Quản trị": ("HS-HCQT", ["Công văn", "Thông báo", "Tờ trình"]),
+        "Hồ sơ Tổ chức - Cán bộ": ("HS-TCCB", ["Quyết định", "Thông báo", "Hướng dẫn"]),
+        "Hồ sơ Kế hoạch - Tài chính": ("HS-KHTC", ["Kế hoạch", "Quyết định", "Báo cáo"]),
+        "Hồ sơ Chuyên môn - Nghiệp vụ": ("HS-CMNV", ["Hướng dẫn", "Công văn", "Kế hoạch"]),
+        "Hồ sơ Thanh tra - Pháp chế": ("HS-TTPC", ["Quyết định", "Chỉ thị", "Nghị quyết"]),
+        "Hồ sơ Kế hoạch - Dự án": ("HS-KHDA", ["Kế hoạch", "Báo cáo", "Quyết định"]),
+        "Hồ sơ Lưu trữ cơ quan": ("HS-LTCQ", ["Công văn", "Quyết định", "Thông báo"]),
+    }
+    for ten_hs, (so_kh, types) in STANDARD_FOLDERS.items():
+        hs = HoSo.objects.filter(ten_ho_so__iexact=ten_hs).first() or HoSo.objects.filter(so_ky_hieu__iexact=so_kh).first()
+        if not hs:
+            try:
+                hs = HoSo.objects.create(ten_ho_so=ten_hs, so_ky_hieu=so_kh, nguoi_lap=admin_u)
+            except Exception:
+                hs = HoSo.objects.filter(so_ky_hieu__iexact=so_kh).first()
+        if hs:
+            for dt in types:
+                if not RecordLoaiVanBan.objects.filter(ten_loai__iexact=dt, ho_so=hs).exists():
+                    try:
+                        RecordLoaiVanBan.objects.create(ho_so=hs, ten_loai=dt)
+                    except Exception:
+                        pass
+
+
+def ensure_hoso_and_doc_type(ho_so_name: str, loai_van_ban_name: str = "", creator=None):
+    """
+    Tìm hoặc tự động tạo HoSo và LoaiVanBan an toàn để liên kết với văn bản Đến/Đi,
+    đảm bảo không bao giờ bị mất dữ liệu Danh mục hồ sơ & Loại văn bản khi lưu.
+    """
+    try:
+        from records.models import HoSo, LoaiVanBan as RecordLoaiVanBan
+        from django.contrib.auth import get_user_model
+    except Exception:
+        return None, None
+
+    try:
+        HoSo.objects.exists()
+    except Exception:
+        try:
+            from django.core.management import call_command
+            call_command("migrate", "records", interactive=False)
+        except Exception:
+            return None, None
+
+    ensure_standard_hoso_and_doc_types()
+
+    User = get_user_model()
+    admin_u = creator or User.objects.filter(is_superuser=True).first() or User.objects.first()
+
+    hs = None
+    if ho_so_name and str(ho_so_name).strip():
+        clean_hs = str(ho_so_name).strip()
+        if clean_hs.isdigit():
+            hs = HoSo.objects.filter(pk=int(clean_hs)).first()
+        if not hs:
+            hs = HoSo.objects.filter(ten_ho_so__iexact=clean_hs).first() or HoSo.objects.filter(so_ky_hieu__iexact=clean_hs).first()
+        if not hs and admin_u:
+            words = clean_hs.split()
+            abbr = "".join(w[0].upper() for w in words if w) or "HS"
+            so_kh = f"HS-{abbr}"[:250]
+            counter = 1
+            while HoSo.objects.filter(so_ky_hieu=so_kh).exists():
+                so_kh = f"HS-{abbr}-{counter}"[:250]
+                counter += 1
+            try:
+                hs = HoSo.objects.create(
+                    ten_ho_so=clean_hs,
+                    so_ky_hieu=so_kh,
+                    nguoi_lap=admin_u,
+                )
+            except Exception:
+                hs = HoSo.objects.filter(ten_ho_so__iexact=clean_hs).first() or HoSo.objects.filter(so_ky_hieu__iexact=so_kh).first()
+
+    lvb = None
+    if loai_van_ban_name and str(loai_van_ban_name).strip():
+        clean_lvb = str(loai_van_ban_name).strip()
+        if clean_lvb.isdigit():
+            lvb = RecordLoaiVanBan.objects.filter(pk=int(clean_lvb)).first()
+        if not lvb and hs:
+            lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
+            if not lvb:
+                try:
+                    lvb = RecordLoaiVanBan.objects.create(
+                        ho_so=hs,
+                        ten_loai=clean_lvb,
+                    )
+                except Exception:
+                    lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
+        if not lvb:
+            lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb).first()
+        if not lvb:
+            target_hs = hs or HoSo.objects.filter(is_he_thong=True).first() or HoSo.objects.first()
+            if not target_hs and admin_u:
+                try:
+                    target_hs = HoSo.objects.create(
+                        ten_ho_so="Hồ sơ chung",
+                        so_ky_hieu="HSC",
+                        nguoi_lap=admin_u,
+                        is_he_thong=True,
+                    )
+                except Exception:
+                    target_hs = HoSo.objects.filter(so_ky_hieu="HSC").first() or HoSo.objects.first()
+            if target_hs:
+                try:
+                    lvb = RecordLoaiVanBan.objects.create(
+                        ho_so=target_hs,
+                        ten_loai=clean_lvb,
+                    )
+                except Exception:
+                    lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=target_hs).first() or RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb).first()
+
+    return hs, lvb
+
+

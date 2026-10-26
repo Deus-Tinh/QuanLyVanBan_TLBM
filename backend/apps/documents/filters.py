@@ -246,8 +246,12 @@ class BaseDocumentFilter(django_filters.FilterSet):
                 q_cond |= Q(danhmuc__loaivanban_id=int(val))
             else:
                 try:
+                    from .services import ensure_standard_hoso_and_doc_types
+                    ensure_standard_hoso_and_doc_types()
                     from records.models import LoaiVanBan as RecordLoaiVanBan
-                    lvb_ids = list(RecordLoaiVanBan.objects.filter(ten_loai__icontains=val).values_list("pk", flat=True)[:100])
+                    lvb_ids = list(RecordLoaiVanBan.objects.filter(ten_loai__iexact=val).values_list("pk", flat=True)[:100])
+                    if not lvb_ids:
+                        lvb_ids = list(RecordLoaiVanBan.objects.filter(ten_loai__icontains=val).values_list("pk", flat=True)[:100])
                     if lvb_ids:
                         q_cond |= Q(danhmuc__loaivanban_id__in=lvb_ids)
                 except Exception:
@@ -288,10 +292,16 @@ class BaseDocumentFilter(django_filters.FilterSet):
                 q_cond |= Q(hoso__hoso_id=int(val))
             else:
                 try:
+                    from .services import ensure_standard_hoso_and_doc_types
+                    ensure_standard_hoso_and_doc_types()
                     from records.models import HoSo
                     hs_ids = list(HoSo.objects.filter(
-                        Q(ten_ho_so__icontains=val) | Q(so_ky_hieu__icontains=val)
+                        Q(ten_ho_so__iexact=val) | Q(so_ky_hieu__iexact=val)
                     ).values_list("pk", flat=True)[:100])
+                    if not hs_ids:
+                        hs_ids = list(HoSo.objects.filter(
+                            Q(ten_ho_so__icontains=val) | Q(so_ky_hieu__icontains=val)
+                        ).values_list("pk", flat=True)[:100])
                     if hs_ids:
                         q_cond |= Q(hoso__hoso_id__in=hs_ids)
                 except Exception:
