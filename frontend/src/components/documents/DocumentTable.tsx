@@ -322,7 +322,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           <table className="w-full text-left text-sm border-separate border-spacing-0 min-w-[950px]">
           <thead>
             <tr className="bg-surface-elevated/70 text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
-              <th className="px-4 py-3 text-center w-16">{loai === 'MAT' ? (t('documents_ui.table.colStt') || 'STT') : loai === 'DI' ? (t('documents_ui.table.colOutboundNum') || 'Số đi') : (t('documents_ui.table.colInboundNum') || 'Số đến')}</th>
+              <th className="px-4 py-3 text-center w-28">{loai === 'MAT' ? (t('documents_ui.table.colStt') || 'STT') : loai === 'DI' ? (t('documents_ui.table.colOutboundNum') || 'STT / Số đi') : (t('documents_ui.table.colInboundNum') || 'STT / Số đến')}</th>
               <th className="px-4 py-3 w-40">{t('documents_ui.table.colCode') || 'Số, ký hiệu'}</th>
               <th className="px-4 py-3 w-48">{t('documents_ui.table.colTimestamp') || 'Mốc thời gian'}</th>
               <th className="px-4 py-3 min-w-[280px]">{t('documents_ui.table.colSummary') || 'Trích yếu nội dung'}</th>
@@ -403,13 +403,25 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     }`}
                     title={t('documents_ui.table.clickToView') || 'Bấm vào hàng để xem chi tiết văn bản'}
                   >
-                    {/* 1. Số đến / STT */}
-                    <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap text-sm">
-                      {loai === 'MAT' ? (
-                        <span className="text-primary font-bold text-sm">#{doc.so_thu_tu ? doc.so_thu_tu : (page - 1) * pageSize + index + 1}</span>
-                      ) : (
-                        doc.so_thu_tu ? `#${doc.so_thu_tu}` : '—'
-                      )}
+                    {/* 1. STT / Số đến - Số đi */}
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      {(() => {
+                        const stt = (page - 1) * pageSize + index + 1;
+                        const subLabel = loai === 'DI'
+                          ? (t('documents_ui.table.outboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đi: #${doc.so_thu_tu}`)
+                          : (t('documents_ui.table.inboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đến: #${doc.so_thu_tu}`);
+
+                        return (
+                          <div className="flex flex-col items-center justify-center">
+                            <span className="text-primary font-bold text-sm">#{stt}</span>
+                            {doc.so_thu_tu ? (
+                              <span className="text-[11px] font-medium text-muted mt-0.5 tracking-tight">
+                                {subLabel}
+                              </span>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </td>
 
                     {/* 2. Số, ký hiệu */}
@@ -714,9 +726,25 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 {/* Header thẻ: STT + Số hiệu + Badge Hạn chế + Trạng thái */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                    <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                      #{doc.so_thu_tu ? doc.so_thu_tu : (page - 1) * pageSize + index + 1}
-                    </span>
+                    {(() => {
+                      const stt = (page - 1) * pageSize + index + 1;
+                      const subLabel = loai === 'DI'
+                        ? (t('documents_ui.table.outboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đi: #${doc.so_thu_tu}`)
+                        : (t('documents_ui.table.inboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đến: #${doc.so_thu_tu}`);
+
+                      return (
+                        <>
+                          <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                            #{stt}
+                          </span>
+                          {doc.so_thu_tu ? (
+                            <span className="text-[11px] font-medium text-muted bg-surface-elevated border border-border-subtle px-1.5 py-0.5 rounded">
+                              {subLabel}
+                            </span>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                     <span className="text-sm font-semibold text-main truncate hover:text-primary">
                       {doc.so_hieu}
                     </span>

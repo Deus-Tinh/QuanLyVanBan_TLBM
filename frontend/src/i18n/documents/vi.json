@@ -121,8 +121,10 @@
     },
     "table": {
       "colStt": "STT",
-      "colInboundNum": "Số đến",
-      "colOutboundNum": "Số đi",
+      "colInboundNum": "STT / Số đến",
+      "colOutboundNum": "STT / Số đi",
+      "inboundNumSub": "Số đến: #{num}",
+      "outboundNumSub": "Số đi: #{num}",
       "colCode": "Số, ký hiệu",
       "colTimestamp": "Mốc thời gian",
       "colSummary": "Trích yếu nội dung",
