@@ -615,6 +615,46 @@ describe('QuyTrinhPage chọn người ký từ phân hệ CBNV', () => {
       expect.objectContaining({ chuc_vu_id: 2, pham_vi_chuc_vu: 'TOAN_CO_QUAN', thu_tu: 2 }),
     ]);
   });
+
+  it('lọc danh bạ CBNV chỉ hiển thị cán bộ thuộc chức vụ đã chọn trong cấp ký', async () => {
+    api.quyTrinh.mockResolvedValue([]);
+    api.donVi.mockResolvedValue([]);
+    api.danhBaCanBo.mockResolvedValue([
+      { id: 31, username: 'tp_kh', ho_ten: 'Lê Văn Minh', don_vi_id: 4, don_vi_ten: 'Phòng Kế hoạch', chuc_vu_id: 5, chuc_vu_ten: 'Trưởng phòng' },
+      { id: 32, username: 'cv_kt', ho_ten: 'Phạm Thu Hà', don_vi_id: 2, don_vi_ten: 'Phòng Kế toán', chuc_vu_id: 9, chuc_vu_ten: 'Chuyên viên' },
+      { id: 33, username: 'tp_cntt', ho_ten: 'Hoàng Đức Nam', don_vi_id: 3, don_vi_ten: 'Phòng CNTT', chuc_vu_id: 5, chuc_vu_ten: 'Trưởng phòng' },
+    ]);
+    api.chucVu.mockResolvedValue([
+      { id: 5, name: 'Trưởng phòng', display_order: 1 },
+      { id: 9, name: 'Chuyên viên', display_order: 2 },
+    ]);
+    boc(<QuyTrinhPage />, QUAN_TRI);
+    fireEvent.click(await screen.findByRole('button', { name: /Tạo quy trình/ }));
+
+    // Khi chưa chọn chức vụ, danh bạ hiển thị tất cả
+    const oNhap = screen.getByRole('textbox', { name: 'Thêm người ký' });
+    fireEvent.focus(oNhap);
+    expect(await screen.findByRole('button', { name: /Phạm Thu Hà/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Lê Văn Minh/ })).toBeInTheDocument();
+
+    // Chọn chức vụ "Trưởng phòng"
+    const chonCv = screen.getByRole('combobox', { name: 'Thêm theo chức vụ' });
+    await waitFor(() => expect(within(chonCv).getByRole('option', { name: 'Trưởng phòng' })).toBeInTheDocument());
+    fireEvent.change(chonCv, { target: { value: '5' } });
+
+    // Tiêu đề và placeholder đổi theo chức vụ được chọn
+    expect(screen.getByText('Chọn cán bộ đích danh (Trưởng phòng):')).toBeInTheDocument();
+    expect(oNhap).toHaveAttribute('placeholder', 'Tìm cán bộ giữ chức vụ Trưởng phòng theo tên, tài khoản…');
+
+    // Chỉ có 2 Trưởng phòng hiển thị, không còn Chuyên viên Phạm Thu Hà
+    expect(screen.getByRole('button', { name: /Lê Văn Minh/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Hoàng Đức Nam/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Phạm Thu Hà/ })).not.toBeInTheDocument();
+
+    // Bấm "Bỏ lọc chức vụ" thì danh bạ trở lại bình thường
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ lọc chức vụ' }));
+    expect(screen.getByRole('button', { name: /Phạm Thu Hà/ })).toBeInTheDocument();
+  });
 });
 
 describe('QuyTrinhPage tên cán bộ theo chức vụ và đơn vị', () => {

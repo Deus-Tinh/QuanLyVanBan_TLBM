@@ -43,8 +43,14 @@ function chucDanh(u: CanBo, khongCo: string): string {
   return [u.chuc_vu_ten, u.don_vi_ten].filter(Boolean).join(' · ') || khongCo;
 }
 
+interface ChonNguoiDungProps {
+  onChon: (u: CanBo) => void;
+  chucVuLocId?: number | null;
+  chucVuLocTen?: string | null;
+}
+
 /** Chọn cán bộ từ danh bạ của phân hệ CBNV (tải trước khi mở form, lọc không dấu trên trình duyệt). */
-function ChonNguoiDung({ onChon }: { onChon: (u: CanBo) => void }) {
+function ChonNguoiDung({ onChon, chucVuLocId, chucVuLocTen }: ChonNguoiDungProps) {
   const { t, loi } = useSigningT();
   const [q, setQ] = useState('');
   const [mo, setMo] = useState(false);
@@ -62,16 +68,26 @@ function ChonNguoiDung({ onChon }: { onChon: (u: CanBo) => void }) {
   }, []);
 
   const tuKhoa = boDau(q.trim());
-  const goiY = useMemo(() => (ds.duLieu ?? []).filter((u) => !tuKhoa
-    || boDau([u.ho_ten, u.username, u.chuc_vu_ten, u.don_vi_ten].join(' ')).includes(tuKhoa)).slice(0, TOI_DA_GOI_Y),
-  [ds.duLieu, tuKhoa]);
+  const goiY = useMemo(() => (ds.duLieu ?? []).filter((u) => {
+    if (chucVuLocId != null) {
+      const khopId = u.chuc_vu_id === chucVuLocId;
+      const khopTen = chucVuLocTen ? boDau(u.chuc_vu_ten) === boDau(chucVuLocTen) : false;
+      if (!khopId && !khopTen) return false;
+    }
+    return !tuKhoa || boDau([u.ho_ten, u.username, u.chuc_vu_ten, u.don_vi_ten].join(' ')).includes(tuKhoa);
+  }).slice(0, TOI_DA_GOI_Y),
+  [ds.duLieu, tuKhoa, chucVuLocId, chucVuLocTen]);
+
+  const placeholder = chucVuLocTen
+    ? t('quyTrinh.timCanBoTheoChucVu', { chucVu: chucVuLocTen })
+    : t('quyTrinh.timNguoiDung');
 
   return (
     <div ref={hopRef} className="relative space-y-1">
       <div className="relative flex items-center">
         <input
           className={`${LOP_O_NHAP} pr-8`}
-          placeholder={t('quyTrinh.timNguoiDung')}
+          placeholder={placeholder}
           aria-label={t('quyTrinh.themNguoiKy')}
           value={q}
           onFocus={() => setMo(true)}
@@ -120,7 +136,9 @@ function ChonNguoiDung({ onChon }: { onChon: (u: CanBo) => void }) {
       )}
       {mo && !ds.dangTai && !!ds.duLieu && goiY.length === 0 && (
         <p className="rounded-lg border border-border-subtle bg-surface p-2.5 text-xs text-muted shadow-sm">
-          {t('quyTrinh.khongThayNguoiDung')}
+          {chucVuLocTen
+            ? t('quyTrinh.khongThayCanBoChucVu', { chucVu: chucVuLocTen })
+            : t('quyTrinh.khongThayNguoiDung')}
         </p>
       )}
     </div>
@@ -165,38 +183,102 @@ function CanBoChucVu({ chucVuId, donViId, theoNguoiTrinh }: {
   );
 }
 
-/** Thêm người ký theo chức vụ (Danh mục chức vụ của phân hệ CBNV); người cụ thể được xác định lúc gửi. */
-function ChonChucVu({ onChon, donViTim }: {
-  onChon: (chuc_vu: { id: number; ten: string }, pham_vi: string) => void;
+/** Khối thêm người ký cho từng cấp: chọn chức vụ (để lọc cán bộ hoặc gán quy tắc động) và chọn đích danh từ CBNV. */
+function ThemNguoiKyCap({
+  onChonCanBo,
+  onChonChucVu,
+  donViTim,
+}: {
+  onChonCanBo: (u: CanBo) => void;
+  onChonChucVu: (cv: { id: number; ten: string }, pham_vi: string) => void;
   donViTim: (pham_vi_chuc_vu: string) => number | null;
 }) {
   const { t, loi } = useSigningT();
   const ds = useTai(() => signingApi.chucVu(), []);
   const [chucVu, setChucVu] = useState('');
   const [phamVi, setPhamVi] = useState<string>(PHAM_VI_CHUC_VU[0]);
+
   const chon = ds.duLieu?.find((c) => String(c.id) === chucVu);
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <select className={`${LOP_O_NHAP} w-auto min-w-48 flex-1`} aria-label={t('quyTrinh.themTheoChucVu')} value={chucVu}
-        onChange={(e) => setChucVu(e.target.value)}>
-        <option value="">{t('quyTrinh.chonChucVu')}</option>
-        {ds.duLieu?.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-      </select>
-      <select className={`${LOP_O_NHAP} w-auto`} aria-label={t('quyTrinh.phamViChucVu')} value={phamVi}
-        onChange={(e) => setPhamVi(e.target.value)}>
-        {PHAM_VI_CHUC_VU.map((p) => <option key={p} value={p}>{t(`phamViChucVu.${p}`)}</option>)}
-      </select>
-      <Button size="sm" variant="secondary" icon="fa-user-tie" disabled={!chon}
-        onClick={() => { if (chon) { onChon({ id: chon.id, ten: chon.name }, phamVi); setChucVu(''); } }}>
-        {t('quyTrinh.themTheoChucVu')}
-      </Button>
-      {ds.loi && <p className="basis-full text-xs text-danger">{loi(ds.loi)}</p>}
-      {chon && (
-        <div className="basis-full">
-          <CanBoChucVu chucVuId={chon.id} donViId={donViTim(phamVi)}
-            theoNguoiTrinh={phamVi === 'DON_VI_NGUOI_TAO' && donViTim(phamVi) == null} />
+    <div className="space-y-2 pt-2 border-t border-border-subtle">
+      {/* 1. Chọn chức vụ: dùng để lọc danh bạ cán bộ hoặc bấm "Thêm theo chức vụ" để gán quy tắc động */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-xs font-semibold text-secondary">
+          <span>{t('quyTrinh.chonTheoChucVu')}</span>
+          {chon && (
+            <button
+              type="button"
+              className="text-xs text-primary hover:underline"
+              onClick={() => setChucVu('')}
+            >
+              {t('quyTrinh.xoaLocChucVu')}
+            </button>
+          )}
         </div>
-      )}
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className={`${LOP_O_NHAP} w-auto min-w-48 flex-1`}
+            aria-label={t('quyTrinh.themTheoChucVu')}
+            value={chucVu}
+            onChange={(e) => setChucVu(e.target.value)}
+          >
+            <option value="">{t('quyTrinh.tatCaChucVu')}</option>
+            {ds.duLieu?.map((c) => (
+              <option key={c.id} value={String(c.id)}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            className={`${LOP_O_NHAP} w-auto`}
+            aria-label={t('quyTrinh.phamViChucVu')}
+            value={phamVi}
+            onChange={(e) => setPhamVi(e.target.value)}
+          >
+            {PHAM_VI_CHUC_VU.map((p) => (
+              <option key={p} value={p}>{t(`phamViChucVu.${p}`)}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="fa-user-tie"
+            disabled={!chon}
+            title={t('quyTrinh.themTheoChucVu')}
+            onClick={() => {
+              if (chon) {
+                onChonChucVu({ id: chon.id, ten: chon.name }, phamVi);
+                setChucVu('');
+              }
+            }}
+          >
+            {t('quyTrinh.themTheoChucVu')}
+          </Button>
+        </div>
+        {ds.loi && <p className="basis-full text-xs text-danger">{loi(ds.loi)}</p>}
+        {chon && (
+          <div className="basis-full">
+            <CanBoChucVu
+              chucVuId={chon.id}
+              donViId={donViTim(phamVi)}
+              theoNguoiTrinh={phamVi === 'DON_VI_NGUOI_TAO' && donViTim(phamVi) == null}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* 2. Chọn cán bộ đích danh từ danh bạ CBNV (tự động lọc theo chức vụ nếu đã chọn ở trên) */}
+      <div className="space-y-1">
+        <span className="text-xs font-semibold text-secondary">
+          {chon
+            ? t('quyTrinh.chonCanBoTheoChucVu', { chucVu: chon.name })
+            : t('quyTrinh.chonCanBoDichDanh')}
+        </span>
+        <ChonNguoiDung
+          chucVuLocId={chon?.id ?? null}
+          chucVuLocTen={chon?.name ?? null}
+          onChon={onChonCanBo}
+        />
+      </div>
     </div>
   );
 }
@@ -275,7 +357,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
           </TruongNhap>
         )}
       </div>
-      <div className="space-y-2 max-h-80 overflow-y-auto">
+      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
         <div className="text-sm font-bold text-main">{t('quyTrinh.capKy')}</div>
         {cap.map((c, i) => (
           <div key={i} className="space-y-2 rounded-lg border border-border-subtle p-2">
@@ -328,23 +410,19 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
                 )}
               </div>
             ))}
-            <div className="space-y-1.5 pt-1 border-t border-border-subtle">
-              <span className="text-xs font-semibold text-secondary">{t('quyTrinh.chonCanBoDichDanh')}</span>
-              <ChonNguoiDung onChon={(u: CanBo) => !c.nguoi_ky.some((n) => n.nguoi_ky === u.id)
+            <ThemNguoiKyCap
+              donViTim={(pham_vi) => donViTimCanBo(pham_vi, c.don_vi_id, phamVi, donViApDung)}
+              onChonCanBo={(u: CanBo) => !c.nguoi_ky.some((n) => n.nguoi_ky === u.id)
                 && sua(i, { nguoi_ky: [...c.nguoi_ky, {
                   khoa: `u${u.id}`, ten: u.ho_ten, chuc_danh: chucDanh(u, ''), nguoi_ky: u.id, chuc_vu_id: null, pham_vi_chuc_vu: null,
                   vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true,
-                }] })} />
-            </div>
-            <div className="space-y-1.5 pt-1 border-t border-border-subtle">
-              <span className="text-xs font-semibold text-secondary">{t('quyTrinh.chonTheoChucVu')}</span>
-              <ChonChucVu donViTim={(pham_vi) => donViTimCanBo(pham_vi, c.don_vi_id, phamVi, donViApDung)}
-                onChon={(cv, pham_vi) => !c.nguoi_ky.some((n) => n.chuc_vu_id === cv.id && n.pham_vi_chuc_vu === pham_vi)
+                }] })}
+              onChonChucVu={(cv, pham_vi) => !c.nguoi_ky.some((n) => n.chuc_vu_id === cv.id && n.pham_vi_chuc_vu === pham_vi)
                 && sua(i, { nguoi_ky: [...c.nguoi_ky, {
                   khoa: `p${cv.id}-${pham_vi}`, ten: t('quyTrinh.theoChucVu', { ten: cv.ten }), chuc_danh: t(`phamViChucVu.${pham_vi}`),
                   nguoi_ky: null, chuc_vu_id: cv.id, pham_vi_chuc_vu: pham_vi, vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true,
-                }] })} />
-            </div>
+                }] })}
+            />
           </div>
         ))}
         <Button size="sm" variant="ghost" icon="fa-plus"
