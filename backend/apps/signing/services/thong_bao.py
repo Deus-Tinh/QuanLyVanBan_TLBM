@@ -199,7 +199,9 @@ def dinh_dang_ngay(thoi_diem):
 
 def noi_dung(tb):
     van_ban = mo_ta_ho_so(tb.trinh_ky)
-    ten_van_ban = " — ".join(x for x in (van_ban.get("so_hieu"), van_ban.get("trich_yeu")) if x) or f"#{tb.trinh_ky_id}"
+    # Một dòng: xuống dòng trong trích yếu làm email bị từ chối (BadHeaderError) ở tiêu đề
+    ten_van_ban = " ".join(" — ".join(x for x in (van_ban.get("so_hieu"), van_ban.get("trich_yeu")) if x).split()) \
+        or f"#{tb.trinh_ky_id}"
     duong_dan = f"{settings.SIGNING_FRONTEND_URL.rstrip('/')}/approvals/{tb.trinh_ky_id}"
     tieu_de = f"[Trình ký] {TEN_LOAI.get(tb.loai_thong_bao, tb.loai_thong_bao)}: {ten_van_ban}"
     nguoi_thao_tac, ly_do = thao_tac(tb)

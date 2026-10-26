@@ -54,6 +54,26 @@ class RecordContextFilterTests(TestCase):
                     self.rows[direction][key].pk for key in ("selected", "restricted")
                 })
 
+    def test_numeric_dossier_does_not_match_summary_or_reference(self):
+        for direction, model, filter_class, _, dossier_link, relation in self.models:
+            with self.subTest(direction=direction):
+                doc_with_other_pk_in_summary = model.objects.create(
+                    so_hieu=f"DOC/TRICHYEU/{self.other_parent.pk}",
+                    so_thu_tu=99,
+                    nam=2026,
+                    trich_yeu=f"Báo cáo tiến độ ngày {self.other_parent.pk}",
+                    nguoi_tao=self.owner,
+                    pham_vi=PhamVi.NOI_BO,
+                    hien_thi=True,
+                )
+                dossier_link.objects.create(**{relation: doc_with_other_pk_in_summary, "hoso_id": self.parent.pk})
+
+                filtered = filter_class({"ho_so": str(self.other_parent.pk)}, queryset=model.objects.all())
+                self.assertTrue(filtered.is_valid(), filtered.errors)
+                result_pks = set(filtered.qs.values_list("pk", flat=True))
+                self.assertIn(self.rows[direction]["other_parent"].pk, result_pks)
+                self.assertNotIn(doc_with_other_pk_in_summary.pk, result_pks)
+
     def test_mismatched_dossier_and_category_produce_no_results(self):
         for direction, model, filter_class, *_ in self.models:
             with self.subTest(direction=direction):

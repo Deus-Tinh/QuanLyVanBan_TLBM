@@ -271,11 +271,14 @@ function luotCo(nguoi: NguoiKyLuot[]): LuotTrinh {
 }
 
 describe('Danh sách: trạng thái trả lại, quá hạn', () => {
-  it('hồ sơ chờ ký mà lượt đang trả sửa hiện "Đang trả lại để sửa" và dấu quá hạn (cả bảng và thẻ mobile)', async () => {
-    api.danhSach.mockResolvedValue(trang([hoSo({ trang_thai_luot: 'YEU_CAU_SUA', qua_han: true })]));
+  it('hồ sơ chỉ hiển thị duy nhất một trạng thái: trả sửa hiện "Đang trả lại để sửa", quá hạn hiện "Quá hạn"', async () => {
+    api.danhSach.mockResolvedValue(trang([
+      hoSo({ id: 1, trang_thai_luot: 'YEU_CAU_SUA', qua_han: false }),
+      hoSo({ id: 2, trang_thai_luot: 'CHO_KY', qua_han: true }),
+    ]));
     boc(<DanhSachPage hop="tat_ca" />);
     expect((await screen.findAllByText('Đang trả lại để sửa')).length).toBe(2);
-    expect(screen.getAllByText('Quá hạn').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Quá hạn').length).toBe(3);
   });
 });
 
@@ -462,6 +465,27 @@ describe('ThongBaoPage', () => {
     expect(screen.getByText(/Hạn xử lý/)).toBeInTheDocument();
   });
 
+  it('Từ ngày lớn hơn Đến ngày: báo lỗi tại form, không gửi request; sửa lại hợp lệ thì lọc', async () => {
+    api.danhSach.mockResolvedValue(trang([]));
+    boc(<DanhSachPage hop="toi_gui" />);
+    await screen.findByText('Bạn chưa gửi trình hồ sơ nào.');
+    fireEvent.click(screen.getByRole('button', { name: /Lọc thêm/ }));
+    fireEvent.change(screen.getByLabelText('Đến ngày'), { target: { value: '2026-10-01' } });
+    await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { den_ngay: '2026-10-01' }, 1));
+    const soLan = api.danhSach.mock.calls.length;
+    fireEvent.change(screen.getByLabelText('Từ ngày'), { target: { value: '2026-10-10' } });
+    const loi = await screen.findByRole('alert');
+    expect(loi).toHaveTextContent('Từ ngày không được lớn hơn Đến ngày');
+    expect(screen.getByLabelText('Từ ngày')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Đến ngày')).toHaveAttribute('aria-describedby', loi.id);
+    expect(screen.getByLabelText('Từ ngày')).toHaveValue('2026-10-10');
+    expect(api.danhSach).toHaveBeenCalledTimes(soLan);
+    fireEvent.change(screen.getByLabelText('Từ ngày'), { target: { value: '2026-09-30' } });
+    await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { tu_ngay: '2026-09-30', den_ngay: '2026-10-01' }, 1));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Từ ngày')).not.toHaveAttribute('aria-invalid');
+  });
+
   it('chưa có thông báo', async () => {
     api.thongBao.mockResolvedValue([]);
     boc(<ThongBaoPage />);
@@ -487,6 +511,48 @@ describe('TaiLieuPage', () => {
     await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ loai: 'HOAN_TAT' }, 1));
     fireEvent.click(screen.getAllByText('trinh-ky-12-luot-1.pdf')[0]);
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
+  });
+});
+
+describe('TaiLieuPage khoảng ngày và tải trong hộp xem', () => {
+  const tep = { trinh_ky: 12, trang_thai_ho_so: 'CHO_KY' as const, ten_quy_trinh: 'Duyệt', van_ban: { so_hieu: '15/TTr' },
+    loai: 'LUOT' as const, luot: 5, so_luot: 1, phien_ban: '1', ma_bam: 'a'.repeat(64), thoi_diem: '2026-10-07T01:00:00Z',
+    ten_tep: 'trinh-ky-12-luot-1.pdf' };
+
+  it('Từ ngày lớn hơn Đến ngày: báo lỗi, không gửi request', async () => {
+    api.taiLieu.mockResolvedValue(trang([tep]));
+    boc(<TaiLieuPage />);
+    await screen.findAllByText('trinh-ky-12-luot-1.pdf');
+    fireEvent.change(screen.getByLabelText('Đến ngày'), { target: { value: '2026-10-01' } });
+    await waitFor(() => expect(api.taiLieu).toHaveBeenLastCalledWith({ den_ngay: '2026-10-01' }, 1));
+    const soLan = api.taiLieu.mock.calls.length;
+    fireEvent.change(screen.getByLabelText('Từ ngày'), { target: { value: '2026-10-10' } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Từ ngày không được lớn hơn Đến ngày');
+    expect(api.taiLieu).toHaveBeenCalledTimes(soLan);
+    fireEvent.click(screen.getByRole('button', { name: /Xóa lọc/ }));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(screen.getByLabelText('Từ ngày')).toHaveValue('');
+  });
+
+  it('hộp xem PDF có nút Tải xuống: tải đúng tệp, đúng tên; lỗi thì báo trong hộp', async () => {
+    api.taiLieu.mockResolvedValue(trang([tep]));
+    api.tepCuaLuot.mockResolvedValue(new Blob(['%PDF-']));
+    URL.createObjectURL = vi.fn(() => 'blob:tep');
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    boc(<TaiLieuPage />);
+    fireEvent.click((await screen.findAllByText('trinh-ky-12-luot-1.pdf'))[0]);
+    const hop = within(await screen.findByRole('dialog'));
+    await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledTimes(1));
+    fireEvent.click(hop.getByRole('button', { name: 'Tải xuống' }));
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect(api.tepCuaLuot).toHaveBeenLastCalledWith(12, 5);
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    api.tepCuaLuot.mockRejectedValueOnce(new Error('Mất kết nối'));
+    fireEvent.click(hop.getByRole('button', { name: 'Tải xuống' }));
+    expect(await hop.findByRole('alert')).toBeInTheDocument();
+    expect(click).toHaveBeenCalledTimes(1);
+    click.mockRestore();
   });
 });
 
@@ -595,9 +661,13 @@ describe('TaiLieuPanel', () => {
     api.tepCuaLuot.mockResolvedValue(new Blob(['%PDF-'], { type: 'application/pdf' }));
     URL.createObjectURL = vi.fn(() => 'blob:tep');
     URL.revokeObjectURL = vi.fn();
+    // Tải tệp bằng thẻ <a download>: jsdom chưa hỗ trợ điều hướng, chặn click để không in cảnh báo "Not implemented"
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     boc(<TaiLieuPanel hoSo={hoSo()} />);
     expect(screen.getByText('Bản trình ký')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Tải về/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Tải xuống/ }));
     await waitFor(() => expect(api.tepCuaLuot).toHaveBeenCalledWith(12, 5));
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    click.mockRestore();
   });
 });

@@ -1,4 +1,5 @@
 import base64
+from collections.abc import Mapping
 
 from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef, Q, Subquery
@@ -70,7 +71,7 @@ def _quy_trinh_xem_duoc(user):
 class QuyTrinhListCreateView(SigningAPIView):
     def get(self, request):
         queryset = _quy_trinh_xem_duoc(request.user).order_by("ma_quy_trinh", "-phien_ban")
-        trang_thai = request.query_params.get("trang_thai")
+        trang_thai = request.query_params.get("trang_thai", "").replace("\x00", "")
         if trang_thai:
             queryset = queryset.filter(trang_thai=trang_thai)
         return Response(QuyTrinhSerializer(queryset, many=True).data)
@@ -102,7 +103,10 @@ class QuyTrinhDetailView(SigningAPIView):
 
     def put(self, request, pk):
         process = self._quan_ly(request, pk)
-        data = QuyTrinhInputSerializer(data={**request.data, "ma_quy_trinh": process.ma_quy_trinh})
+        if not isinstance(request.data, Mapping):
+            raise serializers.ValidationError({"non_field_errors": ["Invalid data. Expected a dictionary."]})
+        data = QuyTrinhInputSerializer(data={**request.data, "ma_quy_trinh": process.ma_quy_trinh},
+                                       context={"giu_ma_cu": True})
         data.is_valid(raise_exception=True)
         process_service.yeu_cau_quan_ly(request.user, data.validated_data["pham_vi"],
                                         data.validated_data.get("don_vi_ap_dung_id"))
@@ -300,11 +304,34 @@ def _ho_so_theo_hop(request):
                        fields={"hop": ["Giá trị không hợp lệ."]})
 
 
+def _doc_khoang_ngay(tham_so):
+    """Đọc khoảng ngày lọc `tu_ngay`/`den_ngay` (YYYY-MM-DD); sai định dạng hoặc `tu_ngay` > `den_ngay` thì trả 400."""
+    khoang = {}
+    for ten in ("tu_ngay", "den_ngay"):
+        if tham_so.get(ten):
+            try:
+                khoang[ten] = parse_date(tham_so[ten])
+            except ValueError:  # đúng dạng nhưng không có trong lịch (tháng 13, 30/02)
+                khoang[ten] = None
+            if khoang[ten] is None:
+                raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
+                                   fields={ten: ["Ngày không hợp lệ."]})
+    if khoang.get("tu_ngay") and khoang.get("den_ngay") and khoang["tu_ngay"] > khoang["den_ngay"]:
+        raise SigningError(code="tham_so_khong_hop_le", detail="Từ ngày không được lớn hơn Đến ngày.",
+                           fields={"tu_ngay": ["Từ ngày không được lớn hơn Đến ngày."]})
+    return khoang
+
+
+def tu_khoa_tim_kiem(gia_tri):
+    """Từ khóa tìm kiếm: bỏ ký tự NUL (PostgreSQL không nhận trong văn bản), cắt khoảng trắng, tối đa 100 ký tự."""
+    return (gia_tri or "").replace("\x00", "").strip()[:100]
+
+
 def _loc_ho_so(queryset, tham_so):
     """Bộ lọc danh sách: trạng thái, quy trình (id), từ khóa (số hiệu, trích yếu văn bản trình ký — văn bản đi hoặc
     nhập tay, mã/tên quy trình, ghi chú, mã hồ sơ), khoảng ngày tạo `tu_ngay`/`den_ngay` (YYYY-MM-DD)."""
     if tham_so.get("trang_thai"):
-        queryset = queryset.filter(trang_thai=tham_so["trang_thai"])
+        queryset = queryset.filter(trang_thai=tham_so["trang_thai"].replace("\x00", ""))
     if tham_so.get("nhanh"):
         if tham_so["nhanh"] not in NHANH:
             raise SigningError(code="tham_so_khong_hop_le", detail=f"nhanh phải là một trong {', '.join(NHANH)}.",
@@ -316,20 +343,18 @@ def _loc_ho_so(queryset, tham_so):
             raise SigningError(code="tham_so_khong_hop_le", detail="quy_trinh phải là số.",
                                fields={"quy_trinh": ["Giá trị không hợp lệ."]})
         queryset = queryset.filter(quy_trinh_id=int(tham_so["quy_trinh"]))
-    tu_khoa = (tham_so.get("q") or "").strip()[:100]
+    tu_khoa = tu_khoa_tim_kiem(tham_so.get("q"))
     if tu_khoa:
         cot = ("quy_trinh__ten_quy_trinh", "quy_trinh__ma_quy_trinh", "ghi_chu", "so_hieu_van_ban", "trich_yeu_van_ban")
         dieu_kien = Q(van_ban_id__in=id_van_ban_khop(tu_khoa)) | tim_kiem.khop_khong_dau(tu_khoa, *cot)
         if tu_khoa.lstrip("#").isdigit():
             dieu_kien |= Q(pk=int(tu_khoa.lstrip("#")))
         queryset = tim_kiem.chu_thich(queryset, *cot).filter(dieu_kien)
-    for ten, phep in (("tu_ngay", "gte"), ("den_ngay", "lte")):
-        if tham_so.get(ten):
-            ngay = parse_date(tham_so[ten])
-            if ngay is None:
-                raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
-                                   fields={ten: ["Ngày không hợp lệ."]})
-            queryset = queryset.filter(**{f"created_at__date__{phep}": ngay})
+    khoang = _doc_khoang_ngay(tham_so)
+    if khoang.get("tu_ngay"):
+        queryset = queryset.filter(created_at__date__gte=khoang["tu_ngay"])
+    if khoang.get("den_ngay"):
+        queryset = queryset.filter(created_at__date__lte=khoang["den_ngay"])
     return queryset
 
 
@@ -518,7 +543,7 @@ class TraoDoiView(SigningAPIView):
         if not (yeu_cau_sua_service.duoc_trao_doi(thread, request.user) or co_quyen(request.user, XEM_NHAT_KY)):
             raise SigningError(code="khong_co_quyen", detail="Chỉ người tạo hồ sơ và người yêu cầu sửa xem trao đổi.",
                                status_code=status.HTTP_403_FORBIDDEN)
-        tin_nhan = thread.tin_nhan_set.order_by("id")
+        tin_nhan = thread.tin_nhan_set.select_related("nguoi_viet").order_by("id")
         return Response({"thread": YeuCauSuaThreadSerializer(thread).data,
                          "tin_nhan": TinNhanSerializer(tin_nhan, many=True).data})
 
@@ -611,11 +636,17 @@ class AnhChuKyView(SigningAPIView):
 
 
 class ThongKeHoSoView(SigningAPIView):
-    """GET /trinh-ky/thong-ke/?hop=: số hồ sơ theo từng thẻ lọc nhanh của hộp (bộ lọc danh sách)."""
+    """
+    GET /trinh-ky/thong-ke/?hop=: số hồ sơ theo từng thẻ lọc nhanh của hộp. Nhận cùng các bộ lọc khác của danh sách
+    (`q`, `quy_trinh`, `tu_ngay`, `den_ngay`) để số trên thẻ khớp với danh sách đang xem; `nhanh` không áp dụng vì
+    mỗi thẻ chính là một giá trị của `nhanh`.
+    """
 
     def get(self, request):
+        loc = {k: v for k, v in request.query_params.items() if k not in ("nhanh", "trang_thai")}
         # Hộp có thể là queryset distinct qua nhiều bảng: lấy tập id trước rồi đếm trên bảng hồ sơ
-        queryset = _gan_luot_cuoi(SigningRequest.objects.filter(pk__in=_ho_so_theo_hop(request).values("pk")))
+        queryset = _gan_luot_cuoi(SigningRequest.objects.filter(
+            pk__in=_loc_ho_so(_ho_so_theo_hop(request), loc).values("pk")))
         dem = {"tat_ca": queryset.count(), **{k: queryset.filter(v).count() for k, v in _dieu_kien_nhanh().items()}}
         return Response(dem)
 
@@ -636,13 +667,7 @@ class TaiLieuView(SigningAPIView):
         if loai and loai not in self.LOAI:
             raise SigningError(code="tham_so_khong_hop_le", detail="loai phải là DU_THAO, LUOT hoặc HOAN_TAT.",
                                fields={"loai": ["Giá trị không hợp lệ."]})
-        khoang = {}
-        for ten in ("tu_ngay", "den_ngay"):
-            if ts.get(ten):
-                khoang[ten] = parse_date(ts[ten])
-                if khoang[ten] is None:
-                    raise SigningError(code="tham_so_khong_hop_le", detail=f"{ten} phải có dạng YYYY-MM-DD.",
-                                       fields={ten: ["Ngày không hợp lệ."]})
+        khoang = _doc_khoang_ngay(ts)
         xem_duoc = _loc_ho_so(trinh_ky_service.trinh_ky_xem_duoc(request.user), {"q": ts.get("q", "")})
         ho_so = list(SigningRequest.objects.filter(pk__in=xem_duoc.values("pk")).select_related("quy_trinh")
                      .prefetch_related("luot_trinh_set").order_by("-created_at")[:500])
@@ -737,6 +762,16 @@ class DonViView(SigningAPIView):
         return Response([{"id": d.pk, "ten": d.ten} for d in to_chuc.don_vi_quan_ly_duoc(request.user)])
 
 
+class ChucVuView(SigningAPIView):
+    """GET /chuc-vu/: danh sách chức vụ công khai từ phân hệ Cán bộ Nhân viên (accounts.Position) để cấu hình người ký (QUAN_LY_QUY_TRINH)."""
+
+    def get(self, request):
+        yeu_cau_quyen(request.user, QUAN_LY_QUY_TRINH)
+        from accounts.models import Position
+        positions = Position.objects.filter(is_public=True).order_by("display_order", "name", "id")
+        return Response([{"id": p.pk, "ten": p.name, "stt": p.display_order} for p in positions])
+
+
 class NguoiDungView(SigningAPIView):
     """
     GET /nguoi-dung/?q=: tìm tài khoản đang hoạt động để chọn người ký khi cấu hình quy trình (manage_signing_process).
@@ -750,7 +785,7 @@ class NguoiDungView(SigningAPIView):
     def get(self, request):
         uy_quyen = request.query_params.get("muc_dich") == "uy_quyen"
         yeu_cau_quyen(request.user, UY_QUYEN_TRINH_KY if uy_quyen else QUAN_LY_QUY_TRINH)
-        tu_khoa = tim_kiem.bo_dau(request.query_params.get("q", "").strip())
+        tu_khoa = tim_kiem.bo_dau(tu_khoa_tim_kiem(request.query_params.get("q")))
         User = get_user_model()
         lien_quan = [f for f in ("chuc_vu", "don_vi") if any(x.name == f for x in User._meta.get_fields())]
         ket_qua = []
@@ -828,4 +863,4 @@ class VanBanDiView(SigningAPIView):
 
     def get(self, request):
         yeu_cau_quyen(request.user, TAO_TRINH_KY)
-        return Response(tim_van_ban_di(request.user, request.query_params.get("q", "").strip()[:100]))
+        return Response(tim_van_ban_di(request.user, tu_khoa_tim_kiem(request.query_params.get("q"))))

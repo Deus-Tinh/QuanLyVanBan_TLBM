@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react';
 import { Badge, Button, Card } from '@components/common';
 import { DangTai, HopThoai, LoiTai, Rong, ThongBao, TrangThaiBadge, TruongNhap } from '@components/signing/ChungUI';
 import { docLoi, signingApi } from '@lib/signing/api';
-import { boDau, LOP_O_NHAP, tenNguoiKyCauHinh } from '@lib/signing/dinhDang';
+import { boDau, GIOI_HAN, LOP_O_NHAP, MA_QUY_TRINH_HOP_LE, tenNguoiKyCauHinh } from '@lib/signing/dinhDang';
 import { coQuyen, useTai, useToi } from '@lib/signing/hooks';
 import { type HamDich, useSigningT } from '@lib/signing/i18n';
 import type { CanBo, PhamViQuyTrinh, QuyTrinh, VaiTroKy } from '@lib/signing/types';
@@ -169,8 +169,10 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
 
   const donViApDung = phamVi === 'PHONG_BAN' && donVi ? Number(donVi) : null;
   const sua = (i: number, gia_tri: Partial<CapNhap>) => setCap((c) => c.map((x, j) => (j === i ? { ...x, ...gia_tri } : x)));
-  const hopLe = ma.trim() && ten.trim() && (phamVi === 'CONG_TY' || donVi)
-    && cap.every((c) => c.ten_cap_ky.trim() && c.nguoi_ky.length);
+  const loiMa = !banDau && ma.trim() && !MA_QUY_TRINH_HOP_LE.test(ma.trim()) ? t('quyTrinh.loiMa') : '';
+  const soGioQuaLon = (c: CapNhap) => Number(c.so_gio_xu_ly) > GIOI_HAN.soGio;
+  const hopLe = ma.trim() && !loiMa && ten.trim() && (phamVi === 'CONG_TY' || donVi)
+    && cap.every((c) => c.ten_cap_ky.trim() && c.nguoi_ky.length && !soGioQuaLon(c));
 
   const luu = async () => {
     setDangLuu(true);
@@ -198,14 +200,19 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
   };
 
   return (
-    <HopThoai moTieuDe={banDau ? t('quyTrinh.sua') : t('quyTrinh.tao')} mo={mo} onDong={onDong}
+    <HopThoai moTieuDe={banDau ? t('quyTrinh.sua') : t('quyTrinh.tao')} mo={mo} onDong={onDong} dangXuLy={dangLuu}
       chanDuoi={<>
         <Button variant="secondary" onClick={onDong}>{t('chung.huyBo')}</Button>
         <Button icon="fa-floppy-disk" isLoading={dangLuu} disabled={!hopLe} onClick={luu}>{t('chung.luu')}</Button>
       </>}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <TruongNhap nhan={t('quyTrinh.ma')}><input className={LOP_O_NHAP} maxLength={50} value={ma} disabled={!!banDau} onChange={(e) => setMa(e.target.value)} /></TruongNhap>
-        <TruongNhap nhan={t('quyTrinh.ten')}><input className={LOP_O_NHAP} value={ten} onChange={(e) => setTen(e.target.value)} /></TruongNhap>
+        <TruongNhap nhan={t('quyTrinh.ma')} loi={loiMa}>
+          <input className={LOP_O_NHAP} maxLength={GIOI_HAN.maQuyTrinh} value={ma} disabled={!!banDau}
+            aria-invalid={loiMa ? true : undefined} onChange={(e) => setMa(e.target.value)} />
+        </TruongNhap>
+        <TruongNhap nhan={t('quyTrinh.ten')}>
+          <input className={LOP_O_NHAP} maxLength={GIOI_HAN.tenQuyTrinh} value={ten} onChange={(e) => setTen(e.target.value)} />
+        </TruongNhap>
         <TruongNhap nhan={t('quyTrinh.phamVi')} className={phamVi === 'CONG_TY' ? 'sm:col-span-2' : ''}>
           <select className={LOP_O_NHAP} value={phamVi} onChange={(e) => setPhamVi(e.target.value as PhamViQuyTrinh)}>
             <option value="CONG_TY">{t('phamVi.CONG_TY')}</option>
@@ -228,18 +235,28 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
             <div className="flex gap-2">
               <span className="pt-2 text-sm font-bold text-main">{i + 1}.</span>
               <input className={LOP_O_NHAP} placeholder={t('quyTrinh.tenCap')} aria-label={`${t('quyTrinh.tenCap')} ${i + 1}`}
-                value={c.ten_cap_ky} onChange={(e) => sua(i, { ten_cap_ky: e.target.value })} />
-              <input className={`${LOP_O_NHAP} w-32`} inputMode="numeric" placeholder={t('quyTrinh.soGio')}
+                maxLength={GIOI_HAN.tenQuyTrinh} value={c.ten_cap_ky} onChange={(e) => sua(i, { ten_cap_ky: e.target.value })} />
+              <input className={`${LOP_O_NHAP} w-32`} inputMode="numeric" placeholder={t('quyTrinh.soGio')} maxLength={4}
                 aria-label={`${t('quyTrinh.soGio')} ${i + 1}`} value={c.so_gio_xu_ly}
+                aria-invalid={soGioQuaLon(c) ? true : undefined}
                 onChange={(e) => sua(i, { so_gio_xu_ly: e.target.value.replace(/\D/g, '') })} />
+              {cap.length > 1 && (
+                <button type="button" className="px-1 text-danger" aria-label={`${t('quyTrinh.xoaCap')} ${i + 1}`}
+                  title={t('quyTrinh.xoaCap')} onClick={() => setCap((x) => x.filter((_, j) => j !== i))}>
+                  <i className="fa-solid fa-trash" aria-hidden="true" />
+                </button>
+              )}
             </div>
+            {soGioQuaLon(c) && (
+              <p role="alert" className="text-xs font-semibold text-danger">{t('quyTrinh.loiSoGio', { so: GIOI_HAN.soGio })}</p>
+            )}
             {c.nguoi_ky.map((n, j) => (
               <div key={n.khoa} className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-main">
                   <span className="font-semibold">{n.ten}</span>
                   {n.chuc_danh && <span className="ml-1 text-xs text-secondary">({n.chuc_danh})</span>}
                 </span>
-                <select className={`${LOP_O_NHAP} w-auto`} value={n.vai_tro_ky}
+                <select className={`${LOP_O_NHAP} w-auto`} value={n.vai_tro_ky} aria-label={`${t('quyTrinh.vaiTroKy')}: ${n.ten}`}
                   onChange={(e) => sua(i, { nguoi_ky: c.nguoi_ky.map((x, k) => (k === j ? { ...x, vai_tro_ky: e.target.value as VaiTroKy } : x)) })}>
                   <option value="KY_CHINH">{t('vaiTro.KY_CHINH')}</option>
                   <option value="KY_NHAY">{t('vaiTro.KY_NHAY')}</option>
@@ -308,14 +325,16 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border-subtle bg-surface-subtle text-xs font-bold uppercase tracking-wider text-muted">
-                <th className="px-3 py-2">#</th><th className="px-3 py-2">{t('quyTrinh.capKy')}</th>
-                <th className="px-3 py-2">{t('quyTrinh.nguoiKy')}</th><th className="px-3 py-2">{t('quyTrinh.soGioNhan')}</th>
+                <th className="px-3 py-2 text-center">#</th>
+                <th className="px-3 py-2 text-center">{t('quyTrinh.capKy')}</th>
+                <th className="px-3 py-2 text-center">{t('quyTrinh.nguoiKy')}</th>
+                <th className="px-3 py-2 text-center">{t('quyTrinh.soGioNhan')}</th>
               </tr>
             </thead>
             <tbody>
               {q.cap_ky.map((c) => (
                 <tr key={c.id} className="border-b border-border-subtle hover:bg-surface-hover align-top">
-                  <td className="px-3 py-2.5 font-bold text-main">{c.thu_tu}</td>
+                  <td className="px-3 py-2.5 font-bold text-main text-center">{c.thu_tu}</td>
                   <td className="px-3 py-2.5 text-main font-medium">{c.ten_cap_ky}</td>
                   <td className="px-3 py-2.5">
                     <ul className="space-y-0.5">
@@ -333,7 +352,7 @@ function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
                       ))}
                     </ul>
                   </td>
-                  <td className="px-3 py-2.5 text-secondary">{c.so_gio_xu_ly ?? '—'}</td>
+                  <td className="px-3 py-2.5 text-secondary text-center">{c.so_gio_xu_ly ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -361,21 +380,30 @@ export default function QuyTrinhPage() {
   const [dangSua, setDangSua] = useState<QuyTrinh | null>(null);
   const [xemId, setXemId] = useState<number | null>(null);
   const [canXoa, setCanXoa] = useState<QuyTrinh | null>(null);
+  const [canNgung, setCanNgung] = useState<QuyTrinh | null>(null);
+  const [dangThaoTac, setDangThaoTac] = useState(false);
   const [thongBao, setThongBao] = useState('');
   const quanLy = coQuyen(toi, 'manage_signing_process');
 
+  // Mỗi lần bấm là một thao tác: nhấn đúp "Tạo phiên bản mới" không được sinh hai phiên bản
   const thaoTac = async (q: QuyTrinh, loai: 'kich-hoat' | 'ngung' | 'nhan-ban') => {
+    if (dangThaoTac) return;
+    setDangThaoTac(true);
     setThongBao('');
     try {
       await signingApi.thaoTacQuyTrinh(q.id, loai);
       ds.tai();
     } catch (err) {
       setThongBao(loi(err));
+    } finally {
+      setDangThaoTac(false);
     }
   };
 
   const xoa = async (q: QuyTrinh) => {
     setCanXoa(null);
+    if (dangThaoTac) return;
+    setDangThaoTac(true);
     setThongBao('');
     try {
       await signingApi.xoaQuyTrinh(q.id);
@@ -385,6 +413,8 @@ export default function QuyTrinhPage() {
       const so = (l.fields?.so_ho_so as number[] | undefined)?.[0];
       setThongBao(l.code === 'quy_trinh_da_duoc_dung' && so ? t('quyTrinh.xoaKhongDuoc', { so }) : loi(err));
       ds.tai();
+    } finally {
+      setDangThaoTac(false);
     }
   };
 
@@ -426,16 +456,16 @@ export default function QuyTrinhPage() {
         {hienThi.map((q) => (
           <Card key={q.id} className="flex flex-col gap-3 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-lg font-bold text-main">{q.ten_quy_trinh}</span>
+              <span className="min-w-0 break-words text-lg font-bold text-main">{q.ten_quy_trinh}</span>
               <div className="flex items-center gap-1.5">
                 <TrangThaiBadge trangThai={q.trang_thai} />
                 <Badge variant="info" size="sm">{t(`phamVi.${q.pham_vi}`)}{q.don_vi_ap_dung_id ? ` · ${q.ten_don_vi_ap_dung ?? `#${q.don_vi_ap_dung_id}`}` : ''}</Badge>
               </div>
             </div>
-            <div className="text-xs text-muted font-mono">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
+            <div className="text-xs text-muted font-mono break-all">{q.ma_quy_trinh} · {t('quyTrinh.phienBan', { so: q.phien_ban })}</div>
             <ol className="space-y-1 text-sm">
               {q.cap_ky.map((c) => (
-                <li key={c.id} className="text-main">
+                <li key={c.id} className="break-words text-main">
                   {c.cap_ky}. {c.ten_cap_ky}:{' '}
                   <span className="text-secondary">
                     {c.nguoi_ky.map((n) => `${tenNguoiKyCauHinh(n, t)} (${t(`vaiTro.${n.vai_tro_ky}`)})`).join(', ')}
@@ -448,14 +478,14 @@ export default function QuyTrinhPage() {
               <Button size="sm" variant="ghost" icon="fa-eye" onClick={() => setXemId(q.id)}>{t('quyTrinh.xemChiTiet')}</Button>
               {quanLy && q.trang_thai === 'NHAP' && (
                 <>
-                  <Button size="sm" icon="fa-play" onClick={() => thaoTac(q, 'kich-hoat')}>{t('quyTrinh.kichHoat')}</Button>
+                  <Button size="sm" icon="fa-play" disabled={dangThaoTac} onClick={() => thaoTac(q, 'kich-hoat')}>{t('quyTrinh.kichHoat')}</Button>
                   <Button size="sm" variant="secondary" icon="fa-pen" onClick={() => setDangSua(q)}>{t('quyTrinh.sua')}</Button>
                 </>
               )}
               {quanLy && (
                 <>
-                {q.trang_thai === 'HOAT_DONG' && <Button size="sm" variant="secondary" icon="fa-stop" onClick={() => thaoTac(q, 'ngung')}>{t('quyTrinh.ngung')}</Button>}
-                <Button size="sm" variant="ghost" icon="fa-copy" onClick={() => thaoTac(q, 'nhan-ban')}>{t('quyTrinh.nhanBan')}</Button>
+                {q.trang_thai === 'HOAT_DONG' && <Button size="sm" variant="secondary" icon="fa-stop" disabled={dangThaoTac} onClick={() => setCanNgung(q)}>{t('quyTrinh.ngung')}</Button>}
+                <Button size="sm" variant="ghost" icon="fa-copy" disabled={dangThaoTac} onClick={() => thaoTac(q, 'nhan-ban')}>{t('quyTrinh.nhanBan')}</Button>
                 <Button size="sm" variant="ghost" icon="fa-trash" disabled={q.so_ho_so > 0}
                   title={q.so_ho_so > 0 ? t('quyTrinh.xoaKhongDuoc', { so: q.so_ho_so }) : undefined}
                   onClick={() => setCanXoa(q)}>{t('quyTrinh.xoa')}</Button>
@@ -473,6 +503,15 @@ export default function QuyTrinhPage() {
         <FormTao key={dangSua.id} mo banDau={dangSua} onDong={() => setDangSua(null)} onXong={() => { setDangSua(null); ds.tai(); }} />
       )}
       {xemId !== null && <ChiTietQuyTrinh id={xemId} onDong={() => setXemId(null)} />}
+      {canNgung && (
+        <HopThoai moTieuDe={t('quyTrinh.ngung')} mo onDong={() => setCanNgung(null)}
+          chanDuoi={<>
+            <Button variant="secondary" onClick={() => setCanNgung(null)}>{t('chung.huyBo')}</Button>
+            <Button icon="fa-stop" onClick={() => { const q = canNgung; setCanNgung(null); thaoTac(q, 'ngung'); }}>{t('chung.xacNhan')}</Button>
+          </>}>
+          <p className="text-sm text-main">{t('quyTrinh.xacNhanNgung', { ten: canNgung.ten_quy_trinh, phienBan: canNgung.phien_ban })}</p>
+        </HopThoai>
+      )}
       {canXoa && (
         <HopThoai moTieuDe={t('quyTrinh.xoa')} mo onDong={() => setCanXoa(null)}
           chanDuoi={<>
