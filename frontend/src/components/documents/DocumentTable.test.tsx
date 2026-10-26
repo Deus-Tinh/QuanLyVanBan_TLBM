@@ -341,8 +341,8 @@ describe('DocumentTable Component', () => {
       />
     );
 
-    // Tiêu đề cột Số đi
-    expect(screen.getByText('STT / Số đi')).toBeInTheDocument();
+    // Tiêu đề cột STT
+    expect(screen.getByText('STT')).toBeInTheDocument();
     // STT dòng phải là #1 dù so_thu_tu là 4
     expect(screen.getAllByText('#1').length).toBeGreaterThanOrEqual(1);
     // Nhãn phụ số đi
@@ -362,8 +362,8 @@ describe('DocumentTable Component', () => {
       />
     );
 
-    // Tiêu đề cột Số đến
-    expect(screen.getByText('STT / Số đến')).toBeInTheDocument();
+    // Tiêu đề cột STT
+    expect(screen.getByText('STT')).toBeInTheDocument();
     expect(screen.getAllByText('Số đến: #4').length).toBeGreaterThanOrEqual(1);
   });
 });
