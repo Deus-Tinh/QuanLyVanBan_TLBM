@@ -825,7 +825,7 @@ export default function ModernDashboardView({
 
                     const statusInfo = getSigningStatusInfo(rawStatus);
                     const statusVariant = row.variant || statusInfo.variant;
-                    const statusLabel = row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || statusInfo.label;
+                    const statusLabel = statusInfo.label || row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || rawStatus;
                     const canSign = !!row.can_toi_ky;
 
                     return (

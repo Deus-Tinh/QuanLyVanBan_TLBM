@@ -69,7 +69,6 @@ export default function NotificationStreams() {
         if (!data) return;
         const recentIncoming = data.recentIncoming || [];
         const recentOutgoing = data.recentOutgoing || [];
-        const tasks = data.tasks || [];
         const recentSigning = data.recentSigning || [];
         const signingCount = data.kpis?.signingCount ?? recentSigning.length;
 
@@ -130,16 +129,7 @@ export default function NotificationStreams() {
               time: s.ngay_gui || '',
               isRead: false,
             }))
-          : tasks
-              .filter((t: ApiTaskItem) => t.status === 'pending')
-              .map((t: ApiTaskItem) => ({
-                id: `task-${t.id}`,
-                code: `CV-${t.id}`,
-                title: t.title || '',
-                senderOrDept: t.statusLabel || 'Chờ duyệt',
-                time: t.due || '',
-                isRead: false,
-              }));
+          : [];
 
         setStreams([
           {
@@ -189,8 +179,8 @@ export default function NotificationStreams() {
       navigate(`/approvals/${signingId}`);
       return;
     }
-    // 2. Nếu ở tab trình ký hoặc là thông báo task công việc từ staging
-    if (activeTab === 'approvals' || item.id.startsWith('task-')) {
+    // 2. Nếu ở tab trình ký
+    if (activeTab === 'approvals') {
       navigate('/approvals');
       return;
     }
