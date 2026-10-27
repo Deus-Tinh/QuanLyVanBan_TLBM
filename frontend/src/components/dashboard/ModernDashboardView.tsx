@@ -121,7 +121,7 @@ export default function ModernDashboardView({
 
   useEffect(() => {
     const updateTarget = () => {
-      const target = document.getElementById('top-subnav-slot');
+      const target = document.getElementById('header-search-slot') || document.getElementById('top-subnav-slot');
       if (target) {
         setPortalTarget(target);
       }
@@ -133,7 +133,7 @@ export default function ModernDashboardView({
 
     const handleScroll = () => {
       const scrollY = (scrollContainer ? scrollContainer.scrollTop : 0) || window.scrollY || document.documentElement.scrollTop || 0;
-      setIsScrolled(scrollY > 75);
+      setIsScrolled(scrollY > 60);
     };
 
     if (scrollContainer) {
@@ -215,11 +215,11 @@ export default function ModernDashboardView({
 
   return (
     <>
-      {/* Thanh tìm kiếm thu nhỏ tự động neo bên cạnh breadcrumb 'Home' khi lăn chuột xuống */}
+      {/* Thanh tìm kiếm thu nhỏ tự động dời lên khoảng trống trên Header khi lăn chuột xuống */}
       {portalTarget &&
         createPortal(
           <div
-            className={`transition-all duration-300 ease-out flex items-center w-full max-w-sm ml-2 ${
+            className={`transition-all duration-300 ease-out flex items-center w-full max-w-xs sm:max-w-md ${
               isScrolled
                 ? 'opacity-100 translate-x-0 scale-100 pointer-events-auto'
                 : 'opacity-0 -translate-x-4 scale-95 pointer-events-none'
@@ -233,7 +233,7 @@ export default function ModernDashboardView({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t('dashboardDetails.compactSearchPlaceholder')}
-                className="w-full pl-8 pr-7 py-1 h-8 rounded-lg border border-border-subtle bg-surface text-main text-xs shadow-2xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted"
+                className="w-full pl-8 pr-7 py-1.5 h-8 sm:h-9 rounded-xl border border-border-subtle bg-surface text-main text-xs sm:text-sm shadow-2xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted"
               />
               {searchTerm && (
                 <button

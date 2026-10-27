@@ -172,15 +172,18 @@ export default function NotificationStreams() {
 
   const handleOpenDoc = (item: NotificationItem) => {
     setIsOpen(false);
+    // 1. Nếu là thông báo hồ sơ trình ký cụ thể: mở đúng trang chi tiết hồ sơ đó
     if (item.id.startsWith('sign-')) {
       const signingId = item.id.replace('sign-', '');
       navigate(`/approvals/${signingId}`);
       return;
     }
-    if (activeTab === 'approvals') {
+    // 2. Nếu ở tab trình ký hoặc là thông báo task công việc từ staging
+    if (activeTab === 'approvals' || item.id.startsWith('task-')) {
       navigate('/approvals');
       return;
     }
+    // 3. Xem trước văn bản thường
     setPreviewDoc({
       code: item.code,
       title: item.title,

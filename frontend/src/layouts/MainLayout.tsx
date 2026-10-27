@@ -85,9 +85,24 @@ export default function MainLayout({
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCloseSidebar = () => {
+    // Nếu trên Desktop (>= 1024px) và đang ghim, không đóng và không hủy ghim khi click/điều hướng
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024 && isSidebarPinned) {
+      return;
+    }
     setIsSidebarOpen(false);
+    setIsSidebarHovered(false);
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
+    localStorage.setItem('tlbm_sidebar_open_v2', 'false');
+  };
+
+  const handleCollapseSidebar = () => {
+    // Khi người dùng chủ động bấm nút thu gọn (chevron-left), mới hủy ghim và đóng sidebar
     setIsSidebarPinned(false);
     localStorage.setItem('tlbm_sidebar_pinned', 'false');
+    setIsSidebarOpen(false);
     setIsSidebarHovered(false);
     if (hoverLeaveTimerRef.current) {
       clearTimeout(hoverLeaveTimerRef.current);
@@ -136,12 +151,15 @@ export default function MainLayout({
     };
   }, []);
 
-  // Điều hướng trang: Tự động đóng trạng thái hover và đóng sidebar nếu chưa ghim
+  // Điều hướng trang: Tự động đóng trạng thái hover và đóng sidebar nếu ở mobile hoặc chưa ghim
   const handleItemNavigate = (pageId: ActivePageId) => {
     handleNavigate(pageId);
     setIsSidebarHovered(false);
-    if (!isSidebarPinned || (typeof window !== 'undefined' && window.innerWidth < 1024)) {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       handleCloseSidebar();
+    } else if (!isSidebarPinned) {
+      setIsSidebarOpen(false);
+      localStorage.setItem('tlbm_sidebar_open_v2', 'false');
     }
   };
 
@@ -270,6 +288,43 @@ export default function MainLayout({
     };
   }, [isEffectiveSidebarOpen]);
 
+  // Trạng thái cuộn trang (khi cuộn > 60px, thu gọn TopSubNav và dời Home + Search lên AppHeader trên màn hình lớn)
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsScrolled(false);
+    const scrollContainer = document.querySelector('.page-viewport');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
+
+    const handleScroll = () => {
+      const scrollY = (scrollContainer ? scrollContainer.scrollTop : 0) || window.scrollY || document.documentElement.scrollTop || 0;
+      setIsScrolled(scrollY > 60);
+    };
+
+    if (scrollContainer) {
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      if (scrollContainer) {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [location.pathname]);
+
+  const handleScrollToTop = () => {
+    const scrollContainer = document.querySelector('.page-viewport');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   return (
     <div
       className="app-shell w-screen h-screen overflow-hidden flex relative bg-app"
@@ -303,6 +358,7 @@ export default function MainLayout({
           <AppSidebar
             isMobileOpen={isEffectiveSidebarOpen}
             onCloseMobile={handleCloseSidebar}
+            onCollapse={handleCollapseSidebar}
             activePage={currentActivePage}
             committedPage={effectiveCommittedPage}
             previewPage={previewPage}
@@ -335,6 +391,9 @@ export default function MainLayout({
           isSidebarOpen={isEffectiveSidebarOpen}
           onToggleSidebar={handleToggleSidebar}
           onNavigate={handleNavigate}
+          activePage={currentActivePage}
+          isScrolled={isScrolled}
+          onScrollToTop={handleScrollToTop}
         />
 
         {/* Thanh điều hướng phân hệ phụ nằm ngang - Ẩn khi vào trang Trợ lý AI */}
@@ -343,6 +402,7 @@ export default function MainLayout({
             activePage={currentActivePage}
             isHoveredPreview={previewPage !== null}
             onNavigate={handleNavigate}
+            isScrolled={isScrolled}
           />
         )}
 
