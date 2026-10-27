@@ -222,7 +222,11 @@ class DocumentListSerializer(serializers.Serializer):
                         return lvb.ten_loai
                 except Exception:
                     pass
-        return getattr(obj, "_ten_loai_van_ban", None) or getattr(obj, "ten_loai_van_ban", "") or ""
+        val = getattr(obj, "_ten_loai_van_ban", None) or getattr(obj, "ten_loai_van_ban", "") or ""
+        if val:
+            return val
+        from .services import infer_doc_type
+        return infer_doc_type(getattr(obj, "so_hieu", ""), getattr(obj, "trich_yeu", ""))
 
     def get_so_thu_tu(self, obj):
         # CHỈ áp dụng tính STT tự động reset theo năm riêng cho Văn bản Mật
@@ -404,7 +408,11 @@ class DocumentDetailSerializer(serializers.Serializer):
                         return lvb.ten_loai
                 except Exception:
                     pass
-        return getattr(obj, "_ten_loai_van_ban", None) or getattr(obj, "ten_loai_van_ban", "") or ""
+        val = getattr(obj, "_ten_loai_van_ban", None) or getattr(obj, "ten_loai_van_ban", "") or ""
+        if val:
+            return val
+        from .services import infer_doc_type
+        return infer_doc_type(getattr(obj, "so_hieu", ""), getattr(obj, "trich_yeu", ""))
 
     def get_don_vi_nhan(self, obj):
         try:
@@ -553,9 +561,9 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
         now = timezone.now()
         for date_field in ("ngay_den", "ngay_ban_hanh"):
             dt_val = attrs.get(date_field)
-            if dt_val and dt_val.hour == 0 and dt_val.minute == 0 and dt_val.second == 0 and dt_val.microsecond == 0:
+            if dt_val and hasattr(dt_val, "hour") and dt_val.hour == 0 and dt_val.minute == 0 and dt_val.second == 0 and dt_val.microsecond == 0:
                 old_dt = getattr(self.instance, date_field, None) if self.instance else None
-                if old_dt and (old_dt.hour != 0 or old_dt.minute != 0 or old_dt.second != 0):
+                if old_dt and hasattr(old_dt, "hour") and (old_dt.hour != 0 or old_dt.minute != 0 or old_dt.second != 0):
                     attrs[date_field] = dt_val.replace(
                         hour=old_dt.hour,
                         minute=old_dt.minute,
@@ -767,27 +775,38 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
                 VanBanDenHoSo, VanBanDenDanhmuc,
                 VanBanDiHoSo, VanBanDiDanhmuc,
             )
+            from .services import ensure_hoso_and_doc_type
 
             kind = getattr(instance, "document_kind", "")
             is_di = (kind == "vanbandi")
             hoso_model = VanBanDiHoSo if is_di else VanBanDenHoSo
             danhmuc_model = VanBanDiDanhmuc if is_di else VanBanDenDanhmuc
 
+            creator = getattr(instance, "nguoi_tao", None)
+
+            existing_hs_name = ""
+            if ho_so_val is None and hasattr(instance, "hoso") and instance.hoso.exists():
+                first_h = instance.hoso.first()
+                if first_h:
+                    try:
+                        h_obj = HoSo.objects.filter(pk=first_h.hoso_id).first()
+                        if h_obj:
+                            existing_hs_name = h_obj.ten_ho_so
+                    except Exception:
+                        pass
+
+            target_hs_val = ho_so_val if ho_so_val is not None else existing_hs_name
+            hs, lvb = ensure_hoso_and_doc_type(target_hs_val, loai_vb_val or "", creator=creator)
+
             if ho_so_val is not None:
                 clean_hs = str(ho_so_val).strip()
-                if clean_hs:
-                    hs = None
-                    if clean_hs.isdigit():
-                        hs = HoSo.objects.filter(pk=int(clean_hs)).first()
-                    if not hs:
-                        hs = HoSo.objects.filter(ten_ho_so__iexact=clean_hs).first() or HoSo.objects.filter(so_ky_hieu__iexact=clean_hs).first()
-                    if hs:
-                        if is_di:
-                            hoso_model.objects.filter(vanbandi=instance).delete()
-                            hoso_model.objects.create(vanbandi=instance, hoso_id=hs.pk)
-                        else:
-                            hoso_model.objects.filter(vanbanden=instance).delete()
-                            hoso_model.objects.create(vanbanden=instance, hoso_id=hs.pk)
+                if clean_hs and hs:
+                    if is_di:
+                        hoso_model.objects.filter(vanbandi=instance).delete()
+                        hoso_model.objects.create(vanbandi=instance, hoso_id=hs.pk)
+                    else:
+                        hoso_model.objects.filter(vanbanden=instance).delete()
+                        hoso_model.objects.create(vanbanden=instance, hoso_id=hs.pk)
                 else:
                     if is_di:
                         hoso_model.objects.filter(vanbandi=instance).delete()
@@ -796,19 +815,24 @@ class DocumentCreateUpdateSerializer(serializers.Serializer):
 
             if loai_vb_val is not None:
                 clean_lvb = str(loai_vb_val).strip()
-                if clean_lvb:
-                    lvb = None
-                    if clean_lvb.isdigit():
-                        lvb = RecordLoaiVanBan.objects.filter(pk=int(clean_lvb)).first()
-                    if not lvb:
-                        lvb = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb).first()
-                    if lvb:
-                        if is_di:
-                            danhmuc_model.objects.filter(vanbandi=instance).delete()
-                            danhmuc_model.objects.create(vanbandi=instance, loaivanban_id=lvb.pk)
-                        else:
-                            danhmuc_model.objects.filter(vanbanden=instance).delete()
-                            danhmuc_model.objects.create(vanbanden=instance, loaivanban_id=lvb.pk)
+                if clean_lvb and lvb:
+                    # Đảm bảo Loại văn bản phải thuộc đúng Hồ sơ hs để thỏa mãn Database Trigger PostgreSQL
+                    if hs and getattr(lvb, "ho_so_id", None) != hs.pk:
+                        lvb_under_hs = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
+                        if not lvb_under_hs:
+                            try:
+                                lvb_under_hs = RecordLoaiVanBan.objects.create(ho_so=hs, ten_loai=clean_lvb)
+                            except Exception:
+                                lvb_under_hs = RecordLoaiVanBan.objects.filter(ten_loai__iexact=clean_lvb, ho_so=hs).first()
+                        if lvb_under_hs:
+                            lvb = lvb_under_hs
+
+                    if is_di:
+                        danhmuc_model.objects.filter(vanbandi=instance).delete()
+                        danhmuc_model.objects.create(vanbandi=instance, loaivanban_id=lvb.pk)
+                    else:
+                        danhmuc_model.objects.filter(vanbanden=instance).delete()
+                        danhmuc_model.objects.create(vanbanden=instance, loaivanban_id=lvb.pk)
                 else:
                     if is_di:
                         danhmuc_model.objects.filter(vanbandi=instance).delete()

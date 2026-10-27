@@ -14,7 +14,7 @@ import { GIOI_HAN, hanChotDaQua, kiemTraTepPdf, LOP_O_NHAP, moTaVanBan, tenNguoi
 import { coQuyen, useKhoaChongTrung, useTai, useToi } from '@lib/signing/hooks';
 import { useSigningT } from '@lib/signing/i18n';
 import type { HoSoChiTiet, QuyTrinh, VanBanDi, ViTriKy } from '@lib/signing/types';
-import { khungTuDiemBam, soKhung } from '@lib/signing/viTri';
+import { KHUNG_MAC_DINH, khungTuDiemBam, soKhung } from '@lib/signing/viTri';
 
 interface UngVien { cau_hinh: number; ung_vien: Array<{ id: number; ten: string }> }
 type NguonVanBan = 'van_ban_di' | 'khac';
@@ -178,12 +178,13 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer) => v
   );
 }
 
-function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; quyTrinh: QuyTrinh }) {
+export function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; quyTrinh: QuyTrinh }) {
   const { t, loi } = useSigningT();
   const navigate = useNavigate();
   const khoa = useKhoaChongTrung();
   const [viTri, setViTri] = useState<Record<string, ViTriKy>>({});
   const [dangDat, setDangDat] = useState<string | null>(null);
+  const [tongSoTrang, setTongSoTrang] = useState(1);
   const [chonNguoiKy, setChonNguoiKy] = useState<Record<string, number>>({});
   const [ungVien, setUngVien] = useState<UngVien[]>([]);
   const [xacNhan, setXacNhan] = useState(false);
@@ -220,6 +221,7 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
         <h2 className="text-lg font-bold text-main">2. {t('tao.buoc2')}</h2>
         <p className="text-sm text-secondary">{t('tao.datViTri')}</p>
         <XemPdf duLieu={tep} khung={khung} khungDangDat={dangDat}
+          onSoTrang={(so) => setTongSoTrang(so)}
           onDat={(id, trang, x, y) => {
             setViTri((v) => ({ ...v, [id]: khungTuDiemBam(trang, x, y) }));
             setDangDat(null);
@@ -236,9 +238,23 @@ function Buoc2({ hoSo, tep, quyTrinh }: { hoSo: HoSoChiTiet; tep: ArrayBuffer; q
               <div className="text-xs text-muted">
                 {viTri[n.id] ? t('tao.trang', { so: viTri[n.id].trang_ky }) : t('tao.chuaDatViTri')}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant={dangDat === String(n.id) ? 'primary' : 'secondary'} icon="fa-crosshairs"
                   onClick={() => setDangDat(dangDat === String(n.id) ? null : String(n.id))}>{t('tao.datKhung')}</Button>
+                <Button size="sm" variant="secondary" icon="fa-file-lines"
+                  onClick={() => {
+                    setViTri((v) => ({
+                      ...v,
+                      [n.id]: {
+                        trang_ky: tongSoTrang,
+                        toa_do_x: '60',
+                        toa_do_y: '75',
+                        chieu_rong_khung: String(KHUNG_MAC_DINH.w),
+                        chieu_cao_khung: String(KHUNG_MAC_DINH.h),
+                      },
+                    }));
+                    setDangDat(null);
+                  }}>{t('tao.datTrangCuoi')}</Button>
                 {viTri[n.id] && (
                   <Button size="sm" variant="ghost" icon="fa-trash"
                     onClick={() => setViTri((v) => {

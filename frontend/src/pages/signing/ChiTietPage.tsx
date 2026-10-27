@@ -6,7 +6,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, KhongTimThay, LoiTai, ThongBao, TrangThaiBadge } from '@components/signing/ChungUI';
+import { DangTai, KhongTimThay, LoiTai, ThongBao, TrangThaiHoSo } from '@components/signing/ChungUI';
 import HanhDong from '@components/signing/HanhDong';
 import KetQuaPanel from '@components/signing/KetQuaPanel';
 import SuaNhapDialog from '@components/signing/SuaNhapDialog';
@@ -128,7 +128,7 @@ function ChiTietHoSo({ id }: { id: number }) {
         <Card className="p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
-            <TrangThaiBadge trangThai={luot?.trang_thai === 'YEU_CAU_SUA' ? 'YEU_CAU_SUA' : hoSo.trang_thai} />
+            <TrangThaiHoSo hoSo={hoSo} />
           </div>
           <div className="text-base font-semibold text-main break-words">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
           {hoSo.trang_thai === 'NHAP' && toi?.id === hoSo.create_by && (
@@ -180,6 +180,17 @@ function ChiTietHoSo({ id }: { id: number }) {
             <summary className="cursor-pointer text-sm font-bold text-secondary">
               {t('chiTiet.luot', { so: l.so_luot })} · {t(`trangThai.${l.trang_thai}`)}
             </summary>
+            {l.yeu_cau_sua.length > 0 && (
+              <div className="mt-3 rounded-lg border border-purple-border bg-purple-subtle p-3 text-sm">
+                <div className="font-bold text-purple break-words">{l.yeu_cau_sua[0].tieu_de}</div>
+                <div className="text-main whitespace-pre-wrap break-words mt-0.5">{l.yeu_cau_sua[0].ly_do}</div>
+              </div>
+            )}
+            {l.ly_do && l.yeu_cau_sua.length === 0 && (
+              <div className="mt-3 rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm">
+                <div className="text-danger break-words">{l.ly_do}</div>
+              </div>
+            )}
             <div className="mt-3"><TienTrinh luot={l} toiId={toi?.id} /></div>
           </details>
         ))}

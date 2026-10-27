@@ -66,20 +66,24 @@ const renderReplacementBadgeGroup = (
   items: string[],
   type: 'thay_the' | 'bi_thay',
   hieuLuc?: string,
-  isFallback: boolean = false
+  isFallback: boolean = false,
+  t?: (key: string, params?: Record<string, string>) => string
 ) => {
   if (!items || items.length === 0) return null;
   const isThayThe = type === 'thay_the';
   const repStyle = isThayThe ? getReplacementBadgeClass(hieuLuc) : null;
   const count = items.length;
+  const replacesLabel = t ? (t('documents_ui.table.replaces') || 'Thay thế cho:') : 'Thay thế cho:';
+  const replacedByLabel = t ? (t('documents_ui.table.replacedBy') || 'Bị thay bởi:') : 'Bị thay bởi:';
+  const label = isThayThe ? `${replacesLabel} ` : `${replacedByLabel} `;
 
   if (count === 1) {
     const targetSoHieu = items[0];
     const singleTitle = isFallback
-      ? `Thay thế cho văn bản: ${targetSoHieu}`
+      ? (t ? t('documents_ui.table.replacesFallbackTitle', { doc: targetSoHieu }) : `Thay thế cho văn bản: ${targetSoHieu}`)
       : isThayThe
-      ? `Văn bản này thay thế cho văn bản cũ: ${targetSoHieu}`
-      : `Văn bản này đã bị thay thế bởi: ${targetSoHieu}`;
+      ? (t ? t('documents_ui.table.replacesSingleTitle', { doc: targetSoHieu }) : `Văn bản này thay thế cho văn bản cũ: ${targetSoHieu}`)
+      : (t ? t('documents_ui.table.replacedBySingleTitle', { doc: targetSoHieu }) : `Văn bản này đã bị thay thế bởi: ${targetSoHieu}`);
 
     return (
       <div
@@ -98,7 +102,7 @@ const renderReplacementBadgeGroup = (
           }
         />
         <span className="truncate">
-          {isThayThe ? 'Thay thế cho: ' : 'Bị thay bởi: '}
+          {label}
           <strong className="font-mono">{targetSoHieu}</strong>
         </span>
       </div>
@@ -114,8 +118,8 @@ const renderReplacementBadgeGroup = (
   const allListStr = items.join(', ');
 
   const multiTitle = isThayThe
-    ? `Văn bản này thay thế cho các văn bản: ${allListStr}`
-    : `Văn bản này đã bị thay thế bởi các văn bản: ${allListStr}`;
+    ? (t ? t('documents_ui.table.replacesMultiTitle', { docs: allListStr }) : `Văn bản này thay thế cho các văn bản: ${allListStr}`)
+    : (t ? t('documents_ui.table.replacedByMultiTitle', { docs: allListStr }) : `Văn bản này đã bị thay thế bởi các văn bản: ${allListStr}`);
 
   return (
     <div
@@ -134,7 +138,7 @@ const renderReplacementBadgeGroup = (
         }
       />
       <span className="truncate">
-        {isThayThe ? 'Thay thế cho: ' : 'Bị thay bởi: '}
+        {label}
         <strong className="font-mono">{displayedItems.join(', ')}</strong>
       </span>
       {remainingCount > 0 && (
@@ -318,7 +322,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           <table className="w-full text-left text-sm border-separate border-spacing-0 min-w-[950px]">
           <thead>
             <tr className="bg-surface-elevated/70 text-xs font-bold text-muted uppercase tracking-wider border-b border-border-subtle">
-              <th className="px-4 py-3 text-center w-16">{loai === 'MAT' ? (t('documents_ui.table.colStt') || 'STT') : loai === 'DI' ? (t('documents_ui.table.colOutboundNum') || 'Số đi') : (t('documents_ui.table.colInboundNum') || 'Số đến')}</th>
+              <th className="px-4 py-3 text-center w-16">{t('documents_ui.table.colStt') || 'STT'}</th>
               <th className="px-4 py-3 w-40">{t('documents_ui.table.colCode') || 'Số, ký hiệu'}</th>
               <th className="px-4 py-3 w-48">{t('documents_ui.table.colTimestamp') || 'Mốc thời gian'}</th>
               <th className="px-4 py-3 min-w-[280px]">{t('documents_ui.table.colSummary') || 'Trích yếu nội dung'}</th>
@@ -397,38 +401,45 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     className={`${rowHighlightClass} cursor-pointer transition-all duration-150 ease-out group ${
                       isActiveRow ? 'relative z-30 ring-2 ring-primary/40' : ''
                     }`}
-                    title="Bấm vào hàng để xem chi tiết văn bản"
+                    title={t('documents_ui.table.clickToView') || 'Bấm vào hàng để xem chi tiết văn bản'}
                   >
-                    {/* 1. Số đến / STT */}
+                    {/* 1. STT dòng */}
                     <td className="px-4 py-3.5 text-center font-bold text-primary whitespace-nowrap text-sm">
-                      {loai === 'MAT' ? (
-                        <span className="text-primary font-bold text-sm">#{doc.so_thu_tu ? doc.so_thu_tu : (page - 1) * pageSize + index + 1}</span>
-                      ) : (
-                        doc.so_thu_tu ? `#${doc.so_thu_tu}` : '—'
-                      )}
+                      #{(page - 1) * pageSize + index + 1}
                     </td>
 
                     {/* 2. Số, ký hiệu */}
                     <td className="px-4 py-3.5 font-semibold text-main whitespace-nowrap text-sm">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onViewDetail(doc.id)}
-                          className="text-left font-semibold text-main group-hover:text-primary transition-colors flex items-center gap-1.5"
-                          title="Bấm để xem chi tiết văn bản"
-                        >
-                          <i className="fa-solid fa-file-contract text-primary/70 group-hover:text-primary group-hover:scale-110 text-xs shrink-0 transition-transform duration-150" />
-                          <span>{doc.so_hieu}</span>
-                        </button>
-                        {doc.pham_vi === 'HAN_CHE' && (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25 shrink-0 transition-all duration-150 hover:-translate-y-[0.5px] hover:shadow-xs cursor-default"
-                            title="Văn bản hạn chế (Bảo mật)"
+                      <div className="flex flex-col items-start gap-1">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onViewDetail(doc.id)}
+                            className="text-left font-semibold text-main group-hover:text-primary transition-colors flex items-center gap-1.5"
+                            title={t('documents_ui.table.clickDocToView') || 'Bấm để xem chi tiết văn bản'}
                           >
-                            <i className="fa-solid fa-shield-halved text-[11px] text-rose-600 dark:text-rose-400" />
-                            <span>Hạn chế</span>
+                            <i className="fa-solid fa-file-contract text-primary/70 group-hover:text-primary group-hover:scale-110 text-xs shrink-0 transition-transform duration-150" />
+                            <span>{doc.so_hieu}</span>
+                          </button>
+                          {doc.pham_vi === 'HAN_CHE' && (
+                            <span
+                              className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/25 shrink-0 transition-all duration-150 hover:-translate-y-[0.5px] hover:shadow-xs cursor-default"
+                              title={t('documents_ui.table.restrictedTooltip') || 'Văn bản hạn chế (Bảo mật)'}
+                            >
+                              <i className="fa-solid fa-shield-halved text-[11px] text-rose-600 dark:text-rose-400" />
+                              <span>{t('documents_ui.table.restrictedBadge') || 'Hạn chế'}</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Badge Số đi / Số đến (Số vào sổ CSDL) */}
+                        {doc.so_thu_tu ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-secondary border border-border-subtle tracking-tight">
+                            {loai === 'DI'
+                              ? (t('documents_ui.table.outboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đi: #${doc.so_thu_tu}`)
+                              : (t('documents_ui.table.inboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đến: #${doc.so_thu_tu}`)}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </td>
 
@@ -437,17 +448,17 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       {loai === 'DI' ? (
                         <div className="text-sm font-semibold text-main flex items-center gap-1.5">
                           <i className="fa-regular fa-clock text-primary text-xs" />
-                          <span>Đi: {formatDocumentEventTime(doc.ngay_ban_hanh, doc.created_at)}</span>
+                          <span>{t('documents_ui.table.timeOutbound') || 'Đi:'} {formatDocumentEventTime(doc.ngay_ban_hanh, doc.created_at)}</span>
                         </div>
                       ) : (
                         <div className="text-sm font-semibold text-main flex items-center gap-1.5">
                           <i className="fa-regular fa-clock text-primary text-xs" />
-                          <span>{loai === 'MAT' ? 'Lưu: ' : 'Đến: '}{formatDocumentEventTime(doc.ngay_den || doc.ngay_ban_hanh, doc.created_at)}</span>
+                          <span>{loai === 'MAT' ? (t('documents_ui.table.timeSaved') || 'Lưu:') : (t('documents_ui.table.timeInbound') || 'Đến:')} {formatDocumentEventTime(doc.ngay_den || doc.ngay_ban_hanh, doc.created_at)}</span>
                         </div>
                       )}
                       <div className="text-sm text-muted flex items-center gap-1.5 mt-0.5">
                         <i className="fa-regular fa-calendar text-muted text-xs" />
-                        <span>Ký ngày: {formatDate(doc.ngay_van_ban)}</span>
+                        <span>{t('documents_ui.table.signedDate') || 'Ký ngày:'} {formatDate(doc.ngay_van_ban)}</span>
                       </div>
                     </td>
 
@@ -465,10 +476,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             type="button"
                             onClick={(e) => handleOpenAttachment(e, doc)}
                             className="inline-flex items-center gap-1.5 text-xs text-main dark:text-slate-200 bg-surface-elevated hover:bg-surface-elevated/90 px-2.5 py-0.5 rounded-md border border-border-subtle hover:border-border transition-colors cursor-pointer"
-                            title="Bấm để mở xem tệp đính kèm trong tab mới"
+                            title={t('documents_ui.table.openAttachmentTitle') || 'Bấm để mở xem tệp đính kèm trong tab mới'}
                           >
                             <i className="fa-solid fa-paperclip text-xs text-secondary" />
-                            <span>{doc.attachment_count} tệp đính kèm</span>
+                            <span>{t('documents_ui.table.attachmentsCount', { count: String(doc.attachment_count) }) || `${doc.attachment_count} tệp đính kèm`}</span>
                             <i className="fa-solid fa-arrow-up-right-from-square text-[0.65rem] text-secondary" />
                           </button>
                         )}
@@ -482,10 +493,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             return (
                               <>
                                 {/* 1. Các văn bản mà tài liệu này đi thay thế */}
-                                {renderReplacementBadgeGroup(doc.thay_the_cho || [], 'thay_the', doc.hieu_luc)}
+                                {renderReplacementBadgeGroup(doc.thay_the_cho || [], 'thay_the', doc.hieu_luc, false, t)}
 
                                 {/* 2. Các văn bản mới đã đến thay thế tài liệu này */}
-                                {renderReplacementBadgeGroup(doc.bi_thay_boi || [], 'bi_thay')}
+                                {renderReplacementBadgeGroup(doc.bi_thay_boi || [], 'bi_thay', undefined, false, t)}
                               </>
                             );
                           }
@@ -497,7 +508,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 
                           if (repList.length === 0) return null;
 
-                          return renderReplacementBadgeGroup(repList, 'thay_the', doc.hieu_luc, true);
+                          return renderReplacementBadgeGroup(repList, 'thay_the', doc.hieu_luc, true, t);
                         })()}
                       </div>
                     </td>
@@ -530,11 +541,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <div>
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shadow-2xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Còn hiệu lực
+                            {t('documents_ui.table.statusActive') || 'Còn hiệu lực'}
                           </span>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-sm text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
-                              Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
+                            <div className="text-sm text-muted mt-0.5" title={`${t('documents_ui.table.expiresOn') || 'Hết hạn:'} ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                              {t('documents_ui.table.expiresOn') || 'Hết hạn:'} {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
                         </div>
@@ -543,11 +554,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <div>
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-purple-500/10 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30 shadow-2xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                            Còn hiệu lực 1 phần
+                            {t('documents_ui.table.statusPartiallyActive') || 'Còn hiệu lực 1 phần'}
                           </span>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-sm text-muted mt-0.5" title={`Hết hạn vào: ${formatDate(doc.ngay_het_hieu_luc)}`}>
-                              Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
+                            <div className="text-sm text-muted mt-0.5" title={`${t('documents_ui.table.expiresOn') || 'Hết hạn:'} ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                              {t('documents_ui.table.expiresOn') || 'Hết hạn:'} {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
                         </div>
@@ -556,11 +567,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <div>
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-rose-500/10 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-500/30 shadow-2xs">
                             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                            Hết hiệu lực
+                            {t('documents_ui.table.statusExpired') || 'Hết hiệu lực'}
                           </span>
                           {doc.ngay_het_hieu_luc && (
-                            <div className="text-sm text-danger/80 font-medium mt-0.5" title={`Đã hết hạn từ: ${formatDate(doc.ngay_het_hieu_luc)}`}>
-                              Hết hạn: {formatDate(doc.ngay_het_hieu_luc)}
+                            <div className="text-sm text-danger/80 font-medium mt-0.5" title={`${t('documents_ui.table.expiredSince') || 'Đã hết hạn từ:'} ${formatDate(doc.ngay_het_hieu_luc)}`}>
+                              {t('documents_ui.table.expiresOn') || 'Hết hạn:'} {formatDate(doc.ngay_het_hieu_luc)}
                             </div>
                           )}
                         </div>
@@ -577,7 +588,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                           type="button"
                           onClick={() => setActiveMenuId(activeMenuId === doc.id ? null : doc.id)}
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:text-main hover:bg-surface-elevated transition-colors"
-                          title="Tác vụ"
+                          title={t('documents_ui.table.colActions') || 'Tác vụ'}
                         >
                           <i className="fa-solid fa-ellipsis-vertical text-base" />
                         </button>
@@ -598,7 +609,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               className="w-full text-left px-3.5 py-2 text-sm text-main hover:bg-primary-subtle hover:text-primary flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
                               <i className="fa-solid fa-eye text-primary w-4 text-xs" />
-                              <span>Xem chi tiết</span>
+                              <span>{t('documents_ui.table.viewDetail') || 'Xem chi tiết'}</span>
                             </button>
 
                             {/* 2. Nút Lịch sử xem */}
@@ -611,7 +622,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                               className="w-full text-left px-3.5 py-2 text-sm text-main hover:bg-info-subtle hover:text-info flex items-center gap-2.5 transition-colors cursor-pointer"
                             >
                               <i className="fa-solid fa-clock-rotate-left text-info w-4 text-xs" />
-                              <span>Lịch sử xem</span>
+                              <span>{t('documents_ui.table.viewHistory') || 'Lịch sử xem'}</span>
                             </button>
 
                             {/* 3. Nút Chỉnh sửa */}
@@ -625,7 +636,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 className="w-full text-left px-3.5 py-2 text-sm text-main hover:bg-warning-subtle hover:text-warning-text flex items-center gap-2.5 transition-colors cursor-pointer"
                               >
                                 <i className="fa-solid fa-pen-to-square text-warning-text w-4 text-xs" />
-                                <span>Chỉnh sửa</span>
+                                <span>{t('documents_ui.table.edit') || 'Chỉnh sửa'}</span>
                               </button>
                             )}
 
@@ -642,7 +653,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                   className="w-full text-left px-3.5 py-2 text-sm text-danger hover:bg-danger-subtle flex items-center gap-2.5 transition-colors cursor-pointer"
                                 >
                                   <i className="fa-solid fa-trash-can w-4 text-xs" />
-                                  <span>Xóa văn bản</span>
+                                  <span>{t('documents_ui.table.delete') || 'Xóa văn bản'}</span>
                                 </button>
                               </>
                             )}
@@ -710,9 +721,25 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 {/* Header thẻ: STT + Số hiệu + Badge Hạn chế + Trạng thái */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                    <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                      #{doc.so_thu_tu ? doc.so_thu_tu : (page - 1) * pageSize + index + 1}
-                    </span>
+                    {(() => {
+                      const stt = (page - 1) * pageSize + index + 1;
+                      const subLabel = loai === 'DI'
+                        ? (t('documents_ui.table.outboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đi: #${doc.so_thu_tu}`)
+                        : (t('documents_ui.table.inboundNumSub', { num: String(doc.so_thu_tu) }) || `Số đến: #${doc.so_thu_tu}`);
+
+                      return (
+                        <>
+                          <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                            #{stt}
+                          </span>
+                          {doc.so_thu_tu ? (
+                            <span className="text-[11px] font-medium text-muted bg-surface-elevated border border-border-subtle px-1.5 py-0.5 rounded">
+                              {subLabel}
+                            </span>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                     <span className="text-sm font-semibold text-main truncate hover:text-primary">
                       {doc.so_hieu}
                     </span>
@@ -773,8 +800,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     if (hasDirectionalData) {
                       return (
                         <>
-                          {renderReplacementBadgeGroup(doc.thay_the_cho || [], 'thay_the', doc.hieu_luc)}
-                          {renderReplacementBadgeGroup(doc.bi_thay_boi || [], 'bi_thay')}
+                          {renderReplacementBadgeGroup(doc.thay_the_cho || [], 'thay_the', doc.hieu_luc, false, t)}
+                          {renderReplacementBadgeGroup(doc.bi_thay_boi || [], 'bi_thay', undefined, false, t)}
                         </>
                       );
                     }
@@ -782,7 +809,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       ? doc.danh_sach_thay_the
                       : (doc.link_thay_the ? doc.link_thay_the.split(',').map((s) => s.trim()).filter(Boolean) : []);
                     if (repList.length === 0) return null;
-                    return renderReplacementBadgeGroup(repList, 'thay_the', doc.hieu_luc, true);
+                    return renderReplacementBadgeGroup(repList, 'thay_the', doc.hieu_luc, true, t);
                   })()}
                 </div>
 
