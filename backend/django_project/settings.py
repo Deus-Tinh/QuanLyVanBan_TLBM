@@ -141,19 +141,28 @@ if os.getenv("DB_ENGINE", "sqlite").lower() in {"postgres", "postgresql"}:
     }
 
     # Kết nối CSDL chỉ đọc (Read-Only) phục vụ truy vấn an toàn cho RAG / Chatbox
-    ro_user = os.getenv("DB_READONLY_USER") or os.getenv("DB_USER", "postgres")
-    ro_password = os.getenv("DB_READONLY_PASSWORD") or os.getenv("DB_PASSWORD", "")
-    ro_name = os.getenv("DB_READONLY_NAME") or os.getenv("DB_NAME", "qlvb_tlbm")
-    ro_host = os.getenv("DB_READONLY_HOST") or os.getenv("DB_HOST", "127.0.0.1")
-    ro_port = os.getenv("DB_READONLY_PORT") or os.getenv("DB_PORT", "5432")
+    readonly_required = (
+        "DB_READONLY_USER",
+        "DB_READONLY_PASSWORD",
+        "DB_READONLY_NAME",
+        "DB_READONLY_HOST",
+        "DB_READONLY_PORT",
+    )
+    readonly_missing = [name for name in readonly_required if not os.getenv(name)]
+    if readonly_missing:
+        raise RuntimeError(
+            "PostgreSQL AI read-only connection requires: " + ", ".join(readonly_missing)
+        )
+    if os.environ["DB_READONLY_USER"] != "qlvb_readonly":
+        raise RuntimeError("DB_READONLY_USER must be qlvb_readonly for the AI SQL source")
 
     DATABASES["readonly"] = {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": ro_name,
-        "USER": ro_user,
-        "PASSWORD": ro_password,
-        "HOST": ro_host,
-        "PORT": ro_port,
+        "NAME": os.environ["DB_READONLY_NAME"],
+        "USER": os.environ["DB_READONLY_USER"],
+        "PASSWORD": os.environ["DB_READONLY_PASSWORD"],
+        "HOST": os.environ["DB_READONLY_HOST"],
+        "PORT": os.environ["DB_READONLY_PORT"],
         "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
         "OPTIONS": {
             # Bắt buộc session PostgreSQL ở chế độ chỉ đọc để giảm thiểu rủi ro biến đổi dữ liệu
@@ -161,6 +170,6 @@ if os.getenv("DB_ENGINE", "sqlite").lower() in {"postgres", "postgresql"}:
         },
     }
 else:
-    # Ở môi trường SQLite cục bộ, alias 'readonly' trỏ tới CSDL mặc định
+    # SQLite không phải backend được hỗ trợ cho phát triển hoặc kiểm thử.
     DATABASES["readonly"] = DATABASES["default"]
 

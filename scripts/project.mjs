@@ -16,6 +16,7 @@ const python = process.platform === "win32"
   : path.join(venvDir, "bin", "python");
 
 const localDatabaseEnvironment = {
+  PYTHONUTF8: "1",
   DJANGO_SECRET_KEY: "qlvb-local-only-not-for-production",
   DJANGO_DEBUG: "true",
   DJANGO_ALLOWED_HOSTS: "127.0.0.1,localhost",
@@ -25,6 +26,10 @@ const localDatabaseEnvironment = {
   DB_PASSWORD: "qlvb_local_only",
   DB_HOST: "127.0.0.1",
   DB_PORT: "55432",
+  DB_READONLY_USER: "qlvb_readonly",
+  DB_READONLY_NAME: "qlvb_dev",
+  DB_READONLY_HOST: "127.0.0.1",
+  DB_READONLY_PORT: "55432",
 };
 
 function run(command, args, options = {}) {
@@ -83,7 +88,10 @@ async function ensurePythonEnvironment() {
   const installedHash = existsSync(dependencyMarker) ? readFileSync(dependencyMarker, "utf8").trim() : "";
   if (requirementsHash !== installedHash) {
     console.log("Đang cài/cập nhật thư viện backend theo backend/requirements.txt...");
-    await runChecked(python, ["-m", "pip", "install", "-r", requirementsFile], { cwd: backendDir });
+    await runChecked(python, ["-m", "pip", "install", "-r", requirementsFile], {
+      cwd: backendDir,
+      env: { ...process.env, PYTHONUTF8: "1" },
+    });
     writeFileSync(dependencyMarker, `${requirementsHash}\n`, "utf8");
   }
 }

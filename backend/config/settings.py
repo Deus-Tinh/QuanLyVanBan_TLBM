@@ -137,6 +137,21 @@ WSGI_APPLICATION = "config.wsgi.application"
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite3").lower()
 
 if DB_ENGINE in ("postgresql", "postgres"):
+    readonly_required = (
+        "DB_READONLY_USER",
+        "DB_READONLY_PASSWORD",
+        "DB_READONLY_NAME",
+        "DB_READONLY_HOST",
+        "DB_READONLY_PORT",
+    )
+    readonly_missing = [name for name in readonly_required if not os.getenv(name)]
+    if readonly_missing:
+        raise RuntimeError(
+            "PostgreSQL AI read-only connection requires: " + ", ".join(readonly_missing)
+        )
+    if os.environ["DB_READONLY_USER"] != "qlvb_readonly":
+        raise RuntimeError("DB_READONLY_USER must be qlvb_readonly for the AI SQL source")
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -146,6 +161,17 @@ if DB_ENGINE in ("postgresql", "postgres"):
             "HOST": os.getenv("DB_HOST", "localhost"),
             "PORT": os.getenv("DB_PORT", "5432"),
         }
+    }
+    DATABASES["readonly"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["DB_READONLY_NAME"],
+        "USER": os.environ["DB_READONLY_USER"],
+        "PASSWORD": os.environ["DB_READONLY_PASSWORD"],
+        "HOST": os.environ["DB_READONLY_HOST"],
+        "PORT": os.environ["DB_READONLY_PORT"],
+        "OPTIONS": {
+            "options": "-c default_transaction_read_only=on",
+        },
     }
 else:
     DATABASES = {

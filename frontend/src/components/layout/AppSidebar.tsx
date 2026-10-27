@@ -3,6 +3,7 @@ import { MAIN_MODULES } from '@lib/constants';
 import { ActivePageId } from '@app-types/navigation';
 import { useTranslation } from '@i18n/translate';
 import { Logo } from '@components/common/Logo';
+import { usePermissions } from '@lib/permissions';
 
 interface AppSidebarProps {
   isMobileOpen: boolean;
@@ -34,6 +35,10 @@ export default function AppSidebar({
   onTogglePin,
 }: AppSidebarProps) {
   const { t } = useTranslation();
+  const { loaded: permissionsLoaded, can } = usePermissions();
+  const visibleModules = MAIN_MODULES.filter(
+    (mod) => mod.id !== 'ai' || (permissionsLoaded && can('use_aiassistant')),
+  );
 
   // Trạng thái mở accordion của các module
   const [expandedModIds, setExpandedModIds] = useState<Record<string, boolean>>(() => {
@@ -76,7 +81,7 @@ export default function AppSidebar({
   };
 
   // Xác định mục đang active
-  const activeModule = MAIN_MODULES.find((mod) => {
+  const activeModule = visibleModules.find((mod) => {
     const isDirect = mod.id === 'dashboard' || mod.subItems.length <= 1;
     return isDirect
       ? committedPage === mod.defaultPage || committedPage === mod.id || previewPage === mod.defaultPage || previewPage === mod.id
@@ -111,7 +116,7 @@ export default function AppSidebar({
 
         {/* 2. Danh sách các icon - LUÔN PHÂN BỔ ĐỀU & NỀN XANH TỐI GIẢN, CHUẨN TÂM 100% */}
         <div className="flex-1 w-full flex flex-col justify-evenly items-center my-2">
-          {MAIN_MODULES.map((mod) => {
+          {visibleModules.map((mod) => {
             const isDirectPage = mod.id === 'dashboard' || mod.subItems.length <= 1;
             const isActive = activeId === mod.id;
             const modLabel = getModuleLabel(mod.id, mod.label);
@@ -234,7 +239,7 @@ export default function AppSidebar({
 
       {/* Danh sách 6 phân hệ chính (Tầng 1) - Bố cục ổn định, thoải mái, không bị nhảy vị trí */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5">
-        {MAIN_MODULES.map((mod) => {
+        {visibleModules.map((mod) => {
           const isDirectPage = mod.id === 'dashboard' || mod.subItems.length <= 1;
           const isModActive = isDirectPage
             ? committedPage === mod.defaultPage || committedPage === mod.id || previewPage === mod.defaultPage || previewPage === mod.id

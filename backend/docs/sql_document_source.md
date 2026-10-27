@@ -20,8 +20,12 @@ The source reads only the parent views. Recipient and issuing-unit views remain 
 
 1. Apply the DDL PR before enabling PostgreSQL-backed AI.
 2. Django settings and AI routes are rooted at `backend/config/settings.py` and `backend/config/urls.py`; `backend/django_project/` retains compatibility imports.
-3. Create `qlvb_readonly` outside the DDL and set `DB_READONLY_USER` / `DB_READONLY_PASSWORD` from deployment secrets.
+3. PostgreSQL startup requires all five `DB_READONLY_*` values and requires `DB_READONLY_USER=qlvb_readonly`. The `readonly` alias uses those values directly and does not inherit credentials or connection fields from `default`. Create `qlvb_readonly` outside the DDL and set its password through local environment configuration or deployment secrets.
 4. The host authentication integration must set `request.employee_id` from the authenticated employee record. If `view_tailieu` is granted and that identity is missing, the request fails closed.
 5. The permission seed must provide the codenames listed above. Cross-check with Group 2's `van_ban_xem_duoc` in tests when that contract is available; do not import it into the runtime path.
+
+## Local PostgreSQL setup
+
+`release_DDL.sql` grants view access only when `qlvb_readonly` already exists; the role is intentionally not created or assigned a password by the DDL. Provision the local role through the database administration environment, then apply the DDL using the documented `pnpm db:setup` / `pnpm db:reset` flow. Configure `DB_READONLY_NAME=qlvb_dev`, `DB_READONLY_HOST=127.0.0.1`, and `DB_READONLY_PORT=55432` for the Compose database, with the locally provisioned role and password. Do not use the application role as a fallback. Verify using `python backend/manage.py shell` with the `readonly` connection: `current_user` must be `qlvb_readonly`, `transaction_read_only` must be on, and SELECT from each granted `ai_*` view must succeed while SELECT from source tables fails.
 
 No runtime or production database was modified by this change.

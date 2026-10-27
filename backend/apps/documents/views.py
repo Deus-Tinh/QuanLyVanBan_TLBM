@@ -670,7 +670,7 @@ class FolderViewSet(viewsets.ModelViewSet):
     """
     queryset = Folder.objects.all().select_related("parent", "created_by").prefetch_related("children", "files")
     serializer_class = FolderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -927,7 +927,7 @@ class FolderFileViewSet(viewsets.ModelViewSet):
     """ViewSet quản lý file trong thư mục."""
     queryset = FolderFile.objects.all().select_related("folder", "uploaded_by")
     serializer_class = FolderFileSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()

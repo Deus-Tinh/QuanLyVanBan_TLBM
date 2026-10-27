@@ -135,8 +135,11 @@ Test backend chạy trên PostgreSQL (test DB do Django dựng bằng migration)
 | `GEMINI_API_KEY` | *(bỏ trống)* | API Key Gemini của Google |
 | `LLM_MODEL` | `gemini-3.8-flash` | Tên mô hình ngôn ngữ chính |
 | `EMBED_MODEL` | `models/gemini-embedding-001` | Mô hình nhúng vector |
-| `READONLY_DB_NAME` | *(tùy chọn)* | Tên CSDL PostgreSQL cho kết nối chỉ đọc |
-| `READONLY_DB_USER` | `qlvb_readonly` | Role chỉ đọc an toàn theo DDL mới |
+| `DB_READONLY_USER` | `qlvb_readonly` | Role chỉ đọc riêng; bắt buộc khi dùng PostgreSQL |
+| `DB_READONLY_PASSWORD` | *(bắt buộc cấu hình)* | Mật khẩu role chỉ đọc, lưu trong cấu hình môi trường/secret store |
+| `DB_READONLY_NAME` | *(bắt buộc cấu hình)* | Tên CSDL cho kết nối chỉ đọc |
+| `DB_READONLY_HOST` | *(bắt buộc cấu hình)* | Host CSDL cho kết nối chỉ đọc |
+| `DB_READONLY_PORT` | *(bắt buộc cấu hình)* | Cổng CSDL cho kết nối chỉ đọc |
 
 ---
 
