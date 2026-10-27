@@ -84,6 +84,8 @@ export interface NguoiKyLuot {
   vai_tro_ky: VaiTroKy;
   chan_ky_chinh: boolean;
   trang_thai: TrangThaiNguoiKy;
+  /** Backend policy projection for the current user; missing means not eligible. */
+  co_the_uy_quyen?: boolean;
   thoi_diem_mo: string | null;
   ngay_ky: string | null;
   ngay_tu_choi: string | null;

@@ -322,6 +322,10 @@ def _doc_khoang_ngay(tham_so):
     return khoang
 
 
+def _du_lieu_chi_tiet_trinh_ky(ho_so, request):
+    return TrinhKyChiTietSerializer(ho_so, context={"request": request}).data
+
+
 def tu_khoa_tim_kiem(gia_tri):
     """Từ khóa tìm kiếm: bỏ ký tự NUL (PostgreSQL không nhận trong văn bản), cắt khoảng trắng, tối đa 100 ký tự."""
     return (gia_tri or "").replace("\x00", "").strip()[:100]
@@ -382,21 +386,21 @@ class TrinhKyListCreateView(SigningAPIView):
         data = TrinhKyTaoSerializer(data=request.data)
         data.is_valid(raise_exception=True)
         ho_so = trinh_ky_service.tao_nhap(request.user, dia_chi_ip=_ip(request), **data.validated_data)
-        return Response(TrinhKyChiTietSerializer(ho_so).data, status=status.HTTP_201_CREATED)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ho_so, request), status=status.HTTP_201_CREATED)
 
 
 class TrinhKyDetailView(SigningAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, pk):
-        return Response(TrinhKyChiTietSerializer(_ho_so_xem_duoc(request, pk)).data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(_ho_so_xem_duoc(request, pk), request))
 
     def patch(self, request, pk):
         ho_so = _ho_so_xem_duoc(request, pk)
         data = TrinhKySuaSerializer(data=request.data, partial=True)
         data.is_valid(raise_exception=True)
         ho_so = trinh_ky_service.cap_nhat_nhap(ho_so, request.user, dia_chi_ip=_ip(request), **data.validated_data)
-        return Response(TrinhKyChiTietSerializer(ho_so).data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ho_so, request))
 
 
 class TrinhKyActionView(SigningAPIView):
@@ -429,7 +433,7 @@ class TrinhKyActionView(SigningAPIView):
             ket_qua = trinh_ky_service.trinh_lai(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip,
                                                  han_chot=data.validated_data.get("han_chot"))
             code = status.HTTP_201_CREATED
-        return Response(TrinhKyChiTietSerializer(ket_qua).data, status=code)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ket_qua, request), status=code)
 
 
 class TrinhKyTepView(SigningAPIView):
@@ -487,7 +491,7 @@ class HanhDongKyView(SigningAPIView):
                                                 ly_do_tu_choi=data.validated_data["ly_do_tu_choi"])
         else:  # thu-hoi
             ket_qua = hanh_dong_service.thu_hoi(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=ip)
-        return Response(TrinhKyChiTietSerializer(ket_qua).data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ket_qua, request))
 
 
 class UyQuyenView(SigningAPIView):
@@ -507,7 +511,7 @@ class UyQuyenView(SigningAPIView):
             ho_so, request.user, dong_nguoi_ky=data.validated_data["dong_nguoi_ky"],
             nguoi_nhan=data.validated_data["nguoi_nhan"], ly_do=data.validated_data["ly_do_uy_quyen"],
             khoa_chong_trung=khoa, dia_chi_ip=_ip(request))
-        return Response(TrinhKyChiTietSerializer(ket_qua).data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ket_qua, request))
 
 
 # ── Trả lại để sửa (lõi Phase 9, #80; plan mục 3.3 "Nhánh 2") ───────────────
@@ -524,7 +528,7 @@ class YeuCauSuaView(SigningAPIView):
         data.is_valid(raise_exception=True)
         ket_qua = yeu_cau_sua_service.yeu_cau_sua(ho_so, request.user, khoa_chong_trung=khoa, dia_chi_ip=_ip(request),
                                                   **data.validated_data)
-        return Response(TrinhKyChiTietSerializer(ket_qua).data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ket_qua, request))
 
 
 class TraoDoiView(SigningAPIView):
@@ -569,7 +573,7 @@ class GiaiQuyetView(SigningAPIView):
         ket_qua = yeu_cau_sua_service.giai_quyet(ho_so, request.user, tep=data.validated_data["tep"],
                                                  vi_tri_ky=data.validated_data["vi_tri_ky"],
                                                  khoa_chong_trung=khoa, dia_chi_ip=_ip(request))
-        return Response(TrinhKyChiTietSerializer(ket_qua).data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ket_qua, request))
 
 
 # ── Bằng chứng tổng hợp và tệp hoàn tất (lõi Phase 10, #80 mục D) ──────────
@@ -610,7 +614,7 @@ class TaoLaiTepHoanTatView(SigningAPIView):
     def post(self, request, pk):
         ho_so = _ho_so_xem_duoc(request, pk)
         tep_hoan_tat_service.tao_lai_tep_hoan_tat(ho_so, request.user)
-        return Response(TrinhKyChiTietSerializer(SigningRequest.objects.get(pk=ho_so.pk)).data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(SigningRequest.objects.get(pk=ho_so.pk), request))
 
 
 class AnhChuKyView(SigningAPIView):

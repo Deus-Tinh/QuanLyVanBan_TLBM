@@ -94,6 +94,27 @@ class UyQuyenTests(KyBase):
         r = self.uy_quyen(User.objects.get(pk=truong_phong.pk), dong=dong_ky3, khoa="uq-2")  # cấp chưa mở
         self.assertEqual(r.status_code, 200, r.data)
 
+    def test_detail_marks_only_signers_allowed_by_current_users_delegation_scope(self):
+        don_vi, don_vi_khac = tao_don_vi(), tao_don_vi()
+        User.objects.filter(pk__in=[self.ky1.pk, self.ky2.pk]).update(don_vi=don_vi)
+        User.objects.filter(pk=self.ky3.pk).update(don_vi=don_vi_khac)
+        User.objects.filter(pk=self.tao.pk).update(don_vi=don_vi)
+        truong_phong = User.objects.get(pk=self.tao.pk)
+        cap_quyen(truong_phong, "delegate_trinhky")
+        vao_nhom(truong_phong, "TP")
+
+        response = self.client_cua(truong_phong).get(f"{BASE}/{self.pk}/")
+        self.assertEqual(response.status_code, 200, response.data)
+        nguoi_ky = {
+            signer["nguoi_ky"]: signer
+            for luot in response.data["luot_trinh"]
+            for cap in luot["cap_ky"]
+            for signer in cap["nguoi_ky"]
+        }
+        self.assertTrue(nguoi_ky[self.ky1.pk]["co_the_uy_quyen"])
+        self.assertTrue(nguoi_ky[self.ky2.pk]["co_the_uy_quyen"])
+        self.assertFalse(nguoi_ky[self.ky3.pk]["co_the_uy_quyen"])
+
     def test_rejections(self):
         self.assertEqual(self.uy_quyen(self.quan_tri, ly_do="  ").status_code, 400)
         r = self.uy_quyen(self.quan_tri, nguoi_nhan=self.ky2, khoa="uq-a")  # đã có trong cấp

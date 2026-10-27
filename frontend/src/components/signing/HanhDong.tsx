@@ -53,7 +53,7 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
   // Người ký còn chờ ký (cấp đang ký hoặc chưa mở) của lượt hiện hành: đối tượng ủy quyền khẩn cấp
   const choUyQuyen = luot?.trang_thai === 'CHO_KY' && coQuyen(toi, 'delegate_trinhky')
     ? luot.cap_ky.filter((c) => c.trang_thai === 'DANG_KY' || c.trang_thai === 'CHUA_MO')
-      .flatMap((c) => c.nguoi_ky.filter((n) => n.trang_thai === 'CHO_KY' && n.nguoi_ky !== toi?.id)
+      .flatMap((c) => c.nguoi_ky.filter((n) => n.trang_thai === 'CHO_KY' && n.co_the_uy_quyen === true)
         .map((n) => ({ ...n, ten_cap: `${c.cap_ky}. ${c.ten_cap_ky}` })))
     : [];
 

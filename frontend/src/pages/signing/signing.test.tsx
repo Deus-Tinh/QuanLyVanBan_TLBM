@@ -304,7 +304,7 @@ describe('Ủy quyền ký', () => {
   });
 
   it('chọn người ký, tìm người nhận, nhập lý do rồi gửi đúng payload kèm Idempotency-Key', async () => {
-    const luot = luotCo([nguoiKy({}), nguoiKy({ id: 22, nguoi_ky: 10, ten_nguoi_ky: 'Đã ký', trang_thai: 'DA_KY' })]);
+    const luot = luotCo([nguoiKy({ co_the_uy_quyen: true }), nguoiKy({ id: 22, nguoi_ky: 10, ten_nguoi_ky: 'Đã ký', trang_thai: 'DA_KY' })]);
     const ho_so = hoSo({ luot_trinh: [luot] });
     api.timNguoiNhanUyQuyen.mockResolvedValue([
       { id: 15, ten: 'Phó giám đốc', ten_dang_nhap: 'pgd', chuc_vu: 'Phó giám đốc', don_vi_id: 1, don_vi: 'Ban TGĐ' },
@@ -324,6 +324,23 @@ describe('Ủy quyền ký', () => {
     await waitFor(() => expect(api.uyQuyen).toHaveBeenCalledWith(12, expect.any(String),
       { dong_nguoi_ky: 21, nguoi_nhan: 15, ly_do_uy_quyen: 'Đi công tác' }));
     await waitFor(() => expect(xong).toHaveBeenCalledWith(ho_so));
+  });
+
+  it('chỉ cho chọn người ký mà backend xác nhận người hiện tại được ủy quyền', async () => {
+    const truongPhong = {
+      ...TOI, id: 4, la_lanh_dao_don_vi: true,
+      quyen: { ...TOI.quyen, delegate_trinhky: true },
+    };
+    const luot = luotCo([
+      nguoiKy({ id: 31, nguoi_ky: 5, ten_nguoi_ky: 'Giám đốc', co_the_uy_quyen: false }),
+      nguoiKy({ id: 32, nguoi_ky: 10, ten_nguoi_ky: 'Chuyên viên cùng đơn vị', co_the_uy_quyen: true }),
+    ]);
+    boc(<HanhDong hoSo={hoSo({ luot_trinh: [luot] })} luot={luot} maBamTepDangXem={null} onXong={() => undefined} />,
+      truongPhong);
+    fireEvent.click(screen.getByRole('button', { name: /Ủy quyền ký/ }));
+    const chonNguoiKy = await screen.findByRole('combobox', { name: /Người ký được thay/ });
+    expect(within(chonNguoiKy).queryByRole('option', { name: /Giám đốc/ })).not.toBeInTheDocument();
+    expect(within(chonNguoiKy).getByRole('option', { name: /Chuyên viên cùng đơn vị/ })).toBeInTheDocument();
   });
 
   it('tiến trình hiện người ký thay', () => {
