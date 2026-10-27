@@ -35,6 +35,7 @@ export const OutboundDocumentPage: React.FC = () => {
     page_size: 10,
     loai: 'DI',
     loai_van_ban: loaiVanBanParam || undefined,
+    ho_so: searchParams.get('ho_so') || undefined,
     pham_vi: (phamViParam as 'NOI_BO' | 'HAN_CHE' | 'ALL') || 'NOI_BO',
   });
 
@@ -47,10 +48,14 @@ export const OutboundDocumentPage: React.FC = () => {
     if (currentFilters.den_ngay) nextParams.set('den_ngay', currentFilters.den_ngay);
     if (currentFilters.hieu_luc) nextParams.set('hieu_luc', currentFilters.hieu_luc);
     if (currentFilters.loai_van_ban) nextParams.set('loai_van_ban', String(currentFilters.loai_van_ban));
-    if (currentFilters.ho_so) nextParams.set('ho_so', currentFilters.ho_so);
-    if (currentFilters.pham_vi && currentFilters.pham_vi !== 'NOI_BO') {
-      nextParams.set('pham_vi', String(currentFilters.pham_vi));
+    if (currentFilters.ho_so) {
+      nextParams.set('ho_so', currentFilters.ho_so);
+      const dossierName = searchParams.get('ten_ho_so');
+      if (currentFilters.ho_so === searchParams.get('ho_so') && dossierName) {
+        nextParams.set('ten_ho_so', dossierName);
+      }
     }
+    if (currentFilters.pham_vi) nextParams.set('pham_vi', String(currentFilters.pham_vi));
     if (currentFilters.page && currentFilters.page > 1) nextParams.set('page', String(currentFilters.page));
 
     // Bảo toàn các params trạng thái modal (detail, viewers, action, edit)
