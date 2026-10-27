@@ -39,7 +39,7 @@ vi.mock('@lib/signing/api', async () => {
   return { ...actual, signingApi: {
     toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
     xoaQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
-    uyQuyen: vi.fn(), timNguoiNhanUyQuyen: vi.fn(),
+    uyQuyen: vi.fn(), timNguoiNhanUyQuyen: vi.fn(), thaoTacQuyTrinh: vi.fn(),
   } };
 });
 // pdfjs-dist cần DOMMatrix/canvas của trình duyệt; jsdom không có, nên chỉ thay lớp vẽ PDF.
@@ -251,6 +251,17 @@ describe('HanhDong', () => {
     fireEvent.change(screen.getByLabelText(/Nhập PIN ký/), { target: { value: '48273916' } });
     await waitFor(() => expect(screen.getAllByRole('button', { name: /Ký duyệt/ }).at(-1)).toBeDisabled());
   });
+
+  it('hộp thoại không đồng ý hiển thị cảnh báo từ chối vĩnh viễn và cho phép chuyển sang trả lại để sửa', async () => {
+    boc(<HanhDong hoSo={hoSo()} luot={hoSo().luot_trinh[0]} maBamTepDangXem={'a'.repeat(64)} onXong={() => undefined} />);
+    fireEvent.click(screen.getByRole('button', { name: /Không đồng ý ban hành/ }));
+    const hop = await screen.findByRole('dialog');
+    expect(hop).toHaveTextContent(/kết thúc hoàn toàn hồ sơ và không thể mở lại/);
+    const nutChuyen = screen.getByRole('button', { name: /Chuyển sang/ });
+    expect(nutChuyen).toBeInTheDocument();
+    fireEvent.click(nutChuyen);
+    expect(screen.getByRole('dialog')).toHaveTextContent(/Trả lại để sửa/);
+  });
 });
 
 function nguoiKy(sua: Partial<NguoiKyLuot>): NguoiKyLuot {
@@ -390,6 +401,34 @@ describe('QuyTrinhPage', () => {
     expect(api.xoaQuyTrinh).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Xác nhận/ }));
     await waitFor(() => expect(api.xoaQuyTrinh).toHaveBeenCalledWith(2));
+  });
+
+  it('nhân bản quy trình hoạt động tự động mở ngay form chỉnh sửa phiên bản mới', async () => {
+    const qtHoatDong: QuyTrinh = { ...QT, id: 1, phien_ban: 1, trang_thai: 'HOAT_DONG' };
+    const qtMoi: QuyTrinh = { ...QT, id: 99, phien_ban: 2, trang_thai: 'NHAP' };
+    api.quyTrinh.mockResolvedValue([qtHoatDong]);
+    api.thaoTacQuyTrinh.mockResolvedValue(qtMoi);
+    boc(<QuyTrinhPage />, TP);
+    await screen.findByText('Duyệt kế hoạch');
+    const nutNhanBan = screen.getByRole('button', { name: /Tạo phiên bản mới/ });
+    fireEvent.click(nutNhanBan);
+    await waitFor(() => expect(api.thaoTacQuyTrinh).toHaveBeenCalledWith(1, 'nhan-ban'));
+    expect(await screen.findByRole('dialog', { name: /Sửa quy trình/ })).toBeInTheDocument();
+  });
+
+  it('modal chi tiết có nút hành động: nháp có nút Sửa, hoạt động có nút Tạo phiên bản mới', async () => {
+    const qtHoatDong: QuyTrinh = { ...QT, id: 1, phien_ban: 1, trang_thai: 'HOAT_DONG' };
+    api.quyTrinh.mockResolvedValue([qtHoatDong]);
+    api.chiTietQuyTrinh.mockResolvedValue(qtHoatDong);
+    api.thaoTacQuyTrinh.mockResolvedValue({ ...qtHoatDong, id: 2, phien_ban: 2, trang_thai: 'NHAP' });
+    boc(<QuyTrinhPage />, TP);
+    await screen.findByText('Duyệt kế hoạch');
+    fireEvent.click(screen.getByRole('button', { name: /Xem chi tiết/ }));
+    const hop = await screen.findByRole('dialog', { name: /Chi tiết quy trình/ });
+    const nutNhanBan = within(hop).getByRole('button', { name: /Tạo phiên bản mới/ });
+    expect(nutNhanBan).toBeInTheDocument();
+    fireEvent.click(nutNhanBan);
+    await waitFor(() => expect(api.thaoTacQuyTrinh).toHaveBeenCalledWith(1, 'nhan-ban'));
   });
 });
 

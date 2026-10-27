@@ -433,13 +433,37 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
   );
 }
 
-function ChiTietQuyTrinh({ id, onDong }: { id: number; onDong: () => void }) {
+function ChiTietQuyTrinh({
+  id,
+  quanLy = false,
+  onDong,
+  onSua,
+  onNhanBan,
+}: {
+  id: number;
+  quanLy?: boolean;
+  onDong: () => void;
+  onSua?: (q: QuyTrinh) => void;
+  onNhanBan?: (q: QuyTrinh) => void;
+}) {
   const { t, loi } = useSigningT();
   const ct = useTai(() => signingApi.chiTietQuyTrinh(id), [id]);
   const q = ct.duLieu;
   return (
     <HopThoai moTieuDe={t('quyTrinh.chiTiet')} mo onDong={onDong}
-      chanDuoi={<Button variant="secondary" onClick={onDong}>{t('chung.dong')}</Button>}>
+      chanDuoi={
+        <div className="flex w-full items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {quanLy && q?.trang_thai === 'NHAP' && onSua && (
+              <Button size="sm" icon="fa-pen" onClick={() => onSua(q)}>{t('quyTrinh.sua')}</Button>
+            )}
+            {quanLy && q && (q.trang_thai === 'HOAT_DONG' || q.trang_thai === 'NGUNG') && onNhanBan && (
+              <Button size="sm" variant="secondary" icon="fa-copy" onClick={() => onNhanBan(q)}>{t('quyTrinh.nhanBan')}</Button>
+            )}
+          </div>
+          <Button variant="secondary" onClick={onDong}>{t('chung.dong')}</Button>
+        </div>
+      }>
       {ct.dangTai && <DangTai />}
       {ct.loi && <LoiTai thongBao={loi(ct.loi)} onThuLai={ct.tai} />}
       {q && (
@@ -522,7 +546,10 @@ export default function QuyTrinhPage() {
     setDangThaoTac(true);
     setThongBao('');
     try {
-      await signingApi.thaoTacQuyTrinh(q.id, loai);
+      const banMoi = await signingApi.thaoTacQuyTrinh(q.id, loai);
+      if (loai === 'nhan-ban' && banMoi) {
+        setDangSua(banMoi);
+      }
       ds.tai();
     } catch (err) {
       setThongBao(loi(err));
@@ -633,7 +660,21 @@ export default function QuyTrinhPage() {
       {dangSua && (
         <FormTao key={dangSua.id} mo banDau={dangSua} onDong={() => setDangSua(null)} onXong={() => { setDangSua(null); ds.tai(); }} />
       )}
-      {xemId !== null && <ChiTietQuyTrinh id={xemId} onDong={() => setXemId(null)} />}
+      {xemId !== null && (
+        <ChiTietQuyTrinh
+          id={xemId}
+          quanLy={quanLy}
+          onDong={() => setXemId(null)}
+          onSua={(q) => {
+            setXemId(null);
+            setDangSua(q);
+          }}
+          onNhanBan={(q) => {
+            setXemId(null);
+            thaoTac(q, 'nhan-ban');
+          }}
+        />
+      )}
       {canNgung && (
         <HopThoai moTieuDe={t('quyTrinh.ngung')} mo onDong={() => setCanNgung(null)}
           chanDuoi={<>

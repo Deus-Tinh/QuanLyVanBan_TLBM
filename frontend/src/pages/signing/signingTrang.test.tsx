@@ -9,9 +9,9 @@ import XemPdf from '@components/signing/XemPdf';
 import TraoDoiPanel from '@components/signing/TraoDoiPanel';
 import { signingApi } from '@lib/signing/api';
 import { SigningContext } from '@lib/signing/hooks';
-import type { HoSoChiTiet, KhoaKy, LuotTrinh, NguoiDungHienTai } from '@lib/signing/types';
+import type { HoSoChiTiet, KhoaKy, LuotTrinh, NguoiDungHienTai, QuyTrinh } from '@lib/signing/types';
 import KhoaPage from './KhoaPage';
-import TaoHoSoPage from './TaoHoSoPage';
+import TaoHoSoPage, { Buoc2 } from './TaoHoSoPage';
 
 vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
@@ -122,6 +122,39 @@ describe('TaoHoSoPage văn bản trình ký', () => {
     expect([form.get('van_ban_id'), form.get('document_type')]).toEqual([null, null]);
     expect([form.get('so_hieu_van_ban'), form.get('trich_yeu_van_ban'), form.get('quy_trinh')])
       .toEqual(['05/TTr', 'Tờ trình đào tạo', '2']);
+  });
+});
+
+describe('Buoc2 định vị khung ký', () => {
+  const QT_GIA_LAP = {
+    id: 1, ma_quy_trinh: 'QT1', ten_quy_trinh: 'Quy trình thử', mo_ta: '', phien_ban: 1, trang_thai: 'HOAT_DONG',
+    pham_vi: 'CONG_TY', don_vi_ap_dung_id: null, ten_don_vi_ap_dung: null, so_ho_so: 0,
+    cap_ky: [{
+      id: 10, cap_ky: 1, ten_cap_ky: 'Phê duyệt', bat_buoc: true, loai_ky: 'KY_DUYET',
+      nguoi_ky: [{ id: 101, ten_nguoi_ky: 'Nguyễn Văn A', vai_tro_ky: 'KY_CHINH', nguoi_ky: 1, chuc_vu: null, loai_nguoi_ky: 'CAN_BO', chan_ky_chinh: true }],
+    }],
+  };
+  const HO_SO_GIA_LAP = {
+    id: 12, document_type: 'vanbandi', van_ban_id: 3, so_hieu_van_ban: '', trich_yeu_van_ban: '',
+    van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
+    quy_trinh: 1, ma_quy_trinh: 'QT1', ten_quy_trinh: 'Quy trình thử', phien_ban_quy_trinh: 1,
+    trang_thai: 'CHO_KY', han_chot: null, ngay_gui: null, ngay_hoan_thanh: null, ly_do_tu_choi: '', ly_do_huy: '',
+    ghi_chu: '', ho_so_goc: null, phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64), create_by: 3,
+    ten_nguoi_tao: 'Văn thư', created_at: '2026-10-07T01:00:00Z', dang_cho: [], luot_trinh: [], lich_su: [],
+    trang_thai_luot: 'CHO_KY', qua_han: false,
+  } as unknown as HoSoChiTiet;
+
+  it('nút Đặt trang cuối tự động gán vị trí trang cuối và cho phép bỏ khung', async () => {
+    boc(<Buoc2 hoSo={HO_SO_GIA_LAP} tep={new ArrayBuffer(8)} quyTrinh={QT_GIA_LAP as unknown as QuyTrinh} />);
+    expect(screen.getByText('Chưa đặt vị trí (chỉ hiện trên trang phê duyệt)')).toBeInTheDocument();
+    const nutDatTrangCuoi = screen.getByRole('button', { name: /Đặt trang cuối/ });
+    expect(nutDatTrangCuoi).toBeInTheDocument();
+    fireEvent.click(nutDatTrangCuoi);
+    await waitFor(() => expect(screen.getByText('Trang 1')).toBeInTheDocument());
+    const nutBoKhung = screen.getByRole('button', { name: /Bỏ khung/ });
+    expect(nutBoKhung).toBeInTheDocument();
+    fireEvent.click(nutBoKhung);
+    await waitFor(() => expect(screen.getByText('Chưa đặt vị trí (chỉ hiện trên trang phê duyệt)')).toBeInTheDocument());
   });
 });
 
