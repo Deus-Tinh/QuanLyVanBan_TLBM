@@ -180,6 +180,17 @@ function ChiTietHoSo({ id }: { id: number }) {
             <summary className="cursor-pointer text-sm font-bold text-secondary">
               {t('chiTiet.luot', { so: l.so_luot })} · {t(`trangThai.${l.trang_thai}`)}
             </summary>
+            {l.yeu_cau_sua.length > 0 && (
+              <div className="mt-3 rounded-lg border border-purple-border bg-purple-subtle p-3 text-sm">
+                <div className="font-bold text-purple break-words">{l.yeu_cau_sua[0].tieu_de}</div>
+                <div className="text-main whitespace-pre-wrap break-words mt-0.5">{l.yeu_cau_sua[0].ly_do}</div>
+              </div>
+            )}
+            {l.ly_do && l.yeu_cau_sua.length === 0 && (
+              <div className="mt-3 rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm">
+                <div className="text-danger break-words">{l.ly_do}</div>
+              </div>
+            )}
             <div className="mt-3"><TienTrinh luot={l} toiId={toi?.id} /></div>
           </details>
         ))}
