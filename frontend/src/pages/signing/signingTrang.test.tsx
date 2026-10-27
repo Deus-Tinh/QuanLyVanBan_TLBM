@@ -53,7 +53,7 @@ const LUOT: LuotTrinh = {
 
 function hoSo(sua: Partial<HoSoChiTiet> = {}): HoSoChiTiet {
   return {
-    id: 12, document_type: 'vanbandi', van_ban_id: 3, van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
+    id: 12, document_type: 'vanbandi', van_ban_id: 3, so_hieu_van_ban: '', trich_yeu_van_ban: '', van_ban: { so_hieu: '15/TTr', trich_yeu: 'Mua sắm' },
     quy_trinh: 1, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt', phien_ban_quy_trinh: 1, trang_thai: 'HOAN_THANH',
     han_chot: null, ngay_gui: null, ngay_hoan_thanh: null, ly_do_tu_choi: '', ly_do_huy: '', ghi_chu: '', ho_so_goc: null,
     phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64), create_by: 3, ten_nguoi_tao: 'Văn thư',
@@ -76,7 +76,7 @@ describe('TaoHoSoPage', () => {
     api.timVanBanDi.mockResolvedValue([{ id: 7, so_hieu: '15/TTr', trich_yeu: 'Mua sắm' }]);
     api.quyTrinh.mockResolvedValue([{
       id: 2, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt hai cấp', mo_ta: '', phien_ban: 1, trang_thai: 'HOAT_DONG',
-      pham_vi: 'CONG_TY', don_vi_ap_dung_id: null, ten_don_vi_ap_dung: null, cap_ky: [],
+      pham_vi: 'CONG_TY', don_vi_ap_dung_id: null, ten_don_vi_ap_dung: null, cap_ky: [], so_ho_so: 0,
     }]);
     api.taoNhap.mockReturnValue(new Promise(() => undefined));
     boc(<TaoHoSoPage />);
@@ -84,7 +84,7 @@ describe('TaoHoSoPage', () => {
     expect(luu).toBeDisabled();
     fireEvent.click(await screen.findByRole('button', { name: /15\/TTr/ }));
     fireEvent.change(screen.getByLabelText(/Quy trình ký/), { target: { value: '2' } });
-    fireEvent.change(screen.getByLabelText(/Tệp PDF dự thảo/), {
+    fireEvent.change(screen.getByLabelText(/Tệp PDF trình ký/), {
       target: { files: [new File(['%PDF-1.4'], 'du-thao.pdf', { type: 'application/pdf' })] },
     });
     await waitFor(() => expect(luu).toBeEnabled());
@@ -92,6 +92,36 @@ describe('TaoHoSoPage', () => {
     await waitFor(() => expect(api.taoNhap).toHaveBeenCalledTimes(1));
     const form = api.taoNhap.mock.calls[0][0] as FormData;
     expect([form.get('document_type'), form.get('van_ban_id'), form.get('quy_trinh')]).toEqual(['vanbandi', '7', '2']);
+  });
+});
+
+describe('TaoHoSoPage văn bản trình ký', () => {
+  it('không bắt buộc chọn văn bản đi: nhập văn bản khác (số hiệu, trích yếu) rồi lưu nháp', async () => {
+    api.timVanBanDi.mockResolvedValue([{ id: 7, so_hieu: '15/TTr', trich_yeu: 'Mua sắm' }]);
+    api.quyTrinh.mockResolvedValue([{
+      id: 2, ma_quy_trinh: 'QT', ten_quy_trinh: 'Duyệt hai cấp', mo_ta: '', phien_ban: 1, trang_thai: 'HOAT_DONG',
+      pham_vi: 'CONG_TY', don_vi_ap_dung_id: null, ten_don_vi_ap_dung: null, cap_ky: [], so_ho_so: 0,
+    }]);
+    api.taoNhap.mockReturnValue(new Promise(() => undefined));
+    boc(<TaoHoSoPage />);
+    expect(await screen.findByText('Văn bản trình ký')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/Nhập văn bản khác/));
+    expect(screen.queryByRole('button', { name: /15\/TTr/ })).not.toBeInTheDocument();
+    fireEvent.change(await screen.findByLabelText(/Quy trình ký/), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText(/Tệp PDF trình ký/), {
+      target: { files: [new File(['%PDF-1.4'], 'to-trinh.pdf', { type: 'application/pdf' })] },
+    });
+    const luu = screen.getByRole('button', { name: /Lưu nháp và xem trước/ });
+    expect(luu).toBeDisabled();  // chưa có trích yếu
+    fireEvent.change(screen.getByLabelText('Số hiệu (tùy chọn)'), { target: { value: '05/TTr' } });
+    fireEvent.change(screen.getByLabelText('Trích yếu'), { target: { value: 'Tờ trình đào tạo' } });
+    await waitFor(() => expect(luu).toBeEnabled());
+    fireEvent.click(luu);
+    await waitFor(() => expect(api.taoNhap).toHaveBeenCalledTimes(1));
+    const form = api.taoNhap.mock.calls[0][0] as FormData;
+    expect([form.get('van_ban_id'), form.get('document_type')]).toEqual([null, null]);
+    expect([form.get('so_hieu_van_ban'), form.get('trich_yeu_van_ban'), form.get('quy_trinh')])
+      .toEqual(['05/TTr', 'Tờ trình đào tạo', '2']);
   });
 });
 
