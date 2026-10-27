@@ -99,6 +99,7 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
   };
 
   const ky = () => thucHien(async () => {
+    if (!toi || !luot) throw new Error('khong_co_quyen');
     const khoa_ky = khoaHoatDong(await signingApi.khoa());
     if (!khoa_ky) throw new Error('thieu_ban_boc_thiet_bi');
     const chu_ky_so = await kyBangPin(toi.id, khoa_ky, pin, luot.ma_bam_tai_lieu, fileKhoa ?? undefined);
@@ -186,6 +187,25 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
       <HopThoai moTieuDe={t('hanhDong.khongDongY')} mo={mo === 'tu_choi'} onDong={dong} dangXuLy={dangLam}
         chanDuoi={nutXacNhan(() => thucHien(() => signingApi.tuChoi(hoSo.id, khoa.lay(), o1)),
           t('hanhDong.khongDongY'), 'danger', !o1.trim())}>
+        <div className="rounded-lg border border-warning bg-warning-subtle/30 p-3 text-xs text-warning-text space-y-2">
+          <div className="flex items-start gap-2">
+            <i className="fa-solid fa-triangle-exclamation mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+            <p className="leading-relaxed">{t('hanhDong.canhBaoTuChoi')}</p>
+          </div>
+          <button
+            type="button"
+            className="text-primary hover:underline font-semibold flex items-center gap-1.5 pt-1"
+            onClick={() => {
+              setMo('sua');
+              setO1('');
+              setO2('');
+              setThongBao('');
+            }}
+          >
+            <i className="fa-solid fa-arrow-right-arrow-left text-xs" aria-hidden="true" />
+            <span>{t('hanhDong.chuyenSangTraSua')}</span>
+          </button>
+        </div>
         <TruongNhap nhan={t('hanhDong.lyDoTuChoi')}>
           <textarea className={LOP_O_NHAP} rows={4} maxLength={GIOI_HAN.lyDo} value={o1} onChange={(e) => setO1(e.target.value)} />
         </TruongNhap>
