@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import AppSidebar from '@components/layout/AppSidebar';
 import AppHeader from '@components/layout/AppHeader';
@@ -84,7 +84,7 @@ export default function MainLayout({
   const [isSidebarHovered, setIsSidebarHovered] = useState<boolean>(false);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCloseSidebar = () => {
+  const handleCloseSidebar = useCallback(() => {
     // Nếu trên Desktop (>= 1024px) và đang ghim, không đóng và không hủy ghim khi click/điều hướng
     if (typeof window !== 'undefined' && window.innerWidth >= 1024 && isSidebarPinned) {
       return;
@@ -96,7 +96,7 @@ export default function MainLayout({
       hoverLeaveTimerRef.current = null;
     }
     localStorage.setItem('tlbm_sidebar_open_v2', 'false');
-  };
+  }, [isSidebarPinned]);
 
   const handleCollapseSidebar = () => {
     // Khi người dùng chủ động bấm nút thu gọn (chevron-left), mới hủy ghim và đóng sidebar
@@ -286,13 +286,12 @@ export default function MainLayout({
       window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isEffectiveSidebarOpen]);
+  }, [isEffectiveSidebarOpen, handleCloseSidebar]);
 
   // Trạng thái cuộn trang (khi cuộn > 60px, thu gọn TopSubNav và dời Home + Search lên AppHeader trên màn hình lớn)
   const [isScrolled, setIsScrolled] = useState<boolean>(false);
 
   useEffect(() => {
-    setIsScrolled(false);
     const scrollContainer = document.querySelector('.page-viewport');
     if (scrollContainer) {
       scrollContainer.scrollTop = 0;
@@ -303,12 +302,17 @@ export default function MainLayout({
       setIsScrolled(scrollY > 60);
     };
 
+    const rafId = requestAnimationFrame(() => {
+      handleScroll();
+    });
+
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     }
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
+      cancelAnimationFrame(rafId);
       if (scrollContainer) {
         scrollContainer.removeEventListener('scroll', handleScroll);
       }

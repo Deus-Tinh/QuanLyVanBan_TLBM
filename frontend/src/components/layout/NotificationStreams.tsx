@@ -179,7 +179,7 @@ export default function NotificationStreams() {
       .catch(() => {
         // Dự phòng giữ mảng mặc định nếu chưa đăng nhập hoặc lỗi mạng
       });
-  }, []);
+  }, [t]);
 
   const handleOpenDoc = (item: NotificationItem) => {
     setIsOpen(false);
