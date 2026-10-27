@@ -18,7 +18,7 @@ Tài liệu liên quan (không chép lại ở đây):
 | Quy trình mẫu: tạo nháp, sửa, kích hoạt, ngừng, nhân bản phiên bản, xóa phiên bản chưa có hồ sơ; phạm vi công ty/phòng ban; người ký theo tài khoản (danh bạ CBNV) hoặc chức vụ (Danh mục chức vụ) | Xong |
 | Tạo hồ sơ nháp (văn bản trình ký: chọn văn bản đi hoặc nhập văn bản khác; quy trình, PDF, hạn chót), sửa nháp | Xong |
 | Trình ký: khóa tệp và mã băm, chọn người ký theo chức vụ, đặt vị trí ký | Xong |
-| Ký tuần tự theo cấp, song song trong cấp, ký nháy chặn ký chính | Xong |
+| Ký chính tuần tự theo cấp, song song trong cấp; bảo toàn lượt ký nháy đã gửi trước đây | Xong |
 | Khóa ký Ed25519 + PIN 8 số (Argon2id + salt, `k_srv`); xuất file khóa; ký bằng file khóa + PIN | Xong |
 | Không đồng ý ban hành (kết thúc); trình lại thành hồ sơ mới | Xong |
 | Trả lại để sửa → trao đổi → gửi bản sửa → lượt trình mới | Xong |

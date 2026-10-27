@@ -25,7 +25,8 @@ Xây dựng phân hệ **Trình ký** gồm: tạo hồ sơ trình ký; luân ch
    - Quy trình `CONG_TY` do quản trị cấu hình; quy trình `PHONG_BAN` do lãnh đạo đơn vị đó hoặc quản trị cấu hình.
    - Các cấp mở tuần tự; trong một cấp, mọi người ký nhận cùng lúc và đều phải ký. Muốn mọi người ký cùng lúc thì cấu hình quy trình một cấp.
    - Người ký cấu hình theo tài khoản hoặc theo chức vụ. Chức vụ hiểu tương đối: trong đơn vị người tạo, trong một đơn vị cố định, hoặc cấp cơ quan. Khi gửi, chức vụ có nhiều người thì người tạo phải chọn; không có ai thì không cho gửi.
-   - Vai trò trong cấp (`vai_tro_ky`): **Ký nháy (`KY_NHAY`)** và **Ký chính (`KY_CHINH`)**. Nếu có ký nháy chặn (`chan_ky_chinh`), ký chính chỉ mở khi mọi ký nháy trong cấp đã ký.
+   - Quy trình mới chỉ cấu hình **Ký chính (`KY_CHINH`)**. Không tạo hay kích hoạt cấu hình `KY_NHAY`; quy trình cũ còn ký nháy phải được nhân bản, bỏ người ký nháy và kích hoạt phiên bản mới trước khi dùng cho hồ sơ mới.
+   - Hồ sơ đã gửi và bằng chứng lịch sử giữ nguyên vai trò `KY_NHAY` và tiếp tục xử lý theo snapshot của lượt đã gửi. Không chuyển người ký nháy cũ thành người ký chính.
    - Quy trình đã kích hoạt không sửa trực tiếp; thay đổi bằng nhân bản phiên bản mới.
 3. **Tạo trình ký, định vị nơi ký và Lazy Stamping:**
    - Khi gửi, khóa snapshot quy trình, người ký (tài khoản, tên, chức vụ) và mã băm SHA-256 của tài liệu vào lượt trình (`signing_attempt`).

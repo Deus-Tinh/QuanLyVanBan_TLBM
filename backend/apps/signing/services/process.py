@@ -165,6 +165,9 @@ def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=No
                   vai_tro_ky=enums.VaiTroKy.KY_CHINH, chan_ky_chinh=True):
     process = _khoa(step.quy_trinh_id)
     _yeu_cau_ban_nhap(process)
+    if vai_tro_ky != enums.VaiTroKy.KY_CHINH:
+        raise SigningError(code="ky_nhay_khong_ho_tro",
+                           detail="Ký nháy không còn được hỗ trợ. Hãy bỏ người ký nháy khỏi quy trình.")
     if (nguoi_ky is None) == (chuc_vu_id is None):
         raise SigningError(
             code="nguoi_ky_hoac_chuc_vu",
@@ -190,6 +193,17 @@ def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=No
     )
 
 
+def kiem_tra_khong_co_ky_nhay(process):
+    """Quy trình cũ giữ nguyên lịch sử, nhưng không dùng ký nháy cho hồ sơ mới."""
+    if SigningProcessStepSigner.objects.filter(
+        buoc_quy_trinh__quy_trinh=process, vai_tro_ky=enums.VaiTroKy.KY_NHAY,
+    ).exists():
+        raise SigningError(
+            code="ky_nhay_khong_ho_tro",
+            detail="Quy trình còn ký nháy. Hãy xóa người ký nháy ở bản nháp hoặc nhờ người quản lý tạo phiên bản mới.",
+        )
+
+
 def kiem_tra_truoc_khi_kich_hoat(process):
     """Quy trình phải có cấp đang áp dụng và mỗi cấp phải có người ký."""
     steps = list(process.cap_ky_set.filter(dang_ap_dung=True).prefetch_related("nguoi_ky_set"))
@@ -202,6 +216,7 @@ def kiem_tra_truoc_khi_kich_hoat(process):
             detail="Có cấp ký chưa có người ký.",
             fields={"cap_ky_thieu_nguoi_ky": thieu},
         )
+    kiem_tra_khong_co_ky_nhay(process)
 
 
 @transaction.atomic

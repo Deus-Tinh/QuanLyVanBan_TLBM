@@ -300,8 +300,9 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
   const sua = (i: number, gia_tri: Partial<CapNhap>) => setCap((c) => c.map((x, j) => (j === i ? { ...x, ...gia_tri } : x)));
   const loiMa = !banDau && ma.trim() && !MA_QUY_TRINH_HOP_LE.test(ma.trim()) ? t('quyTrinh.loiMa') : '';
   const soGioQuaLon = (c: CapNhap) => Number(c.so_gio_xu_ly) > GIOI_HAN.soGio;
+  const coKyNhayCu = cap.some((c) => c.nguoi_ky.some((n) => n.vai_tro_ky === 'KY_NHAY'));
   const hopLe = ma.trim() && !loiMa && ten.trim() && (phamVi === 'CONG_TY' || donVi)
-    && cap.every((c) => c.ten_cap_ky.trim() && c.nguoi_ky.length && !soGioQuaLon(c));
+    && !coKyNhayCu && cap.every((c) => c.ten_cap_ky.trim() && c.nguoi_ky.length && !soGioQuaLon(c));
 
   const luu = async () => {
     setDangLuu(true);
@@ -357,6 +358,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
           </TruongNhap>
         )}
       </div>
+      {coKyNhayCu && <ThongBao loai="canh_bao">{t('quyTrinh.kyNhayCu')}</ThongBao>}
       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
         <div className="text-sm font-bold text-main">{t('quyTrinh.capKy')}</div>
         {cap.map((c, i) => (
@@ -385,18 +387,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
                   <span className="font-semibold">{n.ten}</span>
                   {n.chuc_danh && <span className="ml-1 text-xs text-secondary">({n.chuc_danh})</span>}
                 </span>
-                <select className={`${LOP_O_NHAP} w-auto`} value={n.vai_tro_ky} aria-label={`${t('quyTrinh.vaiTroKy')}: ${n.ten}`}
-                  onChange={(e) => sua(i, { nguoi_ky: c.nguoi_ky.map((x, k) => (k === j ? { ...x, vai_tro_ky: e.target.value as VaiTroKy } : x)) })}>
-                  <option value="KY_CHINH">{t('vaiTro.KY_CHINH')}</option>
-                  <option value="KY_NHAY">{t('vaiTro.KY_NHAY')}</option>
-                </select>
-                {n.vai_tro_ky === 'KY_NHAY' && (
-                  <label className="flex items-center gap-1.5 text-sm text-secondary">
-                    <input type="checkbox" checked={n.chan_ky_chinh}
-                      onChange={(e) => sua(i, { nguoi_ky: c.nguoi_ky.map((x, k) => (k === j ? { ...x, chan_ky_chinh: e.target.checked } : x)) })} />
-                    {t('quyTrinh.chanKyChinh')}
-                  </label>
-                )}
+                {n.vai_tro_ky === 'KY_NHAY' && <span className="text-danger">{t('vaiTro.KY_NHAY')}</span>}
                 <button type="button" className="text-danger" aria-label={t('quyTrinh.boNguoiKy')}
                   onClick={() => sua(i, { nguoi_ky: c.nguoi_ky.filter((_, k) => k !== j) })}>
                   <i className="fa-solid fa-trash" aria-hidden="true" />

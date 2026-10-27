@@ -38,7 +38,7 @@ vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
     toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
-    xoaQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
+    xoaQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), suaQuyTrinh: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
     uyQuyen: vi.fn(), timNguoiNhanUyQuyen: vi.fn(), thaoTacQuyTrinh: vi.fn(),
   } };
 });
@@ -371,6 +371,36 @@ describe('QuyTrinhPage', () => {
     expect(screen.queryByPlaceholderText('Tên quy trình')).not.toBeInTheDocument();
   });
 
+  it('quy trình cũ phải bỏ người ký nháy trước khi lưu, vẫn giữ người ký chính', async () => {
+    const nhap: QuyTrinh = {
+      ...QT, id: 2, trang_thai: 'NHAP', so_ho_so: 0, cap_ky: [{
+        id: 9, cap_ky: 1, ten_cap_ky: 'Duyệt', thu_tu: 1, don_vi_id: null, so_gio_xu_ly: null,
+        nguoi_ky: [
+          { id: 3, nguoi_ky: 7, ten_nguoi_ky: 'Người nháy', chuc_vu_id: null, ten_chuc_vu: null,
+            pham_vi_chuc_vu: null, vai_tro_ky: 'KY_NHAY', chan_ky_chinh: true, thu_tu: 1 },
+          { id: 4, nguoi_ky: 8, ten_nguoi_ky: 'Người ký chính', chuc_vu_id: null, ten_chuc_vu: null,
+            pham_vi_chuc_vu: null, vai_tro_ky: 'KY_CHINH', chan_ky_chinh: true, thu_tu: 2 },
+        ],
+      }],
+    };
+    api.quyTrinh.mockResolvedValue([nhap]);
+    api.donVi.mockResolvedValue([{ id: 4, ten: 'Phòng Kế hoạch' }]);
+    api.suaQuyTrinh.mockResolvedValue(nhap);
+    boc(<QuyTrinhPage />, TP);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sửa quy trình' }));
+    const hop = await screen.findByRole('dialog', { name: 'Sửa quy trình' });
+    expect(within(hop).getByText(/Quy trình còn người ký nháy/)).toBeInTheDocument();
+    expect(within(hop).getByRole('button', { name: /Lưu/ })).toBeDisabled();
+    expect(within(hop).queryByRole('combobox', { name: /Vai trò ký/ })).not.toBeInTheDocument();
+    fireEvent.click(within(hop).getAllByRole('button', { name: 'Bỏ người ký' })[0]);
+    expect(within(hop).getByRole('button', { name: /Lưu/ })).toBeEnabled();
+    fireEvent.click(within(hop).getByRole('button', { name: /Lưu/ }));
+    await waitFor(() => expect(api.suaQuyTrinh).toHaveBeenCalledTimes(1));
+    expect(api.suaQuyTrinh.mock.calls[0][1]).toMatchObject({
+      cap_ky: [{ nguoi_ky: [{ nguoi_ky: 8, vai_tro_ky: 'KY_CHINH' }] }],
+    });
+  });
+
   it('xem chi tiết quy trình; chỉ nháp có Sửa; chưa có hồ sơ thì Xóa được (phải xác nhận), có hồ sơ thì Xóa bị khóa', async () => {
     const nhap: QuyTrinh = {
       ...QT, id: 2, trang_thai: 'NHAP', ten_quy_trinh: 'Quy trình nháp', cap_ky: [{
@@ -650,8 +680,8 @@ describe('QuyTrinhPage chọn người ký từ phân hệ CBNV', () => {
     await waitFor(() => expect(api.taoQuyTrinh).toHaveBeenCalledTimes(1));
     const body = api.taoQuyTrinh.mock.calls[0][0] as { cap_ky: Array<{ nguoi_ky: unknown[] }> };
     expect(body.cap_ky[0].nguoi_ky).toEqual([
-      expect.objectContaining({ nguoi_ky: 32, thu_tu: 1 }),
-      expect.objectContaining({ chuc_vu_id: 2, pham_vi_chuc_vu: 'TOAN_CO_QUAN', thu_tu: 2 }),
+      expect.objectContaining({ nguoi_ky: 32, thu_tu: 1, vai_tro_ky: 'KY_CHINH' }),
+      expect.objectContaining({ chuc_vu_id: 2, pham_vi_chuc_vu: 'TOAN_CO_QUAN', thu_tu: 2, vai_tro_ky: 'KY_CHINH' }),
     ]);
   });
 

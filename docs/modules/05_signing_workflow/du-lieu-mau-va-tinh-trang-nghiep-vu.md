@@ -9,7 +9,7 @@ Cập nhật 23/10/2026, nhánh `feat/5-hoan-thien-nghiep-vu`. Đối chiếu v�
 | 1 | Quy trình mẫu: tạo nháp, sửa, xóa nháp, kích hoạt, ngừng, nhân bản phiên bản; phạm vi công ty/phòng ban | Xong | Xong | `QuyTrinhPage`, `/quy-trinh/` |
 | 2 | Tạo hồ sơ nháp (văn bản đi, quy trình, PDF, hạn chót), sửa nháp | Xong | Xong | |
 | 3 | Trình ký: khóa tệp và mã băm, chọn người ký theo chức vụ, đặt vị trí ký | Xong | Xong | |
-| 4 | Ký tuần tự theo cấp, song song trong cấp, ký nháy chặn ký chính | Xong | Xong | |
+| 4 | Ký chính tuần tự theo cấp, song song trong cấp; giữ lượt ký nháy đã gửi trước đây | Xong | Xong | |
 | 5 | Khóa ký Ed25519 + PIN 8 số (Argon2id + salt, `k_srv`), proof-of-possession, xoay vòng, thu hồi, đổi PIN | Xong | Xong | |
 | 6 | Xuất private key đã mã hóa ra file khóa; ký bằng tải file khóa + nhập PIN | Chưa có (chỉ lưu IndexedDB) | Xong | `lib/signing/fileKhoa.ts`, mục 3 |
 | 7 | Không đồng ý ban hành (từ chối, kết thúc hồ sơ) | Xong | Xong | |
@@ -74,7 +74,7 @@ Lệnh tự đủ trên DB vừa `migrate`: đơn vị, chức vụ, nhóm quy�
   `truongphong` (Trưởng phòng, ký cấp 1), `giamdoc` (Giám đốc, ký cấp 2). Gán đơn vị "Ban công nghệ thông tin"
   (giám đốc: "Ban tổng giám đốc"), chức vụ và nhóm quyền chuẩn. Đơn vị, chức vụ, nhóm quyền dùng dữ liệu nền có sẵn
   (`seed_db`, migration RBAC); văn bản đi tạo qua model `documents.VanBanDi` của Nhóm 2.
-- **Quy trình**: `QT-TK-HAI-CAP` (hai cấp tuần tự), `QT-TK-KY-NHAY` (ký nháy chặn ký chính), `QT-TK-SONG-SONG`
+- **Quy trình**: `QT-TK-HAI-CAP` (hai cấp tuần tự), `QT-TK-MOT-CAP` (một cấp ký chính), `QT-TK-SONG-SONG`
   (hai người ký song song rồi Giám đốc), `QT-TK-NHAP` (nháp).
 - **Hồ sơ** (ghi chú bắt đầu bằng "Dữ liệu mẫu M..:"):
 

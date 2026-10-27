@@ -135,6 +135,7 @@ def _kiem_tra_quy_trinh(quy_trinh, nguoi_tao):
     if not SigningProcess.objects.filter(pk=quy_trinh.pk).filter(process_service.dung_duoc(nguoi_tao)).exists():
         raise _loi("quy_trinh_khong_ap_dung", "Chỉ chọn quy trình công ty hoặc quy trình phòng ban của đơn vị mình.",
                    status.HTTP_403_FORBIDDEN, quy_trinh=["Quy trình không áp dụng cho đơn vị của người trình."])
+    process_service.kiem_tra_khong_co_ky_nhay(quy_trinh)
 
 
 # ── Phạm vi xem ─────────────────────────────────────────────────────────────

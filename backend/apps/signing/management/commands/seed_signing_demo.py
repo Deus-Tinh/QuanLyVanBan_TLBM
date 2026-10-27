@@ -70,8 +70,8 @@ QUY_TRINH = {
         ("Trưởng phòng duyệt", 24, [("truongphong", "KY_CHINH")]),
         ("Giám đốc duyệt", 48, [("giamdoc", "KY_CHINH")]),
     ], True),
-    "QT-TK-KY-NHAY": ("Duyệt có ký nháy", "Trưởng phòng ký nháy kiểm tra; ký nháy xong Giám đốc mới ký chính.", [
-        ("Kiểm tra và phê duyệt", 48, [("truongphong", "KY_NHAY"), ("giamdoc", "KY_CHINH")]),
+    "QT-TK-MOT-CAP": ("Duyệt một cấp", "Giám đốc phê duyệt.", [
+        ("Phê duyệt", 48, [("giamdoc", "KY_CHINH")]),
     ], True),
     "QT-TK-SONG-SONG": ("Lấy ý kiến song song", "Trưởng phòng và Quản trị ký song song, sau đó Giám đốc duyệt.", [
         ("Lấy ý kiến các bộ phận", 24, [("truongphong", "KY_CHINH"), ("admin", "KY_CHINH")]),
@@ -327,7 +327,7 @@ class Command(BaseCommand):
         return ho_so
 
     def _ho_so(self, n, qt):
-        hai_cap, ky_nhay, song_song = qt["QT-TK-HAI-CAP"], qt["QT-TK-KY-NHAY"], qt["QT-TK-SONG-SONG"]
+        hai_cap, mot_cap, song_song = qt["QT-TK-HAI-CAP"], qt["QT-TK-MOT-CAP"], qt["QT-TK-SONG-SONG"]
 
         # Khóa tạm cho người ký, tạo trước (ngoài transaction từng hồ sơ) và chỉ khi còn hồ sơ cần ký chưa tạo
         if any(not self._co_roi(m) for m in ("M03", "M04", "M05", "M07", "M10")):
@@ -335,7 +335,7 @@ class Command(BaseCommand):
                 self.khoa_tam[n[u].pk] = KhoaTam(n[u])
 
         with transaction.atomic():
-            self._tao("M01", "nháp do chuyên viên soạn, chưa gửi", n["chuyenvien"], hai_cap, gui=False)
+            self._tao("M01", "nháp do chuyên viên soạn, chưa gửi", n["chuyenvien"], mot_cap, gui=False)
 
         with transaction.atomic():
             self._tao("M02", "đang chờ Trưởng phòng ký (cấp 1)", n["vanthu"], hai_cap)
@@ -346,7 +346,7 @@ class Command(BaseCommand):
                 self._ky(h, n["truongphong"], "Đã kiểm tra số liệu, đề nghị Giám đốc phê duyệt")
 
         with transaction.atomic():
-            h = self._tao("M04", "hoàn tất duyệt nội bộ (ký nháy rồi ký chính)", n["vanthu"], ky_nhay)
+            h = self._tao("M04", "hoàn tất duyệt nội bộ", n["vanthu"], hai_cap)
             if h:
                 self._ky(h, n["truongphong"], "Thể thức đúng quy định")
                 self._ky(h, n["giamdoc"])

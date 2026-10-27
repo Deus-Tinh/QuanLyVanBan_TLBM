@@ -99,7 +99,7 @@ class TrinhKyBase(TestCase):
     def tao_quy_trinh(self, ma="QT", cap_ky=None):
         cap_ky = cap_ky or [
             {"cap_ky": 1, "ten_cap_ky": "Kiểm tra", "thu_tu": 1, "nguoi_ky": [
-                {"nguoi_ky": self.ky1, "thu_tu": 1, "vai_tro_ky": enums.VaiTroKy.KY_NHAY},
+                {"nguoi_ky": self.ky1, "thu_tu": 1, "vai_tro_ky": enums.VaiTroKy.KY_CHINH},
                 {"nguoi_ky": self.ky2, "thu_tu": 2, "vai_tro_ky": enums.VaiTroKy.KY_CHINH},
             ]},
             {"cap_ky": 2, "ten_cap_ky": "Duyệt", "thu_tu": 2, "so_gio_xu_ly": 24,
@@ -201,10 +201,21 @@ class GuiTests(TrinhKyBase):
         cap1, cap2 = luot["cap_ky"]
         self.assertEqual((cap1["trang_thai"], cap2["trang_thai"]), ("DANG_KY", "CHUA_MO"))
         mo = {n["ten_nguoi_ky"]: n["thoi_diem_mo"] is not None for n in cap1["nguoi_ky"]}
-        self.assertEqual(mo, {"ke_toan": True, "phap_che": False})  # ký chính chờ ký nháy chặn
+        self.assertEqual(mo, {"ke_toan": True, "phap_che": True})
         self.assertTrue(all(n["thoi_diem_mo"] is None for n in cap2["nguoi_ky"]))
         self.assertIsNotNone(cap1["han_xu_ly"])
-        self.assertEqual([d["ten_nguoi_ky"] for d in r.data["dang_cho"]], ["ke_toan"])
+        self.assertEqual({d["ten_nguoi_ky"] for d in r.data["dang_cho"]}, {"ke_toan", "phap_che"})
+
+    def test_legacy_process_rejected_for_new_draft_and_existing_draft_send(self):
+        draft = self.tao_nhap().data["id"]
+        signer = self.process.cap_ky_set.order_by("thu_tu").first().nguoi_ky_set.get(nguoi_ky=self.ky1)
+        signer.vai_tro_ky = enums.VaiTroKy.KY_NHAY
+        signer.save(update_fields=["vai_tro_ky"])
+        create = self.tao_nhap()
+        self.assertEqual((create.status_code, create.data["code"]), (400, "ky_nhay_khong_ho_tro"))
+        send = self.gui(draft)
+        self.assertEqual((send.status_code, send.data["code"]), (400, "ky_nhay_khong_ho_tro"))
+        self.assertEqual(SigningRequest.objects.get(pk=draft).trang_thai, "NHAP")
 
     def test_level_deadline_uses_hours_or_splits_remaining_time(self):
         cap1 = {"cap_ky": 1, "ten_cap_ky": "C1", "thu_tu": 1, "so_gio_xu_ly": 8,
@@ -292,7 +303,7 @@ class XemTests(TrinhKyBase):
         pk = self.ho_so_da_gui()["id"]
         c1, c2, c3, la = (self.client_cua(u) for u in (self.ky1, self.ky2, self.ky3, self.la))
         self.assertEqual([h["id"] for h in c1.get(f"{BASE}/?hop=can_toi_ky").data["results"]], [pk])
-        self.assertEqual(c2.get(f"{BASE}/?hop=can_toi_ky").data["results"], [])  # ký chính chưa mở
+        self.assertEqual([h["id"] for h in c2.get(f"{BASE}/?hop=can_toi_ky").data["results"]], [pk])
         self.assertEqual(c3.get(f"{BASE}/?hop=can_toi_ky").data["results"], [])  # cấp sau chưa mở
         self.assertEqual(c3.get(f"{BASE}/{pk}/").status_code, 200)  # người ký của hồ sơ xem được
         self.assertEqual([h["id"] for h in self.c.get(f"{BASE}/?hop=toi_gui").data["results"]], [pk])
