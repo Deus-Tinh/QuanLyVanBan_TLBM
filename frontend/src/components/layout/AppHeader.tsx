@@ -59,7 +59,7 @@ export default function AppHeader({
               onClick={() => onNavigate?.('dashboard')}
               title="Bảo Long Insurance - Về Trang Chủ"
             >
-              <Logo size="md" className="h-7 sm:h-8" />
+              <Logo size="xl" className="h-11 sm:h-12" />
             </div>
           </>
         )}

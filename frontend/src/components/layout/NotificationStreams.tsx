@@ -34,6 +34,7 @@ interface ApiSigningItem {
   ngay_gui?: string;
   trang_thai?: string;
   trang_thai_display?: string;
+  can_toi_ky?: boolean;
 }
 
 interface DashboardOverviewApiResponse {
@@ -110,12 +111,22 @@ export default function NotificationStreams() {
           scope: 'HAN_CHE',
         }));
 
-        const approvalItems: NotificationItem[] = recentSigning.length > 0
-          ? recentSigning.map((s: ApiSigningItem) => ({
+        // Đọc cờ can_toi_ky: chỉ đưa phiếu người dùng có quyền ký vào danh sách chuông
+        const hasCanToiKyFlag = recentSigning.some((s: ApiSigningItem) => s.can_toi_ky !== undefined);
+        const actionableSigning = hasCanToiKyFlag
+          ? recentSigning.filter((s: ApiSigningItem) => s.can_toi_ky === true)
+          : recentSigning;
+
+        const defaultSigningTitle = t('notifications.signingDefaultTitle') || 'Phiếu trình ký văn bản';
+        const submitterPrefix = t('notifications.signingSubmitterPrefix') || 'Người trình';
+        const pendingSigningLabel = t('notifications.signingPendingLabel') || 'Chờ ký';
+
+        const approvalItems: NotificationItem[] = actionableSigning.length > 0
+          ? actionableSigning.map((s: ApiSigningItem) => ({
               id: `sign-${s.id}`,
               code: s.ma_trinh_ky || `TK-${s.id}`,
-              title: s.tieu_de || 'Phiếu trình ký văn bản',
-              senderOrDept: s.nguoi_trinh ? `Người trình: ${s.nguoi_trinh}` : 'Chờ ký',
+              title: s.tieu_de || defaultSigningTitle,
+              senderOrDept: s.nguoi_trinh ? `${submitterPrefix}: ${s.nguoi_trinh}` : pendingSigningLabel,
               time: s.ngay_gui || '',
               isRead: false,
             }))

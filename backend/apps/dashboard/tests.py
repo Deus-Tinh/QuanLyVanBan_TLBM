@@ -1,4 +1,6 @@
 from datetime import date, datetime, timedelta
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.test import TestCase
@@ -365,3 +367,18 @@ class DashboardOverviewPayloadTests(DashboardAPITests):
         )
         self.assertEqual(data["meetingRooms"], [])
         self.assertEqual(data["today_meetings"], [])
+
+    @patch("dashboard.views.tong_quan_dashboard")
+    def test_overview_continues_when_signing_selector_fails(self, mock_signing):
+        """Kiểm thử khi selector module Trình ký thất bại thì endpoint overview vẫn hoạt động bình thường."""
+        mock_signing.side_effect = RuntimeError("Database connection lost in signing module")
+        self.client.force_authenticate(user=self.staff_user)
+        response = self.client.get("/api/dashboard/overview/")
+        self.assertEqual(response.status_code, 200)
+        data = response.data
+        self.assertEqual(data["kpis"]["signingCount"], 0)
+        self.assertEqual(data["recentSigning"], [])
+        self.assertIn("recentIncoming", data)
+        self.assertIn("recentOutgoing", data)
+        self.assertIn("tasks", data)
+

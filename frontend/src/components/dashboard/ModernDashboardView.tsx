@@ -740,7 +740,7 @@ export default function ModernDashboardView({
             <span>{t('dashboardDetails.recentSigningTitle') || 'Danh Sách Phiếu Trình Ký Cần Xử Lý (Nhóm 5)'}</span>
           </div>
           <span className="text-[11px] font-semibold text-secondary px-2.5 py-0.5 rounded-full bg-surface-elevated border border-border-subtle">
-            Nhóm 5 · Trình ký số
+            {t('dashboardDetails.signingGroupTag') || 'Nhóm 5 · Trình ký số'}
           </span>
         </div>
 
@@ -760,7 +760,7 @@ export default function ModernDashboardView({
                     <th className="p-2.5 whitespace-nowrap min-w-[140px]">{t('dashboardDetails.signingSubmitter')}</th>
                     <th className="p-2.5 w-28 whitespace-nowrap">{t('dashboardDetails.signingDate')}</th>
                     <th className="p-2.5 w-28 text-center whitespace-nowrap">{t('dashboardDetails.signingStatus')}</th>
-                    <th className="p-2.5 w-28 text-center whitespace-nowrap">Thao tác</th>
+                    <th className="p-2.5 w-28 text-center whitespace-nowrap">{t('dashboardDetails.signingAction') || 'Thao tác'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -769,12 +769,63 @@ export default function ModernDashboardView({
                     const title = row.tieu_de || row.title || 'Hồ sơ trình ký';
                     const submitter = row.nguoi_trinh || row.submitter || 'Cán bộ';
                     const date = row.ngay_gui || row.date || '';
-                    const status = row.trang_thai || row.status || 'CHO_KY';
-                    const isPending = status === 'CHO_KY' || status === 'pending';
-                    const isSigned = status === 'DA_KY' || status === 'completed';
-                    const isRejected = status === 'TU_CHOI' || status === 'rejected';
-                    const statusVariant = row.variant || (isSigned ? 'success' : isRejected ? 'danger' : isPending ? 'warning' : 'secondary');
-                    const statusLabel = row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || (isPending ? 'Chờ ký' : isSigned ? 'Đã ký' : isRejected ? 'Từ chối' : status);
+                    const rawStatus = row.trang_thai || row.status || 'CHO_KY';
+
+                    const getSigningStatusInfo = (st: string) => {
+                      switch (st) {
+                        case 'CHO_KY':
+                        case 'pending':
+                          return {
+                            variant: 'warning' as const,
+                            label: t('dashboardDetails.signingStatuses.CHO_KY') || 'Chờ ký',
+                          };
+                        case 'DANG_XU_LY':
+                        case 'processing':
+                          return {
+                            variant: 'info' as const,
+                            label: t('dashboardDetails.signingStatuses.DANG_XU_LY') || 'Đang xử lý',
+                          };
+                        case 'DA_KY':
+                        case 'signed':
+                          return {
+                            variant: 'success' as const,
+                            label: t('dashboardDetails.signingStatuses.DA_KY') || 'Đã ký',
+                          };
+                        case 'HOAN_THANH':
+                        case 'completed':
+                          return {
+                            variant: 'success' as const,
+                            label: t('dashboardDetails.signingStatuses.HOAN_THANH') || 'Hoàn thành',
+                          };
+                        case 'TU_CHOI':
+                        case 'rejected':
+                          return {
+                            variant: 'danger' as const,
+                            label: t('dashboardDetails.signingStatuses.TU_CHOI') || 'Từ chối',
+                          };
+                        case 'HUY':
+                        case 'cancelled':
+                          return {
+                            variant: 'danger' as const,
+                            label: t('dashboardDetails.signingStatuses.HUY') || 'Đã hủy',
+                          };
+                        case 'NHAP':
+                        case 'draft':
+                          return {
+                            variant: 'secondary' as const,
+                            label: t('dashboardDetails.signingStatuses.NHAP') || 'Bản nháp',
+                          };
+                        default:
+                          return {
+                            variant: 'secondary' as const,
+                            label: row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || st,
+                          };
+                      }
+                    };
+
+                    const statusInfo = getSigningStatusInfo(rawStatus);
+                    const statusVariant = row.variant || statusInfo.variant;
+                    const statusLabel = row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || statusInfo.label;
                     const canSign = !!row.can_toi_ky;
 
                     return (

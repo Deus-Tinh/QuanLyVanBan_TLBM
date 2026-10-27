@@ -223,6 +223,43 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     fireEvent.click(viewAllBtn);
     expect(mockNavigate).toHaveBeenCalledWith('approvals');
   });
+
+  it('correctly maps all signing statuses (CHO_KY, DANG_XU_LY, DA_KY, HOAN_THANH, TU_CHOI, HUY, NHAP)', () => {
+    const multiStatusSigning = [
+      { id: '1', ma_trinh_ky: 'TK-01', tieu_de: 'Phieu 1', trang_thai: 'CHO_KY' },
+      { id: '2', ma_trinh_ky: 'TK-02', tieu_de: 'Phieu 2', trang_thai: 'DANG_XU_LY' },
+      { id: '3', ma_trinh_ky: 'TK-03', tieu_de: 'Phieu 3', trang_thai: 'DA_KY' },
+      { id: '4', ma_trinh_ky: 'TK-04', tieu_de: 'Phieu 4', trang_thai: 'HOAN_THANH' },
+      { id: '5', ma_trinh_ky: 'TK-05', tieu_de: 'Phieu 5', trang_thai: 'TU_CHOI' },
+    ];
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <ModernDashboardView signingRequests={multiStatusSigning} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText('Chờ ký').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đang xử lý').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đã ký').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Hoàn thành').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Từ chối').length).toBeGreaterThan(0);
+
+    // Rerender with cancelled and draft
+    const secondaryStatusSigning = [
+      { id: '6', ma_trinh_ky: 'TK-06', tieu_de: 'Phieu 6', trang_thai: 'HUY' },
+      { id: '7', ma_trinh_ky: 'TK-07', tieu_de: 'Phieu 7', trang_thai: 'NHAP' },
+    ];
+
+    rerender(
+      <MemoryRouter>
+        <ModernDashboardView signingRequests={secondaryStatusSigning} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText('Đã hủy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bản nháp').length).toBeGreaterThan(0);
+  });
 });
 
 
