@@ -2783,7 +2783,7 @@ $$;
 -- =====================================================================
 -- 16. DỮ LIỆU MẪU DÙNG CHUNG NHÓM 7
 -- Mật khẩu nhân viên không dùng để đăng nhập; tài khoản demo có mật khẩu plaintext không được nạp.
--- Kiêm nhiệm chưa có quan hệ tương ứng trong schema nên không được nạp.
+-- Phân công kiêm nhiệm (11 dòng) được nạp vào bảng accounts_employee_assignment.
 -- =====================================================================
 
 -- Nạp 491 nhân viên mẫu; mật khẩu được đặt ở trạng thái không thể đăng nhập.
@@ -3824,6 +3824,100 @@ JOIN accounts_employee employee
 CROSS JOIN LATERAL regexp_split_to_table(source.group_codes, ',') AS role(code)
 JOIN auth_group access_group ON access_group.ma_nhom_quyen = btrim(role.code)
 ON CONFLICT (employee_id, group_id) DO NOTHING;
+
+-- Nạp 11 phân công kiêm nhiệm mẫu từ sheet KiemNhiem của workbook.
+INSERT INTO accounts_employee_assignment (
+    employee_id, don_vi_id, chuc_vu_id, chuc_danh
+)
+SELECT
+    (SELECT emp.id FROM accounts_employee emp WHERE emp.username = source.username),
+    (SELECT unit.id
+     FROM organizations_khoi block
+     JOIN organizations_donvi unit ON unit.khoi_id = block.id
+     WHERE block.ten = source.khoi AND unit.ten = source.don_vi
+     ORDER BY unit.stt_uu_tien, unit.id
+     LIMIT 1),
+    (SELECT pos.id
+     FROM accounts_position pos
+     WHERE pos.name = source.chuc_vu
+     ORDER BY pos.display_order, pos.id
+     LIMIT 1),
+    source.chuc_danh
+FROM (
+    VALUES
+    ('anvc', 'KHỐI KINH DOANH', 'Ban dự án phát triển sản phẩm liên kết với các công ty dịch vụ viễn thông', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('uyenbk', 'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Phú Yên', 'Phó Ban', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('andd2', 'VĂN PHÒNG 2', 'Văn phòng 2', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('taibm', 'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Vũng Tàu', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('tailc', 'KHU VỰC MIỀN BẮC', 'Bảo Long Đông Hải', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('dathq', 'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Gia Lai', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('huongvt', 'KHU VỰC MIỀN BẮC', 'Bảo Long Thăng Long', 'Thành viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('myvd', 'VĂN PHÒNG HỘI ĐỒNG QUẢN TRỊ', 'Văn phòng hội đồng quản trị', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('anvd', 'KHU VỰC MIỀN BẮC', 'Bảo Long Thăng Long', 'Phó Ban', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('demo_vt_3', 'KHU VỰC MIỀN BẮC', 'Bảo Long Quảng Ninh', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+    ('em123ngao-arch', 'KHỐI TÀI CHÍNH', 'Ban dự án MIS', 'Chuyên viên', 'Thành viên Nhóm 6 (kiêm nhiệm)')
+) AS source (username, khoi, don_vi, chuc_vu, chuc_danh)
+ON CONFLICT (employee_id, don_vi_id, chuc_vu_id) DO NOTHING;
+
+-- Xác thực fail-fast: dùng chung logic phân giải ID để đảm bảo đủ 11 bản ghi và không bị xung đột chức danh
+DO $$
+DECLARE
+    v_missing_count integer;
+    v_missing_detail text;
+BEGIN
+    WITH expected (username, khoi, don_vi, chuc_vu, chuc_danh) AS (
+        VALUES
+        ('anvc', 'KHỐI KINH DOANH', 'Ban dự án phát triển sản phẩm liên kết với các công ty dịch vụ viễn thông', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('uyenbk', 'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Phú Yên', 'Phó Ban', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('andd2', 'VĂN PHÒNG 2', 'Văn phòng 2', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('taibm', 'KHU VỰC ĐÔNG NAM BỘ', 'Bảo Long Vũng Tàu', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('tailc', 'KHU VỰC MIỀN BẮC', 'Bảo Long Đông Hải', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('dathq', 'KHU VỰC MIỀN TRUNG TÂY NGUYÊN', 'Bảo Long Gia Lai', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('huongvt', 'KHU VỰC MIỀN BẮC', 'Bảo Long Thăng Long', 'Thành viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('myvd', 'VĂN PHÒNG HỘI ĐỒNG QUẢN TRỊ', 'Văn phòng hội đồng quản trị', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('anvd', 'KHU VỰC MIỀN BẮC', 'Bảo Long Thăng Long', 'Phó Ban', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('demo_vt_3', 'KHU VỰC MIỀN BẮC', 'Bảo Long Quảng Ninh', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
+        ('em123ngao-arch', 'KHỐI TÀI CHÍNH', 'Ban dự án MIS', 'Chuyên viên', 'Thành viên Nhóm 6 (kiêm nhiệm)')
+    ),
+    expected_resolved AS (
+        SELECT
+            exp.username,
+            exp.don_vi,
+            exp.chuc_vu,
+            exp.chuc_danh,
+            (SELECT emp.id FROM accounts_employee emp WHERE emp.username = exp.username) AS employee_id,
+            (SELECT unit.id
+             FROM organizations_khoi block
+             JOIN organizations_donvi unit ON unit.khoi_id = block.id
+             WHERE block.ten = exp.khoi AND unit.ten = exp.don_vi
+             ORDER BY unit.stt_uu_tien, unit.id
+             LIMIT 1) AS don_vi_id,
+            (SELECT pos.id
+             FROM accounts_position pos
+             WHERE pos.name = exp.chuc_vu
+             ORDER BY pos.display_order, pos.id
+             LIMIT 1) AS chuc_vu_id
+        FROM expected exp
+    ),
+    missing AS (
+        SELECT exp.username, exp.don_vi, exp.chuc_vu, exp.chuc_danh
+        FROM expected_resolved exp
+        LEFT JOIN accounts_employee_assignment a
+            ON a.employee_id = exp.employee_id
+           AND a.don_vi_id = exp.don_vi_id
+           AND a.chuc_vu_id = exp.chuc_vu_id
+           AND a.chuc_danh = exp.chuc_danh
+        WHERE a.id IS NULL
+    )
+    SELECT count(*), string_agg(username || ' (' || don_vi || ')', '; ')
+    INTO v_missing_count, v_missing_detail
+    FROM missing;
+
+    IF v_missing_count > 0 THEN
+        RAISE EXCEPTION 'Nạp dữ liệu kiêm nhiệm mẫu thất bại: có %/11 bản ghi bị thiếu hoặc xung đột chức danh sẵn có (Chi tiết: %).',
+            v_missing_count, v_missing_detail;
+    END IF;
+END $$;
 
 -- Nạp 8 phòng họp mẫu.
 INSERT INTO meetings_meetingroom (
