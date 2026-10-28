@@ -116,8 +116,11 @@ class UyQuyenTests(KyBase):
     def test_search_recipients_requires_delegate_and_sign_permission(self):
         r = self.client_cua(self.tao).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen")
         self.assertEqual(r.status_code, 403)
-        r = self.client_cua(self.quan_tri).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&q=pho")
-        self.assertIn("pho_phong", [u["ten_dang_nhap"] for u in r.data])
+        r = self.client_cua(self.quan_tri).get(
+            "/api/v1/signing/nguoi-dung/",
+            {"muc_dich": "uy_quyen", "q": self.nhan.username},
+        )
+        self.assertIn(self.nhan.username, [u["ten_dang_nhap"] for u in r.data])
         r = self.client_cua(self.quan_tri).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&q=nguoi_ngoai")
         self.assertEqual(r.data, [])
 
