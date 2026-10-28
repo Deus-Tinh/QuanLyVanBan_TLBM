@@ -4,7 +4,7 @@ import React from 'react';
 import DocumentDetailModal from './DocumentDetailModal';
 import DocumentViewersModal from './DocumentViewersModal';
 import DocumentFormModal, { InitialDocType } from './DocumentFormModal';
-import apiClient from '@lib/apiClient';
+import apiClient, { apiClientBlob, downloadBlob } from '@lib/apiClient';
 import { setLanguage } from '@i18n/translate';
 
 vi.mock('@lib/apiClient', () => ({
@@ -13,6 +13,8 @@ vi.mock('@lib/apiClient', () => ({
     post: vi.fn(),
     delete: vi.fn(),
   },
+  apiClientBlob: vi.fn(),
+  downloadBlob: vi.fn(),
 }));
 
 describe('DocumentDetailModal', () => {
@@ -65,6 +67,84 @@ describe('DocumentDetailModal', () => {
       expect(screen.getByText('15/CV-BGDDT')).toBeInTheDocument();
       expect(screen.getByText('Hướng dẫn tổ chức thi tuyển sinh')).toBeInTheDocument();
       expect(screen.getByText('huongdan.pdf')).toBeInTheDocument();
+    });
+  });
+
+  it('gọi apiClientBlob và mở tab mới khi bấm nút Xem tệp đính kèm', async () => {
+    const mockDetail = {
+      id: 1,
+      loai: 'DEN',
+      so_hieu: '15/CV-BGDDT',
+      trich_yeu: 'Hướng dẫn tuyển sinh',
+      attachments: [
+        {
+          id: 101,
+          file: '/media/test.pdf',
+          file_name: 'huongdan.pdf',
+          file_size: 204800,
+          uploaded_at: '2026-09-23T08:00:00Z',
+        },
+      ],
+    };
+
+    (apiClient.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockDetail);
+    const mockBlob = new Blob(['pdf-data'], { type: 'application/pdf' });
+    vi.mocked(apiClientBlob).mockResolvedValueOnce(mockBlob);
+    const originalCreateObjectURL = window.URL.createObjectURL;
+    const originalOpen = window.open;
+    window.URL.createObjectURL = vi.fn(() => 'blob:http://test/uuid');
+    window.open = vi.fn();
+
+    render(<DocumentDetailModal isOpen={true} onClose={vi.fn()} documentId={1} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('huongdan.pdf')).toBeInTheDocument();
+    });
+
+    const viewBtn = screen.getByRole('button', { name: /Xem/i });
+    fireEvent.click(viewBtn);
+
+    await waitFor(() => {
+      expect(apiClientBlob).toHaveBeenCalledWith('/media/test.pdf');
+      expect(window.URL.createObjectURL).toHaveBeenCalled();
+      expect(window.open).toHaveBeenCalledWith('blob:http://test/uuid', '_blank');
+    });
+
+    window.URL.createObjectURL = originalCreateObjectURL;
+    window.open = originalOpen;
+  });
+
+  it('gọi downloadBlob khi bấm nút Tải về tệp đính kèm', async () => {
+    const mockDetail = {
+      id: 1,
+      loai: 'DEN',
+      so_hieu: '15/CV-BGDDT',
+      trich_yeu: 'Hướng dẫn tuyển sinh',
+      attachments: [
+        {
+          id: 101,
+          file: '/media/test.pdf',
+          file_name: 'huongdan.pdf',
+          file_size: 204800,
+          uploaded_at: '2026-09-23T08:00:00Z',
+        },
+      ],
+    };
+
+    (apiClient.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockDetail);
+    vi.mocked(downloadBlob).mockResolvedValueOnce();
+
+    render(<DocumentDetailModal isOpen={true} onClose={vi.fn()} documentId={1} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('huongdan.pdf')).toBeInTheDocument();
+    });
+
+    const downloadBtn = screen.getByRole('button', { name: /Tải về/i });
+    fireEvent.click(downloadBtn);
+
+    await waitFor(() => {
+      expect(downloadBlob).toHaveBeenCalledWith('/media/test.pdf', 'huongdan.pdf');
     });
   });
 });
