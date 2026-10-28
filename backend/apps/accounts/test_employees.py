@@ -588,6 +588,45 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
         self.assertFalse(data["success"])
         self.assertTrue(any("trùng lặp giữa nhiều Khối/Khu vực" in err["message"] for err in data["errors"]))
 
+    def test_import_excel_duplicate_unit_name_resolves_by_block(self):
+        """Đơn vị trùng tên được phân biệt chính xác khi file có cột Khối/Khu vực."""
+        self.client.force_authenticate(user=self.sensitive_user)
+
+        khoi2 = KhoiKhuVuc.objects.create(ten="Khối Cơ quan phía Nam")
+        max_stt = DonVi.objects.aggregate(Max("stt_uu_tien"))["stt_uu_tien__max"] or 0
+        don_vi_khoi2 = DonVi.objects.create(
+            ten=self.don_vi_1.ten,
+            khoi=khoi2,
+            stt_uu_tien=max_stt + 1,
+        )
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Danh Sach CBNV"
+        ws.append([
+            "STT", "Họ và tên (*)", "Ngày sinh (*)", "Email (*)", "Số điện thoại",
+            "Tên Khối / Khu vực (*)", "Tên Đơn vị / Phòng ban (*)", "Tên Chức vụ (*)",
+            "Chức danh", "Trạng thái", "Ghi chú",
+        ])
+        ws.append(["(Ghi chú)", "", "", "", "", "", "", "", "", "", ""])
+        ws.append([
+            1, "Nguyễn Trùng Đơn Vị", "1990-01-01", "trungdonvi.khoi2@donvi.gov.vn",
+            "0911223345", khoi2.ten, self.don_vi_1.ten, "Chuyên viên", "",
+            "Đang làm việc", "",
+        ])
+
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        bio.name = "trung_don_vi_theo_khoi.xlsx"
+
+        res = self.client.post(self.import_url, {"file": bio}, format="multipart")
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.json()["created_count"], 1)
+        imported_user = User.objects.get(email="trungdonvi.khoi2@donvi.gov.vn")
+        self.assertEqual(imported_user.don_vi, don_vi_khoi2)
+
     def test_export_excel_forbidden_without_export_cbnv(self):
         """User thiếu quyền export_cbnv hoặc chưa đăng nhập bị từ chối xuất Excel."""
         # Chưa đăng nhập -> 401
