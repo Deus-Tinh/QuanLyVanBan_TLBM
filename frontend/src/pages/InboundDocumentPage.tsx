@@ -199,6 +199,8 @@ export const InboundDocumentPage: React.FC = () => {
       // Luôn tải từ toàn bộ văn bản để danh mục Loại văn bản không bị co cụm khi người dùng lọc
       const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DEN&page_size=1000');
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
+      setAllStatsItems(items);
+
       // 2. Lấy danh mục hồ sơ và loại văn bản từ Nhóm 3 (app records) để đồng bộ danh mục hệ thống
       const recordsFolders: string[] = [];
       const recordsFolderTypeMap: Record<string, Set<string>> = {};
