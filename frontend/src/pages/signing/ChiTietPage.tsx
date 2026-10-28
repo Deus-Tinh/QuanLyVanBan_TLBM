@@ -6,7 +6,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
-import { DangTai, KhongTimThay, LoiTai, ThongBao, TrangThaiHoSo } from '@components/signing/ChungUI';
+import { DangTai, HopThoai, KhongTimThay, LoiTai, ThongBao, TrangThaiHoSo } from '@components/signing/ChungUI';
 import HanhDong from '@components/signing/HanhDong';
 import KetQuaPanel from '@components/signing/KetQuaPanel';
 import SuaNhapDialog from '@components/signing/SuaNhapDialog';
@@ -45,9 +45,19 @@ function ChiTietHoSo({ id }: { id: number }) {
   const ct = useTai(() => signingApi.chiTiet(id), [id]);
   const hoSo = ct.duLieu;
   const luot = hoSo?.luot_trinh[0] || null;
+  const coTheLienKet = Boolean(hoSo && toi?.id === hoSo.create_by && hoSo.van_ban_id == null
+    && hoSo.trang_thai === 'HOAN_THANH' && luot?.trang_thai_tep_hoan_tat === 'THANH_CONG');
   const [tepTai, setTepTai] = useState<{ khoa: string; buf: ArrayBuffer | null; maBam: string | null; loi: unknown } | null>(null);
   const [anh, setAnh] = useState<Record<number, string>>({});
   const [dangSua, setDangSua] = useState(false);
+  const [qVanBan, setQVanBan] = useState('');
+  const [qVanBanTim, setQVanBanTim] = useState('');
+  const [vanBanDinhLienKet, setVanBanDinhLienKet] = useState('');
+  const [moXacNhanLienKet, setMoXacNhanLienKet] = useState(false);
+  const [dangLienKet, setDangLienKet] = useState(false);
+  const [loiLienKet, setLoiLienKet] = useState<unknown>(null);
+  const vanBanDi = useTai(() => coTheLienKet ? signingApi.timVanBanDi(qVanBanTim) : Promise.resolve([]),
+    [coTheLienKet, qVanBanTim]);
 
   const { setDuLieu, tai } = ct;
   const capNhat = useCallback((moi?: HoSoChiTiet) => {
@@ -56,6 +66,11 @@ function ChiTietHoSo({ id }: { id: number }) {
     // Có kết quả thao tác (ký, từ chối, hủy…): số ở thanh tab đổi theo; lần tải lại định kỳ không có kết quả thì bỏ qua
     if (moi) lamMoiDem?.();
   }, [setDuLieu, tai, id, lamMoiDem]);
+
+  useEffect(() => {
+    const hen = setTimeout(() => setQVanBanTim(qVanBan.trim()), 300);
+    return () => clearTimeout(hen);
+  }, [qVanBan]);
 
   // Tệp của lượt hiện hành; băm lại để người ký đối chiếu mã băm đã khóa. Kết quả gắn với khóa tệp nên đổi lượt
   // thì tệp cũ không còn được dùng để ký (mã băm chưa có cho đến khi tải xong tệp mới).
@@ -121,6 +136,22 @@ function ChiTietHoSo({ id }: { id: number }) {
     } as KhungHienThi];
   });
   const coTraoDoi = hoSo.luot_trinh.some((l) => l.yeu_cau_sua.length > 0);
+  const vanBanChon = (vanBanDi.duLieu || []).find((vb) => String(vb.id) === vanBanDinhLienKet) || null;
+  const lienKetVanBan = async () => {
+    if (!vanBanChon || dangLienKet) return;
+    setDangLienKet(true);
+    setLoiLienKet(null);
+    try {
+      const moi = await signingApi.lienKetVanBanDi(hoSo.id, vanBanChon.id);
+      setMoXacNhanLienKet(false);
+      setVanBanDinhLienKet('');
+      capNhat(moi);
+    } catch (err) {
+      setLoiLienKet(err);
+    } finally {
+      setDangLienKet(false);
+    }
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
@@ -128,6 +159,10 @@ function ChiTietHoSo({ id }: { id: number }) {
         <Card className="p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-main">#{hoSo.id}</h2>
+            {hoSo.van_ban_id == null && <>
+              <span className="rounded-full bg-info-subtle px-2 py-1 text-xs text-info">{t('chiTiet.taiLieuDocLap')}</span>
+              <span className="text-xs text-muted">{t('chiTiet.maHoSoTuCap')}</span>
+            </>}
             <TrangThaiHoSo hoSo={hoSo} />
           </div>
           <div className="text-base font-semibold text-main break-words">{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</div>
@@ -151,7 +186,9 @@ function ChiTietHoSo({ id }: { id: number }) {
       {/* lg:pb-20: nút trợ lý AI nổi ở góc dưới không che khối cuối của cột khi cuộn hết */}
       <div className="space-y-4 lg:sticky lg:top-0 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pb-20">
         <Card className="p-4 space-y-2">
-          <DongThongTin nhan={t('danhSach.vanBan')}>{moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}</DongThongTin>
+          <DongThongTin nhan={hoSo.van_ban_id == null ? t('chiTiet.taiLieu') : t('danhSach.vanBan')}>
+            {moTaVanBan(hoSo.van_ban, hoSo.van_ban_id)}
+          </DongThongTin>
           <DongThongTin nhan={t('danhSach.quyTrinh')}>{hoSo.ten_quy_trinh} ({hoSo.ma_quy_trinh})</DongThongTin>
           <DongThongTin nhan={t('danhSach.nguoiTao')}>{hoSo.ten_nguoi_tao}</DongThongTin>
           <DongThongTin nhan={t('danhSach.ngayGui')}>{dinhDangNgay(hoSo.ngay_gui, lang)}</DongThongTin>
@@ -160,6 +197,41 @@ function ChiTietHoSo({ id }: { id: number }) {
             {hoSo.dang_cho.length ? hoSo.dang_cho.map((d) => d.ten_nguoi_ky).join(', ') : t('chiTiet.khongAiCho')}
           </DongThongTin>
           {hoSo.ghi_chu && <DongThongTin nhan={t('chiTiet.ghiChu')}><span className="whitespace-pre-wrap">{hoSo.ghi_chu}</span></DongThongTin>}
+          {coTheLienKet && (
+            <div className="space-y-2 border-t border-border-subtle pt-3">
+              <h3 className="text-sm font-semibold text-main">{t('chiTiet.dangKyVanBanDi')}</h3>
+              <p className="text-xs text-muted">{t('chiTiet.goiYLienKetVanBan')}</p>
+              <Link to="/documents/outgoing" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />
+                {t('chiTiet.moPhanVanBanDi')}
+              </Link>
+              <input className="w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-main"
+                aria-label={t('chiTiet.timVanBanDi')} placeholder={t('chiTiet.timVanBanDi')}
+                value={qVanBan} onChange={(e) => {
+                  setQVanBan(e.target.value);
+                  setVanBanDinhLienKet('');
+                  setLoiLienKet(null);
+                }} />
+              {vanBanDi.dangTai ? <DangTai /> : vanBanDi.loi ? (
+                <LoiTai thongBao={loi(vanBanDi.loi)} onThuLai={vanBanDi.tai} />
+              ) : (
+                <select className="w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-main"
+                  aria-label={t('chiTiet.chonVanBanDi')} value={vanBanDinhLienKet}
+                  onChange={(e) => setVanBanDinhLienKet(e.target.value)}>
+                  <option value="">{t('chiTiet.chonVanBanDi')}</option>
+                  {(vanBanDi.duLieu || []).map((vb) => (
+                    <option key={vb.id} value={vb.id}>{moTaVanBan(vb, vb.id)}</option>
+                  ))}
+                </select>
+              )}
+              {vanBanDi.duLieu?.length === 0 && !vanBanDi.dangTai && !vanBanDi.loi && (
+                <p className="text-xs text-muted">{t('chiTiet.khongCoVanBanDi')}</p>
+              )}
+              {loiLienKet != null && <ThongBao>{loi(loiLienKet)}</ThongBao>}
+              <Button size="sm" icon="fa-link" disabled={!vanBanChon || vanBanDi.dangTai}
+                onClick={() => setMoXacNhanLienKet(true)}>{t('chiTiet.lienKetVanBanDi')}</Button>
+            </div>
+          )}
           {hoSo.ho_so_goc && (
             <Link to={`/approvals/${hoSo.ho_so_goc}`} className="text-sm font-medium text-primary hover:underline">
               {t('chiTiet.hoSoGoc', { so: hoSo.ho_so_goc })}
@@ -210,6 +282,20 @@ function ChiTietHoSo({ id }: { id: number }) {
         </Card>
       </div>
       {dangSua && <SuaNhapDialog hoSo={hoSo} onDong={() => setDangSua(false)} onXong={(moi) => { setDangSua(false); capNhat(moi); }} />}
+      <HopThoai moTieuDe={t('chiTiet.lienKetVanBanDi')} mo={moXacNhanLienKet}
+        onDong={() => setMoXacNhanLienKet(false)} dangXuLy={dangLienKet}
+        chanDuoi={<>
+          <Button variant="secondary" disabled={dangLienKet} onClick={() => setMoXacNhanLienKet(false)}>
+            {t('chung.quayLai')}
+          </Button>
+          <Button icon="fa-link" isLoading={dangLienKet} disabled={!vanBanChon} onClick={lienKetVanBan}>
+            {t('chung.xacNhan')}
+          </Button>
+        </>}>
+        <p className="text-sm text-main">{t('chiTiet.xacNhanLienKetVanBan', {
+          vanBan: vanBanChon ? moTaVanBan(vanBanChon, vanBanChon.id) : '',
+        })}</p>
+      </HopThoai>
     </div>
   );
 }

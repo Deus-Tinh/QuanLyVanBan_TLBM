@@ -4,9 +4,10 @@
  * dùng cùng khóa, nên server không xử lý trùng.
  */
 import apiClient, { ApiError } from '@lib/apiClient';
+import { resolveDocumentApiUrl } from '@lib/routes';
 import type {
   BangChung, BoLocHoSo, BoLocTaiLieu, CanBo, CanBoChucVu, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
-  ThamSoKdf, ThongBaoTrinhKy, TinNhan, TrangKetQua, TraoDoi, VanBanDi, ViTriKy,
+  ThamSoKdf, ThongBaoTrinhKy, TinNhan, TrangKetQua, TraoDoi, VanBanDi, VanBanDiTepDinhKem, ViTriKy,
 } from './types';
 
 export const SIGNING_BASE = '/api/v1/signing';
@@ -74,6 +75,11 @@ export const signingApi = {
   },
   chiTiet: (id: number) => apiClient.get<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`),
   taoNhap: (form: FormData) => postForm<HoSoChiTiet>('/trinh-ky/', form),
+  /** Chi tiết văn bản đi và danh sách tệp để chọn PDF từ đúng bản ghi. */
+  chiTietVanBanDi: (id: number) => apiClient.get<VanBanDi & { attachments: VanBanDiTepDinhKem[] }>(resolveDocumentApiUrl(id, 'DI')),
+  /** Sau khi hoàn tất duyệt nội bộ, liên kết hồ sơ với văn bản đi đã đăng ký. */
+  lienKetVanBanDi: (id: number, van_ban_id: number) =>
+    apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/lien-ket-van-ban-di/`, { van_ban_id }),
   /** Sửa hồ sơ nháp: hạn chót, ghi chú, số hiệu/trích yếu nhập tay, thay tệp (multipart). */
   suaNhap: (id: number, form: FormData) =>
     apiClient<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`, { method: 'PATCH', body: form }),

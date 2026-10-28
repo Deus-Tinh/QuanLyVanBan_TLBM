@@ -163,7 +163,7 @@ export interface DangCho {
 
 export interface HoSo {
   id: number;
-  /** Văn bản trình ký: văn bản đi đã gắn (không bắt buộc) hoặc văn bản khác nhập tay */
+  /** Văn bản trình ký: văn bản đi đã đăng ký hoặc PDF dự thảo chưa vào sổ; sau duyệt có thể được liên kết. */
   document_type: string | null;
   van_ban_id: number | null;
   so_hieu_van_ban: string;
@@ -260,6 +260,15 @@ export interface VanBanDi {
   id: number;
   so_hieu: string;
   trich_yeu: string;
+  attachments?: VanBanDiTepDinhKem[];
+}
+
+export interface VanBanDiTepDinhKem {
+  id: number;
+  name: string;
+  file: string | null;
+  file_size: number;
+  is_deleted: boolean;
 }
 
 /** Bộ lọc trạng thái của danh sách hồ sơ (server: tham số `nhanh`): đang chờ ký, quá hạn, đã ký xong, trả lại để sửa. */

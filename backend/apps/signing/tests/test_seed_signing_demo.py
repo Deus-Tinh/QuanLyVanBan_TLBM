@@ -35,7 +35,7 @@ def chay(test, *args, **env):
 class DuLieuMauTests(TestCase):
     def setUp(self):
         self.thu_muc = tempfile.mkdtemp()
-        self._cai_dat = override_settings(SIGNING_DOCUMENT_ROOT=self.thu_muc)
+        self._cai_dat = override_settings(SIGNING_DOCUMENT_ROOT=self.thu_muc, DOCUMENT_STORAGE_ROOT=self.thu_muc)
         self._cai_dat.enable()
         tao_don_vi()
 

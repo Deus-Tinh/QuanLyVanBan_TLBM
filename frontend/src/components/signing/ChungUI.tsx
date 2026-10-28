@@ -263,12 +263,14 @@ export function KhongTimThay({ thongBao }: { thongBao: string }) {
 
 /** Ô chọn tệp có nhãn theo ngôn ngữ giao diện (ô file gốc hiện "Choose File" theo trình duyệt).
  * Đặt trong `<label>` (TruongNhap) hoặc bọc `<label>` riêng để bấm cả khung mở hộp chọn tệp. */
-export function OChonTep({ accept, onChon, nhan }: { accept: string; onChon: (tep: File | undefined) => void; nhan?: string }) {
+export function OChonTep({ accept, onChon, nhan, disabled = false }: {
+  accept: string; onChon: (tep: File | undefined) => void; nhan?: string; disabled?: boolean;
+}) {
   const { t } = useSigningT();
   const [ten, setTen] = useState('');
   return (
-    <span className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-subtle bg-surface px-2 py-1.5 text-sm focus-within:border-focus focus-within:ring-2 focus-within:ring-primary-subtle">
-      <input type="file" accept={accept} aria-label={nhan} className="sr-only"
+    <span className={`flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface px-2 py-1.5 text-sm focus-within:border-focus focus-within:ring-2 focus-within:ring-primary-subtle ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+      <input type="file" accept={accept} aria-label={nhan} className="sr-only" disabled={disabled}
         onChange={(e) => { const tep = e.target.files?.[0]; setTen(tep?.name ?? ''); onChon(tep); }} />
       <span className="shrink-0 rounded-lg border border-border-subtle bg-surface-subtle px-2.5 py-1 font-medium text-main">
         {t('chung.chonTep')}

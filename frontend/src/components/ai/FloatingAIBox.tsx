@@ -134,7 +134,7 @@ export default function FloatingAIBox({ onNavigate }: FloatingAIBoxProps) {
     }
 
     if (q.includes('ký số') || q.includes('trình ký') || q.includes('phê duyệt')) {
-      return `**Quy Trình Trình Ký Số Điện Tử:**\n- Cán bộ khởi tạo tờ trình/văn bản > Chọn luồng ký duyệt đa cấp.\n- Lãnh đạo xác thực ký số điện tử (USB Token / Cloud HSM).\n- Sau khi ký đủ thẩm quyền, hệ thống tự động ban hành và chuyển sang luồng Văn Bản Đi.`;
+      return `**Quy Trình Trình Ký:**\n- Cán bộ tải PDF dự thảo chưa vào sổ hoặc chọn PDF đính kèm trên văn bản đi đã đăng ký, rồi chọn luồng duyệt.\n- Người có thẩm quyền xem tài liệu và ký theo từng cấp.\n- Sau khi duyệt PDF dự thảo, người tạo đăng ký PDF kết quả trong Văn bản đi rồi liên kết hồ sơ; hệ thống không tự cấp số hay tự ban hành văn bản.`;
     }
 
     if (q.includes('phân quyền') || q.includes('nhân viên') || q.includes('cbnv')) {

@@ -27,8 +27,9 @@ from .permissions import (
 from .serializers import (
     DatPinSerializer, DoiPinSerializer, GiaiQuyetSerializer, GuiTrinhKySerializer, HuyTrinhKySerializer,
     KhoaDangKySerializer,
-    KhoaSerializer, KySerializer, MoKhoaKySerializer, QuyTrinhInputSerializer, QuyTrinhSerializer, ThuHoiKhoaSerializer,
-    TrinhKyChiTietSerializer, TrinhKySerializer, TrinhKySuaSerializer, TrinhKyTaoSerializer, TrinhLaiSerializer,
+    KhoaSerializer, KySerializer, LienKetVanBanDiSerializer, MoKhoaKySerializer, QuyTrinhInputSerializer,
+    QuyTrinhSerializer, ThuHoiKhoaSerializer, TrinhKyChiTietSerializer, TrinhKySerializer, TrinhKySuaSerializer,
+    TrinhKyTaoSerializer, TrinhLaiSerializer,
     TinNhanInputSerializer, TinNhanSerializer, TuChoiSerializer, UyQuyenSerializer, XacMinhSoHuuSerializer,
     XoayVongSerializer, YeuCauSuaSerializer, YeuCauSuaThreadSerializer,
 )
@@ -402,6 +403,19 @@ class TrinhKyDetailView(SigningAPIView):
         data = TrinhKySuaSerializer(data=request.data, partial=True)
         data.is_valid(raise_exception=True)
         ho_so = trinh_ky_service.cap_nhat_nhap(ho_so, request.user, dia_chi_ip=_ip(request), **data.validated_data)
+        return Response(_du_lieu_chi_tiet_trinh_ky(ho_so, request))
+
+
+class TrinhKyLienKetVanBanDiView(SigningAPIView):
+    """Liên kết hồ sơ hoàn tất với bản ghi văn bản đi đã đăng ký."""
+
+    def post(self, request, pk):
+        ho_so = _ho_so_xem_duoc(request, pk)
+        data = LienKetVanBanDiSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        ho_so = trinh_ky_service.lien_ket_van_ban_di(
+            ho_so, request.user, dia_chi_ip=_ip(request), **data.validated_data,
+        )
         return Response(_du_lieu_chi_tiet_trinh_ky(ho_so, request))
 
 

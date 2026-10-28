@@ -41,7 +41,7 @@ from django.utils import timezone
 
 from accounts.models import Employee, Position
 from authorization.models import GroupInfo
-from documents.models import PhamVi, VanBanDi
+from documents.models import PhamVi, VanBanDi, VanBanDiAttachment
 from organizations.models import DonVi, KhoiKhuVuc
 from signing import enums
 from signing.models import (
@@ -284,6 +284,15 @@ class Command(BaseCommand):
         noi_dung = tao_pdf(trich_yeu, f"Số hiệu: {so_hieu} — bản {ban}")
         return SimpleUploadedFile(f"{ma}-ban-{ban}.pdf", noi_dung, content_type="application/pdf")
 
+    def _tep_dinh_kem(self, van_ban, ma, nguoi_tao):
+        tep = van_ban.attachments.filter(is_deleted=False, name__iendswith=".pdf").first()
+        if tep is None:
+            tai_len = self._tep(ma)
+            tep = VanBanDiAttachment.objects.create(
+                document=van_ban, file=tai_len, name=tai_len.name, nguoi_tao=nguoi_tao,
+            )
+        return tep
+
     def _khoa(self, ma, buoc):
         # Gắn lần chạy: --reset tạo lại hồ sơ cùng mã mà không trùng Idempotency-Key của lần trước
         return f"{TIEN_TO}:{self.lan_chay}:{ma}:{buoc}"
@@ -315,9 +324,11 @@ class Command(BaseCommand):
         ghi_chu = f"{TIEN_TO} {ma}: {mo_ta}"
         if self._co_roi(ma):
             return None
+        van_ban = self._van_ban(ma, nguoi_tao)
+        tep = self._tep_dinh_kem(van_ban, ma, nguoi_tao)
         ho_so = trinh_ky.tao_nhap(nguoi_tao, document_type=enums.LoaiVanBan.VAN_BAN_DI,
-                                  van_ban_id=self._van_ban(ma, nguoi_tao).pk, quy_trinh=quy_trinh,
-                                  tep=self._tep(ma), han_chot=timezone.now() + timedelta(hours=han_gio),
+                                  van_ban_id=van_ban.pk, tep_dinh_kem_id=tep.pk, quy_trinh=quy_trinh,
+                                  han_chot=timezone.now() + timedelta(hours=han_gio),
                                   ghi_chu=ghi_chu)
         if gui:
             ho_so = trinh_ky.gui(ho_so, nguoi_tao, khoa_chong_trung=self._khoa(ma, "gui"))

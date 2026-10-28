@@ -74,7 +74,13 @@ def doc_tep_pdf(tep):
         raise _loi("thieu_tep", "Cần tải lên tệp PDF dự thảo.", tep=["Bắt buộc."])
     if tep.size > TEP_TOI_DA:
         raise _loi("tep_qua_lon", "Tệp vượt quá 20 MB.", tep=["Tối đa 20 MB."])
-    data = tep.read()
+    return kiem_tra_du_lieu_pdf(tep.read())
+
+
+def kiem_tra_du_lieu_pdf(data):
+    """Kiểm dung lượng và nội dung PDF đã đọc từ nguồn upload hoặc bản ghi văn bản đi."""
+    if len(data) > TEP_TOI_DA:
+        raise _loi("tep_qua_lon", "Tệp vượt quá 20 MB.", tep=["Tối đa 20 MB."])
     if not data.startswith(CHU_KY_PDF):
         raise _loi("tep_khong_phai_pdf", "Chỉ nhận tệp PDF.", tep=["Không phải tệp PDF."])
     so_trang, loi_pdf = _so_trang_hoac_loi(data)
@@ -83,6 +89,30 @@ def doc_tep_pdf(tep):
     if loi_pdf:
         raise _loi(loi_pdf, "Tệp PDF hỏng hoặc không có trang.", tep=["Không đọc được tệp PDF."])
     return data, so_trang
+
+
+def doc_tep_dinh_kem_pdf(nguoi, van_ban_id, tep_dinh_kem_id):
+    """Đọc và kiểm PDF đính kèm của đúng văn bản đi mà người trình được phép xem."""
+    from documents.models import VanBanDiAttachment
+
+    van_ban = kiem_tra_van_ban_trinh_ky(nguoi, enums.LoaiVanBan.VAN_BAN_DI, van_ban_id)
+    tep_dinh_kem = VanBanDiAttachment.objects.filter(
+        document_id=van_ban.pk, pk=tep_dinh_kem_id, is_deleted=False,
+    ).first()
+    if tep_dinh_kem is None or not tep_dinh_kem.file:
+        raise _loi("khong_tim_thay_tep_dinh_kem", "Không tìm thấy tệp đính kèm của văn bản đi.",
+                   status.HTTP_404_NOT_FOUND, tep_dinh_kem_id=["Tệp không tồn tại hoặc đã bị xóa."])
+    if not (tep_dinh_kem.name or "").lower().endswith(".pdf"):
+        raise _loi("tep_khong_phai_pdf", "Chỉ chọn tệp PDF đính kèm.", tep_dinh_kem_id=["Tệp không phải PDF."])
+    try:
+        if tep_dinh_kem.file.size > TEP_TOI_DA:
+            raise _loi("tep_qua_lon", "Tệp vượt quá 20 MB.", tep_dinh_kem_id=["Tối đa 20 MB."])
+        with tep_dinh_kem.file.open("rb") as stored:
+            data = stored.read(TEP_TOI_DA + 1)
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        raise _loi("khong_doc_duoc_tep_dinh_kem", "Không đọc được tệp đính kèm trên máy chủ.",
+                   status.HTTP_503_SERVICE_UNAVAILABLE, tep_dinh_kem_id=["Không đọc được tệp."]) from exc
+    return kiem_tra_du_lieu_pdf(data)
 
 
 def luu_du_lieu_pdf(data):
@@ -207,8 +237,8 @@ def _thao_tac_da_xu_ly(hanh_dong, khoa_chong_trung, yeu_cau):
 
 
 # ── Văn bản trình ký (#275 mục 3) ───────────────────────────────────────────
-# Hồ sơ gắn một văn bản đi (không bắt buộc) hoặc mang văn bản khác nhập tay (số hiệu tùy chọn, trích yếu bắt buộc).
-# Tệp PDF trình ký luôn tải lên riêng. Quy tắc "một văn bản một hồ sơ đang mở" chỉ áp dụng khi gắn văn bản đi.
+# Hồ sơ dùng tệp PDF đính kèm của văn bản đi, hoặc một PDF dự thảo chưa vào sổ (số hiệu tham chiếu tùy chọn,
+# trích yếu bắt buộc). Quy tắc "một văn bản một hồ sơ đang mở" chỉ áp dụng khi gắn văn bản đi.
 
 
 def _kiem_tra_van_ban_gan(nguoi, document_type, van_ban_id, tru=None):
@@ -220,27 +250,41 @@ def _kiem_tra_van_ban_gan(nguoi, document_type, van_ban_id, tru=None):
 
 def _kiem_tra_trich_yeu(trich_yeu):
     if not (trich_yeu or "").strip():
-        raise _loi("thieu_van_ban_trinh_ky", "Chọn văn bản đi hoặc nhập trích yếu văn bản trình ký.",
-                   trich_yeu_van_ban=["Bắt buộc khi không chọn văn bản đi."])
+        raise _loi("thieu_van_ban_trinh_ky", "Chọn văn bản đi có sẵn hoặc nhập trích yếu cho PDF dự thảo chưa vào sổ.",
+                   trich_yeu_van_ban=["Bắt buộc khi không gắn bản ghi văn bản đi."])
 
 
 # ── Tạo, sửa nháp ───────────────────────────────────────────────────────────
 
 
 @transaction.atomic
-def tao_nhap(nguoi_tao, *, quy_trinh, tep, document_type=None, van_ban_id=None, so_hieu_van_ban="",
-             trich_yeu_van_ban="", han_chot=None, ghi_chu="", dia_chi_ip=None):
+def tao_nhap(nguoi_tao, *, quy_trinh, tep=None, tep_dinh_kem_id=None, document_type=None, van_ban_id=None,
+             so_hieu_van_ban="", trich_yeu_van_ban="", han_chot=None, ghi_chu="", dia_chi_ip=None):
     if van_ban_id is not None:
-        document_type = document_type or enums.LoaiVanBan.VAN_BAN_DI
+        if tep is not None:
+            raise _loi("du_lieu_tep_khong_hop_le", "Văn bản đi có sẵn phải dùng tệp đính kèm trên bản ghi.",
+                       tep=["Không tải thêm PDF khi đã chọn văn bản đi."])
+        if tep_dinh_kem_id is None:
+            raise _loi("thieu_tep_dinh_kem", "Chọn tệp PDF đính kèm của văn bản đi.",
+                       tep_dinh_kem_id=["Bắt buộc."])
+        if document_type not in (None, enums.LoaiVanBan.VAN_BAN_DI):
+            kiem_tra_van_ban_trinh_ky(nguoi_tao, document_type, van_ban_id)
+        document_type = enums.LoaiVanBan.VAN_BAN_DI
         so_hieu_van_ban = trich_yeu_van_ban = ""  # văn bản đi là nguồn mô tả
+        data, _ = doc_tep_dinh_kem_pdf(nguoi_tao, van_ban_id, tep_dinh_kem_id)
     else:
+        if tep_dinh_kem_id is not None:
+            raise _loi("tep_dinh_kem_khong_hop_le", "Tệp đính kèm chỉ dùng khi chọn văn bản đi.",
+                       tep_dinh_kem_id=["Không áp dụng cho PDF dự thảo chưa vào sổ."])
         document_type = None
         _kiem_tra_trich_yeu(trich_yeu_van_ban)
-    _kiem_tra_van_ban_gan(nguoi_tao, document_type, van_ban_id)
+        data, _ = doc_tep_pdf(tep)
+    if van_ban_id is not None:
+        _kiem_tra_khong_co_ho_so_mo(document_type, van_ban_id)
     quy_trinh = SigningProcess.objects.get(pk=quy_trinh.pk)
     _kiem_tra_quy_trinh(quy_trinh, nguoi_tao)
     _kiem_tra_han_chot(han_chot)
-    vi_tri, ma_bam = luu_tep_pdf(tep)
+    vi_tri, ma_bam = luu_du_lieu_pdf(data)
     yeu_cau = SigningRequest.objects.create(
         document_type=document_type, van_ban_id=van_ban_id, so_hieu_van_ban=so_hieu_van_ban.strip(),
         trich_yeu_van_ban=trich_yeu_van_ban.strip(), quy_trinh=quy_trinh,
@@ -254,8 +298,39 @@ def tao_nhap(nguoi_tao, *, quy_trinh, tep, document_type=None, van_ban_id=None, 
 
 
 @transaction.atomic
+def lien_ket_van_ban_di(yeu_cau, nguoi, *, van_ban_id, dia_chi_ip=None):
+    """Liên kết một PDF đã hoàn tất duyệt nội bộ với bản ghi văn bản đi đã đăng ký."""
+    yeu_cau = _khoa_yeu_cau(yeu_cau.pk)
+    _yeu_cau_nguoi_tao(yeu_cau, nguoi)
+    if yeu_cau.trang_thai != enums.TrangThaiYeuCau.HOAN_THANH:
+        raise ConflictError(code="ho_so_chua_hoan_tat", detail="Chỉ liên kết sau khi hồ sơ hoàn tất duyệt nội bộ.")
+    if yeu_cau.van_ban_id is not None:
+        raise ConflictError(code="ho_so_da_lien_ket_van_ban", detail="Hồ sơ đã gắn với văn bản đi.")
+    luot = luot_hien_hanh(yeu_cau)
+    if (luot is None or luot.trang_thai != enums.TrangThaiLuotTrinh.HOAN_THANH
+            or luot.trang_thai_tep_hoan_tat != enums.TrangThaiTepHoanTat.THANH_CONG
+            or not luot.vi_tri_tep_hoan_tat or not luot.ma_bam_tep_hoan_tat):
+        raise ConflictError(code="tep_hoan_tat_chua_san_sang",
+                            detail="Tệp hoàn tất chưa được tạo thành công; hãy thử lại sau khi tệp sẵn sàng.")
+    van_ban = kiem_tra_van_ban_trinh_ky(nguoi, enums.LoaiVanBan.VAN_BAN_DI, van_ban_id)
+    yeu_cau.document_type = enums.LoaiVanBan.VAN_BAN_DI
+    yeu_cau.van_ban_id = van_ban.pk
+    yeu_cau.so_hieu_van_ban = ""
+    yeu_cau.trich_yeu_van_ban = ""
+    yeu_cau.update_by = nguoi
+    yeu_cau.save(update_fields=["document_type", "van_ban_id", "so_hieu_van_ban", "trich_yeu_van_ban",
+                                 "update_by", "update_at"])
+    so_hieu = van_ban.so_hieu or ""
+    ghi_nhat_ky(nguoi, LOAI, yeu_cau.pk, "LIEN_KET_VAN_BAN_DI", trinh_ky=yeu_cau, luot_trinh=luot,
+                trang_thai_truoc=yeu_cau.trang_thai, trang_thai_sau=yeu_cau.trang_thai,
+                chi_tiet=f"#{van_ban.pk} · {so_hieu}", dia_chi_ip=dia_chi_ip,
+                du_lieu_kem_theo={"van_ban_id": van_ban.pk, "so_hieu": so_hieu})
+    return yeu_cau
+
+
+@transaction.atomic
 def cap_nhat_nhap(yeu_cau, nguoi, *, tep=None, dia_chi_ip=None, **thay_doi):
-    """Sửa hồ sơ NHAP (hạn chót, ghi chú, tệp; số hiệu, trích yếu khi văn bản nhập tay). Thay tệp tăng
+    """Sửa hồ sơ NHAP (hạn chót, ghi chú, tệp; số hiệu tham chiếu, trích yếu khi dùng PDF dự thảo chưa vào sổ). Thay tệp tăng
     `phien_ban_van_ban`."""
     yeu_cau = _khoa_yeu_cau(yeu_cau.pk)
     _yeu_cau_nguoi_tao(yeu_cau, nguoi)
@@ -271,7 +346,24 @@ def cap_nhat_nhap(yeu_cau, nguoi, *, tep=None, dia_chi_ip=None, **thay_doi):
         thay_doi[k] = thay_doi[k].strip()
     if "trich_yeu_van_ban" in thay_doi:
         _kiem_tra_trich_yeu(thay_doi["trich_yeu_van_ban"])
+    quy_trinh_cu = None
+    phien_ban_cu = yeu_cau.phien_ban_quy_trinh
+    quy_trinh_moi = thay_doi.pop("quy_trinh", None)
     fields = []
+    if quy_trinh_moi is not None:
+        quy_trinh_cu = SigningProcess.objects.get(pk=yeu_cau.quy_trinh_id)
+        if quy_trinh_cu.trang_thai == enums.TrangThaiQuyTrinh.HOAT_DONG:
+            raise ConflictError(code="quy_trinh_chua_ngung",
+                                detail="Chỉ chuyển bản nháp khi phiên bản quy trình hiện tại đã ngừng.")
+        quy_trinh_moi = SigningProcess.objects.select_for_update().get(pk=quy_trinh_moi.pk)
+        if (quy_trinh_moi.ma_quy_trinh != quy_trinh_cu.ma_quy_trinh
+                or quy_trinh_moi.phien_ban <= phien_ban_cu):
+            raise ConflictError(code="quy_trinh_thay_the_khong_hop_le",
+                                detail="Chỉ chuyển sang phiên bản mới hơn của cùng quy trình.")
+        _kiem_tra_quy_trinh(quy_trinh_moi, nguoi)
+        yeu_cau.quy_trinh = quy_trinh_moi
+        yeu_cau.phien_ban_quy_trinh = quy_trinh_moi.phien_ban
+        fields += ["quy_trinh", "phien_ban_quy_trinh"]
     for ten, gia_tri in thay_doi.items():
         setattr(yeu_cau, ten, gia_tri)
         fields.append(ten)
@@ -281,8 +373,14 @@ def cap_nhat_nhap(yeu_cau, nguoi, *, tep=None, dia_chi_ip=None, **thay_doi):
         fields += ["vi_tri_luu_tep", "ma_bam_tai_lieu", "phien_ban_van_ban"]
     yeu_cau.update_by = nguoi
     yeu_cau.save(update_fields=fields + ["update_by", "update_at"])
+    du_lieu_kem_theo = {"truong": sorted(set(fields))}
+    if quy_trinh_cu is not None and quy_trinh_moi is not None:
+        du_lieu_kem_theo["quy_trinh_cu"] = {"id": quy_trinh_cu.pk, "phien_ban": phien_ban_cu}
+        du_lieu_kem_theo["quy_trinh_moi"] = {
+            "id": quy_trinh_moi.pk, "phien_ban": quy_trinh_moi.phien_ban,
+        }
     ghi_nhat_ky(nguoi, LOAI, yeu_cau.pk, "SUA_NHAP_TRINH_KY", trinh_ky=yeu_cau, dia_chi_ip=dia_chi_ip,
-                du_lieu_kem_theo={"truong": sorted(set(fields))})
+                du_lieu_kem_theo=du_lieu_kem_theo)
     return yeu_cau
 
 

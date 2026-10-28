@@ -166,8 +166,8 @@ class SigningProcessStepSigner(models.Model):
 
 
 class SigningRequest(models.Model):
-    # Văn bản trình ký: gắn văn bản đi (document_type, van_ban_id) hoặc văn bản khác nhập tay (số hiệu, trích yếu);
-    # tệp PDF trình ký luôn tải lên riêng (#274).
+    # Văn bản trình ký: gắn văn bản đi đã đăng ký hoặc PDF dự thảo chưa vào sổ; hồ sơ có id tự cấp.
+    # PDF đã chọn được sao chép vào kho Trình ký để chụp nguyên bản tài liệu của lượt trình.
     document_type = models.CharField(max_length=20, choices=enums.LoaiVanBan.choices, null=True, blank=True)
     van_ban_id = models.BigIntegerField(db_column="document_id", null=True, blank=True)
     so_hieu_van_ban = models.CharField(max_length=100, blank=True, db_default="", default="")

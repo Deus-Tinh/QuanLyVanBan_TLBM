@@ -178,8 +178,7 @@ class DoiPinSerializer(serializers.Serializer):
 
 
 class TrinhKyTaoSerializer(serializers.Serializer):
-    """Văn bản trình ký: `van_ban_id` (văn bản đi, không bắt buộc) hoặc `trich_yeu_van_ban` (+ `so_hieu_van_ban`)
-    nhập tay; service kiểm điều kiện "một trong hai"."""
+    """Chọn một PDF đính kèm văn bản đi hoặc tải một PDF dự thảo chưa vào sổ."""
 
     document_type = serializers.ChoiceField(choices=enums.LoaiVanBan.choices, required=False, allow_null=True)
     van_ban_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
@@ -188,7 +187,34 @@ class TrinhKyTaoSerializer(serializers.Serializer):
     quy_trinh = serializers.PrimaryKeyRelatedField(queryset=SigningProcess.objects.all())
     han_chot = serializers.DateTimeField(required=False, allow_null=True)
     ghi_chu = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True, default="")
-    tep = serializers.FileField()
+    tep = serializers.FileField(required=False)
+    tep_dinh_kem_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+
+    def validate(self, attrs):
+        co_van_ban = attrs.get("van_ban_id") is not None
+        co_tai_len = attrs.get("tep") is not None
+        co_tep_dinh_kem = attrs.get("tep_dinh_kem_id") is not None
+        if co_van_ban:
+            loi = {}
+            if not co_tep_dinh_kem:
+                loi["tep_dinh_kem_id"] = "Chọn tệp PDF đính kèm của văn bản đi."
+            if co_tai_len:
+                loi["tep"] = "Văn bản đi có sẵn phải dùng tệp đính kèm trên bản ghi."
+            if loi:
+                raise serializers.ValidationError(loi)
+        else:
+            loi = {}
+            if co_tep_dinh_kem:
+                loi["tep_dinh_kem_id"] = "Chỉ chọn tệp đính kèm khi đã chọn văn bản đi."
+            if not co_tai_len:
+                loi["tep"] = "Cần tải PDF dự thảo chưa vào sổ."
+            if loi:
+                raise serializers.ValidationError(loi)
+        return attrs
+
+
+class LienKetVanBanDiSerializer(serializers.Serializer):
+    van_ban_id = serializers.IntegerField(min_value=1)
 
 
 class TrinhKySuaSerializer(serializers.Serializer):
@@ -196,6 +222,7 @@ class TrinhKySuaSerializer(serializers.Serializer):
     ghi_chu = serializers.CharField(max_length=MAX_GHI_CHU, required=False, allow_blank=True)
     so_hieu_van_ban = serializers.CharField(max_length=100, required=False, allow_blank=True)
     trich_yeu_van_ban = serializers.CharField(max_length=MAX_TRICH_YEU, required=False, allow_blank=True)
+    quy_trinh = serializers.PrimaryKeyRelatedField(queryset=SigningProcess.objects.all(), required=False)
     tep = serializers.FileField(required=False)
 
 
