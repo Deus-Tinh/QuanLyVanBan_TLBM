@@ -13,17 +13,19 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
       </MemoryRouter>
     );
 
-    // 3 KPI cards show 0 by default
-    expect(screen.getAllByText('0')).toHaveLength(3);
+    // 4 KPI cards show 0 by default (Incoming, Outgoing, Tasks, Signing)
+    expect(screen.getAllByText('0')).toHaveLength(4);
     expect(screen.getByText('Chưa có phát sinh trong ngày')).toBeInTheDocument();
     expect(screen.getByText('Chưa có phát hành hôm nay')).toBeInTheDocument();
     expect(screen.getByText('Không có nhiệm vụ cần xử lý')).toBeInTheDocument();
+    expect(screen.getByText('Không có hồ sơ chờ ký')).toBeInTheDocument();
 
     // Tables show empty states
     expect(screen.getByText('Chưa có dữ liệu văn bản đến')).toBeInTheDocument();
     expect(screen.getByText('Chưa có dữ liệu văn bản đi')).toBeInTheDocument();
     expect(screen.getByText('Chưa có nhiệm vụ nào cần xử lý')).toBeInTheDocument();
     expect(screen.getByText('Chưa có dữ liệu tài liệu & biểu mẫu')).toBeInTheDocument();
+    expect(screen.getByText('Không có phiếu trình ký nào cần xử lý')).toBeInTheDocument();
 
     // No mock text
     expect(screen.queryByText(/Mock Filter/i)).not.toBeInTheDocument();
@@ -184,6 +186,80 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     }
   });
 
+  it('renders signing requests table and handles navigation', () => {
+    const mockNavigate = vi.fn();
+    const mockSigning = [
+      {
+        id: '1',
+        ma_trinh_ky: '15/TTr-VP',
+        tieu_de: 'Tờ trình phê duyệt mua sắm máy quét tài liệu',
+        nguoi_trinh: 'Lê Thanh Hậu',
+        ngay_gui: '23/10/2026',
+        trang_thai: 'CHO_KY',
+        nhan_trang_thai: 'Chờ ký',
+        can_toi_ky: true,
+      },
+    ];
+
+    render(
+      <MemoryRouter>
+        <ModernDashboardView
+          onNavigate={mockNavigate}
+          signingCount={1}
+          signingRequests={mockSigning}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('15/TTr-VP')).toBeInTheDocument();
+    expect(screen.getByText('Tờ trình phê duyệt mua sắm máy quét tài liệu')).toBeInTheDocument();
+    expect(screen.getByText('Lê Thanh Hậu')).toBeInTheDocument();
+    expect(screen.getByText('Chờ ký')).toBeInTheDocument();
+
+    const signBtn = screen.getByText('Ký ngay');
+    fireEvent.click(signBtn);
+
+    const viewAllBtn = screen.getByText('Xem tất cả hồ sơ trình ký');
+    fireEvent.click(viewAllBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('approvals');
+  });
+
+  it('correctly maps all signing statuses (CHO_KY, DANG_XU_LY, DA_KY, HOAN_THANH, TU_CHOI, HUY, NHAP)', () => {
+    const multiStatusSigning = [
+      { id: '1', ma_trinh_ky: 'TK-01', tieu_de: 'Phieu 1', trang_thai: 'CHO_KY' },
+      { id: '2', ma_trinh_ky: 'TK-02', tieu_de: 'Phieu 2', trang_thai: 'DANG_XU_LY' },
+      { id: '3', ma_trinh_ky: 'TK-03', tieu_de: 'Phieu 3', trang_thai: 'DA_KY' },
+      { id: '4', ma_trinh_ky: 'TK-04', tieu_de: 'Phieu 4', trang_thai: 'HOAN_THANH' },
+      { id: '5', ma_trinh_ky: 'TK-05', tieu_de: 'Phieu 5', trang_thai: 'TU_CHOI' },
+    ];
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <ModernDashboardView signingRequests={multiStatusSigning} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText('Chờ ký').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đang xử lý').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đã ký').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Hoàn thành').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Từ chối').length).toBeGreaterThan(0);
+
+    // Rerender with cancelled and draft
+    const secondaryStatusSigning = [
+      { id: '6', ma_trinh_ky: 'TK-06', tieu_de: 'Phieu 6', trang_thai: 'HUY' },
+      { id: '7', ma_trinh_ky: 'TK-07', tieu_de: 'Phieu 7', trang_thai: 'NHAP' },
+    ];
+
+    rerender(
+      <MemoryRouter>
+        <ModernDashboardView signingRequests={secondaryStatusSigning} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getAllByText('Đã hủy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bản nháp').length).toBeGreaterThan(0);
+  });
 });
 
 
