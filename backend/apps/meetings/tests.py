@@ -390,12 +390,16 @@ class MeetingBookingAPITestCase(APITestCase):
         )
 
         vn_tz = timezone.get_current_timezone()
-        self.base_time = timezone.make_aware(datetime(2026, 10, 20, 0, 0, 0), vn_tz)
+        self.booking_date = timezone.localdate() + timedelta(days=2)
+        self.base_time = timezone.make_aware(
+            datetime.combine(self.booking_date, time.min),
+            vn_tz,
+        )
         self.booking1 = MeetingBooking.objects.create(
             room=self.room1,
             organizer=self.user1,
             title="Cuộc họp sáng của User 1",
-            date=date(2026, 10, 20),
+            date=self.booking_date,
             start_time=time(9, 0),
             end_time=time(10, 30),
             attendees_count=8,
@@ -426,7 +430,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room1.id,
             "title": "Họp Triển Khai Chiều",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "14:00",
             "end_time": "16:00",
             "attendees_count": 10,
@@ -445,7 +449,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room1.id,
             "title": "Họp Cố Tình Trùng Lịch",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "10:00",
             "end_time": "11:30",
             "attendees_count": 5,
@@ -459,7 +463,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room2.id,  # sức chứa 10
             "title": "Họp Quá Đông",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "14:00",
             "end_time": "15:00",
             "attendees_count": 50,
@@ -491,7 +495,7 @@ class MeetingBookingAPITestCase(APITestCase):
         payload = {
             "room": self.room1.id,
             "title": "Họp Khẩn Cấp Chiếm Slot Đã Hủy",
-            "date": "2026-10-20",
+            "date": self.booking_date.isoformat(),
             "start_time": "09:00",
             "end_time": "10:30",
             "attendees_count": 6,
