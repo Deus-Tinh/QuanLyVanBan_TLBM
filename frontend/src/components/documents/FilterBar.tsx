@@ -115,7 +115,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   
   // Danh sách hồ sơ hiển thị: ưu tiên hồ sơ thực tế có văn bản trong hệ thống và bổ sung hồ sơ đang được chọn
   const folderOptions = React.useMemo(() => {
-    let list: string[] = [];
+    let list: string[];
     if (availableFolders && availableFolders.length > 0) {
       list = [...availableFolders];
     } else {
@@ -134,7 +134,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       : DEFAULT_DOC_TYPES;
 
     const activeFolder = currentFolderName;
-    let result: string[] = [];
+    let result: string[];
 
     if (!activeFolder) {
       // Chưa chọn hồ sơ: hiển thị tất cả loại văn bản có trong hệ thống
