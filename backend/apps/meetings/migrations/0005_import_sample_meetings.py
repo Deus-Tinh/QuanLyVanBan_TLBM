@@ -32,7 +32,7 @@ BOOKING_SQL = (
     '    source.meeting_date::date,\n'
     '    source.start_time::time,\n'
     '    source.end_time::time,\n'
-    '    source.attendees_count,\n'
+    '    source.attendees_count::integer,\n'
     '    source.purpose,\n'
     '    source.trang_thai::meetingbooking_status\n'
     'FROM (\n'
