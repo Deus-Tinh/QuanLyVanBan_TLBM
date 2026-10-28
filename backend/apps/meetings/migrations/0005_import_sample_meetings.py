@@ -108,7 +108,7 @@ BOOKING_SQL = (
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("accounts", "0010_import_sample_employees"),
+        ("accounts", "0012_import_sample_employees"),
         ("meetings", "0004_install_meetingroom_updated_at_trigger"),
         ("organizations", "0005_reference_data_ddl"),
     ]

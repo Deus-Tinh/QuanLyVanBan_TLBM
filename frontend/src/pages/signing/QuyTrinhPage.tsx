@@ -13,7 +13,7 @@ import { docLoi, signingApi } from '@lib/signing/api';
 import { boDau, GIOI_HAN, LOP_O_NHAP, MA_QUY_TRINH_HOP_LE, tenNguoiKyCauHinh } from '@lib/signing/dinhDang';
 import { coQuyen, useTai, useToi } from '@lib/signing/hooks';
 import { type HamDich, useSigningT } from '@lib/signing/i18n';
-import type { CanBo, PhamViQuyTrinh, QuyTrinh, VaiTroKy } from '@lib/signing/types';
+import type { CanBo, ChucVu, PhamViQuyTrinh, QuyTrinh, VaiTroKy } from '@lib/signing/types';
 
 /** Người ký trong form: theo tài khoản (`nguoi_ky`) hoặc theo chức vụ (giữ nguyên khi sửa quy trình nháp). */
 interface NguoiKyNhap {
@@ -188,15 +188,24 @@ function ThemNguoiKyCap({
   onChonCanBo,
   onChonChucVu,
   donViTim,
+  chucVuCapKy,
 }: {
   onChonCanBo: (u: CanBo) => void;
   onChonChucVu: (cv: { id: number; ten: string }, pham_vi: string) => void;
   donViTim: (pham_vi_chuc_vu: string) => number | null;
+  chucVuCapKy?: ChucVu | null;
 }) {
   const { t, loi } = useSigningT();
   const ds = useTai(() => signingApi.chucVu(), []);
-  const [chucVu, setChucVu] = useState('');
   const [phamVi, setPhamVi] = useState<string>(PHAM_VI_CHUC_VU[0]);
+  const [chucVuGoc, setChucVuGoc] = useState<string | null>(null);
+  const [prevChucVuCapKy, setPrevChucVuCapKy] = useState(chucVuCapKy);
+  if (chucVuCapKy !== prevChucVuCapKy) {
+    setPrevChucVuCapKy(chucVuCapKy);
+    setChucVuGoc(null);
+  }
+  const chucVu = chucVuGoc !== null ? chucVuGoc : (chucVuCapKy ? String(chucVuCapKy.id) : '');
+  const setChucVu = (val: string) => setChucVuGoc(val);
 
   const chon = ds.duLieu?.find((c) => String(c.id) === chucVu);
 
@@ -292,6 +301,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
   const donViBanDau = banDau ? banDau.don_vi_ap_dung_id : toi?.don_vi_id;
   const [donVi, setDonVi] = useState(donViBanDau ? String(donViBanDau) : '');
   const dsDonVi = useTai(() => signingApi.donVi(), []);
+  const dsChucVu = useTai(() => signingApi.chucVu(), []);
   const [cap, setCap] = useState<CapNhap[]>(banDau ? capTuQuyTrinh(banDau, t) : [CAP_TRONG]);
   const [dangLuu, setDangLuu] = useState(false);
   const [thongBao, setThongBao] = useState('');
@@ -359,18 +369,39 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
       </div>
       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
         <div className="text-sm font-bold text-main">{t('quyTrinh.capKy')}</div>
+        {dsChucVu.loi && <p className="text-xs text-danger">{loi(dsChucVu.loi)}</p>}
+        {dsChucVu.duLieu && dsChucVu.duLieu.length === 0 && (
+          <p className="text-xs text-muted">{t('quyTrinh.khongCoChucVu')}</p>
+        )}
         {cap.map((c, i) => (
           <div key={i} className="space-y-2 rounded-lg border border-border-subtle p-2">
             <div className="flex gap-2">
-              <span className="pt-2 text-sm font-bold text-main">{i + 1}.</span>
-              <input className={LOP_O_NHAP} placeholder={t('quyTrinh.tenCap')} aria-label={`${t('quyTrinh.tenCap')} ${i + 1}`}
-                maxLength={GIOI_HAN.tenQuyTrinh} value={c.ten_cap_ky} onChange={(e) => sua(i, { ten_cap_ky: e.target.value })} />
+              <span className="pt-2 text-sm font-bold text-main shrink-0">{i + 1}.</span>
+              <select
+                className={LOP_O_NHAP}
+                aria-label={`${t('quyTrinh.tenCap')} ${i + 1}`}
+                value={c.ten_cap_ky}
+                disabled={dsChucVu.dangTai && !dsChucVu.duLieu}
+                onChange={(e) => sua(i, { ten_cap_ky: e.target.value })}
+              >
+                <option value="">
+                  {dsChucVu.dangTai && !dsChucVu.duLieu ? t('chung.dangTai') : t('quyTrinh.chonChucVuCapKy')}
+                </option>
+                {c.ten_cap_ky && !dsChucVu.duLieu?.some((cv) => cv.name === c.ten_cap_ky) && (
+                  <option value={c.ten_cap_ky}>
+                    {c.ten_cap_ky} ({t('quyTrinh.tenNgoaiDanhMuc')})
+                  </option>
+                )}
+                {dsChucVu.duLieu?.map((cv) => (
+                  <option key={cv.id} value={cv.name}>{cv.name}</option>
+                ))}
+              </select>
               <input className={`${LOP_O_NHAP} w-32`} inputMode="numeric" placeholder={t('quyTrinh.soGio')} maxLength={4}
                 aria-label={`${t('quyTrinh.soGio')} ${i + 1}`} value={c.so_gio_xu_ly}
                 aria-invalid={soGioQuaLon(c) ? true : undefined}
                 onChange={(e) => sua(i, { so_gio_xu_ly: e.target.value.replace(/\D/g, '') })} />
               {cap.length > 1 && (
-                <button type="button" className="px-1 text-danger" aria-label={`${t('quyTrinh.xoaCap')} ${i + 1}`}
+                <button type="button" className="px-1 text-danger cursor-pointer" aria-label={`${t('quyTrinh.xoaCap')} ${i + 1}`}
                   title={t('quyTrinh.xoaCap')} onClick={() => setCap((x) => x.filter((_, j) => j !== i))}>
                   <i className="fa-solid fa-trash" aria-hidden="true" />
                 </button>
@@ -411,6 +442,7 @@ function FormTao({ mo, onDong, onXong, banDau }: { mo: boolean; onDong: () => vo
               </div>
             ))}
             <ThemNguoiKyCap
+              chucVuCapKy={dsChucVu.duLieu?.find((cv) => cv.name === c.ten_cap_ky) ?? null}
               donViTim={(pham_vi) => donViTimCanBo(pham_vi, c.don_vi_id, phamVi, donViApDung)}
               onChonCanBo={(u: CanBo) => !c.nguoi_ky.some((n) => n.nguoi_ky === u.id)
                 && sua(i, { nguoi_ky: [...c.nguoi_ky, {

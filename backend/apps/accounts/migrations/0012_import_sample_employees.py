@@ -1046,7 +1046,7 @@ GROUP_SQL = (
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("accounts", "0009_standard_positions"),
+        ("accounts", "0011_employeeassignment_fk_cascade_ddl"),
         ("authorization", "0008_supplementary_groups_tlbgd_kt"),
         ("organizations", "0005_reference_data_ddl"),
     ]

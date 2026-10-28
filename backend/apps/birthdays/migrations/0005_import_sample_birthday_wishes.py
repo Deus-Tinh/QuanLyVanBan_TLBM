@@ -45,7 +45,7 @@ WISH_SQL = (
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("accounts", "0010_import_sample_employees"),
+        ("accounts", "0012_import_sample_employees"),
         ("birthdays", "0004_install_updated_at_triggers"),
     ]
 

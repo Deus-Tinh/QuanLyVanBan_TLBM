@@ -220,6 +220,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </label>
           <div className="relative w-full max-w-full min-w-0">
             <Select
+              nativeSelect
+              title="Chọn danh mục hồ sơ để lọc văn bản"
               value={filters.ho_so || ''}
               onChange={handleFolderChange}
               options={dossierSelectOptions}
@@ -253,6 +255,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <div className="relative w-full max-w-full min-w-0">
             <Select
               disabled={!filters.ho_so}
+              title={filters.ho_so ? "Chọn loại văn bản tương ứng" : "Khóa: Vui lòng chọn danh mục hồ sơ ở bước 1 trước"}
               value={filters.loai_van_ban !== undefined ? String(filters.loai_van_ban) : ''}
               onChange={(val) => handleInputChange('loai_van_ban', val || undefined)}
               options={docTypeSelectOptions}
