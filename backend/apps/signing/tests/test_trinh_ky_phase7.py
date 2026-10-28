@@ -270,6 +270,15 @@ class LienKetVanBanDiTests(TrinhKyBase):
         r = self.lien_ket(pk)
         self.assertEqual((r.status_code, r.data["code"]), (409, "ho_so_da_lien_ket_van_ban"))
 
+    def test_completed_drafts_cannot_link_to_an_outgoing_document_twice(self):
+        self.assertEqual(self.lien_ket(self.tao_da_hoan_tat()).status_code, 200)
+
+        second = self.tao_da_hoan_tat()
+        r = self.lien_ket(second)
+
+        self.assertEqual((r.status_code, r.data["code"]), (409, "van_ban_da_co_ho_so_hoan_tat"))
+        self.assertIsNone(SigningRequest.objects.get(pk=second).van_ban_id)
+
     def test_link_waits_for_approval_and_successful_final_pdf(self):
         pk = self.tao_nhap(van_ban_id=None, trich_yeu_van_ban="Kế hoạch thử").data["id"]
         r = self.lien_ket(pk)

@@ -498,7 +498,7 @@ describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
     await waitFor(() => expect(lamMoiDem).toHaveBeenCalledTimes(1));
   });
 
-  it('trang Văn bản công khai: gõ từ khóa tự áp dụng sau một nhịp, không cần bấm Lọc; xóa chữ thì bỏ lọc', async () => {
+  it('trang Tệp hồ sơ: gõ từ khóa tự áp dụng sau một nhịp, không cần bấm Lọc; xóa chữ thì bỏ lọc', async () => {
     api.taiLieu.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
     boc(<TaiLieuPage />);
     const o = await screen.findByRole('searchbox');

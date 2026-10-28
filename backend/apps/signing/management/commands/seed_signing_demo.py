@@ -17,7 +17,8 @@ trình lại, ủy quyền) nên lịch sử, bằng chứng, tệp hoàn tất 
   Dashboard (Nhóm 1, `signing.selectors.tong_quan_dashboard`) có phiếu gần đây với ngày khác nhau.
 - `--reset`: làm mới bộ hồ sơ mẫu. Bằng chứng (lượt trình, chữ ký, nhật ký, bằng chứng tổng hợp) bất biến theo
   trigger của DDL nên không xóa: hồ sơ mẫu cũ còn mở được hủy, ghi chú đổi sang "Dữ liệu mẫu cũ", ngày tạo/ngày trình
-  lùi 30 ngày (không chen vào 5 phiếu gần nhất của Dashboard), rồi tạo bộ mới.
+  lùi 30 ngày (không chen vào 5 phiếu gần nhất của Dashboard), rồi tạo bộ mới. Nếu văn bản mẫu đã có hồ sơ hoàn tất,
+  tạo bản ghi văn bản đi mới cho bộ mẫu kế tiếp.
 - `--email-domain <miền>`: gán email <username>@<miền> cho tài khoản mẫu chưa có email; không có email thì chỉ có
   thông báo trong ứng dụng, không có email.
 
@@ -274,6 +275,21 @@ class Command(BaseCommand):
     def _van_ban(self, ma, nguoi_tao):
         so_hieu, trich_yeu = VAN_BAN[ma]
         vb = VanBanDi.objects.filter(so_hieu=so_hieu, trich_yeu=trich_yeu).first()
+        da_hoan_tat = vb is not None and SigningRequest.objects.filter(
+            document_type=enums.LoaiVanBan.VAN_BAN_DI,
+            van_ban_id=vb.pk,
+            trang_thai=enums.TrangThaiYeuCau.HOAN_THANH,
+        ).exists()
+        if da_hoan_tat:
+            so_luong_hoan_tat = SigningRequest.objects.filter(
+                document_type=enums.LoaiVanBan.VAN_BAN_DI,
+                van_ban_id__in=VanBanDi.objects.filter(so_hieu__startswith=so_hieu).values("pk"),
+                trang_thai=enums.TrangThaiYeuCau.HOAN_THANH,
+            ).count()
+            phien_ban = so_luong_hoan_tat + 1
+            so_hieu = f"{so_hieu}-M{phien_ban}"
+            trich_yeu = f"{trich_yeu} (Bộ mẫu {phien_ban})"
+            vb = VanBanDi.objects.filter(so_hieu=so_hieu, trich_yeu=trich_yeu).first()
         if vb is None:
             vb = VanBanDi.objects.create(so_hieu=so_hieu, trich_yeu=trich_yeu, pham_vi=PhamVi.NOI_BO,
                                          nguoi_tao=nguoi_tao, nguoi_ky="", chuc_vu="")

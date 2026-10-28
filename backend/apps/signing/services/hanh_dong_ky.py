@@ -59,7 +59,7 @@ def _dong_cua_toi(luot, nguoi, chi_dang_mo=True):
                            detail="Bạn không có lượt ký đang mở trên hồ sơ này.", status_code=status.HTTP_403_FORBIDDEN)
     if chi_dang_mo and (dong.thoi_diem_mo is None or dong.trang_thai != enums.TrangThaiNguoiKy.CHO_KY):
         raise ConflictError(code="chua_den_luot_ky",
-                            detail="Chưa đến lượt bạn ký (đang chờ ký nháy) hoặc bạn đã xử lý.")
+                            detail="Chưa đến lượt bạn ký vì cấp ký trước chưa hoàn tất, hoặc bạn đã xử lý.")
     return dong
 
 
@@ -223,7 +223,7 @@ def thu_hoi(yeu_cau, nguoi, *, khoa_chong_trung, dia_chi_ip=None):
         n.vai_tro_ky == enums.VaiTroKy.KY_CHINH and n.trang_thai == enums.TrangThaiNguoiKy.DA_KY for n in nguoi_cap
     ):
         raise ConflictError(code="ky_chinh_da_ky",
-                            detail="Ký chính cùng cấp đã ký trên cơ sở ký nháy này; không thu hồi được.")
+                            detail="Không thể thu hồi vì cấp ký chính đã ký sau cấu hình ký cũ này.")
     chu_ky_cu = dong.chu_ky_hien_hanh_id
     dong.trang_thai = enums.TrangThaiNguoiKy.CHO_KY
     dong.ngay_ky = None

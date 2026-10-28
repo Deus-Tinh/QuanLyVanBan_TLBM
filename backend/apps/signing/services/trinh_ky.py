@@ -197,18 +197,32 @@ def dang_cho_toi_ky(nguoi):
     ).distinct()
 
 
-# ── Một văn bản một hồ sơ đang mở ───────────────────────────────────────────
+# ── Quy tắc số hồ sơ theo văn bản đi ────────────────────────────────────────
 
 TRANG_THAI_DANG_MO = (enums.TrangThaiYeuCau.NHAP, enums.TrangThaiYeuCau.CHO_KY)
 
 
-def _kiem_tra_khong_co_ho_so_mo(document_type, van_ban_id, tru=None):
+def _kiem_tra_van_ban_co_the_trinh(document_type, van_ban_id, tru=None):
     """
-    Mỗi văn bản chỉ có một hồ sơ đang mở (nháp hoặc đang chờ ký). Hồ sơ đã kết thúc (hoàn thành, từ chối, hủy) không
-    chặn việc trình lại. Khóa advisory theo văn bản (giữ đến hết transaction) để hai yêu cầu đồng thời không cùng qua.
+    Mỗi văn bản chỉ có một hồ sơ đang mở và tối đa một hồ sơ hoàn tất. Hồ sơ bị từ chối hoặc hủy không chặn gửi lại.
+    Khóa advisory theo văn bản (giữ đến hết transaction) để hai yêu cầu đồng thời không cùng qua.
     """
     with connection.cursor() as cursor:
         cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s), %s)", [f"signing:{document_type}", van_ban_id])
+    da_hoan_tat = SigningRequest.objects.filter(
+        document_type=document_type,
+        van_ban_id=van_ban_id,
+        trang_thai=enums.TrangThaiYeuCau.HOAN_THANH,
+    )
+    if tru is not None:
+        da_hoan_tat = da_hoan_tat.exclude(pk=tru)
+    ho_so_hoan_tat = da_hoan_tat.order_by("pk").first()
+    if ho_so_hoan_tat is not None:
+        raise ConflictError(
+            code="van_ban_da_co_ho_so_hoan_tat",
+            detail=f"Văn bản đi đã có hồ sơ trình ký #{ho_so_hoan_tat.pk} hoàn tất. Tạo văn bản đi mới nếu cần ký bản khác.",
+            fields={"van_ban_id": [f"Đã có hồ sơ hoàn tất #{ho_so_hoan_tat.pk}."]},
+        )
     dang_mo = SigningRequest.objects.filter(document_type=document_type, van_ban_id=van_ban_id,
                                             trang_thai__in=TRANG_THAI_DANG_MO)
     if tru is not None:
@@ -238,14 +252,14 @@ def _thao_tac_da_xu_ly(hanh_dong, khoa_chong_trung, yeu_cau):
 
 # ── Văn bản trình ký (#275 mục 3) ───────────────────────────────────────────
 # Hồ sơ dùng tệp PDF đính kèm của văn bản đi, hoặc một PDF dự thảo chưa vào sổ (số hiệu tham chiếu tùy chọn,
-# trích yếu bắt buộc). Quy tắc "một văn bản một hồ sơ đang mở" chỉ áp dụng khi gắn văn bản đi.
+# trích yếu bắt buộc). Văn bản đi chỉ có tối đa một hồ sơ đang mở và một hồ sơ hoàn tất.
 
 
 def _kiem_tra_van_ban_gan(nguoi, document_type, van_ban_id, tru=None):
     if van_ban_id is None:
         return
     kiem_tra_van_ban_trinh_ky(nguoi, document_type, van_ban_id)
-    _kiem_tra_khong_co_ho_so_mo(document_type, van_ban_id, tru=tru)
+    _kiem_tra_van_ban_co_the_trinh(document_type, van_ban_id, tru=tru)
 
 
 def _kiem_tra_trich_yeu(trich_yeu):
@@ -280,7 +294,7 @@ def tao_nhap(nguoi_tao, *, quy_trinh, tep=None, tep_dinh_kem_id=None, document_t
         _kiem_tra_trich_yeu(trich_yeu_van_ban)
         data, _ = doc_tep_pdf(tep)
     if van_ban_id is not None:
-        _kiem_tra_khong_co_ho_so_mo(document_type, van_ban_id)
+        _kiem_tra_van_ban_co_the_trinh(document_type, van_ban_id)
     quy_trinh = SigningProcess.objects.get(pk=quy_trinh.pk)
     _kiem_tra_quy_trinh(quy_trinh, nguoi_tao)
     _kiem_tra_han_chot(han_chot)
@@ -313,6 +327,7 @@ def lien_ket_van_ban_di(yeu_cau, nguoi, *, van_ban_id, dia_chi_ip=None):
         raise ConflictError(code="tep_hoan_tat_chua_san_sang",
                             detail="Tệp hoàn tất chưa được tạo thành công; hãy thử lại sau khi tệp sẵn sàng.")
     van_ban = kiem_tra_van_ban_trinh_ky(nguoi, enums.LoaiVanBan.VAN_BAN_DI, van_ban_id)
+    _kiem_tra_van_ban_co_the_trinh(enums.LoaiVanBan.VAN_BAN_DI, van_ban.pk, tru=yeu_cau.pk)
     yeu_cau.document_type = enums.LoaiVanBan.VAN_BAN_DI
     yeu_cau.van_ban_id = van_ban.pk
     yeu_cau.so_hieu_van_ban = ""

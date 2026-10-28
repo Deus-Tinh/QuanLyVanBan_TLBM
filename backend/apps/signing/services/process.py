@@ -167,7 +167,7 @@ def them_nguoi_ky(step, nguoi_thuc_hien, *, thu_tu, nguoi_ky=None, chuc_vu_id=No
     _yeu_cau_ban_nhap(process)
     if vai_tro_ky != enums.VaiTroKy.KY_CHINH:
         raise SigningError(code="ky_nhay_khong_ho_tro",
-                           detail="Ký nháy không còn được hỗ trợ. Hãy bỏ người ký nháy khỏi quy trình.")
+                           detail="Cấu hình ký cũ không còn được hỗ trợ. Hãy bỏ cấu hình này khỏi quy trình.")
     if (nguoi_ky is None) == (chuc_vu_id is None):
         raise SigningError(
             code="nguoi_ky_hoac_chuc_vu",
@@ -200,7 +200,7 @@ def kiem_tra_khong_co_ky_nhay(process):
     ).exists():
         raise SigningError(
             code="ky_nhay_khong_ho_tro",
-            detail="Quy trình còn ký nháy. Hãy xóa người ký nháy ở bản nháp hoặc nhờ người quản lý tạo phiên bản mới.",
+            detail="Quy trình chứa cấu hình ký cũ không được hỗ trợ. Hãy xóa cấu hình này ở bản nháp hoặc tạo phiên bản mới.",
         )
 
 

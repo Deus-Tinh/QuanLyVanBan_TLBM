@@ -214,6 +214,11 @@ class SigningRequest(models.Model):
                 | (Q(document_type__isnull=True) & Q(van_ban_id__isnull=True) & ~Q(trich_yeu_van_ban="")),
                 name="chk_signing_request_van_ban",
             ),
+            models.UniqueConstraint(
+                fields=["document_type", "van_ban_id"],
+                condition=Q(trang_thai=enums.TrangThaiYeuCau.HOAN_THANH, van_ban_id__isnull=False),
+                name="uq_signing_completed_doc",
+            ),
         ]
 
 
