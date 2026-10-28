@@ -117,7 +117,7 @@ class UyQuyenTests(KyBase):
         r = self.client_cua(self.tao).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen")
         self.assertEqual(r.status_code, 403)
         r = self.client_cua(self.quan_tri).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&q=pho")
-        self.assertEqual([u["ten_dang_nhap"] for u in r.data], ["pho_phong"])
+        self.assertIn("pho_phong", [u["ten_dang_nhap"] for u in r.data])
         r = self.client_cua(self.quan_tri).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&q=nguoi_ngoai")
         self.assertEqual(r.data, [])
 

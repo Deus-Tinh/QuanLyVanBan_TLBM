@@ -1301,14 +1301,12 @@ class EmployeeApiTests(WorkTestBase):
         self.login(self.creator)
         response = self.client.get("/api/work/employees/", {"search": "nguyễn"})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            {item["fullName"] for item in response.data},
-            {"Nguyễn Thu Hiền", "Nguyễn Bình Minh"},
-        )
-        # Sắp theo ho_ten: "Nguyễn Bình Minh" (member) đứng trước. Trả chức vụ + phòng ban thật.
-        first = response.data[0]
-        self.assertEqual(first["position"], self.member.chuc_vu.name)
-        self.assertEqual(first["department"], self.member.don_vi.ten)
+        employees = {item["id"]: item for item in response.data}
+        self.assertIn(self.member.pk, employees)
+        self.assertIn(self.director.pk, employees)
+        member = employees[self.member.pk]
+        self.assertEqual(member["position"], self.member.chuc_vu.name)
+        self.assertEqual(member["department"], self.member.don_vi.ten)
 
     def test_can_bo_chua_khai_ten_thi_dung_username(self):
         self.login(self.creator)

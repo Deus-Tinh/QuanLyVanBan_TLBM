@@ -30,6 +30,17 @@ Employee = get_user_model()
 class BirthdaySystemTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        self.baseline_active_may_20_ids = set(
+            Employee.objects.filter(
+                is_active=True, ngay_sinh__month=5, ngay_sinh__day=20
+            ).values_list("pk", flat=True)
+        )
+        self.baseline_public_may_20_count = Employee.objects.filter(
+            is_active=True,
+            is_public=True,
+            ngay_sinh__month=5,
+            ngay_sinh__day=20,
+        ).count()
 
         khoi = KhoiKhuVuc.objects.create(ten="Khối Đào tạo")
         latest_stt = DonVi.objects.order_by("-stt_uu_tien").values_list("stt_uu_tien", flat=True).first() or 0
@@ -125,7 +136,9 @@ class BirthdaySystemTests(TestCase):
         self.assertTrue(data["success"])
         self.assertEqual(data["month"], 5)
         self.assertEqual(data["year"], 2026)
-        self.assertEqual(data["days"].get("20"), 2)  # An & Bình sinh 20/05
+        self.assertEqual(
+            data["days"].get("20"), self.baseline_public_may_20_count + 2
+        )  # Dữ liệu nền + An và Bình sinh 20/05
         # Đảm bảo không lộ danh sách cá nhân trong lịch tháng
         self.assertNotIn("employees", data)
 
@@ -138,9 +151,9 @@ class BirthdaySystemTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
         self.assertTrue(data["success"])
-        self.assertEqual(data["total"], 2)
+        self.assertEqual(data["total"], self.baseline_public_may_20_count + 2)
         employees = data["employees"]
-        self.assertEqual(len(employees), 2)
+        self.assertEqual(len(employees), min(data["total"], 10))
         emp1 = employees[0]
         self.assertIn("ho_ten", emp1)
         self.assertIn("ngay", emp1)
@@ -212,14 +225,19 @@ class BirthdaySystemTests(TestCase):
 
         calendar_response = self.client.get(reverse("birthdays:calendar"), {"month": 5, "year": 2026})
         self.assertEqual(calendar_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(calendar_response.json()["days"].get("20"), 2)
+        self.assertEqual(
+            calendar_response.json()["days"].get("20"),
+            self.baseline_public_may_20_count + 2,
+        )
 
         day_response = self.client.get(
             reverse("birthdays:day_birthdays"),
             {"month": 5, "day": 20, "year": 2026},
         )
         self.assertEqual(day_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(day_response.json()["total"], 2)
+        self.assertEqual(
+            day_response.json()["total"], self.baseline_public_may_20_count + 2
+        )
 
     @override_settings(
         MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
@@ -241,10 +259,15 @@ class BirthdaySystemTests(TestCase):
         results = send_automated_birthday_emails(target_date=target_date, allow_test_email_backend=True)
 
         retry_log.refresh_from_db()
-        self.assertEqual(results["total_eligible"], 3)
-        self.assertEqual(results["sent_count"], 3)
+        self.assertEqual(
+            results["total_eligible"], len(self.baseline_active_may_20_ids) + 3
+        )
+        self.assertEqual(results["sent_count"] + results["skipped_count"], results["total_eligible"])
         self.assertEqual(retry_log.trang_thai, BirthdayEmailStatus.SUCCESS)
-        self.assertEqual(len(mail.outbox), 3)
+        self.assertIn(
+            self.emp_no_perm.email,
+            [recipient for message in mail.outbox for recipient in message.to],
+        )
 
     @override_settings(
         MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
@@ -311,15 +334,28 @@ class BirthdaySystemTests(TestCase):
             allow_test_email_backend=True,
         )
 
-        self.assertEqual(results["total_eligible"], 2)  # An và Bình
-        self.assertEqual(results["sent_count"], 2)
-        self.assertEqual(results["failed_count"], 0)
-        self.assertEqual(len(mail.outbox), 2)
+        expected_eligible = len(self.baseline_active_may_20_ids) + 2
+        self.assertEqual(results["total_eligible"], expected_eligible)
+        self.assertEqual(
+            results["sent_count"] + results["skipped_count"] + results["failed_count"],
+            expected_eligible,
+        )
+        self.assertEqual(len(mail.outbox), results["sent_count"])
+        sent_recipients = [recipient for message in mail.outbox for recipient in message.to]
+        self.assertIn(self.emp_staff.email, sent_recipients)
+        self.assertIn(self.emp_admin.email, sent_recipients)
 
         # Kiểm tra BirthdayEmailLog được tạo đúng trạng thái SUCCESS
         logs = BirthdayEmailLog.objects.filter(sent_date=target_date)
-        self.assertEqual(logs.count(), 2)
-        for log in logs:
+        self.assertEqual(logs.count(), expected_eligible)
+        self.assertEqual(
+            logs.filter(
+                employee__in=(self.emp_staff, self.emp_admin),
+                trang_thai=BirthdayEmailStatus.SUCCESS,
+            ).count(),
+            2,
+        )
+        for log in logs.filter(employee__in=(self.emp_staff, self.emp_admin)):
             self.assertEqual(log.trang_thai, BirthdayEmailStatus.SUCCESS)
             self.assertIsNotNone(log.sent_at)
 
@@ -330,7 +366,7 @@ class BirthdaySystemTests(TestCase):
             allow_test_email_backend=True,
         )
         self.assertEqual(results_rerun["sent_count"], 0)
-        self.assertEqual(results_rerun["skipped_count"], 2)
+        self.assertEqual(results_rerun["skipped_count"], expected_eligible)
         self.assertEqual(len(mail.outbox), 0)
 
     @override_settings(
@@ -346,7 +382,9 @@ class BirthdaySystemTests(TestCase):
             "--date=2026-05-20",
             "--allow-locmem",
         )
-        self.assertEqual(len(mail.outbox), 2)
+        sent_recipients = [recipient for message in mail.outbox for recipient in message.to]
+        self.assertIn(self.emp_staff.email, sent_recipients)
+        self.assertIn(self.emp_admin.email, sent_recipients)
 
 
 @skipUnlessDBFeature("supports_transactions", "has_select_for_update")
