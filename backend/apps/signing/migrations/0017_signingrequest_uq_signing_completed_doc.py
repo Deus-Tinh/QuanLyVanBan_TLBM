@@ -33,8 +33,29 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(preflight_completed_document_links, migrations.RunPython.noop),
-        migrations.AddConstraint(
-            model_name='signingrequest',
-            constraint=models.UniqueConstraint(condition=models.Q(('trang_thai', 'HOAN_THANH'), ('van_ban_id__isnull', False)), fields=('document_type', 'van_ban_id'), name='uq_signing_completed_doc'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql=(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_signing_completed_doc "
+                        "ON signing_request (document_type, document_id) "
+                        "WHERE (trang_thai = 'HOAN_THANH' AND document_id IS NOT NULL);"
+                    ),
+                    reverse_sql=(
+                        "DROP INDEX IF EXISTS uq_signing_completed_doc;"
+                    ),
+                ),
+            ],
+            state_operations=[
+                migrations.AddConstraint(
+                    model_name='signingrequest',
+                    constraint=models.UniqueConstraint(
+                        condition=models.Q(('trang_thai', 'HOAN_THANH'), ('van_ban_id__isnull', False)),
+                        fields=('document_type', 'van_ban_id'),
+                        name='uq_signing_completed_doc',
+                    ),
+                ),
+            ],
         ),
     ]
+
