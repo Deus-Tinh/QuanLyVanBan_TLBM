@@ -10,6 +10,17 @@ User = settings.AUTH_USER_MODEL
 DB_NOW = models.Func(function="now", output_field=models.DateTimeField())
 
 
+class SigningDelegationRole(models.Model):
+    """Chức danh được phép nhận ủy quyền từ một chức danh ký."""
+
+    chuc_vu_giao = models.ForeignKey("accounts.Position", on_delete=models.PROTECT, related_name="+")
+    chuc_vu_nhan = models.ForeignKey("accounts.Position", on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        db_table = "signing_delegation_role"
+        constraints = [models.UniqueConstraint(fields=["chuc_vu_giao", "chuc_vu_nhan"], name="uq_signing_delegation_role")]
+
+
 def sha256_or_null(field):
     """CHECK: giá trị rỗng (NULL) hoặc SHA-256 hex 64 ký tự thường."""
     return Q(**{f"{field}__isnull": True}) | Q(**{f"{field}__regex": r"^[0-9a-f]{64}$"})
@@ -296,6 +307,9 @@ class SigningRequestStepSigner(models.Model):
         "SigningSignature", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     uy_quyen_tu = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    chuc_vu_goc_uy_quyen = models.ForeignKey(
+        "accounts.Position", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
     ly_do_uy_quyen = models.TextField(blank=True, db_default="", default="")
     ngay_uy_quyen = models.DateTimeField(null=True, blank=True)
     trang_ky = models.PositiveIntegerField(null=True, blank=True)

@@ -10,7 +10,7 @@ trình lại, ủy quyền) nên lịch sử, bằng chứng, tệp hoàn tất 
   Mật khẩu đọc từ biến môi trường DEMO_PASSWORD (không ghi trong mã nguồn). Tài khoản đã có thì giữ mật khẩu,
   trừ khi dùng `--dat-lai-mat-khau`. Tài khoản `admin` chỉ được đặt mật khẩu khi còn mật khẩu không dùng được
   (sentinel của DDL); admin đã khởi tạo bằng `seed_db`/ADMIN_PASSWORD thì giữ nguyên.
-- 4 quy trình mẫu (3 đang hoạt động: hai cấp tuần tự, có ký nháy chặn ký chính, hai người ký song song; 1 nháp).
+- 4 quy trình mẫu (3 đang hoạt động: hai cấp tuần tự, một cấp và hai người ký song song; 1 nháp).
 - Hồ sơ ở đủ trạng thái: nháp, đang ký (cấp 1, cấp 2), quá hạn, hoàn thành (có bằng chứng và tệp hoàn tất),
   bị từ chối (kèm hồ sơ trình lại), trả lại để sửa (có trao đổi), đã sửa và trình lại lượt 2, đã hủy, ủy quyền ký.
 - Thông báo trong ứng dụng sinh từ các thao tác trên và lệnh nhắc hạn. Ngày trình giãn theo nhiều ngày để
@@ -45,7 +45,7 @@ from documents.models import PhamVi, VanBanDi
 from organizations.models import DonVi, KhoiKhuVuc
 from signing import enums
 from signing.models import (
-    SigningAttempt, SigningKey, SigningProcess, SigningRequest, SigningRequestStep, SigningRequestStepSigner,
+    SigningAttempt, SigningDelegationRole, SigningKey, SigningProcess, SigningRequest, SigningRequestStep, SigningRequestStepSigner,
 )
 from signing.pdf_hoan_tat import tim_phong_chu
 from signing.services import hanh_dong_ky, keys, process, thong_bao, trinh_ky, uy_quyen, yeu_cau_sua
@@ -401,6 +401,13 @@ class Command(BaseCommand):
                 self._ky(h, n["admin"], "Đồng ý về mặt kỹ thuật")
                 dong = SigningRequestStepSigner.objects.get(buoc_ky__luot_trinh__trinh_ky=h, nguoi_ky=n["truongphong"],
                                                             buoc_ky__thu_tu=1)
+                # Ánh xạ chỉ tồn tại trong giao dịch tạo ví dụ, không cấp quyền lâu dài cho chức danh thật.
+                mapping, moi = SigningDelegationRole.objects.get_or_create(
+                    chuc_vu_giao_id=dong.chuc_vu_id or n["truongphong"].chuc_vu_id,
+                    chuc_vu_nhan_id=n["giamdoc"].chuc_vu_id,
+                )
                 uy_quyen.uy_quyen(h, n["admin"], dong_nguoi_ky=dong.pk, nguoi_nhan=n["giamdoc"].pk,
                                   ly_do="Trưởng phòng nghỉ phép đến hết tuần",
                                   khoa_chong_trung=self._khoa("M10", "uy-quyen"))
+                if moi:
+                    mapping.delete()

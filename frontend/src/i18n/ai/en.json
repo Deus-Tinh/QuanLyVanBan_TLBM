@@ -129,18 +129,18 @@
     "templates": {
       "incoming": {
         "title": "Incoming Documents",
-        "desc": "Ask about registration, digital scanning, and forwarding to Directors.",
+        "desc": "Learn how to register incoming documents and send them for handling.",
         "query": "What is the standard procedure for receiving and processing incoming documents?"
       },
       "confidential": {
-        "title": "Confidential Documents",
-        "desc": "Standards for encryption, 2FA authentication, and top-secret access rights.",
-        "query": "What are security regulations and transfer procedures for top-secret documents?"
+        "title": "Restricted documents",
+        "desc": "Learn who can view and handle restricted documents.",
+        "query": "Who can view and handle restricted documents in the system?"
       },
       "signing": {
-        "title": "Digital Signing Workflow",
-        "desc": "Flowchart for PKI/Cloud HSM digital signatures and outgoing documents.",
-        "query": "How to create an electronic digital signing workflow on the system?"
+        "title": "Internal signing",
+        "desc": "Learn how to submit, sign and follow an internal approval request.",
+        "query": "How do I create and submit an internal signing request?"
       },
       "organization": {
         "title": "Organization & Permissions",

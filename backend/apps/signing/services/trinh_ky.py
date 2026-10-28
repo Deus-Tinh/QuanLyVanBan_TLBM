@@ -419,7 +419,8 @@ def tao_luot_trinh(yeu_cau, nguoi, *, chon_nguoi_ky, khoa_chong_trung, vi_tri_ky
         cap_dau = cap_dau or cap_luot
         for cau_hinh, tai_khoan in nguoi_cap:
             SigningRequestStepSigner.objects.create(
-                buoc_ky=cap_luot, nguoi_ky=tai_khoan, chuc_vu_id=cau_hinh.chuc_vu_id,
+                buoc_ky=cap_luot, nguoi_ky=tai_khoan,
+                chuc_vu_id=cau_hinh.chuc_vu_id or getattr(tai_khoan, "chuc_vu_id", None),
                 ten_nguoi_ky=to_chuc.ten_hien_thi(tai_khoan) or tai_khoan.get_username(),
                 ten_chuc_vu=to_chuc.ten_chuc_vu(tai_khoan) or None,
                 vai_tro_ky=cau_hinh.vai_tro_ky, chan_ky_chinh=cau_hinh.chan_ky_chinh,

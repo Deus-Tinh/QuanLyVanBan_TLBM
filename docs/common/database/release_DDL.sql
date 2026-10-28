@@ -1153,6 +1153,16 @@ CREATE TABLE signing_process_step_signer (
 CREATE INDEX idx_signing_process_step_signer_buoc ON signing_process_step_signer (buoc_quy_trinh_id);
 CREATE INDEX idx_signing_process_step_signer_nguoi ON signing_process_step_signer (nguoi_ky_id);
 
+-- Chức vụ được phép ký thay cho từng chức vụ của người ký.
+CREATE TABLE signing_delegation_role (
+    id BIGSERIAL PRIMARY KEY,
+    chuc_vu_giao_id BIGINT NOT NULL REFERENCES accounts_position (id) ON DELETE RESTRICT,
+    chuc_vu_nhan_id BIGINT NOT NULL REFERENCES accounts_position (id) ON DELETE RESTRICT,
+    CONSTRAINT uq_signing_delegation_role UNIQUE (chuc_vu_giao_id, chuc_vu_nhan_id)
+);
+CREATE INDEX idx_signing_delegation_role_giao ON signing_delegation_role (chuc_vu_giao_id);
+CREATE INDEX idx_signing_delegation_role_nhan ON signing_delegation_role (chuc_vu_nhan_id);
+
 -- 9.4. Phiếu yêu cầu trình ký
 -- Issue #47 P0.1: Bổ sung document_type document_kind NOT NULL và index (document_type, document_id)
 -- Issue #47 P1.9: Cho phép NULL ở phien_ban_van_ban, vi_tri_luu_tep, ma_bam_tai_lieu khi tạo bản nháp
@@ -1269,6 +1279,7 @@ CREATE TABLE signing_request_step_signer (
     ly_do_tu_choi TEXT NOT NULL DEFAULT '',
     chu_ky_hien_hanh_id BIGINT, -- Khóa ngoại trỏ sang signing_signature thêm sau
     uy_quyen_tu_id BIGINT REFERENCES accounts_employee (id) ON DELETE RESTRICT,
+    chuc_vu_goc_uy_quyen_id BIGINT REFERENCES accounts_position (id) ON DELETE RESTRICT,
     ly_do_uy_quyen TEXT NOT NULL DEFAULT '',
     ngay_uy_quyen TIMESTAMPTZ,
     trang_ky INTEGER CHECK (trang_ky >= 0),
@@ -1285,6 +1296,7 @@ CREATE TABLE signing_request_step_signer (
 CREATE INDEX idx_signing_request_step_signer_buoc ON signing_request_step_signer (buoc_ky_id);
 CREATE INDEX idx_signing_request_step_signer_nguoi ON signing_request_step_signer (nguoi_ky_id);
 CREATE INDEX idx_signing_request_step_signer_uy_quyen ON signing_request_step_signer (uy_quyen_tu_id);
+CREATE INDEX idx_signing_request_step_signer_chuc_vu_goc ON signing_request_step_signer (chuc_vu_goc_uy_quyen_id);
 
 -- 9.8. Quản lý Khóa ký số (Zero-Knowledge: Backend tuyệt đối không lưu private key)
 CREATE TABLE signing_key (

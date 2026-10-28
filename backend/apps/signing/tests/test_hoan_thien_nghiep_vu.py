@@ -14,12 +14,12 @@ from rest_framework.test import APIClient
 
 from authorization.models import GroupInfo
 from signing import enums
-from signing.models import SigningAuditLog, SigningNotification, SigningRequestStep, SigningRequestStepSigner
+from signing.models import SigningAuditLog, SigningDelegationRole, SigningNotification, SigningRequestStep, SigningRequestStepSigner
 from signing.services import thong_bao
 
-from .helpers import cap_quyen, tao_don_vi
+from .helpers import cap_quyen, tao_chuc_vu, tao_don_vi
 from .test_hanh_dong_ky_phase8 import KyBase, khoa_hoat_dong
-from .test_trinh_ky_phase7 import BASE
+from .test_trinh_ky_phase7 import BASE, PDF, tep_pdf
 
 User = get_user_model()
 
@@ -47,6 +47,14 @@ class UyQuyenTests(KyBase):
         self.nhan = User.objects.create_user("pho_phong")
         cap_quyen(self.nhan, "sign_trinhky")
         self.dong_ky1 = SigningRequestStepSigner.objects.get(buoc_ky__luot_trinh__trinh_ky=self.pk, nguoi_ky=self.ky1)
+        self.chuc_vu_giao = tao_chuc_vu("Người ký")
+        self.chuc_vu_nhan = tao_chuc_vu("Người nhận")
+        User.objects.filter(pk__in=[self.ky1.pk, self.ky3.pk]).update(chuc_vu=self.chuc_vu_giao)
+        User.objects.filter(pk__in=[self.nhan.pk, self.ky2.pk]).update(chuc_vu=self.chuc_vu_nhan)
+        SigningRequestStepSigner.objects.filter(buoc_ky__luot_trinh__trinh_ky=self.pk, nguoi_ky__in=[self.ky1, self.ky3]).update(chuc_vu=self.chuc_vu_giao)
+        SigningRequestStepSigner.objects.filter(buoc_ky__luot_trinh__trinh_ky=self.pk, nguoi_ky=self.ky2).update(chuc_vu=self.chuc_vu_nhan)
+        self.dong_ky1.refresh_from_db()
+        SigningDelegationRole.objects.create(chuc_vu_giao=self.chuc_vu_giao, chuc_vu_nhan=self.chuc_vu_nhan)
 
     def uy_quyen(self, user, dong=None, nguoi_nhan=None, ly_do="Đi công tác", khoa="uq-1"):
         return self.client_cua(user).post(
@@ -135,12 +143,74 @@ class UyQuyenTests(KyBase):
         self.assertEqual((r.status_code, r.data["code"]), (409, "nguoi_ky_khong_cho_ky"))
 
     def test_search_recipients_requires_delegate_and_sign_permission(self):
-        r = self.client_cua(self.tao).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen")
+        params = f"muc_dich=uy_quyen&ho_so={self.pk}&dong_nguoi_ky={self.dong_ky1.pk}"
+        r = self.client_cua(self.tao).get(f"/api/v1/signing/nguoi-dung/?{params}")
         self.assertEqual(r.status_code, 403)
-        r = self.client_cua(self.quan_tri).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&q=pho")
+        r = self.client_cua(self.quan_tri).get(f"/api/v1/signing/nguoi-dung/?{params}&q=pho")
         self.assertEqual([u["ten_dang_nhap"] for u in r.data], ["pho_phong"])
-        r = self.client_cua(self.quan_tri).get("/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&q=nguoi_ngoai")
+        r = self.client_cua(self.quan_tri).get(f"/api/v1/signing/nguoi-dung/?{params}&q=nguoi_ngoai")
         self.assertEqual(r.data, [])
+
+    def test_recipient_role_must_be_configured_on_server(self):
+        SigningDelegationRole.objects.all().delete()
+        response = self.uy_quyen(self.quan_tri)
+        self.assertEqual((response.status_code, response.data["code"]), (400, "nguoi_nhan_khong_du_tham_quyen"))
+        self.dong_ky1.refresh_from_db()
+        self.assertEqual(self.dong_ky1.nguoi_ky_id, self.ky1.pk)
+
+    def test_missing_original_position_blocks_search_and_delegation(self):
+        self.dong_ky1.chuc_vu = None
+        self.dong_ky1.save(update_fields=["chuc_vu"])
+        url = f"/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&ho_so={self.pk}&dong_nguoi_ky={self.dong_ky1.pk}"
+        response = self.client_cua(self.quan_tri).get(url)
+        self.assertEqual((response.status_code, response.data["code"]), (400, "khong_co_chuc_danh_goc"))
+        response = self.uy_quyen(self.quan_tri)
+        self.assertEqual((response.status_code, response.data["code"]), (400, "nguoi_nhan_khong_du_tham_quyen"))
+
+    def test_redelegation_uses_original_signing_role(self):
+        cv_khac = tao_chuc_vu("Người khác")
+        nguoi_khac = User.objects.create_user("nguoi_khac_uq", chuc_vu=cv_khac)
+        cap_quyen(nguoi_khac, "sign_trinhky")
+        SigningDelegationRole.objects.create(chuc_vu_giao=self.chuc_vu_nhan, chuc_vu_nhan=cv_khac)
+        self.assertEqual(self.uy_quyen(self.quan_tri).status_code, 200)
+        response = self.uy_quyen(self.quan_tri, nguoi_nhan=nguoi_khac, khoa="uq-lan-hai")
+        self.assertEqual((response.status_code, response.data["code"]), (400, "nguoi_nhan_khong_du_tham_quyen"))
+        SigningDelegationRole.objects.create(chuc_vu_giao=self.chuc_vu_giao, chuc_vu_nhan=cv_khac)
+        self.assertEqual(self.uy_quyen(self.quan_tri, nguoi_nhan=nguoi_khac, khoa="uq-lan-hai-hop-le").status_code, 200)
+        self.dong_ky1.refresh_from_db()
+        self.assertEqual(self.dong_ky1.chuc_vu_goc_uy_quyen_id, self.chuc_vu_giao.pk)
+
+    def test_search_lists_each_eligible_person_and_excludes_same_step(self):
+        nhan_hai = User.objects.create_user("nguoi_nhan_hai", chuc_vu=self.chuc_vu_nhan)
+        cap_quyen(nhan_hai, "sign_trinhky")
+        url = f"/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&ho_so={self.pk}&dong_nguoi_ky={self.dong_ky1.pk}"
+        response = self.client_cua(self.quan_tri).get(url)
+        self.assertEqual(response.status_code, 200, response.data)
+        ids = {user["id"] for user in response.data}
+        self.assertTrue({self.nhan.pk, nhan_hai.pk} <= ids)
+        self.assertNotIn(self.ky2.pk, ids)
+
+    def test_return_for_changes_preserves_delegation_and_original_role(self):
+        self.assertEqual(self.uy_quyen(self.quan_tri).status_code, 200)
+        response = self.hanh_dong(self.nhan, "yeu-cau-sua", tieu_de="Sửa", ly_do="Sai nội dung")
+        self.assertEqual(response.status_code, 200, response.data)
+        response = self.c.post(f"{BASE}/{self.pk}/giai-quyet/", {"tep": tep_pdf(PDF + b"% updated\n")},
+                               format="multipart", HTTP_IDEMPOTENCY_KEY="giai-quyet-uq")
+        self.assertEqual(response.status_code, 200, response.data)
+        dong_moi = SigningRequestStepSigner.objects.get(buoc_ky__luot_trinh__trinh_ky=self.pk,
+                                                       buoc_ky__luot_trinh__so_luot=2, nguoi_ky=self.nhan)
+        self.assertEqual((dong_moi.uy_quyen_tu_id, dong_moi.chuc_vu_goc_uy_quyen_id),
+                         (self.ky1.pk, self.chuc_vu_giao.pk))
+
+    def test_config_requires_process_admin_and_records_changes(self):
+        url = "/api/v1/signing/cau-hinh-uy-quyen/"
+        body = {"chuc_vu_giao": self.chuc_vu_giao.pk, "chuc_vu_nhan": []}
+        self.assertEqual(self.client_cua(self.tao).put(url, body, format="json").status_code, 403)
+        cap_quyen(self.quan_tri, "manage_signing_process")
+        response = self.client_cua(self.quan_tri).put(url, body, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(SigningDelegationRole.objects.filter(chuc_vu_giao=self.chuc_vu_giao).exists())
+        self.assertTrue(SigningAuditLog.objects.filter(hanh_dong="CAU_HINH_UY_QUYEN").exists())
 
 
 class ThongBaoHoanThienTests(KyBase):

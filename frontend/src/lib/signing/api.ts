@@ -137,8 +137,12 @@ export const signingApi = {
     return apiClient.get<{ count: number; results: CanBoChucVu[] }>(`${SIGNING_BASE}/can-bo-theo-chuc-vu/?${tham_so}`);
   },
   /** Người nhận ủy quyền ký: tài khoản có quyền ký (cần delegate_trinhky). */
-  timNguoiNhanUyQuyen: (q: string) =>
-    apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?muc_dich=uy_quyen&q=${encodeURIComponent(q)}`),
+  timNguoiNhanUyQuyen: (q: string, hoSo: number, dong: number) =>
+    apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?muc_dich=uy_quyen&ho_so=${hoSo}&dong_nguoi_ky=${dong}&q=${encodeURIComponent(q)}`),
+  cauHinhUyQuyen: () => apiClient.get<Array<{ chuc_vu_giao_id: number; chuc_vu_nhan_id: number }>>(`${SIGNING_BASE}/cau-hinh-uy-quyen/`),
+  chucVuUyQuyen: () => apiClient.get<Array<{ id: number; ten: string; stt: number }>>(`${SIGNING_BASE}/chuc-vu/`),
+  luuCauHinhUyQuyen: (chuc_vu_giao: number, chuc_vu_nhan: number[]) =>
+    apiClient.put(`${SIGNING_BASE}/cau-hinh-uy-quyen/`, { chuc_vu_giao, chuc_vu_nhan }),
   donVi: () => apiClient.get<DonViLuaChon[]>(`${SIGNING_BASE}/don-vi/`),
   taiLieu: (loc: BoLocTaiLieu = {}, trang = 1) => {
     const tham_so = new URLSearchParams({ page: String(trang), page_size: String(SO_HO_SO_MOI_TRANG) });

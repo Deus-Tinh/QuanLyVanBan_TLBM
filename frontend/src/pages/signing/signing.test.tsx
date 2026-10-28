@@ -23,6 +23,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import HanhDong from '@components/signing/HanhDong';
+import CauHinhUyQuyen from '@components/signing/CauHinhUyQuyen';
 import TaiLieuPanel from '@components/signing/TaiLieuPanel';
 import TienTrinh from '@components/signing/TienTrinh';
 import { signingApi } from '@lib/signing/api';
@@ -40,6 +41,7 @@ vi.mock('@lib/signing/api', async () => {
     toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
     xoaQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), suaQuyTrinh: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
     uyQuyen: vi.fn(), timNguoiNhanUyQuyen: vi.fn(), thaoTacQuyTrinh: vi.fn(),
+    cauHinhUyQuyen: vi.fn(), chucVuUyQuyen: vi.fn(), luuCauHinhUyQuyen: vi.fn(),
   } };
 });
 // pdfjs-dist cần DOMMatrix/canvas của trình duyệt; jsdom không có, nên chỉ thay lớp vẽ PDF.
@@ -120,7 +122,7 @@ describe('SigningModule', () => {
     await waitFor(() => expect(tabKy).toHaveTextContent('2'));
     expect(api.thongKe).toHaveBeenCalledWith('can_toi_ky');
     const nav = within(screen.getByRole('navigation'));
-    for (const ten of [/Tôi đã gửi trình/, /Văn bản theo quyền/, /Văn bản công khai/, /Thông báo/, /Khóa ký & PIN/]) {
+    for (const ten of [/Hồ sơ tôi trình/, /Hồ sơ được xem/, /Văn bản công khai/, /Thông báo/, /Khóa ký & PIN/]) {
       expect(nav.getByRole('link', { name: ten })).toBeInTheDocument();
     }
     expect(nav.queryByRole('link', { name: /^Quy trình/ })).toBeInTheDocument();
@@ -232,7 +234,7 @@ describe('HanhDong', () => {
     boc(<HanhDong hoSo={hoSo()} luot={hoSo().luot_trinh[0]} maBamTepDangXem={'a'.repeat(64)} onXong={() => undefined} />);
     expect(screen.getByRole('button', { name: /Ký duyệt/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Trả lại để sửa/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Không đồng ý ban hành/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Từ chối hồ sơ/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Hủy hồ sơ/ })).not.toBeInTheDocument();
   });
 
@@ -254,9 +256,9 @@ describe('HanhDong', () => {
 
   it('hộp thoại không đồng ý hiển thị cảnh báo từ chối vĩnh viễn và cho phép chuyển sang trả lại để sửa', async () => {
     boc(<HanhDong hoSo={hoSo()} luot={hoSo().luot_trinh[0]} maBamTepDangXem={'a'.repeat(64)} onXong={() => undefined} />);
-    fireEvent.click(screen.getByRole('button', { name: /Không đồng ý ban hành/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Từ chối hồ sơ/ }));
     const hop = await screen.findByRole('dialog');
-    expect(hop).toHaveTextContent(/kết thúc hoàn toàn hồ sơ và không thể mở lại/);
+    expect(hop).toHaveTextContent(/Từ chối sẽ kết thúc hồ sơ/);
     const nutChuyen = screen.getByRole('button', { name: /Chuyển sang/ });
     expect(nutChuyen).toBeInTheDocument();
     fireEvent.click(nutChuyen);
@@ -288,13 +290,28 @@ describe('Danh sách: trạng thái trả lại, quá hạn', () => {
       hoSo({ id: 2, trang_thai_luot: 'CHO_KY', qua_han: true }),
     ]));
     boc(<DanhSachPage hop="tat_ca" />);
-    expect((await screen.findAllByText('Đang trả lại để sửa')).length).toBe(2);
+    expect((await screen.findAllByText('Chờ chỉnh sửa')).length).toBe(2);
     expect(screen.getAllByText('Quá hạn').length).toBe(3);
   });
 });
 
 describe('Ủy quyền ký', () => {
   const QUAN_TRI: NguoiDungHienTai = { ...TOI, id: 1, quyen: { ...TOI.quyen, delegate_trinhky: true } };
+
+  it('cấu hình chức danh, tìm theo tên và lưu các chức danh được ký thay', async () => {
+    api.chucVuUyQuyen.mockResolvedValue([{ id: 1, ten: 'Trưởng phòng', stt: 1 }, { id: 2, ten: 'Phó phòng', stt: 2 }]);
+    api.danhBaCanBo.mockResolvedValue([{ id: 5, username: 'pho', ho_ten: 'Nguyễn An', don_vi_id: 1, don_vi_ten: 'Kế toán', chuc_vu_id: 2, chuc_vu_ten: 'Phó phòng' }]);
+    api.cauHinhUyQuyen.mockResolvedValue([]);
+    api.luuCauHinhUyQuyen.mockResolvedValue({});
+    boc(<CauHinhUyQuyen onDong={() => undefined} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Chọn/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Trưởng phòng/ }));
+    fireEvent.change(screen.getByPlaceholderText('Tìm theo chức danh hoặc tên người'), { target: { value: 'Nguyễn An' } });
+    expect(screen.getByText('Nguyễn An · Kế toán')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await waitFor(() => expect(api.luuCauHinhUyQuyen).toHaveBeenCalledWith(1, [2]));
+  });
 
   it('không có delegate_trinhky thì không thấy nút ủy quyền', () => {
     const luot = luotCo([nguoiKy({})]);
@@ -313,12 +330,13 @@ describe('Ủy quyền ký', () => {
     const xong = vi.fn();
     boc(<HanhDong hoSo={ho_so} luot={luot} maBamTepDangXem={null} onXong={xong} />, QUAN_TRI);
     fireEvent.click(screen.getByRole('button', { name: /Ủy quyền ký/ }));
-    const chonNguoiKy = await screen.findByRole('combobox', { name: /Người ký được thay/ });
+    const chonNguoiKy = await screen.findByRole('combobox', { name: /Người cần được ký thay/ });
     expect(within(chonNguoiKy).queryByRole('option', { name: /Đã ký/ })).not.toBeInTheDocument();
     fireEvent.change(chonNguoiKy, { target: { value: '21' } });
-    const chonNhan = screen.getByRole('combobox', { name: /Người nhận ủy quyền/ });
-    await waitFor(() => expect(within(chonNhan).getByRole('option', { name: /Phó giám đốc/ })).toBeInTheDocument());
-    fireEvent.change(chonNhan, { target: { value: '15' } });
+    const chonNhan = screen.getByRole('group', { name: /Người nhận ủy quyền/ });
+    const nguoiNhan = await within(chonNhan).findByRole('button', { name: /Phó giám đốc/ });
+    fireEvent.click(nguoiNhan);
+    expect(api.timNguoiNhanUyQuyen).toHaveBeenCalledWith('', 12, 21);
     fireEvent.change(screen.getByLabelText(/Lý do ủy quyền/), { target: { value: 'Đi công tác' } });
     fireEvent.click(screen.getAllByRole('button', { name: /Ủy quyền ký/ }).at(-1)!);
     await waitFor(() => expect(api.uyQuyen).toHaveBeenCalledWith(12, expect.any(String),
@@ -338,7 +356,7 @@ describe('Ủy quyền ký', () => {
     boc(<HanhDong hoSo={hoSo({ luot_trinh: [luot] })} luot={luot} maBamTepDangXem={null} onXong={() => undefined} />,
       truongPhong);
     fireEvent.click(screen.getByRole('button', { name: /Ủy quyền ký/ }));
-    const chonNguoiKy = await screen.findByRole('combobox', { name: /Người ký được thay/ });
+    const chonNguoiKy = await screen.findByRole('combobox', { name: /Người cần được ký thay/ });
     expect(within(chonNguoiKy).queryByRole('option', { name: /Giám đốc/ })).not.toBeInTheDocument();
     expect(within(chonNguoiKy).getByRole('option', { name: /Chuyên viên cùng đơn vị/ })).toBeInTheDocument();
   });
@@ -683,14 +701,14 @@ describe('QuyTrinhPage chọn người ký từ phân hệ CBNV', () => {
     fireEvent.change(tim, { target: { value: 'ke toan' } });  // tìm không dấu theo đơn vị
     fireEvent.click(await screen.findByRole('button', { name: /Phạm Thu Hà/ }));
     expect(api.danhBaCanBo).toHaveBeenCalledTimes(1);
-    const chonCv = screen.getByRole('combobox', { name: 'Thêm theo chức vụ' });
+    const chonCv = screen.getByRole('combobox', { name: 'Thêm người ký theo chức vụ' });
     await waitFor(() => expect(within(chonCv).getByRole('option', { name: 'Giám đốc' })).toBeInTheDocument());
     fireEvent.change(chonCv, { target: { value: '2' } });
     // Chọn chức vụ là thấy ngay tên người đang giữ chức vụ (quy trình công ty: mọi đơn vị)
     expect(await screen.findByText('Đỗ Quang Huy')).toBeInTheDocument();
     expect(api.canBoTheoChucVu).toHaveBeenLastCalledWith(2, null);
     fireEvent.change(screen.getByRole('combobox', { name: 'Phạm vi chức vụ' }), { target: { value: 'TOAN_CO_QUAN' } });
-    fireEvent.click(screen.getByRole('button', { name: /Thêm theo chức vụ/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thêm người ký theo chức vụ/ }));
     expect(screen.getByText('Chức vụ: Giám đốc')).toBeInTheDocument();
     expect(await screen.findAllByText('Đỗ Quang Huy')).toHaveLength(1);  // dòng người ký đã thêm (ô chọn đã xóa chức vụ)
     fireEvent.click(screen.getByRole('button', { name: /Lưu/ }));
@@ -724,12 +742,12 @@ describe('QuyTrinhPage chọn người ký từ phân hệ CBNV', () => {
     expect(screen.getByRole('button', { name: /Lê Văn Minh/ })).toBeInTheDocument();
 
     // Chọn chức vụ "Trưởng phòng"
-    const chonCv = screen.getByRole('combobox', { name: 'Thêm theo chức vụ' });
+    const chonCv = screen.getByRole('combobox', { name: 'Thêm người ký theo chức vụ' });
     await waitFor(() => expect(within(chonCv).getByRole('option', { name: 'Trưởng phòng' })).toBeInTheDocument());
     fireEvent.change(chonCv, { target: { value: '5' } });
 
     // Tiêu đề và placeholder đổi theo chức vụ được chọn
-    expect(screen.getByText('Chọn cán bộ đích danh (Trưởng phòng):')).toBeInTheDocument();
+    expect(screen.getByText('Chọn người ký có chức vụ Trưởng phòng:')).toBeInTheDocument();
     expect(oNhap).toHaveAttribute('placeholder', 'Tìm cán bộ giữ chức vụ Trưởng phòng theo tên, tài khoản…');
 
     // Chỉ có 2 Trưởng phòng hiển thị, không còn Chuyên viên Phạm Thu Hà
@@ -752,7 +770,7 @@ describe('QuyTrinhPage tên cán bộ theo chức vụ và đơn vị', () => {
     api.chucVu.mockResolvedValue([{ id: 5, name: 'Trưởng phòng', display_order: 6 }]);
     boc(<QuyTrinhPage />, TP);
     fireEvent.click(await screen.findByRole('button', { name: /Tạo quy trình/ }));
-    const chonCv = await screen.findByRole('combobox', { name: 'Thêm theo chức vụ' });
+    const chonCv = await screen.findByRole('combobox', { name: 'Thêm người ký theo chức vụ' });
     await waitFor(() => expect(within(chonCv).getByRole('option', { name: 'Trưởng phòng' })).toBeInTheDocument());
     fireEvent.change(chonCv, { target: { value: '5' } });
     expect(await screen.findByRole('alert')).toHaveTextContent('Chưa có cán bộ nào ở chức vụ/đơn vị này');
