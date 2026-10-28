@@ -1229,6 +1229,7 @@ CREATE INDEX idx_signing_request_quy_trinh ON signing_request (quy_trinh_id);
 CREATE INDEX idx_signing_request_nguoi_cap_nhat ON signing_request (nguoi_cap_nhat_id);
 CREATE INDEX idx_signing_request_hanchot ON signing_request (han_chot); -- Issue #47 P2.12
 CREATE INDEX idx_signing_request_ho_so_goc ON signing_request (ho_so_goc_id); -- [P7]
+CREATE UNIQUE INDEX uq_signing_completed_doc ON signing_request (document_type, document_id) WHERE (trang_thai = 'HOAN_THANH' AND document_id IS NOT NULL);
 
 -- 9.5. Lượt trình ký (mỗi lần nộp lại tài liệu sinh 1 lượt mới)
 -- Issue #47 P1.9: Cho phép NULL ở phien_ban_van_ban; GIỮ NOT NULL cho vi_tri_luu_tep và ma_bam_tai_lieu

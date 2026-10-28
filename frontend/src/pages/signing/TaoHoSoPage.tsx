@@ -410,7 +410,7 @@ export default function TaoHoSoPage() {
       if (!huy) setTep(buf);
     }).catch((err) => { if (!huy) setLoiTai(err); });
     return () => { huy = true; };
-  }, [hoSo?.id, tep, lanThu]);
+  }, [hoSo, tep, lanThu]);
 
   useEffect(() => {
     if (!hoSo) return;
