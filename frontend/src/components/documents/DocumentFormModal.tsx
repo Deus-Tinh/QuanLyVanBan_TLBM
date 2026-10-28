@@ -349,6 +349,10 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMsg, setAlertMsg] = useState('');
 
+  // Danh mục hồ sơ & loại văn bản động nạp từ Nhóm 3 (app records)
+  const [dynamicFolders, setDynamicFolders] = useState<string[]>([]);
+  const [dynamicFolderDocTypesMap, setDynamicFolderDocTypesMap] = useState<Record<string, string[]>>({});
+
   // Gợi ý và tìm kiếm văn bản thay thế (hỗ trợ chọn nhiều văn bản cùng hệ & cùng phạm vi)
   const [replacementSuggestions, setReplacementSuggestions] = useState<SuggestedDoc[]>([]);
   const [isSearchingReplacement, setIsSearchingReplacement] = useState(false);
@@ -507,6 +511,58 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
         } else {
           // Bắt buộc chọn đơn vị trước, không nạp trước tất cả cán bộ khi chưa chọn đơn vị
           setStaff([]);
+        }
+      });
+
+      // Tự động nạp danh mục hồ sơ và loại văn bản từ Nhóm 3 (app records)
+      Promise.resolve().then(async () => {
+        if (cancelled) return;
+        try {
+          const dossiersRes = await apiClient.get<unknown>('/api/records/dossiers/?page_size=100');
+          const rawDossiers = Array.isArray(dossiersRes)
+            ? dossiersRes
+            : (dossiersRes as { results?: Array<{ ten_ho_so?: string }>; items?: Array<{ ten_ho_so?: string }> })?.results
+            || (dossiersRes as { results?: Array<{ ten_ho_so?: string }>; items?: Array<{ ten_ho_so?: string }> })?.items
+            || [];
+
+          if (Array.isArray(rawDossiers) && rawDossiers.length > 0 && !cancelled) {
+            const folderNames = rawDossiers
+              .map((d) => d?.ten_ho_so?.trim())
+              .filter((name): name is string => Boolean(name));
+            if (folderNames.length > 0) {
+              setDynamicFolders(folderNames);
+            }
+          }
+        } catch {
+          // Fallback an toàn
+        }
+
+        try {
+          const docTypesRes = await apiClient.get<unknown>('/api/records/document-types/?page_size=100');
+          const rawDocTypes = Array.isArray(docTypesRes)
+            ? docTypesRes
+            : (docTypesRes as { results?: Array<{ ten_ho_so?: string; ten_loai?: string }>; items?: Array<{ ten_ho_so?: string; ten_loai?: string }> })?.results
+            || (docTypesRes as { results?: Array<{ ten_ho_so?: string; ten_loai?: string }>; items?: Array<{ ten_ho_so?: string; ten_loai?: string }> })?.items
+            || [];
+
+          if (Array.isArray(rawDocTypes) && rawDocTypes.length > 0 && !cancelled) {
+            const mapping: Record<string, string[]> = {};
+            rawDocTypes.forEach((dt) => {
+              const folderName = dt?.ten_ho_so?.trim();
+              const typeName = dt?.ten_loai?.trim();
+              if (folderName && typeName) {
+                if (!mapping[folderName]) {
+                  mapping[folderName] = [];
+                }
+                if (!mapping[folderName].includes(typeName)) {
+                  mapping[folderName].push(typeName);
+                }
+              }
+            });
+            setDynamicFolderDocTypesMap(mapping);
+          }
+        } catch {
+          // Fallback an toàn
         }
       });
 
@@ -1316,10 +1372,15 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                     required
                   >
                     <option value="">{t('documents_ui.formModal.dossierSelectPlaceholder') || '-- Chọn danh mục hồ sơ nội bộ --'}</option>
-                    {Object.keys(DEFAULT_INTERNAL_FOLDERS).map(f => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                    {form.danh_muc_ho_so && !DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] && (
+                    {(() => {
+                      const baseList = dynamicFolders.length > 0
+                        ? Array.from(new Set([...dynamicFolders, ...Object.keys(DEFAULT_INTERNAL_FOLDERS)]))
+                        : Object.keys(DEFAULT_INTERNAL_FOLDERS);
+                      return baseList.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ));
+                    })()}
+                    {form.danh_muc_ho_so && !dynamicFolders.includes(form.danh_muc_ho_so) && !DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] && (
                       <option value={form.danh_muc_ho_so}>{form.danh_muc_ho_so}</option>
                     )}
                   </select>
@@ -1367,15 +1428,25 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         ? (t('documents_ui.formModal.docTypePromptSelect') || '— Vui lòng chọn danh mục hồ sơ trước —')
                         : (t('documents_ui.formModal.docTypeSelectPlaceholder') || '-- Chọn loại văn bản --')}
                     </option>
-                    {form.danh_muc_ho_so?.trim() &&
-                      (DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] || DEFAULT_DOC_TYPES).map(tOpt => (
-                        <option key={tOpt} value={tOpt}>{tOpt}</option>
-                      ))}
-                    {form.ten_loai_van_ban &&
-                      form.danh_muc_ho_so?.trim() &&
-                      !(DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] || DEFAULT_DOC_TYPES).includes(form.ten_loai_van_ban) && (
-                        <option value={form.ten_loai_van_ban}>{form.ten_loai_van_ban}</option>
-                      )}
+                    {(() => {
+                      const dynamicTypes = form.danh_muc_ho_so ? dynamicFolderDocTypesMap[form.danh_muc_ho_so] : null;
+                      const allowedTypes = (dynamicTypes && dynamicTypes.length > 0)
+                        ? dynamicTypes
+                        : (DEFAULT_INTERNAL_FOLDERS[form.danh_muc_ho_so] || DEFAULT_DOC_TYPES);
+                      return (
+                        <>
+                          {form.danh_muc_ho_so?.trim() &&
+                            allowedTypes.map(tOpt => (
+                              <option key={tOpt} value={tOpt}>{tOpt}</option>
+                            ))}
+                          {form.ten_loai_van_ban &&
+                            form.danh_muc_ho_so?.trim() &&
+                            !allowedTypes.includes(form.ten_loai_van_ban) && (
+                              <option value={form.ten_loai_van_ban}>{form.ten_loai_van_ban}</option>
+                            )}
+                        </>
+                      );
+                    })()}
                   </select>
                 )}
               </div>

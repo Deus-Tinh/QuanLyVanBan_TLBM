@@ -185,6 +185,54 @@ export const OutboundDocumentPage: React.FC = () => {
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       setAllStatsItems(items);
 
+      // 2. Lấy danh mục hồ sơ và loại văn bản từ Nhóm 3 (app records) để đồng bộ danh mục hệ thống
+      const recordsFolders: string[] = [];
+      const recordsFolderTypeMap: Record<string, Set<string>> = {};
+
+      try {
+        const dossiersRes = await apiClient.get<unknown>('/api/records/dossiers/?page_size=100');
+        const rawDossiers = Array.isArray(dossiersRes)
+          ? dossiersRes
+          : (dossiersRes as { results?: Array<{ ten_ho_so?: string }>; items?: Array<{ ten_ho_so?: string }> })?.results
+          || (dossiersRes as { results?: Array<{ ten_ho_so?: string }>; items?: Array<{ ten_ho_so?: string }> })?.items
+          || [];
+
+        if (Array.isArray(rawDossiers) && rawDossiers.length > 0) {
+          rawDossiers.forEach((d) => {
+            const name = d?.ten_ho_so?.trim();
+            if (name) {
+              recordsFolders.push(name);
+            }
+          });
+        }
+      } catch {
+        // Fallback an toàn nếu API records chưa sẵn sàng
+      }
+
+      try {
+        const docTypesRes = await apiClient.get<unknown>('/api/records/document-types/?page_size=100');
+        const rawDocTypes = Array.isArray(docTypesRes)
+          ? docTypesRes
+          : (docTypesRes as { results?: Array<{ ten_ho_so?: string; ten_loai?: string }>; items?: Array<{ ten_ho_so?: string; ten_loai?: string }> })?.results
+          || (docTypesRes as { results?: Array<{ ten_ho_so?: string; ten_loai?: string }>; items?: Array<{ ten_ho_so?: string; ten_loai?: string }> })?.items
+          || [];
+
+        if (Array.isArray(rawDocTypes) && rawDocTypes.length > 0) {
+          rawDocTypes.forEach((dt) => {
+            const folderName = dt?.ten_ho_so?.trim();
+            const typeName = dt?.ten_loai?.trim();
+            if (folderName && typeName) {
+              if (!recordsFolderTypeMap[folderName]) {
+                recordsFolderTypeMap[folderName] = new Set<string>();
+              }
+              recordsFolderTypeMap[folderName].add(typeName);
+            }
+          });
+        }
+      } catch {
+        // Fallback an toàn
+      }
+
       // Trích xuất các Loại văn bản và ánh xạ Danh mục hồ sơ -> Loại văn bản thực tế từ các văn bản trong hệ thống
       const extractedTypes = new Set<string>();
       const extractedFolders = new Set<string>();
@@ -240,13 +288,29 @@ export const OutboundDocumentPage: React.FC = () => {
         }
       });
 
+      // Gộp danh mục hồ sơ: kết hợp hồ sơ từ Nhóm 3 (app records) và hồ sơ thực tế trong văn bản
+      const combinedFoldersSet = new Set<string>([...recordsFolders, ...extractedFolders]);
       const serializableFolderMap: Record<string, string[]> = {};
+
+      // Xây dựng bản đồ ánh xạ Hồ sơ -> Loại văn bản kết hợp
+      combinedFoldersSet.forEach((folder) => {
+        const fromRecords = recordsFolderTypeMap[folder] ? Array.from(recordsFolderTypeMap[folder]) : [];
+        const fromDocuments = folderTypeMapping[folder] ? Array.from(folderTypeMapping[folder]) : [];
+        const combinedTypes = Array.from(new Set([...fromRecords, ...fromDocuments])).sort((a, b) => a.localeCompare(b, 'vi'));
+        if (combinedTypes.length > 0) {
+          serializableFolderMap[folder] = combinedTypes;
+        }
+      });
+
+      // Nếu có hồ sơ trong folderTypeMapping chưa có trong combinedFoldersSet
       Object.entries(folderTypeMapping).forEach(([folder, typeSet]) => {
-        serializableFolderMap[folder] = Array.from(typeSet).sort((a, b) => a.localeCompare(b, 'vi'));
+        if (!serializableFolderMap[folder]) {
+          serializableFolderMap[folder] = Array.from(typeSet).sort((a, b) => a.localeCompare(b, 'vi'));
+        }
       });
 
       setAvailableDocTypes(Array.from(extractedTypes).sort((a, b) => a.localeCompare(b, 'vi')));
-      setAvailableFolders(Array.from(extractedFolders).sort((a, b) => a.localeCompare(b, 'vi')));
+      setAvailableFolders(Array.from(combinedFoldersSet).sort((a, b) => a.localeCompare(b, 'vi')));
       setFolderDocTypesMap(serializableFolderMap);
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
