@@ -271,6 +271,17 @@ Báo cáo chi tiết các luồng nghiệp vụ (Happy path, Trả sửa lượt
 
 - Ủy quyền theo thời gian (`signing_delegation`) và thể thức `hinh_thuc_ky` (KT./TL./TUQ.): DDL chưa có bảng/cột, cần
   PR đổi schema riêng (DDL + migration + `DDL_CHANGELOG.md`).
+- Ủy quyền khẩn cấp hiện chỉ dùng ma trận chức danh toàn cục (`signing_delegation_role`: chức danh giao → chức danh
+  nhận). Ma trận chưa giới hạn theo quy trình, loại văn bản, khối/phòng ban hoặc giá trị hợp đồng; vì vậy không đáp ứng
+  chính sách kiểu “chỉ văn bản kỹ thuật” hay “dưới 500 triệu”. Chỉ dùng cho phạm vi hồ sơ mà cặp chức danh được phép
+  ký thay không cần các giới hạn này. Muốn áp giới hạn phải chốt chính sách và dữ liệu nghiệp vụ trước khi mở rộng.
+- Ủy quyền khẩn cấp ghi người giao quyền, lý do và thời điểm, nhưng chưa lưu/render thể thức KT./TL./TUQ. Khối chữ
+  ký trong PDF hoàn tất dùng tên người ký và chức danh snapshot, chưa có tiền tố thể thức; đây là kết quả duyệt nội bộ,
+  chưa phải văn bản đã phát hành. Không dùng luồng này để khẳng định thể thức ký thay/thừa lệnh đã được thể hiện trên
+  văn bản chính thức.
+- Nhân sự có thể có nhiều phân công trong `accounts_employee_assignment`, nhưng Trình ký hiện chỉ xét chức danh chính
+  `Employee.chuc_vu_id` khi tìm và kiểm tra người nhận ủy quyền. Chức vụ kiêm nhiệm chưa được tính là căn cứ nhận ủy
+  quyền; khi hỗ trợ cần chốt phạm vi đơn vị, hiệu lực phân công và chức danh nào được lưu làm snapshot.
 - Nhóm Chuyên viên (CV) đã được cấp quyền `send_trinhky` qua PR #254 (migration `authorization/0007_grant_cv_send_trinhky`, issue #226), cho phép chuyên viên tự gửi hồ sơ do mình tạo.
 - Đánh dấu đã đọc thông báo lưu ở trình duyệt; bảng `signing_notification` chưa có cột đã đọc.
 - Tìm không dấu dùng `LOWER(TRANSLATE(...))` sẵn có của PostgreSQL, quét tuần tự (đủ cho quy mô hiện tại). Muốn dùng
