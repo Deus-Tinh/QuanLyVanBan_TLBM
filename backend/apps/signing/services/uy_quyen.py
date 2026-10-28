@@ -39,6 +39,20 @@ def chuc_vu_goc(dong):
     return dong.chuc_vu_id
 
 
+def kiem_tra_tham_quyen_ky(dong, nguoi_nhan):
+    """Kiểm lại chức danh được phép ký thay từ dữ liệu hiện tại ngay trước khi ký."""
+    chuc_vu_giao = chuc_vu_goc(dong)
+    duoc_phep = chuc_vu_giao and nguoi_nhan.chuc_vu_id and SigningDelegationRole.objects.select_for_update().filter(
+        chuc_vu_giao_id=chuc_vu_giao, chuc_vu_nhan_id=nguoi_nhan.chuc_vu_id,
+    ).first()
+    if dong.uy_quyen_tu_id and not duoc_phep:
+        raise _loi(
+            "uy_quyen_khong_con_hop_le",
+            "Người nhận không còn chức danh được phép ký thay; cần kiểm tra và ủy quyền lại.",
+            status.HTTP_403_FORBIDDEN,
+        )
+
+
 def co_quyen_uy_quyen(nguoi, nguoi_ky):
     """`nguoi` được ủy quyền thay cho `nguoi_ky` (cấp trên trực tiếp hoặc quản trị)."""
     if not co_quyen(nguoi, UY_QUYEN_TRINH_KY) or nguoi.pk == nguoi_ky.pk:
@@ -85,6 +99,11 @@ def uy_quyen(yeu_cau, nguoi, *, dong_nguoi_ky, nguoi_nhan, ly_do, khoa_chong_tru
     if nhan is None or not co_quyen(nhan, KY_TRINH_KY):
         raise _loi("nguoi_nhan_khong_hop_le", "Người nhận ủy quyền không hoạt động hoặc không có quyền ký.",
                    nguoi_nhan=["Không hợp lệ."])
+    if dong.uy_quyen_tu_id and dong.uy_quyen_tu_id == nhan.pk:
+        raise ConflictError(
+            code="uy_quyen_vong_lap",
+            detail="Không thể ủy quyền lại cho người đã giao quyền ban đầu.",
+        )
     if dong.buoc_ky.nguoi_ky_set.filter(nguoi_ky=nhan).exists():
         raise ConflictError(code="nguoi_nhan_da_co_trong_cap", detail="Người nhận đã có mặt trong cùng cấp ký.")
     chuc_vu_giao = chuc_vu_goc(dong)

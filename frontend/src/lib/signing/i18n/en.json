@@ -387,6 +387,8 @@
     "nguoi_ky_khong_cho_ky": "Only signers awaiting signature can be delegated.",
     "nguoi_nhan_khong_hop_le": "The delegate is inactive or lacks signing permission.",
     "nguoi_nhan_khong_du_tham_quyen": "The recipient's position is not authorized to sign for this person.",
+    "uy_quyen_vong_lap": "You cannot delegate back to the person who originally assigned the signing authority.",
+    "uy_quyen_khong_con_hop_le": "The delegate no longer holds a position authorized to sign for this request. Contact an administrator to review and reassign.",
     "chuc_vu_khong_hop_le": "A selected position is no longer available. Reload the list.",
     "khong_co_chuc_danh_goc": "The request does not contain the signer's original position. Contact an administrator.",
     "nguoi_nhan_da_co_trong_cap": "The delegate is already in the same level.",

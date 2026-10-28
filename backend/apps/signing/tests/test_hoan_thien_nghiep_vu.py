@@ -14,7 +14,10 @@ from rest_framework.test import APIClient
 
 from authorization.models import GroupInfo
 from signing import enums
-from signing.models import SigningAuditLog, SigningDelegationRole, SigningNotification, SigningRequestStep, SigningRequestStepSigner
+from signing.models import (
+    SigningAuditLog, SigningDelegationRole, SigningNotification, SigningRequestStep, SigningRequestStepSigner,
+    SigningSignature,
+)
 from signing.services import thong_bao
 
 from .helpers import cap_quyen, tao_chuc_vu, tao_don_vi
@@ -83,6 +86,71 @@ class UyQuyenTests(KyBase):
         self.assertEqual(r.status_code, 200, r.data)
         _, dong = self.nguoi_ky(r.data, "pho_phong")
         self.assertEqual(dong["trang_thai"], "DA_KY")
+
+    def test_delegation_cannot_return_directly_to_original_signer(self):
+        SigningDelegationRole.objects.create(chuc_vu_giao=self.chuc_vu_giao, chuc_vu_nhan=self.chuc_vu_giao)
+        self.assertEqual(self.uy_quyen(self.quan_tri, khoa="uq-direct-first").status_code, 200)
+
+        response = self.uy_quyen(self.quan_tri, nguoi_nhan=self.ky1, khoa="uq-direct-return")
+
+        self.assertEqual((response.status_code, response.data["code"]), (409, "uy_quyen_vong_lap"))
+        self.dong_ky1.refresh_from_db()
+        self.assertEqual((self.dong_ky1.nguoi_ky_id, self.dong_ky1.uy_quyen_tu_id),
+                         (self.nhan.pk, self.ky1.pk))
+
+    def test_delegation_cannot_return_to_original_signer_after_multiple_hops(self):
+        cv_thu_ba = tao_chuc_vu("Người nhận thứ ba")
+        nguoi_thu_ba = User.objects.create_user("nguoi_nhan_thu_ba", chuc_vu=cv_thu_ba)
+        cap_quyen(nguoi_thu_ba, "sign_trinhky")
+        SigningDelegationRole.objects.create(chuc_vu_giao=self.chuc_vu_giao, chuc_vu_nhan=cv_thu_ba)
+        SigningDelegationRole.objects.create(chuc_vu_giao=self.chuc_vu_giao, chuc_vu_nhan=self.chuc_vu_giao)
+        self.assertEqual(self.uy_quyen(self.quan_tri, khoa="uq-hop-one").status_code, 200)
+        self.assertEqual(self.uy_quyen(self.quan_tri, nguoi_nhan=nguoi_thu_ba, khoa="uq-hop-two").status_code, 200)
+
+        response = self.uy_quyen(self.quan_tri, nguoi_nhan=self.ky1, khoa="uq-hop-return")
+
+        self.assertEqual((response.status_code, response.data["code"]), (409, "uy_quyen_vong_lap"))
+        self.dong_ky1.refresh_from_db()
+        self.assertEqual((self.dong_ky1.nguoi_ky_id, self.dong_ky1.uy_quyen_tu_id),
+                         (nguoi_thu_ba.pk, self.ky1.pk))
+
+    def test_delegated_signer_must_retain_an_allowed_position_at_signing_time(self):
+        self.assertEqual(self.uy_quyen(self.quan_tri, khoa="uq-role-change").status_code, 200)
+        self.khoa[self.nhan.pk] = khoa_hoat_dong(self.nhan, "K-pho-phong-role-change")
+        User.objects.filter(pk=self.nhan.pk).update(chuc_vu=tao_chuc_vu("Chuyên viên"))
+
+        response = self.ky(User.objects.get(pk=self.nhan.pk))
+
+        self.assertEqual((response.status_code, response.data["code"]), (403, "uy_quyen_khong_con_hop_le"))
+        self.assertFalse(SigningSignature.objects.filter(luot_trinh__trinh_ky_id=self.pk).exists())
+        self.dong_ky1.refresh_from_db()
+        self.assertEqual(self.dong_ky1.trang_thai, enums.TrangThaiNguoiKy.CHO_KY)
+
+    def test_delegated_signer_is_rechecked_when_role_mapping_is_removed(self):
+        self.assertEqual(self.uy_quyen(self.quan_tri, khoa="uq-role-mapping-removed").status_code, 200)
+        self.khoa[self.nhan.pk] = khoa_hoat_dong(self.nhan, "K-pho-phong-mapping-removed")
+        SigningDelegationRole.objects.filter(
+            chuc_vu_giao=self.chuc_vu_giao, chuc_vu_nhan=self.chuc_vu_nhan,
+        ).delete()
+
+        response = self.ky(User.objects.get(pk=self.nhan.pk))
+
+        self.assertEqual((response.status_code, response.data["code"]), (403, "uy_quyen_khong_con_hop_le"))
+        self.assertFalse(SigningSignature.objects.filter(luot_trinh__trinh_ky_id=self.pk).exists())
+        self.dong_ky1.refresh_from_db()
+        self.assertEqual(self.dong_ky1.trang_thai, enums.TrangThaiNguoiKy.CHO_KY)
+
+    def test_deactivated_delegated_signer_cannot_sign(self):
+        self.assertEqual(self.uy_quyen(self.quan_tri, khoa="uq-deactivated").status_code, 200)
+        self.khoa[self.nhan.pk] = khoa_hoat_dong(self.nhan, "K-pho-phong-deactivated")
+        User.objects.filter(pk=self.nhan.pk).update(is_active=False)
+
+        response = self.ky(User.objects.get(pk=self.nhan.pk))
+
+        self.assertEqual(response.status_code, 403, response.data)
+        self.assertFalse(SigningSignature.objects.filter(luot_trinh__trinh_ky_id=self.pk).exists())
+        self.dong_ky1.refresh_from_db()
+        self.assertEqual(self.dong_ky1.trang_thai, enums.TrangThaiNguoiKy.CHO_KY)
 
     def test_repeat_with_same_key_is_idempotent(self):
         self.assertEqual(self.uy_quyen(self.quan_tri).status_code, 200)
