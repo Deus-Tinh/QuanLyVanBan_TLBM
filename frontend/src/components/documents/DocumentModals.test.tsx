@@ -576,6 +576,46 @@ describe('DocumentFormModal', () => {
       });
     }
   });
+
+  it('hiển thị đầy đủ và phân biệt các đơn vị trùng tên bằng tên khối trực thuộc', async () => {
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url.includes('/api/organizations/units/')) {
+        return [
+          { id: 1, ten: 'Phòng Hành chính - Tổng hợp', khoi_ten: 'KHỐI VĂN PHÒNG' },
+          { id: 20, ten: 'Lãnh đạo khối', khoi_ten: 'KHỐI HỖ TRỢ' },
+          { id: 30, ten: 'Lãnh đạo khối', khoi_ten: 'KHỐI KẾ TOÁN' },
+        ];
+      }
+      if (url.includes('/api/accounts/staffs/') && url.includes('department=')) {
+        return [
+          { id: 10, username: 'ld_hotro', ho_ten: 'Nguyễn Văn Lãnh Đạo', don_vi_ten: 'Lãnh đạo khối' },
+        ];
+      }
+      return [];
+    });
+
+    render(<DocumentFormModal open={true} onClose={vi.fn()} />);
+
+    // Mở danh sách đơn vị nhận
+    const selectUnitBtn = await screen.findByText('-- Chọn đơn vị nhận --');
+    fireEvent.click(selectUnitBtn);
+
+    // Kiểm tra hiển thị đủ cả 2 đơn vị trùng tên với tên khối đi kèm
+    await waitFor(() => {
+      expect(screen.getByText('Lãnh đạo khối (KHỐI HỖ TRỢ)')).toBeInTheDocument();
+      expect(screen.getByText('Lãnh đạo khối (KHỐI KẾ TOÁN)')).toBeInTheDocument();
+      expect(screen.getByText('Phòng Hành chính - Tổng hợp')).toBeInTheDocument();
+    });
+
+    // Chọn đơn vị "Lãnh đạo khối (KHỐI HỖ TRỢ)"
+    const duplicateOption = screen.getByText('Lãnh đạo khối (KHỐI HỖ TRỢ)');
+    fireEvent.click(duplicateOption);
+
+    // Xác nhận cán bộ được nạp bằng tên gốc đã chuẩn hóa
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Lãnh Đạo')).toBeInTheDocument();
+    });
+  });
 });
 
 

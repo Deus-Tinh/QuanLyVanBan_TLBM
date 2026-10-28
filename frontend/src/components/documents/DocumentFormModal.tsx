@@ -415,15 +415,40 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
 
   async function fetchUnits() {
     try {
-      // 1. Ưu tiên nạp trực tiếp từ danh mục phòng ban CSDL (organizations_donvi)
-      const res = await apiClient.get<PaginatedResponse<{ id: number; ten: string }> | { id: number; ten: string }[]>(
-        '/api/organizations/units/?page_size=100'
-      );
+      // 1. Ưu tiên nạp trực tiếp toàn bộ danh mục phòng ban CSDL (organizations_donvi)
+      const res = await apiClient.get<
+        PaginatedResponse<{ id: number; ten?: string; name?: string; khoi_ten?: string }> |
+        Array<{ id: number; ten?: string; name?: string; khoi_ten?: string } | string>
+      >('/api/organizations/units/?all=true');
       const items = Array.isArray(res) ? res : res?.results || [];
-      const depts = items.map(d => d.ten?.trim()).filter(Boolean) as string[];
-      if (depts.length > 0) {
-        setUnits(Array.from(new Set(depts)));
-        return;
+      if (items.length > 0) {
+        // Đếm số lần xuất hiện của từng tên phòng ban để phát hiện các đơn vị trùng tên
+        const nameCounts = new Map<string, number>();
+        items.forEach(item => {
+          const rawName = typeof item === 'string' ? item.trim() : (item.ten || item.name)?.trim();
+          if (rawName) {
+            nameCounts.set(rawName, (nameCounts.get(rawName) || 0) + 1);
+          }
+        });
+
+        // Định dạng tên: nếu trùng tên giữa các khối thì gắn thêm tên khối trực thuộc để phân biệt và hiển thị đủ 100% số lượng đơn vị
+        const depts = items
+          .map(item => {
+            if (typeof item === 'string') return item.trim();
+            const rawName = (item.ten || item.name)?.trim();
+            if (!rawName) return null;
+            if ((nameCounts.get(rawName) || 0) > 1 && item.khoi_ten?.trim()) {
+              return `${rawName} (${item.khoi_ten.trim()})`;
+            }
+            return rawName;
+          })
+          .filter(Boolean) as string[];
+
+        const uniqueDepts = Array.from(new Set(depts));
+        if (uniqueDepts.length > 0) {
+          setUnits(uniqueDepts);
+          return;
+        }
       }
     } catch {
       // Fallback nếu endpoint organizations chưa sẵn sàng
@@ -452,9 +477,11 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
       return;
     }
     setIsStaffLoading(true);
+    // Bóc tách tên gốc nếu có kèm tên khối, ví dụ: "Lãnh đạo khối (KHỐI HỖ TRỢ)" -> "Lãnh đạo khối"
+    const cleanUnit = unit.replace(/\s*\([^)]*\)$/, '').trim();
     try {
       const data = await apiClient.get<UserOption[] | PaginatedResponse<UserOption>>(
-        `/api/accounts/staffs/?department=${encodeURIComponent(unit)}`
+        `/api/accounts/staffs/?department=${encodeURIComponent(cleanUnit)}`
       );
       const list: UserOption[] = Array.isArray(data) ? data : data?.results || [];
       if (list.length > 0) {
@@ -466,7 +493,7 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
     } finally {
       setIsStaffLoading(false);
     }
-    setStaff(MOCK_STAFF_BY_UNIT[unit] || []);
+    setStaff(MOCK_STAFF_BY_UNIT[cleanUnit] || MOCK_STAFF_BY_UNIT[unit] || []);
   }
 
   useEffect(() => {
