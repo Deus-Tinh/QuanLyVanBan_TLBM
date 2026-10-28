@@ -4,6 +4,7 @@ Tác giả: Lê Duy Khánh (leduykhanhdevs).
 """
 import re
 import secrets
+import unicodedata
 from io import BytesIO
 from datetime import datetime, date
 import openpyxl
@@ -41,6 +42,7 @@ def generate_cbnv_template() -> BytesIO:
         "Ngày sinh (*)",
         "Email (*)",
         "Số điện thoại",
+        "Tên Khối / Khu vực (*)",
         "Tên Đơn vị / Phòng ban (*)",
         "Tên Chức vụ (*)",
         "Chức danh",
@@ -63,6 +65,7 @@ def generate_cbnv_template() -> BytesIO:
             "1990-05-15",
             "an.nguyen@baolong.vn",
             "0912345678",
+            "KHU VỰC THÀNH PHỐ HỒ CHÍ MINH",
             "Bảo Long Sài Gòn",
             "Trưởng phòng",
             "Trưởng phòng Kinh doanh",
@@ -74,6 +77,7 @@ def generate_cbnv_template() -> BytesIO:
             "1994-11-20",
             "bich.tran@baolong.vn",
             "0987654321",
+            "KHỐI HỖ TRỢ",
             "Ban Pháp chế",
             "Chuyên viên",
             "Chuyên viên Pháp lý",
@@ -88,7 +92,8 @@ def generate_cbnv_template() -> BytesIO:
         "(Định dạng YYYY-MM-DD)",
         "(Ví dụ: an.nguyen@baolong.vn)",
         "(Ví dụ: 0912345678)",
-        "(Tên đơn vị đã có trong hệ thống)",
+        "(Tên khối/khu vực đã có trong hệ thống)",
+        "(Tên đơn vị thuộc đúng khối/khu vực)",
         "(Tên chức vụ)",
         "(Chức danh nội bộ)",
         "(Đang làm việc / Nghỉ việc)",
@@ -110,11 +115,12 @@ def generate_cbnv_template() -> BytesIO:
         "B": 16,  # Ngày sinh
         "C": 28,  # Email
         "D": 18,  # SĐT
-        "E": 30,  # Đơn vị
-        "F": 22,  # Chức vụ
-        "G": 24,  # Chức danh
-        "H": 25,  # Trạng thái
-        "I": 30,  # Ghi chú
+        "E": 34,  # Khối / khu vực
+        "F": 30,  # Đơn vị
+        "G": 22,  # Chức vụ
+        "H": 24,  # Chức danh
+        "I": 25,  # Trạng thái
+        "J": 30,  # Ghi chú
     }
     for col_letter, w in col_widths.items():
         ws.column_dimensions[col_letter].width = w
@@ -147,6 +153,44 @@ def _read_rows_from_excel(file_obj) -> list[tuple]:
     wb = openpyxl.load_workbook(file_obj, data_only=True)
     ws = wb.active
     return list(ws.iter_rows(values_only=True))
+
+
+def _normalize_excel_header(value) -> str:
+    """Chuẩn hóa tiêu đề để nhận cả file mẫu và file CBNV đã xuất từ hệ thống."""
+    if value is None:
+        return ""
+    text = str(value).strip().casefold().replace("đ", "d")
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]", "", text)
+
+
+def _map_excel_headers(header_row: tuple) -> dict[str, int]:
+    """Map các tên cột phổ biến về trường import chuẩn; bỏ qua cột không dùng."""
+    aliases = {
+        "ho_ten": {"hovaten", "hoten"},
+        "ngay_sinh": {"ngaysinh"},
+        "email": {"email", "emailcongvu"},
+        "sdt": {"sodienthoai", "sdt"},
+        "khoi": {"khoi", "tenkhoi", "khoikhuvuc", "tenkhoikhuvuc"},
+        "don_vi": {"donvi", "tendonvi", "tendonviphongban"},
+        "chuc_vu": {"chucvu", "tenchucvu"},
+        "chuc_danh": {"chucdanh"},
+        "trang_thai": {"trangthai"},
+        "ghi_chu": {"ghichu"},
+    }
+    alias_to_field = {
+        alias: field for field, field_aliases in aliases.items() for alias in field_aliases
+    }
+    mapped = {}
+    for index, value in enumerate(header_row):
+        key = _normalize_excel_header(value)
+        field = alias_to_field.get(key)
+        if field and field not in mapped:
+            mapped[field] = index
+        elif key.startswith("trangthai") and "trang_thai" not in mapped:
+            mapped["trang_thai"] = index
+    return mapped
 
 
 def import_cbnv_from_excel(file_obj) -> dict:
@@ -185,9 +229,27 @@ def import_cbnv_from_excel(file_obj) -> dict:
             }],
         }
 
-    # Tự động phát hiện có cột STT ở đầu hay không
-    first_row = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
-    offset = 1 if (len(first_row) > 0 and ("stt" in first_row[0] or "số tt" in first_row[0] or "số thứ tự" in first_row[0])) else 0
+    # Ưu tiên ánh xạ theo tiêu đề để hỗ trợ cả mẫu mới có Khối và file CBNV đã xuất.
+    # Giữ fallback theo vị trí cho các file cũ không có tiêu đề nhận diện được.
+    column_indices = _map_excel_headers(rows[0])
+    required_header_fields = {"ho_ten", "ngay_sinh", "email", "sdt", "don_vi", "chuc_vu"}
+    has_header_mapping = required_header_fields.issubset(column_indices)
+    has_block_column = has_header_mapping and "khoi" in column_indices
+    offset = 0
+    if not has_header_mapping:
+        first_row = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
+        offset = 1 if (len(first_row) > 0 and ("stt" in first_row[0] or "số tt" in first_row[0] or "số thứ tự" in first_row[0])) else 0
+        column_indices = {
+            "ho_ten": 0 + offset,
+            "ngay_sinh": 1 + offset,
+            "email": 2 + offset,
+            "sdt": 3 + offset,
+            "don_vi": 4 + offset,
+            "chuc_vu": 5 + offset,
+            "chuc_danh": 6 + offset,
+            "trang_thai": 7 + offset,
+            "ghi_chu": 8 + offset,
+        }
 
     errors = []
     valid_records = []
@@ -212,21 +274,24 @@ def import_cbnv_from_excel(file_obj) -> dict:
         if first_cell.startswith("(") or second_cell.startswith("("):
             continue
 
-        def _get_val(col_idx):
-            target = col_idx + offset
+        def _get_val(field):
+            target = column_indices.get(field)
+            if target is None:
+                return None
             if target < len(row) and row[target] is not None:
                 return row[target]
             return None
 
-        ho_ten = str(_get_val(0)).strip() if _get_val(0) is not None else ""
-        raw_birthday = _get_val(1)
-        raw_email = str(_get_val(2)).strip().lower() if _get_val(2) is not None else ""
-        sdt = str(_get_val(3)).strip() if _get_val(3) is not None else ""
-        don_vi_name = str(_get_val(4)).strip() if _get_val(4) is not None else ""
-        chuc_vu_name = str(_get_val(5)).strip() if _get_val(5) is not None else ""
-        chuc_danh = str(_get_val(6)).strip() if _get_val(6) is not None else ""
-        raw_trang_thai = str(_get_val(7)).strip() if _get_val(7) is not None else "Đang làm việc"
-        ghi_chu = str(_get_val(8)).strip() if _get_val(8) is not None else ""
+        ho_ten = str(_get_val("ho_ten")).strip() if _get_val("ho_ten") is not None else ""
+        raw_birthday = _get_val("ngay_sinh")
+        raw_email = str(_get_val("email")).strip().lower() if _get_val("email") is not None else ""
+        sdt = str(_get_val("sdt")).strip() if _get_val("sdt") is not None else ""
+        khoi_name = str(_get_val("khoi")).strip() if _get_val("khoi") is not None else ""
+        don_vi_name = str(_get_val("don_vi")).strip() if _get_val("don_vi") is not None else ""
+        chuc_vu_name = str(_get_val("chuc_vu")).strip() if _get_val("chuc_vu") is not None else ""
+        chuc_danh = str(_get_val("chuc_danh")).strip() if _get_val("chuc_danh") is not None else ""
+        raw_trang_thai = str(_get_val("trang_thai")).strip() if _get_val("trang_thai") is not None else "Đang làm việc"
+        ghi_chu = str(_get_val("ghi_chu")).strip() if _get_val("ghi_chu") is not None else ""
 
         # 1. Validate Họ và tên
         if not ho_ten:
@@ -309,26 +374,50 @@ def import_cbnv_from_excel(file_obj) -> dict:
 
         # 5. Validate Đơn vị / Phòng ban
         don_vi_instance = None
+        if has_block_column and not khoi_name:
+            add_error(
+                idx,
+                "khoi",
+                "employees.import.errors.blockRequired",
+                "",
+                "Tên Khối / Khu vực không được để trống.",
+            )
         if not don_vi_name:
             add_error(idx, "don_vi", "employees.import.errors.unitRequired", "", "Tên Đơn vị / Phòng ban không được để trống.")
+        elif has_block_column and not khoi_name:
+            # Đã báo lỗi thiếu Khối; không tra cứu không phân biệt Khối để tránh gán nhầm đơn vị.
+            pass
         else:
             matching_units = DonVi.objects.filter(ten__iexact=don_vi_name)
+            if has_block_column:
+                matching_units = matching_units.filter(khoi__ten__iexact=khoi_name)
             unit_count = matching_units.count()
             if unit_count == 0:
+                scope = f" trong Khối / Khu vực '{khoi_name}'" if has_block_column else ""
                 add_error(
                     idx,
                     "don_vi",
                     "employees.messages.unitNotFound",
                     don_vi_name,
-                    f"Không tìm thấy Đơn vị có tên '{don_vi_name}' trong hệ thống.",
+                    f"Không tìm thấy Đơn vị có tên '{don_vi_name}'{scope} trong hệ thống.",
                 )
             elif unit_count > 1:
+                if has_block_column:
+                    ambiguous_message = (
+                        f"Tên Đơn vị '{don_vi_name}' vẫn trùng trong Khối / Khu vực "
+                        f"'{khoi_name}'. Vui lòng kiểm tra danh mục đơn vị."
+                    )
+                else:
+                    ambiguous_message = (
+                        f"Tên Đơn vị '{don_vi_name}' trùng lặp giữa nhiều Khối/Khu vực. "
+                        "Vui lòng dùng mẫu mới và điền cột Khối / Khu vực."
+                    )
                 add_error(
                     idx,
                     "don_vi",
                     "employees.messages.unitAmbiguous",
                     don_vi_name,
-                    f"Tên Đơn vị '{don_vi_name}' trùng lặp giữa nhiều Khối/Khu vực. Vui lòng ghi rõ hoặc chọn đơn vị chính xác.",
+                    ambiguous_message,
                 )
             else:
                 don_vi_instance = matching_units.first()
