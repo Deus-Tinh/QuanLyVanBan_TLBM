@@ -148,11 +148,15 @@ class PositionListTests(PositionBaseTestCase):
         self.assertEqual(res.json()["count"], 0)
 
     def test_pagination(self):
-        for i in range(10, 25):
-            Position.objects.create(display_order=i, name=f"Chức vụ {i}")
+        first_order = self.next_order()
+        for offset in range(15):
+            Position.objects.create(
+                display_order=first_order + offset,
+                name=f"Chức vụ kiểm thử {offset}",
+            )
         page1 = self.client_for["pos_manager"].get(LIST_URL, {"page": 1}).json()
         page2 = self.client_for["pos_manager"].get(LIST_URL, {"page": 2}).json()
-        self.assertEqual(page1["count"], 20)
+        self.assertEqual(page1["count"], Position.objects.count())
         self.assertEqual(len(page1["results"]), 10)
         self.assertEqual(len(page2["results"]), 10)
         self.assertIsNotNone(page1["next"])

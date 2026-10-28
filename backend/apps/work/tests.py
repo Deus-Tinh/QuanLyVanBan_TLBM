@@ -798,13 +798,12 @@ class NewTaskMailTests(WorkTestBase):
         self.assertTrue(Task.objects.filter(pk=response.data["id"]).exists())
 
     def test_gui_dung_dia_chi_leader_email_that_khong_gui_nguoi_tao(self):
-        """VIỆC 5/6: thư tới ĐÚNG địa chỉ người được giao (email thật của leader), không gửi nhầm người tạo."""
-        self.host.email = "phantahuuduc@gmail.com"
-        self.host.save(update_fields=["email"])
+        """Thư tới email hiện tại của người được giao, không gửi nhầm người tạo."""
+        leader_email = self.host.email
         self.create()
 
-        # Có đúng 1 thư gửi tới địa chỉ thật của leader.
-        leader_mails = [m for m in mail.outbox if m.to == ["phantahuuduc@gmail.com"]]
+        # Có đúng 1 thư gửi tới email của người được giao.
+        leader_mails = [m for m in mail.outbox if m.to == [leader_email]]
         self.assertEqual(len(leader_mails), 1)
         # Người tạo KHÔNG nằm trong danh sách nhận.
         all_recipients = [address for m in mail.outbox for address in m.to]
@@ -1411,9 +1410,11 @@ class SeedWorkDemoCommandTests(TestCase):
         self.assertEqual(emp_count, 5)
         self.assertEqual(task_count, 7)
 
-        # Leader gắn email thật; nhân viên thường dùng miền @test.local an toàn.
+        # Tài khoản leader dùng email demo thuộc miền .test.
+        from work.management.commands.seed_work_demo import LEADER_EMAIL
+
         leader = User.objects.get(username="test_truongnhom6")
-        self.assertEqual(leader.email, "phantahuuduc@gmail.com")
+        self.assertEqual(leader.email, LEADER_EMAIL)
         self.assertTrue(
             User.objects.filter(username="test_cbnv_1", email__endswith="@test.local").exists()
         )

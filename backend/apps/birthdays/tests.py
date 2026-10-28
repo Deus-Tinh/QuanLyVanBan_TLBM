@@ -8,8 +8,10 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core import mail
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.core.validators import validate_email
 from django.db import close_old_connections, connection
 from django.test import TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.utils import timezone
@@ -373,15 +375,26 @@ class BirthdayEmailConcurrencyTests(TransactionTestCase):
         MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
         DEFAULT_FROM_EMAIL="noreply@example.test",
     )
-    def test_parallel_jobs_send_only_one_message(self):
+    def test_parallel_jobs_send_each_eligible_employee_only_once(self):
         start = Barrier(2)
         call_lock = Lock()
-        send_call_count = 0
+        sent_recipients = []
+        eligible_emails = Employee.objects.filter(
+            is_active=True, ngay_sinh__month=5, ngay_sinh__day=20
+        ).values_list("email", flat=True)
+        expected_recipients = []
+        for email in eligible_emails:
+            if not email:
+                continue
+            try:
+                validate_email(email)
+            except ValidationError:
+                continue
+            expected_recipients.append(email)
 
         def fake_send_mail(**kwargs):
-            nonlocal send_call_count
             with call_lock:
-                send_call_count += 1
+                sent_recipients.extend(kwargs["recipient_list"])
             time.sleep(0.15)
             return 1
 
@@ -401,8 +414,8 @@ class BirthdayEmailConcurrencyTests(TransactionTestCase):
                 results = list(pool.map(lambda _: run_job(), range(2)))
 
         log = BirthdayEmailLog.objects.get(employee=self.employee, sent_date=date(2026, 5, 20))
-        self.assertEqual(send_call_count, 1)
-        self.assertEqual(sum(result["sent_count"] for result in results), 1)
+        self.assertCountEqual(sent_recipients, expected_recipients)
+        self.assertEqual(sum(result["sent_count"] for result in results), len(expected_recipients))
         self.assertEqual(log.trang_thai, BirthdayEmailStatus.SUCCESS)
 
 
