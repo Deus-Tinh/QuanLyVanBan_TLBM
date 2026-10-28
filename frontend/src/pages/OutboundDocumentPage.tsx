@@ -35,6 +35,7 @@ export const OutboundDocumentPage: React.FC = () => {
     page_size: 10,
     loai: 'DI',
     loai_van_ban: loaiVanBanParam || undefined,
+    ho_so: searchParams.get('ho_so') || undefined,
     pham_vi: (phamViParam as 'NOI_BO' | 'HAN_CHE' | 'ALL') || 'NOI_BO',
   });
 
@@ -47,10 +48,14 @@ export const OutboundDocumentPage: React.FC = () => {
     if (currentFilters.den_ngay) nextParams.set('den_ngay', currentFilters.den_ngay);
     if (currentFilters.hieu_luc) nextParams.set('hieu_luc', currentFilters.hieu_luc);
     if (currentFilters.loai_van_ban) nextParams.set('loai_van_ban', String(currentFilters.loai_van_ban));
-    if (currentFilters.ho_so) nextParams.set('ho_so', currentFilters.ho_so);
-    if (currentFilters.pham_vi && currentFilters.pham_vi !== 'NOI_BO') {
-      nextParams.set('pham_vi', String(currentFilters.pham_vi));
+    if (currentFilters.ho_so) {
+      nextParams.set('ho_so', currentFilters.ho_so);
+      const dossierName = searchParams.get('ten_ho_so');
+      if (currentFilters.ho_so === searchParams.get('ho_so') && dossierName) {
+        nextParams.set('ten_ho_so', dossierName);
+      }
     }
+    if (currentFilters.pham_vi) nextParams.set('pham_vi', String(currentFilters.pham_vi));
     if (currentFilters.page && currentFilters.page > 1) nextParams.set('page', String(currentFilters.page));
 
     // Bảo toàn các params trạng thái modal (detail, viewers, action, edit)
@@ -159,6 +164,8 @@ export const OutboundDocumentPage: React.FC = () => {
   const [availableDocTypes, setAvailableDocTypes] = useState<string[]>([]);
   const [availableFolders, setAvailableFolders] = useState<string[]>([]);
   const [folderDocTypesMap, setFolderDocTypesMap] = useState<Record<string, string[]>>({});
+  const [recordDossiers, setRecordDossiers] = useState<Array<{ id: number | string; ten_ho_so: string; so_ky_hieu?: string }>>([]);
+  const [recordDocTypes, setRecordDocTypes] = useState<Array<{ id: number | string; ten_loai: string; ho_so?: number | string; ten_ho_so?: string }>>([]);
   const [allStatsItems, setAllStatsItems] = useState<DocumentItem[]>([]);
 
   // Lấy danh sách các năm thực tế có văn bản đi trong CSDL
@@ -179,6 +186,80 @@ export const OutboundDocumentPage: React.FC = () => {
       const res = await apiClient.get<PaginatedResponse<DocumentItem>>('/api/documents/?loai=DI&page_size=1000');
       const items = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? (res as DocumentItem[]) : []);
       setAllStatsItems(items);
+
+      // 2. Lấy danh mục hồ sơ và loại văn bản từ Nhóm 3 (app records) để đồng bộ danh mục hệ thống
+      const recordsFolders: string[] = [];
+      const recordsFolderTypeMap: Record<string, Set<string>> = {};
+
+      try {
+        const dossiersRes = await apiClient.get<unknown>('/api/records/dossiers/?page_size=100');
+        const rawDossiers = Array.isArray(dossiersRes)
+          ? dossiersRes
+          : (dossiersRes as { results?: Array<{ ten_ho_so?: string }>; items?: Array<{ ten_ho_so?: string }> })?.results
+          || (dossiersRes as { results?: Array<{ ten_ho_so?: string }>; items?: Array<{ ten_ho_so?: string }> })?.items
+          || [];
+
+        if (Array.isArray(rawDossiers) && rawDossiers.length > 0) {
+          const parsedDossiers: Array<{ id: number | string; ten_ho_so: string; so_ky_hieu?: string }> = [];
+          rawDossiers.forEach((d) => {
+            const rawD = d as { id?: number | string; ten_ho_so?: string; so_ky_hieu?: string };
+            const name = rawD?.ten_ho_so?.trim();
+            if (name) {
+              recordsFolders.push(name);
+              parsedDossiers.push({
+                id: rawD.id ?? '',
+                ten_ho_so: name,
+                so_ky_hieu: rawD.so_ky_hieu,
+              });
+            }
+          });
+          setRecordDossiers(parsedDossiers);
+        }
+      } catch {
+        // Fallback an toàn nếu API records chưa sẵn sàng
+      }
+
+      try {
+        const docTypesRes = await apiClient.get<unknown>('/api/records/document-types/?page_size=100');
+        const rawDocTypes = Array.isArray(docTypesRes)
+          ? docTypesRes
+          : (docTypesRes as { results?: Array<{ ten_ho_so?: string; ten_loai?: string }>; items?: Array<{ ten_ho_so?: string; ten_loai?: string }> })?.results
+          || (docTypesRes as { results?: Array<{ ten_ho_so?: string; ten_loai?: string }>; items?: Array<{ ten_ho_so?: string; ten_loai?: string }> })?.items
+          || [];
+
+        if (Array.isArray(rawDocTypes) && rawDocTypes.length > 0) {
+          const parsedDocTypes: Array<{ id: number | string; ten_loai: string; ho_so?: number | string; ten_ho_so?: string }> = [];
+          rawDocTypes.forEach((dt) => {
+            const rawDt = dt as { id?: number | string; ten_ho_so?: string; ten_loai?: string; ho_so?: number | string | { id?: number | string } };
+            const folderName = rawDt?.ten_ho_so?.trim();
+            const typeName = rawDt?.ten_loai?.trim();
+            const rawHoSo = rawDt?.ho_so;
+            let hoSoId: number | string | undefined = undefined;
+            if (typeof rawHoSo === 'string' || typeof rawHoSo === 'number') {
+              hoSoId = rawHoSo;
+            } else if (rawHoSo && typeof rawHoSo === 'object' && 'id' in rawHoSo) {
+              hoSoId = rawHoSo.id;
+            }
+            if (typeName) {
+              parsedDocTypes.push({
+                id: rawDt.id ?? '',
+                ten_loai: typeName,
+                ho_so: hoSoId,
+                ten_ho_so: folderName,
+              });
+            }
+            if (folderName && typeName) {
+              if (!recordsFolderTypeMap[folderName]) {
+                recordsFolderTypeMap[folderName] = new Set<string>();
+              }
+              recordsFolderTypeMap[folderName].add(typeName);
+            }
+          });
+          setRecordDocTypes(parsedDocTypes);
+        }
+      } catch {
+        // Fallback an toàn
+      }
 
       // Trích xuất các Loại văn bản và ánh xạ Danh mục hồ sơ -> Loại văn bản thực tế từ các văn bản trong hệ thống
       const extractedTypes = new Set<string>();
@@ -235,13 +316,29 @@ export const OutboundDocumentPage: React.FC = () => {
         }
       });
 
+      // Gộp danh mục hồ sơ: kết hợp hồ sơ từ Nhóm 3 (app records) và hồ sơ thực tế trong văn bản
+      const combinedFoldersSet = new Set<string>([...recordsFolders, ...extractedFolders]);
       const serializableFolderMap: Record<string, string[]> = {};
+
+      // Xây dựng bản đồ ánh xạ Hồ sơ -> Loại văn bản kết hợp
+      combinedFoldersSet.forEach((folder) => {
+        const fromRecords = recordsFolderTypeMap[folder] ? Array.from(recordsFolderTypeMap[folder]) : [];
+        const fromDocuments = folderTypeMapping[folder] ? Array.from(folderTypeMapping[folder]) : [];
+        const combinedTypes = Array.from(new Set([...fromRecords, ...fromDocuments])).sort((a, b) => a.localeCompare(b, 'vi'));
+        if (combinedTypes.length > 0) {
+          serializableFolderMap[folder] = combinedTypes;
+        }
+      });
+
+      // Nếu có hồ sơ trong folderTypeMapping chưa có trong combinedFoldersSet
       Object.entries(folderTypeMapping).forEach(([folder, typeSet]) => {
-        serializableFolderMap[folder] = Array.from(typeSet).sort((a, b) => a.localeCompare(b, 'vi'));
+        if (!serializableFolderMap[folder]) {
+          serializableFolderMap[folder] = Array.from(typeSet).sort((a, b) => a.localeCompare(b, 'vi'));
+        }
       });
 
       setAvailableDocTypes(Array.from(extractedTypes).sort((a, b) => a.localeCompare(b, 'vi')));
-      setAvailableFolders(Array.from(extractedFolders).sort((a, b) => a.localeCompare(b, 'vi')));
+      setAvailableFolders(Array.from(combinedFoldersSet).sort((a, b) => a.localeCompare(b, 'vi')));
       setFolderDocTypesMap(serializableFolderMap);
     } catch {
       // Giữ nguyên trạng thái hiện tại nếu lỗi
@@ -507,6 +604,52 @@ export const OutboundDocumentPage: React.FC = () => {
 
   const currentPhamVi = filters.pham_vi || 'NOI_BO';
 
+  // Tra cứu Tên hồ sơ và Tên loại văn bản thân thiện từ danh mục Nhóm 3 khi URL truyền mã ID tham chiếu
+  const resolvedRecordLabels = useMemo(() => {
+    let resolvedDocType = '';
+    let resolvedFolder = '';
+
+    if (filters.loai_van_ban) {
+      const lvStr = String(filters.loai_van_ban).trim();
+      const matchedType = recordDocTypes.find((dt) => String(dt.id) === lvStr);
+      if (matchedType) {
+        resolvedDocType = matchedType.ten_loai;
+        if (matchedType.ten_ho_so) {
+          resolvedFolder = matchedType.ten_ho_so;
+        } else if (matchedType.ho_so) {
+          const matchedDossier = recordDossiers.find((d) => String(d.id) === String(matchedType.ho_so));
+          if (matchedDossier) {
+            resolvedFolder = matchedDossier.ten_ho_so;
+          }
+        }
+      } else if (!/^\d+$/.test(lvStr)) {
+        resolvedDocType = lvStr;
+      }
+    }
+
+    if (!resolvedFolder && filters.ho_so) {
+      const hsStr = String(filters.ho_so).trim();
+      const matchedDossier = recordDossiers.find((d) => String(d.id) === hsStr);
+      if (matchedDossier) {
+        resolvedFolder = matchedDossier.ten_ho_so;
+      } else {
+        const urlTenHoSo = searchParams.get('ten_ho_so');
+        if (urlTenHoSo && urlTenHoSo.trim()) {
+          resolvedFolder = urlTenHoSo.trim();
+        } else if (!/^\d+$/.test(hsStr)) {
+          resolvedFolder = hsStr;
+        }
+      }
+    } else if (!resolvedFolder && searchParams.get('ten_ho_so')) {
+      resolvedFolder = searchParams.get('ten_ho_so')!.trim();
+    }
+
+    return {
+      docTypeName: resolvedDocType,
+      dossierName: resolvedFolder,
+    };
+  }, [filters.loai_van_ban, filters.ho_so, recordDocTypes, recordDossiers, searchParams]);
+
   // Thống kê số lượng: Tổng văn bản đi còn hiệu lực (gộp cả Còn hiệu lực và Còn hiệu lực 1 phần theo đúng phạm vi)
   const countActive = useMemo(() => {
     const sourceList = allStatsItems.length > 0 ? allStatsItems : documents;
@@ -745,7 +888,20 @@ export const OutboundDocumentPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <i className="fa-solid fa-filter text-primary" />
             <span>
-              {t('documents_ui.scopeTabs.loaiVanBanFilterNotice') || 'Đang lọc danh sách theo Loại văn bản (từ phân hệ Hồ sơ):'} <strong>#{filters.loai_van_ban}</strong>
+              {t('documents_ui.scopeTabs.loaiVanBanFilterNotice') || 'Đang lọc danh sách theo Loại văn bản (từ phân hệ Hồ sơ):'}{' '}
+              {resolvedRecordLabels.docTypeName ? (
+                <>
+                  <strong className="text-primary font-bold">{resolvedRecordLabels.docTypeName}</strong>{' '}
+                  <strong className="text-primary/70 font-semibold">#{filters.loai_van_ban}</strong>
+                </>
+              ) : (
+                <strong className="text-primary font-bold">#{filters.loai_van_ban}</strong>
+              )}
+              {resolvedRecordLabels.dossierName && (
+                <span className="ml-1 text-secondary font-medium">
+                  (thuộc Danh mục: <strong>{resolvedRecordLabels.dossierName}</strong>)
+                </span>
+              )}
             </span>
           </div>
           <button
@@ -846,6 +1002,8 @@ export const OutboundDocumentPage: React.FC = () => {
         availableFolders={availableFolders}
         availableDocTypes={availableDocTypes}
         folderDocTypesMap={folderDocTypesMap}
+        recordDossiers={recordDossiers}
+        recordDocTypes={recordDocTypes}
         documentType="DI"
       />
 

@@ -19,10 +19,12 @@ interface AppSidebarProps {
   onExpandSidebar?: () => void;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  onCollapse?: () => void;
 }
 
 export default function AppSidebar({
   onCloseMobile,
+  onCollapse,
   committedPage,
   previewPage,
   onNavigate,
@@ -196,7 +198,9 @@ export default function AppSidebar({
           className="flex items-center gap-2 px-1 cursor-pointer transition-transform hover:scale-[1.03]"
           onClick={() => {
             onNavigate('dashboard');
-            onCloseMobile();
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+              onCloseMobile();
+            }
           }}
           title="Bảo Long Insurance - Về Trang Chủ"
         >
@@ -223,7 +227,7 @@ export default function AppSidebar({
           <button
             type="button"
             className="w-7 h-7 rounded-lg bg-surface border border-subtle text-text-muted hover:text-text-main hover:bg-surface-hover flex items-center justify-center text-xs cursor-pointer transition-colors"
-            onClick={onCloseMobile}
+            onClick={onCollapse || onCloseMobile}
             aria-label="Thu gọn menu về dải biểu tượng"
             title="Thu gọn menu về dải biểu tượng (Icon Rail)"
           >
@@ -259,7 +263,9 @@ export default function AppSidebar({
                   }`}
                   onClick={() => {
                     onNavigate(mod.defaultPage);
-                    onCloseMobile();
+                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                      onCloseMobile();
+                    }
                   }}
                   onMouseEnter={() => onHoverPreview(mod.defaultPage)}
                   title={modLabel}
@@ -334,7 +340,9 @@ export default function AppSidebar({
                         onClick={(e) => {
                           e.stopPropagation();
                           onNavigate(sub.id);
-                          onCloseMobile();
+                          if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                            onCloseMobile();
+                          }
                         }}
                         onMouseEnter={() => onHoverPreview(sub.id)}
                         role="button"
