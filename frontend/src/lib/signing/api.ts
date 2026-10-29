@@ -135,14 +135,25 @@ export const signingApi = {
   /** Danh bạ cán bộ đang hoạt động (họ tên, chức vụ, đơn vị) để chọn người ký khi cấu hình quy trình. */
   danhBaCanBo: () =>
     apiClient
-      .get<CanBo[] | { results?: CanBo[] }>('/api/accounts/staffs/')
+      .get<CanBo[] | { results?: CanBo[] }>('/api/accounts/employees/?all=true')
       .then((res) => {
-        if (Array.isArray(res)) return res;
-        if (res && Array.isArray((res as { results?: CanBo[] }).results)) {
-          return (res as { results: CanBo[] }).results;
-        }
-        return [];
+        const list = Array.isArray(res) ? res : (res && Array.isArray((res as { results?: CanBo[] }).results) ? (res as { results: CanBo[] }).results : []);
+        if (list.length > 0) return list;
+        return apiClient.get<CanBo[] | { results?: CanBo[] }>('/api/accounts/staffs/').then((s) =>
+          Array.isArray(s) ? s : (s && Array.isArray((s as { results?: CanBo[] }).results) ? (s as { results: CanBo[] }).results : [])
+        );
       })
+      .catch(() =>
+        apiClient
+          .get<CanBo[] | { results?: CanBo[] }>('/api/accounts/staffs/')
+          .then((res) => {
+            if (Array.isArray(res)) return res;
+            if (res && Array.isArray((res as { results?: CanBo[] }).results)) {
+              return (res as { results: CanBo[] }).results;
+            }
+            return [];
+          })
+      )
       .catch(() =>
         apiClient
           .get<
