@@ -166,6 +166,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                 <Link to={`/approvals/${h.id}`} title={moTaVanBan(h.van_ban, h.van_ban_id)}
                   className="block font-semibold text-main hover:text-primary break-words line-clamp-3">
                   {moTaVanBan(h.van_ban, h.van_ban_id)}
+                  {h.van_ban_id == null && <span className="ml-2 rounded-full bg-info-subtle px-2 py-0.5 text-xs text-info">{t('danhSach.taiLieuDocLap')}</span>}
                 </Link>
                 <div className="text-xs text-muted break-words">#{h.id} · {h.ten_quy_trinh}</div>
                 <div className="flex flex-wrap items-center gap-2"><TrangThaiHoSo hoSo={h} /></div>
@@ -211,6 +212,7 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                       <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 text-base truncate" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
                         <i className="fa-solid fa-file-contract text-primary/70 text-sm shrink-0" aria-hidden="true" />
                         <span className="truncate">{moTaVanBan(h.van_ban, h.van_ban_id)}</span>
+                        {h.van_ban_id == null && <span className="shrink-0 rounded-full bg-info-subtle px-2 py-0.5 text-xs text-info">{t('danhSach.taiLieuDocLap')}</span>}
                       </Link>
                       <div className="mt-0.5 truncate text-xs text-muted" title={h.ten_quy_trinh}>#{h.id} · {h.ten_quy_trinh}</div>
                     </td>

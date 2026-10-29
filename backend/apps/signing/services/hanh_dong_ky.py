@@ -14,6 +14,7 @@ bằng Idempotency-Key lưu ở `khoa_chong_trung_thao_tac` của dòng người
 
 import logging
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
@@ -23,9 +24,10 @@ from ..errors import ConflictError, SigningError
 from ..models import (
     SigningAttempt, SigningKey, SigningRequest, SigningRequestStep, SigningRequestStepSigner, SigningSignature,
 )
+from ..permissions import KY_TRINH_KY, co_quyen
 from ..storage import StorageError, get_storage
 from ..tich_hop import to_chuc
-from . import tep_hoan_tat, thong_bao
+from . import tep_hoan_tat, thong_bao, uy_quyen
 from .audit import ghi_nhat_ky
 from .bang_chung import chot_bang_chung
 from .trinh_ky import dung_cap_dang_mo, luot_hien_hanh, mo_cap, mo_nguoi_ky_trong_cap
@@ -59,8 +61,17 @@ def _dong_cua_toi(luot, nguoi, chi_dang_mo=True):
                            detail="Bạn không có lượt ký đang mở trên hồ sơ này.", status_code=status.HTTP_403_FORBIDDEN)
     if chi_dang_mo and (dong.thoi_diem_mo is None or dong.trang_thai != enums.TrangThaiNguoiKy.CHO_KY):
         raise ConflictError(code="chua_den_luot_ky",
-                            detail="Chưa đến lượt bạn ký (đang chờ ký nháy) hoặc bạn đã xử lý.")
+                            detail="Chưa đến lượt bạn ký vì cấp ký trước chưa hoàn tất, hoặc bạn đã xử lý.")
     return dong
+
+
+def _nguoi_ky_hien_hanh(nguoi):
+    """Đọc khóa tài khoản hiện tại để đổi quyền hoặc khóa tài khoản không bị lách bằng phiên cũ."""
+    nguoi_hien_hanh = get_user_model().objects.select_for_update().filter(pk=nguoi.pk).first()
+    if nguoi_hien_hanh is None or not co_quyen(nguoi_hien_hanh, KY_TRINH_KY):
+        raise SigningError(code="khong_co_quyen", detail="Tài khoản không còn quyền ký.",
+                           status_code=status.HTTP_403_FORBIDDEN)
+    return nguoi_hien_hanh
 
 
 def _thao_tac_lap(yeu_cau, nguoi, khoa_chong_trung):
@@ -136,6 +147,8 @@ def ky(yeu_cau, nguoi, *, khoa_ky, hash_tai_lieu, chu_ky_so, khoa_chong_trung, g
     if _thao_tac_lap(yeu_cau, nguoi, khoa_chong_trung):  # lượt ký đồng thời cùng khóa đã xử lý xong trước
         return SigningRequest.objects.get(pk=yeu_cau.pk)
     dong = _dong_cua_toi(luot, nguoi)
+    nguoi = _nguoi_ky_hien_hanh(nguoi)
+    uy_quyen.kiem_tra_tham_quyen_ky(dong, nguoi)
     thoi_diem = timezone.now()
     khoa = _kiem_tra_khoa(nguoi, khoa_ky, thoi_diem)
     if hash_tai_lieu != luot.ma_bam_tai_lieu:
@@ -223,7 +236,7 @@ def thu_hoi(yeu_cau, nguoi, *, khoa_chong_trung, dia_chi_ip=None):
         n.vai_tro_ky == enums.VaiTroKy.KY_CHINH and n.trang_thai == enums.TrangThaiNguoiKy.DA_KY for n in nguoi_cap
     ):
         raise ConflictError(code="ky_chinh_da_ky",
-                            detail="Ký chính cùng cấp đã ký trên cơ sở ký nháy này; không thu hồi được.")
+                            detail="Không thể thu hồi vì cấp ký chính đã ký sau cấu hình ký cũ này.")
     chu_ky_cu = dong.chu_ky_hien_hanh_id
     dong.trang_thai = enums.TrangThaiNguoiKy.CHO_KY
     dong.ngay_ky = None

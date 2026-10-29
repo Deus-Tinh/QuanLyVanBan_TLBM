@@ -72,6 +72,7 @@ export interface SigningRequestItem {
   ngay_gui?: string;
   status?: string;
   trang_thai?: string;
+  trang_thai_luot?: string;
   statusLabel?: string;
   nhan_trang_thai?: string;
   trang_thai_display?: string;
@@ -770,6 +771,9 @@ export default function ModernDashboardView({
                     const submitter = row.nguoi_trinh || row.submitter || 'Cán bộ';
                     const date = row.ngay_gui || row.date || '';
                     const rawStatus = row.trang_thai || row.status || 'CHO_KY';
+                    const displayStatus = (rawStatus === 'CHO_KY' || rawStatus === 'pending') && row.trang_thai_luot === 'YEU_CAU_SUA'
+                      ? 'YEU_CAU_SUA'
+                      : rawStatus;
 
                     const getSigningStatusInfo = (st: string) => {
                       switch (st) {
@@ -777,7 +781,12 @@ export default function ModernDashboardView({
                         case 'pending':
                           return {
                             variant: 'warning' as const,
-                            label: t('dashboardDetails.signingStatuses.CHO_KY') || 'Chờ ký',
+                            label: t('dashboardDetails.signingStatuses.CHO_KY') || 'Đang chờ ký',
+                          };
+                        case 'YEU_CAU_SUA':
+                          return {
+                            variant: 'info' as const,
+                            label: t('dashboardDetails.signingStatuses.YEU_CAU_SUA') || 'Chờ người trình sửa',
                           };
                         case 'DANG_XU_LY':
                         case 'processing':
@@ -795,13 +804,13 @@ export default function ModernDashboardView({
                         case 'completed':
                           return {
                             variant: 'success' as const,
-                            label: t('dashboardDetails.signingStatuses.HOAN_THANH') || 'Hoàn thành',
+                            label: t('dashboardDetails.signingStatuses.HOAN_THANH') || 'Hoàn tất duyệt nội bộ',
                           };
                         case 'TU_CHOI':
                         case 'rejected':
                           return {
                             variant: 'danger' as const,
-                            label: t('dashboardDetails.signingStatuses.TU_CHOI') || 'Từ chối',
+                            label: t('dashboardDetails.signingStatuses.TU_CHOI') || 'Đã từ chối',
                           };
                         case 'HUY':
                         case 'cancelled':
@@ -813,7 +822,7 @@ export default function ModernDashboardView({
                         case 'draft':
                           return {
                             variant: 'secondary' as const,
-                            label: t('dashboardDetails.signingStatuses.NHAP') || 'Bản nháp',
+                            label: t('dashboardDetails.signingStatuses.NHAP') || 'Nháp',
                           };
                         default:
                           return {
@@ -823,7 +832,7 @@ export default function ModernDashboardView({
                       }
                     };
 
-                    const statusInfo = getSigningStatusInfo(rawStatus);
+                    const statusInfo = getSigningStatusInfo(displayStatus);
                     const statusVariant = row.variant || statusInfo.variant;
                     const statusLabel = statusInfo.label || row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || rawStatus;
                     const canSign = !!row.can_toi_ky;

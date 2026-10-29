@@ -26,6 +26,7 @@ from signing.models import (
 )
 from signing.services import hanh_dong_ky as hanh_dong_service
 from signing.services import keys as key_service
+from signing.services import process as process_service
 from signing.services import trinh_ky as trinh_ky_service
 
 from .helpers import cap_quyen
@@ -83,7 +84,19 @@ class KyBase(TrinhKyBase):
         for user in (self.ky1, self.ky2, self.ky3):
             cap_quyen(user, "sign_trinhky")
             self.khoa[user.pk] = khoa_hoat_dong(user, f"K-{user.username}")
-        self.pk = self.ho_so_da_gui()["id"]
+        self.pk = self.gui_luot_ky_nhay_cu()
+
+    def gui_luot_ky_nhay_cu(self):
+        """Tạo snapshot như lượt đã gửi trước khi bỏ ký nháy, để kiểm tra tương thích lịch sử."""
+        cau_hinh = self.process.cap_ky_set.order_by("thu_tu").first().nguoi_ky_set.get(nguoi_ky=self.ky1)
+        cau_hinh.vai_tro_ky = enums.VaiTroKy.KY_NHAY
+        cau_hinh.save(update_fields=["vai_tro_ky"])
+        try:
+            with mock.patch.object(process_service, "kiem_tra_khong_co_ky_nhay"):
+                return self.ho_so_da_gui()["id"]
+        finally:
+            cau_hinh.vai_tro_ky = enums.VaiTroKy.KY_CHINH
+            cau_hinh.save(update_fields=["vai_tro_ky"])
 
     def hanh_dong(self, user, action, khoa_thao_tac=None, **body):
         client = self.client_cua(User.objects.get(pk=user.pk))
@@ -239,9 +252,9 @@ class ThuHoiTests(KyBase):
 
     def test_blocking_initial_cannot_revoke_after_main_signed(self):
         self.process = self.tao_quy_trinh("TH", [{"cap_ky": 1, "ten_cap_ky": "C", "thu_tu": 1, "nguoi_ky": [
-            {"nguoi_ky": self.ky1, "thu_tu": 1, "vai_tro_ky": "KY_NHAY"},
+            {"nguoi_ky": self.ky1, "thu_tu": 1},
             {"nguoi_ky": self.ky2, "thu_tu": 2}, {"nguoi_ky": self.ky3, "thu_tu": 3}]}])
-        self.pk = self.ho_so_da_gui()["id"]
+        self.pk = self.gui_luot_ky_nhay_cu()
         self.ky(self.ky1)
         self.ky(self.ky2)  # một ký chính đã ký, cấp còn mở vì ký chính thứ hai chưa ký
         r = self.hanh_dong(self.ky1, "thu-hoi")
@@ -268,8 +281,8 @@ class DongThoiTests(TransactionTestCase):
         qt = process_service.tao_quy_trinh(self.tao, ma_quy_trinh="DT", ten_quy_trinh="DT", pham_vi="CONG_TY", cap_ky=[
             {"cap_ky": 1, "ten_cap_ky": "C", "thu_tu": 1, "nguoi_ky": [{"nguoi_ky": self.ky1, "thu_tu": 1}]}])
         qt = process_service.kich_hoat(qt, self.tao)
-        self.ho_so = trinh_ky_service.tao_nhap(self.tao, document_type="vanbandi", van_ban_id=10, quy_trinh=qt,
-                                               tep=tep_pdf())
+        self.ho_so = trinh_ky_service.tao_nhap(self.tao, quy_trinh=qt, tep=tep_pdf(),
+                                               trich_yeu_van_ban="Tài liệu kiểm tra")
         self.ho_so = trinh_ky_service.gui(self.ho_so, self.tao, khoa_chong_trung="g")
         self.private, self.key = khoa_hoat_dong(self.ky1, "K-DT")
 
