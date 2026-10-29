@@ -7,11 +7,45 @@
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 
+let workerSrcPromise: Promise<string> | null = null;
+
+/**
+ * Trình duyệt yêu cầu MIME type hợp lệ khi nạp module worker (`application/javascript` hoặc `text/javascript`).
+ * Một số môi trường proxy hoặc reverse proxy (như Nginx chưa khai báo đuôi .mjs) trả về `application/octet-stream`
+ * dẫn đến việc `X-Content-Type-Options: nosniff` chặn thực thi script worker.
+ * Hàm này nạp worker qua fetch rồi tạo Blob URL cùng MIME type `application/javascript` chuẩn để đảm bảo
+ * worker luôn khởi tạo thành công trên mọi môi trường và trình duyệt.
+ */
+export async function layWorkerSrc(): Promise<string> {
+  if (typeof window === 'undefined' || typeof fetch === 'undefined') {
+    return workerUrl;
+  }
+  if (!workerSrcPromise) {
+    workerSrcPromise = (async () => {
+      try {
+        const res = await fetch(workerUrl);
+        if (!res.ok) return workerUrl;
+        const blob = await res.blob();
+        const jsBlob = new Blob([blob], { type: 'application/javascript' });
+        return URL.createObjectURL(jsBlob);
+      } catch {
+        return workerUrl;
+      }
+    })();
+  }
+  return workerSrcPromise;
+}
+
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export type TaiLieuPdf = pdfjs.PDFDocumentProxy;
 
 export async function moPdf(du_lieu: ArrayBuffer): Promise<TaiLieuPdf> {
+  try {
+    pdfjs.GlobalWorkerOptions.workerSrc = await layWorkerSrc();
+  } catch {
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  }
   // pdf.js chuyển quyền sở hữu buffer sang worker: truyền bản sao để giữ dữ liệu gốc (băm, tải về)
   return pdfjs.getDocument({ data: new Uint8Array(du_lieu.slice(0)) }).promise;
 }
