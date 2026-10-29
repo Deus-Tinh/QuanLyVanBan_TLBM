@@ -26,7 +26,7 @@ interface CapNhap { ten_cap_ky: string; so_gio_xu_ly: string; don_vi_id: number 
 const CAP_TRONG: CapNhap = { ten_cap_ky: '', so_gio_xu_ly: '', don_vi_id: null, nguoi_ky: [] };
 /** Phạm vi tìm người giữ chức vụ chọn được trên form (DON_VI_CO_DINH cần cấp có đơn vị, giữ nguyên khi sửa). */
 const PHAM_VI_CHUC_VU = ['DON_VI_NGUOI_TAO', 'TOAN_CO_QUAN'] as const;
-const TOI_DA_GOI_Y = 20;
+const TOI_DA_GOI_Y = 100;
 
 function capTuQuyTrinh(q: QuyTrinh, t: HamDich): CapNhap[] {
   return q.cap_ky.map((c) => ({
@@ -68,16 +68,32 @@ function ChonNguoiDung({ onChon, chucVuLocId, chucVuLocTen }: ChonNguoiDungProps
     return () => document.removeEventListener('mousedown', onBamNgoai);
   }, []);
 
-  const tuKhoa = boDau(q.trim());
-  const goiY = useMemo(() => (ds.duLieu ?? []).filter((u) => {
-    if (chucVuLocId != null) {
-      const khopId = u.chuc_vu_id === chucVuLocId;
-      const khopTen = chucVuLocTen ? boDau(u.chuc_vu_ten) === boDau(chucVuLocTen) : false;
-      if (!khopId && !khopTen) return false;
+  const danhSach = useMemo(() => {
+    if (!ds.duLieu) return [];
+    if (Array.isArray(ds.duLieu)) return ds.duLieu;
+    if (Array.isArray((ds.duLieu as { results?: CanBo[] }).results)) {
+      return (ds.duLieu as { results: CanBo[] }).results;
     }
-    return !tuKhoa || boDau([u.ho_ten, u.username, u.chuc_vu_ten, u.don_vi_ten].join(' ')).includes(tuKhoa);
-  }).slice(0, TOI_DA_GOI_Y),
-  [ds.duLieu, tuKhoa, chucVuLocId, chucVuLocTen]);
+    return [];
+  }, [ds.duLieu]);
+
+  const tuKhoa = boDau(q.trim());
+  const goiY = useMemo(() => {
+    if (!danhSach.length) return [];
+    if (tuKhoa) {
+      return danhSach
+        .filter((u) => boDau([u.ho_ten, u.username, u.chuc_vu_ten, u.don_vi_ten].join(' ')).includes(tuKhoa))
+        .slice(0, TOI_DA_GOI_Y);
+    }
+    if (chucVuLocId != null) {
+      return danhSach.filter((u) => {
+        const khopId = u.chuc_vu_id === chucVuLocId;
+        const khopTen = chucVuLocTen ? boDau(u.chuc_vu_ten) === boDau(chucVuLocTen) : false;
+        return khopId || khopTen;
+      }).slice(0, TOI_DA_GOI_Y);
+    }
+    return danhSach.slice(0, TOI_DA_GOI_Y);
+  }, [danhSach, tuKhoa, chucVuLocId, chucVuLocTen]);
 
   const placeholder = chucVuLocTen
     ? t('quyTrinh.timCanBoTheoChucVu', { chucVu: chucVuLocTen })
