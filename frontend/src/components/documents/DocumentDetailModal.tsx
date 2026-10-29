@@ -469,38 +469,38 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                 </div>
 
                 {document.attachments && document.attachments.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="space-y-2.5">
                     {document.attachments.map((att) => {
                       const isItemLoading = loadingFileId === att.id;
                       return (
                         <div
                           key={att.id}
-                          className="flex items-center justify-between p-2.5 rounded-lg border border-border-subtle bg-surface-subtle hover:bg-surface-elevated transition-colors"
+                          className="flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-subtle hover:bg-surface-elevated transition-colors gap-3"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                            <i className={`${getFileIcon(att.file_name)} text-lg shrink-0`} />
-                            <div className="min-w-0">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <i className={`${getFileIcon(att.file_name)} text-xl shrink-0`} />
+                            <div className="min-w-0 flex-1">
                               <button
                                 type="button"
                                 disabled={isItemLoading}
                                 onClick={() => void handlePreviewAttachment(att.file, att.file_name, att.id)}
-                                className="text-left text-xs font-semibold text-main hover:text-primary transition-colors block truncate cursor-pointer bg-transparent border-0 p-0 disabled:opacity-50"
+                                className="text-left text-xs font-semibold text-main hover:text-primary transition-colors block truncate cursor-pointer bg-transparent border-0 p-0 max-w-full disabled:opacity-50"
                                 title={`Xem trước: ${att.file_name} (Mở tab mới)`}
                               >
                                 {att.file_name}
                               </button>
-                              <span className="text-xs text-muted block">
+                              <span className="text-xs text-muted block mt-0.5">
                                 {formatFileSize(att.file_size)} • {formatDate(att.uploaded_at)}
                               </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
                               disabled={isItemLoading}
                               onClick={() => void handlePreviewAttachment(att.file, att.file_name, att.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary text-white font-medium hover:bg-primary-hover shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary text-white font-medium hover:bg-primary-hover shadow-sm transition-colors cursor-pointer disabled:opacity-50 min-w-[68px]"
                               title="Xem trực tiếp nội dung tệp tin trong tab mới của trình duyệt"
                             >
                               {isItemLoading && loadingAction === 'preview' ? (
@@ -514,7 +514,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                               type="button"
                               disabled={isItemLoading}
                               onClick={() => void handleDownloadAttachment(att.file, att.file_name, att.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-surface-elevated border border-border-subtle text-secondary hover:text-main hover:border-primary/40 transition-colors cursor-pointer disabled:opacity-50"
+                              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-surface-elevated border border-border-subtle text-secondary hover:text-main hover:border-primary/40 transition-colors cursor-pointer disabled:opacity-50 min-w-[75px]"
                               title="Tải tệp tin về máy"
                             >
                               {isItemLoading && loadingAction === 'download' ? (
