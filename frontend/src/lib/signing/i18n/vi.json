@@ -324,7 +324,10 @@
     "xacNhanNgung": "Ngừng quy trình “{ten}” (phiên bản {phienBan})? Hồ sơ mới không chọn được quy trình này nữa.",
     "loiMa": "Mã chỉ gồm chữ không dấu, số, dấu gạch ngang, gạch dưới và dấu chấm.",
     "loiSoGio": "Số giờ xử lý tối đa {so} (một năm).",
-    "vaiTroKy": "Vai trò ký"
+    "vaiTroKy": "Vai trò ký",
+    "nhomTheoChucVu": "Theo chức danh",
+    "nhomTheoCanBo": "Cán bộ cụ thể",
+    "giaiThichChucVuForm": "Phân công người ký theo chức danh"
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo trên trình duyệt, bảo vệ bằng PIN 8 chữ số (Argon2id). Khóa bí mật đã mã hóa được xuất ra file khóa; khi ký, tải file khóa lên và nhập PIN. Máy chủ không nhận PIN, file khóa hay khóa bí mật.",
