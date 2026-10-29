@@ -17,7 +17,6 @@ const ChiTietPage = lazy(() => import('./ChiTietPage'));
 const QuyTrinhPage = lazy(() => import('./QuyTrinhPage'));
 const KhoaPage = lazy(() => import('./KhoaPage'));
 const ThongBaoPage = lazy(() => import('./ThongBaoPage'));
-const TaiLieuPage = lazy(() => import('./TaiLieuPage'));
 
 interface ErrorBoundaryProps {
   children: ReactNode;
