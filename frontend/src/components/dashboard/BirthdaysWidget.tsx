@@ -10,47 +10,12 @@ export interface BirthdayEmployee {
   isToday?: boolean;
 }
 
-const DEFAULT_BIRTHDAYS: BirthdayEmployee[] = [
-  {
-    id: 1,
-    name: 'Nguyễn Văn An',
-    birthdate: '17/09 (Hôm nay)',
-    position: 'Trưởng phòng Nghiệp vụ',
-    department: 'Ban Quản lý Văn bản',
-    isToday: true,
-  },
-  {
-    id: 2,
-    name: 'Trần Thị Mai',
-    birthdate: '17/09 (Hôm nay)',
-    position: 'Chuyên viên chính',
-    department: 'Văn phòng Hành chính',
-    isToday: true,
-  },
-  {
-    id: 3,
-    name: 'Lê Hoàng Long',
-    birthdate: '18/09 (Ngày mai)',
-    position: 'Phó Trưởng ban',
-    department: 'Ban CNTT & CĐS',
-    isToday: false,
-  },
-  {
-    id: 4,
-    name: 'Phạm Minh Tuấn',
-    birthdate: '18/09 (Ngày mai)',
-    position: 'Cán bộ Lưu trữ',
-    department: 'Trung tâm Lưu trữ',
-    isToday: false,
-  },
-];
-
 interface BirthdaysWidgetProps {
   birthdays?: BirthdayEmployee[];
 }
 
 export default function BirthdaysWidget({
-  birthdays = DEFAULT_BIRTHDAYS,
+  birthdays = [],
 }: BirthdaysWidgetProps) {
   const { t } = useTranslation();
 
@@ -101,8 +66,8 @@ export default function BirthdaysWidget({
               <span
                 className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${
                   emp.isToday
-                    ? 'bg-rose-500/15 text-rose-500 dark:text-rose-400 border border-rose-500/30'
-                    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                    ? 'bg-danger-subtle text-danger border border-danger-border'
+                    : 'bg-success-subtle text-success border border-success-border'
                 }`}
               >
                 {formatBirthdate(emp.birthdate)}

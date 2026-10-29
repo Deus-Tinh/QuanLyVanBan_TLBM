@@ -285,11 +285,11 @@ export default function MainLayout({
         />
       )}
 
-      {/* 2. Thanh điều hướng Sidebar: Dải Icon Rail (72px) khi thu gọn, mở rộng (290px) khi mở/ghim */}
+      {/* 2. Thanh điều hướng Sidebar: Dải Icon Rail (72px) khi thu gọn, mở rộng (248px) khi mở/ghim */}
       <div
         className={`sidebar-slide-wrapper fixed inset-y-0 left-0 z-[1200] h-full transform-gpu bg-surface-elevated border-r border-subtle rounded-none ${
           isEffectiveSidebarOpen
-            ? 'w-[290px] translate-x-0 pointer-events-auto shadow-2xl'
+            ? 'w-[248px] translate-x-0 pointer-events-auto shadow-2xl'
             : 'max-lg:-translate-x-full max-lg:pointer-events-none lg:w-[72px] lg:translate-x-0 lg:pointer-events-auto lg:shadow-none'
         }`}
         style={{
@@ -320,7 +320,7 @@ export default function MainLayout({
       {/* 3. Khung nội dung chính & Thanh Header đỉnh */}
       <div
         className={`main-container flex-1 min-w-0 flex flex-col h-full overflow-hidden w-full ${
-          isSidebarPinned && isEffectiveSidebarOpen ? 'lg:pl-[290px]' : 'lg:pl-[72px] pl-0'
+          isSidebarPinned && isEffectiveSidebarOpen ? 'lg:pl-[248px]' : 'lg:pl-[72px] pl-0'
         }`}
         style={{
           transition: 'padding-left 0.28s cubic-bezier(0.16, 1, 0.3, 1)',

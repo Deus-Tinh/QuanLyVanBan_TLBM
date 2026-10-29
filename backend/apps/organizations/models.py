@@ -1,6 +1,7 @@
 import re
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -8,25 +9,26 @@ class KhoiKhuVuc(models.Model):
     """
     Tier 1: Region / Block.
     """
+    # DDL không có UNIQUE cho tên Khối; trùng tên được chặn ở serializer (so không phân biệt hoa thường).
     ten = models.CharField(
         max_length=255,
-        unique=True,
         verbose_name="organizations.region.nameLabel",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="common.createdAt",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="common.updatedAt",
+
+    thu_tu_hien_thi = models.IntegerField(
+        default=0,
+        db_default=0,
+        validators=[MinValueValidator(0)],
+        verbose_name="organizations.region.displayOrderLabel",
+        help_text="organizations.region.displayOrderHelp",
     )
 
     class Meta:
+        db_table = "organizations_khoi"
         app_label = "organizations"
         verbose_name = "organizations.tabs.regions"
         verbose_name_plural = "organizations.tabs.regions"
-        ordering = ["ten"]
+        ordering = ["thu_tu_hien_thi", "ten"]
 
     def clean(self):
         super().clean()
@@ -49,11 +51,13 @@ class DonVi(models.Model):
     khoi = models.ForeignKey(
         KhoiKhuVuc,
         on_delete=models.PROTECT,
+        db_index=False,
         related_name="don_vi_list",
         verbose_name="organizations.unit.regionLabel",
     )
-    stt_uu_tien = models.PositiveIntegerField(
+    stt_uu_tien = models.IntegerField(
         unique=True,
+        validators=[MinValueValidator(1)],
         verbose_name="organizations.unit.priorityLabel",
         help_text="organizations.unit.priorityHelp",
     )
@@ -61,46 +65,48 @@ class DonVi(models.Model):
         max_length=255,
         verbose_name="organizations.unit.nameLabel",
     )
-    dia_chi = models.TextField(
+    dia_chi = models.CharField(
+        max_length=255,
+        null=True,
         blank=True,
         default="",
         verbose_name="organizations.unit.addressLabel",
     )
     dien_thoai = models.CharField(
         max_length=20,
+        null=True,
         blank=True,
         default="",
         verbose_name="organizations.unit.phoneLabel",
     )
     email = models.EmailField(
+        null=True,
         blank=True,
         default="",
         verbose_name="organizations.unit.emailLabel",
     )
     is_public = models.BooleanField(
         default=True,
+        db_default=True,
         verbose_name="organizations.unit.isPublicLabel",
         help_text="organizations.unit.isPublicHelp",
     )
     ghi_chu = models.TextField(
+        null=True,
         blank=True,
         default="",
         verbose_name="organizations.unit.notesLabel",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="common.createdAt",
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="common.updatedAt",
-    )
 
     class Meta:
+        db_table = "organizations_donvi"
         app_label = "organizations"
         verbose_name = "organizations.tabs.units"
         verbose_name_plural = "organizations.tabs.units"
         ordering = ["stt_uu_tien", "ten"]
+        indexes = [
+            models.Index(fields=["khoi"], name="idx_donvi_khoi"),
+        ]
         permissions = [
             ("export_donvi", "organizations.unit.exportPermission"),
         ]

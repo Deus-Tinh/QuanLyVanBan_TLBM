@@ -5,6 +5,9 @@ from rest_framework import serializers
 
 from .models import KhoiKhuVuc, DonVi
 
+# Cột INTEGER của DDL (thu_tu_hien_thi, stt_uu_tien)
+INT_MAX = 2147483647
+
 
 class KhoiKhuVucSerializer(serializers.ModelSerializer):
     """
@@ -15,16 +18,28 @@ class KhoiKhuVucSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     ten = serializers.CharField(
+        max_length=255,
         error_messages={
             "blank": "organizations.messages.nameRequired",
             "required": "organizations.messages.nameRequired",
+            "max_length": "organizations.messages.nameTooLong",
         }
+    )
+    thu_tu_hien_thi = serializers.IntegerField(
+        required=False,
+        min_value=0,
+        max_value=INT_MAX,
+        error_messages={
+            "invalid": "organizations.messages.displayOrderInvalid",
+            "min_value": "organizations.messages.displayOrderInvalid",
+            "max_value": "organizations.messages.displayOrderInvalid",
+        },
     )
 
     class Meta:
         model = KhoiKhuVuc
-        fields = ["id", "ten", "don_vi_count", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields = ["id", "ten", "thu_tu_hien_thi", "don_vi_count"]
+        read_only_fields = ["id"]
 
     def validate_ten(self, value):
         ten_stripped = value.strip()
@@ -59,20 +74,42 @@ class DonViSerializer(serializers.ModelSerializer):
     stt_uu_tien = serializers.IntegerField(
         required=False,
         allow_null=True,
+        max_value=INT_MAX,
         error_messages={
             "invalid": "organizations.messages.priorityPositive",
+            "max_value": "organizations.messages.priorityTooLarge",
         },
     )
     ten = serializers.CharField(
+        max_length=255,
         error_messages={
             "blank": "organizations.messages.nameRequired",
             "required": "organizations.messages.nameRequired",
+            "max_length": "organizations.messages.nameTooLong",
         },
     )
+    dia_chi = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        error_messages={"max_length": "organizations.messages.addressTooLong"},
+    )
+    dien_thoai = serializers.CharField(
+        max_length=20,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        error_messages={"max_length": "organizations.messages.phoneInvalid"},
+    )
+    ghi_chu = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     email = serializers.EmailField(
         required=False,
         allow_blank=True,
+        allow_null=True,
+        max_length=254,
         error_messages={
+            "max_length": "organizations.messages.emailInvalid",
             "invalid": "organizations.messages.emailInvalid",
         },
     )
@@ -90,10 +127,8 @@ class DonViSerializer(serializers.ModelSerializer):
             "email",
             "is_public",
             "ghi_chu",
-            "created_at",
-            "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id"]
 
     def validate_ten(self, value):
         ten_stripped = value.strip()

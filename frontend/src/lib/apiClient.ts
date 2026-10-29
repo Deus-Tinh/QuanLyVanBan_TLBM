@@ -54,7 +54,12 @@ async function handleResponse<T>(res: Response): Promise<T> {
   if (isJson && typeof res.json === 'function') {
     data = await res.json().catch(() => ({}));
   } else if (typeof res.text === 'function') {
-    data = await res.text();
+    const text = await res.text();
+    const isHtml =
+      Boolean(contentType?.includes('text/html')) || /^\s*<!doctype\s+html|^\s*<html\b/i.test(text);
+    data = !res.ok && isHtml
+      ? { error: t('common.apiError', { status: String(res.status) }) }
+      : text;
   } else {
     data = {};
   }
@@ -176,6 +181,13 @@ export async function apiClient<T = unknown>(
           });
         });
       }
+    } else {
+      // Không có refresh token -> Dọn sạch session và đăng xuất ngay
+      localStorage.removeItem('tlbm_access_token');
+      localStorage.removeItem('tlbm_token');
+      localStorage.removeItem('tlbm_refresh_token');
+      localStorage.removeItem('tlbm_session');
+      window.dispatchEvent(new Event('tlbm_auth_changed'));
     }
   }
 
@@ -196,6 +208,13 @@ apiClient.put = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
   apiClient<T>(endpoint, {
     ...options,
     method: 'PUT',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+apiClient.patch = <T>(endpoint: string, body?: unknown, options?: RequestInit) =>
+  apiClient<T>(endpoint, {
+    ...options,
+    method: 'PATCH',
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -248,6 +267,31 @@ export async function downloadBlob(endpoint: string, defaultFilename?: string): 
   link.click();
   link.remove();
   window.URL.revokeObjectURL(blobUrl);
+}
+
+export async function apiClientBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+  const url = endpoint.startsWith('http')
+    ? endpoint
+    : `${BASE_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+
+  const headers = new Headers(options.headers || {});
+  const token = localStorage.getItem('tlbm_access_token') || localStorage.getItem('tlbm_token');
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const response = await fetch(url, {
+    credentials: options.credentials || 'include',
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData: ApiErrorResponse = { error: t('common.apiError', { status: String(response.status) }) };
+    throw new ApiError(response.status, errorData);
+  }
+
+  return await response.blob();
 }
 
 apiClient.blob = downloadBlob;

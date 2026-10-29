@@ -1,14 +1,14 @@
 # TLBM SYSTEM — BACKEND API SERVICE
-> **Phân hệ Máy chủ & API Dữ liệu (Django 5.x + Python)**  
+> **Phân hệ Máy chủ & API Dữ liệu (Django 6.1 + Python 3.12)**  
 > **Dự án**: Quản Lý Văn Bản và Tài Liệu (QLVB&TL) — Trường CĐ CNTT TP.HCM (ITC)
 
 ---
 
 ## 🛠️ 1. Công nghệ & Yêu cầu môi trường
 
-- **Framework**: Django 5.x (Python Web Framework)
-- **Python**: Khuyến nghị Python 3.10 trở lên
-- **Database**: SQLite (môi trường phát triển nội bộ), có thể chuyển đổi PostgreSQL cho Production
+- **Framework**: Django 6.1.x (Python Web Framework)
+- **Python**: Bắt buộc Python 3.12 trở lên (Django 6.1 không hỗ trợ Python thấp hơn)
+- **Database**: PostgreSQL 16 (Docker Compose cho local, schema từ `docs/common/database/release_DDL.sql`)
 - **API Architecture**: RESTful API, JSON responses
 
 ---
@@ -27,47 +27,24 @@ backend/
 │   ├── birthdays/              # Module dữ liệu sinh nhật CBNV (Nhóm 7 / Dashboard Nhóm 1)
 │   └── ...                     # Các module khác đang tích hợp (documents, records,...)
 │
-├── db.sqlite3                  # Cơ sở dữ liệu SQLite cục bộ
 └── manage.py                   # Script quản trị lệnh Django CLI
 ```
 
 ---
 
-## 🚀 3. Hướng dẫn cài đặt & Khởi chạy
+## 🚀 3. Hướng dẫn chạy local
 
-```bash
-# 1. Di chuyển vào thư mục backend
-cd backend
+Quy trình setup, chạy hằng ngày, test và lệnh DB nằm ở mục "Cài đặt và chạy local" trong `README.md` gốc. Chạy mọi lệnh `pnpm` từ thư mục gốc; backend không chạy trực tiếp bằng `python manage.py` vì kết nối DB do `scripts/project.mjs` đặt (dùng `pnpm manage <lệnh>`).
 
-# 2. Khởi tạo môi trường ảo (tùy chọn nhưng khuyến nghị)
-python -m venv venv
-
-# Kích hoạt môi trường ảo:
-# Trên Windows PowerShell:
-.\venv\Scripts\Activate.ps1
-# Trên Windows Command Prompt:
-.\venv\Scripts\activate.bat
-
-# 3. Cập nhật các bảng cơ sở dữ liệu
-python manage.py migrate
-
-# 4. (Tùy chọn) Tạo tài khoản quản trị tối cao Django Admin
-python manage.py createsuperuser
-
-# 5. Khởi chạy máy chủ Backend (Port 8000)
-python manage.py runserver 127.0.0.1:8000
-```
-
-Truy cập:
-- **Trang chủ Backend**: `http://127.0.0.1:8000/`
-- **Django Admin Portal**: `http://127.0.0.1:8000/admin/`
+- API Backend: `http://127.0.0.1:8000/`
+- Django Admin: `http://127.0.0.1:8000/admin/`
 
 ---
 
 ## 🔗 4. Kết nối với Frontend React
 
 - Frontend gọi đến Backend qua base URL: `http://127.0.0.1:8000/`
-- Cấu hình CORS đã được thiết lập sẵn trong `config/settings.py` cho phép nguồn `http://localhost:5173` và `http://localhost:5174`.
+- Cấu hình CORS đã được thiết lập sẵn trong `config/settings.py` cho phép nguồn `http://localhost:<cổng>` và `http://127.0.0.1:<cổng>`.
 
 ---
 
@@ -197,73 +174,49 @@ class AccountsAPITests(TestCase):
 #### Bộ kịch bản kiểm thử mẫu (`DashboardAPITests`):
 1. **`test_overview_unauthorized`**: Kiểm tra chặn `401 Unauthorized` khi chưa có JWT Token.
 2. **`test_overview_authorized_contract`**: Kiểm tra cấu trúc dữ liệu theo hợp đồng API:
-   - `kpis`: `incomingCount`, `outgoingCount`, `confidentialCount`, `tasksCount`.
+   - `kpis`: `incomingCount`, `outgoingCount`, `tasksCount`.
    - Danh sách mảng: `recentIncoming`, `recentOutgoing`, `tasks`, `meetingRooms`, `birthdays`.
-3. **`test_tomorrow_date_calculation`**: Kiểm tra tính toán ngày sinh nhật chuyển giao tháng/năm.
+3. **`test_overview_documents_and_meetings_empty_until_modules_wired`**: Khối văn bản và phòng họp rỗng với mọi vai trò.
+4. **`test_overview_has_no_confidential_data`**: Không còn khóa văn bản mật.
+5. **`test_dashboard_defines_no_models`**: App không tạo bảng riêng.
+6. **`test_overview_birthdays_today_and_tomorrow`**: Sinh nhật hôm nay và ngày mai đọc từ bảng nhân viên.
 
-<details>
-<summary><b>👉 Xem mã nguồn kiểm thử mẫu (Python TestCase)</b></summary>
-
-```python
-from datetime import date, timedelta, time
-from django.test import TestCase
-from django.contrib.auth.models import User
-from django.utils import timezone
-from rest_framework.test import APIClient
-from rest_framework import status
-from accounts.models import StaffProfile
-from dashboard.models import MeetingRoom
-
-
-class DashboardAPITests(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(username="testuser", password="testpassword123")
-        self.today = timezone.localdate()
-        self.tomorrow = self.today + timedelta(days=1)
-
-        StaffProfile.objects.create(
-            user=self.user,
-            full_name="Cán Bộ Ngày Mai",
-            department="Ban Kế hoạch",
-            position="Chuyên viên",
-            birthday=date(1995, self.tomorrow.month, self.tomorrow.day),
-        )
-
-        MeetingRoom.objects.create(
-            room_name="Phòng họp A1 - Khu A",
-            meeting_title="Họp giao ban định kỳ",
-            date=self.today,
-            start_time=time(8, 30),
-            end_time=time(11, 30),
-            organizer="Văn phòng Trung tâm",
-            status="ready",
-        )
-
-    def test_overview_unauthorized(self):
-        response = self.client.get("/api/dashboard/overview/")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_overview_authorized_contract(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get("/api/dashboard/overview/")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("kpis", response.data)
-        self.assertIn("recentIncoming", response.data)
-        self.assertIn("recentOutgoing", response.data)
-        self.assertIn("meetingRooms", response.data)
-        self.assertIn("birthdays", response.data)
-```
-</details>
+Ghi chú nguồn dữ liệu: app `dashboard` không có model riêng. Khối văn bản và phòng họp trả rỗng cho tới khi nối với `documents_*` (qua `van_ban_xem_duoc` của Nhóm 2) và `meetings_*` (Nhóm 7). Mã kiểm thử: `backend/apps/dashboard/tests.py`.
 
 ---
 
 ### 5.3. Hướng dẫn thực thi kiểm thử cục bộ
 Khi các nhóm Backend tiếp tục phát triển:
 1. Tạo hoặc sao chép các hàm test vào `backend/apps/<tên_app>/tests.py`.
-2. Chạy lệnh:
+2. Chạy lệnh tại thư mục gốc:
    ```bash
-   python manage.py test accounts
-   python manage.py test dashboard
+   pnpm test:backend accounts
+   pnpm test:backend dashboard
    ```
+
+### 5.4. Email chúc mừng sinh nhật
+
+Ứng dụng dùng backend email console nếu chưa cấu hình SMTP. Để gửi email thật, đặt các biến sau trong `.env` ở thư mục gốc dự án:
+
+```dotenv
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=true
+EMAIL_HOST_USER=account@example.com
+EMAIL_HOST_PASSWORD=<secret>
+DEFAULT_FROM_EMAIL=account@example.com
+```
+
+Không commit `.env` hoặc mật khẩu SMTP. `BRAND_NAME` và `ORGANIZATION_NAME` có thể đặt để đổi thương hiệu trong tiêu đề và nội dung thư; mặc định là `Bảo Long Insurance`.
+
+Chạy thủ công tại thư mục gốc:
+
+```bash
+pnpm manage send_birthday_emails
+pnpm manage send_birthday_emails --date=YYYY-MM-DD
+```
+
+`--allow-locmem` chỉ dành cho kiểm thử. Kết quả gửi được ghi trong `birthdays_birthdayemaillog`; hiện API nhật ký chỉ cho superuser xem cho đến khi DDL bổ sung quyền riêng.
+
+Để chạy định kỳ trên Linux, dùng `deploy/birthday-email.cron.example`, thay đường dẫn, phút và giờ theo lịch đã được nhóm chốt; đặt timezone của scheduler thành `Asia/Ho_Chi_Minh`. Trên Windows, tạo tác vụ hằng ngày trong Task Scheduler: chương trình là Python của môi trường ảo, tham số là `manage.py send_birthday_emails`, thư mục bắt đầu là `backend`. Tài khoản chạy tác vụ phải nhận được các biến SMTP từ môi trường hoặc secret store.
 

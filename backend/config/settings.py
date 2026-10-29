@@ -10,27 +10,63 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Captured from the resolved release source at process startup. Do not resolve the
+# current symlink per request: an old process must keep identifying its own code.
+def release_id_from_source(source_file):
+    return Path(source_file).resolve().parents[2].name
 
-# Cho phép Django nhận diện trực tiếp các app trong thư mục apps/
+
+RELEASE_ID = release_id_from_source(__file__)
+
+# Tải biến môi trường từ .env
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR.parent / ".env")
+
+# Cho phép Django nhận diện trực tiếp các app trong thư mục apps/ và package backend/
 sys.path.insert(0, str(BASE_DIR / "apps"))
+if str(BASE_DIR.parent) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR.parent))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-gi-kkzr*^tx3ut+arcxs2i8=!3%es0clr2punmi*hg)nbg0)mr"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    raise RuntimeError("DJANGO_SECRET_KEY is required")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+]
+
+# Chạy sau reverse proxy HTTPS (Nginx). Local để trống các biến này.
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if os.getenv("DJANGO_SECURE_PROXY_SSL_HEADER", "False").lower() == "true":
+    # Chỉ bật khi proxy luôn ghi đè X-Forwarded-Proto, nếu không client có thể giả scheme.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() == "true"
+SESSION_COOKIE_SECURE = os.getenv("DJANGO_SECURE_COOKIES", str(not DEBUG)).lower() == "true"
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+# Chỉ đặt > 0 khi HTTPS đã chạy ổn định; trình duyệt nhớ HSTS theo số giây này.
+SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "0"))
 
 
 # Application definition
@@ -46,12 +82,26 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
     # Các app nghiệp vụ
     "accounts",
+    "records",
     "dashboard",
     "birthdays",
+    "work",
+    "documents",
+    "signing",
+    "document_templates",
     "organizations",
+    "meetings",
+    "authorization",
 ]
+
+# Custom User Model theo SQL_Fix4 / release_DDL: accounts_employee là bảng người dùng
+AUTH_USER_MODEL = "accounts.Employee"
+
+# RBAC theo release_DDL: quyền định danh bằng codename trần (auth_permission.content_type_id = NULL)
+AUTHENTICATION_BACKENDS = ["authorization.backends.RbacBackend"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -93,12 +143,37 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+# PostgreSQL là engine duy nhất (local, CI, staging). DB_ENGINE chỉ còn để tương thích env cũ.
+DB_ENGINE = os.getenv("DB_ENGINE", "postgresql").lower()
+if DB_ENGINE not in ("postgresql", "postgres"):
+    raise RuntimeError("Dự án chỉ hỗ trợ PostgreSQL: bỏ DB_ENGINE hoặc đặt DB_ENGINE=postgresql.")
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "qlvb_db"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", ""),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
+
+# Kết nối chỉ đọc cho AI SQL (backend/docs/sql_document_source.md): role riêng, session read-only,
+# không bao giờ dùng user của "default". Thiếu DB_READONLY_USER thì không khai báo alias; đường AI SQL
+# từ chối truy vấn (SqlDocumentAccessError) còn app và các route khác chạy bình thường.
+if os.getenv("DB_READONLY_USER"):
+    DATABASES["readonly"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_READONLY_NAME") or DATABASES["default"]["NAME"],
+        "USER": os.environ["DB_READONLY_USER"],
+        "PASSWORD": os.getenv("DB_READONLY_PASSWORD", ""),
+        "HOST": os.getenv("DB_READONLY_HOST") or DATABASES["default"]["HOST"],
+        "PORT": os.getenv("DB_READONLY_PORT") or DATABASES["default"]["PORT"],
+        "OPTIONS": {"options": "-c default_transaction_read_only=on"},
+        # Test dùng chung kết nối test của "default" (role chỉ đọc không có quyền tạo DB).
+        "TEST": {"MIRROR": "default"},
+    }
 
 
 # Password validation
@@ -123,7 +198,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "vi"
 
 TIME_ZONE = "Asia/Ho_Chi_Minh"
 
@@ -135,20 +210,51 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Media files (File uploads)
+MEDIA_URL = "/media/"
+# Server đặt DJANGO_MEDIA_ROOT ra thư mục dùng chung để file không nằm trong thư mục release.
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT") or BASE_DIR.parent / "media")
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
-}
+# Email (Django 6.1 MAILERS)
+# Keep console delivery until an SMTP host is explicitly configured.
+email_host = os.getenv("EMAIL_HOST", "").strip()
+email_port = int(os.getenv("EMAIL_PORT") or "587")
+email_use_tls = os.getenv("EMAIL_USE_TLS", "true").strip().lower() in {"1", "true", "yes", "on"}
+email_host_user = os.getenv("EMAIL_HOST_USER", "").strip()
+email_host_password = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "").strip()
+
+BRAND_NAME = os.getenv("BRAND_NAME", "Bảo Long Insurance").strip()
+ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME", BRAND_NAME).strip()
+
+if email_host:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "OPTIONS": {
+                "host": email_host,
+                "port": email_port,
+                "use_tls": email_use_tls,
+                "username": email_host_user,
+                "password": email_host_password,
+                "timeout": 10,
+            },
+        },
+    }
+else:
+    MAILERS = {
+        "default": {
+            "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        },
+    }
 
 # CORS Configuration (Cho phép Frontend kết nối API)
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http://localhost:\d+$",
@@ -161,14 +267,40 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+    ],
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
     ),
 }
+
+# ─────────────────────────────────────────────────
+# Trình ký — thư mục gốc chứa tệp văn bản (adapter filesystem)
+# ─────────────────────────────────────────────────
+SIGNING_DOCUMENT_ROOT = os.environ.get("SIGNING_DOCUMENT_ROOT", "")
+
+# Trình ký — bí mật máy chủ để băm mã xác minh PIN và mã hóa k_srv (plan mục 3.4).
+# Bắt buộc đặt riêng trên Staging/Production; để trống thì dùng SECRET_KEY (chỉ cho môi trường dev).
+# Đổi giá trị này làm mọi PIN đã đặt mất hiệu lực (người dùng phải đặt lại).
+SIGNING_PIN_SECRET = os.environ.get("SIGNING_PIN_SECRET", "")
+
+# Trình ký — phông chữ có dấu tiếng Việt để in tệp PDF hoàn tất (Phase 10). Để trống thì tự dò phông hệ thống
+# (DejaVu Sans, Noto Sans, Liberation Sans, Arial); không có phông nào thì tạo tệp báo lỗi `thieu_phong_chu`.
+SIGNING_PDF_FONT = os.environ.get("SIGNING_PDF_FONT", "")
+SIGNING_PDF_FONT_BOLD = os.environ.get("SIGNING_PDF_FONT_BOLD", "")
+
+# Trình ký — email thông báo người trong luồng. Để trống thì dùng cấu hình email chung của dự án; dev có thể đặt
+# `django.core.mail.backends.console.EmailBackend`. Địa chỉ giao diện dùng cho liên kết trong email.
+SIGNING_EMAIL_BACKEND = os.environ.get("SIGNING_EMAIL_BACKEND", "")
+SIGNING_FRONTEND_URL = os.environ.get("SIGNING_FRONTEND_URL", "http://localhost:5173")
 
 # ─────────────────────────────────────────────────
 # SimpleJWT — Cấu hình token
@@ -189,4 +321,15 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
-
+# ─────────────────────────────────────────────────
+# Bảo Long Insurance (Alpaca) Authentication Config
+# ─────────────────────────────────────────────────
+ALPACA_SECRET_KEY = os.getenv("ALPACA_SECRET_KEY", "")
+ALPACA_CHECK_AUTH_URL = os.getenv(
+    "ALPACA_CHECK_AUTH_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-auth-user",
+)
+ALPACA_CHECK_USER_URL = os.getenv(
+    "ALPACA_CHECK_USER_URL",
+    "https://phase2-sit-api.alpaca.vn/auth-command/public/user/check-user-exist",
+)

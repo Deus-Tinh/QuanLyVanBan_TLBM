@@ -1,28 +1,29 @@
-# Phân công chi tiết & Quy tắc kỹ thuật — Nhóm 7 (bản 2026-09-20 v3)
+# Phân công chi tiết & Quy tắc kỹ thuật — Nhóm 7 (bản 2026-09-27 v5)
 
-*Lịch sử: v1 (gốc) → v2 (2026-09-19, Tân chốt lại Phòng họp/Sinh nhật) → **v3 (2026-09-20, Tân chốt lại lần 3): đổi chéo Khánh ↔ Quang, gộp Hiếu+Tình làm chung Phòng họp/Sinh nhật.** Module gốc thầy giao: Phòng họp (0.40), Sinh nhật (0.40), Hệ thống (0.80: Đơn vị/phòng ban, Chức vụ, CBNV, Phân quyền). "Loại tài liệu biểu mẫu" đã chuyển hẳn cho Nhóm 4, không còn thuộc Nhóm 7.*
+*Lịch sử: v1 (gốc) → v2 (2026-09-19, Tân chốt lại Phòng họp/Sinh nhật) → v3 (2026-09-20, đổi chéo Khánh ↔ Quang, gộp Hiếu+Tình làm chung Phòng họp/Sinh nhật) → v4 (2026-09-27 sáng, tách riêng Hiếu/Tình, Hiếu chuyển sang hỗ trợ Phân quyền) → **v5 (2026-09-27, Tân chốt lại lần 5): Hiếu chuyển hẳn sang phụ Tân làm Phân quyền full-time; Phòng họp giao lại cho Nguyễn Duy Bảo (mượn từ Nhóm 6) làm lại từ đầu — PR #27 cũ của Hiếu không dùng nữa.** Module gốc thầy giao: Phòng họp (0.40), Sinh nhật (0.40), Hệ thống (0.80: Đơn vị/phòng ban, Chức vụ, CBNV, Phân quyền). "Loại tài liệu biểu mẫu" đã chuyển hẳn cho Nhóm 4, không còn thuộc Nhóm 7.*
+
+> ⚠️ **Cần báo PM (Châu Tuấn Kiệt) trước khi Bảo bắt đầu code:** Nguyễn Duy Bảo hiện thuộc quyền `team_6` trên GitHub, chưa có quyền PR vào branch `7_meeting_rooms_birthdays_system`. Cần PM/Admin thêm Bảo vào `team_7` (hoặc hướng dẫn Bảo fork riêng) trước.
+> ⚠️ **PR #27 (Hiếu, Phòng họp) sẽ bị đóng, không merge** — dù đã pass 27/27 test. Cần báo Hiếu biết trước khi đóng PR.
 
 ## 1. Phân công
 
 | Người | Phụ trách | Ghi chú |
 | --- | --- | --- |
-| Tô Thanh Tân (DA, Trưởng nhóm) | **Phân quyền** (nhóm quyền, gán quyền) + ERD/schema tổng toàn dự án | Không đổi so với các bản trước |
-| Lê Duy Khánh | **CBNV** (cán bộ nhân viên) | **Đổi so với v1/v2** (trước là Đơn vị/phòng ban) |
-| Đỗ Mạnh Quang | **Đơn vị, phòng ban** (Khối/Khu vực cấp 1 + Đơn vị cấp 2) + **Chức vụ** | **Đổi so với v1/v2** (trước là CBNV) |
-| Nguyễn Phan Minh Hiếu + Trần Đình Tình | **Phòng họp** (`PhongHop`, `DatPhongHop`) + **Sinh nhật** (hiển thị lịch, `SinhNhatLog` gửi mail) — làm CHUNG, 2 người tự chia theo bảng bên dưới | Gộp lại so với v2 (trước Hiếu còn có thêm Chức vụ — nay chuyển cho Quang) |
-
-**Cách chia việc gợi ý cho Hiếu + Tình** (theo đúng ranh giới bảng dữ liệu, tránh đụng file nhau):
-- Phần **không cần CBNV** (làm ngay Đợt 1): CRUD `PhongHop` (thêm/sửa/xóa/danh sách phòng họp theo ngày) + hiển thị lịch sinh nhật cơ bản (đọc `CBNV.ngay_sinh`, chưa cần gửi mail).
-- Phần **cần CBNV** (làm ở Đợt 3, sau khi Khánh có model CBNV): `DatPhongHop` (đặt lịch, khóa giờ, FK `nguoi_dat` → CBNV) + `SinhNhatLog` (gửi mail tự động, FK `cbnv` → CBNV).
-- Hai bạn tự thỏa thuận ai làm phần nào trong 2 phần trên (theo module Phòng họp/Sinh nhật, hoặc theo Đợt 1/Đợt 3) — miễn không cùng sửa 1 file cùng lúc.
+| Tô Thanh Tân (DA, Trưởng nhóm) | **Phân quyền** (nhóm quyền, gán quyền) + ERD/schema tổng toàn dự án — **có Hiếu phụ full-time** | Không đổi vai trò chính, Hiếu chuyển từ "hỗ trợ" sang phụ hẳn |
+| Lê Duy Khánh | **CBNV** (cán bộ nhân viên) — Issue #20, chưa có PR | Không đổi. Đang chặn Phân quyền (Tân/Hiếu) và các module còn lại |
+| Đỗ Mạnh Quang | **Đơn vị, phòng ban** (đã xong, PR #36 đã merge vào branch nhóm) + **Chức vụ** (chưa có PR) | Không đổi |
+| Nguyễn Phan Minh Hiếu | **Phân quyền** — phụ Tân full-time | **Đổi so với v4** (trước còn giữ Phòng họp, nay giao hẳn cho Bảo) |
+| Trần Đình Tình | **Sinh nhật** (hiển thị lịch, `SinhNhatLog` gửi mail) — làm riêng, đã hoàn thành (PR #30) | Không đổi so với v4 |
+| **Nguyễn Duy Bảo** *(mượn từ Nhóm 6)* | **Phòng họp** (`PhongHop`, `DatPhongHop`) — làm lại từ đầu | **Mới** — thay thế PR #27 của Hiếu (không dùng nữa) |
 
 ## 2. Chi tiết chức năng & field theo module (nguồn: bảng spec thầy giao)
 
-### Phòng họp (độ khó 0.40)
+### Phòng họp (độ khó 0.40) — Nguyễn Duy Bảo (mượn Nhóm 6), làm lại từ đầu
 - Thêm phòng họp; danh sách phòng họp theo ngày...
 - *Ghi chú field DB:* DB cho phòng họp.
+- *Trạng thái:* PR #27 cũ của Hiếu (đã pass 27/27 test, tạm dùng `auth.User` thay CBNV) không dùng nữa — Bảo code lại từ đầu. Cần chờ PM thêm quyền `team_7` cho Bảo trước khi mở PR.
 
-### Sinh nhật (độ khó 0.40)
+### Sinh nhật (độ khó 0.40) — Tình, đã hoàn thành (PR #30)
 - Hiển thị theo ngày tháng sinh dạng calendar (tham khảo mẫu thầy gửi).
 - Gửi mail chúc mừng sinh nhật tự động khi tới ngày — tự thiết kế mẫu email.
 - *Ghi chú field DB:* lấy ngày sinh từ thông tin của user (CBNV).
@@ -43,28 +44,33 @@
 - Có tên đăng nhập, mật khẩu. Thêm CBNV mới.
 - Danh sách lấy theo thứ tự: đơn vị/phòng ban có ưu tiên → chức vụ. Cột hiển thị: STT, Họ và tên, Đơn vị, Chức danh, Nhóm quyền (**chỉ admin thấy cột này**), Email, SĐT cá nhân/bàn, Trạng thái (Làm việc/Nghỉ việc — **bôi đỏ nếu nghỉ việc**), Thao tác (sửa/xóa).
 - Import file mẫu; Chi tiết CBNV dạng popup (hiển thị hết thông tin nhưng **che năm sinh**); có phân trang.
+- **Quy tắc mật khẩu khi Import Excel:** Tài khoản tạo hàng loạt qua Excel sẽ nhận mật khẩu tạm thời ngẫu nhiên an toàn sinh từ hệ thống. Cán bộ nhân viên sau đó nhận tài khoản và chủ động lấy lại/thiết lập mật khẩu qua tính năng Quên mật khẩu / Cấp lại mật khẩu của hệ thống (hoặc được Quản trị viên duyệt cấp lại mật khẩu qua quyền `approve_password_reset_cbnv`).
 - **Field:** Họ và tên(*); Ngày tháng năm sinh(*) — lưu đủ ngày nhưng giao diện ẩn năm sinh; Chức vụ(*) — chọn từ danh sách (FK); Chức danh — text tự do, khác Chức vụ; Nhóm quyền(*) — chọn từ danh sách; Email; SĐT; Đơn vị(*) — chọn từ danh sách (FK); Mật khẩu IT cấp — chỉ admin thấy khi cấp; isPublic(*) — mặc định true; Ghi chú.
 
-**Trang Phân quyền** (Tân phụ trách):
+**Trang Phân quyền** (Tân + Hiếu phụ trách):
 - Danh sách nhóm quyền; thêm/xóa/sửa nhóm quyền; danh sách phân quyền sử dụng theo từng nhóm.
-- *Ghi chú:* tạo bảng DB (Group/Permission theo chuẩn `django.contrib.auth`).
+- Theo đề bài thầy (mục 7.7): giao diện phải có dạng **ma trận phân quyền** (hàng = module, cột = hành động Xem/Thêm/Sửa/Xóa/Duyệt/Ký...), không chỉ list checkbox phẳng.
+- *Ghi chú:* tạo bảng DB (Group/Permission theo chuẩn `django.contrib.auth`), không tự chế model riêng.
 
 ## 3. Thứ tự làm để tránh chồng chéo/block nhau
 
-| Đợt | Việc | Ai | Vì sao |
+| Đợt | Việc | Ai | Trạng thái |
 | --- | --- | --- | --- |
-| Đợt 1 (song song, làm ngay) | Đơn vị/Khối + Chức vụ; Nhóm quyền (Phân quyền); Phòng họp (`PhongHop` CRUD); Sinh nhật (hiển thị lịch) | Quang (2 việc), Tân, Hiếu+Tình (2 việc) | Không phụ thuộc CBNV |
-| Đợt 2 (sau khi Đợt 1 có model, merge xong) | CBNV | Khánh | FK tới Đơn vị (Quang), Chức vụ (Quang), Nhóm quyền (Tân) — cả 3 phải merge xong |
-| Đợt 3 (sau khi CBNV có model) | Đặt lịch phòng họp (`DatPhongHop`); Gửi mail sinh nhật tự động (`SinhNhatLog`) | Hiếu+Tình | Cả 2 bảng đều FK tới `accounts.CBNV` (Khánh) |
+| Đợt 1 (đã làm) | Đơn vị/Khối; Sinh nhật | Quang; Tình | Đã xong, PR #36 / #30 |
+| Đợt 1 (đang làm) | Nhóm quyền (Phân quyền, Issue #21) | Tân + Hiếu | Đang code |
+| Đợt 1 (chưa làm) | Chức vụ | Quang | Chưa có PR |
+| Đợt 1 (chưa làm, mới) | Phòng họp (`PhongHop`+`DatPhongHop`) | Nguyễn Duy Bảo (mượn Nhóm 6) | Chưa có PR — chờ PM cấp quyền `team_7` trước |
+| Đợt 2 (đang chặn) | CBNV (Issue #20) | Khánh | **Chưa có PR — đang chặn Phân quyền hoàn thiện (FK Employee↔Group) và việc đổi `SinhNhatLog`/`DatPhongHop` sang FK CBNV thật khi làm xong** |
 
-**Vì sao chia Phòng họp/Sinh nhật thành 2 phần nhỏ theo bảng (không phải theo người):** `DatPhongHop.nguoi_dat` và `SinhNhatLog.cbnv` đều FK tới `accounts.CBNV` — phần này phải làm SAU khi CBNV (Khánh) có model, nên đẩy sang Đợt 3; còn `PhongHop` (CRUD phòng) và hiển thị lịch sinh nhật cơ bản không cần CBNV thật, làm được ngay từ Đợt 1.
+**Vì sao CBNV vẫn là bottleneck:** Tình đã tự implement xong Sinh nhật bằng cách tạm dùng `auth.User` mặc định của Django thay cho CBNV thật (vì CBNV chưa tồn tại). Bảo khi code Phòng họp mới cũng sẽ gặp tình huống tương tự nếu CBNV chưa xong. Khi Khánh hoàn thành `accounts.Employee` (Issue #20) và đổi `AUTH_USER_MODEL`, các module này cần 1 đợt sửa lại FK (`nguoi_dat`, `cbnv`) để trỏ đúng vào CBNV.
 
 ## 4. Cảnh báo va chạm với NHÓM KHÁC
 
 - ~~"Loại tài liệu biểu mẫu" và app `resources` với Nhóm 4~~ — đã giải quyết: chuyển hẳn phần này cho Nhóm 4, không còn cảnh báo conflict Git ở đây.
 - Mọi module khác (Văn bản, Hồ sơ, Công việc, Trình ký...) đều FK tới Đơn vị/CBNV/Phân quyền của Nhóm 7 → nhóm 7 nên báo trước cho cả lớp field/tên bảng chính thức để tránh mỗi nhóm tự đặt tên khác nhau rồi phải sửa lại.
-- ⚠️ **Theo `FRONTEND_BASELINE_GUIDE.md` (Nhóm 1/DevOps, đã merge vào `staging`):** Nhóm 1 không tự đặt role/permission riêng — hợp đồng phân quyền (contract) do Nhóm 7 cung cấp. Các nhóm khác đang chờ Tân chốt cấu trúc RBAC để tích hợp — **việc Phân quyền cần ưu tiên cao nhất trong Đợt 1**.
-- ⚠️ Lưu ý riêng cho Phòng họp/Sinh nhật (app `meetings`, `birthdays`): `PhongHop` và `DatPhongHop` do 2 giai đoạn khác nhau (Đợt 1 và Đợt 3) — người làm Đợt 3 PHẢI branch từ code mới nhất của branch nhóm (đã có `PhongHop` merge) trước khi thêm `DatPhongHop`, không branch từ code cũ. Tương tự với `birthdays`.
+- ⚠️ **Theo `FRONTEND_BASELINE_GUIDE.md` (Nhóm 1/DevOps, đã merge vào `staging`):** Nhóm 1 không tự đặt role/permission riêng — hợp đồng phân quyền (contract) do Nhóm 7 cung cấp. Các nhóm khác đang chờ Tân/Hiếu chốt cấu trúc RBAC để tích hợp — **việc Phân quyền cần ưu tiên cao nhất**.
+- ⚠️ Khi Khánh xong CBNV (Issue #20): Bảo (Phòng họp) và Tình (Sinh nhật) cần branch mới từ code nhóm mới nhất để đổi FK `auth.User` → `accounts.Employee`, không sửa trên branch cũ đã lỗi thời.
+- ⚠️ **Bảo (mượn từ Nhóm 6) chưa có quyền `team_7`** — không thể fork/PR vào branch `7_meeting_rooms_birthdays_system` cho đến khi PM (Châu Tuấn Kiệt) hoặc Admin cấp quyền. Báo trước khi Bảo bắt đầu code để tránh code xong không push được.
 
 ## 5. Quy tắc kỹ thuật áp dụng cho MỌI module của Nhóm 7
 
