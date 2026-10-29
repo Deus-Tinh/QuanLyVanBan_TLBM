@@ -85,8 +85,20 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
     return 'fa-solid fa-file text-secondary';
   };
 
+  const isBrowserPreviewable = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    return ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'txt'].includes(ext);
+  };
+
   const handlePreviewAttachment = async (fileUrl: string | null | undefined, fileName: string, fileId: number) => {
     if (!fileUrl) return;
+    // Đối với tệp tin không hỗ trợ hiển thị trực tiếp trong tab trình duyệt (Word .doc, .docx, Excel .xls, .xlsx...):
+    // Tự động tải về máy với đúng tên gốc và đuôi mở rộng để mở bằng ứng dụng trên máy tính
+    if (!isBrowserPreviewable(fileName)) {
+      await handleDownloadAttachment(fileUrl, fileName, fileId);
+      return;
+    }
+
     try {
       setLoadingFileId(fileId);
       setLoadingAction('preview');
@@ -103,6 +115,8 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
         mimeType = 'image/gif';
       } else if (lower.endsWith('.webp')) {
         mimeType = 'image/webp';
+      } else if (lower.endsWith('.svg')) {
+        mimeType = 'image/svg+xml';
       } else if (lower.endsWith('.txt')) {
         mimeType = 'text/plain';
       }
@@ -485,7 +499,11 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                                 disabled={isItemLoading}
                                 onClick={() => void handlePreviewAttachment(att.file, att.file_name, att.id)}
                                 className="text-left text-xs font-semibold text-main hover:text-primary transition-colors block truncate cursor-pointer bg-transparent border-0 p-0 max-w-full disabled:opacity-50"
-                                title={`Xem trước: ${att.file_name} (Mở tab mới)`}
+                                title={
+                                  isBrowserPreviewable(att.file_name)
+                                    ? `Xem trước: ${att.file_name} (Mở tab mới)`
+                                    : `Tải về để mở xem: ${att.file_name}`
+                                }
                               >
                                 {att.file_name}
                               </button>
@@ -501,7 +519,11 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                               disabled={isItemLoading}
                               onClick={() => void handlePreviewAttachment(att.file, att.file_name, att.id)}
                               className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-primary text-white font-medium hover:bg-primary-hover shadow-sm transition-colors cursor-pointer disabled:opacity-50 min-w-[68px]"
-                              title="Xem trực tiếp nội dung tệp tin trong tab mới của trình duyệt"
+                              title={
+                                isBrowserPreviewable(att.file_name)
+                                  ? (t('documents_ui.detailModal.viewAttachmentInBrowser') || 'Xem trực tiếp nội dung tệp tin trong tab mới của trình duyệt')
+                                  : (t('documents_ui.detailModal.downloadToOpenApp') || 'Tải tệp tin về máy để mở xem bằng ứng dụng tương ứng')
+                              }
                             >
                               {isItemLoading && loadingAction === 'preview' ? (
                                 <i className="fa-solid fa-spinner fa-spin text-[0.7rem]" />
