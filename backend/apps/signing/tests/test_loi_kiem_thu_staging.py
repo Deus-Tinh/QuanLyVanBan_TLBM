@@ -122,7 +122,7 @@ class MotHoSoDangMoTests(KyBase):
         self.assertEqual((r.status_code, r.data["code"]), (409, "van_ban_da_co_ho_so_dang_mo"))
         self.assertEqual(self.gui(nhap, khoa="gui-nhap-20").status_code, 200)  # chính nháp đó vẫn gửi được
 
-    def test_finished_requests_allow_new_submission(self):
+    def test_cancelled_allows_retry_but_completed_blocks_reuse(self):
         r = self.c.post(f"{BASE}/{self.pk}/huy/", {"ly_do": "Đổi phương án"}, format="json",
                         HTTP_IDEMPOTENCY_KEY="huy-10")
         self.assertEqual(r.status_code, 200, r.data)
@@ -133,7 +133,22 @@ class MotHoSoDangMoTests(KyBase):
         for user in (self.ky1, self.ky2, self.ky3):
             self.assertEqual(self.ky(user).status_code, 200)
         self.assertEqual(SigningRequest.objects.get(pk=self.pk).trang_thai, "HOAN_THANH")
-        self.assertEqual(self.tao_nhap(van_ban_id=10).status_code, 201)  # hồ sơ cũ đã hoàn thành
+        r = self.tao_nhap(van_ban_id=10)
+        self.assertEqual((r.status_code, r.data["code"]), (409, "van_ban_da_co_ho_so_hoan_tat"))
+
+    def test_legacy_draft_cannot_be_sent_after_another_request_completes(self):
+        cu = SigningRequest.objects.get(pk=self.pk)
+        nhap_cu = SigningRequest.objects.create(
+            document_type=cu.document_type, van_ban_id=cu.van_ban_id, quy_trinh=cu.quy_trinh,
+            phien_ban_quy_trinh=cu.phien_ban_quy_trinh, phien_ban_van_ban="1", vi_tri_luu_tep=cu.vi_tri_luu_tep,
+            ma_bam_tai_lieu=cu.ma_bam_tai_lieu, create_by=self.tao,
+        )
+        for user in (self.ky1, self.ky2, self.ky3):
+            self.assertEqual(self.ky(user).status_code, 200)
+
+        r = self.gui(nhap_cu.pk, khoa="gui-nhap-sau-hoan-tat")
+        self.assertEqual((r.status_code, r.data["code"]), (409, "van_ban_da_co_ho_so_hoan_tat"))
+        self.assertEqual(SigningRequest.objects.get(pk=nhap_cu.pk).trang_thai, "NHAP")
 
     def test_resubmit_after_rejection_is_blocked_only_by_another_open_request(self):
         self.assertEqual(self.hanh_dong(self.ky1, "tu-choi", ly_do_tu_choi="Chưa đạt").status_code, 200)

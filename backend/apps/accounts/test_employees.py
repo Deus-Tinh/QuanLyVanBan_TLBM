@@ -2190,4 +2190,3 @@ class EmployeeImportWorkerIntegrationTests(TransactionTestCase):
         self.assertEqual(job.created_count, 1)
         self.assertTrue(User.objects.filter(email="worker-import@example.test").exists())
         self.assertFalse(stored_file.exists())
-

@@ -139,12 +139,13 @@ class TraSuaDongThoiTests(TransactionTestCase):
         self.ky1 = User.objects.create_user("ky1")
         self.ky2 = User.objects.create_user("ky2")
         cap_quyen(self.tao, "add_trinhky", "send_trinhky", "view_vanbandi")
+        cap_quyen(self.ky1, "sign_trinhky")
         qt = process_service.tao_quy_trinh(self.tao, ma_quy_trinh="DT", ten_quy_trinh="DT", pham_vi="CONG_TY", cap_ky=[
             {"cap_ky": 1, "ten_cap_ky": "C", "thu_tu": 1, "nguoi_ky": [
                 {"nguoi_ky": self.ky1, "thu_tu": 1}, {"nguoi_ky": self.ky2, "thu_tu": 2}]}])
         qt = process_service.kich_hoat(qt, self.tao)
-        ho_so = trinh_ky_service.tao_nhap(self.tao, document_type="vanbandi", van_ban_id=10, quy_trinh=qt,
-                                          tep=tep_pdf())
+        ho_so = trinh_ky_service.tao_nhap(self.tao, quy_trinh=qt, tep=tep_pdf(),
+                                          trich_yeu_van_ban="Tài liệu kiểm tra")
         self.ho_so = trinh_ky_service.gui(ho_so, self.tao, khoa_chong_trung="g")
         self.private, self.key = khoa_hoat_dong(self.ky1, "K-DT")
 

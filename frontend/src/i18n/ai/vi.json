@@ -128,19 +128,19 @@
     },
     "templates": {
       "incoming": {
-        "title": "Tiếp nhận Văn bản Đến",
-        "desc": "Hỏi các bước vào sổ, scan số hóa và trình Ban Giám Hiệu bút phê.",
+        "title": "Tiếp nhận văn bản đến",
+        "desc": "Tìm hiểu cách ghi nhận và chuyển văn bản đến cho người xử lý.",
         "query": "Hướng dẫn quy trình tiếp nhận và xử lý văn bản đến trong ngày?"
       },
       "confidential": {
-        "title": "Xử lý Văn bản Mật",
-        "desc": "Quy chuẩn mã hóa, xác thực 2FA và quyền xem tài liệu Tuyệt Mật.",
-        "query": "Quy định bảo mật và quy trình chuyển giao văn bản tuyệt mật?"
+        "title": "Văn bản hạn chế",
+        "desc": "Tìm hiểu quyền xem và cách xử lý văn bản hạn chế.",
+        "query": "Ai được xem và xử lý văn bản hạn chế trong hệ thống?"
       },
       "signing": {
-        "title": "Quy trình Trình Ký Số",
-        "desc": "Sơ đồ luồng ký số Token PKI/Cloud HSM và phát hành văn bản đi.",
-        "query": "Làm thế nào để tạo luồng trình ký số điện tử trên hệ thống?"
+        "title": "Trình ký nội bộ",
+        "desc": "Tìm hiểu cách gửi hồ sơ, ký duyệt và theo dõi kết quả nội bộ.",
+        "query": "Làm thế nào để tạo và gửi hồ sơ trình ký nội bộ?"
       },
       "organization": {
         "title": "Cơ cấu & Phân quyền",

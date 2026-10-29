@@ -196,7 +196,7 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
         nguoi_trinh: 'Lê Thanh Hậu',
         ngay_gui: '23/10/2026',
         trang_thai: 'CHO_KY',
-        nhan_trang_thai: 'Chờ ký',
+        nhan_trang_thai: 'Đang chờ ký',
         can_toi_ky: true,
       },
     ];
@@ -214,7 +214,7 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     expect(screen.getByText('15/TTr-VP')).toBeInTheDocument();
     expect(screen.getByText('Tờ trình phê duyệt mua sắm máy quét tài liệu')).toBeInTheDocument();
     expect(screen.getByText('Lê Thanh Hậu')).toBeInTheDocument();
-    expect(screen.getByText('Chờ ký')).toBeInTheDocument();
+    expect(screen.getByText('Đang chờ ký')).toBeInTheDocument();
 
     const signBtn = screen.getByText('Ký ngay');
     fireEvent.click(signBtn);
@@ -224,7 +224,7 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     expect(mockNavigate).toHaveBeenCalledWith('approvals');
   });
 
-  it('correctly maps all signing statuses (CHO_KY, DANG_XU_LY, DA_KY, HOAN_THANH, TU_CHOI, HUY, NHAP)', () => {
+  it('correctly maps signing request and current attempt statuses', () => {
     const multiStatusSigning = [
       { id: '1', ma_trinh_ky: 'TK-01', tieu_de: 'Phieu 1', trang_thai: 'CHO_KY' },
       { id: '2', ma_trinh_ky: 'TK-02', tieu_de: 'Phieu 2', trang_thai: 'DANG_XU_LY' },
@@ -239,11 +239,20 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getAllByText('Chờ ký').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đang chờ ký').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Đang xử lý').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Đã ký').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Hoàn thành').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Từ chối').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Hoàn tất duyệt nội bộ').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đã từ chối').length).toBeGreaterThan(0);
+
+    rerender(
+      <MemoryRouter>
+        <ModernDashboardView signingRequests={[
+          { id: '8', ma_trinh_ky: 'TK-08', tieu_de: 'Phiếu trả sửa', trang_thai: 'CHO_KY', trang_thai_luot: 'YEU_CAU_SUA' },
+        ]} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText('Chờ người trình sửa')).toBeInTheDocument();
 
     // Rerender with cancelled and draft
     const secondaryStatusSigning = [
@@ -258,7 +267,7 @@ describe('ModernDashboardView Component (Zero Mock Data)', () => {
     );
 
     expect(screen.getAllByText('Đã hủy').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Bản nháp').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Nháp').length).toBeGreaterThan(0);
   });
 });
 

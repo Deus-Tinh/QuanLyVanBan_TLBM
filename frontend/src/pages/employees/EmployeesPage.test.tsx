@@ -827,5 +827,3 @@ describe('EmployeesPage Component (Issue #24)', () => {
     });
   });
 });
-
-

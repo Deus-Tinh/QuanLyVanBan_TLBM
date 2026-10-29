@@ -10,6 +10,17 @@ User = settings.AUTH_USER_MODEL
 DB_NOW = models.Func(function="now", output_field=models.DateTimeField())
 
 
+class SigningDelegationRole(models.Model):
+    """Chức danh được phép nhận ủy quyền từ một chức danh ký."""
+
+    chuc_vu_giao = models.ForeignKey("accounts.Position", on_delete=models.PROTECT, related_name="+")
+    chuc_vu_nhan = models.ForeignKey("accounts.Position", on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        db_table = "signing_delegation_role"
+        constraints = [models.UniqueConstraint(fields=["chuc_vu_giao", "chuc_vu_nhan"], name="uq_signing_delegation_role")]
+
+
 def sha256_or_null(field):
     """CHECK: giá trị rỗng (NULL) hoặc SHA-256 hex 64 ký tự thường."""
     return Q(**{f"{field}__isnull": True}) | Q(**{f"{field}__regex": r"^[0-9a-f]{64}$"})
@@ -155,8 +166,8 @@ class SigningProcessStepSigner(models.Model):
 
 
 class SigningRequest(models.Model):
-    # Văn bản trình ký: gắn văn bản đi (document_type, van_ban_id) hoặc văn bản khác nhập tay (số hiệu, trích yếu);
-    # tệp PDF trình ký luôn tải lên riêng (#274).
+    # Văn bản trình ký: gắn văn bản đi đã đăng ký hoặc PDF dự thảo chưa vào sổ; hồ sơ có id tự cấp.
+    # PDF đã chọn được sao chép vào kho Trình ký để chụp nguyên bản tài liệu của lượt trình.
     document_type = models.CharField(max_length=20, choices=enums.LoaiVanBan.choices, null=True, blank=True)
     van_ban_id = models.BigIntegerField(db_column="document_id", null=True, blank=True)
     so_hieu_van_ban = models.CharField(max_length=100, blank=True, db_default="", default="")
@@ -202,6 +213,11 @@ class SigningRequest(models.Model):
                 condition=(Q(document_type__isnull=False) & Q(van_ban_id__isnull=False))
                 | (Q(document_type__isnull=True) & Q(van_ban_id__isnull=True) & ~Q(trich_yeu_van_ban="")),
                 name="chk_signing_request_van_ban",
+            ),
+            models.UniqueConstraint(
+                fields=["document_type", "van_ban_id"],
+                condition=Q(trang_thai=enums.TrangThaiYeuCau.HOAN_THANH, van_ban_id__isnull=False),
+                name="uq_signing_completed_doc",
             ),
         ]
 
@@ -296,6 +312,9 @@ class SigningRequestStepSigner(models.Model):
         "SigningSignature", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     uy_quyen_tu = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    chuc_vu_goc_uy_quyen = models.ForeignKey(
+        "accounts.Position", null=True, blank=True, on_delete=models.PROTECT, related_name="+"
+    )
     ly_do_uy_quyen = models.TextField(blank=True, db_default="", default="")
     ngay_uy_quyen = models.DateTimeField(null=True, blank=True)
     trang_ky = models.PositiveIntegerField(null=True, blank=True)

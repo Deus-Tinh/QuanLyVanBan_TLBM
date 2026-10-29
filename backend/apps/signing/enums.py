@@ -26,8 +26,8 @@ class VaiTroKy(models.TextChoices):
 
 
 class LoaiVanBan(models.TextChoices):
-    # Trình ký chỉ nhận dự thảo văn bản đi (Phase 6c). Văn bản đến thuộc luồng chỉ đạo của Nhóm 2;
-    # văn bản mật đã bỏ khỏi hệ thống. Cột document_type giữ để mở rộng sau.
+    # Bản ghi gắn ngoài Trình ký chỉ nhận văn bản đi (Phase 6c); PDF dự thảo chưa vào sổ để document_type=NULL. Văn bản đến
+    # thuộc luồng chỉ đạo của Nhóm 2; văn bản mật đã bỏ khỏi hệ thống.
     VAN_BAN_DI = "vanbandi", "Văn bản"
 
 

@@ -28,7 +28,7 @@ vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
     toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), thongBao: vi.fn(), chiTiet: vi.fn(), tepGoc: vi.fn(), taiLieu: vi.fn(), huy: vi.fn(),
-    timVanBanDi: vi.fn(), quyTrinh: vi.fn(), taoNhap: vi.fn(), khoa: vi.fn(), thuHoiKhoa: vi.fn(), traoDoi: vi.fn(),
+    timVanBanDi: vi.fn(), chiTietVanBanDi: vi.fn(), lienKetVanBanDi: vi.fn(), quyTrinh: vi.fn(), taoNhap: vi.fn(), khoa: vi.fn(), thuHoiKhoa: vi.fn(), traoDoi: vi.fn(),
     guiTinNhan: vi.fn(), giaiQuyet: vi.fn(), thaoTacQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), xoaQuyTrinh: vi.fn(),
     donVi: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(),
   } };
@@ -51,6 +51,7 @@ const boc = (ui: React.ReactNode, toi: NguoiDungHienTai = TOI) => render(
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.setItem('tlbm_lang', 'vi');
+  api.timVanBanDi.mockResolvedValue([]);
   api.quyTrinh.mockResolvedValue([]);
   api.donVi.mockResolvedValue([]);
   api.chucVu.mockResolvedValue([]);
@@ -184,7 +185,7 @@ describe('Kiểm tra tệp và hạn chót phía trình duyệt', () => {
     } as unknown as QuyTrinh]);
     api.taoNhap.mockReturnValue(new Promise(() => undefined));
     boc(<TaoHoSoPage />);
-    fireEvent.click(await screen.findByLabelText(/Nhập văn bản khác/));
+    fireEvent.click(await screen.findByLabelText(/Tải PDF dự thảo/));
     fireEvent.change(await screen.findByLabelText(/Quy trình ký/), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('Trích yếu'), { target: { value: 'Tờ trình thử' } });
     return screen.getByRole('button', { name: /Lưu nháp và xem trước/ });
@@ -192,7 +193,7 @@ describe('Kiểm tra tệp và hạn chót phía trình duyệt', () => {
   const chonTep = (ten: string, kichThuoc: number, loai = 'application/pdf') => {
     const tep = new File(['x'], ten, { type: loai });
     Object.defineProperty(tep, 'size', { value: kichThuoc });
-    fireEvent.change(screen.getByLabelText(/Tệp PDF trình ký/), { target: { files: [tep] } });
+    fireEvent.change(screen.getByLabelText(/PDF dự thảo chưa vào sổ/), { target: { files: [tep] } });
   };
 
   it.each([
@@ -388,7 +389,8 @@ describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
       dang_cho: [], ten_nguoi_tao: 'A', han_chot: null, han_xu_ly_cap: '2026-10-24T06:39:00Z',
     } as never] });
     boc(<DanhSachPage hop="tat_ca" />);
-    expect((await screen.findAllByText(/Hạn cấp: \d{2}:\d{2} 24\/10\/2026/)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole('link', { name: /203\/BC/ })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/Hạn bước ký:/)).length).toBeGreaterThan(0);
   });
 
   it('số trên thẻ lọc nhanh tính theo cùng từ khóa với danh sách (không theo thẻ đang chọn)', async () => {
@@ -411,7 +413,7 @@ describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
     } as never] });
     boc(<DanhSachPage hop="tat_ca" />);
     await screen.findAllByText('204/BC — Báo cáo');
-    expect(screen.queryByText(/Hạn cấp:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Hạn bước ký:/)).not.toBeInTheDocument();
   });
 
   it('chi tiết hồ sơ hiện ghi chú của người trình', async () => {
@@ -431,6 +433,43 @@ describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByText('Gấp, trình trước thứ Sáu')).toBeInTheDocument();
+  });
+
+  it('hồ sơ PDF dự thảo đã ký xong dẫn tới đăng ký văn bản đi rồi mới cho liên kết', async () => {
+    const hoSo = {
+      id: 51, document_type: null, van_ban_id: null, so_hieu_van_ban: '05/TTr', trich_yeu_van_ban: 'Kế hoạch thử',
+      van_ban: { so_hieu: '05/TTr', trich_yeu: 'Kế hoạch thử' }, quy_trinh: 1, ma_quy_trinh: 'QT',
+      ten_quy_trinh: 'Duyệt', phien_ban_quy_trinh: 1, trang_thai: 'HOAN_THANH', han_chot: null,
+      ngay_gui: null, ngay_hoan_thanh: '2026-10-28T01:00:00Z', ly_do_tu_choi: '', ly_do_huy: '', ghi_chu: '',
+      ho_so_goc: null, phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64), create_by: 3,
+      ten_nguoi_tao: 'Văn thư', created_at: '2026-10-28T01:00:00Z', dang_cho: [], trang_thai_luot: 'HOAN_THANH',
+      qua_han: false, luot_trinh: [{
+        id: 52, so_luot: 1, luot_truoc: null, phien_ban_van_ban: '1', ma_bam_tai_lieu: 'a'.repeat(64),
+        trang_thai: 'HOAN_THANH', ly_do: '', thoi_diem_gui: '2026-10-28T01:00:00Z',
+        thoi_diem_hoan_thanh: '2026-10-28T02:00:00Z', thoi_diem_tu_choi: null, thoi_diem_huy: null,
+        trang_thai_tep_hoan_tat: 'THANH_CONG', loi_tep_hoan_tat: '', ma_bam_tep_hoan_tat: 'b'.repeat(64),
+        ma_bam_bang_chung: null, cap_ky: [], yeu_cau_sua: [],
+      }], lich_su: [],
+    } as unknown as HoSoChiTiet;
+    api.chiTiet.mockResolvedValue(hoSo);
+    api.tepGoc.mockRejectedValue(new ApiError(404, { code: 'khong_doc_duoc_tep', detail: 'x', fields: {} }));
+    api.timVanBanDi.mockResolvedValue([{ id: 71, so_hieu: '06/TTr', trich_yeu: 'Kế hoạch đã ký' }]);
+    api.lienKetVanBanDi.mockResolvedValue({ ...hoSo, document_type: 'vanbandi', van_ban_id: 71 } as HoSoChiTiet);
+    render(
+      <MemoryRouter initialEntries={['/approvals/51']}>
+        <SigningContext.Provider value={{ toi: TOI, taiLaiToi: () => undefined }}>
+          <Routes><Route path="/approvals/:id" element={<ChiTietPage />} /></Routes>
+        </SigningContext.Provider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('link', { name: /Mở Văn bản đi để đăng ký văn bản đã ký/ }))
+      .toHaveAttribute('href', '/documents/outgoing');
+    fireEvent.change(await screen.findByLabelText(/Chọn văn bản đi đã đăng ký/), { target: { value: '71' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Liên kết văn bản đi' }));
+    const hop = await screen.findByRole('dialog', { name: 'Liên kết văn bản đi' });
+    expect(within(hop).getByText(/06\/TTr — Kế hoạch đã ký/)).toBeInTheDocument();
+    fireEvent.click(within(hop).getByRole('button', { name: 'Xác nhận' }));
+    await waitFor(() => expect(api.lienKetVanBanDi).toHaveBeenCalledWith(51, 71));
   });
 
   it('sau khi hủy hồ sơ: số ở thanh tab được tải lại ngay (không chờ đổi trang)', async () => {
@@ -459,7 +498,7 @@ describe('Hạn chót, ghi chú và tìm kiếm tự áp dụng', () => {
     await waitFor(() => expect(lamMoiDem).toHaveBeenCalledTimes(1));
   });
 
-  it('trang Văn bản công khai: gõ từ khóa tự áp dụng sau một nhịp, không cần bấm Lọc; xóa chữ thì bỏ lọc', async () => {
+  it('trang Tệp hồ sơ: gõ từ khóa tự áp dụng sau một nhịp, không cần bấm Lọc; xóa chữ thì bỏ lọc', async () => {
     api.taiLieu.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
     boc(<TaiLieuPage />);
     const o = await screen.findByRole('searchbox');

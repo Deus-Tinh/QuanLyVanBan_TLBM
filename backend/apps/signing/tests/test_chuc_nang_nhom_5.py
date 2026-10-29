@@ -54,8 +54,8 @@ class ThongBaoTests(KyBase):
         mail.outbox.clear()
         pk = self.gui_moi()
         self.assertEqual(thong_bao(self.ky1, "CAN_KY").filter(trinh_ky_id=pk).count(), 1)  # gửi lặp không tạo thêm
-        self.assertFalse(thong_bao(self.ky2, "CAN_KY").filter(trinh_ky_id=pk).exists())  # ký chính bị ký nháy chặn
-        self.assertEqual([m.to for m in mail.outbox], [["nguoi1@demo.local"]])
+        self.assertEqual(thong_bao(self.ky2, "CAN_KY").filter(trinh_ky_id=pk).count(), 1)
+        self.assertCountEqual([m.to[0] for m in mail.outbox], ["nguoi1@demo.local", "nguoi2@demo.local"])
         self.assertIn("Cần ký duyệt", mail.outbox[0].subject)
         self.assertIn(f"/approvals/{pk}", mail.outbox[0].body)
         email = thong_bao(self.ky1, "CAN_KY", enums.KenhThongBao.EMAIL).get(trinh_ky_id=pk)
@@ -64,7 +64,7 @@ class ThongBaoTests(KyBase):
     def test_flow_events_reach_people_in_flow_but_not_actor(self):
         pk = self.gui_moi()
         with self.captureOnCommitCallbacks(execute=True):
-            self.assertEqual(self.ky(self.ky1).status_code, 200)  # ký nháy xong: mở ký chính
+            self.assertEqual(self.ky(self.ky1).status_code, 200)  # hai người ký chính được mở cùng cấp
         self.assertTrue(thong_bao(self.ky2, "CAN_KY").filter(trinh_ky_id=pk).exists())
         with self.captureOnCommitCallbacks(execute=True):
             self.assertEqual(self.ky(self.ky2).status_code, 200)  # đóng cấp 1: mở cấp 2
@@ -102,7 +102,7 @@ class ThongBaoTests(KyBase):
         call_command("gui_thong_bao_trinh_ky", stdout=mock.MagicMock())
         email.refresh_from_db()
         self.assertEqual(email.trang_thai, enums.TrangThaiThongBao.DA_GUI)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertCountEqual([m.to[0] for m in mail.outbox], ["nguoi1@demo.local", "nguoi2@demo.local"])
 
     def test_user_without_email_only_in_app_and_api_lists_own(self):
         User.objects.filter(pk=self.ky1.pk).update(email="")

@@ -5,8 +5,8 @@
   (nhóm `TP`) cùng đơn vị với người ký. Người ký không tự ủy quyền hồ sơ của mình. Hệ thống chưa có mã nhóm
   (chưa có app `authorization`) thì người có `delegate_trinhky` được coi là quản trị, như `to_chuc.la_quan_tri`.
 - Chỉ ủy quyền dòng người ký đang `CHO_KY` của lượt trình hiện hành đang `CHO_KY` (cấp đang ký hoặc chưa mở).
-- Người nhận: tài khoản đang hoạt động, có `sign_trinhky`, chưa có mặt trong cùng cấp. Danh sách "thẩm quyền
-  tương đương" theo chức danh chưa có ở Nhóm 7 nên MVP chưa giới hạn thêm (plan mục 12).
+- Người nhận: tài khoản đang hoạt động, có `sign_trinhky`, chưa có mặt trong cùng cấp và giữ chức danh
+  được quản trị cho phép ký thay chức danh của người ký.
 - Dòng người ký đổi `nguoi_ky` sang người nhận, ghi `uy_quyen_tu`, `ly_do_uy_quyen`, `ngay_uy_quyen`; lượt trình,
   mã băm, vị trí ký và thời điểm mở giữ nguyên. DDL chưa có cột `hinh_thuc_ky` nên chưa ghi thể thức KT./TL./TUQ.
 - Ghi nhật ký `UY_QUYEN_KY`, thông báo `UY_QUYEN` cho người nhận và người ủy quyền. Chống lặp bằng Idempotency-Key.
@@ -19,7 +19,7 @@ from rest_framework import status
 
 from .. import enums
 from ..errors import ConflictError, SigningError
-from ..models import SigningRequest, SigningRequestStepSigner
+from ..models import SigningDelegationRole, SigningRequest, SigningRequestStepSigner
 from ..permissions import KY_TRINH_KY, UY_QUYEN_TRINH_KY, co_quyen
 from ..tich_hop import to_chuc
 from . import thong_bao
@@ -28,6 +28,29 @@ from .trinh_ky import _thao_tac_da_xu_ly, luot_hien_hanh
 
 HANH_DONG = "UY_QUYEN_KY"
 MA_NHOM_LANH_DAO_CO_QUAN = "BGD"
+
+
+def chuc_vu_goc(dong):
+    """Giữ thẩm quyền của vị trí ban đầu khi chuyển người ký nhiều lần."""
+    if dong.chuc_vu_goc_uy_quyen_id:
+        return dong.chuc_vu_goc_uy_quyen_id
+    if dong.uy_quyen_tu_id:
+        return None  # lịch sử cũ không lưu chức danh gốc; không suy đoán từ chức danh hiện tại
+    return dong.chuc_vu_id
+
+
+def kiem_tra_tham_quyen_ky(dong, nguoi_nhan):
+    """Kiểm lại chức danh được phép ký thay từ dữ liệu hiện tại ngay trước khi ký."""
+    chuc_vu_giao = chuc_vu_goc(dong)
+    duoc_phep = chuc_vu_giao and nguoi_nhan.chuc_vu_id and SigningDelegationRole.objects.select_for_update().filter(
+        chuc_vu_giao_id=chuc_vu_giao, chuc_vu_nhan_id=nguoi_nhan.chuc_vu_id,
+    ).first()
+    if dong.uy_quyen_tu_id and not duoc_phep:
+        raise _loi(
+            "uy_quyen_khong_con_hop_le",
+            "Người nhận không còn chức danh được phép ký thay; cần kiểm tra và ủy quyền lại.",
+            status.HTTP_403_FORBIDDEN,
+        )
 
 
 def co_quyen_uy_quyen(nguoi, nguoi_ky):
@@ -76,18 +99,29 @@ def uy_quyen(yeu_cau, nguoi, *, dong_nguoi_ky, nguoi_nhan, ly_do, khoa_chong_tru
     if nhan is None or not co_quyen(nhan, KY_TRINH_KY):
         raise _loi("nguoi_nhan_khong_hop_le", "Người nhận ủy quyền không hoạt động hoặc không có quyền ký.",
                    nguoi_nhan=["Không hợp lệ."])
+    if dong.uy_quyen_tu_id and dong.uy_quyen_tu_id == nhan.pk:
+        raise ConflictError(
+            code="uy_quyen_vong_lap",
+            detail="Không thể ủy quyền lại cho người đã giao quyền ban đầu.",
+        )
     if dong.buoc_ky.nguoi_ky_set.filter(nguoi_ky=nhan).exists():
         raise ConflictError(code="nguoi_nhan_da_co_trong_cap", detail="Người nhận đã có mặt trong cùng cấp ký.")
+    chuc_vu_giao = chuc_vu_goc(dong)
+    if not chuc_vu_giao or not nhan.chuc_vu_id or not SigningDelegationRole.objects.filter(
+        chuc_vu_giao_id=chuc_vu_giao, chuc_vu_nhan_id=nhan.chuc_vu_id,
+    ).exists():
+        raise _loi("nguoi_nhan_khong_du_tham_quyen", "Chức danh người nhận chưa được phép ký thay.")
 
     nguoi_cu = dong.nguoi_ky
     dong.uy_quyen_tu = dong.uy_quyen_tu or nguoi_cu  # ủy quyền tiếp vẫn giữ người được giao ban đầu
+    dong.chuc_vu_goc_uy_quyen_id = chuc_vu_giao
     dong.nguoi_ky = nhan
     dong.ten_nguoi_ky = to_chuc.ten_hien_thi(nhan) or nhan.get_username()
     dong.ten_chuc_vu = to_chuc.ten_chuc_vu(nhan) or None
     dong.chuc_vu_id = getattr(nhan, "chuc_vu_id", None)
     dong.ly_do_uy_quyen = ly_do
     dong.ngay_uy_quyen = timezone.now()
-    dong.save(update_fields=["uy_quyen_tu", "nguoi_ky", "ten_nguoi_ky", "ten_chuc_vu", "chuc_vu_id",
+    dong.save(update_fields=["uy_quyen_tu", "chuc_vu_goc_uy_quyen", "nguoi_ky", "ten_nguoi_ky", "ten_chuc_vu", "chuc_vu_id",
                              "ly_do_uy_quyen", "ngay_uy_quyen"])
     ghi_nhat_ky(nguoi, "signing_request_step_signer", dong.pk, HANH_DONG, trinh_ky=yeu_cau, luot_trinh=luot,
                 buoc_ky=dong, chi_tiet=f"{to_chuc.ten_hien_thi(nguoi_cu)} → {dong.ten_nguoi_ky}: {ly_do}",
