@@ -32,8 +32,16 @@ Lịch sử & Nhật ký:
 import os
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import IntegrityError, models, transaction
+from django.db.models import F, Value
+from django.db.models.functions import Trim
+from django.db.models.lookups import Exact
 from django.utils import timezone
+
+from document_storage import build_dated_path, get_document_storage
+
+DB_NOW = models.Func(function="now", output_field=models.DateTimeField())
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -366,6 +374,13 @@ class PhamVi(models.TextChoices):
 class LoaiVanBan(models.TextChoices):
     DEN = "DEN", "Văn bản Đến"
     DI = "DI", "Văn bản Đi"
+    MAT = "MAT", "Văn bản Mật"
+
+
+def canonical_document_kind(document_kind):
+    """Map the compatibility alias to the kind of its shared backing table."""
+    value = str(document_kind).lower()
+    return "vanbanden" if value == "vanbanmat" else value
 
 
 class HieuLuc(models.TextChoices):
@@ -394,14 +409,16 @@ class BaseVanBan(models.Model):
         max_length=20,
         choices=PhamVi.choices,
         default=PhamVi.NOI_BO,
+        db_default=PhamVi.NOI_BO,
         db_index=True,
         help_text="NOI_BO: Văn bản nội bộ; HAN_CHE: Văn bản hạn chế (mật nội bộ).",
     )
 
     # ── Năm & Ký hiệu ──────────────────────────────────────────────
-    nam = models.PositiveSmallIntegerField(
+    nam = models.SmallIntegerField(
         "Năm",
         default=timezone.now().year,
+        validators=[MinValueValidator(0)],
         db_index=True,
         help_text="Mặc định năm hiện tại, cho phép sửa.",
     )
@@ -422,12 +439,14 @@ class BaseVanBan(models.Model):
         max_length=255,
         blank=True,
         default="",
+        null=True,
     )
     chuc_vu = models.CharField(
         "Chức vụ người ký",
         max_length=255,
         blank=True,
         default="",
+        null=True,
     )
 
     # ── Hiệu lực ──────────────────────────────────────────────────
@@ -436,7 +455,6 @@ class BaseVanBan(models.Model):
         max_length=20,
         choices=HieuLuc.choices,
         default=HieuLuc.CON_HIEU_LUC,
-        db_index=True,
     )
     ngay_het_hieu_luc = models.DateTimeField(
         "Ngày hết hiệu lực",
@@ -448,18 +466,21 @@ class BaseVanBan(models.Model):
         max_length=500,
         blank=True,
         default="",
+        null=True,
     )
 
     # ── Ghi chú & Cờ hệ thống ──────────────────────────────────────
-    ghi_chu = models.TextField("Ghi chú", blank=True, default="")
+    ghi_chu = models.TextField("Ghi chú", blank=True, default="", null=True)
     hien_thi = models.BooleanField(
         "Trạng thái hiển thị",
         default=True,
+        db_default=True,
         help_text="False = ẩn với user thường, admin vẫn thấy (đổi màu).",
     )
     gui_mail_toan_he_thong = models.BooleanField(
         "Gửi mail toàn hệ thống",
         default=False,
+        db_default=False,
     )
 
     # ── Audit ──────────────────────────────────────────────────────
@@ -472,8 +493,8 @@ class BaseVanBan(models.Model):
         db_column="nguoi_tao_id",
         related_name="%(class)s_created",
     )
-    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True)
-    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True)
+    created_at = models.DateTimeField("Ngày tạo", auto_now_add=True, db_default=DB_NOW)
+    updated_at = models.DateTimeField("Ngày cập nhật", auto_now=True, db_default=DB_NOW)
 
     class Meta:
         abstract = True
@@ -486,7 +507,8 @@ class BaseVanBan(models.Model):
             )
 
     def save(self, *args, **kwargs):
-        if self.pk:
+        allow_scope_change = kwargs.pop("allow_scope_change", False) or getattr(self, "_allow_scope_change", False)
+        if self.pk and not allow_scope_change:
             old_inst = self.__class__.objects.filter(pk=self.pk).values("pham_vi").first()
             if old_inst and old_inst["pham_vi"] != self.pham_vi:
                 raise ValidationError("Phạm vi văn bản không được đổi sau khi tạo.")
@@ -497,6 +519,11 @@ class BaseVanBan(models.Model):
     def delete(self, *args, **kwargs):
         if self.pham_vi == self.PhamVi.HAN_CHE:
             raise ValidationError("Văn bản hạn chế không được phép xóa.")
+        # Dọn dẹp liên kết Loại văn bản và Hồ sơ trước để thỏa mãn Trigger CSDL PostgreSQL
+        if hasattr(self, "danhmuc"):
+            self.danhmuc.all().delete()
+        if hasattr(self, "hoso"):
+            self.hoso.all().delete()
         return super().delete(*args, **kwargs)
 
     @property
@@ -526,9 +553,18 @@ class VanBanDen(BaseVanBan):
     loai = "DEN"
     document_kind = "vanbanden"
 
-    so_thu_tu = models.PositiveIntegerField(
+    ngay_van_ban = models.DateTimeField(
+        "Ngày văn bản",
+        default=timezone.now,
+        null=True,
+        blank=True,
+        help_text="Dùng để lọc/sắp xếp danh sách.",
+    )
+
+    so_thu_tu = models.IntegerField(
         "Số đến",
         default=1,
+        validators=[MinValueValidator(0)],
         help_text="Tự động tăng theo năm (Số đến).",
     )
     ngay_den = models.DateTimeField(
@@ -541,6 +577,7 @@ class VanBanDen(BaseVanBan):
         max_length=500,
         blank=True,
         default="",
+        null=True,
     )
     nguoi_nhan = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
@@ -590,6 +627,7 @@ class VanBanDen(BaseVanBan):
             models.Index(fields=["ngay_den"], name="idx_vbden_ngay_den"),
             models.Index(fields=["so_hieu"], name="idx_vanbanden_sohieu"),
             models.Index(fields=["nam"], name="idx_vanbanden_nam"),
+            models.Index(fields=["hieu_luc"], name="idx_vanbanden_hieu_luc"),
         ]
         constraints = [
             models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbanden_nam_stt"),
@@ -600,6 +638,16 @@ class VanBanDen(BaseVanBan):
             models.CheckConstraint(
                 condition=~models.Q(pham_vi="HAN_CHE") | models.Q(gui_mail_toan_he_thong=False),
                 name="chk_vanbanden_han_che_khong_mail_toan_he_thong",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(hieu_luc="HET_VA_THAY_THE")
+                    | (
+                        models.Q(link_thay_the__isnull=False)
+                        & ~Exact(Trim(F("link_thay_the")), Value(""))
+                    )
+                ),
+                name="chk_vanbanden_link_thay_the",
             ),
         ]
 
@@ -733,9 +781,10 @@ class VanBanDi(BaseVanBan):
     loai = "DI"
     document_kind = "vanbandi"
 
-    so_thu_tu = models.PositiveIntegerField(
+    so_thu_tu = models.IntegerField(
         "Số đi",
         default=1,
+        validators=[MinValueValidator(0)],
         help_text="Tự động tăng theo năm (Số đi).",
     )
     ngay_ban_hanh = models.DateTimeField(
@@ -800,6 +849,7 @@ class VanBanDi(BaseVanBan):
             models.Index(fields=["ngay_ban_hanh"], name="idx_vbdi_ngay_ban_hanh"),
             models.Index(fields=["so_hieu"], name="idx_vanbandi_sohieu"),
             models.Index(fields=["nam"], name="idx_vanbandi_nam"),
+            models.Index(fields=["hieu_luc"], name="idx_vanbandi_hieu_luc"),
         ]
         constraints = [
             models.UniqueConstraint(fields=["nam", "so_thu_tu"], name="uq_vanbandi_nam_stt"),
@@ -810,6 +860,16 @@ class VanBanDi(BaseVanBan):
             models.CheckConstraint(
                 condition=~models.Q(pham_vi="HAN_CHE") | models.Q(gui_mail_toan_he_thong=False),
                 name="chk_vanbandi_han_che_khong_mail_toan_he_thong",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(hieu_luc="HET_VA_THAY_THE")
+                    | (
+                        models.Q(link_thay_the__isnull=False)
+                        & ~Exact(Trim(F("link_thay_the")), Value(""))
+                    )
+                ),
+                name="chk_vanbandi_link_thay_the",
             ),
         ]
 
@@ -963,34 +1023,12 @@ class VanBanDiNoiBanHanh(models.Model):
 
 def document_attachment_path(instance, filename):
     """
-    Xác định đường dẫn lưu file đính kèm:
-    02_documents/<loai>/<muc_do>/<nam>/<thang>/<ngay>/<filename>
-    - <loai>: den | di
-    - <muc_do>: thuong | han_che
+    Đường dẫn lưu tệp đính kèm trong DOCUMENT_STORAGE_ROOT:
+    van-ban-den|van-ban-di/YYYY/MM/DD/<uuid>.<ext> (ngày upload). Tên gốc giữ ở cột `name`.
     """
     doc = getattr(instance, "document", None)
-    subfolder = "den"
-    muc_do = "thuong"
-    date_val = None
-    year = None
-
-    if doc:
-        loai = getattr(doc, "loai", "DEN")
-        subfolder = "di" if loai == "DI" else "den"
-        pham_vi = getattr(doc, "pham_vi", "NOI_BO")
-        muc_do = "han_che" if pham_vi == "HAN_CHE" else "thuong"
-        year = getattr(doc, "nam", timezone.now().year)
-        if loai == "DEN":
-            date_val = getattr(doc, "ngay_den", None) or getattr(doc, "ngay_van_ban", None)
-        else:
-            date_val = getattr(doc, "ngay_ban_hanh", None) or getattr(doc, "ngay_van_ban", None)
-
-    if not date_val:
-        date_val = timezone.now()
-    if not year:
-        year = date_val.year
-
-    return f"02_documents/{subfolder}/{muc_do}/{year}/{date_val.month:02d}/{date_val.day:02d}/{filename}"
+    module = "van-ban-di" if getattr(doc, "loai", "DEN") == "DI" else "van-ban-den"
+    return build_dated_path(module, filename)
 
 
 class BaseDocumentAttachment(models.Model):
@@ -1000,13 +1038,16 @@ class BaseDocumentAttachment(models.Model):
     file = models.FileField(
         "File đính kèm",
         upload_to=document_attachment_path,
+        storage=get_document_storage,
         db_column="path",
         max_length=500,
         default="",
         help_text="Chấp nhận: PDF, DOC, DOCX, JPG, JPEG, PNG. Tối đa 20MB.",
     )
-    is_deleted = models.BooleanField("Cờ xóa mềm", default=False)
-    created_at = models.DateTimeField("Ngày upload", default=timezone.now, db_column="created_at")
+    is_deleted = models.BooleanField("Cờ xóa mềm", default=False, db_default=False)
+    created_at = models.DateTimeField(
+        "Ngày upload", default=timezone.now, db_default=DB_NOW, db_column="created_at"
+    )
     nguoi_tao = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name="Người tải lên",
@@ -1150,7 +1191,7 @@ class DocumentViewLog(models.Model):
         choices=DocumentKind.choices,
         default=DocumentKind.VANBANDEN,
     )
-    document_id = models.PositiveBigIntegerField("ID văn bản")
+    document_id = models.BigIntegerField("ID văn bản", validators=[MinValueValidator(0)])
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -1165,6 +1206,7 @@ class DocumentViewLog(models.Model):
         verbose_name_plural = "Lịch sử xem văn bản"
         unique_together = [("document_type", "document_id", "user")]
         ordering = ["-viewed_at"]
+        indexes = [models.Index(fields=["document_type", "document_id"], name="idx_viewlog_document")]
 
     def __str__(self):
         return f"{self.user} xem {self.document_type}#{self.document_id} lúc {self.viewed_at}"
@@ -1213,7 +1255,7 @@ class DocumentAccessLog(models.Model):
     )
     tep_id = models.BigIntegerField("ID tệp tin", null=True, blank=True)
     dia_chi_ip = models.CharField("Địa chỉ IP", max_length=45, null=True, blank=True)
-    created_at = models.DateTimeField("Thời điểm", auto_now_add=True)
+    created_at = models.DateTimeField("Thời điểm", auto_now_add=True, db_default=DB_NOW)
 
     class Meta:
         db_table = "documents_access_log"
@@ -1339,3 +1381,15 @@ class DocumentAttachmentFacade:
 
 
 DocumentAttachment = DocumentAttachmentFacade
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Backward-Compatibility Aliases (Văn bản Mật gộp vào Văn bản Hạn chế)
+# ═══════════════════════════════════════════════════════════════════
+VanBanMat = VanBanDen
+VanBanMatAttachment = VanBanDenAttachment
+VanBanMatNguoiNhan = VanBanDenNguoiNhan
+VanBanMatDonViNhan = VanBanDenDonViNhan
+VanBanMatDanhmuc = VanBanDenDanhmuc
+VanBanMatHoSo = VanBanDenHoSo
+VanBanMatNoiBanHanh = VanBanDiNoiBanHanh

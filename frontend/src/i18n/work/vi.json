@@ -1,0 +1,15 @@
+{
+  "navigation": {
+    "tasks": "Quản Lý Công Việc"
+  },
+  "pages": {
+    "tasks": {
+      "title": "Giao Việc & Quản Lý Tiến Độ Công Việc",
+      "module": "Module 6: Công việc",
+      "assignedTeam": "Nhóm 6 (Phân hệ Quản lý công việc)",
+      "codeRef": "Mục 6.1 · Độ khó: 0.80",
+      "isGroup1": false,
+      "desc": "Danh sách việc, hạn xử lý, người chủ trì/tham gia, ý kiến xử lý và xuất Excel."
+    }
+  }
+}

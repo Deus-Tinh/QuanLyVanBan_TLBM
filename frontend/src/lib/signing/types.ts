@@ -7,7 +7,6 @@ export type TrangThaiLuot = 'CHO_KY' | 'YEU_CAU_SUA' | 'HOAN_THANH' | 'TU_CHOI' 
 export type TrangThaiCap = 'CHUA_MO' | 'DANG_KY' | 'TAM_DUNG' | 'HOAN_THANH';
 export type TrangThaiNguoiKy = 'CHO_KY' | 'DA_KY' | 'TU_CHOI' | 'YEU_CAU_SUA';
 export type TrangThaiTepHoanTat = 'DANG_XU_LY' | 'LOI' | 'THANH_CONG' | null;
-export type MucDo = 'THUONG' | 'KHAN' | 'HOA_TOC';
 export type VaiTroKy = 'KY_NHAY' | 'KY_CHINH';
 export type PhamViQuyTrinh = 'CONG_TY' | 'PHONG_BAN';
 
@@ -34,6 +33,8 @@ export interface NguoiKyCauHinh {
   nguoi_ky: number | null;
   ten_nguoi_ky: string | null;
   chuc_vu_id: number | null;
+  /** Tên chức vụ theo Danh mục chức vụ (CBNV) khi cấu hình theo chức vụ */
+  ten_chuc_vu: string | null;
   pham_vi_chuc_vu: string | null;
   vai_tro_ky: VaiTroKy;
   chan_ky_chinh: boolean;
@@ -59,7 +60,10 @@ export interface QuyTrinh {
   trang_thai: 'NHAP' | 'HOAT_DONG' | 'NGUNG';
   pham_vi: PhamViQuyTrinh;
   don_vi_ap_dung_id: number | null;
+  ten_don_vi_ap_dung: string | null;
   cap_ky: CapKyQuyTrinh[];
+  /** Số hồ sơ trình ký (mọi trạng thái) dùng phiên bản này; khác 0 thì không xóa được */
+  so_ho_so: number;
 }
 
 export interface ChuKyTomTat {
@@ -80,10 +84,16 @@ export interface NguoiKyLuot {
   vai_tro_ky: VaiTroKy;
   chan_ky_chinh: boolean;
   trang_thai: TrangThaiNguoiKy;
+  /** Backend policy projection for the current user; missing means not eligible. */
+  co_the_uy_quyen?: boolean;
   thoi_diem_mo: string | null;
   ngay_ky: string | null;
   ngay_tu_choi: string | null;
   ly_do_tu_choi: string;
+  uy_quyen_tu: number | null;
+  ten_nguoi_uy_quyen: string | null;
+  ly_do_uy_quyen: string;
+  ngay_uy_quyen: string | null;
   trang_ky: number | null;
   toa_do_x: string | null;
   toa_do_y: string | null;
@@ -136,6 +146,7 @@ export interface NhatKy {
   id: number;
   hanh_dong: string;
   nguoi_thuc_hien: number;
+  ten_nguoi_thuc_hien: string;
   trang_thai_truoc: string;
   trang_thai_sau: string;
   chi_tiet: string;
@@ -152,14 +163,16 @@ export interface DangCho {
 
 export interface HoSo {
   id: number;
-  document_type: string;
-  van_ban_id: number;
+  /** Văn bản trình ký: văn bản đi đã đăng ký hoặc PDF dự thảo chưa vào sổ; sau duyệt có thể được liên kết. */
+  document_type: string | null;
+  van_ban_id: number | null;
+  so_hieu_van_ban: string;
+  trich_yeu_van_ban: string;
   van_ban: { so_hieu?: string; trich_yeu?: string };
   quy_trinh: number;
   ma_quy_trinh: string;
   ten_quy_trinh: string;
   phien_ban_quy_trinh: number;
-  muc_do: MucDo;
   trang_thai: TrangThaiHoSo;
   han_chot: string | null;
   ngay_gui: string | null;
@@ -174,6 +187,19 @@ export interface HoSo {
   ten_nguoi_tao: string;
   created_at: string;
   dang_cho: DangCho[];
+  /** Trạng thái lượt trình hiện hành (YEU_CAU_SUA: đang trả lại để sửa) */
+  trang_thai_luot: TrangThaiLuot | null;
+  qua_han: boolean;
+  qua_han_cap?: boolean;
+  han_xu_ly_cap?: string | null;
+}
+
+/** Một trang danh sách (phân trang DRF: `page`, `page_size`). */
+export interface TrangKetQua<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 }
 
 export interface HoSoChiTiet extends HoSo {
@@ -184,6 +210,7 @@ export interface HoSoChiTiet extends HoSo {
 export interface TinNhan {
   id: number;
   nguoi_viet: number;
+  ten_nguoi_viet?: string;
   noi_dung: string;
   created_at: string;
 }
@@ -233,6 +260,110 @@ export interface VanBanDi {
   id: number;
   so_hieu: string;
   trich_yeu: string;
+  attachments?: VanBanDiTepDinhKem[];
+}
+
+export interface VanBanDiTepDinhKem {
+  id: number;
+  name: string;
+  file: string | null;
+  file_size: number;
+  is_deleted: boolean;
+}
+
+/** Bộ lọc trạng thái của danh sách hồ sơ (server: tham số `nhanh`): đang chờ ký, quá hạn, đã ký xong, trả lại để sửa. */
+export type LocNhanh = 'cho_ky' | 'qua_han' | 'hoan_thanh' | 'tra_lai';
+
+/** Số hồ sơ theo từng thẻ lọc nhanh của hộp (`GET /trinh-ky/thong-ke/`). */
+export type ThongKeHoSo = Record<LocNhanh | 'tat_ca', number>;
+
+/** Bộ lọc danh sách hồ sơ (server kiểm tham số; ngày dạng YYYY-MM-DD). */
+export interface BoLocHoSo {
+  nhanh?: LocNhanh | '';
+  trang_thai?: string;
+  quy_trinh?: string;
+  q?: string;
+  tu_ngay?: string;
+  den_ngay?: string;
+}
+
+export type LoaiTepTaiLieu = 'DU_THAO' | 'LUOT' | 'HOAN_TAT';
+
+/** Một tệp trên trang tài liệu (`GET /tai-lieu/`). */
+export interface TepTaiLieu {
+  trinh_ky: number;
+  trang_thai_ho_so: TrangThaiHoSo;
+  ten_quy_trinh: string;
+  van_ban: { so_hieu?: string; trich_yeu?: string };
+  loai: LoaiTepTaiLieu;
+  luot: number | null;
+  so_luot: number | null;
+  phien_ban: string | null;
+  ma_bam: string;
+  thoi_diem: string;
+  ten_tep: string;
+}
+
+export interface BoLocTaiLieu {
+  q?: string;
+  loai?: LoaiTepTaiLieu | '';
+  tu_ngay?: string;
+  den_ngay?: string;
+}
+
+export type LoaiThongBao =
+  | 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY' | 'UY_QUYEN' | 'TIN_NHAN' | 'NHAC_HAN' | 'QUA_HAN';
+
+/** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP và trạng thái EMAIL). */
+export interface ThongBaoTrinhKy {
+  id: number;
+  loai_thong_bao: LoaiThongBao;
+  trinh_ky: number;
+  van_ban: string;
+  trang_thai_ho_so: TrangThaiHoSo;
+  ten_quy_trinh: string;
+  created_at: string;
+  kenh_in_app?: boolean;
+  email_da_gui?: boolean;
+  email_trang_thai?: string | null;
+  email_nguoi_nhan?: string | null;
+  nguoi_thao_tac?: string | null;
+  ly_do?: string | null;
+  /** Hạn xử lý của cấp ký (thông báo cần ký, nhắc hạn, quá hạn) */
+  han_xu_ly?: string | null;
+}
+
+/** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */
+export interface DonViLuaChon {
+  id: number;
+  ten: string;
+}
+
+/** Chức vụ trong Danh mục chức vụ của phân hệ CBNV (`GET /api/positions/?all=true`). */
+export interface ChucVu {
+  id: number;
+  name: string;
+  display_order: number;
+}
+
+/** Cán bộ đang giữ một chức vụ (`GET /can-bo-theo-chuc-vu/`), để hiện tên người khớp người ký theo chức vụ. */
+export interface CanBoChucVu {
+  id: number;
+  ten: string;
+  chuc_vu: string | null;
+  don_vi_id: number | null;
+  don_vi: string | null;
+}
+
+/** Cán bộ trong danh bạ của phân hệ CBNV (`GET /api/accounts/staffs/`). */
+export interface CanBo {
+  id: number;
+  username: string;
+  ho_ten: string;
+  don_vi_id: number | null;
+  don_vi_ten: string;
+  chuc_vu_id: number | null;
+  chuc_vu_ten: string;
 }
 
 export interface NguoiDungTim {
@@ -241,6 +372,7 @@ export interface NguoiDungTim {
   ten_dang_nhap: string;
   chuc_vu: string | null;
   don_vi_id: number | null;
+  don_vi: string | null;
 }
 
 /** Lỗi nghiệp vụ chuẩn của backend: {code, detail, fields}. */

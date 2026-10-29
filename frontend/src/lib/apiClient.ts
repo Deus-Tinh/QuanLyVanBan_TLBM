@@ -54,7 +54,12 @@ async function handleResponse<T>(res: Response): Promise<T> {
   if (isJson && typeof res.json === 'function') {
     data = await res.json().catch(() => ({}));
   } else if (typeof res.text === 'function') {
-    data = await res.text();
+    const text = await res.text();
+    const isHtml =
+      Boolean(contentType?.includes('text/html')) || /^\s*<!doctype\s+html|^\s*<html\b/i.test(text);
+    data = !res.ok && isHtml
+      ? { error: t('common.apiError', { status: String(res.status) }) }
+      : text;
   } else {
     data = {};
   }
@@ -176,6 +181,13 @@ export async function apiClient<T = unknown>(
           });
         });
       }
+    } else {
+      // Không có refresh token -> Dọn sạch session và đăng xuất ngay
+      localStorage.removeItem('tlbm_access_token');
+      localStorage.removeItem('tlbm_token');
+      localStorage.removeItem('tlbm_refresh_token');
+      localStorage.removeItem('tlbm_session');
+      window.dispatchEvent(new Event('tlbm_auth_changed'));
     }
   }
 
@@ -241,13 +253,16 @@ export async function downloadBlob(endpoint: string, defaultFilename?: string): 
   const link = document.createElement('a');
   link.href = blobUrl;
 
-  const disposition = response.headers.get('Content-Disposition');
-  let filename = defaultFilename || t('common.defaultDownloadFilename');
-  if (disposition && disposition.includes('filename=')) {
-    const match = disposition.match(/filename="?([^";]+)"?/);
-    if (match && match[1]) {
-      filename = match[1];
+  let filename = defaultFilename;
+  if (!filename) {
+    const disposition = response.headers.get('Content-Disposition');
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      if (match && match[1]) {
+        filename = match[1];
+      }
     }
+    filename = filename || t('common.defaultDownloadFilename');
   }
 
   link.setAttribute('download', filename);

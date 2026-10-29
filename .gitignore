@@ -45,6 +45,7 @@ venv.bak/
 backend/db.sqlite3
 backend/media/
 media/
+storage/
 data/chroma_db/
 data/docs/*
 !data/docs/.gitkeep
@@ -110,6 +111,7 @@ desktop.ini
 CHANGELOG_REMOVE_MOCK_DATA.md
 frontend/CHANGELOG_REMOVE_MOCK_DATA.md
 CHAY_FULL_STACK.bat
+run_all.bat
 chay_du_an.bat
 AGENTS.md
 

@@ -4,12 +4,17 @@
  * dùng cùng khóa, nên server không xử lý trùng.
  */
 import apiClient, { ApiError } from '@lib/apiClient';
+import { resolveDocumentApiUrl } from '@lib/routes';
 import type {
-  BangChung, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh, ThamSoKdf, TinNhan,
-  TraoDoi, VanBanDi, ViTriKy,
+  BangChung, BoLocHoSo, BoLocTaiLieu, CanBo, CanBoChucVu, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
+  ThamSoKdf, ThongBaoTrinhKy, TinNhan, TrangKetQua, TraoDoi, VanBanDi, VanBanDiTepDinhKem, ViTriKy,
 } from './types';
 
 export const SIGNING_BASE = '/api/v1/signing';
+/** Số hồ sơ mỗi trang danh sách (server mặc định 10, tối đa 100). */
+export const SO_HO_SO_MOI_TRANG = 10;
+/** Số thông báo tối đa máy chủ trả (mới nhất trước), khớp `thong_bao.cua_toi`. */
+export const SO_THONG_BAO_TOI_DA = 50;
 
 export function taoKhoaChongTrung(): string {
   return crypto.randomUUID();
@@ -57,10 +62,27 @@ export const signingApi = {
   toi: () => apiClient.get<NguoiDungHienTai>(`${SIGNING_BASE}/toi/`),
 
   // ── Hồ sơ ────────────────────────────────────────────────────────────────
-  danhSach: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', trang_thai?: string) =>
-    apiClient.get<HoSo[]>(`${SIGNING_BASE}/trinh-ky/?hop=${hop}${trang_thai ? `&trang_thai=${trang_thai}` : ''}`),
+  danhSach: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', loc: BoLocHoSo = {}, trang = 1) => {
+    const tham_so = new URLSearchParams({ hop, page: String(trang), page_size: String(SO_HO_SO_MOI_TRANG) });
+    Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
+    return apiClient.get<TrangKetQua<HoSo>>(`${SIGNING_BASE}/trinh-ky/?${tham_so}`);
+  },
+  /** Số hồ sơ theo thẻ lọc nhanh; `loc` (từ khóa, quy trình, khoảng ngày) làm số khớp với danh sách đang xem. */
+  thongKe: (hop: 'can_toi_ky' | 'toi_gui' | 'tat_ca', loc: BoLocHoSo = {}) => {
+    const tham_so = new URLSearchParams({ hop });
+    Object.entries(loc).forEach(([k, v]) => k !== 'nhanh' && v && tham_so.set(k, v));
+    return apiClient.get<ThongKeHoSo>(`${SIGNING_BASE}/trinh-ky/thong-ke/?${tham_so}`);
+  },
   chiTiet: (id: number) => apiClient.get<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`),
   taoNhap: (form: FormData) => postForm<HoSoChiTiet>('/trinh-ky/', form),
+  /** Chi tiết văn bản đi và danh sách tệp để chọn PDF từ đúng bản ghi. */
+  chiTietVanBanDi: (id: number) => apiClient.get<VanBanDi & { attachments: VanBanDiTepDinhKem[] }>(resolveDocumentApiUrl(id, 'DI')),
+  /** Sau khi hoàn tất duyệt nội bộ, liên kết hồ sơ với văn bản đi đã đăng ký. */
+  lienKetVanBanDi: (id: number, van_ban_id: number) =>
+    apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/lien-ket-van-ban-di/`, { van_ban_id }),
+  /** Sửa hồ sơ nháp: hạn chót, ghi chú, số hiệu/trích yếu nhập tay, thay tệp (multipart). */
+  suaNhap: (id: number, form: FormData) =>
+    apiClient<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/`, { method: 'PATCH', body: form }),
   gui: (id: number, khoa: string, chon_nguoi_ky: Record<string, number>, vi_tri_ky: Record<string, ViTriKy>) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/gui/`, { chon_nguoi_ky, vi_tri_ky }, tieuDe(khoa)),
   huy: (id: number, khoa: string, ly_do: string) =>
@@ -75,6 +97,8 @@ export const signingApi = {
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/tu-choi/`, { ly_do_tu_choi }, tieuDe(khoa)),
   thuHoi: (id: number, khoa: string) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/thu-hoi/`, {}, tieuDe(khoa)),
+  uyQuyen: (id: number, khoa: string, body: { dong_nguoi_ky: number; nguoi_nhan: number; ly_do_uy_quyen: string }) =>
+    apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/uy-quyen/`, body, tieuDe(khoa)),
   yeuCauSua: (id: number, khoa: string, tieu_de: string, ly_do: string) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/yeu-cau-sua/`, { tieu_de, ly_do }, tieuDe(khoa)),
 
@@ -94,6 +118,7 @@ export const signingApi = {
   taoLaiTepHoanTat: (id: number) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/tao-lai-tep-hoan-tat/`, {}),
   tepGoc: (id: number) => layBlob(`/trinh-ky/${id}/tep/`),
+  tepCuaLuot: (id: number, luot: number) => layBlob(`/trinh-ky/${id}/tep/?luot=${luot}`),
   tepHoanTat: (id: number) => layBlob(`/trinh-ky/${id}/tep-hoan-tat/`),
   anhChuKy: (id: number, chuKyId: number) => layBlob(`/trinh-ky/${id}/anh-chu-ky/${chuKyId}/`),
 
@@ -101,10 +126,36 @@ export const signingApi = {
   quyTrinh: (trang_thai?: string) =>
     apiClient.get<QuyTrinh[]>(`${SIGNING_BASE}/quy-trinh/${trang_thai ? `?trang_thai=${trang_thai}` : ''}`),
   taoQuyTrinh: (body: unknown) => apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/`, body),
+  chiTietQuyTrinh: (id: number) => apiClient.get<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/`),
+  suaQuyTrinh: (id: number, body: unknown) => apiClient.put<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/`, body),
+  xoaQuyTrinh: (id: number) => apiClient.delete<unknown>(`${SIGNING_BASE}/quy-trinh/${id}/`),
   thaoTacQuyTrinh: (id: number, thao_tac: 'kich-hoat' | 'ngung' | 'nhan-ban') =>
     apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/${thao_tac}/`, {}),
-  timNguoiDung: (q: string) =>
-    apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?q=${encodeURIComponent(q)}`),
+  // Dữ liệu cán bộ, chức vụ lấy từ API của phân hệ CBNV (Nhóm 7), không giữ danh sách riêng trong Trình ký
+  /** Danh bạ cán bộ đang hoạt động (họ tên, chức vụ, đơn vị) để chọn người ký khi cấu hình quy trình. */
+  danhBaCanBo: () => apiClient.get<CanBo[]>('/api/accounts/staffs/'),
+  /** Danh mục chức vụ (thứ tự hiển thị của CBNV) để chọn người ký theo chức vụ. */
+  chucVu: () => apiClient.get<ChucVu[]>('/api/positions/?all=true'),
+  /** Cán bộ đang làm việc giữ chức vụ (trong đơn vị nếu có): tên người khớp người ký cấu hình theo chức vụ. */
+  canBoTheoChucVu: (chuc_vu: number, don_vi?: number | null) => {
+    const tham_so = new URLSearchParams({ chuc_vu: String(chuc_vu) });
+    if (don_vi) tham_so.set('don_vi', String(don_vi));
+    return apiClient.get<{ count: number; results: CanBoChucVu[] }>(`${SIGNING_BASE}/can-bo-theo-chuc-vu/?${tham_so}`);
+  },
+  /** Người nhận ủy quyền ký: tài khoản có quyền ký (cần delegate_trinhky). */
+  timNguoiNhanUyQuyen: (q: string, hoSo: number, dong: number) =>
+    apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?muc_dich=uy_quyen&ho_so=${hoSo}&dong_nguoi_ky=${dong}&q=${encodeURIComponent(q)}`),
+  cauHinhUyQuyen: () => apiClient.get<Array<{ chuc_vu_giao_id: number; chuc_vu_nhan_id: number }>>(`${SIGNING_BASE}/cau-hinh-uy-quyen/`),
+  chucVuUyQuyen: () => apiClient.get<Array<{ id: number; ten: string; stt: number }>>(`${SIGNING_BASE}/chuc-vu/`),
+  luuCauHinhUyQuyen: (chuc_vu_giao: number, chuc_vu_nhan: number[]) =>
+    apiClient.put(`${SIGNING_BASE}/cau-hinh-uy-quyen/`, { chuc_vu_giao, chuc_vu_nhan }),
+  donVi: () => apiClient.get<DonViLuaChon[]>(`${SIGNING_BASE}/don-vi/`),
+  taiLieu: (loc: BoLocTaiLieu = {}, trang = 1) => {
+    const tham_so = new URLSearchParams({ page: String(trang), page_size: String(SO_HO_SO_MOI_TRANG) });
+    Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
+    return apiClient.get<TrangKetQua<TepTaiLieu>>(`${SIGNING_BASE}/tai-lieu/?${tham_so}`);
+  },
+  thongBao: () => apiClient.get<ThongBaoTrinhKy[]>(`${SIGNING_BASE}/thong-bao/`),
   timVanBanDi: (q: string) => apiClient.get<VanBanDi[]>(`${SIGNING_BASE}/van-ban-di/?q=${encodeURIComponent(q)}`),
 
   // ── Khóa ký, PIN ─────────────────────────────────────────────────────────

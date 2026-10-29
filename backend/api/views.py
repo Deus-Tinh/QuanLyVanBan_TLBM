@@ -1,15 +1,18 @@
 import os
 import json
+import logging
 import threading
 import uuid
-import logging
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote
 
+from django.conf import settings
+from django.db import DatabaseError, connection
 from django.http import FileResponse, JsonResponse
+from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
@@ -18,16 +21,17 @@ from backend.services.ai_access import has_permission_codename, is_ai_admin, res
 from backend.services.document_service import (
     add_to_registry,
     clear_documents,
+    commit_staged_upload,
+    discard_staged_upload,
     delete_document_file,
     list_categories,
     list_documents,
     stage_upload_file,
-    commit_staged_upload,
-    discard_staged_upload,
     update_category_in_registry,
 )
 from backend.services.sql_document_source import SqlDocumentAccessError
 from backend.services.ai_model_config import MODEL_CONFIG
+
 _jobs = {}
 _jobs_lock = threading.Lock()
 _upload_lock = threading.Lock()
@@ -88,8 +92,17 @@ def root(request):
     return JsonResponse({"message": "Quản lý Văn bản TLBM API đang hoạt động", "stack": ["Django", "React", "LlamaIndex", "ChromaDB"]})
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@require_GET
+def readiness(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except DatabaseError:
+        return JsonResponse({"status": "not_ready"}, status=503)
+    return JsonResponse({"status": "ready", "release": settings.RELEASE_ID})
+
+
 def ai_health(request):
     return JsonResponse({"status": "ok"})
 

@@ -251,5 +251,141 @@ describe('DocumentTable Component', () => {
 
     localStorage.removeItem('tlbm_session');
   });
+
+  it('triggers onViewDetail when clicking anywhere on a document row', () => {
+    const onViewDetail = vi.fn();
+    render(
+      <DocumentTable
+        documents={mockDocuments}
+        totalCount={2}
+        page={1}
+        pageSize={10}
+        onPageChange={vi.fn()}
+        onViewDetail={onViewDetail}
+        onViewHistory={vi.fn()}
+      />
+    );
+
+    const rows = screen.getAllByTitle('Bấm vào hàng để xem chi tiết văn bản');
+    expect(rows.length).toBe(2);
+
+    fireEvent.click(rows[0]);
+    expect(onViewDetail).toHaveBeenCalledWith(1);
+  });
+
+  it('calls onViewDetail when clicking on the attachment count button', () => {
+    const onViewDetail = vi.fn();
+    render(
+      <DocumentTable
+        documents={mockDocuments}
+        totalCount={2}
+        page={1}
+        pageSize={10}
+        onPageChange={vi.fn()}
+        onViewDetail={onViewDetail}
+        onViewHistory={vi.fn()}
+      />
+    );
+
+    const attachmentBtn = screen.getByText(/2 tệp đính kèm/i);
+    expect(attachmentBtn).toBeInTheDocument();
+
+    fireEvent.click(attachmentBtn);
+    expect(onViewDetail).toHaveBeenCalledWith(1);
+  });
+
+  it('truncates multiple replacement documents with ... (+X) and shows full tooltip', () => {
+    const multiDoc: DocumentItem = {
+      id: 99,
+      loai: 'DEN',
+      loai_display: 'Văn bản Đến',
+      nam: 2026,
+      so_hieu: '99/QĐ-BTTTT',
+      so_thu_tu: 99,
+      trich_yeu: 'Văn bản hợp nhất quy chế',
+      hieu_luc: 'CON_HIEU_LUC',
+      hieu_luc_display: 'Còn hiệu lực',
+      hien_thi: true,
+      attachment_count: 0,
+      created_at: '2026-09-25T00:00:00Z',
+      thay_the_cho: ['101/QĐ-BTTTT', '102/QĐ-BTTTT', '103/QĐ-BTTTT'],
+      bi_thay_boi: ['201/QĐ-BTTTT', '202/QĐ-BTTTT'],
+      pham_vi: 'HAN_CHE',
+    };
+
+    render(
+      <DocumentTable
+        documents={[multiDoc]}
+        totalCount={1}
+        page={1}
+        pageSize={10}
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+        onViewHistory={vi.fn()}
+      />
+    );
+
+    // Bảng danh sách hiển thị badge [Hạn chế] cạnh số ký hiệu cho văn bản hạn chế
+    expect(screen.getByText('Hạn chế')).toBeInTheDocument();
+
+    // Rút gọn thay_the_cho với ... (+2)
+    expect(screen.getByText('... (+2)')).toBeInTheDocument();
+    expect(
+      screen.getByTitle('Văn bản này thay thế cho các văn bản: 101/QĐ-BTTTT, 102/QĐ-BTTTT, 103/QĐ-BTTTT')
+    ).toBeInTheDocument();
+
+    // Rút gọn bi_thay_boi với ... (+1)
+    expect(screen.getByText('... (+1)')).toBeInTheDocument();
+    expect(
+      screen.getByTitle('Văn bản này đã bị thay thế bởi các văn bản: 201/QĐ-BTTTT, 202/QĐ-BTTTT')
+    ).toBeInTheDocument();
+  });
+
+  it('renders STT row index and sub-label for outbound and inbound registered numbers', () => {
+    const outboundDoc: DocumentItem = {
+      ...mockDocuments[0],
+      id: 99,
+      so_thu_tu: 4,
+      so_hieu: 'QA-OUT-01',
+    };
+
+    const { rerender } = render(
+      <DocumentTable
+        documents={[outboundDoc]}
+        totalCount={1}
+        page={1}
+        pageSize={10}
+        loai="DI"
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+        onViewHistory={vi.fn()}
+      />
+    );
+
+    // Tiêu đề cột STT
+    expect(screen.getByText('STT')).toBeInTheDocument();
+    // STT dòng phải là #1 dù so_thu_tu là 4
+    expect(screen.getAllByText('#1').length).toBeGreaterThanOrEqual(1);
+    // Nhãn phụ số đi
+    expect(screen.getAllByText('Số đi: #4').length).toBeGreaterThanOrEqual(1);
+
+    // Rerender với loai="DEN"
+    rerender(
+      <DocumentTable
+        documents={[outboundDoc]}
+        totalCount={1}
+        page={1}
+        pageSize={10}
+        loai="DEN"
+        onPageChange={vi.fn()}
+        onViewDetail={vi.fn()}
+        onViewHistory={vi.fn()}
+      />
+    );
+
+    // Tiêu đề cột STT
+    expect(screen.getByText('STT')).toBeInTheDocument();
+    expect(screen.getAllByText('Số đến: #4').length).toBeGreaterThanOrEqual(1);
+  });
 });
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ActivePageId } from '@app-types/navigation';
 import { pageIdToPath } from '@lib/routes';
 import { apiClient, ApiError } from '@lib/apiClient';
-import ModernDashboardView, { DocumentItem, TaskItem } from '@components/dashboard/ModernDashboardView';
+import ModernDashboardView, { DocumentItem, TaskItem, ResourceTemplateItem, SigningRequestItem } from '@components/dashboard/ModernDashboardView';
 import { BirthdayEmployee } from '@components/dashboard/BirthdaysWidget';
 
 export interface DashboardMeetingItem {
@@ -22,8 +22,8 @@ export interface DashboardMeetingItem {
 export interface DashboardKpis {
   incomingCount: number;
   outgoingCount: number;
-  confidentialCount: number;
   tasksCount: number;
+  signingCount?: number;
 }
 
 export interface DashboardOverviewResponse {
@@ -31,6 +31,8 @@ export interface DashboardOverviewResponse {
   recentIncoming?: DocumentItem[];
   recentOutgoing?: DocumentItem[];
   tasks?: TaskItem[];
+  resources?: ResourceTemplateItem[];
+  recentSigning?: SigningRequestItem[];
   meetingRooms?: DashboardMeetingItem[];
   birthdays?: BirthdayEmployee[];
   error?: string;
@@ -76,7 +78,13 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
         if (isMounted) {
           if (err instanceof ApiError) {
             if (err.status === 401 || err.status === 403) {
-              setError('Phiên đăng nhập không hợp lệ hoặc bạn không có quyền truy cập dữ liệu.');
+              localStorage.removeItem('tlbm_access_token');
+              localStorage.removeItem('tlbm_token');
+              localStorage.removeItem('tlbm_refresh_token');
+              localStorage.removeItem('tlbm_session');
+              window.dispatchEvent(new Event('tlbm_auth_changed'));
+              navigate('/login', { replace: true });
+              return;
             } else {
               setError(
                 err.data?.error ||
@@ -95,7 +103,7 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
     return () => {
       isMounted = false;
     };
-  }, [reloadTrigger]);
+  }, [reloadTrigger, navigate]);
 
   // 1. Trạng thái Đang tải (Loading Skeleton)
   if (isLoading) {
@@ -148,9 +156,12 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       incomingCount={data?.kpis?.incomingCount ?? 0}
       outgoingCount={data?.kpis?.outgoingCount ?? 0}
       tasksCount={data?.kpis?.tasksCount ?? 0}
+      signingCount={data?.kpis?.signingCount ?? 0}
       incomingDocuments={data?.recentIncoming ?? []}
       outgoingDocuments={data?.recentOutgoing ?? []}
       tasks={data?.tasks ?? []}
+      resources={data?.resources ?? []}
+      signingRequests={data?.recentSigning ?? []}
       birthdays={data?.birthdays}
     />
   );
