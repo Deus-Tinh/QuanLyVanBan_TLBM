@@ -4,6 +4,7 @@ import { laLoiHuyVe, layWorkerSrc } from './pdf';
 describe('pdf module', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('nhan dien dung loi huy ve', () => {
@@ -16,10 +17,10 @@ describe('pdf module', () => {
   it('layWorkerSrc tao Blob URL hop le khi fetch thanh cong', async () => {
     const fakeContent = 'console.log("worker")';
     const fakeBlob = new Blob([fakeContent], { type: 'application/octet-stream' });
-    global.fetch = vi.fn().mockResolvedValue({
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       blob: () => Promise.resolve(fakeBlob),
-    });
+    }));
 
     const src = await layWorkerSrc();
     expect(typeof src).toBe('string');
@@ -27,7 +28,7 @@ describe('pdf module', () => {
   });
 
   it('layWorkerSrc tra ve fallback url khi fetch that bai', async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
     const src = await layWorkerSrc();
     expect(typeof src).toBe('string');
   });
