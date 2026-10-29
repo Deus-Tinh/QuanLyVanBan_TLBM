@@ -184,6 +184,49 @@ def can_create_document(user, loai="DEN"):
     return False
 
 
+def can_change_hieu_luc(user, loai="DEN"):
+    """
+    Kiểm tra quyền thay đổi trạng thái hiệu lực của văn bản.
+    Quyền: documents.change_hieu_luc_vanbanden / documents.change_hieu_luc_vanbandi.
+    Mặc định cho Admin và Văn thư (VT).
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if is_admin_user(user):
+        return True
+
+    profile = getattr(user, "profile", None)
+    if profile and getattr(profile, "role", None) in ("admin", "vt", "vanthu", "van_thu"):
+        return True
+
+    if getattr(user, "role", None) in ("admin", "vt", "vanthu", "van_thu"):
+        return True
+
+    try:
+        user_groups = {g.name.lower() for g in user.groups.all()}
+        if any(vt in user_groups for vt in ("vt", "văn thư", "van thu", "vanthu", "admin", "quản trị")):
+            return True
+    except Exception:
+        pass
+
+    model_name = "vanbandi" if str(loai).upper() in ("DI", "VANBANDI") else "vanbanden"
+    perm_code = f"change_hieu_luc_{model_name}"
+
+    try:
+        if (
+            user.has_perm(f"documents.{perm_code}")
+            or user.has_perm(perm_code)
+        ):
+            return True
+        perms = getattr(user, "_user_permissions_cache", None) or set()
+        if any(perm_code in str(p) for p in perms):
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
 def can_delete_document(user, instance):
     """Kiểm tra quyền xóa văn bản."""
     if not user or not user.is_authenticated:

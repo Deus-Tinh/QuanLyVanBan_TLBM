@@ -2694,6 +2694,215 @@ class ExcelAttachmentAndOldfileTests(APITestCase):
                 self.assertTrue(any("File_ao.pdf" in err["message"] for err in res["errors"]))
 
 
+class HieuLucPermissionTests(APITestCase):
+    """
+    Bộ test kiểm tra phân quyền thay đổi hiệu lực văn bản (Hợp đồng Nhóm 7):
+    - change_hieu_luc_vanbanden
+    - change_hieu_luc_vanbandi
+    """
+
+    def setUp(self):
+        from django.contrib.contenttypes.models import ContentType
+        from django.contrib.auth.models import Permission, Group
+
+        self.admin = User.objects.create_superuser(username="admin_hl", password="password123", is_staff=True)
+        self.staff1 = User.objects.create_user(username="staff_hl1", password="password123")
+        self.staff2 = User.objects.create_user(username="staff_hl2", password="password123")
+        self.vanthu = User.objects.create_user(username="vanthu_hl", password="password123")
+
+        # Cấp quyền tạo/sửa văn bản thông thường cho staff1 và staff2
+        ct_den = ContentType.objects.get_for_model(VanBanDen)
+        ct_di = ContentType.objects.get_for_model(VanBanDi)
+
+        def get_or_create_perm(codename, name, module_ten, ct):
+            perm = Permission.objects.filter(codename=codename).first()
+            if not perm:
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO auth_permission (name, codename, module_ten, content_type_id)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (codename) DO NOTHING
+                        """,
+                        [name, codename, module_ten, ct.pk if ct else None],
+                    )
+                perm = Permission.objects.filter(codename=codename).first()
+            return perm
+
+        perm_add_den = get_or_create_perm("add_vanbanden", "Thêm VB Đến", "Văn bản đến", ct_den)
+        perm_change_den = get_or_create_perm("change_vanbanden", "Sửa VB Đến", "Văn bản đến", ct_den)
+        perm_add_di = get_or_create_perm("add_vanbandi", "Thêm VB Đi", "Văn bản đi", ct_di)
+        perm_change_di = get_or_create_perm("change_vanbandi", "Sửa VB Đi", "Văn bản đi", ct_di)
+
+        self.staff1.user_permissions.add(perm_add_den, perm_change_den, perm_add_di, perm_change_di)
+        self.staff2.user_permissions.add(perm_add_den, perm_change_den, perm_add_di, perm_change_di)
+
+        # Tạo sẵn quyền đổi hiệu lực
+        self.perm_hl_den = get_or_create_perm("change_hieu_luc_vanbanden", "Đổi hiệu lực văn bản đến", "Văn bản đến", ct_den)
+        self.perm_hl_di = get_or_create_perm("change_hieu_luc_vanbandi", "Đổi hiệu lực văn bản đi", "Văn bản đi", ct_di)
+
+        # Mặc định của Nhóm 7: Nhóm Văn thư (VT) có quyền sửa văn bản và đổi hiệu lực
+        group_vt, _ = Group.objects.get_or_create(name="VT")
+        group_vt.permissions.add(perm_change_den, perm_change_di, self.perm_hl_den, self.perm_hl_di)
+        self.vanthu.groups.add(group_vt)
+
+        # Tạo 1 văn bản đến và 1 văn bản đi do staff1 tạo
+        self.doc_den = VanBanDen.objects.create(
+            so_hieu="10/DEN-HL",
+            so_thu_tu=10,
+            trich_yeu="Văn bản đến test hiệu lực",
+            nguoi_tao=self.staff1,
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            pham_vi=PhamVi.NOI_BO,
+        )
+        self.doc_di = VanBanDi.objects.create(
+            so_hieu="20/DI-HL",
+            so_thu_tu=20,
+            trich_yeu="Văn bản đi test hiệu lực",
+            nguoi_tao=self.staff1,
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            pham_vi=PhamVi.NOI_BO,
+        )
+
+    def test_user_without_perm_cannot_change_hieu_luc_on_update(self):
+        """Người dùng có quyền sửa văn bản nhưng KHÔNG có quyền đổi hiệu lực thì bị từ chối khi sửa hieu_luc."""
+        client = APIClient()
+        client.force_authenticate(user=self.staff1)
+
+        # 1. Sửa trích yếu bình thường mà không đổi hiệu lực -> 200 OK
+        res = client.patch(
+            f"/api/documents/{self.doc_den.id}/",
+            {"trich_yeu": "Trích yếu mới hợp lệ"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # 2. Cố tình gửi hieu_luc khác giá trị hiện tại -> Bị từ chối 400 ValidationError
+        res_fail = client.patch(
+            f"/api/documents/{self.doc_den.id}/",
+            {"hieu_luc": HieuLuc.HET_HIEU_LUC},
+            format="json",
+        )
+        self.assertEqual(res_fail.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("hieu_luc", res_fail.data)
+        self.doc_den.refresh_from_db()
+        self.assertEqual(self.doc_den.hieu_luc, HieuLuc.CON_HIEU_LUC)
+
+    def test_user_with_perm_can_change_hieu_luc(self):
+        """Người dùng được cấp quyền change_hieu_luc_vanbanden có thể đổi hiệu lực thành công."""
+        self.staff1.user_permissions.add(self.perm_hl_den)
+        self.staff1 = User.objects.get(pk=self.staff1.pk)
+
+        client = APIClient()
+        client.force_authenticate(user=self.staff1)
+
+        res = client.patch(
+            f"/api/documents/{self.doc_den.id}/",
+            {"hieu_luc": HieuLuc.HET_HIEU_LUC},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.doc_den.refresh_from_db()
+        self.assertEqual(self.doc_den.hieu_luc, HieuLuc.HET_HIEU_LUC)
+
+    def test_admin_and_vanthu_can_change_hieu_luc(self):
+        """Admin và Văn thư (role vt) có quyền đổi hiệu lực mà không cần gán thêm quyền lẻ."""
+        client = APIClient()
+
+        # Admin
+        client.force_authenticate(user=self.admin)
+        res_admin = client.patch(
+            f"/api/documents/{self.doc_den.id}/",
+            {"hieu_luc": HieuLuc.CON_HIEU_LUC_1_PHAN},
+            format="json",
+        )
+        self.assertEqual(res_admin.status_code, status.HTTP_200_OK)
+
+        # Văn thư (role vt)
+        client.force_authenticate(user=self.vanthu)
+        res_vt = client.patch(
+            f"/api/documents/{self.doc_den.id}/",
+            {"hieu_luc": HieuLuc.HET_HIEU_LUC},
+            format="json",
+        )
+        self.assertEqual(res_vt.status_code, status.HTTP_200_OK)
+
+    def test_create_document_with_non_default_hieu_luc_restricted(self):
+        """Người không có quyền chỉ được để giá trị mặc định CON_HIEU_LUC khi tạo văn bản."""
+        client = APIClient()
+        client.force_authenticate(user=self.staff2)
+
+        # 1. Tạo với hieu_luc=HET_HIEU_LUC khi chưa có quyền -> 400
+        res_fail = client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "so_hieu": "NEW-FAIL/2026",
+                "trich_yeu": "Tạo văn bản test hieu_luc",
+                "hieu_luc": HieuLuc.HET_HIEU_LUC,
+            },
+            format="json",
+        )
+        self.assertEqual(res_fail.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("hieu_luc", res_fail.data)
+
+        # 2. Tạo với giá trị mặc định CON_HIEU_LUC -> 201 Created
+        res_ok = client.post(
+            "/api/documents/",
+            {
+                "loai": "DEN",
+                "so_hieu": "NEW-OK/2026",
+                "trich_yeu": "Tạo văn bản hợp lệ",
+                "hieu_luc": HieuLuc.CON_HIEU_LUC,
+            },
+            format="json",
+        )
+        self.assertEqual(res_ok.status_code, status.HTTP_201_CREATED)
+
+    def test_vanbandi_hieu_luc_permission(self):
+        """Kiểm tra quyền change_hieu_luc_vanbandi cho Văn bản Đi."""
+        client = APIClient()
+        client.force_authenticate(user=self.staff1)
+
+        # Chưa có quyền -> Thất bại khi đổi hiệu lực văn bản đi
+        res_fail = client.patch(
+            f"/api/documents/{self.doc_di.id}/",
+            {"hieu_luc": HieuLuc.HET_HIEU_LUC},
+            format="json",
+        )
+        self.assertEqual(res_fail.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Cấp quyền -> Thành công
+        self.staff1.user_permissions.add(self.perm_hl_di)
+        self.staff1 = User.objects.get(pk=self.staff1.pk)
+        client.force_authenticate(user=self.staff1)
+
+        res_ok = client.patch(
+            f"/api/documents/{self.doc_di.id}/",
+            {"hieu_luc": HieuLuc.HET_HIEU_LUC},
+            format="json",
+        )
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+
+    def test_detail_serializer_can_change_hieu_luc_flag(self):
+        """API chi tiết văn bản trả về cờ can_change_hieu_luc chính xác theo quyền của user."""
+        client = APIClient()
+
+        # Staff1 không có quyền đổi hiệu lực
+        client.force_authenticate(user=self.staff1)
+        res1 = client.get(f"/api/documents/{self.doc_den.id}/")
+        self.assertEqual(res1.status_code, status.HTTP_200_OK)
+        self.assertFalse(res1.data.get("can_change_hieu_luc"))
+
+        # Admin có quyền
+        client.force_authenticate(user=self.admin)
+        res2 = client.get(f"/api/documents/{self.doc_den.id}/")
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertTrue(res2.data.get("can_change_hieu_luc"))
+
+
+
 
 
 
