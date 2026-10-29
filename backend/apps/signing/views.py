@@ -879,11 +879,8 @@ class NguoiDungView(SigningAPIView):
                 continue
             if uy_quyen and not co_quyen(u, KY_TRINH_KY):
                 continue
-            ket_qua.append({"id": u.pk, "ten": ten, "ho_ten": ten, "ten_dang_nhap": u.get_username(),
-                            "username": u.get_username(), "chuc_vu": chuc_vu or None,
-                            "chuc_vu_ten": chuc_vu or None, "chuc_vu_id": getattr(u, "chuc_vu_id", None),
-                            "don_vi_id": to_chuc.don_vi_cua(u), "don_vi": don_vi or None,
-                            "don_vi_ten": don_vi or None})
+            ket_qua.append({"id": u.pk, "ten": ten, "ten_dang_nhap": u.get_username(), "chuc_vu": chuc_vu or None,
+                            "don_vi_id": to_chuc.don_vi_cua(u), "don_vi": don_vi or None})
             if len(ket_qua) >= self.TOI_DA:
                 break
         return Response(ket_qua)
