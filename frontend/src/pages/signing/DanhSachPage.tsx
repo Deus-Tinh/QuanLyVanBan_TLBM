@@ -6,7 +6,8 @@
  * Danh sách phân trang phía server (10 hồ sơ mỗi trang); đổi bộ lọc thì về trang 1 (mỗi hộp là một route riêng).
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import TaiLieuPage from './TaiLieuPage';
 import { Button, Card } from '@components/common';
 import { DangTai, LoiTai, Rong, TrangThaiHoSo } from '@components/signing/ChungUI';
 import LocKhoangNgay from '@components/signing/LocKhoangNgay';
@@ -123,6 +124,19 @@ function BoLoc({ thongKe, loc, capNhat, xoaHet }: {
 
 export default function DanhSachPage({ hop }: { hop: Hop }) {
   const { t, loi, lang } = useSigningT();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const cheDo = hop === 'tat_ca' && searchParams.get('che_do') === 'tep' ? 'tep' : 'ho_so';
+
+  const doiCheDo = (mode: 'ho_so' | 'tep') => {
+    const params = new URLSearchParams(searchParams);
+    if (mode === 'tep') {
+      params.set('che_do', 'tep');
+    } else {
+      params.delete('che_do');
+    }
+    setSearchParams(params);
+  };
+
   const [loc, setLoc] = useState<BoLocHoSo>({});
   const [trang, setTrang] = useState(1);
   // Số trên các thẻ theo cùng từ khóa, quy trình, khoảng ngày với danh sách (không theo thẻ đang chọn)
@@ -148,27 +162,62 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
 
   return (
     <div className="space-y-4">
-      {!hopRong && (
-        <Card className="p-4">
-          <BoLoc thongKe={dem.duLieu} loc={loc} capNhat={capNhat} xoaHet={xoaHet} />
-        </Card>
+      {hop === 'tat_ca' && (
+        <div className="flex items-center gap-2 border-b border-border-subtle pb-3">
+          <div className="inline-flex rounded-lg bg-surface-subtle p-1 border border-border-subtle">
+            <button
+              type="button"
+              onClick={() => doiCheDo('ho_so')}
+              className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                cheDo === 'ho_so'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-secondary hover:text-main hover:bg-surface'
+              }`}
+            >
+              <i className="fa-solid fa-folder-open text-xs" aria-hidden="true" />
+              <span>{t('danhSach.cheDoHoSo')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => doiCheDo('tep')}
+              className={`flex items-center gap-2 rounded-md px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                cheDo === 'tep'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-secondary hover:text-main hover:bg-surface'
+              }`}
+            >
+              <i className="fa-solid fa-folder-tree text-xs" aria-hidden="true" />
+              <span>{t('danhSach.cheDoTep')}</span>
+            </button>
+          </div>
+        </div>
       )}
-      <Card className="p-4 space-y-3">
-        {ds.dangTai && <DangTai />}
-        {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
-        {!ds.dangTai && !ds.loi && hoSo?.length === 0 && <Rong>{t(coLoc ? 'danhSach.khongKhopLoc' : rong)}</Rong>}
-        {!ds.dangTai && !ds.loi && !!hoSo?.length && (
+
+      {cheDo === 'tep' ? (
+        <TaiLieuPage />
+      ) : (
+        <>
+          {!hopRong && (
+            <Card className="p-4">
+              <BoLoc thongKe={dem.duLieu} loc={loc} capNhat={capNhat} xoaHet={xoaHet} />
+            </Card>
+          )}
+          <Card className="p-4 space-y-3">
+            {ds.dangTai && <DangTai />}
+            {ds.loi && <LoiTai thongBao={loi(ds.loi)} onThuLai={ds.tai} />}
+            {!ds.dangTai && !ds.loi && hoSo?.length === 0 && <Rong>{t(coLoc ? 'danhSach.khongKhopLoc' : rong)}</Rong>}
+            {!ds.dangTai && !ds.loi && !!hoSo?.length && (
           <>
           {/* Dưới 1024px (điện thoại, máy tính bảng): thẻ thay cho bảng để luôn thấy trạng thái, người đang chờ, hạn chót */}
           <ul className="space-y-2 lg:hidden" aria-label={t('danhSach.vanBan')}>
             {hoSo.map((h) => (
               <li key={h.id} className="rounded-lg border border-border-subtle p-3">
-                <Link to={`/approvals/${h.id}`} title={moTaVanBan(h.van_ban, h.van_ban_id)}
+                <Link to={`/approvals/${h.id}`} title={moTaVanBan(h.van_ban, t)}
                   className="block font-semibold text-main hover:text-primary break-words line-clamp-3">
-                  {moTaVanBan(h.van_ban, h.van_ban_id)}
+                  {moTaVanBan(h.van_ban, t)}
                   {h.van_ban_id == null && <span className="ml-2 rounded-full bg-info-subtle px-2 py-0.5 text-xs text-info">{t('danhSach.taiLieuDocLap')}</span>}
                 </Link>
-                <div className="text-xs text-muted break-words">#{h.id} · {h.ten_quy_trinh}</div>
+                <div className="text-xs text-muted break-words">{t('danhSach.maHoSo')} #{h.id} · {h.ten_quy_trinh}</div>
                 <div className="flex flex-wrap items-center gap-2"><TrangThaiHoSo hoSo={h} /></div>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1.5 text-xs text-secondary pt-1 border-t border-border-subtle">
                   <dt>{t('danhSach.dangCho')}</dt>
@@ -209,12 +258,12 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
                 {hoSo.map((h) => (
                   <tr key={h.id} className="hover:bg-surface-hover transition-colors">
                     <td className="px-3.5 py-2 truncate">
-                      <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 text-base truncate" title={moTaVanBan(h.van_ban, h.van_ban_id)}>
+                      <Link to={`/approvals/${h.id}`} className="font-semibold text-main hover:text-primary transition-colors flex items-center gap-1.5 text-base truncate" title={moTaVanBan(h.van_ban, t)}>
                         <i className="fa-solid fa-file-contract text-primary/70 text-sm shrink-0" aria-hidden="true" />
-                        <span className="truncate">{moTaVanBan(h.van_ban, h.van_ban_id)}</span>
+                        <span className="truncate">{moTaVanBan(h.van_ban, t)}</span>
                         {h.van_ban_id == null && <span className="shrink-0 rounded-full bg-info-subtle px-2 py-0.5 text-xs text-info">{t('danhSach.taiLieuDocLap')}</span>}
                       </Link>
-                      <div className="mt-0.5 truncate text-xs text-muted" title={h.ten_quy_trinh}>#{h.id} · {h.ten_quy_trinh}</div>
+                      <div className="mt-0.5 truncate text-xs text-muted" title={h.ten_quy_trinh}>{t('danhSach.maHoSo')} #{h.id} · {h.ten_quy_trinh}</div>
                     </td>
                     <td className="px-2 py-2 text-center"><TrangThaiHoSo hoSo={h} /></td>
                     <td className="px-2 py-2 text-center whitespace-nowrap truncate">
@@ -256,6 +305,8 @@ export default function DanhSachPage({ hop }: { hop: Hop }) {
           </>
         )}
       </Card>
+        </>
+      )}
     </div>
   );
 }

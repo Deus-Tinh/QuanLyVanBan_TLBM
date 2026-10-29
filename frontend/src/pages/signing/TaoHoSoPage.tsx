@@ -5,7 +5,7 @@
  * Mở lại nháp: /approvals/tao-moi?ho_so=<id>.
  */
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Card } from '@components/common';
 import { DangTai, HopThoai, LoiTai, OChonTep, ThongBao, TruongNhap } from '@components/signing/ChungUI';
 import XemPdf, { type KhungHienThi } from '@components/signing/XemPdf';
@@ -113,7 +113,7 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer | nul
               {chon && (
                 <div className="flex flex-wrap items-center gap-2 rounded-lg bg-primary-subtle px-3 py-2 text-sm">
                   <span className="font-semibold text-primary">{t('tao.daChonVanBan')}:</span>
-                  <span className="min-w-0 flex-1 break-words text-main">{moTaVanBan(chon, chon.id)}</span>
+                  <span className="min-w-0 flex-1 break-words text-main">{moTaVanBan(chon, t)}</span>
                   <Button size="sm" variant="ghost" icon="fa-xmark" onClick={() => setChon(null)}>{t('tao.boChon')}</Button>
                 </div>
               )}
@@ -126,7 +126,7 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer | nul
                     <button type="button" key={vb.id} onClick={() => { setChon(vb); setTepDinhKemId(''); }}
                       className={`block w-full px-3 py-2 text-left text-sm border-b border-border-subtle last:border-0 ${
                         chon?.id === vb.id ? 'bg-primary-subtle text-primary font-semibold' : 'hover:bg-surface-hover text-main'}`}>
-                      {moTaVanBan(vb, vb.id)}
+                      {moTaVanBan(vb, t)}
                     </button>
                   ))}
                 </div>
@@ -148,7 +148,7 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer | nul
               {chon && <p className="text-xs text-muted">{t('tao.goiYTepDinhKem')}</p>}
             </>
           ) : (
-            <div className="grid gap-4 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] items-start">
               <p className="text-xs text-muted md:col-span-2">{t('tao.goiYNhapKhac')}</p>
               <TruongNhap nhan={t('tao.soHieu')}>
                 <input className={LOP_O_NHAP} maxLength={100} value={soHieu} onChange={(e) => setSoHieu(e.target.value)} />
@@ -165,11 +165,18 @@ function Buoc1({ onXong }: { onXong: (ho_so: HoSoChiTiet, tep: ArrayBuffer | nul
             <select className={LOP_O_NHAP} value={qtId} onChange={(e) => { setThongBao(''); setQtId(e.target.value); }}>
               <option value="">{t('tao.chonQuyTrinh')}</option>
               {dungDuoc.map((p) => (
-                <option key={p.id} value={p.id}>{p.ten_quy_trinh} ({p.ma_quy_trinh} · {t(`phamVi.${p.pham_vi}`)})</option>
+                <option key={p.id} value={p.id}>{p.ten_quy_trinh} · {t(`phamVi.${p.pham_vi}`)}{p.pham_vi === 'PHONG_BAN' ? ` · ${p.ten_don_vi_ap_dung || t('quyTrinh.donViChuaXacDinh')}` : ''}</option>
               ))}
             </select>
           </TruongNhap>
-          {quyTrinh.duLieu && dungDuoc.length === 0 && <ThongBao loai="canh_bao">{t('tao.khongCoQuyTrinh')}</ThongBao>}
+          {quyTrinh.duLieu && dungDuoc.length === 0 && (
+            <ThongBao loai="canh_bao">
+              {t('tao.khongCoQuyTrinh')}{' '}
+              <Link to="/approvals/quy-trinh" className="inline-flex items-center gap-1 font-normal text-primary underline underline-offset-2 hover:text-primary-hover">
+                {t('tao.diDenQuyTrinh')}
+              </Link>
+            </ThongBao>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <TruongNhap nhan={t('tao.hanChot')} loi={loiHanChot}>
               <input type="datetime-local" className={LOP_O_NHAP} value={hanChot} aria-invalid={loiHanChot ? true : undefined}
