@@ -77,6 +77,8 @@
     "PHONG_BAN": "Department"
   },
   "danhSach": {
+    "cheDoHoSo": "Signing dossiers",
+    "cheDoTep": "Document files",
     "rongCanToiKy": "Nothing is waiting for your signature.",
     "rongToiGui": "You have not submitted any request yet.",
     "rongTatCa": "There are no documents you can view.",
@@ -165,7 +167,7 @@
     "chonTepDinhKem": "— Select a PDF —",
     "khongCoTepPdf": "This outgoing document has no PDF attachment.",
     "goiYTepDinhKem": "The file is copied to Signing storage to preserve the submitted version. A separate PDF cannot be uploaded for this record.",
-    "soHieu": "Reference number (optional)",
+    "soHieu": "Reference number",
     "trichYeu": "Summary",
     "daChonVanBan": "Selected",
     "boChon": "Clear",
@@ -175,6 +177,7 @@
     "khongCoQuyen": "Your account has no permission to create signing requests."
   },
   "chiTiet": {
+    "thongTinHoSo": "Dossier details",
     "tienTrinh": "Signing progress",
     "luot": "Round {so}",
     "han": "Due",
