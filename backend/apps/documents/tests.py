@@ -378,7 +378,7 @@ class DocumentAPITests(TestCase):
             file_size=16,
         )
         today = timezone.localdate()
-        self.assertRegex(att_den.file.name, rf"^van-ban-den/{today:%Y/%m/%d}/[0-9a-f]{{32}}\.pdf$")
+        self.assertRegex(att_den.file.name, rf"^van-ban-den/(?:noi-bo/)?{today:%Y/%m/%d}/[0-9a-f]{{32}}\.pdf$")
         self.assertEqual((Path(TEMP_STORAGE_ROOT) / att_den.file.name).read_bytes(), b"Test content den")
         self.assertEqual(att_den.file.url, f"/media/{att_den.file.name}")
         self.assertEqual(att_den.name, "congvan_den.pdf")
@@ -394,7 +394,7 @@ class DocumentAPITests(TestCase):
             name="thongbao_di.pdf",
             file_size=15,
         )
-        self.assertRegex(att_di.file.name, rf"^van-ban-di/{today:%Y/%m/%d}/[0-9a-f]{{32}}\.pdf$")
+        self.assertRegex(att_di.file.name, rf"^van-ban-di/(?:noi-bo/)?{today:%Y/%m/%d}/[0-9a-f]{{32}}\.pdf$")
         self.assertTrue((Path(TEMP_STORAGE_ROOT) / att_di.file.name).is_file())
 
     def test_create_with_attachment_stores_in_shared_tree_and_downloads(self):
@@ -411,7 +411,7 @@ class DocumentAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         att = VanBanDenAttachment.objects.get(document_id=response.data["id"])
         self.assertEqual(att.name, "Công văn.PDF")
-        self.assertRegex(att.file.name, r"^van-ban-den/\d{4}/\d{2}/\d{2}/[0-9a-f]{32}\.pdf$")
+        self.assertRegex(att.file.name, r"^van-ban-den/(?:noi-bo/)?\d{4}/\d{2}/\d{2}/[0-9a-f]{32}\.pdf$")
         download = self.client.get(f"/api/documents/{att.document_id}/attachments/{att.id}/download/")
         self.assertEqual(download.status_code, status.HTTP_200_OK)
         self.assertEqual(download.content, b"%PDF-1.4 noi dung")
@@ -2556,6 +2556,142 @@ class DocumentReplacementDisambiguationTests(TestCase):
         self.assertEqual(res_fail2.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("link_thay_the", res_fail2.data)
         self.assertIn("không thể tự thiết lập thay thế chính nó", str(res_fail2.data["link_thay_the"][0]))
+
+
+class ExcelAttachmentAndOldfileTests(APITestCase):
+    """Kiểm thử chuyên sâu cho tính năng Export/Import Excel kèm tệp đính kèm và kho lịch sử oldfile."""
+
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="excel_att_user",
+            email="excel_att@example.com",
+            password="password123",
+            ho_ten="Tester Excel",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_excel_template_includes_attachment_column(self):
+        """Tất cả 4 mẫu Excel và mẫu Mật đều có cột 'Tệp đính kèm' trước 'Link văn bản thay thế'."""
+        from documents.services import generate_excel_template
+        import openpyxl
+
+        configs = [
+            ("DEN", "NOI_BO"),
+            ("DEN", "HAN_CHE"),
+            ("DI", "NOI_BO"),
+            ("DI", "HAN_CHE"),
+            ("MAT", "HAN_CHE"),
+        ]
+
+        for loai, pham_vi in configs:
+            bio = generate_excel_template(loai, pham_vi)
+            wb = openpyxl.load_workbook(bio)
+            ws = wb.active
+            headers = [cell.value for cell in ws[1] if cell.value]
+
+            self.assertIn("Tệp đính kèm", headers, f"Thiếu cột 'Tệp đính kèm' trong mẫu {loai} {pham_vi}")
+            idx_att = headers.index("Tệp đính kèm")
+            idx_link = headers.index("Link văn bản thay thế")
+            idx_note = headers.index("Ghi chú")
+
+            # Thứ tự chuẩn: Tệp đính kèm -> Link văn bản thay thế -> Ghi chú
+            self.assertEqual(idx_att + 1, idx_link)
+            self.assertEqual(idx_link + 1, idx_note)
+
+            # Cột có hover comment hướng dẫn
+            cell_att_hdr = ws.cell(row=1, column=idx_att + 1)
+            self.assertIsNotNone(cell_att_hdr.comment)
+            self.assertIn("oldfile", cell_att_hdr.comment.text)
+
+    def test_export_excel_with_attachments(self):
+        """Export danh sách văn bản ra Excel điền đúng danh sách tên tệp đính kèm."""
+        from documents.services import export_to_excel
+        import openpyxl
+
+        doc = VanBanDen.objects.create(
+            nam=2026,
+            so_hieu="88/CV-ATT",
+            so_thu_tu=1,
+            pham_vi=PhamVi.NOI_BO,
+            noi_ban_hanh="Bộ GD&ĐT",
+            trich_yeu="Công văn kiểm thử xuất tệp đính kèm",
+            hieu_luc=HieuLuc.CON_HIEU_LUC,
+            nguoi_tao=self.user,
+        )
+        VanBanDenAttachment.objects.create(
+            document=doc,
+            name="To_trinh_01.pdf",
+            path="van-ban-den/noi-bo/2026/10/29/test1.pdf",
+        )
+        VanBanDenAttachment.objects.create(
+            document=doc,
+            name="Phu_luc_02.docx",
+            path="van-ban-den/noi-bo/2026/10/29/test2.docx",
+        )
+
+        qs = VanBanDen.objects.filter(id=doc.id)
+        bio = export_to_excel(qs, "DEN", "NOI_BO")
+        wb = openpyxl.load_workbook(bio)
+        ws = wb.active
+
+        headers = [cell.value for cell in ws[1] if cell.value]
+        self.assertIn("Tệp đính kèm", headers)
+        idx_att = headers.index("Tệp đính kèm") + 1
+
+        cell_val = ws.cell(row=2, column=idx_att).value
+        self.assertIn("To_trinh_01.pdf", cell_val)
+        self.assertIn("Phu_luc_02.docx", cell_val)
+        self.assertIn(";", cell_val)
+
+    def test_import_excel_with_oldfile_success_and_missing_warning(self):
+        """Import Excel: tìm thấy file trong oldfile thì liên kết, thiếu file thì ghi cảnh báo rõ ràng."""
+        import tempfile
+        from pathlib import Path
+        from django.test import override_settings
+        from documents.services import import_from_excel
+        from openpyxl import Workbook
+        import io
+
+        with tempfile.TemporaryDirectory() as temp_oldfile_dir:
+            temp_oldfile = Path(temp_oldfile_dir)
+            # Tạo thư mục và file thật trong kho oldfile: van-ban-den/noi-bo/2026/09/15/To_trinh_goc.pdf
+            folder = temp_oldfile / "van-ban-den" / "noi-bo" / "2026" / "09" / "15"
+            folder.mkdir(parents=True, exist_ok=True)
+            real_file = folder / "To_trinh_goc.pdf"
+            real_file.write_bytes(b"%PDF-1.4 test oldfile content")
+
+            with override_settings(OLDFILE_STORAGE_ROOT=str(temp_oldfile)):
+                wb = Workbook()
+                ws = wb.active
+                ws.append(["Số, ký hiệu VB", "Ngày đến", "Trích yếu nội dung", "Hiệu lực", "Phạm vi", "Tệp đính kèm"])
+                # Dòng 1: có file tồn tại thật
+                ws.append(["101/CV-OLD", "15/09/2026 08:30:00", "Công văn cũ có file thật", "CON_HIEU_LUC", "Nội bộ", "To_trinh_goc.pdf"])
+                # Dòng 2: file không tồn tại
+                ws.append(["102/CV-OLD", "15/09/2026 08:30:00", "Công văn cũ file không tồn tại", "CON_HIEU_LUC", "Nội bộ", "File_ao.pdf"])
+
+                bio = io.BytesIO()
+                wb.save(bio)
+                bio.seek(0)
+
+                res = import_from_excel(bio, "DEN", self.user, pham_vi="NOI_BO")
+                self.assertEqual(res["created"], 2)
+
+                # Dòng 1 gắn attachment thành công
+                doc1 = VanBanDen.objects.get(so_hieu="101/CV-OLD")
+                att1 = doc1.attachments.filter(is_deleted=False).first()
+                self.assertIsNotNone(att1)
+                self.assertEqual(att1.name, "To_trinh_goc.pdf")
+                self.assertEqual(att1.path, "oldfile/van-ban-den/noi-bo/2026/09/15/To_trinh_goc.pdf")
+                with att1.file.open("rb") as f:
+                    file_bytes = f.read()
+                self.assertEqual(file_bytes, b"%PDF-1.4 test oldfile content")
+                att1.file.close()
+
+                # Dòng 2 không gắn attachment và có cảnh báo trong errors
+                doc2 = VanBanDen.objects.get(so_hieu="102/CV-OLD")
+                self.assertEqual(doc2.attachments.count(), 0)
+                self.assertTrue(any("File_ao.pdf" in err["message"] for err in res["errors"]))
 
 
 

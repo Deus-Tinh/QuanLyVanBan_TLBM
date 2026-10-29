@@ -13,6 +13,7 @@ from django.db import models
 from django.db.models import Max, Q
 from django.http import HttpResponse
 import os
+from pathlib import Path
 import mimetypes
 from urllib.parse import quote
 from django.conf import settings
@@ -519,9 +520,32 @@ class DocumentViewSet(viewsets.ViewSet):
             with att.file.open("rb") as stored:
                 content = stored.read()
         except (FileNotFoundError, OSError):
-            raise NotFound("Tệp không còn trên máy chủ.")
-        response = HttpResponse(content, content_type="application/octet-stream")
-        response["Content-Disposition"] = f'attachment; filename="{att.name}"'
+            content = None
+            raw_path = str(att.file.name or getattr(att, "path", "") or "").replace("\\", "/")
+            if raw_path.startswith("oldfile/"):
+                raw_path = raw_path[len("oldfile/"):]
+            for root_val in [
+                getattr(settings, "OLDFILE_STORAGE_ROOT", None),
+                getattr(settings, "DOCUMENT_STORAGE_ROOT", None),
+                getattr(settings, "MEDIA_ROOT", None),
+            ]:
+                if root_val:
+                    cand = Path(root_val) / raw_path.lstrip("/")
+                    if cand.exists() and cand.is_file():
+                        with open(cand, "rb") as f:
+                            content = f.read()
+                        break
+            if content is None:
+                raise NotFound("Tệp không còn trên máy chủ.")
+
+        import mimetypes
+        from urllib.parse import quote
+        content_type, _ = mimetypes.guess_type(att.name)
+        if not content_type:
+            content_type = "application/octet-stream"
+        response = HttpResponse(content, content_type=content_type)
+        encoded_name = quote(att.name)
+        response["Content-Disposition"] = f'attachment; filename="{att.name}"; filename*=UTF-8\'\'{encoded_name}'
         return response
 
     @action(detail=True, methods=["get"], url_path=r"download/(?P<tep_id>[0-9]+)")
