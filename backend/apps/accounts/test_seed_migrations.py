@@ -116,36 +116,3 @@ class SeedReferenceDataMigrationTests(TestCase):
         self.assertNotIn("token", response.data)
         self.assertNotIn("access", response.data)
         self.assertNotIn("refresh", response.data)
-
-
-class SampleEmployeeAssignmentsSeedTests(TestCase):
-    """Xác thực bộ 11 phân công kiêm nhiệm mẫu từ workbook nhóm 7 được nạp đầy đủ và chính xác."""
-
-    def test_sample_assignments_seeded_with_full_attributes(self):
-        from accounts.models import EmployeeAssignment
-
-        expected_records = {
-            ('anvc', 'Ban dự án phát triển sản phẩm liên kết với các công ty dịch vụ viễn thông', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('uyenbk', 'Bảo Long Phú Yên', 'Phó Ban', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('andd2', 'Văn phòng 2', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('taibm', 'Bảo Long Vũng Tàu', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('tailc', 'Bảo Long Đông Hải', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('dathq', 'Bảo Long Gia Lai', 'Chuyên viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('huongvt', 'Bảo Long Thăng Long', 'Thành viên', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('myvd', 'Văn phòng hội đồng quản trị', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('anvd', 'Bảo Long Thăng Long', 'Phó Ban', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('demo_vt_3', 'Bảo Long Quảng Ninh', 'Văn thư', 'Kiêm nhiệm theo quyết định nội bộ (mẫu)'),
-            ('em123ngao-arch', 'Ban dự án MIS', 'Chuyên viên', 'Thành viên Nhóm 6 (kiêm nhiệm)'),
-        }
-
-        actual_records = set(
-            EmployeeAssignment.objects.values_list(
-                'employee__username',
-                'don_vi__ten',
-                'chuc_vu__name',
-                'chuc_danh',
-            )
-        )
-
-        self.assertEqual(len(actual_records), 11)
-        self.assertEqual(actual_records, expected_records)

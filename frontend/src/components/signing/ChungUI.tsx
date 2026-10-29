@@ -8,7 +8,6 @@ import { Link } from 'react-router-dom';
 import { Badge, Button } from '@components/common';
 import type { BadgeProps } from '@components/common/Badge';
 import { useSigningT } from '@lib/signing/i18n';
-import { dinhDangNgay } from '@lib/signing/dinhDang';
 
 const MAU_TRANG_THAI: Record<string, BadgeProps['variant']> = {
   NHAP: 'secondary', CHO_KY: 'warning', HOAN_THANH: 'success', TU_CHOI: 'danger', HUY: 'secondary',
@@ -33,9 +32,8 @@ export function TrangThaiBadge({ trangThai, nhom = 'trangThai', size = 'sm' }: {
  * Trạng thái hồ sơ trên danh sách và chi tiết: chỉ hiển thị duy nhất một badge trạng thái.
  * Thứ tự ưu tiên:
  * 1. Quá hạn tổng thể hồ sơ -> "Quá hạn"
- * 2. Trễ hạn cấp ký hiện hành -> "Trễ hạn cấp"
- * 3. Đang chờ ký mà lượt hiện hành bị trả lại để sửa -> "Đang trả lại để sửa"
- * 4. Trạng thái cơ bản của hồ sơ (Đang chờ ký, Hoàn tất, Không đồng ý, Đã hủy, Nháp).
+ * 2. Đang chờ ký mà lượt hiện hành bị trả lại để sửa -> "Đang trả lại để sửa"
+ * 3. Trạng thái cơ bản của hồ sơ (Đang chờ ký, Hoàn tất, Không đồng ý, Đã hủy, Nháp).
  */
 export function TrangThaiHoSo({ hoSo, size = 'md' }: {
   hoSo: {
@@ -47,9 +45,8 @@ export function TrangThaiHoSo({ hoSo, size = 'md' }: {
   };
   size?: 'sm' | 'md';
 }) {
-  const { t, lang } = useSigningT();
+  const { t } = useSigningT();
   const tra_lai = hoSo.trang_thai === 'CHO_KY' && hoSo.trang_thai_luot === 'YEU_CAU_SUA';
-  const tre_cap = Boolean(hoSo.qua_han && hoSo.qua_han_cap);
   const qua_han_tong = Boolean(hoSo.qua_han && !hoSo.qua_han_cap);
   if (qua_han_tong) {
     return (
@@ -60,26 +57,13 @@ export function TrangThaiHoSo({ hoSo, size = 'md' }: {
     );
   }
 
-  if (tre_cap) {
-    return (
-      <Badge
-        variant="warning"
-        size={size}
-        withDot
-        title={hoSo.han_xu_ly_cap ? `${t('danhSach.hanCap')}: ${dinhDangNgay(hoSo.han_xu_ly_cap, lang)}` : undefined}
-      >
-        <i className="fa-regular fa-clock mr-1" aria-hidden="true" />
-        {t('danhSach.treHanCap')}
-      </Badge>
-    );
-  }
-
   if (tra_lai) {
     return <TrangThaiBadge trangThai="YEU_CAU_SUA" size={size} />;
   }
 
   return <TrangThaiBadge trangThai={hoSo.trang_thai} size={size} />;
 }
+
 
 export function ThongBao({ loai = 'loi', children }: { loai?: 'loi' | 'thanh_cong' | 'thong_tin' | 'canh_bao';
   children: React.ReactNode }) {
@@ -199,7 +183,8 @@ export function KhungModal({ nhanId, onDong, khoaDong = false, lopNen = 'p-4', l
         if (nhanNen.current && e.target === e.currentTarget && !dongRef.current.khoaDong) dongRef.current.onDong();
       }}>
       <div ref={khung} role="dialog" aria-modal="true" aria-labelledby={nhanId} tabIndex={-1}
-        className={`signing-zoom shadow-xl animate-slide-in-bottom outline-none ${lopKhung}`}>
+        className={`signing-zoom shadow-xl animate-slide-in-bottom outline-none ${lopKhung}`}
+        style={{ width: '84vw', maxWidth: 'none', maxHeight: '84vh', overflowY: 'auto' }}>
         {children}
       </div>
     </div>,
@@ -233,11 +218,15 @@ export function HopThoai({ moTieuDe, mo, onDong, children, chanDuoi, dangXuLy = 
 }
 
 /** Nhãn + ô nhập; `loi` hiện dưới ô (đọc to bằng role=alert), thay cho ghi chú. */
-export function TruongNhap({ nhan, children, ghiChu, loi, className = '' }: {
-  nhan: string; children: React.ReactNode; ghiChu?: string; loi?: string; className?: string }) {
+export function TruongNhap({ nhan, children, ghiChu, loi, batBuoc = false, className = '' }: {
+  nhan: string; children: React.ReactNode; ghiChu?: string; loi?: string; batBuoc?: boolean; className?: string }) {
+  const { t } = useSigningT();
   return (
     <label className={`block space-y-1.5 ${className}`}>
-      <span className="block text-sm font-medium text-main">{nhan}</span>
+      <span className="flex items-center gap-1.5 text-sm font-medium text-main">
+        {nhan}
+        {batBuoc && <span className="text-danger" aria-label={t('chung.batBuoc')}>*</span>}
+      </span>
       {children}
       {loi
         ? <span role="alert" className="flex items-start gap-1.5 text-xs font-semibold text-danger">
@@ -263,12 +252,14 @@ export function KhongTimThay({ thongBao }: { thongBao: string }) {
 
 /** Ô chọn tệp có nhãn theo ngôn ngữ giao diện (ô file gốc hiện "Choose File" theo trình duyệt).
  * Đặt trong `<label>` (TruongNhap) hoặc bọc `<label>` riêng để bấm cả khung mở hộp chọn tệp. */
-export function OChonTep({ accept, onChon, nhan }: { accept: string; onChon: (tep: File | undefined) => void; nhan?: string }) {
+export function OChonTep({ accept, onChon, nhan, disabled = false }: {
+  accept: string; onChon: (tep: File | undefined) => void; nhan?: string; disabled?: boolean;
+}) {
   const { t } = useSigningT();
   const [ten, setTen] = useState('');
   return (
-    <span className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border-subtle bg-surface px-2 py-1.5 text-sm focus-within:border-focus focus-within:ring-2 focus-within:ring-primary-subtle">
-      <input type="file" accept={accept} aria-label={nhan} className="sr-only"
+    <span className={`flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface px-2 py-1.5 text-sm focus-within:border-focus focus-within:ring-2 focus-within:ring-primary-subtle ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+      <input type="file" accept={accept} aria-label={nhan} className="sr-only" disabled={disabled}
         onChange={(e) => { const tep = e.target.files?.[0]; setTen(tep?.name ?? ''); onChon(tep); }} />
       <span className="shrink-0 rounded-lg border border-border-subtle bg-surface-subtle px-2.5 py-1 font-medium text-main">
         {t('chung.chonTep')}

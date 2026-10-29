@@ -137,7 +137,7 @@ Căn cứ: `danh-gia-nghiep-vu-va-de-xuat.md`. Làm trước Phase 7 vì đụng
 - Test: `tests/test_hoan_tat_phase10.py`; kiểm thử tích hợp trên PostgreSQL dựng từ DDL (trigger chặn sửa manifest đã chốt).
 
 ### Phase 7 đến 10 — Phần phụ thuộc bên ngoài
-- Văn bản mật đã bỏ (GVHD chốt, DDL #81); trình ký chỉ nhận `vanbandi` thường. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) là văn bản gửi đi chọn người xem và lưu log xem (Nhóm 2), không ký, không đi qua trình ký: Phase 7 từ chối ở API tạo hồ sơ khi #82 có `pham_vi`. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
+- Văn bản mật đã bỏ (GVHD chốt, DDL #81); bản ghi gắn trong Trình ký chỉ nhận `vanbandi` thường và dùng PDF đính kèm ngay trên bản ghi. Có thể tải PDF dự thảo chưa vào sổ với mã hồ sơ tự cấp; sau khi duyệt và tạo tệp kết quả thành công, người tạo đăng ký tệp trong Văn bản đi rồi liên kết hồ sơ. Trình ký không tự tạo văn bản, cấp số hoặc chuyển tệp sang kho Văn bản đi. Văn bản hạn chế (`pham_vi = 'HAN_CHE'`) không đi qua Trình ký. Hình thức ký KT./TL./TUQ. và ủy quyền có thời hạn, phạm vi theo NĐ 30/2020 Điều 13.
 - Phase 7: đã đổi `chuc_vu_id`, `don_vi_id`, `don_vi_ap_dung_id` sang FK (Nhóm 7) và dùng hàm "văn bản xem được" của Nhóm 2 (migration `0010`).
 - Phase 8: test đồng thời (hai người ký cùng lúc, gửi lặp, ký lặp) cần PostgreSQL. Thu hồi chữ ký theo điều kiện "cấp còn mở". Mọi thao tác khóa hồ sơ trước lượt trình để tránh deadlock.
 - Phase 9 (ngoài MVP #80):

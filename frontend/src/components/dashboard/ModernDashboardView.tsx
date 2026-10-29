@@ -72,6 +72,7 @@ export interface SigningRequestItem {
   ngay_gui?: string;
   status?: string;
   trang_thai?: string;
+  trang_thai_luot?: string;
   statusLabel?: string;
   nhan_trang_thai?: string;
   trang_thai_display?: string;
@@ -732,16 +733,13 @@ export default function ModernDashboardView({
         </div>
       </div>
 
-      {/* 5. Khối Danh Sách Phiếu Trình Ký Gần Nhất Của Cán Bộ (Nhóm 5) */}
+      {/* Danh sách phiếu trình ký gần nhất */}
       <div className="bg-surface border border-border-subtle rounded-2xl p-3 sm:p-4 md:p-5 shadow-sm flex flex-col">
         <div className="flex justify-between items-center mb-3">
           <div className="font-bold text-sm sm:text-base text-main flex items-center gap-2 sm:gap-2.5">
             <i className="fa-solid fa-file-signature text-warning text-sm sm:text-base md:text-lg shrink-0" />
-            <span>{t('dashboardDetails.recentSigningTitle') || 'Danh Sách Phiếu Trình Ký Cần Xử Lý (Nhóm 5)'}</span>
+            <span>{t('dashboardDetails.recentSigningTitle')}</span>
           </div>
-          <span className="text-[11px] font-semibold text-secondary px-2.5 py-0.5 rounded-full bg-surface-elevated border border-border-subtle">
-            {t('dashboardDetails.signingGroupTag') || 'Nhóm 5 · Trình ký số'}
-          </span>
         </div>
 
         <div className="flex-1 min-h-[160px] flex flex-col justify-start">
@@ -770,6 +768,9 @@ export default function ModernDashboardView({
                     const submitter = row.nguoi_trinh || row.submitter || 'Cán bộ';
                     const date = row.ngay_gui || row.date || '';
                     const rawStatus = row.trang_thai || row.status || 'CHO_KY';
+                    const displayStatus = (rawStatus === 'CHO_KY' || rawStatus === 'pending') && row.trang_thai_luot === 'YEU_CAU_SUA'
+                      ? 'YEU_CAU_SUA'
+                      : rawStatus;
 
                     const getSigningStatusInfo = (st: string) => {
                       switch (st) {
@@ -777,7 +778,12 @@ export default function ModernDashboardView({
                         case 'pending':
                           return {
                             variant: 'warning' as const,
-                            label: t('dashboardDetails.signingStatuses.CHO_KY') || 'Chờ ký',
+                            label: t('dashboardDetails.signingStatuses.CHO_KY') || 'Đang chờ ký',
+                          };
+                        case 'YEU_CAU_SUA':
+                          return {
+                            variant: 'info' as const,
+                            label: t('dashboardDetails.signingStatuses.YEU_CAU_SUA') || 'Chờ người trình sửa',
                           };
                         case 'DANG_XU_LY':
                         case 'processing':
@@ -795,13 +801,13 @@ export default function ModernDashboardView({
                         case 'completed':
                           return {
                             variant: 'success' as const,
-                            label: t('dashboardDetails.signingStatuses.HOAN_THANH') || 'Hoàn thành',
+                            label: t('dashboardDetails.signingStatuses.HOAN_THANH') || 'Hoàn tất duyệt nội bộ',
                           };
                         case 'TU_CHOI':
                         case 'rejected':
                           return {
                             variant: 'danger' as const,
-                            label: t('dashboardDetails.signingStatuses.TU_CHOI') || 'Từ chối',
+                            label: t('dashboardDetails.signingStatuses.TU_CHOI') || 'Đã từ chối',
                           };
                         case 'HUY':
                         case 'cancelled':
@@ -813,7 +819,7 @@ export default function ModernDashboardView({
                         case 'draft':
                           return {
                             variant: 'secondary' as const,
-                            label: t('dashboardDetails.signingStatuses.NHAP') || 'Bản nháp',
+                            label: t('dashboardDetails.signingStatuses.NHAP') || 'Nháp',
                           };
                         default:
                           return {
@@ -823,7 +829,7 @@ export default function ModernDashboardView({
                       }
                     };
 
-                    const statusInfo = getSigningStatusInfo(rawStatus);
+                    const statusInfo = getSigningStatusInfo(displayStatus);
                     const statusVariant = row.variant || statusInfo.variant;
                     const statusLabel = statusInfo.label || row.nhan_trang_thai || row.trang_thai_display || row.statusLabel || rawStatus;
                     const canSign = !!row.can_toi_ky;

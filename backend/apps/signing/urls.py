@@ -31,6 +31,8 @@ urlpatterns = [
     # Hồ sơ trình ký (Phase 7, #80)
     path("trinh-ky/", views.TrinhKyListCreateView.as_view(), name="trinh-ky-list"),
     path("trinh-ky/thong-ke/", views.ThongKeHoSoView.as_view(), name="trinh-ky-thong-ke"),
+    path("trinh-ky/<int:pk>/lien-ket-van-ban-di/", views.TrinhKyLienKetVanBanDiView.as_view(),
+         name="trinh-ky-lien-ket-van-ban-di"),
     path("trinh-ky/<int:pk>/", views.TrinhKyDetailView.as_view(), name="trinh-ky-detail"),
     path("trinh-ky/<int:pk>/tep/", views.TrinhKyTepView.as_view(), name="trinh-ky-tep"),
     path("trinh-ky/<int:pk>/gui/", views.TrinhKyActionView.as_view(action="gui"), name="trinh-ky-gui"),
@@ -58,6 +60,7 @@ urlpatterns = [
 
     # Tìm tài khoản để cấu hình người ký (người quản lý quy trình)
     path("nguoi-dung/", views.NguoiDungView.as_view(), name="nguoi-dung"),
+    path("cau-hinh-uy-quyen/", views.CauHinhUyQuyenView.as_view(), name="cau-hinh-uy-quyen"),
     path("don-vi/", views.DonViView.as_view(), name="don-vi"),
     path("chuc-vu/", views.ChucVuView.as_view(), name="chuc-vu"),
     path("can-bo-theo-chuc-vu/", views.CanBoTheoChucVuView.as_view(), name="can-bo-theo-chuc-vu"),

@@ -16,9 +16,9 @@ Tài liệu liên quan (không chép lại ở đây):
 | Flow | Tình trạng |
 |---|---|
 | Quy trình mẫu: tạo nháp, sửa, kích hoạt, ngừng, nhân bản phiên bản, xóa phiên bản chưa có hồ sơ; phạm vi công ty/phòng ban; người ký theo tài khoản (danh bạ CBNV) hoặc chức vụ (Danh mục chức vụ) | Xong |
-| Tạo hồ sơ nháp (văn bản trình ký: chọn văn bản đi hoặc nhập văn bản khác; quy trình, PDF, hạn chót), sửa nháp | Xong |
+| Tạo hồ sơ nháp (chọn PDF đính kèm trên văn bản đi hoặc tải PDF dự thảo chưa vào sổ; quy trình, hạn chót), sửa nháp | Xong |
 | Trình ký: khóa tệp và mã băm, chọn người ký theo chức vụ, đặt vị trí ký | Xong |
-| Ký tuần tự theo cấp, song song trong cấp, ký nháy chặn ký chính | Xong |
+| Ký chính tuần tự theo cấp, song song trong cấp; bảo toàn lượt ký nháy đã gửi trước đây | Xong |
 | Khóa ký Ed25519 + PIN 8 số (Argon2id + salt, `k_srv`); xuất file khóa; ký bằng file khóa + PIN | Xong |
 | Không đồng ý ban hành (kết thúc); trình lại thành hồ sơ mới | Xong |
 | Trả lại để sửa → trao đổi → gửi bản sửa → lượt trình mới | Xong |
@@ -92,7 +92,8 @@ frontend/src/
 |---|---|
 | `quy-trinh/`, `quy-trinh/{id}/`, `quy-trinh/{id}/{kich-hoat,ngung,nhan-ban}/` | Quy trình mẫu |
 | `trinh-ky/` (GET `?hop=can_toi_ky\|toi_gui\|tat_ca&page=&page_size=`, POST multipart) | Danh sách (phân trang), tạo nháp |
-| `trinh-ky/{id}/` (GET, PATCH) | Chi tiết (lượt, cấp, người ký, `lich_su`), sửa nháp |
+| `trinh-ky/{id}/` (GET, PATCH) | Chi tiết; sửa nháp; chuyển sang phiên bản mới hơn cùng mã nếu phiên bản gắn hiện tại đã ngừng |
+| `trinh-ky/{id}/lien-ket-van-ban-di/` (POST) | Người tạo liên kết hồ sơ đã hoàn tất duyệt với văn bản đi đã đăng ký |
 | `trinh-ky/{id}/{gui,huy,trinh-lai}/` | Gửi, hủy, trình lại |
 | `trinh-ky/{id}/{ky,tu-choi,thu-hoi,yeu-cau-sua,uy-quyen}/` | Hành động người ký, ủy quyền khẩn cấp |
 | `trinh-ky/{id}/{trao-doi,giai-quyet}/` | Trao đổi khi trả sửa, gửi bản sửa |
@@ -109,11 +110,19 @@ Thao tác đổi trạng thái bắt buộc header `Idempotency-Key`. Lỗi tr�
   khớp "Mua sắm", "10/qd" khớp "10/QĐ".
 - Mỗi văn bản đi chỉ có một hồ sơ đang mở (nháp hoặc đang chờ ký). Tạo nháp, gửi trình hoặc trình lại khi văn bản đang có
   hồ sơ mở khác trả 409 `van_ban_da_co_ho_so_dang_mo`. Hồ sơ đã hoàn thành, từ chối hoặc hủy không chặn việc trình mới.
-  Văn bản nhập tay không áp quy tắc này.
-- Văn bản trình ký khi tạo hồ sơ (`POST trinh-ky/`, multipart): `van_ban_id` (+ `document_type=vanbandi`) để gắn văn bản
-  đi, **hoặc** `trich_yeu_van_ban` (bắt buộc) và `so_hieu_van_ban` (tùy chọn) khi nhập văn bản khác; thiếu cả hai trả
-  400 `thieu_van_ban_trinh_ky`. Tệp PDF trình ký (`tep`) luôn bắt buộc. Hồ sơ trả `van_ban` (`so_hieu`, `trich_yeu`) theo
-  đúng nguồn; sửa nháp nhập tay được đổi số hiệu/trích yếu (hồ sơ gắn văn bản đi: 400 `van_ban_da_gan`).
+  PDF dự thảo chưa vào sổ không áp quy tắc này.
+- Văn bản trình ký khi tạo hồ sơ (`POST trinh-ky/`, multipart) dùng đúng một nguồn: (1) văn bản đi đã đăng ký với
+  `van_ban_id` (`document_type=vanbandi`) và `tep_dinh_kem_id` là tệp PDF còn hiệu lực trên chính bản ghi đó; không
+  nhận thêm `tep`; hoặc (2) `tep` tải lên từ máy, `trich_yeu_van_ban` bắt buộc và `so_hieu_van_ban` tùy chọn làm số
+  tham chiếu. Nguồn (2) là PDF dự thảo chưa vào sổ, mã hồ sơ trình ký do hệ thống tự cấp; số tham chiếu không phải số
+  văn bản chính thức. Server kiểm nội dung PDF, dung lượng tối đa 20 MB, rồi sao chép vào kho Trình ký riêng và tính
+  SHA-256. Hồ sơ trả `van_ban` (`so_hieu`, `trich_yeu`) theo đúng nguồn; sửa nháp nhập tay được đổi số hiệu/trích yếu
+  (hồ sơ gắn văn bản đi: 400 `van_ban_da_gan`).
+- Sau khi hồ sơ nguồn dự thảo hoàn tất duyệt nội bộ và tệp hoàn tất tạo thành công, người tạo đăng ký tệp hoàn tất qua
+  phân hệ Văn bản đi rồi gọi `POST trinh-ky/{id}/lien-ket-van-ban-di/` với `van_ban_id`. API chỉ cho liên kết một lần,
+  kiểm người tạo, quyền xem văn bản đi, phạm vi không hạn chế, trạng thái hồ sơ và tệp hoàn tất; ghi nhật ký. Trình ký
+  không tự tạo bản ghi, cấp số văn bản hoặc chuyển tệp sang kho Văn bản đi. Sau liên kết, số hiệu và trích yếu lấy từ
+  bản ghi Văn bản đi.
 - Bộ lọc ngày `tu_ngay`/`den_ngay` (YYYY-MM-DD) của danh sách hồ sơ, `tai-lieu/` và `thong-ke/`: ngày không có trong
   lịch (tháng 13, 30/02) hoặc `tu_ngay` > `den_ngay` trả 400 `tham_so_khong_hop_le`. Từ khóa `q` bỏ ký tự NUL, cắt
   khoảng trắng, tối đa 100 ký tự.
@@ -262,6 +271,17 @@ Báo cáo chi tiết các luồng nghiệp vụ (Happy path, Trả sửa lượt
 
 - Ủy quyền theo thời gian (`signing_delegation`) và thể thức `hinh_thuc_ky` (KT./TL./TUQ.): DDL chưa có bảng/cột, cần
   PR đổi schema riêng (DDL + migration + `DDL_CHANGELOG.md`).
+- Ủy quyền khẩn cấp hiện chỉ dùng ma trận chức danh toàn cục (`signing_delegation_role`: chức danh giao → chức danh
+  nhận). Ma trận chưa giới hạn theo quy trình, loại văn bản, khối/phòng ban hoặc giá trị hợp đồng; vì vậy không đáp ứng
+  chính sách kiểu “chỉ văn bản kỹ thuật” hay “dưới 500 triệu”. Chỉ dùng cho phạm vi hồ sơ mà cặp chức danh được phép
+  ký thay không cần các giới hạn này. Muốn áp giới hạn phải chốt chính sách và dữ liệu nghiệp vụ trước khi mở rộng.
+- Ủy quyền khẩn cấp ghi người giao quyền, lý do và thời điểm, nhưng chưa lưu/render thể thức KT./TL./TUQ. Khối chữ
+  ký trong PDF hoàn tất dùng tên người ký và chức danh snapshot, chưa có tiền tố thể thức; đây là kết quả duyệt nội bộ,
+  chưa phải văn bản đã phát hành. Không dùng luồng này để khẳng định thể thức ký thay/thừa lệnh đã được thể hiện trên
+  văn bản chính thức.
+- Nhân sự có thể có nhiều phân công trong `accounts_employee_assignment`, nhưng Trình ký hiện chỉ xét chức danh chính
+  `Employee.chuc_vu_id` khi tìm và kiểm tra người nhận ủy quyền. Chức vụ kiêm nhiệm chưa được tính là căn cứ nhận ủy
+  quyền; khi hỗ trợ cần chốt phạm vi đơn vị, hiệu lực phân công và chức danh nào được lưu làm snapshot.
 - Nhóm Chuyên viên (CV) đã được cấp quyền `send_trinhky` qua PR #254 (migration `authorization/0007_grant_cv_send_trinhky`, issue #226), cho phép chuyên viên tự gửi hồ sơ do mình tạo.
 - Đánh dấu đã đọc thông báo lưu ở trình duyệt; bảng `signing_notification` chưa có cột đã đọc.
 - Tìm không dấu dùng `LOWER(TRANSLATE(...))` sẵn có của PostgreSQL, quét tuần tự (đủ cho quy mô hiện tại). Muốn dùng
@@ -317,7 +337,9 @@ Báo cáo chi tiết các luồng nghiệp vụ (Happy path, Trả sửa lượt
   (`GET /api/accounts/staffs/`), theo chức vụ lấy từ Danh mục chức vụ (`GET /api/positions/?all=true`, cần quyền
   `view_chucvu`; nhóm ADMIN, TP có sẵn). Phạm vi chức vụ chọn trên form: trong đơn vị người trình hoặc toàn cơ quan.
   Người cụ thể giữ chức vụ được xác định lúc gửi (như trước).
-- Văn bản trình ký: chọn văn bản đi không bắt buộc; nhập văn bản khác (số hiệu, trích yếu, tệp PDF). Schema đổi ở PR
+- Văn bản trình ký: chọn văn bản đi đã đăng ký và một PDF đính kèm của chính bản ghi; hoặc tải PDF dự thảo chưa vào sổ
+  với mã hồ sơ tự cấp (số hiệu tham chiếu, trích yếu). Sau khi hoàn tất duyệt, người tạo đăng ký tệp hoàn tất trong Văn
+  bản đi rồi liên kết hồ sơ; Trình ký không cấp số hoặc tự tạo bản ghi. Schema đổi ở PR
   riêng (#274): `signing_request.document_type`, `document_id` cho phép NULL; thêm `so_hieu_van_ban`,
   `trich_yeu_van_ban`; CHECK `chk_signing_request_van_ban`; migration `signing/0015_van_ban_trinh_ky_khac`.
 - Nhãn "Văn bản" đổi thành "Văn bản trình ký": cột danh sách, form tạo, khối thông tin trang chi tiết, email thông báo,

@@ -35,7 +35,7 @@ def chay(test, *args, **env):
 class DuLieuMauTests(TestCase):
     def setUp(self):
         self.thu_muc = tempfile.mkdtemp()
-        self._cai_dat = override_settings(SIGNING_DOCUMENT_ROOT=self.thu_muc)
+        self._cai_dat = override_settings(SIGNING_DOCUMENT_ROOT=self.thu_muc, DOCUMENT_STORAGE_ROOT=self.thu_muc)
         self._cai_dat.enable()
         tao_don_vi()
 
@@ -129,7 +129,7 @@ class DuLieuMauTests(TestCase):
                          .count(), 10)
 
     def test_reset_keeps_recent_dashboard_items_from_new_sample(self):
-        """Sau --reset, 5 phiếu gần nhất của giám đốc chỉ lấy từ bộ mới: đủ Chờ ký, Đã ký, Từ chối, không trùng tiêu đề."""
+        """Sau --reset, 5 phiếu gần nhất của giám đốc chỉ lấy từ bộ mới và có nhãn trạng thái thống nhất."""
         chay(self, DEMO_PASSWORD=MAT_KHAU)
         chay(self, "--reset", DEMO_PASSWORD=MAT_KHAU)
         c = APIClient()
@@ -137,6 +137,10 @@ class DuLieuMauTests(TestCase):
         gan_day = c.get("/api/v1/signing/dashboard/").data["gan_day"]
         self.assertEqual(len(gan_day), 5)
         self.assertEqual(len({p["tieu_de"] for p in gan_day}), 5, gan_day)
-        self.assertTrue({"Chờ ký", "Đã ký", "Từ chối"} <= {p["nhan_trang_thai"] for p in gan_day}, gan_day)
+        self.assertTrue(
+            {"Đang chờ ký", "Hoàn tất duyệt nội bộ", "Đã từ chối"}
+            <= {p["nhan_trang_thai"] for p in gan_day},
+            gan_day,
+        )
         cu = SigningRequest.objects.filter(ghi_chu__startswith="Dữ liệu mẫu cũ").values_list("pk", flat=True)
         self.assertFalse({p["id"] for p in gan_day} & set(cu))

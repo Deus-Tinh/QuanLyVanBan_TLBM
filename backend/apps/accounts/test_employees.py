@@ -2049,4 +2049,3 @@ class EmployeeDefaultGroupAssignmentTests(EmployeeBaseTestCase):
         )
         self.assertEqual(assigned_codes, {"CV"})
         self.assertNotIn("BGD", assigned_codes)
-

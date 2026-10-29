@@ -78,6 +78,30 @@ class DashboardAPITests(TestCase):
             set(response.data["kpis"]), {"incomingCount", "outgoingCount", "signingCount", "tasksCount"}
         )
 
+    @patch("dashboard.views.tong_quan_dashboard")
+    def test_recent_signing_preserves_current_attempt_status(self, mock_signing_overview):
+        mock_signing_overview.return_value = {
+            "so_cho_ky": 0,
+            "gan_day": [{
+                "id": 17,
+                "tieu_de": "Hồ sơ đã trả sửa",
+                "nguoi_trinh": "Người trình",
+                "ngay_trinh": timezone.now().isoformat(),
+                "trang_thai": "CHO_KY",
+                "trang_thai_luot": "YEU_CAU_SUA",
+                "nhan_trang_thai": "Chờ người trình sửa",
+                "can_toi_ky": False,
+            }],
+        }
+        self.client.force_authenticate(user=self.staff_user)
+
+        item = self.client.get("/api/dashboard/overview/").data["recentSigning"][0]
+
+        self.assertEqual(item["trang_thai"], "CHO_KY")
+        self.assertEqual(item["trang_thai_luot"], "YEU_CAU_SUA")
+        self.assertEqual(item["status"], "CHO_KY")
+        self.assertEqual(item["statusLabel"], "Chờ người trình sửa")
+
     def test_documents_use_shared_visibility_for_counts_and_recent_lists(self):
         """KPI và 5 bản ghi gần nhất chỉ gồm văn bản mà người gọi được xem."""
         VanBanDen.objects.create(
@@ -408,4 +432,3 @@ class DashboardOverviewPayloadTests(DashboardAPITests):
         self.assertIn("recentIncoming", data)
         self.assertIn("recentOutgoing", data)
         self.assertIn("tasks", data)
-
