@@ -150,6 +150,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
 
   // Custom Dropdown State cho Thư mục
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState('');
   const categoryDropdownRef = useRef<HTMLDivElement>(null);
 
   // Form State
@@ -293,6 +294,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   // Đóng an toàn có xác nhận nếu đã chỉnh sửa dữ liệu
   const handleSafeClose = useCallback(() => {
     setIsCategoryDropdownOpen(false);
+    setCategorySearch('');
     if (isDirty) {
       setIsConfirmDiscardOpen(true);
       return;
@@ -306,6 +308,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       const target = e.target as Node;
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(target)) {
         setIsCategoryDropdownOpen(false);
+        setCategorySearch('');
       }
     };
     if (isCategoryDropdownOpen) {
@@ -322,6 +325,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
       if (e.key === 'Escape' && isOpen) {
         if (isCategoryDropdownOpen) {
           setIsCategoryDropdownOpen(false);
+          setCategorySearch('');
           return;
         }
         if (isConfirmDiscardOpen) return;
@@ -331,6 +335,16 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isCategoryDropdownOpen, isConfirmDiscardOpen, handleSafeClose]);
+
+  // Danh sách Thư mục lọc theo từ khóa tìm kiếm trong dropdown
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return categories;
+    const q = categorySearch.trim().toLowerCase();
+    return categories.filter((c) =>
+      c.ten_tai_lieu.toLowerCase().includes(q) ||
+      (c.ma_danh_muc && c.ma_danh_muc.toLowerCase().includes(q))
+    );
+  }, [categories, categorySearch]);
 
   // Đối tượng Thư mục đang được chọn
   const selectedCategoryObj = useMemo(() => {
@@ -351,6 +365,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
   const handleCategoryChange = (catId: number | '') => {
     setIsDirty(true);
     setIsCategoryDropdownOpen(false);
+    setCategorySearch('');
     setFormData((prev) => ({
       ...prev,
       dm_tai_lieu: catId,
@@ -697,56 +712,93 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                 ))}
               </select>
 
-              {/* Popup danh sách Thư mục không bao giờ lòi ra ngoài container */}
+              {/* Popup danh sách Thư mục không bao giờ lòi ra ngoài container, tích hợp tìm kiếm */}
               {isCategoryDropdownOpen && (
                 <div
                   role="listbox"
-                  className="absolute left-0 right-0 top-full mt-1.5 w-full max-w-full bg-surface-elevated rounded-xl border border-border-subtle shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100"
+                  data-dropdown-container="true"
+                  className="absolute left-0 right-0 top-full mt-1.5 w-full max-w-full bg-surface-elevated rounded-xl border border-border-subtle shadow-2xl p-1.5 z-50 max-h-60 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleCategoryChange('');
-                    }}
-                    className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                      !formData.dm_tai_lieu
-                        ? 'bg-primary/10 text-primary font-bold'
-                        : 'text-muted hover:bg-surface'
-                    }`}
-                  >
-                    <span className="truncate">{t('resourceManagement.selectFolderOption')}</span>
-                    {!formData.dm_tai_lieu && (
-                      <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                  {/* Ô tìm kiếm nhanh thư mục */}
+                  <div className="p-1 pb-1.5 border-b border-border-subtle shrink-0">
+                    <div className="relative">
+                      <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-[11px]" />
+                      <input
+                        type="text"
+                        value={categorySearch}
+                        onChange={(e) => setCategorySearch(e.target.value)}
+                        placeholder={t('resourceManagement.searchCategoryPlaceholder')}
+                        className="w-full pl-7 pr-7 py-1 text-xs bg-surface border border-border-subtle rounded-lg text-main placeholder:text-muted focus:outline-hidden focus:border-primary"
+                        onClick={(e) => e.stopPropagation()}
+                        autoFocus
+                      />
+                      {categorySearch && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCategorySearch('');
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-main text-[11px] p-0.5 cursor-pointer"
+                        >
+                          <i className="fa-solid fa-xmark" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto max-h-48 pt-1 space-y-0.5" role="listbox">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCategoryChange('');
+                      }}
+                      className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                        !formData.dm_tai_lieu
+                          ? 'bg-primary/10 text-primary font-bold'
+                          : 'text-muted hover:bg-surface'
+                      }`}
+                    >
+                      <span className="truncate">{t('resourceManagement.selectFolderOption')}</span>
+                      {!formData.dm_tai_lieu && (
+                        <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                      )}
+                    </button>
+
+                    <div className="my-1 border-t border-border-subtle" />
+
+                    {filteredCategories.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-muted">
+                        {t('resourceManagement.noMatchingFolders')}
+                      </div>
+                    ) : (
+                      filteredCategories.map((cat) => {
+                        const isSelected = formData.dm_tai_lieu === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => {
+                              handleCategoryChange(cat.id);
+                            }}
+                            className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                              isSelected
+                                ? 'bg-primary/10 text-primary font-bold'
+                                : 'text-main hover:bg-surface'
+                            }`}
+                          >
+                            <span className="truncate flex items-center gap-2">
+                              <i className="fa-solid fa-folder text-primary/70 text-xs shrink-0" />
+                              <span className="truncate">{cat.ten_tai_lieu}</span>
+                            </span>
+                            {isSelected && (
+                              <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })
                     )}
-                  </button>
-
-                  <div className="my-1 border-t border-border-subtle" />
-
-                  {categories.map((cat) => {
-                    const isSelected = formData.dm_tai_lieu === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => {
-                          handleCategoryChange(cat.id);
-                        }}
-                        className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-primary/10 text-primary font-bold'
-                            : 'text-main hover:bg-surface'
-                        }`}
-                      >
-                        <span className="truncate flex items-center gap-2">
-                          <i className="fa-solid fa-folder text-primary/70 text-xs shrink-0" />
-                          <span className="truncate">{cat.ten_tai_lieu}</span>
-                        </span>
-                        {isSelected && (
-                          <i className="fa-solid fa-check text-primary text-xs shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
+                  </div>
                 </div>
               )}
 
@@ -1299,6 +1351,17 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                           >
                             <i className="fa-solid fa-eye text-xs" />
                           </button>
+                          {file.id && (
+                            <a
+                              href={`/api/resources/attachments/${file.id}/download/`}
+                              download={file.name}
+                              className="p-1 text-muted hover:text-primary rounded transition-colors cursor-pointer inline-flex items-center justify-center"
+                              title={t('resourceManagement.downloadAttachment')}
+                              aria-label={t('resourceManagement.downloadAttachment')}
+                            >
+                              <i className="fa-solid fa-download text-xs" />
+                            </a>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleRemoveExistingFile(idx)}
@@ -1355,6 +1418,22 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
                             aria-label={t('resourceManagement.previewAttachment')}
                           >
                             <i className="fa-solid fa-eye text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = URL.createObjectURL(file);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = file.name;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="p-1 text-muted hover:text-primary rounded transition-colors cursor-pointer"
+                            title={t('resourceManagement.downloadAttachment')}
+                            aria-label={t('resourceManagement.downloadAttachment')}
+                          >
+                            <i className="fa-solid fa-download text-xs" />
                           </button>
                           <button
                             type="button"

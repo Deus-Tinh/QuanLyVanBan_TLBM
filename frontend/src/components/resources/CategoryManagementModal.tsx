@@ -378,17 +378,34 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
   const [isFilterCatDropdownOpen, setIsFilterCatDropdownOpen] = useState(false);
   const filterCatDropdownRef = useRef<HTMLDivElement>(null);
   const [isTypeCatDropdownOpen, setIsTypeCatDropdownOpen] = useState(false);
+  const [typeCatSearch, setTypeCatSearch] = useState('');
   const typeCatDropdownRef = useRef<HTMLDivElement>(null);
 
   // Vị trí fixed của dropdown menu Thao tác — không bị cắt bởi overflow và lật lên khi ở đáy
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
-  const closeAllMenus = () => {
+  // Danh sách thư mục lọc theo từ khóa tìm kiếm trong dropdown Loại tài liệu
+  const filteredTypeCategories = useMemo(() => {
+    if (!typeCatSearch.trim()) return categories;
+    const q = typeCatSearch.trim().toLowerCase();
+    return categories.filter((c) =>
+      c.ten_tai_lieu.toLowerCase().includes(q) ||
+      (c.ma_danh_muc && c.ma_danh_muc.toLowerCase().includes(q))
+    );
+  }, [categories, typeCatSearch]);
+
+  // Đóng riêng floating action menu (3 chấm của từng dòng dữ liệu)
+  const closeFloatingMenu = () => {
     setActiveMenuCatId(null);
     setActiveMenuTypeId(null);
     setMenuPos(null);
+  };
+
+  const closeAllMenus = () => {
+    closeFloatingMenu();
     setIsFilterCatDropdownOpen(false);
     setIsTypeCatDropdownOpen(false);
+    setTypeCatSearch('');
   };
 
   // Đóng custom dropdowns khi click ra ngoài
@@ -400,6 +417,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
       }
       if (typeCatDropdownRef.current && !typeCatDropdownRef.current.contains(target)) {
         setIsTypeCatDropdownOpen(false);
+        setTypeCatSearch('');
       }
     };
     if (isFilterCatDropdownOpen || isTypeCatDropdownOpen) {
@@ -410,31 +428,31 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     };
   }, [isFilterCatDropdownOpen, isTypeCatDropdownOpen]);
 
-  // Đóng dropdown khi click ngoài, scroll hoặc resize cửa sổ (lắng nghe cả pha capture để không bị cản bởi stopPropagation)
+  // Đóng floating menu Thao tác (3 chấm) khi click ngoài, scroll hoặc resize cửa sổ
   useEffect(() => {
-    const handleOutside = (e: MouseEvent) => {
+    if (activeMenuCatId === null && activeMenuTypeId === null) return;
+
+    const handleOutsideFloating = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest?.('[data-menu-trigger]') || target?.closest?.('[data-floating-menu]')) {
         return;
       }
-      closeAllMenus();
+      closeFloatingMenu();
     };
 
-    const handleScroll = () => {
-      closeAllMenus();
+    const handleScrollFloating = () => {
+      closeFloatingMenu();
     };
 
-    document.addEventListener('click', handleOutside, true);
-    window.addEventListener('resize', closeAllMenus);
-    window.addEventListener('scroll', handleScroll, true);
-    document.addEventListener('scroll', handleScroll, true);
+    document.addEventListener('mousedown', handleOutsideFloating);
+    window.addEventListener('resize', handleScrollFloating);
+    window.addEventListener('scroll', handleScrollFloating, true);
     return () => {
-      document.removeEventListener('click', handleOutside, true);
-      window.removeEventListener('resize', closeAllMenus);
-      window.removeEventListener('scroll', handleScroll, true);
-      document.removeEventListener('scroll', handleScroll, true);
+      document.removeEventListener('mousedown', handleOutsideFloating);
+      window.removeEventListener('resize', handleScrollFloating);
+      window.removeEventListener('scroll', handleScrollFloating, true);
     };
-  }, []);
+  }, [activeMenuCatId, activeMenuTypeId]);
 
 
   const handleOpenCatMenu = (e: React.MouseEvent<HTMLButtonElement>, catId: number) => {
@@ -1152,11 +1170,14 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                     {isFilterCatDropdownOpen && (
                       <div
                         role="listbox"
-                        className="absolute left-0 right-0 sm:left-0 sm:right-auto sm:w-64 top-full mt-1.5 w-full max-w-full bg-surface-elevated rounded-xl border border-border-subtle shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute left-0 right-0 sm:left-0 sm:right-auto sm:w-64 top-full mt-1.5 w-full max-w-full bg-surface-elevated rounded-xl border border-border-subtle shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto space-y-0.5 overscroll-contain animate-in fade-in zoom-in-95 duration-100"
                       >
                         <button
                           type="button"
-                          onClick={() => {
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setFilterParentCat('all');
                             setTypePage(1);
                             setIsFilterCatDropdownOpen(false);
@@ -1181,7 +1202,9 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                             <button
                               key={c.id}
                               type="button"
-                              onClick={() => {
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setFilterParentCat(String(c.id));
                                 setTypePage(1);
                                 setIsFilterCatDropdownOpen(false);
@@ -1745,39 +1768,82 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
                           )}
                         </select>
 
-                        {/* Popup dropdown menu không bao giờ lòi ra ngoài */}
+                        {/* Popup dropdown menu không bao giờ lòi ra ngoài, tích hợp ô tìm kiếm */}
                         {isTypeCatDropdownOpen && (
                           <div
                             role="listbox"
-                            className="absolute left-0 right-0 top-full mt-1.5 w-full max-w-full bg-surface-elevated rounded-xl border border-border-subtle shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto space-y-0.5 animate-in fade-in zoom-in-95 duration-100"
+                            data-dropdown-container="true"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="absolute left-0 right-0 top-full mt-1.5 w-full max-w-full bg-surface-elevated rounded-xl border border-border-subtle shadow-2xl p-1.5 z-50 max-h-60 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
                           >
-                            {categories.map((c) => {
-                              const isSelected = typeForm.dm_tai_lieu === c.id;
-                              return (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setTypeForm({ ...typeForm, dm_tai_lieu: c.id });
-                                    setIsUnifiedDirty(true);
-                                    setIsTypeCatDropdownOpen(false);
-                                  }}
-                                  className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                                    isSelected
-                                      ? 'bg-primary/10 text-primary font-bold'
-                                      : 'text-main hover:bg-surface'
-                                  }`}
-                                >
-                                  <span className="truncate flex items-center gap-2">
-                                    <i className="fa-solid fa-folder text-primary/70 text-xs shrink-0" />
-                                    <span className="truncate">{c.ten_tai_lieu}</span>
-                                  </span>
-                                  {isSelected && (
-                                    <i className="fa-solid fa-check text-primary text-xs shrink-0" />
-                                  )}
-                                </button>
-                              );
-                            })}
+                            {/* Ô tìm kiếm nhanh thư mục */}
+                            <div className="p-1 pb-1.5 border-b border-border-subtle shrink-0">
+                              <div className="relative">
+                                <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-[11px]" />
+                                <input
+                                  type="text"
+                                  value={typeCatSearch}
+                                  onChange={(e) => setTypeCatSearch(e.target.value)}
+                                  placeholder={t('resourceManagement.searchCategoryPlaceholder')}
+                                  className="w-full pl-7 pr-7 py-1 text-xs bg-surface border border-border-subtle rounded-lg text-main placeholder:text-muted focus:outline-hidden focus:border-primary"
+                                  onClick={(e) => e.stopPropagation()}
+                                  autoFocus
+                                />
+                                {typeCatSearch && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTypeCatSearch('');
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-main text-[11px] p-0.5 cursor-pointer"
+                                  >
+                                    <i className="fa-solid fa-xmark" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Danh sách các thư mục có scroll */}
+                            <div className="flex-1 overflow-y-auto max-h-48 pt-1 space-y-0.5 overscroll-contain" role="listbox">
+                              {filteredTypeCategories.length === 0 ? (
+                                <div className="p-3 text-center text-xs text-muted">
+                                  {t('resourceManagement.noMatchingFolders')}
+                                </div>
+                              ) : (
+                                filteredTypeCategories.map((c) => {
+                                  const isSelected = typeForm.dm_tai_lieu === c.id;
+                                  return (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setTypeForm((prev) => ({ ...prev, dm_tai_lieu: c.id }));
+                                        setIsUnifiedDirty(true);
+                                        setIsTypeCatDropdownOpen(false);
+                                        setTypeCatSearch('');
+                                      }}
+                                      className={`w-full px-2.5 py-2 rounded-lg text-left text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-primary/10 text-primary font-bold'
+                                          : 'text-main hover:bg-surface'
+                                      }`}
+                                    >
+                                      <span className="truncate flex items-center gap-2">
+                                        <i className="fa-solid fa-folder text-primary/70 text-xs shrink-0" />
+                                        <span className="truncate">{c.ten_tai_lieu}</span>
+                                      </span>
+                                      {isSelected && (
+                                        <i className="fa-solid fa-check text-primary text-xs shrink-0" />
+                                      )}
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

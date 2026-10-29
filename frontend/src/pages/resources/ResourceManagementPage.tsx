@@ -669,7 +669,7 @@ export default function ResourceManagementPage() {
     });
   };
 
-  // Danh sách năm trích xuất từ dữ liệu thực tế
+  // Danh sách năm trích xuất từ dữ liệu thực tế kết hợp sinh động năm hiện tại
   const availableYears = useMemo(() => {
     const yearsSet = new Set<string>();
     documents.forEach((d) => {
@@ -677,9 +677,11 @@ export default function ResourceManagementPage() {
         yearsSet.add(d.ngay_dang.substring(0, 4));
       }
     });
-    yearsSet.add('2026');
-    yearsSet.add('2025');
-    yearsSet.add('2024');
+    // Luôn tự động sinh ra năm hiện tại và 3 năm liền kề trước đó
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= currentYear - 3; y--) {
+      yearsSet.add(String(y));
+    }
     return Array.from(yearsSet).sort().reverse();
   }, [documents]);
 
