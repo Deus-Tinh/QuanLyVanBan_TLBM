@@ -652,6 +652,21 @@ export const OutboundDocumentPage: React.FC = () => {
 
   // Thống kê số lượng: Tổng văn bản đi còn hiệu lực (gộp cả Còn hiệu lực và Còn hiệu lực 1 phần theo đúng phạm vi)
   const countActive = useMemo(() => {
+    // Khi đang tham chiếu từ phân hệ Hồ sơ (có lọc theo loai_van_ban hoặc ho_so):
+    // Đếm theo số lượng văn bản thực tế của tập kết quả tham chiếu theo đúng phạm vi hiện tại
+    if (filters.loai_van_ban || filters.ho_so) {
+      if (totalCount === 0) return 0;
+      if (filters.hieu_luc === 'HIEU_LUC') return totalCount;
+      const activeInCurrent = documents.filter(
+        (d) => d.hieu_luc === 'CON_HIEU_LUC' || d.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
+      ).length;
+      if (totalCount <= documents.length) {
+        return activeInCurrent;
+      }
+      const ratio = documents.length > 0 ? activeInCurrent / documents.length : 1;
+      return Math.round(ratio * totalCount);
+    }
+
     const sourceList = allStatsItems.length > 0 ? allStatsItems : documents;
     return sourceList.filter((d) => {
       const isActive = d.hieu_luc === 'CON_HIEU_LUC' || d.hieu_luc === 'CON_HIEU_LUC_1_PHAN';
@@ -660,7 +675,7 @@ export const OutboundDocumentPage: React.FC = () => {
       const docPhamVi = d.pham_vi || 'NOI_BO';
       return docPhamVi === currentPhamVi;
     }).length;
-  }, [allStatsItems, documents, currentPhamVi]);
+  }, [allStatsItems, documents, currentPhamVi, filters.loai_van_ban, filters.ho_so, filters.hieu_luc, totalCount]);
 
   return (
     <div className="w-full p-2 sm:p-4 md:p-6 animate-in fade-in duration-150">

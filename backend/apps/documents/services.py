@@ -14,7 +14,9 @@ import io
 import math
 import re
 from datetime import datetime
+from pathlib import Path
 
+from django.conf import settings
 from django.db import models, transaction
 from django.utils import timezone
 from openpyxl import Workbook, load_workbook
@@ -595,6 +597,7 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
+        ("tep_dinh_kem", "Tệp đính kèm", 32),
         ("link_thay_the", "Link văn bản thay thế", 28),
         ("ghi_chu", "Ghi chú", 36),
     ],
@@ -610,6 +613,7 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
+        ("tep_dinh_kem", "Tệp đính kèm", 32),
         ("link_thay_the", "Link văn bản thay thế", 28),
         ("ghi_chu", "Ghi chú", 36),
     ],
@@ -624,6 +628,7 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
+        ("tep_dinh_kem", "Tệp đính kèm", 32),
         ("link_thay_the", "Link văn bản thay thế", 28),
         ("ghi_chu", "Ghi chú", 36),
     ],
@@ -639,6 +644,7 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
+        ("tep_dinh_kem", "Tệp đính kèm", 32),
         ("link_thay_the", "Link văn bản thay thế", 28),
         ("ghi_chu", "Ghi chú", 36),
     ],
@@ -654,6 +660,7 @@ EXCEL_COLUMNS = {
         ("nguoi_ky", "Người ký", 22),
         ("chuc_vu", "Chức vụ", 20),
         ("hieu_luc", "Hiệu lực", 20),
+        ("tep_dinh_kem", "Tệp đính kèm", 32),
         ("link_thay_the", "Link văn bản thay thế", 28),
         ("ghi_chu", "Ghi chú", 36),
     ],
@@ -674,6 +681,7 @@ SAMPLE_DATA = {
         "nguoi_ky": "Nguyễn Văn A",
         "chuc_vu": "Thứ trưởng",
         "hieu_luc": "Còn hiệu lực",
+        "tep_dinh_kem": "To_trinh_01.pdf",
         "link_thay_the": "12/QĐ-BGDDT",
         "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
@@ -689,6 +697,7 @@ SAMPLE_DATA = {
         "nguoi_ky": "Trần Thị C",
         "chuc_vu": "Phó Giám đốc Sở",
         "hieu_luc": "Còn hiệu lực",
+        "tep_dinh_kem": "Thong_bao_thanh_tra.pdf",
         "link_thay_the": "02/TB-SGDDT",
         "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
@@ -703,6 +712,7 @@ SAMPLE_DATA = {
         "nguoi_ky": "Lê Văn D",
         "chuc_vu": "Hiệu trưởng",
         "hieu_luc": "Còn hiệu lực",
+        "tep_dinh_kem": "88_QD_Ban_hanh_quy_che.pdf",
         "link_thay_the": "45/QĐ-SNN",
         "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
@@ -718,6 +728,7 @@ SAMPLE_DATA = {
         "nguoi_ky": "Lê Văn D",
         "chuc_vu": "Hiệu trưởng",
         "hieu_luc": "Còn hiệu lực",
+        "tep_dinh_kem": "12_BC_Danh_gia_can_bo.pdf",
         "link_thay_the": "08/BC-SNN-HC",
         "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
@@ -733,6 +744,7 @@ SAMPLE_DATA = {
         "nguoi_ky": "Hiệu trưởng",
         "chuc_vu": "Hiệu trưởng",
         "hieu_luc": "Còn hiệu lực",
+        "tep_dinh_kem": "01_KH_An_ninh_noi_bo.pdf",
         "link_thay_the": "01/KH-BGH",
         "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
@@ -742,6 +754,12 @@ SAMPLE_DATA[LoaiVanBan.DEN] = SAMPLE_DATA[(LoaiVanBan.DEN, PhamVi.NOI_BO)]
 SAMPLE_DATA[LoaiVanBan.DI] = SAMPLE_DATA[(LoaiVanBan.DI, PhamVi.NOI_BO)]
 
 HEADER_COMMENTS = {
+    "tep_dinh_kem": (
+        "• Tên file đính kèm trong kho tệp lịch sử (oldfile).\n"
+        "• Cấu trúc: oldfile/<loai>/<pham_vi>/YYYY/MM/DD/<ten_file>.\n"
+        "• Nhiều file phân tách nhau bằng dấu chấm phẩy (;).\n"
+        "• Để trống nếu không có tệp đính kèm."
+    ),
     "link_thay_the": (
         "• Số hiệu VB bị thay thế (VD: 12/QĐ-BGDDT).\n"
         "• Nhiều VB cách nhau bằng dấu phẩy.\n"
@@ -757,6 +775,7 @@ HEADER_COMMENTS = {
 }
 
 COMMENT_SIZES = {
+    "tep_dinh_kem": (380, 110),
     "link_thay_the": (250, 85),
     "hieu_luc": (380, 135),
 }
@@ -880,6 +899,13 @@ HEADER_TO_FIELD = {
     "Số hiệu văn bản thay thế": "link_thay_the",
     "Văn bản thay thế": "link_thay_the",
     "Link thay thế": "link_thay_the",
+    "Tệp đính kèm": "tep_dinh_kem",
+    "File đính kèm": "tep_dinh_kem",
+    "Tệp tin đính kèm": "tep_dinh_kem",
+    "Tập tin đính kèm": "tep_dinh_kem",
+    "Tên file": "tep_dinh_kem",
+    "Tên tệp": "tep_dinh_kem",
+    "File": "tep_dinh_kem",
     "Ghi chú": "ghi_chu",
 }
 
@@ -1212,6 +1238,59 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
             if getattr(created_doc, "link_thay_the", None):
                 sync_replacement_document(created_doc)
 
+            # 6. Liên kết tệp đính kèm từ cột tep_dinh_kem (kho oldfile)
+            raw_tep_dinh_kem = doc_data.get("tep_dinh_kem")
+            if raw_tep_dinh_kem:
+                raw_files_str = str(raw_tep_dinh_kem).replace("\n", ";").replace(",", ";")
+                file_names = [f.strip() for f in raw_files_str.split(";") if f.strip()]
+                if file_names:
+                    base_module = "van-ban-di" if loai_str in ("DI", "VANBANDI") else "van-ban-den"
+                    is_han_che_doc = (
+                        getattr(created_doc, "pham_vi", "") == PhamVi.HAN_CHE
+                        or loai_str in ("MAT", "VANBANMAT")
+                    )
+                    pv_folder = "han-che" if is_han_che_doc else "noi-bo"
+
+                    doc_dt = None
+                    if base_module == "van-ban-den":
+                        doc_dt = getattr(created_doc, "ngay_den", None) or getattr(created_doc, "ngay_van_ban", None)
+                    else:
+                        doc_dt = getattr(created_doc, "ngay_ban_hanh", None) or getattr(created_doc, "ngay_van_ban", None)
+
+                    if not doc_dt:
+                        doc_dt = timezone.now()
+                    elif timezone.is_aware(doc_dt):
+                        doc_dt = timezone.localtime(doc_dt)
+
+                    date_str = doc_dt.strftime("%Y/%m/%d")
+
+                    oldfile_root = getattr(settings, "OLDFILE_STORAGE_ROOT", "")
+                    if not oldfile_root:
+                        if getattr(settings, "DOCUMENT_STORAGE_ROOT", ""):
+                            oldfile_root = str(Path(settings.DOCUMENT_STORAGE_ROOT).parent / "oldfile")
+                        else:
+                            oldfile_root = str(Path(settings.BASE_DIR).parent / "storage" / "oldfile")
+
+                    AttachmentModel = VanBanDiAttachment if base_module == "van-ban-di" else VanBanDenAttachment
+
+                    for fn in file_names:
+                        rel_oldfile_sub = f"{base_module}/{pv_folder}/{date_str}/{fn}"
+                        db_path = f"oldfile/{rel_oldfile_sub}"
+
+                        disk_file = Path(oldfile_root) / rel_oldfile_sub
+                        if disk_file.exists() and disk_file.is_file():
+                            AttachmentModel.objects.create(
+                                document=created_doc,
+                                name=fn,
+                                path=db_path,
+                                nguoi_tao=user if user and user.is_authenticated else None,
+                            )
+                        else:
+                            errors.append({
+                                "row": row_idx,
+                                "message": f"Văn bản '{created_doc.so_hieu}' đã được tạo, nhưng không tìm thấy tệp đính kèm '{fn}' tại kho lịch sử: oldfile/{rel_oldfile_sub}"
+                            })
+
             created_count += 1
         except Exception as e:
             errors.append({"row": row_idx, "message": str(e)})
@@ -1291,7 +1370,7 @@ def export_to_excel(queryset, loai: str, pham_vi: str = None) -> io.BytesIO:
     align_left = Alignment(horizontal="left", vertical="center", wrap_text=False)
 
     center_fields = {"so_hieu", "pham_vi", "ngay_den", "ngay_ban_hanh", "ngay_van_ban", "hieu_luc", "link_thay_the"}
-    wrap_fields = {"trich_yeu", "noi_ban_hanh", "ghi_chu"}
+    wrap_fields = {"trich_yeu", "noi_ban_hanh", "ghi_chu", "tep_dinh_kem"}
 
     for row_idx, doc in enumerate(queryset, start=2):
         is_doc_han_che = (
@@ -1306,6 +1385,12 @@ def export_to_excel(queryset, loai: str, pham_vi: str = None) -> io.BytesIO:
         noi_ban_hanh_text = str(getattr(doc, "noi_ban_hanh", "") or "").strip()
         ghi_chu_text = str(getattr(doc, "ghi_chu", "") or "").strip()
 
+        tep_dinh_kem_text = ""
+        if hasattr(doc, "attachments"):
+            atts = [a.name for a in doc.attachments.all() if not getattr(a, "is_deleted", False) and a.name]
+            tep_dinh_kem_text = "; ".join(atts)
+        lines_att = max(1, math.ceil(len(tep_dinh_kem_text) / 28)) if tep_dinh_kem_text else 1
+
         lines_ty = 1
         if trich_yeu_text:
             lines_ty = sum(max(1, math.ceil(len(line.strip()) / 52)) for line in trich_yeu_text.splitlines() if line.strip()) or 1
@@ -1314,7 +1399,7 @@ def export_to_excel(queryset, loai: str, pham_vi: str = None) -> io.BytesIO:
         if ghi_chu_text:
             lines_gc = sum(max(1, math.ceil(len(line.strip()) / 25)) for line in ghi_chu_text.splitlines() if line.strip()) or 1
 
-        est_lines = max(lines_ty, lines_nbh, lines_gc)
+        est_lines = max(lines_ty, lines_nbh, lines_gc, lines_att)
         if est_lines <= 1:
             ws.row_dimensions[row_idx].height = 28
         else:
@@ -1337,7 +1422,9 @@ def export_to_excel(queryset, loai: str, pham_vi: str = None) -> io.BytesIO:
 
         for col_idx, (field_name, _, _) in enumerate(columns, start=col_offset):
             val = getattr(doc, field_name, "")
-            if field_name == "pham_vi":
+            if field_name == "tep_dinh_kem":
+                val = tep_dinh_kem_text
+            elif field_name == "pham_vi":
                 val = "Hạn chế" if is_doc_han_che else "Nội bộ"
             elif isinstance(val, datetime):
                 val = val.strftime("%d/%m/%Y %H:%M" if field_name == "ngay_den" else "%d/%m/%Y")
