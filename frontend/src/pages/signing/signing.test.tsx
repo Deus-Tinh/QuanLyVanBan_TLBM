@@ -33,12 +33,11 @@ import DanhSachPage from './DanhSachPage';
 import QuyTrinhPage from './QuyTrinhPage';
 import SigningModule from './SigningModule';
 import TaiLieuPage from './TaiLieuPage';
-import ThongBaoPage from './ThongBaoPage';
 
 vi.mock('@lib/signing/api', async () => {
   const actual = await vi.importActual<typeof import('@lib/signing/api')>('@lib/signing/api');
   return { ...actual, signingApi: {
-    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), thongBao: vi.fn(), chiTietQuyTrinh: vi.fn(),
+    toi: vi.fn(), danhSach: vi.fn(), thongKe: vi.fn(), taiLieu: vi.fn(), quyTrinh: vi.fn(), donVi: vi.fn(), chiTietQuyTrinh: vi.fn(),
     xoaQuyTrinh: vi.fn(), taoQuyTrinh: vi.fn(), suaQuyTrinh: vi.fn(), chucVu: vi.fn(), danhBaCanBo: vi.fn(), canBoTheoChucVu: vi.fn(), tepCuaLuot: vi.fn(), tepGoc: vi.fn(), tepHoanTat: vi.fn(), bangChung: vi.fn(),
     uyQuyen: vi.fn(), timNguoiNhanUyQuyen: vi.fn(), thaoTacQuyTrinh: vi.fn(),
     cauHinhUyQuyen: vi.fn(), chucVuUyQuyen: vi.fn(), luuCauHinhUyQuyen: vi.fn(),
@@ -94,7 +93,6 @@ const boc = (ui: React.ReactNode, toi: NguoiDungHienTai = TOI) => render(
 beforeEach(() => {
   vi.clearAllMocks();
   api.quyTrinh.mockResolvedValue([]);
-  api.thongBao.mockResolvedValue([]);
   api.chucVu.mockResolvedValue([]);
   api.danhBaCanBo.mockResolvedValue([]);
   api.canBoTheoChucVu.mockResolvedValue({ count: 0, results: [] });
@@ -122,10 +120,19 @@ describe('SigningModule', () => {
     await waitFor(() => expect(tabKy).toHaveTextContent('2'));
     expect(api.thongKe).toHaveBeenCalledWith('can_toi_ky');
     const nav = within(screen.getByRole('navigation'));
-    for (const ten of [/Hồ sơ tôi trình/, /Hồ sơ được xem/, /Thông báo/, /Khóa ký & PIN/]) {
+    for (const ten of [/Hồ sơ tôi trình/, /Hồ sơ được xem/, /Khóa ký & PIN/]) {
       expect(nav.getByRole('link', { name: ten })).toBeInTheDocument();
     }
     expect(nav.queryByRole('link', { name: /^Quy trình/ })).toBeInTheDocument();
+    expect(nav.queryByRole('link', { name: /Thông báo/ })).not.toBeInTheDocument();
+  });
+
+  it('đường dẫn cũ /approvals/thong-bao chuyển về trang chính, không gọi API thông báo', async () => {
+    api.toi.mockResolvedValue(TOI);
+    api.danhSach.mockResolvedValue(trang([]));
+    moModule('/approvals/thong-bao');
+    expect(await screen.findByRole('heading', { level: 2, name: 'Cần tôi ký duyệt' })).toBeInTheDocument();
+    expect(screen.queryByText(/Trang không tồn tại/)).not.toBeInTheDocument();
   });
 
   it('có quyền tạo thì có nút riêng "Tạo hồ sơ trình ký" ở đầu trang, không nằm trong tab', async () => {
@@ -344,6 +351,27 @@ describe('Ủy quyền ký', () => {
     await waitFor(() => expect(xong).toHaveBeenCalledWith(ho_so));
   });
 
+  it('từ khóa để trống mà vẫn rỗng thì báo chưa có ai đủ điều kiện, không phải lỗi từ khóa', async () => {
+    const luot = luotCo([nguoiKy({ co_the_uy_quyen: true })]);
+    const ho_so = hoSo({ luot_trinh: [luot] });
+    api.timNguoiNhanUyQuyen.mockResolvedValue([]);
+    boc(<HanhDong hoSo={ho_so} luot={luot} maBamTepDangXem={null} onXong={() => undefined} />, QUAN_TRI);
+    fireEvent.click(screen.getByRole('button', { name: /Ủy quyền ký/ }));
+    fireEvent.change(await screen.findByRole('combobox', { name: /Người cần được ký thay/ }), { target: { value: '21' } });
+    expect(await screen.findByText(/Chưa có ai đủ điều kiện nhận ủy quyền/)).toBeInTheDocument();
+  });
+
+  it('gõ từ khóa mà vẫn rỗng thì báo không khớp từ khóa', async () => {
+    const luot = luotCo([nguoiKy({ co_the_uy_quyen: true })]);
+    const ho_so = hoSo({ luot_trinh: [luot] });
+    api.timNguoiNhanUyQuyen.mockResolvedValue([]);
+    boc(<HanhDong hoSo={ho_so} luot={luot} maBamTepDangXem={null} onXong={() => undefined} />, QUAN_TRI);
+    fireEvent.click(screen.getByRole('button', { name: /Ủy quyền ký/ }));
+    fireEvent.change(await screen.findByRole('combobox', { name: /Người cần được ký thay/ }), { target: { value: '21' } });
+    fireEvent.change(screen.getByPlaceholderText('Tìm theo tên, chức danh, đơn vị…'), { target: { value: 'nguoi_ngoai' } });
+    expect(await screen.findByText(/Không khớp từ khóa/)).toBeInTheDocument();
+  });
+
   it('chỉ cho chọn người ký mà backend xác nhận người hiện tại được ủy quyền', async () => {
     const truongPhong = {
       ...TOI, id: 4, la_lanh_dao_don_vi: true,
@@ -519,57 +547,7 @@ describe('QuyTrinhPage bộ lọc', () => {
   });
 });
 
-describe('ThongBaoPage', () => {
-  it('hiện thông báo của tôi với loại, văn bản và liên kết tới hồ sơ', async () => {
-    api.thongBao.mockResolvedValue([{
-      id: 1, loai_thong_bao: 'CAN_KY', trinh_ky: 12, van_ban: '15/TTr — Mua sắm', trang_thai_ho_so: 'CHO_KY',
-      ten_quy_trinh: 'Duyệt mua sắm', created_at: '2026-10-07T01:00:00Z',
-    }]);
-    boc(<ThongBaoPage />);
-    const lienKet = await screen.findByRole('link', { name: /Cần ký duyệt/ });
-    expect(lienKet).toHaveAttribute('href', '/approvals/12');
-    expect(within(lienKet).getByText(/#12 · 15\/TTr — Mua sắm/)).toBeInTheDocument();
-  });
-
-  it('loại thông báo mới (ủy quyền, tin nhắn, nhắc hạn) có nhãn riêng; mở trang thì đánh dấu đã xem', async () => {
-    localStorage.removeItem('tlbm_signing_thong_bao_xem_luc:7');
-    api.thongBao.mockResolvedValue(['UY_QUYEN', 'TIN_NHAN', 'QUA_HAN'].map((loai, i) => ({
-      id: i + 1, loai_thong_bao: loai as 'UY_QUYEN', trinh_ky: 12, van_ban: '15/TTr', trang_thai_ho_so: 'CHO_KY' as const,
-      ten_quy_trinh: 'Duyệt', created_at: '2026-10-07T01:00:00Z',
-    })));
-    boc(<ThongBaoPage />);
-    expect(await screen.findByText('Ủy quyền ký')).toBeInTheDocument();
-    expect(screen.getByText('Tin nhắn trao đổi')).toBeInTheDocument();
-    expect(screen.getByText('Quá hạn ký')).toBeInTheDocument();
-    await waitFor(() => expect(Number(localStorage.getItem('tlbm_signing_thong_bao_xem_luc:7'))).toBeGreaterThan(0));
-  });
-
-  it('tab Thông báo hiện số thông báo mới kể từ lần xem trước', async () => {
-    localStorage.setItem('tlbm_signing_thong_bao_xem_luc:7', String(Date.parse('2026-10-07T00:00:00Z')));
-    api.toi.mockResolvedValue(TOI);
-    api.danhSach.mockResolvedValue(trang([]));
-    api.thongBao.mockResolvedValue([
-      { id: 1, loai_thong_bao: 'CAN_KY', trinh_ky: 12, van_ban: 'a', trang_thai_ho_so: 'CHO_KY', ten_quy_trinh: 'Q', created_at: '2026-10-07T01:00:00Z' },
-      { id: 2, loai_thong_bao: 'HUY', trinh_ky: 13, van_ban: 'b', trang_thai_ho_so: 'HUY', ten_quy_trinh: 'Q', created_at: '2026-10-06T01:00:00Z' },
-    ]);
-    moModule();
-    const tab = await screen.findByRole('link', { name: /Thông báo/ });
-    await waitFor(() => expect(tab).toHaveTextContent('Thông báo1'));
-  });
-
-  it('thông báo cần ký hiện hạn xử lý theo định dạng ngày Việt Nam', async () => {
-    api.thongBao.mockResolvedValue([{
-      id: 1, loai_thong_bao: 'CAN_KY', trinh_ky: 12, van_ban: '15/TTr', trang_thai_ho_so: 'CHO_KY',
-      ten_quy_trinh: 'Duyệt', created_at: '2026-10-07T01:00:00Z', han_xu_ly: '2026-10-08T03:30:00Z',
-    }]);
-    boc(<ThongBaoPage />);
-    const han = new Date('2026-10-08T03:30:00Z').toLocaleString('vi-VN', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-    expect(await screen.findByText(han)).toBeInTheDocument();
-    expect(screen.getByText(/Hạn xử lý/)).toBeInTheDocument();
-  });
-
+describe('DanhSachPage: bộ lọc ngày', () => {
   it('Từ ngày lớn hơn Đến ngày: báo lỗi tại form, không gửi request; sửa lại hợp lệ thì lọc', async () => {
     api.danhSach.mockResolvedValue(trang([]));
     boc(<DanhSachPage hop="toi_gui" />);
@@ -589,12 +567,6 @@ describe('ThongBaoPage', () => {
     await waitFor(() => expect(api.danhSach).toHaveBeenLastCalledWith('toi_gui', { tu_ngay: '2026-09-30', den_ngay: '2026-10-01' }, 1));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Từ ngày')).not.toHaveAttribute('aria-invalid');
-  });
-
-  it('chưa có thông báo', async () => {
-    api.thongBao.mockResolvedValue([]);
-    boc(<ThongBaoPage />);
-    expect(await screen.findByText('Chưa có thông báo nào.')).toBeInTheDocument();
   });
 });
 
@@ -659,6 +631,22 @@ describe('TaiLieuPage khoảng ngày và tải trong hộp xem', () => {
     expect(click).toHaveBeenCalledTimes(1);
     click.mockRestore();
   });
+
+  it('hộp xem PDF có nút In dùng lại dữ liệu đã tải để xem (không gọi API thêm lần nữa)', async () => {
+    api.taiLieu.mockResolvedValue(trang([tep]));
+    api.tepCuaLuot.mockResolvedValue(new Blob(['%PDF-']));
+    URL.createObjectURL = vi.fn(() => 'blob:tep');
+    URL.revokeObjectURL = vi.fn();
+    boc(<TaiLieuPage />);
+    fireEvent.click((await screen.findAllByText(/PDF trình ký · lượt 1|trinh-ky-12-luot-1\.pdf/))[0]);
+    const hop = within(await screen.findByRole('dialog'));
+    const nutIn = await hop.findByRole('button', { name: 'In' });
+    await waitFor(() => expect(nutIn).toBeEnabled());
+    expect(api.tepCuaLuot).toHaveBeenCalledTimes(1);
+    fireEvent.click(nutIn);
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(api.tepCuaLuot).toHaveBeenCalledTimes(1);  // In không gọi lại API tải tệp
+  });
 });
 
 describe('TaiLieuPage phân trang', () => {
@@ -680,6 +668,20 @@ describe('TaiLieuPage phân trang', () => {
 
 describe('QuyTrinhPage chọn người ký từ phân hệ CBNV', () => {
   const QUAN_TRI: NguoiDungHienTai = { ...TOI, la_quan_tri: true, quyen: { ...TOI.quyen, manage_signing_process: true } };
+  const CHUC_VU_THU_BAC = [
+    { id: 10, name: 'Chức vụ cấp cao', display_order: 10 },
+    { id: 20, name: 'Chức vụ cấp trung', display_order: 20 },
+    { id: 30, name: 'Chức vụ cấp thấp', display_order: 30 },
+  ];
+
+  async function moFormThuBac() {
+    api.quyTrinh.mockResolvedValue([]);
+    api.donVi.mockResolvedValue([]);
+    api.chucVu.mockResolvedValue(CHUC_VU_THU_BAC);
+    boc(<QuyTrinhPage />, QUAN_TRI);
+    fireEvent.click(await screen.findByRole('button', { name: /Tạo quy trình/ }));
+    return screen.findAllByRole('combobox', { name: 'Thêm người ký theo chức danh' });
+  }
 
   it('chọn cán bộ từ danh bạ CBNV và chức danh từ Danh mục chức danh; lưu đúng payload', async () => {
     api.quyTrinh.mockResolvedValue([]);
@@ -754,6 +756,50 @@ describe('QuyTrinhPage chọn người ký từ phân hệ CBNV', () => {
     expect(screen.getByRole('button', { name: /Phạm Thu Hà/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Lê Văn Minh/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Hoàng Đức Nam/ })).toBeInTheDocument();
+  });
+
+  it('cấp sau chỉ gợi ý chức danh giữ thứ bậc cao hơn hoặc bằng cấp chức danh liền trước', async () => {
+    const [capTruoc] = await moFormThuBac();
+    fireEvent.change(capTruoc, { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: /Thêm người ký theo chức danh/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thêm cấp/ }));
+
+    const capSau = (await screen.findAllByRole('combobox', { name: 'Thêm người ký theo chức danh' }))[1];
+    await waitFor(() => expect(within(capSau).getByRole('option', { name: 'Chức vụ cấp cao' })).toBeInTheDocument());
+    expect(within(capSau).getByRole('option', { name: 'Chức vụ cấp trung' })).toBeInTheDocument();
+    expect(within(capSau).queryByRole('option', { name: 'Chức vụ cấp thấp' })).not.toBeInTheDocument();
+    expect(screen.getByText(/thứ bậc hiệu lực.*Chức vụ cấp trung.*cấp có chức danh liền trước/i)).toBeInTheDocument();
+  });
+
+  it('cấp trước chỉ gợi ý chức danh không làm sai thứ bậc của cấp chức danh liền sau', async () => {
+    await moFormThuBac();
+    fireEvent.click(screen.getByRole('button', { name: /Thêm cấp/ }));
+    const cap = await screen.findAllByRole('combobox', { name: 'Thêm người ký theo chức danh' });
+    fireEvent.change(cap[1], { target: { value: '30' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Thêm người ký theo chức danh/ })[1]);
+
+    await waitFor(() => expect(within(cap[0]).getByRole('option', { name: 'Chức vụ cấp thấp' })).toBeInTheDocument());
+    expect(within(cap[0]).queryByRole('option', { name: 'Chức vụ cấp cao' })).not.toBeInTheDocument();
+    expect(within(cap[0]).queryByRole('option', { name: 'Chức vụ cấp trung' })).not.toBeInTheDocument();
+    expect(screen.getByText(/thứ bậc hiệu lực.*Chức vụ cấp thấp.*cấp có chức danh liền sau/i)).toBeInTheDocument();
+  });
+
+  it('giới hạn thứ bậc chức danh không làm hẹp danh bạ cán bộ đích danh', async () => {
+    api.danhBaCanBo.mockResolvedValue([
+      { id: 41, username: 'can_bo_cap_cao', ho_ten: 'Cán bộ cấp cao', don_vi_id: 1, don_vi_ten: 'Đơn vị A', chuc_vu_id: 10, chuc_vu_ten: 'Chức vụ cấp cao' },
+      { id: 42, username: 'can_bo_cap_thap', ho_ten: 'Cán bộ cấp thấp', don_vi_id: 2, don_vi_ten: 'Đơn vị B', chuc_vu_id: 30, chuc_vu_ten: 'Chức vụ cấp thấp' },
+    ]);
+    const [capTruoc] = await moFormThuBac();
+    fireEvent.change(capTruoc, { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: /Thêm người ký theo chức danh/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thêm cấp/ }));
+
+    const capSau = (await screen.findAllByRole('combobox', { name: 'Thêm người ký theo chức danh' }))[1];
+    await waitFor(() => expect(within(capSau).queryByRole('option', { name: 'Chức vụ cấp thấp' })).not.toBeInTheDocument());
+    const danhBaCapSau = screen.getAllByRole('textbox', { name: 'Thêm người ký' })[1];
+    fireEvent.focus(danhBaCapSau);
+    expect(await screen.findByRole('button', { name: /Cán bộ cấp cao/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Cán bộ cấp thấp/ })).toBeInTheDocument();
   });
 
   it('hiển thị danh sách Cán bộ nhân viên trong ô tìm kiếm người ký (#330)', async () => {

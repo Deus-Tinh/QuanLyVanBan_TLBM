@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import EmployeesPage from './EmployeesPage';
 import * as apiClientModule from '@lib/apiClient';
@@ -93,6 +93,9 @@ describe('EmployeesPage Component (Issue #24)', () => {
     mockedApiClient.mockImplementation(async (endpoint: string, options?: RequestInit) => {
       if (options?.method === 'POST') {
         return mockedApiClient.post(endpoint, options.body, options);
+      }
+      if (endpoint.includes('/api/accounts/employees/import-jobs/')) {
+        return mockedApiClient.get(endpoint);
       }
       if (endpoint.includes('/api/auth/me/permissions/')) {
         return {
@@ -343,6 +346,22 @@ describe('EmployeesPage Component (Issue #24)', () => {
       expect(screen.getByText('Nguyễn Văn Bình')).toBeInTheDocument();
     });
 
+    const detailButtons = screen.getAllByTitle('Xem chi tiết');
+    fireEvent.click(detailButtons[1]);
+    const detailDialog = await screen.findByRole('dialog', { name: 'Thông Tin Chi Tiết Cán Bộ Nhân Viên' });
+    expect(within(detailDialog).queryByRole('button', { name: 'Chỉnh sửa' })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(detailDialog).toContainElement(document.activeElement as HTMLElement);
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(detailDialog).toContainElement(document.activeElement as HTMLElement);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Thông Tin Chi Tiết Cán Bộ Nhân Viên' })).not.toBeInTheDocument();
+    });
+    await waitFor(() => expect(document.activeElement).toBe(detailButtons[1]));
+
     // Sửa button should appear for binhnv row (only 1 edit button on the page)
     const editBtns = screen.getAllByTitle('Chỉnh sửa');
     expect(editBtns.length).toBe(1);
@@ -363,6 +382,29 @@ describe('EmployeesPage Component (Issue #24)', () => {
 
     // Clean up
     localStorage.removeItem('tlbm_session');
+  });
+
+  it('opens the birthday picker and writes a selected date in DD/MM/YYYY format', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
+    );
+
+    await screen.findByText('Nguyễn Văn Bình');
+    fireEvent.click(screen.getByRole('button', { name: /Thêm nhân viên/i }));
+    await screen.findByText('Thêm Mới Cán Bộ Nhân Viên');
+
+    const datePicker = container.querySelector<HTMLInputElement>('input[type="date"]');
+    expect(datePicker).not.toBeNull();
+    expect(datePicker!).not.toHaveClass('sr-only');
+    const showPicker = vi.fn();
+    Object.defineProperty(datePicker!, 'showPicker', { configurable: true, value: showPicker });
+    fireEvent.click(screen.getByRole('button', { name: 'Ngày sinh' }));
+    expect(showPicker).toHaveBeenCalledOnce();
+    fireEvent.change(datePicker!, { target: { value: '1990-01-02' } });
+
+    expect(container.querySelector<HTMLInputElement>('input[name="ngay_sinh"]')).toHaveValue('02/01/1990');
   });
 
   it('displays error message from backend when delete fails', async () => {
@@ -658,12 +700,71 @@ describe('EmployeesPage Component (Issue #24)', () => {
     expect(screen.getByText('Kéo thả tệp .xlsx vào đây hoặc bấm để chọn tệp')).toBeInTheDocument();
   });
 
+  it('shows upload progress while the server accepts the file', async () => {
+    let resolveUpload: ((value: { job_id: string }) => void) | undefined;
+    mockedApiClient.post.mockReturnValue(new Promise((resolve) => {
+      resolveUpload = resolve;
+    }));
+    mockedApiClient.get.mockResolvedValue({
+      job_id: 'pending-upload-job',
+      status: 'done',
+      phase: 'complete',
+      processed: 0,
+      total: 0,
+      created_count: 0,
+      errors: [],
+      message: 'employees.import.importSuccess',
+    });
+
+    render(
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
+    );
+    await screen.findByText('Nguyễn Văn Bình');
+    fireEvent.click(screen.getByRole('button', { name: /Nhập từ Excel/i }));
+    await screen.findByText('Nhập Danh Sách CBNV Từ Excel');
+
+    const file = new File(['xlsx'], 'danh_sach.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    fireEvent.change(document.querySelector<HTMLInputElement>('input[type="file"]')!, {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Tiến hành nạp dữ liệu/i }));
+
+    expect(await screen.findByText('Đang tải tệp lên máy chủ...')).toBeInTheDocument();
+    resolveUpload?.({ job_id: 'pending-upload-job' });
+    await waitFor(() => {
+      expect(screen.queryByText('Nhập Danh Sách CBNV Từ Excel')).not.toBeInTheDocument();
+    });
+  });
+
   it('supports selecting and importing valid .xlsx Excel files', async () => {
     mockedApiClient.post.mockResolvedValue({
-      success: true,
-      message: 'employees.messages.importSuccess',
-      created_count: 2,
+      job_id: 'test-import-job',
     });
+    mockedApiClient.get
+      .mockResolvedValueOnce({
+        job_id: 'test-import-job',
+        status: 'processing',
+        phase: 'validation',
+        processed: 10,
+        total: 20,
+        created_count: 0,
+        errors: [],
+        message: 'employees.import.jobValidating',
+      })
+      .mockResolvedValueOnce({
+      job_id: 'test-import-job',
+      status: 'done',
+      phase: 'complete',
+      processed: 2,
+      total: 2,
+      created_count: 2,
+      errors: [],
+      message: 'employees.import.importSuccess',
+      });
 
     render(
       <MemoryRouter>
@@ -692,9 +793,21 @@ describe('EmployeesPage Component (Issue #24)', () => {
     const submitBtn = screen.getByRole('button', { name: /Tiến hành nạp dữ liệu/i });
     fireEvent.click(submitBtn);
 
+    expect(await screen.findByText('Đang kiểm tra dữ liệu trong tệp...')).toBeInTheDocument();
+    expect(screen.getByText('Đã xử lý 10/20 dòng')).toBeInTheDocument();
+
     await waitFor(() => {
       expect(screen.getByText('Nhập thành công cán bộ nhân viên từ Excel!')).toBeInTheDocument();
     });
+
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/api/accounts/employees/import-async/',
+      expect.any(FormData),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/api/accounts/employees/import-jobs/test-import-job/',
+    );
   });
 
   it('renders concurrent assignments badge on employee unit cell', async () => {
