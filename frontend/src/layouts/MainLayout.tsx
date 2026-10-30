@@ -298,8 +298,21 @@ export default function MainLayout({
     }
 
     const handleScroll = () => {
+      if (scrollContainer) {
+        const maxScroll = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+        // Nếu độ dài cuộn khả dụng < 120px (trang ngắn), giữ nguyên TopSubNav để tránh vòng lặp co giãn gây nháy (jitter loop)
+        if (maxScroll < 120) {
+          setIsScrolled(false);
+          return;
+        }
+      }
       const scrollY = (scrollContainer ? scrollContainer.scrollTop : 0) || window.scrollY || document.documentElement.scrollTop || 0;
-      setIsScrolled(scrollY > 60);
+      setIsScrolled((prev) => {
+        // Hysteresis (độ trễ ngưỡng): cuộn xuống > 80px mới thu gọn, cuộn ngược lên < 20px mới mở rộng
+        if (!prev && scrollY > 80) return true;
+        if (prev && scrollY < 20) return false;
+        return prev;
+      });
     };
 
     const rafId = requestAnimationFrame(() => {
