@@ -120,6 +120,9 @@ jobs:
       - name: Install PostgreSQL 16 client tools for scripts/build_db.py tests
         run: |
           set -euo pipefail
+          sudo install -d /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install --yes postgresql-client-16
           CLIENT_BIN=/usr/lib/postgresql/16/bin
