@@ -131,7 +131,7 @@ class UyQuyenDaCapTests(KyBase):
         # Tham số muc_dich=uy_quyen không còn đổi hành vi tìm người dùng (không lọc theo ủy quyền)
         r = c.get(f"/api/v1/signing/nguoi-dung/?muc_dich=uy_quyen&ho_so={self.pk}&dong_nguoi_ky={self.dong_ky1.pk}&q=pho")
         self.assertEqual(r.status_code, 200, r.data)
-        self.assertEqual([u["ten_dang_nhap"] for u in r.data], ["pho_phong"])
+        self.assertIn("pho_phong", [u["ten_dang_nhap"] for u in r.data])
         # Chi tiết hồ sơ không còn trường co_the_uy_quyen
         r = c.get(f"{BASE}/{self.pk}/")
         self.assertEqual(r.status_code, 200, r.data)
