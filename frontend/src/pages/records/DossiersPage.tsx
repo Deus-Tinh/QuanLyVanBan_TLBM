@@ -65,6 +65,7 @@ export default function DossiersPage() {
   const [editing, setEditing] = React.useState<Dossier | null | undefined>(undefined);
   const [deleting, setDeleting] = React.useState<Dossier | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -160,7 +161,8 @@ export default function DossiersPage() {
   };
 
   const handleDelete = async () => {
-    if (!deleting) return;
+    if (!deleting || isSaving) return;
+    setDeleteError(null);
     setIsSaving(true);
     try {
       await recordsService.deleteDossier(deleting.id);
@@ -169,8 +171,7 @@ export default function DossiersPage() {
       if (items.length === 1 && page > 1) setPage((value) => value - 1);
       else setReloadKey((value) => value + 1);
     } catch (err) {
-      setDeleting(null);
-      setError(
+      setDeleteError(
         apiErrorMessage(
           err,
           t('records.errors.deleteDossier'),
@@ -301,7 +302,7 @@ export default function DossiersPage() {
                           <Button type="button" size="sm" variant="ghost" icon="fa-folder-open" onClick={(event) => { event.stopPropagation(); navigate(dossierDocumentTypesDestination(item)); }} aria-label={t('records.dossiers.viewDocumentTypesLabel', { name: item.ten_ho_so })}>{t('records.actions.view')}</Button>
                           <Button type="button" size="sm" variant="ghost" icon="fa-pen" onClick={(event) => { event.stopPropagation(); setSaveError(null); setEditing(item); }} aria-label={t('records.dossiers.editLabel', { name: item.ten_ho_so })} />
                           {!item.is_he_thong && (
-                            <Button type="button" size="sm" variant="ghost" icon="fa-trash" className="text-danger hover:text-danger" onClick={(event) => { event.stopPropagation(); setDeleting(item); }} aria-label={t('records.dossiers.deleteLabel', { name: item.ten_ho_so })} />
+                            <Button type="button" size="sm" variant="ghost" icon="fa-trash" className="text-danger hover:text-danger" onClick={(event) => { event.stopPropagation(); setDeleteError(null); setDeleting(item); }} aria-label={t('records.dossiers.deleteLabel', { name: item.ten_ho_so })} />
                           )}
                         </div>
                       </TableCell>
@@ -329,7 +330,8 @@ export default function DossiersPage() {
         title={t('records.dossiers.confirmDeleteTitle')}
         message={t('records.dossiers.confirmDeleteMessage', { name: deleting?.ten_ho_so ?? '' })}
         isLoading={isSaving}
-        onCancel={() => setDeleting(null)}
+        error={deleteError}
+        onCancel={() => { if (!isSaving) setDeleting(null); }}
         onConfirm={handleDelete}
       />
     </section>
