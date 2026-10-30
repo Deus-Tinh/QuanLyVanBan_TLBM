@@ -21,7 +21,13 @@ from rest_framework.test import APIClient
 
 from accounts.models import Position
 from birthdays.models import BirthdayEmailLog, BirthdayEmailStatus, BirthdayWish
-from birthdays.services import generate_birthday_email_html, is_birthday_on_date, send_automated_birthday_emails
+from birthdays.services import (
+    generate_birthday_card_token,
+    generate_birthday_email_html,
+    generate_birthday_email_text,
+    is_birthday_on_date,
+    send_automated_birthday_emails,
+)
 from organizations.models import DonVi, KhoiKhuVuc
 
 Employee = get_user_model()
@@ -197,6 +203,48 @@ class BirthdaySystemTests(TestCase):
         invalid_status = self.client.get(url, {"trang_thai": "bogus"})
         self.assertEqual(invalid_status.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(invalid_status.json()["error"], "birthdays.messages.invalidStatus")
+
+    def test_public_birthday_card_api_returns_only_signed_card_fields(self):
+        token = generate_birthday_card_token(self.emp_staff)
+
+        response = self.client.post(
+            reverse("birthdays:birthday_card"),
+            {"token": token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        card = response.json()["card"]
+        self.assertEqual(card["employee_name"], self.emp_staff.ho_ten)
+        self.assertEqual(card["birthday_date"], "20/05")
+        self.assertEqual(card["department"], self.don_vi.ten)
+        self.assertEqual(card["position"], self.chuc_vu.name)
+        self.assertNotIn("email", card)
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+
+    def test_public_birthday_card_api_rejects_invalid_token(self):
+        response = self.client.post(
+            reverse("birthdays:birthday_card"),
+            {"token": "invalid-token"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(BIRTHDAY_CARD_BASE_URL="https://example.test/birthday-card.html")
+    def test_birthday_email_includes_card_button_and_plain_text_link(self):
+        html = generate_birthday_email_html(self.emp_staff)
+        text = generate_birthday_email_text(self.emp_staff)
+
+        self.assertIn('href="https://example.test/birthday-card.html#token=', html)
+        self.assertIn("Mở thiệp chúc mừng sinh nhật", html)
+        self.assertIn("Mở thiệp chúc mừng sinh nhật: https://example.test/birthday-card.html#token=", text)
+
+    @override_settings(BIRTHDAY_CARD_BASE_URL="", SIGNING_FRONTEND_URL="https://example.test")
+    def test_birthday_card_url_uses_shared_frontend_url_by_default(self):
+        html = generate_birthday_email_html(self.emp_staff)
+
+        self.assertIn('href="https://example.test/birthday-card.html#token=', html)
 
     def test_birthday_wishes_route_is_not_exposed(self):
         """Issue #23 không cung cấp API lời chúc thủ công; model vẫn được giữ theo DDL."""
