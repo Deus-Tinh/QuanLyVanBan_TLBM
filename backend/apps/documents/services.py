@@ -13,6 +13,7 @@ Bao gồm:
 import io
 import math
 import re
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
@@ -964,18 +965,37 @@ def _parse_hieu_luc(value):
     return HieuLuc.CON_HIEU_LUC
 
 
+def _clean_attachment_name(name: str) -> str:
+    """
+    Chuẩn hóa tên file đính kèm để so khớp chính xác:
+    - Loại bỏ khoảng trắng thừa đầu/cuối
+    - Chuẩn hóa Unicode tiếng Việt sang dạng dựng sẵn (NFC)
+    - Loại bỏ khoảng trắng thừa trước dấu chấm đuôi mở rộng (VD: 'tai_lieu .pdf' -> 'tai_lieu.pdf')
+    - Chuyển chữ thường
+    """
+    if not name:
+        return ""
+    s = unicodedata.normalize("NFC", str(name)).strip()
+    s = re.sub(r"\s+\.([a-zA-Z0-9]+)$", r".\1", s)
+    return s.lower()
+
+
 def import_from_excel(file_obj, loai: str, user, pham_vi: str = None, attachments: list = None) -> dict:
     """Import dữ liệu văn bản từ file Excel vào đúng model tương ứng."""
     loai_str = str(loai).strip().upper()
     model = get_document_model(loai_str)
 
-    # Lập bản đồ tra cứu file đính kèm tải lên theo tên file (case-insensitive)
+    # Lập bản đồ tra cứu file đính kèm tải lên theo tên file (case-insensitive & NFC-normalized)
     uploaded_files_map = {}
     if attachments:
         for att in attachments:
             att_name = getattr(att, "name", "")
             if att_name:
-                uploaded_files_map[str(att_name).strip().lower()] = att
+                key_clean = _clean_attachment_name(att_name)
+                uploaded_files_map[key_clean] = att
+                key_raw = str(att_name).strip().lower()
+                if key_raw not in uploaded_files_map:
+                    uploaded_files_map[key_raw] = att
 
     wb = load_workbook(file_obj, read_only=True, data_only=True)
     ws = wb.active
@@ -1278,10 +1298,14 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None, attachment
                     AttachmentModel = VanBanDiAttachment if base_module == "van-ban-di" else VanBanDenAttachment
 
                     for fn in file_names:
-                        fn_key = fn.strip().lower()
+                        clean_fn = _clean_attachment_name(fn)
                         # 6.1. Ưu tiên 1: Tệp được người dùng kéo thả tải lên trực tiếp trong request import
-                        if fn_key in uploaded_files_map:
-                            up_file = uploaded_files_map[fn_key]
+                        matched_up_file = (
+                            uploaded_files_map.get(clean_fn)
+                            or uploaded_files_map.get(fn.strip().lower())
+                        )
+                        if matched_up_file:
+                            up_file = matched_up_file
                             try:
                                 if hasattr(up_file, "seek"):
                                     up_file.seek(0)
@@ -1289,7 +1313,7 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None, attachment
                                 pass
                             AttachmentModel.objects.create(
                                 document=created_doc,
-                                name=fn,
+                                name=fn.strip(),
                                 file=up_file,
                                 file_size=getattr(up_file, "size", 0),
                                 nguoi_tao=user if user and user.is_authenticated else None,
@@ -1297,14 +1321,19 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None, attachment
                             continue
 
                         # 6.2. Ưu tiên 2: Tìm trong kho tệp lịch sử (oldfile)
-                        rel_oldfile_sub = f"{base_module}/{pv_folder}/{date_str}/{fn}"
+                        rel_oldfile_sub = f"{base_module}/{pv_folder}/{date_str}/{fn.strip()}"
                         db_path = f"oldfile/{rel_oldfile_sub}"
 
                         disk_file = Path(oldfile_root) / rel_oldfile_sub
                         if not (disk_file.exists() and disk_file.is_file()):
                             flex_dir = Path(oldfile_root) / base_module / pv_folder
                             if flex_dir.exists() and flex_dir.is_dir():
-                                found_candidates = list(flex_dir.glob(f"**/{fn}"))
+                                found_candidates = list(flex_dir.glob(f"**/{fn.strip()}"))
+                                if not found_candidates and clean_fn:
+                                    found_candidates = [
+                                        cand for cand in flex_dir.glob("**/*")
+                                        if cand.is_file() and _clean_attachment_name(cand.name) == clean_fn
+                                    ]
                                 if found_candidates:
                                     disk_file = found_candidates[0]
                                     rel_sub = disk_file.relative_to(Path(oldfile_root)).as_posix()
@@ -1313,14 +1342,14 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None, attachment
                         if disk_file.exists() and disk_file.is_file():
                             AttachmentModel.objects.create(
                                 document=created_doc,
-                                name=fn,
+                                name=fn.strip(),
                                 path=db_path,
                                 nguoi_tao=user if user and user.is_authenticated else None,
                             )
                         else:
                             errors.append({
                                 "row": row_idx,
-                                "message": f"Văn bản '{created_doc.so_hieu}' đã được tạo, nhưng chưa tìm thấy tệp đính kèm '{fn}'."
+                                "message": f"Văn bản '{created_doc.so_hieu}' đã được tạo, nhưng chưa tìm thấy tệp đính kèm '{fn.strip()}'."
                             })
 
             created_count += 1
