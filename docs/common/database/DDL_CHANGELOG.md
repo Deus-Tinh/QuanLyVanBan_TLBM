@@ -4,6 +4,7 @@ Mỗi PR sửa `release_DDL.sql` thêm một mục ở đầu danh sách (mới 
 
 | Ngày | PR | Đối tượng thay đổi | Lý do |
 |---|---|---|---|
+| 2026-10-30 | issue #387 | Seed `auth_group_permissions`: gán `export_donvi` cho nhóm `TP` và `BGD` (ADMIN đã có; 209 -> 211 lượt phân quyền); migration `authorization.0012_grant_export_donvi_tp_bgd` bổ sung cho DB đã seed | Xuất danh bạ Phòng ban do admin, Tổng giám đốc và chức vụ cao cấp thực hiện, cùng mức với `export_cbnv` |
 | 2026-10-29 | issue #368 | Seed `auth_permission`: thêm `change_hieu_luc_vanbanden`, `change_hieu_luc_vanbandi`; seed `auth_group_permissions`: gán cho nhóm `ADMIN` (CROSS JOIN sẵn có) và `VT` (209 lượt phân quyền); migration `authorization.0011_change_hieu_luc_permissions` bổ sung cho DB đã seed | Đổi hiệu lực văn bản đến/đi là thao tác riêng, chỉ ADMIN và Văn thư được làm |
 | 2026-10-29 | issue #366 | Seed `auth_group_permissions`: bỏ `view_read_log_vanbanden`, `view_read_log_vanbandi` khỏi nhóm `VT` và `view_read_log_vanbanden` khỏi nhóm `TP` (208 -> 205 lượt phân quyền); migration `authorization.0010_remove_read_log_from_vt_tp` gỡ trên DB đã seed | Nhật ký xem văn bản đến/đi chỉ ADMIN và BGD xem được theo quyết định nhóm trưởng; TLBGD, KT giữ nguyên |
 | 2026-10-28 | #311 | Thêm bảng `signing_delegation_role`, cột `signing_request_step_signer.chuc_vu_goc_uy_quyen_id`, chỉ mục `uq_signing_completed_doc` trên `signing_request` | Cấu hình ủy quyền ký theo chức danh và giới hạn liên kết một hồ sơ hoàn tất cho mỗi văn bản đi (#80) |
