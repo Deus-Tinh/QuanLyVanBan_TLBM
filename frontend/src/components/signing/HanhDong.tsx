@@ -14,7 +14,7 @@ import { docFileKhoaTuTep, DUOI_FILE_KHOA } from '@lib/signing/fileKhoa';
 import type { BanBocKhoa } from '@lib/signing/khoaKy';
 import { khoaHoatDong, kyBangPin } from '@lib/signing/luongKhoa';
 import type { HoSoChiTiet, LuotTrinh } from '@lib/signing/types';
-import { HopThoai, OChonFileKhoa, OChonTep, ThongBao, TruongNhap } from './ChungUI';
+import { HopThoai, OChonFileKhoa, ThongBao, TruongNhap } from './ChungUI';
 
 type LoaiHopThoai = 'ky' | 'sua' | 'tu_choi' | 'thu_hoi' | 'huy' | 'trinh_lai' | null;
 
@@ -24,6 +24,31 @@ interface Props {
   /** SHA-256 tính lại trên tệp đang hiển thị (null khi chưa tải xong) */
   maBamTepDangXem: string | null;
   onXong: (ho_so?: HoSoChiTiet) => void;
+}
+
+function NutXacNhan({
+  onXacNhan,
+  nhan,
+  variant = 'primary',
+  disabled = false,
+  dangLam,
+  onDong,
+  nhanHuy,
+}: {
+  onXacNhan: () => void;
+  nhan: string;
+  variant?: 'primary' | 'danger';
+  disabled?: boolean;
+  dangLam: boolean;
+  onDong: () => void;
+  nhanHuy: string;
+}) {
+  return (
+    <>
+      <Button variant="secondary" size="sm" onClick={onDong}>{nhanHuy}</Button>
+      <Button variant={variant} size="sm" isLoading={dangLam} disabled={disabled} onClick={onXacNhan}>{nhan}</Button>
+    </>
+  );
 }
 
 export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props) {
@@ -45,11 +70,7 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
 
   // Lắng nghe thao tác kéo tệp trên toàn màn hình để modal phản ứng hứng file
   useEffect(() => {
-    if (mo !== 'ky') {
-      setCoFileTrenManHinh(false);
-      setVaoPhamViModal(false);
-      return undefined;
-    }
+    if (mo !== 'ky') return undefined;
 
     let dragCount = 0;
 
@@ -60,7 +81,7 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
       }
     };
 
-    const onWindowDragLeave = (e: DragEvent) => {
+    const onWindowDragLeave = () => {
       dragCount--;
       if (dragCount <= 0) {
         dragCount = 0;
@@ -164,12 +185,7 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
     <Button size="sm" variant={variant} icon={icon} onClick={() => setMo(loai)}>{nhan}</Button>
   );
 
-  const nutXacNhan = (ham: () => void, nhan: string, variant: 'primary' | 'danger' = 'primary', tat = false) => (
-    <>
-      <Button variant="secondary" size="sm" onClick={dong}>{t('chung.huyBo')}</Button>
-      <Button variant={variant} size="sm" isLoading={dangLam} disabled={tat} onClick={ham}>{nhan}</Button>
-    </>
-  );
+
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -199,7 +215,17 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
             ? 'border-2 border-dashed border-primary shadow-2xl ring-4 ring-primary/20'
             : 'border border-border-subtle shadow-xl'
         }`}
-        chanDuoi={nutXacNhan(ky, t('hanhDong.kyDuyet'), 'primary', !maBamKhop)}
+        chanDuoi={
+          <NutXacNhan
+            onXacNhan={ky}
+            nhan={t('hanhDong.kyDuyet')}
+            variant="primary"
+            disabled={!maBamKhop}
+            dangLam={dangLam}
+            onDong={dong}
+            nhanHuy={t('chung.huyBo')}
+          />
+        }
       >
         <div
           className="relative"
@@ -331,8 +357,17 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
       </HopThoai>
 
       <HopThoai moTieuDe={t('hanhDong.traLaiSua')} mo={mo === 'sua'} onDong={dong} dangXuLy={dangLam}
-        chanDuoi={nutXacNhan(() => thucHien(() => signingApi.yeuCauSua(hoSo.id, khoa.lay(), o1, o2)),
-          t('hanhDong.traLaiSua'), 'primary', !o1.trim() || !o2.trim())}>
+        chanDuoi={
+          <NutXacNhan
+            onXacNhan={() => thucHien(() => signingApi.yeuCauSua(hoSo.id, khoa.lay(), o1, o2))}
+            nhan={t('hanhDong.traLaiSua')}
+            variant="primary"
+            disabled={!o1.trim() || !o2.trim()}
+            dangLam={dangLam}
+            onDong={dong}
+            nhanHuy={t('chung.huyBo')}
+          />
+        }>
         <TruongNhap nhan={t('hanhDong.tieuDeSua')}>
           <input className={LOP_O_NHAP} maxLength={255} value={o1} onChange={(e) => setO1(e.target.value)} />
         </TruongNhap>
@@ -343,8 +378,17 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
       </HopThoai>
 
       <HopThoai moTieuDe={t('hanhDong.khongDongY')} mo={mo === 'tu_choi'} onDong={dong} dangXuLy={dangLam}
-        chanDuoi={nutXacNhan(() => thucHien(() => signingApi.tuChoi(hoSo.id, khoa.lay(), o1)),
-          t('hanhDong.khongDongY'), 'danger', !o1.trim())}>
+        chanDuoi={
+          <NutXacNhan
+            onXacNhan={() => thucHien(() => signingApi.tuChoi(hoSo.id, khoa.lay(), o1))}
+            nhan={t('hanhDong.khongDongY')}
+            variant="danger"
+            disabled={!o1.trim()}
+            dangLam={dangLam}
+            onDong={dong}
+            nhanHuy={t('chung.huyBo')}
+          />
+        }>
         <div className="rounded-lg border border-warning bg-warning-subtle/30 p-3 text-xs text-warning-text space-y-2">
           <div className="flex items-start gap-2">
             <i className="fa-solid fa-triangle-exclamation mt-0.5 shrink-0 text-warning" aria-hidden="true" />
@@ -371,14 +415,31 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
       </HopThoai>
 
       <HopThoai moTieuDe={t('hanhDong.thuHoi')} mo={mo === 'thu_hoi'} onDong={dong} dangXuLy={dangLam}
-        chanDuoi={nutXacNhan(() => thucHien(() => signingApi.thuHoi(hoSo.id, khoa.lay())), t('hanhDong.thuHoi'))}>
+        chanDuoi={
+          <NutXacNhan
+            onXacNhan={() => thucHien(() => signingApi.thuHoi(hoSo.id, khoa.lay()))}
+            nhan={t('hanhDong.thuHoi')}
+            dangLam={dangLam}
+            onDong={dong}
+            nhanHuy={t('chung.huyBo')}
+          />
+        }>
         <p className="text-sm text-main">{t('hanhDong.xacNhanThuHoi')}</p>
         {thongBao && <ThongBao>{thongBao}</ThongBao>}
       </HopThoai>
 
       <HopThoai moTieuDe={t('hanhDong.huy')} mo={mo === 'huy'} onDong={dong} dangXuLy={dangLam}
-        chanDuoi={nutXacNhan(() => thucHien(() => signingApi.huy(hoSo.id, khoa.lay(), o1)), t('hanhDong.huy'),
-          'danger', !laNguoiTao && !o1.trim())}>
+        chanDuoi={
+          <NutXacNhan
+            onXacNhan={() => thucHien(() => signingApi.huy(hoSo.id, khoa.lay(), o1))}
+            nhan={t('hanhDong.huy')}
+            variant="danger"
+            disabled={!laNguoiTao && !o1.trim()}
+            dangLam={dangLam}
+            onDong={dong}
+            nhanHuy={t('chung.huyBo')}
+          />
+        }>
         <TruongNhap nhan={t('hanhDong.lyDoHuy')} ghiChu={laNguoiTao ? undefined : t('chung.batBuoc')}>
           <textarea className={LOP_O_NHAP} rows={3} maxLength={GIOI_HAN.lyDo} value={o1} onChange={(e) => setO1(e.target.value)} />
         </TruongNhap>
@@ -386,10 +447,18 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
       </HopThoai>
 
       <HopThoai moTieuDe={t('hanhDong.trinhLai')} mo={mo === 'trinh_lai'} onDong={dong} dangXuLy={dangLam}
-        chanDuoi={nutXacNhan(async () => {
-          const moi = await thucHien(() => signingApi.trinhLai(hoSo.id, khoa.lay()));
-          if (moi) navigate(`/approvals/tao-moi?ho_so=${moi.id}`);
-        }, t('chung.xacNhan'))}>
+        chanDuoi={
+          <NutXacNhan
+            onXacNhan={async () => {
+              const moi = await thucHien(() => signingApi.trinhLai(hoSo.id, khoa.lay()));
+              if (moi) navigate(`/approvals/tao-moi?ho_so=${moi.id}`);
+            }}
+            nhan={t('chung.xacNhan')}
+            dangLam={dangLam}
+            onDong={dong}
+            nhanHuy={t('chung.huyBo')}
+          />
+        }>
         <p className="text-sm text-main">{t('hanhDong.xacNhanTrinhLai')}</p>
         {thongBao && <ThongBao>{thongBao}</ThongBao>}
       </HopThoai>

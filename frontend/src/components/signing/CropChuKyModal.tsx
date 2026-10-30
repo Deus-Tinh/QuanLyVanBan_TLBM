@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@components/common';
 import { HopThoai, ThongBao } from '@components/signing/ChungUI';
 import { useSigningT } from '@lib/signing/i18n';
@@ -36,7 +36,9 @@ export default function CropChuKyModal({ mo, onDong, tep, onLuu, dangXuLy = fals
   const [baseScale, setBaseScale] = useState(1);
   const [zoom, setZoom] = useState(1); // 1 = 100% kích thước fit khởi tạo
   const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
 
   const [offset, setOffset] = useState({ x: 0, y: 0 }); // Độ lệch tâm so với tâm khung cắt
 
@@ -54,13 +56,7 @@ export default function CropChuKyModal({ mo, onDong, tep, onLuu, dangXuLy = fals
 
   // 1. Nạp ảnh khi chọn tệp mới và mặc định luôn tự động khử nền trắng
   useEffect(() => {
-    if (!tep) {
-      setRawImg(null);
-      setCleanCanvas(null);
-      setXacNhan(null);
-      return;
-    }
-    setLoi('');
+    if (!tep) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       const src = e.target?.result as string;
@@ -105,7 +101,7 @@ export default function CropChuKyModal({ mo, onDong, tep, onLuu, dangXuLy = fals
       img.src = src;
     };
     reader.readAsDataURL(tep);
-  }, [tep]);
+  }, [tep, t]);
 
   // 2. Kéo di chuyển ảnh tự do (Pan) hỗ trợ chuột trái, chuột phải và touch
   useEffect(() => {
@@ -283,7 +279,7 @@ export default function CropChuKyModal({ mo, onDong, tep, onLuu, dangXuLy = fals
   }, []);
 
   // 4. Vẽ Canvas Viewport (tốc độ cao nhờ GPU drawImage, mặc định luôn dùng cleanCanvas)
-  const veCanvas = () => {
+  const veCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !rawImg) return;
     const ctx = canvas.getContext('2d');
@@ -299,11 +295,11 @@ export default function CropChuKyModal({ mo, onDong, tep, onLuu, dangXuLy = fals
 
     const nguon = cleanCanvas ? cleanCanvas : rawImg;
     ctx.drawImage(nguon, drawX, drawY, drawW, drawH);
-  };
+  }, [baseScale, cleanCanvas, offset.x, offset.y, rawImg, zoom]);
 
   useEffect(() => {
     veCanvas();
-  }, [rawImg, cleanCanvas, baseScale, zoom, offset, mo, xacNhan]);
+  }, [veCanvas, mo, xacNhan]);
 
   // 5. Cắt ảnh và mở modal xác nhận trước khi lưu
   const xuatAnh = () => {

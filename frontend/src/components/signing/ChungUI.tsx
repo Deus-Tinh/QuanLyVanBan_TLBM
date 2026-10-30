@@ -309,23 +309,19 @@ export function OChonFileKhoa({
   tepDaChon?: File | null;
 }) {
   const { t } = useSigningT();
-  const [tepHienTai, setTepHienTai] = useState<File | null>(tepDaChon ?? null);
-  useEffect(() => {
-    if (tepDaChon !== undefined) {
-      setTepHienTai(tepDaChon);
-    }
-  }, [tepDaChon]);
+  const [tepNoiBo, setTepNoiBo] = useState<File | null>(null);
+  const tepHienTai = tepDaChon !== undefined ? tepDaChon : tepNoiBo;
   const [dangKeo, setDangKeo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   const xuLyFile = (tep?: File) => {
     if (!tep) {
-      setTepHienTai(null);
+      setTepNoiBo(null);
       onChon(undefined);
       return;
     }
-    setTepHienTai(tep);
+    setTepNoiBo(tep);
     onChon(tep);
   };
 
@@ -333,7 +329,7 @@ export function OChonFileKhoa({
   const xoaTep = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    setTepHienTai(null);
+    setTepNoiBo(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     onChon(undefined);
   };

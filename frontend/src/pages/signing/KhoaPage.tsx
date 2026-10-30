@@ -40,17 +40,14 @@ export default function KhoaPage() {
   const [dangLam, setDangLam] = useState(false);
   const [thongBao, setThongBao] = useState<{ loai: 'loi' | 'thanh_cong'; noi_dung: string } | null>(null);
   const [lanTaiBanBoc, setLanTaiBanBoc] = useState(0);
-  const [anhChuKy, setAnhChuKy] = useState<string | null>(null);
+  const [anhChuKyTuyChinh, setAnhChuKyTuyChinh] = useState<string | null | undefined>(undefined);
+  const anhChuKy = anhChuKyTuyChinh !== undefined
+    ? anhChuKyTuyChinh
+    : (toi ? localStorage.getItem(`tlbm_user_sig_${toi.id}`) : null);
   const [tepChon, setTepChon] = useState<File | null>(null);
   const [moCrop, setMoCrop] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hoatDong = khoaHoatDong(ds.duLieu || []);
-
-  useEffect(() => {
-    if (!toi) return;
-    const luu = localStorage.getItem(`tlbm_user_sig_${toi.id}`);
-    if (luu) setAnhChuKy(luu);
-  }, [toi?.id]);
 
   const onChonTepAnh = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -67,7 +64,7 @@ export default function KhoaPage() {
   };
 
   const onLuuAnhChuKy = async (_blob: Blob, dataUrl: string) => {
-    setAnhChuKy(dataUrl);
+    setAnhChuKyTuyChinh(dataUrl);
     if (toi) localStorage.setItem(`tlbm_user_sig_${toi.id}`, dataUrl);
     setMoCrop(false);
     setTepChon(null);
@@ -75,7 +72,7 @@ export default function KhoaPage() {
   };
 
   const onXoaAnhChuKy = () => {
-    setAnhChuKy(null);
+    setAnhChuKyTuyChinh(null);
     if (toi) localStorage.removeItem(`tlbm_user_sig_${toi.id}`);
     setThongBao({ loai: 'thanh_cong', noi_dung: t('khoa.daXoaChuKy') });
   };
