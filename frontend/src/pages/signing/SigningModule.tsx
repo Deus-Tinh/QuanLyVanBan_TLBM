@@ -58,8 +58,6 @@ export default function SigningModule() {
   const { t, loi } = useSigningT();
   const toi = useTai(() => signingApi.toi());
   const dieuHuong = useNavigate();
-  const [lanXem, setLanXem] = useState(0);
-  const daXemThongBao = useCallback(() => setLanXem((n) => n + 1), []);
   const location = useLocation();
   const { pathname } = location;
   // Màn hẹp: thanh tab cuộn ngang, đưa tab đang xem vào vùng nhìn thấy (vd. vào thẳng "Khóa ký & PIN")
