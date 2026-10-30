@@ -13,7 +13,7 @@ Bao gồm:
 import io
 import math
 import re
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from django.conf import settings
@@ -917,13 +917,39 @@ def _parse_date(value):
         if timezone.is_naive(value):
             return timezone.make_aware(value)
         return value
+    if isinstance(value, date):
+        dt = datetime.combine(value, datetime.min.time())
+        return timezone.make_aware(dt)
     text = str(value).strip()
-    for fmt in ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M", "%d/%m/%Y", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+    if not text:
+        return None
+    for fmt in (
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M",
+        "%d/%m/%Y",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%Y/%m/%d",
+        "%d-%m-%Y %H:%M:%S",
+        "%d-%m-%Y %H:%M",
+        "%d-%m-%Y",
+    ):
         try:
             dt = datetime.strptime(text, fmt)
             return timezone.make_aware(dt)
         except ValueError:
             continue
+    try:
+        from dateutil import parser as date_parser
+        dt = date_parser.parse(text)
+        if timezone.is_naive(dt):
+            return timezone.make_aware(dt)
+        return dt
+    except Exception:
+        pass
     return None
 
 
@@ -968,10 +994,18 @@ def _parse_hieu_luc(value):
     return HieuLuc.CON_HIEU_LUC
 
 
-def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
+def import_from_excel(file_obj, loai: str, user, pham_vi: str = None, attachments: list = None) -> dict:
     """Import dữ liệu văn bản từ file Excel vào đúng model tương ứng."""
     loai_str = str(loai).strip().upper()
     model = get_document_model(loai_str)
+
+    # Lập bản đồ tra cứu file đính kèm tải lên theo tên file (case-insensitive)
+    uploaded_files_map = {}
+    if attachments:
+        for att in attachments:
+            att_name = getattr(att, "name", "")
+            if att_name:
+                uploaded_files_map[str(att_name).strip().lower()] = att
 
     wb = load_workbook(file_obj, read_only=True, data_only=True)
     ws = wb.active
@@ -1274,10 +1308,38 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
                     AttachmentModel = VanBanDiAttachment if base_module == "van-ban-di" else VanBanDenAttachment
 
                     for fn in file_names:
+                        fn_key = fn.strip().lower()
+                        # 6.1. Ưu tiên 1: Tệp được người dùng kéo thả tải lên trực tiếp trong request import
+                        if fn_key in uploaded_files_map:
+                            up_file = uploaded_files_map[fn_key]
+                            try:
+                                if hasattr(up_file, "seek"):
+                                    up_file.seek(0)
+                            except Exception:
+                                pass
+                            AttachmentModel.objects.create(
+                                document=created_doc,
+                                name=fn,
+                                file=up_file,
+                                file_size=getattr(up_file, "size", 0),
+                                nguoi_tao=user if user and user.is_authenticated else None,
+                            )
+                            continue
+
+                        # 6.2. Ưu tiên 2: Tìm trong kho tệp lịch sử (oldfile)
                         rel_oldfile_sub = f"{base_module}/{pv_folder}/{date_str}/{fn}"
                         db_path = f"oldfile/{rel_oldfile_sub}"
 
                         disk_file = Path(oldfile_root) / rel_oldfile_sub
+                        if not (disk_file.exists() and disk_file.is_file()):
+                            flex_dir = Path(oldfile_root) / base_module / pv_folder
+                            if flex_dir.exists() and flex_dir.is_dir():
+                                found_candidates = list(flex_dir.glob(f"**/{fn}"))
+                                if found_candidates:
+                                    disk_file = found_candidates[0]
+                                    rel_sub = disk_file.relative_to(Path(oldfile_root)).as_posix()
+                                    db_path = f"oldfile/{rel_sub}"
+
                         if disk_file.exists() and disk_file.is_file():
                             AttachmentModel.objects.create(
                                 document=created_doc,
@@ -1288,7 +1350,7 @@ def import_from_excel(file_obj, loai: str, user, pham_vi: str = None) -> dict:
                         else:
                             errors.append({
                                 "row": row_idx,
-                                "message": f"Văn bản '{created_doc.so_hieu}' đã được tạo, nhưng không tìm thấy tệp đính kèm '{fn}' tại kho lịch sử: oldfile/{rel_oldfile_sub}"
+                                "message": f"Văn bản '{created_doc.so_hieu}' đã được tạo, nhưng chưa tìm thấy tệp đính kèm '{fn}'."
                             })
 
             created_count += 1

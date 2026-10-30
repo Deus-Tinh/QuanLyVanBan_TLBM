@@ -679,7 +679,8 @@ class DocumentViewSet(viewsets.ViewSet):
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
 
-        result = import_from_excel(file_obj, loai, request.user, pham_vi=raw_pham_vi)
+        attachments = request.FILES.getlist("attachments") or request.FILES.getlist("files")
+        result = import_from_excel(file_obj, loai, request.user, pham_vi=raw_pham_vi, attachments=attachments)
         if result["created"] > 0:
             return Response(
                 {
@@ -981,7 +982,8 @@ class VanBanDiViewSet(viewsets.ModelViewSet):
             return Response({"error": "Vui lòng chọn file Excel."}, status=status.HTTP_400_BAD_REQUEST)
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
-        result = import_from_excel(file_obj, "DI", request.user, pham_vi=raw_pham_vi)
+        attachments = request.FILES.getlist("attachments") or request.FILES.getlist("files")
+        result = import_from_excel(file_obj, "DI", request.user, pham_vi=raw_pham_vi, attachments=attachments)
         if result["created"] > 0:
             return Response(
                 {
@@ -1139,7 +1141,8 @@ class VanBanMatViewSet(viewsets.ModelViewSet):
             return Response({"error": "Vui lòng chọn file Excel."}, status=status.HTTP_400_BAD_REQUEST)
         if not file_obj.name.endswith((".xlsx", ".xls")):
             return Response({"error": "Chỉ chấp nhận file Excel (.xlsx, .xls)."}, status=status.HTTP_400_BAD_REQUEST)
-        result = import_from_excel(file_obj, "MAT", request.user)
+        attachments = request.FILES.getlist("attachments") or request.FILES.getlist("files")
+        result = import_from_excel(file_obj, "MAT", request.user, attachments=attachments)
         if result["created"] > 0:
             return Response(
                 {
