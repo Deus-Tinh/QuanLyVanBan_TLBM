@@ -257,7 +257,12 @@
     "fileKhoaGhiChu": "Tải lên file khóa (.tlbmkey) đã xuất ở trang Cấu hình khóa ký; bỏ trống thì dùng khóa đã lưu trên thiết bị này.",
     "daChonFile": "Đã đọc tệp khóa trên trình duyệt. Tệp không được gửi lên máy chủ.",
     "caiDatKhoaVaChuKy": "Đi đến trang Khóa & Chữ ký cá nhân",
-    "anhChuKySeDung": "Ảnh chữ ký cá nhân áp dụng"
+    "anhChuKySeDung": "Ảnh chữ ký cá nhân áp dụng",
+    "dangKiemDieuKien": "Đang kiểm tra điều kiện ký…",
+    "thieuChuKyTieuDe": "Thiếu chữ ký",
+    "thieuAnhChuKy": "Chưa có ảnh chữ ký cá nhân",
+    "thieuKhoaKy": "Chưa có khóa ký đang hoạt động",
+    "diToiCauHinh": "Đi tới {muc}"
   },
   "traoDoi": {
     "tieuDe": "Trao đổi về yêu cầu sửa",
