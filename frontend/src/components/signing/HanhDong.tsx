@@ -254,6 +254,44 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
             : 'border border-border-subtle shadow-xl'
         }`}
         chanDuoi={
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+            <div ref={canhBaoThieuRef} className="min-w-0 flex-1 text-xs" role={dangKiem || loiKiem || hienThieu ? 'status' : undefined}>
+              {dangKiem && (
+                <span className="flex items-center gap-1.5 text-secondary">
+                  <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />{t('hanhDong.dangKiemDieuKien')}
+                </span>
+              )}
+              {Boolean(loiKiem) && (
+                <span className="flex flex-wrap items-center gap-x-2 text-danger">
+                  <span className="flex items-center gap-1.5">
+                    <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />{loi(loiKiem)}
+                  </span>
+                  <button type="button" className="font-semibold text-primary hover:underline"
+                    onClick={() => setLanKiem((n) => n + 1)}>{t('chung.thuLai')}</button>
+                </span>
+              )}
+              {hienThieu && (
+                <span className="flex flex-wrap items-center gap-x-2 text-warning-text">
+                  <span className="flex items-start gap-1.5">
+                    <i className="fa-solid fa-triangle-exclamation mt-0.5" aria-hidden="true" />
+                    <span>
+                      <span className="font-semibold">{t('hanhDong.thieuChuKyTieuDe')}</span>
+                      {': '}
+                      {thieuAnh && <span>{t('hanhDong.thieuAnhChuKy')}</span>}
+                      {thieuAnh && thieuKhoa && '; '}
+                      {thieuKhoa && <span>{t('hanhDong.thieuKhoaKy')}</span>}
+                    </span>
+                  </span>
+                  <button type="button" className="font-semibold text-primary hover:underline" onClick={() => {
+                    dong();
+                    navigate('/approvals/khoa');
+                  }}>
+                    {t('hanhDong.diToiCauHinh', { muc: t('nav.khoaCuaToi') })}
+                  </button>
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2.5">
           <NutXacNhan
             onXacNhan={ky}
             nhan={t('hanhDong.kyDuyet')}
@@ -263,6 +301,8 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
             onDong={dong}
             nhanHuy={t('chung.huyBo')}
           />
+            </div>
+          </div>
         }
       >
         <div
@@ -313,33 +353,6 @@ export default function HanhDong({ hoSo, luot, maBamTepDangXem, onXong }: Props)
 
           <div className={coFileTrenManHinh ? "space-y-4 opacity-30 transition-opacity pointer-events-none" : "space-y-4 transition-opacity"}>
             {!maBamKhop && <ThongBao>{t('loi.ma_bam_khong_khop')}</ThongBao>}
-
-            {dangKiem && <ThongBao loai="thong_tin">{t('hanhDong.dangKiemDieuKien')}</ThongBao>}
-            {Boolean(loiKiem) && (
-              <div className="space-y-2">
-                <ThongBao>{loi(loiKiem)}</ThongBao>
-                <Button size="sm" variant="outline" icon="fa-rotate-right" onClick={() => setLanKiem((n) => n + 1)}>
-                  {t('chung.thuLai')}
-                </Button>
-              </div>
-            )}
-            {hienThieu && (
-              <div ref={canhBaoThieuRef} className="space-y-2">
-                <ThongBao loai="canh_bao">
-                  <p className="font-semibold">{t('hanhDong.thieuChuKyTieuDe')}</p>
-                  <ul className="list-disc pl-5">
-                    {thieuAnh && <li>{t('hanhDong.thieuAnhChuKy')}</li>}
-                    {thieuKhoa && <li>{t('hanhDong.thieuKhoaKy')}</li>}
-                  </ul>
-                </ThongBao>
-                <Button size="sm" variant="outline" icon="fa-arrow-right" onClick={() => {
-                  dong();
-                  navigate('/approvals/khoa');
-                }}>
-                  {t('hanhDong.diToiCauHinh', { muc: t('nav.khoaCuaToi') })}
-                </Button>
-              </div>
-            )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
             <TruongNhap nhan={t('hanhDong.fileKhoa')} batBuoc>
