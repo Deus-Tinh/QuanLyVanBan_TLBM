@@ -1,4 +1,11 @@
 -- =====================================================================
+-- THAY ĐỔI QUYỀN ĐỔI HIỆU LỰC VĂN BẢN ĐẾN/ĐI (Nhóm 7; đánh dấu [HLVB] tại vị trí)
+-- Căn cứ: nghiệp vụ văn bản đến/đi (đổi hiệu lực văn bản là thao tác riêng, không gộp vào change_vanbanden/change_vanbandi).
+--   Thêm 2 quyền: change_hieu_luc_vanbanden, change_hieu_luc_vanbandi; gán cho nhóm ADMIN (CROSS JOIN sẵn có) và VT.
+--   Migration authorization 0011_change_hieu_luc_permissions bổ sung cho DB đã seed từ trước.
+-- Quy mô sau [HLVB] (cộng sau [RLOG]): 78 -> 80 quyền thao tác; thêm 4 lượt phân quyền (ADMIN 2, VT 2): 205 -> 209.
+-- =====================================================================
+-- =====================================================================
 -- THAY ĐỔI BỎ QUYỀN XEM NHẬT KÝ XEM VĂN BẢN KHỎI VĂN THƯ VÀ TRƯỞNG PHÒNG (Nhóm 7; đánh dấu [RLOG] tại vị trí)
 -- Căn cứ: quyết định nhóm trưởng (15-16/10/2026): nhật ký xem văn bản đến/đi chỉ ADMIN và BGD xem được.
 --   Bỏ view_read_log_vanbanden, view_read_log_vanbandi khỏi nhóm VT (2 lượt) và view_read_log_vanbanden khỏi nhóm TP (1 lượt).
@@ -2267,6 +2274,11 @@ VALUES
         'send_mail_all_vanbanden',
         'Văn bản đến'
     ),
+    (
+        'Đổi hiệu lực văn bản đến',
+        'change_hieu_luc_vanbanden',
+        'Văn bản đến'
+    ),
     -- Văn bản đi (Nhóm 2)
     (
         'Xem danh sách/chi tiết văn bản đi',
@@ -2306,6 +2318,11 @@ VALUES
     (
         'Gửi mail toàn hệ thống (văn bản đi)',
         'send_mail_all_vanbandi',
+        'Văn bản đi'
+    ),
+    (
+        'Đổi hiệu lực văn bản đi',
+        'change_hieu_luc_vanbandi',
         'Văn bản đi'
     ),
     -- Hồ sơ lưu trữ (Nhóm 3)
@@ -2665,6 +2682,7 @@ WHERE
         'import_vanbanden',
         'export_vanbanden',
         'send_mail_all_vanbanden',
+        'change_hieu_luc_vanbanden',
         'view_vanbandi',
         'add_vanbandi',
         'change_vanbandi',
@@ -2672,6 +2690,7 @@ WHERE
         'import_vanbandi',
         'export_vanbandi',
         'send_mail_all_vanbandi',
+        'change_hieu_luc_vanbandi',
         'view_hoso',
         'add_hoso',
         'change_hoso',
