@@ -130,11 +130,6 @@ export default function SigningModule() {
                   >
                     <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
                     <span>{m.nhan}</span>
-                    {!!m.so && (
-                      <span className="rounded-full bg-primary-subtle px-2 py-0.5 text-xs font-bold text-primary">
-                        {m.so}
-                      </span>
-                    )}
                   </NavLink>
                 );
               })}
@@ -155,14 +150,6 @@ export default function SigningModule() {
                 >
                   <i className={`fa-solid ${m.icon}`} aria-hidden="true" />
                   <span>{m.nhan}</span>
-                  {!!m.so && (
-                    <span
-                      className="rounded-full bg-danger px-1.5 py-0.5 text-xs font-bold text-inverse"
-                      title={t('nav.moi')}
-                    >
-                      {m.so}
-                    </span>
-                  )}
                 </NavLink>
               ))}
             </div>
