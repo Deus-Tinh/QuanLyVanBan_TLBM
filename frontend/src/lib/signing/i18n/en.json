@@ -125,7 +125,8 @@
     "sau": "Next",
     "trang": "Page {trang}/{tong}",
     "tomTat": "Showing {dau}–{cuoi} of {tong} requests",
-    "tomTatTep": "Showing {dau}–{cuoi} of {tong} files"
+    "tomTatTep": "Showing {dau}–{cuoi} of {tong} files",
+    "tomTatThongBao": "Showing {dau}–{cuoi} of {tong} notifications"
   },
   "tao": {
     "buoc1": "Request details",
@@ -356,7 +357,11 @@
     "vaiTroKy": "Signing role",
     "nhomTheoChucVu": "By position",
     "nhomTheoCanBo": "Employees",
-    "giaiThichChucVuForm": "Assign signer by position"
+    "giaiThichChucVuForm": "Assign signer by position",
+    "gioiHanThuBacTruoc": "The level's effective rank must be higher than or equal to “{ten}” at the preceding position-based level.",
+    "gioiHanThuBacSau": "The level's effective rank must not be higher than “{ten}” at the following position-based level.",
+    "gioiHanThuBacHaiPhia": "The level's effective rank must be higher than or equal to “{truoc}” before it and not higher than “{sau}” after it.",
+    "gioiHanThuBacKhongCoLuaChon": "No position satisfies the ranks of the adjacent levels. Adjust the position-based signers on those levels."
   },
   "khoa": {
     "gioiThieu": "Your signing key is created in this browser and protected by an 8-digit PIN. The encrypted key file is downloaded to your device; to sign, upload the file and enter your PIN. The server never receives your PIN or key file.",
@@ -462,6 +467,7 @@
     "quy_trinh_thieu_nguoi_ky": "The process has no approval level, or a level without signers.",
     "cap_ky_khong_co_nguoi_ky": "An approval level has no signer.",
     "cap_ky_trung_thu_tu": "The approval level order already exists in the process.",
+    "cap_ky_thu_bac_khong_hop_le": "A later signing level must use a position ranked higher than or equal to the preceding position-based level.",
     "nguoi_ky_trung_trong_cap": "The same signer appears twice in one level.",
     "nguoi_ky_hoac_chuc_vu": "Choose either an account or a position for each signer.",
     "quy_trinh_phong_ban_thieu_don_vi": "A department process needs an applicable unit.",
@@ -502,6 +508,10 @@
   },
   "thongBao": {
     "rong": "No notifications yet.",
+    "khongKhopLoc": "No notifications match the filters.",
+    "goiYTim": "Search by document, process, actor, reason…",
+    "locLoai": "Notification type",
+    "chuaXem": "Unseen",
     "loai": {
       "CAN_KY": "Awaiting your approval",
       "HOAN_THANH": "Internal approval completed",
@@ -523,8 +533,7 @@
     "lyDo": "Reason",
     "hanXuLy": "Due",
     "hoSoHien": "Request",
-    "noiDung": "Message",
-    "toiDa": "Showing the {so} most recent notifications."
+    "noiDung": "Message"
   },
   "taiLieu": {
     "goiYTim": "Number, summary, request number, process…",
