@@ -257,7 +257,12 @@
     "fileKhoaGhiChu": "Upload the key file (.tlbmkey) exported on the Signing key page; leave empty to use the key stored on this device.",
 "daChonFile": "The key file was read in this browser and was not sent to the server.",
     "caiDatKhoaVaChuKy": "Go to Signing Keys & Signature",
-    "anhChuKySeDung": "Applied signature image"
+    "anhChuKySeDung": "Applied signature image",
+    "dangKiemDieuKien": "Checking signing requirements…",
+    "thieuChuKyTieuDe": "Signature missing",
+    "thieuAnhChuKy": "No personal signature image yet",
+    "thieuKhoaKy": "No active signing key yet",
+    "diToiCauHinh": "Go to {muc}"
   },
   "traoDoi": {
     "tieuDe": "Discussion on the change request",
