@@ -57,6 +57,7 @@ export default function DossiersPage() {
   const [searchInput, setSearchInput] = React.useState('');
   const [search, setSearch] = React.useState('');
   const [year, setYear] = React.useState('');
+  const [appliedYear, setAppliedYear] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -73,7 +74,7 @@ export default function DossiersPage() {
         if (!active) return null;
         setIsLoading(true);
         setError(null);
-        return recordsService.listDossiers({ search, year, page, pageSize: PAGE_SIZE });
+        return recordsService.listDossiers({ search, year: appliedYear, page, pageSize: PAGE_SIZE });
       })
       .then((result) => {
         if (!active || !result) return;
@@ -97,7 +98,7 @@ export default function DossiersPage() {
     return () => {
       active = false;
     };
-  }, [search, year, page, reloadKey, t]);
+  }, [search, appliedYear, page, reloadKey, t]);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -118,11 +119,10 @@ export default function DossiersPage() {
 
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    const trimmed = searchInput.trim();
-    if (search !== trimmed) {
-      setPage(1);
-      setSearch(trimmed);
-    }
+    setPage(1);
+    setSearch(searchInput.trim());
+    setAppliedYear(year);
+    setReloadKey((value) => value + 1);
   };
 
   const handleClearSearch = () => {
@@ -237,20 +237,14 @@ export default function DossiersPage() {
             <select
               className={`${controlClass} w-full md:w-40`}
               value={year}
-              onChange={(event) => {
-                const nextYear = event.target.value;
-                if (nextYear !== year) {
-                  setYear(nextYear);
-                  setPage(1);
-                }
-              }}
+              onChange={(event) => setYear(event.target.value)}
             >
               <option value="">{t('records.filters.allYears')}</option>
               {years.map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </label>
           <Button type="submit" variant="secondary" icon="fa-filter">{t('records.actions.filter')}</Button>
-          {(search || year) && (
+          {(search || year || appliedYear) && (
             <Button
               type="button"
               variant="ghost"
@@ -258,6 +252,7 @@ export default function DossiersPage() {
                 setSearchInput('');
                 setSearch('');
                 setYear('');
+                setAppliedYear('');
                 setPage(1);
               }}
             >
