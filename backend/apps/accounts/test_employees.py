@@ -11,20 +11,26 @@ Bao gồm:
 import base64
 from io import BytesIO
 import os
+from pathlib import Path
 from datetime import date, timedelta
 from unittest.mock import patch
 import openpyxl
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.db import connection
 from django.db.models import ProtectedError, RestrictedError, Max
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
+from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from organizations.models import KhoiKhuVuc, DonVi
-from accounts.models import Employee, Position, EmployeeAssignment
+from accounts.models import Employee, EmployeeImportJob, Position, EmployeeAssignment
+from accounts.excel_cbnv import import_cbnv_from_excel
+from accounts.views_employee import _run_employee_import_job
 
 User = get_user_model()
 
@@ -246,6 +252,24 @@ class EmployeeCRUDAndFilterTests(EmployeeBaseTestCase):
         self.assertEqual(res_unit.status_code, status.HTTP_200_OK)
         results = res_unit.json()["results"]
         self.assertTrue(all(item["don_vi_id"] == self.don_vi_2.id for item in results))
+
+    def test_filter_unit_includes_concurrent_assignments_without_duplicates(self):
+        """Lọc theo đơn vị phải gồm CBNV kiêm nhiệm đơn vị đó."""
+        EmployeeAssignment.objects.create(
+            employee=self.normal_user,
+            don_vi=self.don_vi_2,
+            chuc_vu=self.cv_truong_phong,
+            chuc_danh="Phụ trách kiêm nhiệm",
+        )
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.get(f"{self.employee_list_url}?don_vi_id={self.don_vi_2.id}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.json()["results"]
+        employee_ids = [item["id"] for item in results]
+        self.assertIn(self.normal_user.id, employee_ids)
+        self.assertEqual(len(employee_ids), len(set(employee_ids)))
 
     def test_update_employee(self):
         """Cập nhật thông tin CBNV."""
@@ -519,6 +543,100 @@ class EmployeeExcelImportExportTests(EmployeeBaseTestCase):
         # Kiểm tra bản ghi trong DB
         self.assertTrue(User.objects.filter(email="doanvanhau@donvi.gov.vn").exists())
         self.assertTrue(User.objects.filter(ho_ten="Đoàn Văn Hậu", don_vi=self.don_vi_1).exists())
+
+    def test_import_excel_prefetches_lookup_data_for_many_rows(self):
+        """Số truy vấn đọc danh mục/email không tăng theo số dòng Excel."""
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append([
+            "Họ và tên (*)", "Ngày sinh (*)", "Email (*)", "Số điện thoại",
+            "Tên Khối / Khu vực (*)", "Tên Đơn vị / Phòng ban (*)",
+            "Tên Chức vụ (*)", "Chức danh", "Trạng thái", "Ghi chú",
+        ])
+        for index in range(20):
+            ws.append([
+                f"Nhân viên tối ưu {index}", "1990-01-01", f"fast-import-{index}@example.test",
+                "0912345678", self.khoi.ten, self.don_vi_1.ten, self.cv_chuyen_vien.name,
+                "", "Đang làm việc", "",
+            ])
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        bio.name = "danh_sach_toi_uu.xlsx"
+
+        with CaptureQueriesContext(connection) as captured:
+            result = import_cbnv_from_excel(bio)
+
+        self.assertTrue(result["success"], result.get("errors"))
+        self.assertEqual(result["created_count"], 20)
+        select_queries = [
+            query for query in captured.captured_queries
+            if query["sql"].lstrip().upper().startswith("SELECT")
+        ]
+        self.assertLessEqual(len(select_queries), 10)
+
+    def test_import_excel_async_returns_owned_job_and_deduplicates_retry(self):
+        """Endpoint nền nhận nhanh, giới hạn xem trạng thái theo chủ job và chống gửi lặp."""
+        self.client.force_authenticate(user=self.sensitive_user)
+        upload = BytesIO(b"queued test payload")
+        upload.name = "danh_sach.xlsx"
+        idempotency_key = "9a04c357-e2fa-4b04-89da-6f459f8c367b"
+        url = "/api/accounts/employees/import-async/"
+
+        with patch("accounts.views_employee._start_employee_import_worker") as start_worker:
+            response = self.client.post(
+                url,
+                {"file": upload},
+                format="multipart",
+                HTTP_IDEMPOTENCY_KEY=idempotency_key,
+            )
+            self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+            job_id = response.json()["job_id"]
+            job = EmployeeImportJob.objects.get(pk=job_id)
+            self.assertEqual(job.owner_id, self.sensitive_user.pk)
+            self.assertEqual(job.status, EmployeeImportJob.Status.QUEUED)
+            self.assertEqual(job.active_key, "cbnv-import")
+            file_path = Path(settings.MEDIA_ROOT) / job.file_path
+            self.addCleanup(file_path.unlink, missing_ok=True)
+            start_worker.assert_called_once_with(job.pk)
+
+            retry_upload = BytesIO(b"queued test payload")
+            retry_upload.name = "danh_sach.xlsx"
+            retry = self.client.post(
+                url,
+                {"file": retry_upload},
+                format="multipart",
+                HTTP_IDEMPOTENCY_KEY=idempotency_key,
+            )
+            self.assertEqual(retry.status_code, status.HTTP_202_ACCEPTED)
+            self.assertEqual(retry.json()["job_id"], job_id)
+            self.assertEqual(EmployeeImportJob.objects.count(), 1)
+
+        status_url = f"/api/accounts/employees/import-jobs/{job_id}/"
+        EmployeeImportJob.objects.filter(pk=job_id).update(
+            status=EmployeeImportJob.Status.PROCESSING,
+            updated_at=timezone.now() - timedelta(minutes=1),
+        )
+        status_response = self.client.get(status_url)
+        self.assertEqual(status_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(status_response.json()["status"], "queued")
+        self.assertNotIn("file_path", status_response.json())
+
+        self.client.force_authenticate(user=self.admin_user)
+        self.assertEqual(self.client.get(status_url).status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_import_excel_async_rejects_files_over_template_limit(self):
+        self.client.force_authenticate(user=self.sensitive_user)
+        upload = BytesIO(b"x" * (5 * 1024 * 1024 + 1))
+        upload.name = "too-large.xlsx"
+        response = self.client.post(
+            "/api/accounts/employees/import-async/",
+            {"file": upload},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()["detail"], "employees.import.fileTooLarge")
+        self.assertFalse(EmployeeImportJob.objects.exists())
 
     def test_import_excel_xls_format_rejected(self):
         """Tệp Excel định dạng cũ (.xls) bị từ chối 400 fileInvalidType (hệ thống chuẩn hóa chỉ hỗ trợ .xlsx)."""
@@ -1052,6 +1170,53 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         res_other = self.client.patch(other_url, {"sdt": "0901112233"}, format="json")
         self.assertEqual(res_other.status_code, status.HTTP_403_FORBIDDEN)
 
+        original_email = self.normal_user.email
+        original_birthday = self.normal_user.ngay_sinh
+        res_other_sensitive = self.client.patch(
+            other_url,
+            {"email": "unauthorized@example.com", "ngay_sinh": "1990-01-01"},
+            format="json",
+        )
+        self.assertEqual(res_other_sensitive.status_code, status.HTTP_403_FORBIDDEN)
+        self.normal_user.refresh_from_db()
+        self.assertEqual(self.normal_user.email, original_email)
+        self.assertEqual(self.normal_user.ngay_sinh, original_birthday)
+
+    def test_admin_only_can_change_employee_password(self):
+        """Password reset chỉ dành cho admin; RBAC change_full không đủ quyền."""
+        url = f"{self.employee_list_url}{self.normal_user.id}/change-password/"
+        new_password = "Secure-Reset-Password-42!"
+        self.normal_user.user_permissions.add(self.perm_change_full)
+
+        self.client.force_authenticate(user=self.normal_user)
+        denied = self.client.post(
+            url,
+            {"new_password": new_password, "confirm_password": new_password},
+            format="json",
+        )
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.normal_user.refresh_from_db()
+        self.assertTrue(self.normal_user.check_password("NormalPassword123"))
+
+        self.client.force_authenticate(user=self.admin_user)
+        mismatch = self.client.post(
+            url,
+            {"new_password": new_password, "confirm_password": "Different-Password-43!"},
+            format="json",
+        )
+        self.assertEqual(mismatch.status_code, status.HTTP_400_BAD_REQUEST)
+        self.normal_user.refresh_from_db()
+        self.assertTrue(self.normal_user.check_password("NormalPassword123"))
+
+        changed = self.client.post(
+            url,
+            {"new_password": new_password, "confirm_password": new_password},
+            format="json",
+        )
+        self.assertEqual(changed.status_code, status.HTTP_200_OK)
+        self.normal_user.refresh_from_db()
+        self.assertTrue(self.normal_user.check_password(new_password))
+
     def test_change_self_cannot_escalate_privileges_or_modify_admin_fields(self):
         """
         Tài khoản chỉ có change_self_cbnv tuyệt đối không được tự nâng quyền
@@ -1105,8 +1270,8 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
         self.assertEqual(self.self_user.email, "newself@donvi.gov.vn")
         self.assertEqual(self.self_user.ngay_sinh.strftime("%Y-%m-%d"), "1993-03-03")
 
-    def test_change_full_permission_can_update_any_employee(self):
-        """User có quyền change_full_cbnv có thể sửa thông tin của bất kỳ CBNV nào."""
+    def test_change_full_permission_cannot_edit_other_employee_without_admin_role(self):
+        """Quyền change_full_cbnv không thay thế role admin khi sửa hồ sơ người khác."""
         hr_user = User.objects.create_user(
             username="hr_user",
             email="hr@donvi.gov.vn",
@@ -1120,7 +1285,14 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
 
         target_url = f"{self.employee_list_url}{self.normal_user.id}/"
         res = self.client.patch(target_url, {"sdt": "0988776655"}, format="json")
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res.data["detail"], "roles.messages.permissionDenied")
+        self.normal_user.refresh_from_db()
+        self.assertEqual(self.normal_user.sdt, "0912345678")
+
+        self.client.force_authenticate(user=self.admin_user)
+        admin_res = self.client.patch(target_url, {"sdt": "0988776655"}, format="json")
+        self.assertEqual(admin_res.status_code, status.HTTP_200_OK)
         self.normal_user.refresh_from_db()
         self.assertEqual(self.normal_user.sdt, "0988776655")
 
@@ -1264,7 +1436,7 @@ class EmployeePermissionSecurityTests(EmployeeBaseTestCase):
             format="json",
         )
         self.assertEqual(res_deact_su.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(res_deact_su.data["detail"], "employees.messages.cannotDeactivateSuperuser")
+        self.assertEqual(res_deact_su.data["detail"], "roles.messages.permissionDenied")
 
         # 5. Superuser thứ 2 thôi việc superuser đầu tiên, nhưng không thể thôi việc superuser cuối cùng
         # Khôi phục dòng staging: loại tài khoản admin hệ thống khỏi phép đếm superuser
@@ -2045,3 +2217,48 @@ class EmployeeDefaultGroupAssignmentTests(EmployeeBaseTestCase):
         )
         self.assertEqual(assigned_codes, {"CV"})
         self.assertNotIn("BGD", assigned_codes)
+
+
+class EmployeeImportWorkerIntegrationTests(TransactionTestCase):
+    """Kiểm thử worker nền với transaction thật để thread khác đọc được job đã commit."""
+
+    def setUp(self):
+        super().setUp()
+        EmployeeBaseTestCase.setUp(self)
+        self.client = APIClient()
+
+    def test_worker_persists_success_and_removes_private_file(self):
+        self.client.force_authenticate(user=self.sensitive_user)
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.append([
+            "Họ và tên (*)", "Ngày sinh (*)", "Email (*)", "Số điện thoại",
+            "Tên Đơn vị / Phòng ban (*)", "Tên Chức vụ (*)", "Chức danh", "Trạng thái", "Ghi chú",
+        ])
+        sheet.append([
+            "Nhân viên nền", "1990-01-01", "worker-import@example.test", "0912345678",
+            self.don_vi_1.ten, self.cv_chuyen_vien.name, "", "Đang làm việc", "",
+        ])
+        file_obj = BytesIO()
+        workbook.save(file_obj)
+        file_obj.seek(0)
+        file_obj.name = "worker_import.xlsx"
+
+        with patch("accounts.views_employee._start_employee_import_worker"):
+            response = self.client.post(
+                "/api/accounts/employees/import-async/",
+                {"file": file_obj},
+                format="multipart",
+                HTTP_IDEMPOTENCY_KEY="worker-success-import",
+            )
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        job = EmployeeImportJob.objects.get(pk=response.json()["job_id"])
+        stored_file = Path(settings.MEDIA_ROOT) / job.file_path
+        _run_employee_import_job(job.pk)
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, EmployeeImportJob.Status.DONE)
+        self.assertIsNone(job.active_key)
+        self.assertEqual(job.created_count, 1)
+        self.assertTrue(User.objects.filter(email="worker-import@example.test").exists())
+        self.assertFalse(stored_file.exists())

@@ -1,4 +1,12 @@
 -- =====================================================================
+-- THAY ĐỔI BỎ QUYỀN XEM NHẬT KÝ XEM VĂN BẢN KHỎI VĂN THƯ VÀ TRƯỞNG PHÒNG (Nhóm 7; đánh dấu [RLOG] tại vị trí)
+-- Căn cứ: quyết định nhóm trưởng (15-16/10/2026): nhật ký xem văn bản đến/đi chỉ ADMIN và BGD xem được.
+--   Bỏ view_read_log_vanbanden, view_read_log_vanbandi khỏi nhóm VT (2 lượt) và view_read_log_vanbanden khỏi nhóm TP (1 lượt).
+--   Migration authorization 0010_remove_read_log_from_vt_tp gỡ các lượt này trên DB đã seed từ trước.
+--   TLBGD và KT giữ nguyên hai quyền này (bảng nhóm quyền mặc định theo chức vụ, #228).
+-- Quy mô sau [RLOG] (nạp sạch): 208 -> 205 lượt phân quyền; nhóm VT 42 -> 40 quyền, nhóm TP 29 -> 28 quyền.
+-- =====================================================================
+-- =====================================================================
 -- THAY ĐỔI CÁN BỘ NHÂN VIÊN (Nhóm 7; issue #24; đánh dấu [CBNV] tại vị trí)
 -- Căn cứ: issue #24; accounts 0010_employeeassignment/0011_employeeassignment_fk_cascade_ddl;
 --   authorization 0009_add_export_cbnv_permission.
@@ -416,6 +424,28 @@ CREATE INDEX idx_emp_assign_emp ON accounts_employee_assignment (employee_id);
 CREATE INDEX idx_emp_assign_donvi ON accounts_employee_assignment (don_vi_id);
 
 CREATE INDEX idx_emp_assign_chucvu ON accounts_employee_assignment (chuc_vu_id);
+
+-- Lượt nhập Excel CBNV chạy nền; active_key đảm bảo toàn hệ thống chỉ có một lượt đang chạy.
+CREATE TABLE accounts_employee_import_job (
+    id UUID PRIMARY KEY,
+    owner_id BIGINT NOT NULL REFERENCES accounts_employee (id),
+    idempotency_key VARCHAR(128),
+    active_key VARCHAR(32),
+    file_path VARCHAR(1024) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'queued',
+    phase VARCHAR(16) NOT NULL DEFAULT 'queued',
+    processed INTEGER NOT NULL DEFAULT 0 CHECK (processed >= 0),
+    total INTEGER NOT NULL DEFAULT 0 CHECK (total >= 0),
+    created_count INTEGER NOT NULL DEFAULT 0 CHECK (created_count >= 0),
+    errors JSONB NOT NULL DEFAULT '[]'::jsonb,
+    message VARCHAR(100) NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_employee_import_owner_idem UNIQUE (owner_id, idempotency_key),
+    CONSTRAINT uq_employee_import_active_key UNIQUE (active_key)
+);
+
+CREATE INDEX idx_employee_import_status ON accounts_employee_import_job (status, created_at);
 
 -- Ghi chú: spec mới (tab "Đvị, phòngban") không có trường "Trưởng đơn vị"
 -- trên organizations_donvi -> không tạo cột manager_id.
@@ -2561,7 +2591,6 @@ WHERE
         'export_cbnv',
         'view_vanbanden',
         'view_vanbandi',
-        'view_read_log_vanbanden',
         'view_hoso',
         'view_tailieu',
         'view_trinhky',
@@ -2635,7 +2664,6 @@ WHERE
         'delete_vanbanden',
         'import_vanbanden',
         'export_vanbanden',
-        'view_read_log_vanbanden',
         'send_mail_all_vanbanden',
         'view_vanbandi',
         'add_vanbandi',
@@ -2643,7 +2671,6 @@ WHERE
         'delete_vanbandi',
         'import_vanbandi',
         'export_vanbandi',
-        'view_read_log_vanbandi',
         'send_mail_all_vanbandi',
         'view_hoso',
         'add_hoso',

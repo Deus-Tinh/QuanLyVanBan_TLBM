@@ -6,18 +6,22 @@
 import apiClient, { ApiError } from '@lib/apiClient';
 import { resolveDocumentApiUrl } from '@lib/routes';
 import type {
-  BangChung, BoLocHoSo, BoLocTaiLieu, CanBo, CanBoChucVu, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
-  ThamSoKdf, ThongBaoTrinhKy, TinNhan, TrangKetQua, TraoDoi, VanBanDi, VanBanDiTepDinhKem, ViTriKy,
+  BangChung, BoLocHoSo, BoLocTaiLieu, CanBo, CanBoChucVu, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, QuyTrinh,
+  ThamSoKdf, TinNhan, TrangKetQua, TraoDoi, VanBanDi, VanBanDiTepDinhKem, ViTriKy,
 } from './types';
 
 export const SIGNING_BASE = '/api/v1/signing';
-/** Số hồ sơ mỗi trang danh sách (server mặc định 10, tối đa 100). */
+/** Số hồ sơ (hoặc thông báo) mỗi trang danh sách (server mặc định 10, tối đa 100). */
 export const SO_HO_SO_MOI_TRANG = 10;
-/** Số thông báo tối đa máy chủ trả (mới nhất trước), khớp `thong_bao.cua_toi`. */
-export const SO_THONG_BAO_TOI_DA = 50;
 
+/** `crypto.randomUUID` chỉ có ở ngữ cảnh an toàn; `getRandomValues` có ở mọi ngữ cảnh (khóa này không phải bí mật). */
 export function taoKhoaChongTrung(): string {
-  return crypto.randomUUID();
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 function tieuDe(khoa?: string): RequestInit {
@@ -97,8 +101,6 @@ export const signingApi = {
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/tu-choi/`, { ly_do_tu_choi }, tieuDe(khoa)),
   thuHoi: (id: number, khoa: string) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/thu-hoi/`, {}, tieuDe(khoa)),
-  uyQuyen: (id: number, khoa: string, body: { dong_nguoi_ky: number; nguoi_nhan: number; ly_do_uy_quyen: string }) =>
-    apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/uy-quyen/`, body, tieuDe(khoa)),
   yeuCauSua: (id: number, khoa: string, tieu_de: string, ly_do: string) =>
     apiClient.post<HoSoChiTiet>(`${SIGNING_BASE}/trinh-ky/${id}/yeu-cau-sua/`, { tieu_de, ly_do }, tieuDe(khoa)),
 
@@ -132,30 +134,85 @@ export const signingApi = {
   thaoTacQuyTrinh: (id: number, thao_tac: 'kich-hoat' | 'ngung' | 'nhan-ban') =>
     apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/${thao_tac}/`, {}),
   // Dữ liệu cán bộ, chức vụ lấy từ API của phân hệ CBNV (Nhóm 7), không giữ danh sách riêng trong Trình ký
-  /** Danh bạ cán bộ đang hoạt động (họ tên, chức vụ, đơn vị) để chọn người ký khi cấu hình quy trình. */
-  danhBaCanBo: () => apiClient.get<CanBo[]>('/api/accounts/staffs/'),
+  /**
+   * Danh bạ cán bộ đang hoạt động (họ tên, chức vụ, đơn vị) để chọn người ký khi cấu hình quy trình.
+   * Lỗi quyền (403, thiếu `view_list_cbnv`) không được che bằng các nguồn dự phòng dưới đây: những nguồn đó có
+   * phạm vi khác (không phải toàn bộ CBNV), tự chuyển sang khi thiếu quyền sẽ hiện một danh sách ngắn hơn mà
+   * người dùng tưởng là toàn bộ cán bộ nhân viên. Lỗi 403 được báo thật để người dùng biết cần cấp quyền.
+   */
+  danhBaCanBo: () =>
+    apiClient
+      .get<CanBo[] | { results?: CanBo[] }>('/api/accounts/employees/?all=true')
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res && Array.isArray((res as { results?: CanBo[] }).results) ? (res as { results: CanBo[] }).results : []);
+        if (list.length > 0) return list;
+        return apiClient.get<CanBo[] | { results?: CanBo[] }>('/api/accounts/staffs/').then((s) =>
+          Array.isArray(s) ? s : (s && Array.isArray((s as { results?: CanBo[] }).results) ? (s as { results: CanBo[] }).results : [])
+        );
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 403) throw err;
+        return apiClient
+          .get<CanBo[] | { results?: CanBo[] }>('/api/accounts/staffs/')
+          .then((res) => {
+            if (Array.isArray(res)) return res;
+            if (res && Array.isArray((res as { results?: CanBo[] }).results)) {
+              return (res as { results: CanBo[] }).results;
+            }
+            return [];
+          });
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 403) throw err;
+        return apiClient
+          .get<
+            Array<{
+              id: number;
+              ten?: string;
+              ho_ten?: string;
+              ten_dang_nhap?: string;
+              username?: string;
+              chuc_vu?: string;
+              chuc_vu_ten?: string;
+              chuc_vu_id?: number | null;
+              don_vi?: string;
+              don_vi_ten?: string;
+              don_vi_id?: number | null;
+            }>
+          >(`${SIGNING_BASE}/nguoi-dung/`)
+          .then((ds) =>
+            (Array.isArray(ds) ? ds : []).map((u) => ({
+              id: u.id,
+              username: u.username || u.ten_dang_nhap || '',
+              ho_ten: u.ho_ten || u.ten || '',
+              don_vi_id: u.don_vi_id ?? null,
+              don_vi_ten: u.don_vi_ten || u.don_vi || '',
+              chuc_vu_id: u.chuc_vu_id ?? null,
+              chuc_vu_ten: u.chuc_vu_ten || u.chuc_vu || '',
+            }))
+          );
+      }),
   /** Danh mục chức vụ (thứ tự hiển thị của CBNV) để chọn người ký theo chức vụ. */
-  chucVu: () => apiClient.get<ChucVu[]>('/api/positions/?all=true'),
+  chucVu: () =>
+    apiClient.get<ChucVu[]>('/api/positions/?all=true').catch(() =>
+      apiClient.get<Array<{ id: number; name?: string; ten?: string; display_order?: number; stt?: number }>>(
+        `${SIGNING_BASE}/chuc-vu/`
+      ).then((ds) =>
+        ds.map((c) => ({ id: c.id, name: c.name || c.ten || '', display_order: c.display_order || c.stt || 0 }))
+      )
+    ),
   /** Cán bộ đang làm việc giữ chức vụ (trong đơn vị nếu có): tên người khớp người ký cấu hình theo chức vụ. */
   canBoTheoChucVu: (chuc_vu: number, don_vi?: number | null) => {
     const tham_so = new URLSearchParams({ chuc_vu: String(chuc_vu) });
     if (don_vi) tham_so.set('don_vi', String(don_vi));
     return apiClient.get<{ count: number; results: CanBoChucVu[] }>(`${SIGNING_BASE}/can-bo-theo-chuc-vu/?${tham_so}`);
   },
-  /** Người nhận ủy quyền ký: tài khoản có quyền ký (cần delegate_trinhky). */
-  timNguoiNhanUyQuyen: (q: string, hoSo: number, dong: number) =>
-    apiClient.get<NguoiDungTim[]>(`${SIGNING_BASE}/nguoi-dung/?muc_dich=uy_quyen&ho_so=${hoSo}&dong_nguoi_ky=${dong}&q=${encodeURIComponent(q)}`),
-  cauHinhUyQuyen: () => apiClient.get<Array<{ chuc_vu_giao_id: number; chuc_vu_nhan_id: number }>>(`${SIGNING_BASE}/cau-hinh-uy-quyen/`),
-  chucVuUyQuyen: () => apiClient.get<Array<{ id: number; ten: string; stt: number }>>(`${SIGNING_BASE}/chuc-vu/`),
-  luuCauHinhUyQuyen: (chuc_vu_giao: number, chuc_vu_nhan: number[]) =>
-    apiClient.put(`${SIGNING_BASE}/cau-hinh-uy-quyen/`, { chuc_vu_giao, chuc_vu_nhan }),
   donVi: () => apiClient.get<DonViLuaChon[]>(`${SIGNING_BASE}/don-vi/`),
   taiLieu: (loc: BoLocTaiLieu = {}, trang = 1) => {
     const tham_so = new URLSearchParams({ page: String(trang), page_size: String(SO_HO_SO_MOI_TRANG) });
     Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
     return apiClient.get<TrangKetQua<TepTaiLieu>>(`${SIGNING_BASE}/tai-lieu/?${tham_so}`);
   },
-  thongBao: () => apiClient.get<ThongBaoTrinhKy[]>(`${SIGNING_BASE}/thong-bao/`),
   timVanBanDi: (q: string) => apiClient.get<VanBanDi[]>(`${SIGNING_BASE}/van-ban-di/?q=${encodeURIComponent(q)}`),
 
   // ── Khóa ký, PIN ─────────────────────────────────────────────────────────

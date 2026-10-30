@@ -114,6 +114,40 @@ describe('DocumentDetailModal', () => {
     window.open = originalOpen;
   });
 
+  it('tự động gọi downloadBlob khi bấm Xem tệp Word (.docx) để tránh bị tải chuỗi UUID', async () => {
+    const mockDetail = {
+      id: 1,
+      loai: 'DEN',
+      so_hieu: '15/CV-BGDDT',
+      trich_yeu: 'Hướng dẫn tuyển sinh',
+      attachments: [
+        {
+          id: 102,
+          file: '/media/baocao.docx',
+          file_name: 'BaoCao.docx',
+          file_size: 204800,
+          uploaded_at: '2026-09-23T08:00:00Z',
+        },
+      ],
+    };
+
+    (apiClient.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockDetail);
+    vi.mocked(downloadBlob).mockResolvedValueOnce();
+
+    render(<DocumentDetailModal isOpen={true} onClose={vi.fn()} documentId={1} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('BaoCao.docx')).toBeInTheDocument();
+    });
+
+    const viewBtn = screen.getByRole('button', { name: /Xem/i });
+    fireEvent.click(viewBtn);
+
+    await waitFor(() => {
+      expect(downloadBlob).toHaveBeenCalledWith('/media/baocao.docx', 'BaoCao.docx');
+    });
+  });
+
   it('gọi downloadBlob khi bấm nút Tải về tệp đính kèm', async () => {
     const mockDetail = {
       id: 1,

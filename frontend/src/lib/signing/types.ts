@@ -85,7 +85,6 @@ export interface NguoiKyLuot {
   chan_ky_chinh: boolean;
   trang_thai: TrangThaiNguoiKy;
   /** Backend policy projection for the current user; missing means not eligible. */
-  co_the_uy_quyen?: boolean;
   thoi_diem_mo: string | null;
   ngay_ky: string | null;
   ngay_tu_choi: string | null;
@@ -311,28 +310,6 @@ export interface BoLocTaiLieu {
   den_ngay?: string;
 }
 
-export type LoaiThongBao =
-  | 'CAN_KY' | 'HOAN_THANH' | 'TU_CHOI' | 'YEU_CAU_SUA' | 'HUY' | 'UY_QUYEN' | 'TIN_NHAN' | 'NHAC_HAN' | 'QUA_HAN';
-
-/** Thông báo trong ứng dụng của người dùng hiện tại (bảng signing_notification, kênh IN_APP và trạng thái EMAIL). */
-export interface ThongBaoTrinhKy {
-  id: number;
-  loai_thong_bao: LoaiThongBao;
-  trinh_ky: number;
-  van_ban: string;
-  trang_thai_ho_so: TrangThaiHoSo;
-  ten_quy_trinh: string;
-  created_at: string;
-  kenh_in_app?: boolean;
-  email_da_gui?: boolean;
-  email_trang_thai?: string | null;
-  email_nguoi_nhan?: string | null;
-  nguoi_thao_tac?: string | null;
-  ly_do?: string | null;
-  /** Hạn xử lý của cấp ký (thông báo cần ký, nhắc hạn, quá hạn) */
-  han_xu_ly?: string | null;
-}
-
 /** Đơn vị chọn được làm đơn vị áp dụng quy trình PHONG_BAN (Đơn vị của Nhóm 7). */
 export interface DonViLuaChon {
   id: number;
@@ -364,15 +341,6 @@ export interface CanBo {
   don_vi_ten: string;
   chuc_vu_id: number | null;
   chuc_vu_ten: string;
-}
-
-export interface NguoiDungTim {
-  id: number;
-  ten: string;
-  ten_dang_nhap: string;
-  chuc_vu: string | null;
-  don_vi_id: number | null;
-  don_vi: string | null;
 }
 
 /** Lỗi nghiệp vụ chuẩn của backend: {code, detail, fields}. */
