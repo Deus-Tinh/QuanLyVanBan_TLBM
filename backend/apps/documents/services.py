@@ -648,27 +648,13 @@ EXCEL_COLUMNS = {
         ("link_thay_the", "Link văn bản thay thế", 28),
         ("ghi_chu", "Ghi chú", 36),
     ],
-    LoaiVanBan.MAT: [
-        ("so_hieu", "Số, ký hiệu VB", 24),
-        ("pham_vi", "Phạm vi", 16),
-        ("ngay_ban_hanh", "Ngày ban hành", 18),
-        ("ngay_van_ban", "Ngày văn bản", 18),
-        ("trich_yeu", "Trích yếu nội dung", 65),
-        ("noi_ban_hanh", "Nơi ban hành", 32),
-        ("nguoi_nhan", "Cán bộ nhận (Username)", 30),
-        ("don_vi_nhan", "Đơn vị nhận", 28),
-        ("nguoi_ky", "Người ký", 22),
-        ("chuc_vu", "Chức vụ", 20),
-        ("hieu_luc", "Hiệu lực", 20),
-        ("tep_dinh_kem", "Tệp đính kèm", 32),
-        ("link_thay_the", "Link văn bản thay thế", 28),
-        ("ghi_chu", "Ghi chú", 36),
-    ],
 }
 
-# Tương thích ngược với các hàm gọi cũ truyền trực tiếp LoaiVanBan
+# 4 mẫu chuẩn của dự án: Đến Nội bộ, Đến Hạn chế, Đi Nội bộ, Đi Hạn chế
+# Tương thích ngược: LoaiVanBan.MAT trỏ trực tiếp về Văn bản Đến - Hạn chế
 EXCEL_COLUMNS[LoaiVanBan.DEN] = EXCEL_COLUMNS[(LoaiVanBan.DEN, PhamVi.NOI_BO)]
 EXCEL_COLUMNS[LoaiVanBan.DI] = EXCEL_COLUMNS[(LoaiVanBan.DI, PhamVi.NOI_BO)]
+EXCEL_COLUMNS[LoaiVanBan.MAT] = EXCEL_COLUMNS[(LoaiVanBan.DEN, PhamVi.HAN_CHE)]
 
 SAMPLE_DATA = {
     (LoaiVanBan.DEN, PhamVi.NOI_BO): {
@@ -732,26 +718,13 @@ SAMPLE_DATA = {
         "link_thay_the": "08/BC-SNN-HC",
         "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
     },
-    LoaiVanBan.MAT: {
-        "so_hieu": "01/GM-BGH",
-        "pham_vi": "Hạn chế",
-        "ngay_ban_hanh": "15/09/2026",
-        "ngay_van_ban": "15/09/2026",
-        "trich_yeu": "Kế hoạch bảo vệ an ninh và bí mật nội bộ năm 2026",
-        "noi_ban_hanh": "Ban Giám hiệu",
-        "nguoi_nhan": "admin",
-        "don_vi_nhan": "Ban Giám hiệu",
-        "nguoi_ky": "Hiệu trưởng",
-        "chuc_vu": "Hiệu trưởng",
-        "hieu_luc": "Còn hiệu lực",
-        "tep_dinh_kem": "01_KH_An_ninh_noi_bo.pdf",
-        "link_thay_the": "01/KH-BGH",
-        "ghi_chu": "(Dòng ví dụ mẫu — xóa trước khi import)",
-    },
 }
 
+# 4 mẫu chuẩn của dự án: Đến Nội bộ, Đến Hạn chế, Đi Nội bộ, Đi Hạn chế
+# Tương thích ngược: LoaiVanBan.MAT trỏ trực tiếp về Văn bản Đến - Hạn chế
 SAMPLE_DATA[LoaiVanBan.DEN] = SAMPLE_DATA[(LoaiVanBan.DEN, PhamVi.NOI_BO)]
 SAMPLE_DATA[LoaiVanBan.DI] = SAMPLE_DATA[(LoaiVanBan.DI, PhamVi.NOI_BO)]
+SAMPLE_DATA[LoaiVanBan.MAT] = SAMPLE_DATA[(LoaiVanBan.DEN, PhamVi.HAN_CHE)]
 
 HEADER_COMMENTS = {
     "tep_dinh_kem": (
@@ -810,21 +783,18 @@ def generate_excel_template(loai: str, pham_vi: str = "NOI_BO") -> io.BytesIO:
     is_han_che = (pv_str in ("HAN_CHE", "HẠN CHẾ", "HANCHE") or loai_str in ("MAT", "VANBANMAT"))
     norm_pv = PhamVi.HAN_CHE if is_han_che else PhamVi.NOI_BO
 
-    if loai_str in ("MAT", "VANBANMAT"):
-        norm_loai = LoaiVanBan.MAT
-        active_fill = _header_fill_mat
-        sheet_title = "Mẫu Văn bản Mật"
-    elif loai_str in ("DI", "VANBANDI"):
+    if loai_str in ("DI", "VANBANDI"):
         norm_loai = LoaiVanBan.DI
         active_fill = _header_fill_di_hanche if is_han_che else _header_fill_di_noibo
         sheet_title = "Mẫu VB Đi - Hạn chế" if is_han_che else "Mẫu VB Đi - Nội bộ"
     else:
+        # Văn bản Đến (bao gồm cả trường hợp gọi MAT / Văn bản Mật Đến)
         norm_loai = LoaiVanBan.DEN
         active_fill = _header_fill_den_hanche if is_han_che else _header_fill_den_noibo
         sheet_title = "Mẫu VB Đến - Hạn chế" if is_han_che else "Mẫu VB Đến - Nội bộ"
 
-    columns = EXCEL_COLUMNS.get((norm_loai, norm_pv)) or EXCEL_COLUMNS.get(norm_loai, EXCEL_COLUMNS[LoaiVanBan.DEN])
-    sample = SAMPLE_DATA.get((norm_loai, norm_pv)) or SAMPLE_DATA.get(norm_loai, SAMPLE_DATA[LoaiVanBan.DEN])
+    columns = EXCEL_COLUMNS.get((norm_loai, norm_pv)) or EXCEL_COLUMNS[LoaiVanBan.DEN]
+    sample = SAMPLE_DATA.get((norm_loai, norm_pv)) or SAMPLE_DATA[LoaiVanBan.DEN]
 
     wb = Workbook()
     ws = wb.active

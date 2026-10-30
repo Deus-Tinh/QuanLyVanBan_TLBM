@@ -646,6 +646,10 @@ class DocumentViewSet(viewsets.ViewSet):
         loai = str(raw_loai).strip().upper()
         pham_vi = str(raw_pham_vi).strip().upper()
 
+        if loai in ("MAT", "VANBANMAT"):
+            loai = "DEN"
+            pham_vi = "HAN_CHE"
+
         excel_file = generate_excel_template(loai, pham_vi=pham_vi)
         scope_suffix = "HanChe" if pham_vi in ("HAN_CHE", "HẠN CHẾ") else "NoiBo"
         filename = f"Mau_VanBan_{loai}_{scope_suffix}_{timezone.now().strftime('%Y%m%d')}.xlsx"

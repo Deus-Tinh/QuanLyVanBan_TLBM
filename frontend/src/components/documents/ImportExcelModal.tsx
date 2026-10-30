@@ -160,10 +160,11 @@ export default function ImportExcelModal({ open, onClose, onImported, loai = 'DE
       if (!res.ok) throw new Error('Không thể tải file mẫu từ máy chủ. Vui lòng kiểm tra lại kết nối!');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+      const effectiveLoai = loai === 'DI' ? 'Di' : 'Den';
+      const effectivePhamVi = (phamVi === 'HAN_CHE' || loai === 'MAT') ? '_Han_Che' : '_Noi_Bo';
       const a = document.createElement('a');
       a.href = url;
-      const phamViSuffix = phamVi === 'HAN_CHE' ? '_Han_Che' : '_Noi_Bo';
-      a.download = `Mau_Nhap_Van_Ban_${loai === 'MAT' ? 'Mat' : loai === 'DI' ? 'Di' : 'Den'}${phamViSuffix}.xlsx`;
+      a.download = `Mau_Nhap_Van_Ban_${effectiveLoai}${effectivePhamVi}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error: unknown) {
