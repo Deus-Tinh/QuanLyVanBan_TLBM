@@ -16,9 +16,7 @@
     "taoMoi": "New signing request",
     "quyTrinh": "Signing workflows",
     "khoaCuaToi": "Signing key & PIN",
-    "thongBao": "Notifications",
-    "taiLieu": "Request files",
-    "moi": "new"
+    "taiLieu": "Request files"
   },
   "chung": {
     "dangTai": "Loading…",
@@ -31,6 +29,7 @@
     "khong": "No",
     "co": "Yes",
     "taiVe": "Download",
+    "in": "Print",
     "xem": "View",
     "tiepTuc": "Continue",
     "batBuoc": "Required",
@@ -125,7 +124,8 @@
     "sau": "Next",
     "trang": "Page {trang}/{tong}",
     "tomTat": "Showing {dau}–{cuoi} of {tong} requests",
-    "tomTatTep": "Showing {dau}–{cuoi} of {tong} files"
+    "tomTatTep": "Showing {dau}–{cuoi} of {tong} files",
+    "tomTatThongBao": "Showing {dau}–{cuoi} of {tong} notifications"
   },
   "tao": {
     "buoc1": "Request details",
@@ -363,7 +363,11 @@
     "vaiTroKy": "Signing role",
     "nhomTheoChucVu": "By position",
     "nhomTheoCanBo": "Employees",
-    "giaiThichChucVuForm": "Assign signer by position"
+    "giaiThichChucVuForm": "Assign signer by position",
+    "gioiHanThuBacTruoc": "The level's effective rank must be higher than or equal to “{ten}” at the preceding position-based level.",
+    "gioiHanThuBacSau": "The level's effective rank must not be higher than “{ten}” at the following position-based level.",
+    "gioiHanThuBacHaiPhia": "The level's effective rank must be higher than or equal to “{truoc}” before it and not higher than “{sau}” after it.",
+    "gioiHanThuBacKhongCoLuaChon": "No position satisfies the ranks of the adjacent levels. Adjust the position-based signers on those levels."
   },
   "khoa": {
     "gioiThieu": "Your signing key is created in this browser and protected by an 8-digit PIN. The key file is downloaded only once upon key creation or PIN change. The server never receives your PIN or key file.",
@@ -440,6 +444,7 @@
     "pin_khong_dung": "Incorrect PIN.",
     "pin_tam_khoa": "Too many wrong PINs; the signing key is locked for 15 minutes.",
     "pin_khoa_cung": "The signing key is locked after too many wrong PINs. Contact an administrator.",
+    "khong_ho_tro_webcrypto": "Signing requires opening the system over HTTPS (or localhost). The current HTTP address does not allow the browser to use Web Crypto; contact the administrator for an HTTPS address.",
     "thieu_ban_boc_thiet_bi": "This device does not hold your active signing key. Open “Signing key & PIN” to create one for this device.",
     "ma_bam_khong_khop": "The file changed since this round started; reload the request before signing.",
     "chua_den_luot_ky": "It is not your turn because the previous signing level is not complete, or you have already acted.",
@@ -505,6 +510,7 @@
     "quy_trinh_thieu_nguoi_ky": "The process has no approval level, or a level without signers.",
     "cap_ky_khong_co_nguoi_ky": "An approval level has no signer.",
     "cap_ky_trung_thu_tu": "The approval level order already exists in the process.",
+    "cap_ky_thu_bac_khong_hop_le": "A later signing level must use a position ranked higher than or equal to the preceding position-based level.",
     "nguoi_ky_trung_trong_cap": "The same signer appears twice in one level.",
     "nguoi_ky_hoac_chuc_vu": "Choose either an account or a position for each signer.",
     "quy_trinh_phong_ban_thieu_don_vi": "A department process needs an applicable unit.",
@@ -545,32 +551,6 @@
     "TAO_LAI_TEP_HOAN_TAT": "Final file regenerated",
     "LIEN_KET_VAN_BAN_DI": "Outgoing document linked",
     "UY_QUYEN_KY": "Signing delegated"
-  },
-  "thongBao": {
-    "rong": "No notifications yet.",
-    "loai": {
-      "CAN_KY": "Awaiting your approval",
-      "HOAN_THANH": "Internal approval completed",
-      "TU_CHOI": "Request rejected",
-      "YEU_CAU_SUA": "Returned for revision",
-      "HUY": "Request cancelled",
-      "UY_QUYEN": "Signing delegated",
-      "TIN_NHAN": "New discussion message",
-      "NHAC_HAN": "Signing due soon",
-      "QUA_HAN": "Signing overdue"
-    },
-    "kenh": {
-      "inApp": "In-app",
-      "emailDaGui": "Email: Sent",
-      "emailChoGui": "Email: Sending",
-      "emailNguoiNhan": "Recipient"
-    },
-    "nguoiThaoTac": "By",
-    "lyDo": "Reason",
-    "hanXuLy": "Due",
-    "hoSoHien": "Request",
-    "noiDung": "Message",
-    "toiDa": "Showing the {so} most recent notifications."
   },
   "taiLieu": {
     "goiYTim": "Number, summary, request number, process…",
