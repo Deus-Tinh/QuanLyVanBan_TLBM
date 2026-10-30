@@ -6,18 +6,22 @@
 import apiClient, { ApiError } from '@lib/apiClient';
 import { resolveDocumentApiUrl } from '@lib/routes';
 import type {
-  BangChung, BoLocHoSo, BoLocTaiLieu, CanBo, CanBoChucVu, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
+  BangChung, BoLocHoSo, BoLocTaiLieu, BoLocThongBao, CanBo, CanBoChucVu, ChucVu, DonViLuaChon, TepTaiLieu, ThongKeHoSo, HoSo, HoSoChiTiet, KhoaKy, LoiNghiepVu, NguoiDungHienTai, NguoiDungTim, QuyTrinh,
   ThamSoKdf, ThongBaoTrinhKy, TinNhan, TrangKetQua, TraoDoi, VanBanDi, VanBanDiTepDinhKem, ViTriKy,
 } from './types';
 
 export const SIGNING_BASE = '/api/v1/signing';
-/** Số hồ sơ mỗi trang danh sách (server mặc định 10, tối đa 100). */
+/** Số hồ sơ (hoặc thông báo) mỗi trang danh sách (server mặc định 10, tối đa 100). */
 export const SO_HO_SO_MOI_TRANG = 10;
-/** Số thông báo tối đa máy chủ trả (mới nhất trước), khớp `thong_bao.cua_toi`. */
-export const SO_THONG_BAO_TOI_DA = 50;
 
+/** `crypto.randomUUID` chỉ có ở ngữ cảnh an toàn; `getRandomValues` có ở mọi ngữ cảnh (khóa này không phải bí mật). */
 export function taoKhoaChongTrung(): string {
-  return crypto.randomUUID();
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
 
 function tieuDe(khoa?: string): RequestInit {
@@ -132,7 +136,12 @@ export const signingApi = {
   thaoTacQuyTrinh: (id: number, thao_tac: 'kich-hoat' | 'ngung' | 'nhan-ban') =>
     apiClient.post<QuyTrinh>(`${SIGNING_BASE}/quy-trinh/${id}/${thao_tac}/`, {}),
   // Dữ liệu cán bộ, chức vụ lấy từ API của phân hệ CBNV (Nhóm 7), không giữ danh sách riêng trong Trình ký
-  /** Danh bạ cán bộ đang hoạt động (họ tên, chức vụ, đơn vị) để chọn người ký khi cấu hình quy trình. */
+  /**
+   * Danh bạ cán bộ đang hoạt động (họ tên, chức vụ, đơn vị) để chọn người ký khi cấu hình quy trình.
+   * Lỗi quyền (403, thiếu `view_list_cbnv`) không được che bằng các nguồn dự phòng dưới đây: những nguồn đó có
+   * phạm vi khác (không phải toàn bộ CBNV), tự chuyển sang khi thiếu quyền sẽ hiện một danh sách ngắn hơn mà
+   * người dùng tưởng là toàn bộ cán bộ nhân viên. Lỗi 403 được báo thật để người dùng biết cần cấp quyền.
+   */
   danhBaCanBo: () =>
     apiClient
       .get<CanBo[] | { results?: CanBo[] }>('/api/accounts/employees/?all=true')
@@ -143,8 +152,9 @@ export const signingApi = {
           Array.isArray(s) ? s : (s && Array.isArray((s as { results?: CanBo[] }).results) ? (s as { results: CanBo[] }).results : [])
         );
       })
-      .catch(() =>
-        apiClient
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 403) throw err;
+        return apiClient
           .get<CanBo[] | { results?: CanBo[] }>('/api/accounts/staffs/')
           .then((res) => {
             if (Array.isArray(res)) return res;
@@ -152,10 +162,11 @@ export const signingApi = {
               return (res as { results: CanBo[] }).results;
             }
             return [];
-          })
-      )
-      .catch(() =>
-        apiClient
+          });
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 403) throw err;
+        return apiClient
           .get<
             Array<{
               id: number;
@@ -181,8 +192,8 @@ export const signingApi = {
               chuc_vu_id: u.chuc_vu_id ?? null,
               chuc_vu_ten: u.chuc_vu_ten || u.chuc_vu || '',
             }))
-          )
-      ),
+          );
+      }),
   /** Danh mục chức vụ (thứ tự hiển thị của CBNV) để chọn người ký theo chức vụ. */
   chucVu: () =>
     apiClient.get<ChucVu[]>('/api/positions/?all=true').catch(() =>
@@ -211,7 +222,15 @@ export const signingApi = {
     Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
     return apiClient.get<TrangKetQua<TepTaiLieu>>(`${SIGNING_BASE}/tai-lieu/?${tham_so}`);
   },
-  thongBao: () => apiClient.get<ThongBaoTrinhKy[]>(`${SIGNING_BASE}/thong-bao/`),
+  /**
+   * Thông báo của tôi, mới nhất trước; `loc` (từ khóa, loại) và `trang` lọc/phân trang phía server.
+   * `page_size` riêng cho huy hiệu số thông báo mới ở tab (cần nhiều hơn một trang hiển thị để đếm đúng).
+   */
+  thongBao: (loc: BoLocThongBao = {}, trang = 1, page_size = SO_HO_SO_MOI_TRANG) => {
+    const tham_so = new URLSearchParams({ page: String(trang), page_size: String(page_size) });
+    Object.entries(loc).forEach(([k, v]) => v && tham_so.set(k, v));
+    return apiClient.get<TrangKetQua<ThongBaoTrinhKy>>(`${SIGNING_BASE}/thong-bao/?${tham_so}`);
+  },
   timVanBanDi: (q: string) => apiClient.get<VanBanDi[]>(`${SIGNING_BASE}/van-ban-di/?q=${encodeURIComponent(q)}`),
 
   // ── Khóa ký, PIN ─────────────────────────────────────────────────────────

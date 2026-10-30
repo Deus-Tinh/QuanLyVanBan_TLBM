@@ -125,7 +125,8 @@
     "sau": "Sau",
     "trang": "Trang {trang}/{tong}",
     "tomTat": "Hiển thị {dau}–{cuoi} trên {tong} hồ sơ",
-    "tomTatTep": "Hiển thị {dau}–{cuoi} trên {tong} tệp"
+    "tomTatTep": "Hiển thị {dau}–{cuoi} trên {tong} tệp",
+    "tomTatThongBao": "Hiển thị {dau}–{cuoi} trên {tong} thông báo"
   },
   "tao": {
     "buoc1": "Thông tin hồ sơ",
@@ -265,7 +266,8 @@
     "nguoiNhanUyQuyen": "Người nhận ủy quyền",
     "timNguoiNhan": "Tìm theo tên, chức danh, đơn vị…",
     "lyDoUyQuyen": "Lý do ủy quyền",
-    "khongCoNguoiNhan": "Không tìm thấy người phù hợp. Kiểm tra từ khóa, chức danh người ký và cấu hình ký thay.",
+    "khongCoNguoiNhan": "Không khớp từ khóa. Thử họ tên, tên đăng nhập hoặc chức danh khác.",
+    "chuaCoAiDuDieuKienUyQuyen": "Chưa có ai đủ điều kiện nhận ủy quyền cho chức danh này. Có thể do chưa cấu hình chức danh được phép ký thay (mục \"Cấu hình ủy quyền\" của quản trị viên), chức danh được cấu hình chưa có ai đang hoạt động và có quyền ký, hoặc người đủ điều kiện đã có mặt trong cấp ký này.",
     "chuaCoChucDanh": "Chưa có chức danh"
   },
   "traoDoi": {
@@ -355,7 +357,11 @@
     "vaiTroKy": "Vai trò ký",
     "nhomTheoChucVu": "Theo chức danh",
     "nhomTheoCanBo": "Cán bộ nhân viên",
-    "giaiThichChucVuForm": "Phân công người ký theo chức danh"
+    "giaiThichChucVuForm": "Phân công người ký theo chức danh",
+    "gioiHanThuBacTruoc": "Thứ bậc hiệu lực của cấp phải cao hơn hoặc bằng “{ten}” ở cấp có chức danh liền trước.",
+    "gioiHanThuBacSau": "Thứ bậc hiệu lực của cấp không được cao hơn “{ten}” ở cấp có chức danh liền sau.",
+    "gioiHanThuBacHaiPhia": "Thứ bậc hiệu lực của cấp phải cao hơn hoặc bằng “{truoc}” ở cấp trước và không cao hơn “{sau}” ở cấp sau.",
+    "gioiHanThuBacKhongCoLuaChon": "Không có chức danh nào phù hợp với thứ bậc của hai cấp liền kề. Hãy điều chỉnh người ký theo chức danh ở các cấp."
   },
   "khoa": {
     "gioiThieu": "Khóa ký được tạo trên trình duyệt và bảo vệ bằng PIN 8 chữ số. Tệp khóa đã mã hóa được tải về thiết bị; khi ký, tải lại tệp và nhập PIN. Máy chủ không nhận PIN hoặc tệp khóa.",
@@ -396,6 +402,7 @@
     "pin_khong_dung": "PIN không đúng.",
     "pin_tam_khoa": "Nhập sai PIN quá nhiều lần; khóa ký tạm khóa 15 phút.",
     "pin_khoa_cung": "Khóa ký đã bị khóa do sai PIN nhiều lần. Liên hệ quản trị.",
+    "khong_ho_tro_webcrypto": "Chức năng ký cần mở hệ thống qua HTTPS (hoặc localhost). Địa chỉ HTTP hiện tại không cho trình duyệt dùng mã hóa Web Crypto; liên hệ quản trị để được cấp địa chỉ HTTPS.",
     "thieu_ban_boc_thiet_bi": "Thiết bị này không giữ khóa ký đang hoạt động. Vào “Khóa ký & PIN” để tạo khóa cho thiết bị này.",
     "ma_bam_khong_khop": "Tệp đã thay đổi so với lượt trình; tải lại hồ sơ trước khi ký.",
     "chua_den_luot_ky": "Chưa đến lượt bạn ký vì cấp ký trước chưa hoàn tất, hoặc bạn đã xử lý.",
@@ -461,6 +468,7 @@
     "quy_trinh_thieu_nguoi_ky": "Quy trình không có cấp ký hoặc có cấp chưa có người ký.",
     "cap_ky_khong_co_nguoi_ky": "Có cấp ký chưa có người ký.",
     "cap_ky_trung_thu_tu": "Thứ tự cấp ký đã tồn tại trong quy trình.",
+    "cap_ky_thu_bac_khong_hop_le": "Chức danh ở cấp ký sau phải cao hơn hoặc bằng cấp ký có chức danh liền trước.",
     "nguoi_ky_trung_trong_cap": "Người ký bị trùng trong cùng một cấp.",
     "nguoi_ky_hoac_chuc_vu": "Mỗi người ký chỉ chọn một: tài khoản hoặc chức danh.",
     "quy_trinh_phong_ban_thieu_don_vi": "Quy trình phòng ban phải có đơn vị áp dụng.",
@@ -501,6 +509,10 @@
   },
   "thongBao": {
     "rong": "Chưa có thông báo nào.",
+    "khongKhopLoc": "Không có thông báo nào khớp bộ lọc.",
+    "goiYTim": "Tìm theo văn bản, quy trình, người thực hiện, lý do…",
+    "locLoai": "Loại thông báo",
+    "chuaXem": "Chưa xem",
     "loai": {
       "CAN_KY": "Cần ký duyệt",
       "HOAN_THANH": "Đã hoàn tất duyệt nội bộ",
@@ -522,8 +534,7 @@
     "lyDo": "Lý do",
     "hanXuLy": "Hạn xử lý",
     "hoSoHien": "Hồ sơ",
-    "noiDung": "Nội dung",
-    "toiDa": "Hiển thị {so} thông báo gần nhất."
+    "noiDung": "Nội dung"
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, số hồ sơ, quy trình…",
