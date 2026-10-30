@@ -13,6 +13,7 @@ from django.db import models
 from django.db.models import Max, Q
 from django.http import HttpResponse
 import os
+from pathlib import Path
 import mimetypes
 from urllib.parse import quote
 from django.conf import settings
@@ -180,6 +181,49 @@ def can_create_document(user, loai="DEN"):
             return True
     except Exception:
         pass
+    return False
+
+
+def can_change_hieu_luc(user, loai="DEN"):
+    """
+    Kiểm tra quyền thay đổi trạng thái hiệu lực của văn bản.
+    Quyền: documents.change_hieu_luc_vanbanden / documents.change_hieu_luc_vanbandi.
+    Mặc định cho Admin và Văn thư (VT).
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if is_admin_user(user):
+        return True
+
+    profile = getattr(user, "profile", None)
+    if profile and getattr(profile, "role", None) in ("admin", "vt", "vanthu", "van_thu"):
+        return True
+
+    if getattr(user, "role", None) in ("admin", "vt", "vanthu", "van_thu"):
+        return True
+
+    try:
+        user_groups = {g.name.lower() for g in user.groups.all()}
+        if any(vt in user_groups for vt in ("vt", "văn thư", "van thu", "vanthu", "admin", "quản trị")):
+            return True
+    except Exception:
+        pass
+
+    model_name = "vanbandi" if str(loai).upper() in ("DI", "VANBANDI") else "vanbanden"
+    perm_code = f"change_hieu_luc_{model_name}"
+
+    try:
+        if (
+            user.has_perm(f"documents.{perm_code}")
+            or user.has_perm(perm_code)
+        ):
+            return True
+        perms = getattr(user, "_user_permissions_cache", None) or set()
+        if any(perm_code in str(p) for p in perms):
+            return True
+    except Exception:
+        pass
+
     return False
 
 
@@ -519,9 +563,32 @@ class DocumentViewSet(viewsets.ViewSet):
             with att.file.open("rb") as stored:
                 content = stored.read()
         except (FileNotFoundError, OSError):
-            raise NotFound("Tệp không còn trên máy chủ.")
-        response = HttpResponse(content, content_type="application/octet-stream")
-        response["Content-Disposition"] = f'attachment; filename="{att.name}"'
+            content = None
+            raw_path = str(att.file.name or getattr(att, "path", "") or "").replace("\\", "/")
+            if raw_path.startswith("oldfile/"):
+                raw_path = raw_path[len("oldfile/"):]
+            for root_val in [
+                getattr(settings, "OLDFILE_STORAGE_ROOT", None),
+                getattr(settings, "DOCUMENT_STORAGE_ROOT", None),
+                getattr(settings, "MEDIA_ROOT", None),
+            ]:
+                if root_val:
+                    cand = Path(root_val) / raw_path.lstrip("/")
+                    if cand.exists() and cand.is_file():
+                        with open(cand, "rb") as f:
+                            content = f.read()
+                        break
+            if content is None:
+                raise NotFound("Tệp không còn trên máy chủ.")
+
+        import mimetypes
+        from urllib.parse import quote
+        content_type, _ = mimetypes.guess_type(att.name)
+        if not content_type:
+            content_type = "application/octet-stream"
+        response = HttpResponse(content, content_type=content_type)
+        encoded_name = quote(att.name)
+        response["Content-Disposition"] = f'attachment; filename="{att.name}"; filename*=UTF-8\'\'{encoded_name}'
         return response
 
     @action(detail=True, methods=["get"], url_path=r"download/(?P<tep_id>[0-9]+)")

@@ -297,5 +297,43 @@ describe('OutboundDocumentPage Component (Phân hệ Văn bản Đi)', () => {
         expect(screen.getByText(/Thêm Mới Văn Bản Đi/i)).toBeInTheDocument();
       });
     });
+
+    it('hiển thị số lượng văn bản theo kết quả tham chiếu hồ sơ trên Top Card', async () => {
+      mockedApiClient.get.mockImplementation(async (url: string) => {
+        if (url.includes('/api/documents/years/')) {
+          return [2026];
+        }
+        if (url.includes('/api/records/')) {
+          return [];
+        }
+        if (url.includes('page_size=1000')) {
+          return {
+            count: 12,
+            results: Array.from({ length: 12 }, (_, i) => ({
+              ...mockOutboundDocuments[0],
+              id: 300 + i,
+            })),
+          };
+        }
+        return {
+          count: 1,
+          results: [mockOutboundDocuments[0]],
+        };
+      });
+
+      render(
+        <MemoryRouter initialEntries={['/documents/outgoing?ho_so=1&loai_van_ban=5']}>
+          <OutboundDocumentPage />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('201/QĐ-TLBM')).toBeInTheDocument();
+      });
+
+      const ones = screen.getAllByText('1');
+      expect(ones.length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText('12')).not.toBeInTheDocument();
+    });
   });
 });
