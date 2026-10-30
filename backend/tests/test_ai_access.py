@@ -120,6 +120,7 @@ class AIAccessTests(TestCase):
             (Path(temp_dir) / "backend").mkdir()
             with (
                 patch.dict(sys.modules, {"backend.services.rag_service": fake_rag}),
+                patch("backend.services.rag_service", fake_rag),
                 patch.dict("os.environ", {}, clear=False),
                 patch("backend.api.views.config.OPENAI_API_KEY", "", create=True),
                 patch("backend.api.views.urllib.request.urlopen", return_value=mock_response) as urlopen,

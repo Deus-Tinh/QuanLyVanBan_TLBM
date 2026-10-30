@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  DJANGO_SECRET_KEY: "ci-only-not-for-production-long-jwt-test-key"
+  DJANGO_SECRET_KEY: "ci-only-not-for-production"
   ADMIN_PASSWORD: "ci-only-not-for-production"
   DB_ENGINE: postgresql
   DB_HOST: localhost

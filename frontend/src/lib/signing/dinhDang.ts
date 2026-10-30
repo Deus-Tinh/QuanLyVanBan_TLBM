@@ -1,6 +1,6 @@
 /** Tiện ích hiển thị dùng chung của phân hệ Trình ký. */
 import type { HamDich } from './i18n';
-import type { NguoiKyCauHinh } from './types';
+import type { LoaiTepTaiLieu, NguoiKyCauHinh } from './types';
 
 export const LOP_O_NHAP =
   'w-full rounded-xl border border-border-subtle bg-surface px-3.5 py-2 text-sm text-main placeholder:text-muted ' +
@@ -18,11 +18,33 @@ export function dinhDangNgay(iso: string | null | undefined, lang: 'vi' | 'en'):
   });
 }
 
-/** Số hiệu — trích yếu của văn bản trình ký (văn bản đi hoặc nhập tay); thiếu cả hai thì mã văn bản đi hoặc "—". */
-export function moTaVanBan(vb: { so_hieu?: string; trich_yeu?: string } | undefined, van_ban_id: number | null): string {
+/** Số hiệu — trích yếu; khi hồ sơ thiếu cả hai thì nêu rõ là văn bản chưa được định danh. */
+export function moTaVanBan(
+  vb: { so_hieu?: string; trich_yeu?: string } | undefined,
+  t: HamDich,
+): string {
   const phan = [vb?.so_hieu, vb?.trich_yeu].filter(Boolean);
   if (phan.length) return phan.join(' — ');
-  return van_ban_id != null ? `#${van_ban_id}` : '—';
+  return t('danhSach.vanBanChuaDinhDanh');
+}
+
+/** Dịch mã lỗi của tiến trình tạo PDF hoàn tất; mã không nhận diện thì không lộ giá trị nội bộ. */
+export function loiTepHoanTatHienThi(ma: string, t: HamDich): string {
+  const khoa = `chiTiet.loiTaoTepMa.${ma}`;
+  const thongDiep = t(khoa);
+  return thongDiep === khoa || thongDiep === '—' ? t('chiTiet.loiTaoTepKhongRo') : thongDiep;
+}
+
+/** Tên tệp tải về có nhãn hồ sơ và nội dung dễ nhận biết. */
+export function tenTepTaiVe(hoSoId: number, loai: LoaiTepTaiLieu, soLuot?: number | null): string {
+  const hoSo = `ho-so-${hoSoId}`;
+  if (loai === 'DU_THAO') return `${hoSo}-ban-du-thao.pdf`;
+  if (loai === 'HOAN_TAT') return `${hoSo}-ban-hoan-tat.pdf`;
+  return soLuot == null ? `${hoSo}-ban-trinh-ky.pdf` : `${hoSo}-luot-${soLuot}.pdf`;
+}
+
+export function tenBangChungTaiVe(hoSoId: number): string {
+  return `ho-so-${hoSoId}-bang-chung.json`;
 }
 
 /** Giới hạn độ dài nhập tay, khớp serializer backend (`serializers.py`). */
@@ -50,6 +72,37 @@ export function taiXuong(blob: Blob, ten: string) {
   a.download = ten;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Gửi lệnh in PDF qua iframe ẩn: trình duyệt dùng trình xem PDF gốc (đủ số trang, giữ chất lượng), không vẽ lại
+ * bằng canvas như khung xem trước. Lỗi khi trình duyệt chặn in trong iframe (hiếm) bị bỏ qua; người dùng vẫn tải
+ * về được bằng nút Tải về.
+ */
+export function inPdf(blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const khung = document.createElement('iframe');
+  khung.style.position = 'fixed';
+  khung.style.right = '0';
+  khung.style.bottom = '0';
+  khung.style.width = '0';
+  khung.style.height = '0';
+  khung.style.border = 'none';
+  khung.src = url;
+  khung.onload = () => {
+    try {
+      khung.contentWindow?.focus();
+      khung.contentWindow?.print();
+    } catch {
+      // bỏ qua: trình duyệt chặn in trong iframe
+    }
+  };
+  document.body.appendChild(khung);
+  // Không có sự kiện chuẩn báo hộp thoại in đã đóng: dọn iframe sau một khoảng đủ dài.
+  setTimeout(() => {
+    khung.remove();
+    URL.revokeObjectURL(url);
+  }, 60_000);
 }
 
 /** Người ký chưa ký trên lượt đã kết thúc (từ chối, hủy) không còn phải ký; lượt đang trả sửa thì tạm dừng. */
