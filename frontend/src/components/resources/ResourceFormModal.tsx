@@ -421,7 +421,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     const q = categorySearch.trim().toLowerCase();
     return categories.filter((c) =>
       c.ten_tai_lieu.toLowerCase().includes(q) ||
-      (c.ma_danh_muc && c.ma_danh_muc.toLowerCase().includes(q))
+      (c.ky_hieu && c.ky_hieu.toLowerCase().includes(q))
     );
   }, [categories, categorySearch]);
 

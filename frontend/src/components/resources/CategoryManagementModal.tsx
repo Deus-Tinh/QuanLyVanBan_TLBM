@@ -409,7 +409,7 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
     const q = typeCatSearch.trim().toLowerCase();
     return categories.filter((c) =>
       c.ten_tai_lieu.toLowerCase().includes(q) ||
-      (c.ma_danh_muc && c.ma_danh_muc.toLowerCase().includes(q))
+      (c.ky_hieu && c.ky_hieu.toLowerCase().includes(q))
     );
   }, [categories, typeCatSearch]);
 

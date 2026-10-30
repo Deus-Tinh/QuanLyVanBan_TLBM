@@ -390,6 +390,7 @@ describe('ResourceTable Component', () => {
       ngay_dang: '2026-10-30',
       hieu_luc: 'CON_HIEU_LUC',
       hien_thi: 'TAT_CA',
+      file_dinh_kem: '/media/bao_cao.pdf',
       attachments: [
         { id: 1, name: 'bao_cao.pdf', path: '/media/bao_cao.pdf', mime_type: 'application/pdf', file_size: 1000 },
         { id: 2, name: 'hinh_anh.jpg', path: '/media/hinh_anh.jpg', mime_type: 'image/jpeg', file_size: 2000 },
