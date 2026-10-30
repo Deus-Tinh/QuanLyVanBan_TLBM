@@ -48,7 +48,7 @@ jobs:
   migrate-postgres:
     name: migrate-postgres
     if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     services:
       postgres:
@@ -184,7 +184,7 @@ jobs:
   all-branches:
     name: all-branches
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     services:
       postgres:
