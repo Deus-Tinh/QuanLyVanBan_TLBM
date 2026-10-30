@@ -1105,17 +1105,20 @@ export default function ResourceManagementPage() {
       // Đồng bộ ngầm với server sau khi cập nhật local state và thông báo cho các tab/client khác
       await fetchResources(true, true);
       notifyMutation();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Lỗi khi lưu tài liệu lên server:', error);
+      const err = error as { response?: { data?: Record<string, unknown> | string }; message?: string };
       const serverMsg =
-        error?.response?.data?.detail ||
-        (typeof error?.response?.data === 'string' ? error.response.data : null) ||
-        (error?.response?.data && typeof error?.response?.data === 'object'
-          ? Object.entries(error.response.data)
+        (typeof err?.response?.data === 'object' && err?.response?.data !== null && 'detail' in err.response.data
+          ? String(err.response.data.detail)
+          : null) ||
+        (typeof err?.response?.data === 'string' ? err.response.data : null) ||
+        (err?.response?.data && typeof err?.response?.data === 'object'
+          ? Object.entries(err.response.data)
               .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
               .join(' | ')
           : null) ||
-        error?.message;
+        err?.message;
       showToast(serverMsg || 'Không thể lưu tài liệu lên hệ thống máy chủ', 'danger', 'Lỗi lưu trữ');
     } finally {
       setIsSubmittingDoc(false);

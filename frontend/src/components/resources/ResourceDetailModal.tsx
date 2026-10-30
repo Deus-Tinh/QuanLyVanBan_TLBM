@@ -449,21 +449,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
               <div className="space-y-2">
                 {filesList.map((file, idx) => {
                   const ext = getFileExt(file.name || file.path, file.mime_type);
-                  const isPreviewable = isDirectPreviewable(file.name);
                   const isCurrentLoading = loadingFileId === (file.id ?? file.name);
-                  const targetUrl = file.id
-                    ? `/api/resources/attachments/${file.id}/view/`
-                    : (file.path || item.file_dinh_kem);
-
-                  const handlePreview = () => {
-                    setPreviewAttachment({
-                      id: file.id,
-                      name: file.name,
-                      path: targetUrl,
-                      file_size: file.file_size,
-                      mime_type: file.mime_type,
-                    });
-                  };
 
                   return (
                     <div
@@ -496,7 +482,7 @@ export const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
                           title={t('resourceManagement.previewAttachment')}
                           aria-label={t('resourceManagement.previewAttachment')}
                         >
-                          <i className="fa-solid fa-eye text-xs" />
+                          <i className={`fa-solid ${isCurrentLoading ? 'fa-spinner fa-spin' : 'fa-eye'} text-xs`} />
                           <span className="hidden sm:inline">{t('resourceManagement.previewAttachment')}</span>
                         </button>
                         <button

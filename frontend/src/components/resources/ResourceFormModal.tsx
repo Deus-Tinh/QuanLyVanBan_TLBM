@@ -632,29 +632,7 @@ export const ResourceFormModal: React.FC<ResourceFormModalProps> = ({
     window.open(objectUrl, '_blank');
   };
 
-  const _legacyPreviewExisting = (file: { id?: number; name: string; size?: number; path?: string }) => {
-    const targetUrl = file.id
-      ? `/api/resources/attachments/${file.id}/view/`
-      : (file.path || '');
-    setPreviewAttachment({
-      id: file.id,
-      name: file.name,
-      path: targetUrl,
-      file_size: file.size,
-    });
-  };
 
-  // Xem trước tệp mới tải lên
-  const _legacyPreviewSelected = (file: File) => {
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewAttachment({
-      id: undefined,
-      name: file.name,
-      path: objectUrl,
-      file_size: file.size,
-      mime_type: file.type,
-    });
-  };
 
   // Validate form trước khi submit
   const validateForm = () => {
