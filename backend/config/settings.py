@@ -233,6 +233,18 @@ if DOCUMENT_STORAGE_ROOT and not DEBUG:
             "Production DOCUMENT_STORAGE_ROOT must be an existing absolute directory on persistent storage."
         )
 
+# Nơi lưu tệp lịch sử cũ (oldfile): <module>/<pham_vi>/YYYY/MM/DD/<ten_file_goc>.
+# Staging/Production mặc định là /srv/qlvb/shared/oldfile; Dev mặc định là storage/oldfile.
+OLDFILE_STORAGE_ROOT = os.environ.get("OLDFILE_STORAGE_ROOT", "").strip()
+if DEBUG and not OLDFILE_STORAGE_ROOT:
+    OLDFILE_STORAGE_ROOT = str(BASE_DIR.parent / "storage" / "oldfile")
+elif not OLDFILE_STORAGE_ROOT:
+    default_staging_oldfile = Path("/srv/qlvb/shared/oldfile")
+    if default_staging_oldfile.is_dir():
+        OLDFILE_STORAGE_ROOT = str(default_staging_oldfile)
+    elif DOCUMENT_STORAGE_ROOT:
+        OLDFILE_STORAGE_ROOT = str(Path(DOCUMENT_STORAGE_ROOT).parent / "oldfile")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Email (Django 6.1 MAILERS)

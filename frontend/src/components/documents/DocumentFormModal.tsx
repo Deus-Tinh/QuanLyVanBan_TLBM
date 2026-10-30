@@ -7,6 +7,7 @@ import { DocumentDetail, DocumentItem, DocumentStatus, PaginatedResponse } from 
 import { Button } from '@components/common';
 import AlertModal from '@components/common/AlertModal';
 import { useTranslation } from '@i18n/translate';
+import { usePermissions } from '@lib/permissions';
 
 export type InitialDocType =
   | DocumentItem
@@ -329,11 +330,20 @@ function buildInitialForm(initDocInput?: InitialDocType | DocumentFormInput | nu
 
 export default function DocumentFormModal({ open, onClose, initial, onSaved, defaultLoai = 'DEN' }: Props) {
   const { t } = useTranslation();
+  const { can } = usePermissions();
   const currentSession = useMemo(() => authService.getSession(), []);
   const isAdmin = currentSession?.role === 'admin' || currentSession?.username === 'admin';
   const initDoc = initial as (Partial<DocumentDetail> & Record<string, unknown>) | null | undefined;
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<FormState>(() => buildInitialForm(initial, defaultLoai));
+
+  // Phân quyền đổi hiệu lực (Nhóm 7 contract: change_hieu_luc_vanbanden / change_hieu_luc_vanbandi)
+  const isDi = form.loai === 'DI';
+  const hasHieuLucPerm = Boolean(
+    isAdmin ||
+    can(isDi ? 'change_hieu_luc_vanbandi' : 'change_hieu_luc_vanbanden') ||
+    Boolean(initDoc?.can_change_hieu_luc)
+  );
   const [units, setUnits] = useState<string[]>(DEFAULT_UNITS);
   const [staff, setStaff] = useState<UserOption[]>([]);
   const [isStaffLoading, setIsStaffLoading] = useState(false);
@@ -1816,6 +1826,8 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                   </div>
 
                   <select
+                    disabled={!hasHieuLucPerm}
+                    title={!hasHieuLucPerm ? (t('documents_ui.formModal.noHieuLucPermission') || 'Chỉ Quản trị viên hoặc Văn thư mới có quyền thay đổi hiệu lực') : undefined}
                     value={form.hieu_luc === 'HET_VA_THAY_THE' ? 'HET_HIEU_LUC' : form.hieu_luc}
                     onChange={e => {
                       const newHieuLuc = e.target.value as FormState['hieu_luc'];
@@ -1829,12 +1841,14 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                         setShowReplacementDropdown(false);
                       }
                     }}
-                    className={`w-full text-sm rounded-xl pl-8 pr-8 py-2 font-semibold transition-all duration-200 border cursor-pointer ${
-                      form.hieu_luc === 'CON_HIEU_LUC'
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-xs'
+                    className={`w-full text-sm rounded-xl pl-8 pr-8 py-2 font-semibold transition-all duration-200 border ${
+                      !hasHieuLucPerm
+                        ? 'opacity-65 cursor-not-allowed bg-slate-100 dark:bg-slate-800 border-border-subtle text-muted'
+                        : form.hieu_luc === 'CON_HIEU_LUC'
+                        ? 'cursor-pointer bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-xs'
                         : form.hieu_luc === 'CON_HIEU_LUC_1_PHAN'
-                        ? 'bg-purple-500/10 border-purple-500/40 text-purple-700 dark:text-purple-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-xs'
-                        : 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-400 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 shadow-xs'
+                        ? 'cursor-pointer bg-purple-500/10 border-purple-500/40 text-purple-700 dark:text-purple-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 shadow-xs'
+                        : 'cursor-pointer bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-400 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 shadow-xs'
                     }`}
                   >
                     <option value="CON_HIEU_LUC" className="bg-surface text-emerald-600 font-semibold">
@@ -1847,6 +1861,12 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                       {t('documents_ui.formModal.statusInactive') || 'Hết hiệu lực'}
                     </option>
                   </select>
+                  {!hasHieuLucPerm && (
+                    <p className="text-[11px] text-muted mt-1 italic flex items-center gap-1">
+                      <i className="fa-solid fa-lock text-[10px]" />
+                      {t('documents_ui.formModal.noHieuLucPermission') || 'Chỉ Quản trị viên hoặc Văn thư mới có quyền thay đổi trạng thái hiệu lực'}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1857,18 +1877,23 @@ export default function DocumentFormModal({ open, onClose, initial, onSaved, def
                 </label>
                 <input
                   type="date"
+                  disabled={!hasHieuLucPerm}
+                  title={!hasHieuLucPerm ? (t('documents_ui.formModal.noHieuLucPermission') || 'Chỉ Quản trị viên hoặc Văn thư mới có quyền thay đổi hiệu lực') : undefined}
                   value={form.ngay_het_hieu_luc}
                   onChange={e => setForm({ ...form, ngay_het_hieu_luc: e.target.value })}
-                  className="w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast"
+                  className={`w-full text-sm bg-surface border border-border-subtle rounded-xl px-3 py-2 text-main focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-fast ${
+                    !hasHieuLucPerm ? 'opacity-65 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''
+                  }`}
                 />
               </div>
 
               {/* Tùy chọn thay thế cho văn bản khác khi trạng thái Còn hiệu lực hoặc Còn hiệu lực 1 phần */}
               {(form.hieu_luc === 'CON_HIEU_LUC' || form.hieu_luc === 'CON_HIEU_LUC_1_PHAN') && (
                 <div className="col-span-12 pt-1">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <label className={`inline-flex items-center gap-2 select-none ${!hasHieuLucPerm && !isReplacingOther ? 'opacity-65 cursor-not-allowed' : 'cursor-pointer'}`}>
                     <input
                       type="checkbox"
+                      disabled={!hasHieuLucPerm && !isReplacingOther}
                       checked={isReplacingOther}
                       onChange={e => {
                         setIsReplacingOther(e.target.checked);
