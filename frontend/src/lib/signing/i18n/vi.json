@@ -16,9 +16,7 @@
     "taoMoi": "Tạo hồ sơ trình ký",
     "quyTrinh": "Quy trình ký",
     "khoaCuaToi": "Khóa ký & PIN",
-    "thongBao": "Thông báo",
-    "taiLieu": "Tệp hồ sơ",
-    "moi": "mới"
+    "taiLieu": "Tệp hồ sơ"
   },
   "chung": {
     "dangTai": "Đang tải…",
@@ -31,6 +29,7 @@
     "khong": "Không",
     "co": "Có",
     "taiVe": "Tải xuống",
+    "in": "In",
     "xem": "Xem",
     "tiepTuc": "Tiếp tục",
     "batBuoc": "Bắt buộc",
@@ -506,35 +505,6 @@
     "TAO_LAI_TEP_HOAN_TAT": "Tạo lại tệp hoàn tất",
     "LIEN_KET_VAN_BAN_DI": "Liên kết văn bản đi đã đăng ký",
     "UY_QUYEN_KY": "Ủy quyền ký"
-  },
-  "thongBao": {
-    "rong": "Chưa có thông báo nào.",
-    "khongKhopLoc": "Không có thông báo nào khớp bộ lọc.",
-    "goiYTim": "Tìm theo văn bản, quy trình, người thực hiện, lý do…",
-    "locLoai": "Loại thông báo",
-    "chuaXem": "Chưa xem",
-    "loai": {
-      "CAN_KY": "Cần ký duyệt",
-      "HOAN_THANH": "Đã hoàn tất duyệt nội bộ",
-      "TU_CHOI": "Hồ sơ bị từ chối",
-      "YEU_CAU_SUA": "Trả lại để sửa",
-      "HUY": "Hồ sơ đã hủy",
-      "UY_QUYEN": "Ủy quyền ký",
-      "TIN_NHAN": "Tin nhắn trao đổi",
-      "NHAC_HAN": "Sắp đến hạn ký",
-      "QUA_HAN": "Quá hạn ký"
-    },
-    "kenh": {
-      "inApp": "Ứng dụng",
-      "emailDaGui": "Email: Đã gửi",
-      "emailChoGui": "Email: Đang gửi",
-      "emailNguoiNhan": "Người nhận"
-    },
-    "nguoiThaoTac": "Người thực hiện",
-    "lyDo": "Lý do",
-    "hanXuLy": "Hạn xử lý",
-    "hoSoHien": "Hồ sơ",
-    "noiDung": "Nội dung"
   },
   "taiLieu": {
     "goiYTim": "Số hiệu, trích yếu, số hồ sơ, quy trình…",
