@@ -2558,6 +2558,7 @@ class DocumentReplacementDisambiguationTests(TestCase):
         self.assertIn("không thể tự thiết lập thay thế chính nó", str(res_fail2.data["link_thay_the"][0]))
 
 
+@override_settings(DOCUMENT_STORAGE_ROOT=TEMP_STORAGE_ROOT)
 class ExcelAttachmentAndOldfileTests(APITestCase):
     """Kiểm thử chuyên sâu cho tính năng Export/Import Excel kèm tệp đính kèm và kho lịch sử oldfile."""
 
